@@ -69,7 +69,6 @@ function setupCardImage(imgElement, movieData) {
     if (renderedCardCount < 6) { 
         imgElement.loading = 'eager';
         imgElement.setAttribute('fetchpriority', 'high');
-        
         const tempImg = new Image();
         tempImg.src = highQualityPoster;
         tempImg.onload = () => {
@@ -91,11 +90,9 @@ function populateCardText(elements, movieData) {
     }
     elements.title.title = movieData.title || 'Título no disponible';
     
-    // ✨ MEJORA: Lógica para generar enlaces para uno o varios directores.
     const directorContainer = elements.director;
     const directorsString = movieData.directors || 'Director no disponible';
     
-    // Limpiamos el contenedor antes de añadir nuevo contenido.
     directorContainer.innerHTML = '';
     
     if (directorsString && directorsString !== 'Director no disponible') {
@@ -103,28 +100,21 @@ function populateCardText(elements, movieData) {
         const fragment = document.createDocumentFragment();
 
         directors.forEach((name, index) => {
-            // Creamos el enlace para el director.
             const link = document.createElement('a');
             link.textContent = name;
-            
             const url = new URL(window.location.origin + window.location.pathname);
             url.searchParams.set('dir', name);
             link.href = url.search;
-            
             fragment.appendChild(link);
-            
-            // Añadimos una coma y un espacio si no es el último director.
             if (index < directors.length - 1) {
                 fragment.appendChild(document.createTextNode(', '));
             }
         });
-
         directorContainer.appendChild(fragment);
     } else {
-        // Si no hay directores, mostramos el texto por defecto.
         directorContainer.textContent = directorsString;
     }
-
+    
     elements.duration.textContent = formatRuntime(movieData.minutes);
     elements.genre.textContent = movieData.genres || 'Género no disponible';
     elements.actors.textContent = (movieData.actors?.toUpperCase() === '(A)') ? "Animación" : (movieData.actors || 'Reparto no disponible');
@@ -161,7 +151,6 @@ function populateCardText(elements, movieData) {
         if (yearEndIsRelevant && countryName && countryName.length > 7) {
             displayName = countryCode.toUpperCase();
         }
-        
         elements.countryName.textContent = displayName;
     } else if (elements.countryContainer) {
         elements.countryContainer.style.display = 'none';
@@ -191,9 +180,7 @@ function setupCardRatings(elements, movieData) {
     if (faVotesCount > 0) {
         const sqrtValue = Math.sqrt(faVotesCount);
         const faPercentage = Math.min((sqrtValue / SQRT_MAX_VOTES.FA) * 100, 100);
-        
         elements.faVotesBar.style.width = `${faPercentage}%`;
-        
         const formattedVotes = formatVotesUnified(faVotesCount);
         elements.faVotesBarContainer.title = `${formattedVotes} votos`;
         elements.faVotesBarContainer.style.display = 'block';
@@ -219,9 +206,7 @@ function setupCardRatings(elements, movieData) {
     if (imdbVotesCount > 0) {
         const sqrtValue = Math.sqrt(imdbVotesCount);
         const imdbPercentage = Math.min((sqrtValue / SQRT_MAX_VOTES.IMDB) * 100, 100);
-
         elements.imdbVotesBar.style.width = `${imdbPercentage}%`;
-
         const formattedVotes = formatVotesUnified(imdbVotesCount);
         elements.imdbVotesBarContainer.title = `${formattedVotes} votos`;
         elements.imdbVotesBarContainer.style.display = 'block';
@@ -234,7 +219,11 @@ function createMovieCard(movieData, index) {
     if (!cardTemplate) return null;
     const cardClone = cardTemplate.content.cloneNode(true);
     const cardElement = cardClone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
-    cardElement.style.setProperty('--card-enter-delay', `${index * 40}ms`);
+    
+    if (movieData.id) {
+        cardElement.style.viewTransitionName = `movie-${movieData.id}`;
+    }
+
     const elements = {
         img: cardClone.querySelector('img'),
         title: cardClone.querySelector(SELECTORS.TITLE),
@@ -274,9 +263,7 @@ export function setupCardInteractions() {
         const innerCard = card.querySelector(SELECTORS.FLIP_CARD_INNER);
         if (!innerCard) return;
 
-        // Lógica de CLICK
         card.addEventListener('click', (e) => {
-            // Si el clic es en cualquier enlace (ratings, director), no hacemos nada.
             if (e.target.closest('a')) return;
 
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
@@ -305,7 +292,6 @@ export function setupCardInteractions() {
             }
         });
 
-        // Lógica de HOVER (solo para escritorio)
         if (isDesktop) {
             const scrollableContent = card.querySelector(SELECTORS.SCROLLABLE_CONTENT);
             const plotSummary = card.querySelector(SELECTORS.PLOT_SUMMARY);

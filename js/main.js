@@ -64,10 +64,16 @@ async function loadAndRenderMovies(page = 1) {
     setCurrentPage(page);
     updatePageTitle();
     updateUrl();
-    dom.gridContainer.setAttribute('aria-busy', 'true');
-    renderSkeletons(dom.gridContainer, dom.paginationContainer);
-    updateHeaderPaginationState(getCurrentPage(), 0);
 
+    const supportsViewTransitions = !!document.startViewTransition;
+
+    // Si el navegador no soporta transiciones, mostramos los skeletons de la forma tradicional.
+    if (!supportsViewTransitions) {
+        dom.gridContainer.setAttribute('aria-busy', 'true');
+        renderSkeletons(dom.gridContainer, dom.paginationContainer);
+        updateHeaderPaginationState(getCurrentPage(), 0);
+    }
+    
     try {
         const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
         const { items: movies, total: totalMovies } = await fetchMovies(getActiveFilters(), page, pageSize);
@@ -78,52 +84,62 @@ async function loadAndRenderMovies(page = 1) {
         
         if (requestId !== getLatestRequestId()) return;
 
-        setTotalMovies(totalMovies);
-        const currentState = getState();
-
-        if (currentState.totalMovies === 0) {
-            renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
-            updateHeaderPaginationState(1, 0);
-        }
-        else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT) {
-            renderMovieGrid(dom.gridContainer, movies);
-            setupCardInteractions();
-            dom.paginationContainer.innerHTML = '';
-            updateHeaderPaginationState(1, 1);
-        }
-        else {
-            const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
-
-            if (document.startViewTransition) {
-                document.startViewTransition(() => {
-                    renderMovieGrid(dom.gridContainer, moviesForPage);
-                    setupCardInteractions();
-                });
-            } else {
-                renderMovieGrid(dom.gridContainer, moviesForPage);
-                setupCardInteractions();
-            }
-
-            renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
-            updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
+        // Si la API no es compatible, actualizamos el DOM y el estado 'busy'.
+        if (!supportsViewTransitions) {
+            updateDomWithResults(movies, totalMovies);
+            dom.gridContainer.setAttribute('aria-busy', 'false');
+            return;
         }
 
-        if (currentState.totalMovies > 0) {
-             prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
-        }
+        // Si la API es compatible, envolvemos la actualización del DOM en la transición.
+        // No mostramos skeletons, ya que la transición en sí misma proporciona un feedback visual.
+        document.startViewTransition(() => {
+            updateDomWithResults(movies, totalMovies);
+        });
 
     } catch (error) {
+        // Aseguramos que el estado de 'busy' se quite si la petición falla.
+        if (!supportsViewTransitions) dom.gridContainer.setAttribute('aria-busy', 'false');
+        
         if (error.name === 'AbortError') {
-            console.log('Petición de películas cancelada deliberadamente. Comportamiento esperado.');
+            console.log('Petición de películas cancelada deliberadamente.');
             return;
         }
         console.error('Error en el proceso de carga:', error);
         const friendlyMessage = getFriendlyErrorMessage(error);
         showToast(friendlyMessage, 'error');
         renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
+    }
+}
+
+/**
+ * Encapsula toda la lógica de actualización del DOM con los resultados de la API.
+ * Es llamada por loadAndRenderMovies.
+ * @param {Array} movies - Array de películas a renderizar.
+ * @param {number} totalMovies - Conteo total de películas de la búsqueda.
+ */
+function updateDomWithResults(movies, totalMovies) {
+    setTotalMovies(totalMovies);
+    const currentState = getState();
+
+    if (currentState.totalMovies === 0) {
+        renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
         updateHeaderPaginationState(1, 0);
-    } finally {
-        dom.gridContainer.setAttribute('aria-busy', 'false');
+    } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT) {
+        renderMovieGrid(dom.gridContainer, movies);
+        setupCardInteractions();
+        dom.paginationContainer.innerHTML = '';
+        updateHeaderPaginationState(1, 1);
+    } else {
+        const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
+        renderMovieGrid(dom.gridContainer, moviesForPage);
+        setupCardInteractions();
+        renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
+        updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
+    }
+
+    if (currentState.totalMovies > 0) {
+        prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
     }
 }
 
@@ -189,47 +205,30 @@ function setupHeaderListeners() {
     });
 }
 
-/**
- * ✨ NUEVA FUNCIÓN: Configura los atajos de teclado globales para la aplicación.
- */
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
-        // Para evitar que los atajos se disparen mientras se escribe en un input.
         const activeElement = document.activeElement;
         const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
-        // Atajo para ESCAPE (limpiar autocompletado o desenfocar)
         if (e.key === 'Escape') {
-            // La lógica de cerrar el autocompletado ya está en sidebar.js,
-            // pero podemos añadir un desenfoque general como extra.
             if (isTyping) {
                 activeElement.blur();
             }
         }
         
-        // Si el usuario está escribiendo, no activamos el resto de los atajos.
-        if (isTyping) {
-            return;
-        }
+        if (isTyping) return;
 
         switch (e.key) {
-            // Atajo '/' para enfocar la barra de búsqueda.
             case '/':
-                e.preventDefault(); // Evita que se escriba "/" en el campo.
+                e.preventDefault();
                 dom.searchInput.focus();
                 break;
-
-            // Atajo 'k' para ir a la página siguiente.
             case 'k':
-                // Simulamos un clic en el botón "siguiente" si no está deshabilitado.
                 if (dom.headerNextBtn && !dom.headerNextBtn.disabled) {
                     dom.headerNextBtn.click();
                 }
                 break;
-
-            // Atajo 'j' para ir a la página anterior.
             case 'j':
-                // Simulamos un clic en el botón "anterior" si no está deshabilitado.
                 if (dom.headerPrevBtn && !dom.headerPrevBtn.disabled) {
                     dom.headerPrevBtn.click();
                 }
@@ -423,24 +422,14 @@ function init() {
 
     document.addEventListener('filtersChanged', () => loadAndRenderMovies(1));
 
-    // ✨ MEJORA: El listener de 'filtersReset' ahora preserva el orden de clasificación.
     document.addEventListener('filtersReset', () => {
-        // 1. Guardamos el criterio de ordenación actual antes de resetear.
         const currentSort = getState().activeFilters.sort;
-        
-        // 2. Reseteamos el estado de todos los filtros a sus valores por defecto.
         resetFiltersState();
-        
-        // 3. Restauramos el criterio de ordenación que el usuario había elegido.
         setSort(currentSort);
-        
-        // 4. Sincronizamos la UI con el nuevo estado.
         dom.searchInput.value = '';
-        dom.sortSelect.value = currentSort; // Nos aseguramos de que el <select> muestre el valor correcto.
+        dom.sortSelect.value = currentSort;
         updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
         document.dispatchEvent(new CustomEvent('updateSidebarUI'));
-        
-        // 5. Recargamos las películas con los filtros limpios pero manteniendo el orden.
         loadAndRenderMovies(1);
     });
 }

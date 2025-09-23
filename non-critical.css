@@ -22,37 +22,24 @@
 /* ================================================================= */
 
 :root {
-    /* Esquema de color soportado para que la UI del navegador (scrollbars, etc.) se adapte. */
     color-scheme: light dark;
-
-    /* -- Tokens de Diseño -- */
-    /* Paleta de colores (se extienden en el CSS crítico) */
     --color-accent-darker: #3272d8;
     --color-border-soft: rgba(0, 0, 0, 0.07);
-
-    /* Radios */
     --radius-sm: 4px;
     --radius-lg: 8px;
     --radius-pill: 1rem;
-
-    /* Tokens de Tipografía */
-    --font-size-xs: 0.75rem;  /* 12px */
-    --font-size-sm: 0.875rem; /* 14px */
-    --font-size-base: 1rem;    /* 16px */
-    --font-size-lg: 1.25rem;   /* 20px */
-    --font-size-xl: 1.5rem;    /* 24px */
-    --font-size-xxl: 2rem;     /* 32px */
-
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.25rem;
+    --font-size-xl: 1.5rem;
+    --font-size-xxl: 2rem;
     --line-height-normal: 1.4;
     --line-height-relaxed: 1.65;
-
-    /* Tiempos de transición */
     --transition-duration-fast: 0.2s;
     --transition-duration-normal: 0.3s;
     --transition-duration-slow: 0.6s;
     --transition-timing-function: ease;
-    
-    /* Pila de capas (z-index) */
     --z-index-overlay: 999;
     --z-index-sidebar-toggle: 1001;
     --z-index-card-content: 20;
@@ -65,14 +52,12 @@ body.dark-mode {
     --color-border-soft: rgba(255, 255, 255, 0.08);
 }
 
-/* -- Estilos base del Body -- */
 body {
-    overflow-x: hidden; /* Previene el scroll horizontal indeseado. */
+    overflow-x: hidden;
     transition: background-color var(--transition-duration-normal) var(--transition-timing-function), 
                 color var(--transition-duration-normal) var(--transition-timing-function);
 }
 
-/* -- Animaciones Globales -- */
 @keyframes pop-effect {
     50% { transform: scale(1.1); }
 }
@@ -86,24 +71,21 @@ body {
 /* ================================================================= */
 
 .sidebar {
-    /* Transiciones para el colapso y cambio de tema. */
     transition: width var(--transition-duration-normal), 
                 background-color var(--transition-duration-normal), 
                 border-color var(--transition-duration-normal), 
                 transform var(--transition-duration-normal);
 }
 
-/* Contenedor interior para gestionar padding y flexbox. */
 .sidebar-inner-wrapper {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 0; /* Necesario para que el scroll funcione en contenedores flex. */
+    min-height: 0;
     padding: 2rem 1.75rem;
     transition: padding var(--transition-duration-normal) var(--transition-timing-function);
 }
 
-/* -- B: Logo -- */
 .logo-area {
     margin-bottom: 2rem;
     text-align: center;
@@ -123,7 +105,6 @@ body {
     display: block;
 }
 
-/* -- B: Controles del Sidebar -- */
 .play-button-container {
     display: flex;
     justify-content: center;
@@ -152,7 +133,6 @@ body {
     transition-duration: 0.1s;
 }
 
-/* -- B: Filtros Activos (Pills) -- */
 #active-filters-container {
     display: flex;
     flex-wrap: wrap;
@@ -203,7 +183,6 @@ body {
     animation: fadeOut 0.2s ease-out forwards;
 }
 
-/* -- B: Contenedor de filtros con scroll -- */
 .sidebar-scrollable-filters {
     flex-grow: 1;
     overflow-y: auto;
@@ -218,7 +197,6 @@ body {
     display: none;
 }
 
-/* -- B: Secciones Desplegables (Acordeón) -- */
 .collapsible-section .section-header {
     display: flex;
     justify-content: space-between;
@@ -270,7 +248,6 @@ body {
     padding-bottom: 1rem;
 }
 
-/* -- E: Ítems de filtro dentro del acordeón -- */
 .filter-link {
     padding: 0.4rem 0.3rem;
     border: none;
@@ -310,7 +287,6 @@ body {
     line-height: 1;
 }
 
-/* -- B: Formularios de búsqueda en Sidebar -- */
 .sidebar-filter-form {
     position: relative;
     margin-top: 0.75rem;
@@ -339,7 +315,6 @@ body {
     box-shadow: none;
 }
 
-/* -- B: Autocompletado del Sidebar -- */
 .sidebar-autocomplete-results {
     position: absolute;
     bottom: 100%;
@@ -372,7 +347,6 @@ body {
     color: var(--color-accent);
 }
 
-/* -- B: Slider de Año (noUiSlider) -- */
 #year-slider-container {
     padding-top: 0.75rem;
 }
@@ -434,7 +408,6 @@ body.dark-mode .year-input:focus {
     box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2);
 }
 
-/* -- M: Modificador de estado compacto (cuando un acordeón está abierto) -- */
 .sidebar-inner-wrapper.is-compact { padding-top: 1rem; }
 .sidebar-inner-wrapper.is-compact .logo-area,
 .sidebar-inner-wrapper.is-compact #active-filters-container { margin-bottom: 0.75rem; }
@@ -464,7 +437,6 @@ body.dark-mode .year-input:focus {
     border-bottom-color: var(--color-border);
 }
 
-/* -- B: Controles del Header -- */
 .main-header-primary-controls, .search-and-theme-group {
     flex-wrap: nowrap;
 }
@@ -573,17 +545,21 @@ body.dark-mode .sun-icon { transform: scale(1) rotate(0deg); }
 /* 4. COMPONENTES: TARJETAS DE PELÍCULA
 /* ================================================================= */
 
+@keyframes card-enter-animation {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px) scale(0.98); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+    }
+}
+
 .movie-card {
     perspective: 1000px;
     aspect-ratio: 500 / 950;
-    opacity: 0;
-    transform: translateY(20px);
-    animation: card-enter-animation 0.5s ease-out forwards;
-    animation-delay: var(--card-enter-delay, 0s);
     transition: transform var(--transition-duration-fast) ease, box-shadow var(--transition-duration-fast) ease;
-}
-@keyframes card-enter-animation {
-    to { opacity: 1; transform: translateY(0); }
 }
 
 .flip-card-inner {
@@ -664,6 +640,19 @@ body.dark-mode .sun-icon { transform: scale(1) rotate(0deg); }
     text-align: left;
 }
 
+.flip-card-front .movie-info h3 {
+    margin-bottom: 0.25rem;
+    font-family: var(--font-title);
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .flip-card-front .front-director-info {
     color: var(--color-text-secondary);
     font-size: var(--font-size-xs);
@@ -672,14 +661,12 @@ body.dark-mode .sun-icon { transform: scale(1) rotate(0deg); }
     text-overflow: ellipsis;
 }
 
-/* Estilos específicos para los enlaces de director */
 .flip-card-front .front-director-info a {
-    color: inherit; /* Hereda el color del div padre. */
+    color: inherit;
     text-decoration: none;
     transition: color var(--transition-duration-fast);
 }
 
-/* El efecto de hover solo se aplica a los enlaces si la rotación está deshabilitada. */
 body.rotation-disabled .flip-card-front .front-director-info a:hover {
     color: var(--color-text-primary);
     text-decoration: underline;
@@ -727,20 +714,19 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
 .ratings-container {
     display: flex;
     flex-direction: column;
-    /* Ajustamos el espacio entre las filas de valoración */
-    gap: 0.75rem; 
+    gap: 0.75rem;
 }
 
-/* ✨ MEJORA: Nuevo contenedor para la línea de valoración (nota + barra) */
 .rating-line {
     display: flex;
     align-items: center;
     gap: 0.75em;
 }
+
 .rating-bar-container {
-    flex-grow: 1; /* La barra ocupa todo el espacio restante */
+    flex-grow: 1;
     width: 100%;
-    height: 8px; /* Un poco más gruesa para que sea más fácil hacer hover */
+    height: 8px;
     background-color: var(--color-bg);
     border-radius: 4px;
     overflow: hidden;
@@ -753,6 +739,7 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
     border-radius: 4px;
     transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
 }
+
 .rating-left {
     display: flex;
     align-items: center;
@@ -760,7 +747,8 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
     color: var(--color-text-primary);
     font-weight: bold;
     text-decoration: none;
-    flex-shrink: 0; 
+    flex-shrink: 0;
+    font-size: var(--font-size-sm);
 }
 .rating-left.disabled {
     pointer-events: none;
@@ -775,10 +763,6 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
 }
 
 .rating-votes {
-    padding-left: 0.7em;
-    font-weight: normal;
-    font-size: var(--font-size-xs);
-    opacity: 0.7;
     display: none;
 }
 
@@ -904,8 +888,8 @@ body.dark-mode .skeleton::after, body.dark-mode .skeleton-card::after {
     align-items: center;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 2rem;
-    padding: 1rem;
+    margin-top: 1rem;
+    padding: 0.5rem;
 }
 .pagination-button {
     display: inline-flex;
@@ -948,7 +932,7 @@ body.dark-mode .skeleton::after, body.dark-mode .skeleton-card::after {
 
 .back-to-top {
     position: fixed;
-    bottom: 2rem;
+    bottom: 1rem;
     right: 2rem;
     z-index: var(--z-index-sidebar);
     width: 50px;
@@ -1079,43 +1063,47 @@ body.sidebar-is-open .sidebar-overlay {
 /* 6. LAYOUT: RESPONSIVE Y ESTADOS ESPECIALES
 /* ================================================================= */
 
-/* -- Transiciones de Vista (View Transitions API) -- */
-/* Define animaciones suaves para la navegación entre estados de la página. */
-::view-transition-old(root) { animation: fade-out var(--transition-duration-fast) ease-out; }
-::view-transition-new(root) { animation: fade-in var(--transition-duration-fast) ease-in; }
+::view-transition-old(root) { animation-name: fade-out; }
+::view-transition-new(root) { animation-name: fade-in; }
+::view-transition-old(root), ::view-transition-new(root) {
+    animation-duration: 0.25s;
+    animation-timing-function: ease-in-out;
+}
 
-/* -- Estilos de la Barra de Scroll -- */
-/* Estilos para navegadores WebKit (Chrome, Safari, Edge) */
+::view-transition-group(movie-*) {
+    animation-duration: 0.5s;
+    animation-timing-function: ease;
+}
+::view-transition-new(movie-*) {
+    animation-name: card-enter-animation;
+}
+::view-transition-old(movie-*) {
+    animation-name: fade-out;
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--color-bg); border-radius: 10px; }
 ::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 10px; border: 1px solid var(--color-bg); }
-
-/* Estilos estándar para navegadores como Firefox */
 html, body, .sidebar-autocomplete-results, #autocomplete-results {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) var(--color-bg);
 }
-
-/* -- Contenedor Principal del Contenido -- */
-/* Este wrapper es necesario para el layout de header expandido. */
 .main-content-wrapper {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0; /* Previene desbordamientos de contenido flex. */
+    min-width: 0; 
 }
 
-/* -- REGLAS DE LAYOUT PARA MÓVIL -- */
-
-/* Estilos base para todas las pantallas de hasta 991px. */
 @media (max-width: 991px) {
-    /* 1. Por defecto, en móvil, siempre hay 2 columnas. */
     .grid-container {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.75rem;
     }
     
-    /* 2. Si la pantalla está en modo apaisado, forzamos 3 columnas. */
     @media (orientation: landscape) {
         .grid-container {
             grid-template-columns: repeat(3, 1fr);
@@ -1123,9 +1111,7 @@ html, body, .sidebar-autocomplete-results, #autocomplete-results {
     }
 }
 
-/* Regla especial para pantallas muy estrechas en vertical */
 @media (max-width: 400px) and (orientation: portrait) {
-    /* Si solo hay una tarjeta, la centramos y hacemos más pequeña. */
     .grid-container:has(> .movie-card:only-child) {
         grid-template-columns: 1fr;
         max-width: 70%;
@@ -1133,8 +1119,44 @@ html, body, .sidebar-autocomplete-results, #autocomplete-results {
     }
 }
 
-/* -- ESTILOS GENERALES PARA MÓVIL (no relacionados con el grid) -- */
-/* Esta media query gestiona el comportamiento del sidebar "off-canvas". */
+/* Estilos generales para pantallas de móvil y tablets pequeñas */
+@media (max-width: 768px) {
+    /* ✨ MEJORA DE TIPOGRAFÍA: Reducimos el tamaño de fuente base.
+       Al usar 14px como base en lugar de 16px, todas las unidades 'rem'
+       se re-escalarán automáticamente a un tamaño más adecuado para móviles. */
+    html {
+        font-size: 14px;
+    }
+
+    .sidebar-toggle-btn { display: flex; }
+    .sidebar {
+        position: fixed;
+        transform: translateX(-100%);
+        box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+        border-right: none;
+    }
+    body.sidebar-is-open .sidebar {
+        transform: translateX(0);
+    }
+    .main-content-wrapper { padding-top: 5rem; }
+    .content { padding: 1.5rem 1rem; }
+    .main-header { padding-left: 1rem; padding-right: 1rem; }
+
+    /* Ajustamos el tamaño del logo específicamente para móvil. */
+    .logo-title {
+        font-size: var(--font-size-lg); /* 20px, más pequeño que el de escritorio */
+    }
+
+    /* Hacemos los botones de control del sidebar un poco más pequeños. */
+    .sidebar-control-button {
+        font-size: var(--font-size-xl); /* 24px, se mantiene grande para ser fácil de tocar */
+    }
+    
+    .grid-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+}
 @media (max-width: 768px) {
     .sidebar-toggle-btn { display: flex; }
     .sidebar {
@@ -1146,43 +1168,36 @@ html, body, .sidebar-autocomplete-results, #autocomplete-results {
     body.sidebar-is-open .sidebar {
         transform: translateX(0);
     }
-    .main-content-wrapper { padding-top: 5rem; } /* Deja espacio para el header fijo. */
+    .main-content-wrapper { padding-top: 5rem; }
     .content { padding: 1.5rem 1rem; }
     .main-header { padding-left: 1rem; padding-right: 1rem; }
 }
 
-
-/* -- REGLAS DE LAYOUT PARA TABLET Y ESCRITORIO -- */
-
-/* A partir de 992px, empezamos a definir un número fijo de columnas.
-   Estas reglas sobreescribirán las de móvil. */
-@media (min-width: 62em) { /* ~992px */
+@media (min-width: 62em) {
     .grid-container {
         grid-template-columns: repeat(4, 1fr);
-        gap: 1.5rem 1rem; /* Restauramos el gap más grande para escritorio. */
+        gap: 1.5rem 1rem;
     }
 }
 
-@media (min-width: 73em) { /* ~1168px */
+@media (min-width: 73em) {
     .grid-container {
         grid-template-columns: repeat(5, 1fr);
     }
 }
 
-@media (min-width: 85em) { /* ~1360px */
+@media (min-width: 85em) {
     .grid-container {
         grid-template-columns: repeat(6, 1fr);
     }
 }
 
-@media (min-width: 100em) { /* ~1600px */
-    /* Regla especial: 7 columnas solo si el sidebar está colapsado en pantallas muy grandes. */
+@media (min-width: 100em) {
     body.sidebar-collapsed .grid-container {
         grid-template-columns: repeat(7, 1fr);
     }
 }
 
-/* -- ESTADO DE SIDEBAR COLAPSADO (para escritorio) -- */
 @media (min-width: 769px) {
     body.sidebar-collapsed .sidebar {
         width: 65px;
@@ -1202,6 +1217,7 @@ html, body, .sidebar-autocomplete-results, #autocomplete-results {
         margin-top: 1rem;
     }
 }
+
 
 /* ================================================================= */
 /* 7. ACCESIBILIDAD
