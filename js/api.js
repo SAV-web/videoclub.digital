@@ -46,13 +46,15 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
     }
     movieFetchController = new AbortController();
 
-    const { searchTerm, genre, year, country, director, actor, sort, mediaType, selection } = activeFilters;
+    const { searchTerm, genre, year, country, director, actor, sort, mediaType, selection, excludedGenres, excludedCountries } = activeFilters;
     const offset = (currentPage - 1) * pageSize;
 
     const rpcParams = {
         search_term: searchTerm || '', p_genre_name: genre, p_year: year,
         p_country_name: country, p_director_name: director, p_actor_name: actor,
         p_media_type: mediaType, p_selection: selection, p_sort: sort,
+        p_excluded_genres: excludedGenres,
+        p_excluded_countries: excludedCountries,
         p_limit: pageSize, p_offset: offset
     };
 

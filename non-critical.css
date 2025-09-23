@@ -110,7 +110,7 @@ body {
     justify-content: center;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.3rem;
 }
 
 .sidebar-control-button {
@@ -135,16 +135,17 @@ body {
 
 #active-filters-container {
     display: flex;
+    justify-content: center;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    min-height: 20px;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    min-height: 10px;
 }
 
 .filter-pill {
     display: flex;
     align-items: center;
-    padding: 0.25rem 0.6rem;
+    margin-top: 0.5rem;padding: 0.25rem 0.6rem;
     border-radius: var(--radius-pill);
     border: none;
     background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
@@ -183,13 +184,16 @@ body {
     animation: fadeOut 0.2s ease-out forwards;
 }
 
+/* ✨ NUEVO: Estilo para las píldoras de exclusión */
+.filter-pill--exclude {
+    background-image: linear-gradient(45deg, #dc3545, #c82333);
+}
 .sidebar-scrollable-filters {
     flex-grow: 1;
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
-    padding-top: 1rem;
-    padding-right: 1rem;
+    padding: 1rem 0 0 0;
     scrollbar-gutter: stable;
     scrollbar-width: none;
 }
@@ -249,6 +253,9 @@ body {
 }
 
 .filter-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 0.4rem 0.3rem;
     border: none;
     border-radius: var(--radius-sm);
@@ -276,17 +283,64 @@ body {
 }
 
 .filter-link.active {
+    position: relative; /* Necesario para posicionar el pseudo-elemento */
     background-color: var(--color-accent);
     color: #fff;
     font-weight: bold;
+    padding-left: 1.2rem; /* Hacemos espacio para el icono */
 }
 .filter-link.active::before {
+    position: absolute; /* Lo sacamos del flujo normal */
+    left: 0.5rem; /* Lo posicionamos a la izquierda */
+    top: 50%;
+    transform: translateY(-50%);
     content: '▶';
-    margin-right: 4px;
-    font-size: 0.9em;
+    font-size: 0.8em;
     line-height: 1;
 }
 
+/* ✨ NUEVO: Estilo para el enlace de filtro excluido en el menú */
+.filter-link.is-excluded {
+    color: #fff;
+    font-weight: bold;
+    background-color: #c82333;
+}
+.filter-link.is-excluded:hover {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+/* Estilo para el botón de excluir (pausar) un filtro */
+.exclude-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 8px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+    opacity: 0; /* Oculto por defecto */
+    transition: all var(--transition-duration-fast);
+}
+.filter-link:hover .exclude-filter-btn {
+    opacity: 1; /* Visible en hover */
+}
+.exclude-filter-btn:hover {
+    background-color: var(--color-border-soft);
+    color: #dc3545;
+}
+
+/* ✨ MEJORA: El icono de pausa se pone blanco sobre fondos de color */
+.filter-link.active .exclude-filter-btn,
+.filter-link.is-excluded .exclude-filter-btn {
+    color: #fff;
+}
 .sidebar-filter-form {
     position: relative;
     margin-top: 0.75rem;
@@ -348,12 +402,24 @@ body {
 }
 
 #year-slider-container {
-    padding-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0;
 }
 #year-slider-wrapper {
     position: relative;
     margin: 10px 0;
+    width: 90%;
     padding: 0 14px;
+}
+#year-input-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    width: 90%;
 }
 #year-slider.noUi-target {
     height: 6px;
@@ -408,11 +474,18 @@ body.dark-mode .year-input:focus {
     box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2);
 }
 
-.sidebar-inner-wrapper.is-compact { padding-top: 1rem; }
-.sidebar-inner-wrapper.is-compact .logo-area,
-.sidebar-inner-wrapper.is-compact #active-filters-container { margin-bottom: 0.75rem; }
-.sidebar-inner-wrapper.is-compact .sidebar-static-filters { padding-bottom: 0.75rem; }
-.sidebar-inner-wrapper.is-compact #year-slider-container { padding-top: 0.25rem; }
+.sidebar-inner-wrapper.is-compact { 
+    padding-top: 1rem; 
+}
+
+
+.sidebar-inner-wrapper.is-compact .logo-area { margin-bottom: 0.8rem; }
+.sidebar-inner-wrapper.is-compact .play-button-container { margin-bottom: 0.1rem; }
+.sidebar-inner-wrapper.is-compact #active-filters-container { margin-bottom: 0.1rem; }
+.sidebar-inner-wrapper.is-compact #year-slider-container { padding-top: 0; }
+.sidebar-inner-wrapper.is-compact .sidebar-static-filters { padding-bottom: 0.5rem; }
+
+
 
 
 /* ================================================================= */

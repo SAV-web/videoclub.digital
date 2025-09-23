@@ -58,8 +58,10 @@ CREATE OR REPLACE FUNCTION public.search_and_count(
     p_actor_name text, 
     p_media_type text, 
     p_selection text, 
-    p_sort text, 
-    p_limit integer, 
+    p_sort text,
+    p_excluded_genres text[], -- ✨ NUEVO: Aceptamos un array de textos para los géneros a excluir
+    p_excluded_countries text[],
+    p_limit integer,
     p_offset integer
 )
 -- La firma de la tabla devuelta es la misma que la original para no romper el frontend.
@@ -104,6 +106,17 @@ WITH filtered_and_paginated_movies AS (
         AND (p_director_name IS NULL OR EXISTS (SELECT 1 FROM movie_directors md JOIN directors d ON md.director_id = d.id WHERE md.movie_id = m.id AND d.name = p_director_name))
         AND (p_actor_name IS NULL OR EXISTS (SELECT 1 FROM movie_actors ma JOIN actors a ON ma.actor_id = a.id WHERE ma.movie_id = m.id AND a.name = p_actor_name))
         AND (p_selection IS NULL OR EXISTS (SELECT 1 FROM movie_collections mc JOIN collections coll ON mc.collection_id = coll.id WHERE mc.movie_id = m.id AND coll.code = p_selection))
+        -- ✨ NUEVA CONDICIÓN: La película NO debe tener NINGUNO de los géneros excluidos.
+        AND (p_excluded_genres IS NULL OR NOT EXISTS (
+            SELECT 1 FROM movie_genres mg
+            JOIN genres g ON mg.genre_id = g.id
+            WHERE mg.movie_id = m.id AND g.name = ANY(p_excluded_genres)
+        ))
+        AND (p_excluded_countries IS NULL OR array_length(p_excluded_countries, 1) IS NULL OR m.country_id NOT IN (
+            SELECT c.id
+            FROM countries c
+            WHERE c.name = ANY(p_excluded_countries)
+        ))
     ORDER BY
         -- La ordenación se hace ANTES de la paginación para obtener el conjunto correcto.
         CASE WHEN split_part(p_sort, ',', 1) = 'id' AND split_part(p_sort, ',', 2) = 'asc' THEN m.id END ASC,

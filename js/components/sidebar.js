@@ -24,6 +24,7 @@ import {
 import {
     getActiveFilters,
     setFilter,
+    toggleExcludedFilter, // ✨ NUEVO: Importamos la función para gestionar exclusiones
 } from '../state.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
 
@@ -52,7 +53,7 @@ const SELECTION_FRIENDLY_NAMES = new Map([
     ['N', 'Netflix']
 ]);
 
-// --- Lógica de renderizado de la UI ---
+// --- Lógica de renderizado de la UI --- 
 
 function renderDefaultPill(type, value) {
     const textSpan = createElement('span', {
@@ -74,18 +75,44 @@ function renderDefaultPill(type, value) {
     return pill;
 }
 
-function renderActiveFilters() {
+function renderFilterPills() {
     const activeFilters = getActiveFilters();
     if (!dom.activeFiltersContainer) return;
 
     dom.activeFiltersContainer.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
+    // Renderizar filtros inclusivos (azules)
     Object.entries(activeFilters).forEach(([type, value]) => {
-        if (!value || ['sort', 'mediaType', 'year', 'searchTerm'].includes(type)) return;
+        // ✨ CORRECCIÓN: Añadimos 'excludedGenres' a la lista de ignorados
+        // para evitar que se renderice una píldora azul vacía.
+        const ignoredPillTypes = ['sort', 'mediaType', 'year', 'searchTerm', 'excludedGenres', 'excludedCountries'];
+        if (!value || (Array.isArray(value) && value.length === 0) || ignoredPillTypes.includes(type)) return;
         const pillElement = renderDefaultPill(type, value);
         fragment.appendChild(pillElement);
     });
+
+    // Renderizar filtros de exclusión (rojos)
+    const renderExcludedPills = (filterType, values) => {
+        if (!values || values.length === 0) return;
+        values.forEach(value => {
+            const pill = createElement('div', {
+                className: 'filter-pill filter-pill--exclude'
+            });
+            const textSpan = createElement('span', { textContent: value });
+            const removeButton = createElement('button', {
+                className: CSS_CLASSES.FILTER_PILL_REMOVE_BTN,
+                dataset: { filterType: filterType, filterValue: value },
+                attributes: { 'aria-label': `Eliminar exclusión de ${value}` },
+                innerHTML: '&times;'
+            });
+            pill.append(textSpan, removeButton);
+            fragment.appendChild(pill);
+        });
+    };
+
+    renderExcludedPills('excludedGenres', activeFilters.excludedGenres);
+    renderExcludedPills('excludedCountries', activeFilters.excludedCountries);
 
     dom.activeFiltersContainer.appendChild(fragment);
     updateFilterLinksUI();
@@ -96,7 +123,17 @@ function updateFilterLinksUI() {
     document.querySelectorAll('.filter-link').forEach(link => {
         const type = link.dataset.filterType;
         const value = link.dataset.filterValue;
-        link.classList.toggle(CSS_CLASSES.ACTIVE, String(activeFilters[type]) === value);
+
+        // Reseteamos los estilos antes de aplicar el correcto.
+        link.classList.remove(CSS_CLASSES.ACTIVE, 'is-excluded');
+
+        if ((type === 'genre' && activeFilters.excludedGenres?.includes(value)) ||
+            (type === 'country' && activeFilters.excludedCountries?.includes(value))) {
+            link.classList.add('is-excluded');
+        } else if (activeFilters[type] === value) {
+            // Si es un filtro activo normal, se pinta de azul.
+            link.classList.add(CSS_CLASSES.ACTIVE);
+        }
     });
 }
 
@@ -106,18 +143,23 @@ async function handleFilterChange(type, value) {
     const activeFilters = getActiveFilters();
     const isActivating = activeFilters[type] !== value;
 
-    const currentPillFilters = Object.values(activeFilters).filter(val => val && !['sort', 'mediaType', 'year', 'searchTerm'].includes(Object.keys(activeFilters).find(k => activeFilters[k] === val)))
-    .length;
+    // ✨ CORRECCIÓN: Contamos solo los filtros "azules" (inclusivos), ignorando los de exclusión.
+    // Esto asegura que los límites de píldoras azules y rojas sean independientes.
+    const ignoredPillTypes = ['sort', 'mediaType', 'year', 'searchTerm', 'excludedGenres', 'excludedCountries'];
+    const currentBluePillFilters = Object.entries(activeFilters)
+        .filter(([key, val]) => val && !ignoredPillTypes.includes(key))
+        .length;
 
     const isNewFilterType = !activeFilters[type];
+    const MAX_BLUE_PILL_FILTERS = 2; // Límite de filtros de inclusión (píldoras azules)
 
-    if (isActivating && isNewFilterType && currentPillFilters >= CONFIG.MAX_ACTIVE_FILTERS) {
-        console.warn(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`);
+    if (isActivating && isNewFilterType && currentBluePillFilters >= MAX_BLUE_PILL_FILTERS) {
+        console.warn(`Límite de ${MAX_BLUE_PILL_FILTERS} filtros de inclusión alcanzado.`);
         return;
     }
 
     setFilter(type, isActivating ? value : null);
-    renderActiveFilters();
+    renderFilterPills();
     document.dispatchEvent(new CustomEvent('filtersChanged'));
 }
 
@@ -293,10 +335,19 @@ function setupEventListeners() {
             const removeBtn = e.target.closest(`.${CSS_CLASSES.FILTER_PILL_REMOVE_BTN}`);
             if (removeBtn) {
                 const pill = removeBtn.parentElement;
-                const { filterType } = removeBtn.dataset;
+                const { filterType, filterValue } = removeBtn.dataset;
                 pill.classList.add('is-removing');
                 pill.addEventListener('animationend', () => {
-                    handleFilterChange(filterType, null);
+                    // ✨ NUEVO: Distinguimos entre quitar un filtro normal y una exclusión
+                    if (filterType === 'excludedGenres' || filterType === 'excludedCountries') {
+                        const type = filterType === 'excludedGenres' ? 'genre' : 'country';
+                        if (toggleExcludedFilter(type, filterValue)) {
+                            renderFilterPills(); // ✨ CORRECCIÓN: Redibujamos inmediatamente.
+                            document.dispatchEvent(new CustomEvent('filtersChanged'));
+                        }
+                    } else {
+                        handleFilterChange(filterType, null);
+                    }
                 }, { once: true });
             }
         });
@@ -305,11 +356,46 @@ function setupEventListeners() {
     const sidebarScrollable = document.querySelector('.sidebar-scrollable-filters');
     if (sidebarScrollable) {
         sidebarScrollable.addEventListener('click', (e) => {
+            // Gestionamos el clic en el botón de excluir
+            const excludeBtn = e.target.closest('.exclude-filter-btn');
+            if (excludeBtn) {
+                e.stopPropagation(); // Evitamos que se active el filtro normal
+                const value = excludeBtn.dataset.value;
+                const type = excludeBtn.dataset.type;
+
+                // ✨ CORRECCIÓN: Si el género que vamos a excluir está actualmente
+                // activo como filtro de inclusión, lo eliminamos de ahí primero.
+                if (getActiveFilters()[type] === value) {
+                    setFilter(type, null);
+                }
+
+                // ✨ CORRECCIÓN: Solo actualizamos la UI si la operación de estado tuvo éxito.
+                if (toggleExcludedFilter(type, value)) {
+                    renderFilterPills(); // Redibujamos las píldoras al instante.
+                    document.dispatchEvent(new CustomEvent('filtersChanged'));
+                    triggerPopAnimation(excludeBtn);
+                }
+                return;
+            }
+
             const link = e.target.closest('.filter-link');
             if (link) {
                 triggerPopAnimation(link);
                 const { filterType, filterValue } = link.dataset;
-                handleFilterChange(filterType, filterValue);
+
+                // ✨ CORRECCIÓN: Lógica para manejar el clic en un género.
+                // Si el género está "pausado" (excluido), lo reactivamos.
+                // Si no, aplicamos el filtro de inclusión normal.
+                const activeFilters = getActiveFilters();
+                if ((filterType === 'genre' && activeFilters.excludedGenres?.includes(filterValue)) ||
+                    (filterType === 'country' && activeFilters.excludedCountries?.includes(filterValue))) {
+                    if (toggleExcludedFilter(filterType, filterValue)) {
+                        renderFilterPills();
+                        document.dispatchEvent(new CustomEvent('filtersChanged'));
+                    }
+                } else {
+                    handleFilterChange(filterType, filterValue);
+                }
             }
         });
     }
@@ -340,6 +426,44 @@ function setupEventListeners() {
  * Función pública que se llama desde main.js para inicializar todo el componente.
  */
 export function initSidebar() {
+    // ✨ MEJORA: Añadimos botones de exclusión solo a géneros específicos.
+    const EXCLUDABLE_GENRES = ['Animación', 'Documental'];
+
+    document.querySelectorAll('#genres-list-container .filter-link').forEach(link => {
+        const genreName = link.dataset.filterValue;
+        const textWrapper = createElement('span', { textContent: link.textContent });
+        link.innerHTML = '';
+        link.append(textWrapper);
+
+        if (EXCLUDABLE_GENRES.includes(genreName)) {
+            const excludeBtn = createElement('button', {
+                className: 'exclude-filter-btn',
+                dataset: { value: genreName, type: 'genre' },
+                attributes: { 'aria-label': `Excluir género ${genreName}`, 'type': 'button' },
+                innerHTML: '⏸︎'
+            });
+            link.append(excludeBtn);
+        }
+    });
+
+    const EXCLUDABLE_COUNTRIES = ['EEUU'];
+    document.querySelectorAll('#countries-list-container .filter-link').forEach(link => {
+        const countryName = link.dataset.filterValue;
+        const textWrapper = createElement('span', { textContent: link.textContent });
+        link.innerHTML = '';
+        link.append(textWrapper);
+
+        if (EXCLUDABLE_COUNTRIES.includes(countryName)) {
+            const excludeBtn = createElement('button', {
+                className: 'exclude-filter-btn',
+                dataset: { value: countryName, type: 'country' },
+                attributes: { 'aria-label': `Excluir país ${countryName}`, 'type': 'button' },
+                innerHTML: '⏸︎'
+            });
+            link.append(excludeBtn);
+        }
+    });
+
     initYearSlider();
     setupEventListeners();
     setupAutocompleteHandlers();
@@ -356,7 +480,7 @@ export function initSidebar() {
             dom.yearSlider.noUiSlider.set(years, false);
         }
 
-        renderActiveFilters();
+        renderFilterPills();
     });
     
     document.addEventListener('filtersReset', collapseAllSections);

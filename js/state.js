@@ -19,6 +19,8 @@ import { CONFIG } from './config.js';
  * @property {string|null} selection
  * @property {string} sort
  * @property {string} mediaType
+ * @property {string[]} excludedGenres - Array de géneros a excluir.
+ * @property {string[]} excludedCountries - Array de países a excluir.
  */
 
 /**
@@ -46,6 +48,8 @@ const initialState = {
         selection: null,
         sort: DEFAULTS.SORT,
         mediaType: DEFAULTS.MEDIA_TYPE,
+        excludedGenres: [],
+        excludedCountries: [],
     },
     latestRequestId: 0
 };
@@ -150,6 +154,46 @@ export function setMediaType(mediaType) {
 }
 
 /**
+ * Añade o quita un valor de un filtro de exclusión (que es un array).
+ * @param {'genre'|'country'} filterType - El tipo de filtro a modificar.
+ * @param {string} value - El valor a añadir o quitar del array.
+ * @returns {boolean} - Devuelve `true` si la operación fue exitosa, `false` si se alcanzó un límite.
+ */
+export function toggleExcludedFilter(filterType, value) {
+    const config = {
+        genre: {
+            list: state.activeFilters.excludedGenres,
+            limit: 2
+        },
+        country: {
+            list: state.activeFilters.excludedCountries,
+            limit: 1
+        }
+    };
+
+    if (!config[filterType]) {
+        return false; // Tipo de filtro no soportado.
+    }
+
+    const { list, limit } = config[filterType];
+    const index = list.indexOf(value);
+
+    if (index > -1) {
+        // Si ya está en la lista, lo quitamos
+        list.splice(index, 1);
+        return true;
+    } else {
+        // Si no está, intentamos añadirlo, pero primero comprobamos el límite.
+        if (list.length >= limit) {
+            console.warn(`Límite de ${limit} filtros excluidos para ${filterType} alcanzado.`);
+            return false; // La operación falló.
+        }
+        list.push(value);
+        return true; // La operación tuvo éxito.
+    }
+}
+
+/**
  * Incrementa el contador de peticiones y devuelve el nuevo ID.
  * Se llama justo antes de hacer una petición a la API.
  * @returns {number}
@@ -162,6 +206,7 @@ export function incrementRequestId() {
 /**
  * Resetea el estado de los filtros a sus valores iniciales por defecto.
  * No resetea la paginación ni otros aspectos del estado global.
+ * Esto incluye limpiar los géneros excluidos gracias a que `initialState` ya los tiene vacíos.
  */
 export function resetFiltersState() {
     state.activeFilters = structuredClone(initialState.activeFilters);
