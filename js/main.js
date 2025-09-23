@@ -397,10 +397,8 @@ function init() {
         document.body.classList.add('dark-mode');
     }
 
-    // ✨ MEJORA: Restauramos el estado de la rotación al cargar la página.
     if (localStorage.getItem('rotationState') === 'disabled') {
         document.body.classList.add('rotation-disabled');
-        // Sincronizamos el icono del botón en el sidebar.
         const toggleBtn = document.getElementById('toggle-rotation-btn');
         if (toggleBtn) {
             toggleBtn.textContent = '⏺︎';
@@ -417,7 +415,6 @@ function init() {
     initSidebar();
     setupHeaderListeners();
     setupGlobalListeners();
-    // ✨ Se añade la inicialización de los atajos de teclado.
     setupKeyboardShortcuts();
     
     readUrlAndSetState();
@@ -426,12 +423,24 @@ function init() {
 
     document.addEventListener('filtersChanged', () => loadAndRenderMovies(1));
 
+    // ✨ MEJORA: El listener de 'filtersReset' ahora preserva el orden de clasificación.
     document.addEventListener('filtersReset', () => {
+        // 1. Guardamos el criterio de ordenación actual antes de resetear.
+        const currentSort = getState().activeFilters.sort;
+        
+        // 2. Reseteamos el estado de todos los filtros a sus valores por defecto.
         resetFiltersState();
+        
+        // 3. Restauramos el criterio de ordenación que el usuario había elegido.
+        setSort(currentSort);
+        
+        // 4. Sincronizamos la UI con el nuevo estado.
         dom.searchInput.value = '';
-        dom.sortSelect.value = DEFAULTS.SORT;
+        dom.sortSelect.value = currentSort; // Nos aseguramos de que el <select> muestre el valor correcto.
         updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
         document.dispatchEvent(new CustomEvent('updateSidebarUI'));
+        
+        // 5. Recargamos las películas con los filtros limpios pero manteniendo el orden.
         loadAndRenderMovies(1);
     });
 }
