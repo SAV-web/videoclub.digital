@@ -125,6 +125,12 @@ export function setTotalMovies(total) {
  */
 export function setFilter(filterType, value) {
     if (filterType in state.activeFilters) {
+        // ✨ NUEVA LÓGICA: Si se establece un filtro de país, se limpia cualquier exclusión de país.
+        // Esto asegura que los filtros de inclusión y exclusión de país sean mutuamente exclusivos.
+        if (filterType === 'country' && value !== null) {
+            state.activeFilters.excludedCountries = [];
+        }
+
         state.activeFilters[filterType] = value;
     }
 }
@@ -163,12 +169,16 @@ export function toggleExcludedFilter(filterType, value) {
     const config = {
         genre: {
             list: state.activeFilters.excludedGenres,
-            limit: 2
+            limit: 3 // ✨ Límite restaurado a 3
         },
         country: {
             list: state.activeFilters.excludedCountries,
-            limit: 1
-        }
+            limit: 3 // ✨ Límite restaurado a 3
+        },
+        // ✨ NUEVO: Añadimos director y actor a la configuración de exclusión si fuera necesario en el futuro
+        // Por ahora, no tienen límite y no se usan, pero la estructura está lista.
+        director: { list: [], limit: 0 },
+        actor: { list: [], limit: 0 }
     };
 
     if (!config[filterType]) {
@@ -184,9 +194,14 @@ export function toggleExcludedFilter(filterType, value) {
         return true;
     } else {
         // Si no está, intentamos añadirlo, pero primero comprobamos el límite.
+        // ✨ NUEVA LÓGICA: Si se añade una exclusión de país, se limpia cualquier filtro de inclusión de país.
+        if (filterType === 'country') {
+            state.activeFilters.country = null;
+        }
+
         if (list.length >= limit) {
             console.warn(`Límite de ${limit} filtros excluidos para ${filterType} alcanzado.`);
-            return false; // La operación falló.
+            return false; // La operación falló, se alcanzó el límite.
         }
         list.push(value);
         return true; // La operación tuvo éxito.

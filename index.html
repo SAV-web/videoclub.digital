@@ -95,9 +95,9 @@
                 </div>
 
                 <div class="play-button-container">
-                    <button id="play-button" class="sidebar-control-button" aria-label="Limpiar filtros">▶︎</button>
-                    <button id="toggle-rotation-btn" class="sidebar-control-button" aria-label="Pausar rotación de tarjetas">⏸︎</button>
                     <button id="rewind-button" class="sidebar-control-button" aria-label="Contraer sidebar">⏮︎</button>
+                    <button id="toggle-rotation-btn" class="sidebar-control-button" aria-label="Pausar rotación de tarjetas">⏸︎</button>
+                    <button id="play-button" class="sidebar-control-button" aria-label="Limpiar filtros">▶︎</button>
                 </div>
                 
                 <div class="sidebar-static-filters">
@@ -120,6 +120,7 @@
                             <span>Selección</span>
                             <svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
+                        <div class="active-filters-list"></div>
                         <div class="section-content">
                             <button type="button" class="filter-link" data-filter-type="selection" data-filter-value="C">Criterion</button>
                             <button type="button" class="filter-link" data-filter-type="selection" data-filter-value="M">1001 Movies</button>
@@ -135,6 +136,7 @@
                             <span>Géneros</span>
                             <svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
+                        <div class="active-filters-list"></div>
                         <div class="section-content" id="genres-list-container">
                             <button type="button" class="filter-link" data-filter-type="genre" data-filter-value="Drama">Drama</button>
                             <button type="button" class="filter-link" data-filter-type="genre" data-filter-value="Comedia">Comedia</button>
@@ -150,6 +152,7 @@
                             <span>Países</span>
                             <svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
+                        <div class="active-filters-list"></div>
                         <div class="section-content" id="countries-list-container">
                             <button type="button" class="filter-link" data-filter-type="country" data-filter-value="EEUU">EEUU</button>
                             <button type="button" class="filter-link" data-filter-type="country" data-filter-value="España">España</button>
@@ -165,6 +168,7 @@
                             <span>Directores</span>
                             <svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
+                        <div class="active-filters-list"></div>
                         <div class="section-content">
                             <button type="button" class="filter-link" data-filter-type="director" data-filter-value="Woody Allen">Woody Allen</button>
                             <button type="button" class="filter-link" data-filter-type="director" data-filter-value="Alfred Hitchcock">Hitchcock</button>
@@ -179,6 +183,7 @@
                             <span>Actores</span>
                             <svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                         </button>
+                        <div class="active-filters-list"></div>
                         <div class="section-content">
                             <button type="button" class="filter-link" data-filter-type="actor" data-filter-value="Tom Cruise">Tom Cruise</button>
                             <button type="button" class="filter-link" data-filter-type="actor" data-filter-value="Robert De Niro">De Niro</button>
