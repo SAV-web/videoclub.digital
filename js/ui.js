@@ -24,7 +24,6 @@ export const dom = {
     sortSelect: document.querySelector(SELECTORS.SORT_SELECT),
     themeToggleButton: document.querySelector(SELECTORS.THEME_TOGGLE),
     backToTopButton: document.querySelector(SELECTORS.BACK_TO_TOP),
-    sidebarToggleBtn: document.querySelector(SELECTORS.SIDEBAR_TOGGLE_BTN),
     sidebarOverlay: document.querySelector(SELECTORS.SIDEBAR_OVERLAY),
     sidebar: document.querySelector('.sidebar'),
     typeFilterToggle: document.querySelector(SELECTORS.TYPE_FILTER_TOGGLE),

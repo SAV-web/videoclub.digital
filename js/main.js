@@ -34,8 +34,8 @@ import {
     getLatestRequestId,
     resetFiltersState
 } from './state.js';
-import { showToast } from './toast.js';
-import { initSidebar } from './components/sidebar.js';
+import { showToast } from './toast.js'; 
+import { initSidebar, collapseAllSections } from './components/sidebar.js';
 
 // Mapa para compactar los parámetros de la URL.
 const URL_PARAM_MAP = {
@@ -242,6 +242,11 @@ function setupGlobalListeners() {
         if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) {
             clearAllSidebarAutocomplete();
         }
+
+        // ✨ MEJORA: Si se hace clic fuera del sidebar, se cierran los submenús.
+        if (!e.target.closest('.sidebar')) {
+            collapseAllSections();
+        }
     });
 
     dom.paginationContainer.addEventListener('click', async (e) => {
@@ -278,31 +283,12 @@ function setupGlobalListeners() {
 
     dom.backToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    let sidebarTriggerElement = null;
-
-    function openSidebar(triggerElement) {
-        document.body.classList.add(CSS_CLASSES.SIDEBAR_OPEN);
-        sidebarTriggerElement = triggerElement;
-        setTimeout(() => {
-            dom.clearFiltersBtn?.focus();
-        }, 150);
+    // ✨ CORRECCIÓN: La lógica de apertura/cierre del sidebar ahora está en sidebar.js.
+    // El overlay ahora delega el clic al botón de control del sidebar.
+    const rewindButton = document.querySelector('#rewind-button');
+    if (dom.sidebarOverlay && rewindButton) {
+        dom.sidebarOverlay.addEventListener('click', () => rewindButton.click());
     }
-
-    function closeSidebar() {
-        document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
-        if (sidebarTriggerElement) {
-            sidebarTriggerElement.focus();
-            sidebarTriggerElement = null;
-        }
-    }
-
-    dom.sidebarToggleBtn.addEventListener('click', (e) => {
-        triggerPopAnimation(e.currentTarget);
-        const isSidebarOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
-        isSidebarOpen ? closeSidebar() : openSidebar(e.currentTarget);
-    });
-
-    dom.sidebarOverlay.addEventListener('click', closeSidebar);
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
@@ -420,12 +406,21 @@ function init() {
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));
     loadAndRenderMovies(getCurrentPage());
 
-    document.addEventListener('filtersChanged', () => loadAndRenderMovies(1));
+    document.addEventListener('filtersChanged', () => {
+        document.dispatchEvent(new CustomEvent('uiActionTriggered'));
+        loadAndRenderMovies(1);
+    });
 
-    document.addEventListener('filtersReset', () => {
-        const currentSort = getState().activeFilters.sort;
+    document.addEventListener('filtersReset', (e) => {
+        const { keepSort, newFilter } = e.detail || {};
+        const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
+        
         resetFiltersState();
         setSort(currentSort);
+        if (newFilter) {
+            setFilter(newFilter.type, newFilter.value);
+        }
+
         dom.searchInput.value = '';
         dom.sortSelect.value = currentSort;
         updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);

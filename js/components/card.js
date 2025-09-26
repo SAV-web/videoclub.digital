@@ -144,14 +144,6 @@ function populateCardText(elements, movieData) {
     if (countryCode && elements.countryContainer) {
         elements.countryContainer.style.display = 'flex';
         elements.countryFlag.className = `fi fi-${countryCode}`;
-        
-        let displayName = countryName;
-        const yearEndIsRelevant = hasYearEnd && (movieData.year_end === 'M' || !isNaN(movieData.year_end));
-
-        if (yearEndIsRelevant && countryName && countryName.length > 7) {
-            displayName = countryCode.toUpperCase();
-        }
-        elements.countryName.textContent = displayName;
     } else if (elements.countryContainer) {
         elements.countryContainer.style.display = 'none';
     }
@@ -231,7 +223,7 @@ function createMovieCard(movieData, index) {
         year: cardClone.querySelector(SELECTORS.YEAR),
         countryContainer: cardClone.querySelector(SELECTORS.COUNTRY_CONTAINER),
         countryFlag: cardClone.querySelector(SELECTORS.COUNTRY_FLAG),
-        countryName: cardClone.querySelector(SELECTORS.COUNTRY_NAME),
+        averageRating: cardClone.querySelector('[data-template="average-rating"]'),
         duration: cardClone.querySelector(SELECTORS.DURATION),
         faLink: cardClone.querySelector(SELECTORS.FA_LINK),
         faIcon: cardClone.querySelector(SELECTORS.FA_ICON),
@@ -252,6 +244,20 @@ function createMovieCard(movieData, index) {
     setupCardImage(elements.img, movieData);
     populateCardText(elements, movieData);
     setupCardRatings(elements, movieData);
+
+    // --- ✨ MEJORA: Cálculo y renderizado de la nota media en el frontal ---
+    if (elements.averageRating) {
+        const ratings = [movieData.fa_rating, movieData.imdb_rating].filter(r => r !== null && r !== undefined && r > 0);
+        if (ratings.length > 0) {
+            const sum = ratings.reduce((acc, rating) => acc + rating, 0);
+            const average = sum / ratings.length;
+            elements.averageRating.textContent = average.toFixed(1);
+            elements.averageRating.style.display = 'block';
+        } else {
+            elements.averageRating.style.display = 'none';
+        }
+    }
+
     renderedCardCount++;
     return cardClone;
 }
@@ -264,7 +270,20 @@ export function setupCardInteractions() {
         if (!innerCard) return;
 
         card.addEventListener('click', (e) => {
-            if (e.target.closest('a')) return;
+            const directorLink = e.target.closest('.front-director-info a');
+            if (directorLink) {
+                e.preventDefault(); // Evitamos la navegación por defecto del enlace.
+                const directorName = directorLink.textContent;
+                
+                // Disparamos un evento para resetear los filtros y luego aplicar el nuevo.
+                const eventDetail = { 
+                    keepSort: true, 
+                    newFilter: { type: 'director', value: directorName } 
+                };
+                document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
+                return;
+            }
+            if (e.target.closest('a')) return; // Dejamos que otros enlaces (FA, IMDb) funcionen normalmente.
 
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
             const isPosterClick = e.target.tagName === 'IMG';

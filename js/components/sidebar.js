@@ -56,17 +56,19 @@ function renderFilterPills() {
 
     const createPill = (type, value, isExcluded = false) => {
         const pill = createElement('div', {
-            className: `filter-pill ${isExcluded ? 'filter-pill--exclude' : ''}`
+            className: `filter-pill ${isExcluded ? 'filter-pill--exclude' : ''}`,
+            // ✨ MEJORA: Añadimos los datos para la eliminación directamente a la píldora.
+            dataset: { filterType: type, filterValue: value }
         });
         const text = (type === 'selection') ? SELECTION_FRIENDLY_NAMES.get(value) || value : value;
         const textSpan = createElement('span', { textContent: text });
-        const removeButton = createElement('button', {
-            className: 'remove-filter-btn',
-            dataset: { filterType: type, filterValue: value },
-            attributes: { 'aria-label': `Eliminar filtro ${text}` },
-            innerHTML: '&times;'
-        });
-        pill.append(textSpan, removeButton);
+        pill.appendChild(textSpan);
+
+        // ✨ MEJORA: El aspa de eliminación solo se añade a las píldoras de exclusión.
+        if (isExcluded) {
+            const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: '⏸︎', attributes: { 'aria-hidden': 'true' } });
+            pill.appendChild(removeButton);
+        }
         return pill;
     };
 
@@ -153,7 +155,7 @@ function resetFilters() {
     document.dispatchEvent(new CustomEvent('filtersReset'));
 }
 
-function collapseAllSections() {
+export function collapseAllSections() {
     dom.collapsibleSections.forEach(section => section.classList.remove(CSS_CLASSES.ACTIVE));
     if (dom.sidebarInnerWrapper) {
         dom.sidebarInnerWrapper.classList.remove('is-compact');
@@ -284,23 +286,24 @@ function setupAutocompleteHandlers() {
     });
 }
 
-function handlePillRemoval(e) {
-    const removeBtn = e.target.closest('.remove-filter-btn');
-    if (!removeBtn) return;
+function handlePillClick(e) {
+    // ✨ MEJORA: Ahora el evento se dispara al hacer clic en toda la píldora.
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
 
-    const pill = removeBtn.parentElement;
-    const { filterType, filterValue } = removeBtn.dataset;
+    const { filterType, filterValue } = pill.dataset;
 
     pill.classList.add('is-removing');
     pill.addEventListener('animationend', () => {
-        // Si la píldora es de exclusión (roja)
+        // Si la píldora es de exclusión
         if (pill.classList.contains('filter-pill--exclude')) {
             if (toggleExcludedFilter(filterType, filterValue)) {
                 renderFilterPills();
                 document.dispatchEvent(new CustomEvent('filtersChanged'));
             }
-        } else { // Si es una píldora de inclusión normal (azul)
-            handleFilterChange(filterType, null); // Desactiva el filtro
+        } else { // Si es una píldora de inclusión normal
+            // Desactiva el filtro
+            handleFilterChange(filterType, null);
         }
     }, { once: true });
 }
@@ -309,11 +312,22 @@ function handlePillRemoval(e) {
 
 function setupEventListeners() {
     if (dom.rewindButton) {
+        // ✨ REFACTORIZACIÓN: Este botón ahora controla tanto el colapso en escritorio
+        // como la apertura/cierre en móvil, unificando la lógica.
         dom.rewindButton.addEventListener('click', (e) => {
-            document.body.classList.toggle('sidebar-collapsed');
-            const isCollapsed = document.body.classList.contains('sidebar-collapsed');
-            e.currentTarget.textContent = isCollapsed ? '⏭︎' : '⏮︎';
-            e.currentTarget.setAttribute('aria-label', isCollapsed ? 'Expandir sidebar' : 'Contraer sidebar');
+            const isMobile = window.innerWidth <= 768;
+            let isOpening;
+
+            if (isMobile) {
+                document.body.classList.toggle('sidebar-is-open');
+                isOpening = document.body.classList.contains('sidebar-is-open');
+            } else {
+                document.body.classList.toggle('sidebar-collapsed');
+                isOpening = !document.body.classList.contains('sidebar-collapsed');
+            }
+
+            e.currentTarget.textContent = isOpening ? '⏮︎' : '⏭︎';
+            e.currentTarget.setAttribute('aria-label', isOpening ? 'Contraer sidebar' : 'Expandir sidebar');
         });
     }
 
@@ -332,11 +346,17 @@ function setupEventListeners() {
         });
     }
 
+    // ✨ REFACTORIZACIÓN: Se elimina la lógica de los botones móviles duplicados.
+
+    const sidebarOverlay = document.querySelector('#sidebar-overlay');
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => dom.rewindButton.click());
+    }
     const sidebarScrollable = document.querySelector('.sidebar-scrollable-filters');
     if (sidebarScrollable) {
         sidebarScrollable.addEventListener('click', (e) => {
-            // ✨ NUEVO: Delegación de eventos para la eliminación de píldoras.
-            handlePillRemoval(e);
+            // ✨ MEJORA: Delegación de eventos para el clic en píldoras.
+            handlePillClick(e);
 
             // Gestionamos el clic en el botón de excluir
             const excludeBtn = e.target.closest('.exclude-filter-btn');
@@ -409,6 +429,14 @@ function setupEventListeners() {
  * Función pública que se llama desde main.js para inicializar todo el componente.
  */
 export function initSidebar() {
+    // ✨ REFACTORIZACIÓN: En móvil, el sidebar empieza colapsado.
+    // El botón #rewind-button debe mostrar el icono de expandir (⏭︎).
+    if (window.innerWidth <= 768) {
+        if (dom.rewindButton) {
+            dom.rewindButton.textContent = '⏭︎';
+            dom.rewindButton.setAttribute('aria-label', 'Expandir sidebar');
+        }
+    }
     // ✨ MEJORA: Añadimos botones de exclusión solo a géneros específicos.
     const EXCLUDABLE_GENRES = ['Animación', 'Documental'];
 
