@@ -211,11 +211,16 @@ function setupKeyboardShortcuts() {
         const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
         if (e.key === 'Escape') {
-            if (isTyping) {
+            // ✨ MEJORA: Si se pulsa Escape en el buscador principal, se limpia la búsqueda.
+            if (activeElement === dom.searchInput && dom.searchInput.value !== '') {
+                e.preventDefault();
+                dom.searchInput.value = '';
+                handleSearchInput();
+            } else if (isTyping) {
                 activeElement.blur();
             }
         }
-        
+
         if (isTyping) return;
 
         switch (e.key) {
@@ -275,10 +280,29 @@ function setupGlobalListeners() {
         localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
     });
 
+    // ✨ REFACTORIZACIÓN AVANZADA: Se usa una variable de estado (`isHeaderScrolled`) junto con
+    // requestAnimationFrame para eliminar definitivamente el parpadeo del header.
+    // La lógica ahora solo modifica el DOM cuando el estado realmente cambia.
+    let isTicking = false;
+    let isHeaderScrolled = false;
     window.addEventListener('scroll', () => {
-        const isScrolled = window.scrollY > 10;
-        dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, window.scrollY > 300);
-        dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, isScrolled);
+        if (!isTicking) {
+            window.requestAnimationFrame(() => {
+                const scrollY = window.scrollY;
+                dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
+
+                // Comprobamos si el estado debe cambiar
+                if (scrollY > 10 && !isHeaderScrolled) {
+                    isHeaderScrolled = true;
+                    dom.mainHeader.classList.add(CSS_CLASSES.IS_SCROLLED);
+                } else if (scrollY < 5 && isHeaderScrolled) {
+                    isHeaderScrolled = false;
+                    dom.mainHeader.classList.remove(CSS_CLASSES.IS_SCROLLED);
+                }
+                isTicking = false;
+            });
+            isTicking = true;
+        }
     });
 
     dom.backToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));

@@ -4,7 +4,7 @@
     <!-- ================================================================= -->
     <!-- 1. METADATOS ESENCIALES Y CONFIGURACIÓN DEL VIEWPORT
     <!-- ================================================================= -->
-    <meta charset="UTF-8">
+<meta charset="UTF-8"> <!-- ✨ CORRECCIÓN: Aseguramos la codificación UTF-8 para caracteres especiales -->
     <meta name="color-scheme" content="light dark">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>videoclub.digital - Tu brújula cinéfila y seriéfila inteligente</title>
@@ -199,9 +199,8 @@
             <header class="main-header">
                 <div class="main-header-primary-controls">
                     <div class="sort-control">
-                        <label for="sort-select">⮃</label>
                         <select id="sort-select">
-                            <option value="relevance,asc">Relevancia</option>
+                            <option value="relevance,asc">⮃ Orden</option>
                             <option value="year,desc">Recientes</option>
                             <option value="year,asc">Antiguas</option>
                             <option value="fa_rating,desc">Nota FA</option>
@@ -255,8 +254,19 @@
                         </div>
                         <div class="movie-meta">
                             <div class="year-country-line">
+                                <!-- ✨ REFACTORIZACIÓN: Estrellas a la izquierda -->
+                                <!-- ✨ NUEVO: Círculo para notas bajas -->
+                                <div class="low-rating-circle" data-template="low-rating-circle"></div>
+                                <div class="star-rating-container" data-template="average-rating-stars">
+                                    <!-- ✨ REFACTORIZACIÓN: Cada estrella ahora tiene una capa vacía y una llena -->
+                                    <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                    <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                    <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                    <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                </div>
+                                <!-- Año en el centro -->
                                 <span data-template="year"></span>
-                                <span class="front-average-rating" data-template="average-rating"></span>
+                                <!-- Bandera a la derecha -->
                                 <span class="country-info" data-template="country-container">
                                     <span class="fi" data-template="country-flag"></span>
                                 </span>
@@ -269,26 +279,26 @@
                     <div class="ratings-container">
 
                         <!-- ✨ MEJORA: Nueva estructura para alinear nota y barra -->
-                        <div class="rating-line">
-                            <a href="#" target="_blank" rel="noopener noreferrer" class="rating-left" data-template="fa-link">
-                                <img class="rating-icon" alt="FilmAffinity" width="24" height="24" loading="lazy" decoding="async">
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="fa-link">
+                            <span class="rating-left">
+                                <img class="rating-icon" alt="FilmAffinity" width="24" height="24" loading="lazy" decoding="async" data-template="fa-icon">
                                 <span data-template="fa-rating"></span>
-                            </a>
+                            </span>
                             <div class="rating-bar-container" data-template="fa-votes-bar-container">
                                 <div class="rating-bar" data-template="fa-votes-bar"></div>
                             </div>
-                        </div>
+                        </a>
 
                         <!-- ✨ MEJORA: Nueva estructura para alinear nota y barra -->
-                        <div class="rating-line">
-                            <a href="#" target="_blank" rel="noopener noreferrer" class="rating-left" data-template="imdb-link">
-                                <img class="rating-icon" alt="IMDb" width="24" height="24" loading="lazy" decoding="async">
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="imdb-link">
+                            <span class="rating-left">
+                                <img class="rating-icon" alt="IMDb" width="24" height="24" loading="lazy" decoding="async" data-template="imdb-icon">
                                 <span data-template="imdb-rating"></span>
-                            </a>
+                            </span>
                             <div class="rating-bar-container" data-template="imdb-votes-bar-container">
                                 <div class="rating-bar" data-template="imdb-votes-bar"></div>
                             </div>
-                        </div>
+                        </a>
 
                     </div>
                     <div class="details-list">

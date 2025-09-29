@@ -26,13 +26,16 @@ const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             const img = entry.target;
-            const highQualitySrc = img.dataset.src;
-            const tempImg = new Image();
-            tempImg.src = highQualitySrc;
-            tempImg.onload = () => {
-                img.src = highQualitySrc;
+            
+            // ✨ REFACTORIZACIÓN: La animación se sincroniza con el evento 'load' de la imagen.
+            // Esto asegura que la transición suave ocurra siempre, incluso si el navegador
+            // ha descartado la imagen de la caché y necesita volver a descargarla.
+            img.onload = () => {
                 img.classList.add(CSS_CLASSES.LOADED);
+                img.onload = null; // Limpiamos el listener para evitar ejecuciones múltiples.
             };
+            
+            img.src = img.dataset.src; // Asignamos la fuente de alta calidad para iniciar la carga.
             observer.unobserve(img);
         }
     });
@@ -66,18 +69,16 @@ function setupCardImage(imgElement, movieData) {
         imgElement.classList.add(CSS_CLASSES.LAZY_LQIP);
     }
 
+    // ✨ REFACTORIZACIÓN: Unificamos la lógica de carga para TODAS las imágenes usando el IntersectionObserver.
+    // Para las primeras imágenes (críticas para el LCP), les damos prioridad con atributos HTML.
+    // Esto asegura que la transición suave .loaded se aplique consistentemente, incluso si el navegador
+    // descarta la imagen de la caché y necesita volver a descargarla.
     if (renderedCardCount < 6) { 
         imgElement.loading = 'eager';
         imgElement.setAttribute('fetchpriority', 'high');
-        const tempImg = new Image();
-        tempImg.src = highQualityPoster;
-        tempImg.onload = () => {
-            imgElement.src = highQualityPoster;
-            imgElement.classList.add(CSS_CLASSES.LOADED);
-        };
-    } else {
-        lazyLoadObserver.observe(imgElement);
     }
+    
+    lazyLoadObserver.observe(imgElement);
 }
 
 function populateCardText(elements, movieData) {
@@ -207,6 +208,40 @@ function setupCardRatings(elements, movieData) {
     }
 }
 
+/**
+ * ✨ NUEVO: Calcula el número de estrellas (0-4) basado en una nota media (0-10).
+ * La escala es lineal entre 5 y 9.
+ * @param {number} averageRating - La nota media.
+ * @returns {number} - El número de estrellas a rellenar (puede tener decimales).
+ */
+function calculateStars(averageRating) {
+    if (averageRating <= 5.5) return 0; // ✨ AJUSTE: La escala de estrellas empieza después de 5.5
+    if (averageRating >= 9) return 4;
+    // ✨ AJUSTE: Escala lineal de 5.5 a 9
+    return ((averageRating - 5.5) / (9 - 5.5)) * 4;
+}
+
+/**
+ * ✨ NUEVO: Actualiza los estilos de las 4 estrellas de una tarjeta.
+ * @param {HTMLElement} starContainer - El elemento que contiene los SVGs de las estrellas.
+ * @param {number} filledStars - El número de estrellas a rellenar (ej: 2.5).
+ */
+function renderStars(starContainer, filledStars) {
+    const stars = starContainer.querySelectorAll('.star-icon');
+    stars.forEach((star, index) => {
+        const fillValue = Math.max(0, Math.min(1, filledStars - index));
+        const filledPath = star.querySelector('.star-icon-path--filled');
+
+        if (fillValue > 0) {
+            star.style.display = 'block';
+            const clipPercentage = 100 - (fillValue * 100);
+            filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
+        } else {
+            star.style.display = 'none'; // Ocultamos las estrellas vacías
+        }
+    });
+}
+
 function createMovieCard(movieData, index) {
     if (!cardTemplate) return null;
     const cardClone = cardTemplate.content.cloneNode(true);
@@ -223,7 +258,8 @@ function createMovieCard(movieData, index) {
         year: cardClone.querySelector(SELECTORS.YEAR),
         countryContainer: cardClone.querySelector(SELECTORS.COUNTRY_CONTAINER),
         countryFlag: cardClone.querySelector(SELECTORS.COUNTRY_FLAG),
-        averageRating: cardClone.querySelector('[data-template="average-rating"]'),
+        lowRatingCircle: cardClone.querySelector('[data-template="low-rating-circle"]'),
+        averageRatingStars: cardClone.querySelector('[data-template="average-rating-stars"]'),
         duration: cardClone.querySelector(SELECTORS.DURATION),
         faLink: cardClone.querySelector(SELECTORS.FA_LINK),
         faIcon: cardClone.querySelector(SELECTORS.FA_ICON),
@@ -245,16 +281,33 @@ function createMovieCard(movieData, index) {
     populateCardText(elements, movieData);
     setupCardRatings(elements, movieData);
 
-    // --- ✨ MEJORA: Cálculo y renderizado de la nota media en el frontal ---
-    if (elements.averageRating) {
+    // --- ✨ REFACTORIZACIÓN: Cálculo y renderizado del nuevo sistema de estrellas ---
+    if (elements.averageRatingStars && elements.lowRatingCircle) {
         const ratings = [movieData.fa_rating, movieData.imdb_rating].filter(r => r !== null && r !== undefined && r > 0);
         if (ratings.length > 0) {
             const sum = ratings.reduce((acc, rating) => acc + rating, 0);
             const average = sum / ratings.length;
-            elements.averageRating.textContent = average.toFixed(1);
-            elements.averageRating.style.display = 'block';
+            const formattedAverage = average.toFixed(1);
+
+            // ✨ MEJORA: Añadimos un tooltip con la nota exacta a ambos elementos.
+            elements.lowRatingCircle.title = `Nota media: ${formattedAverage}`;
+            elements.averageRatingStars.title = `Nota media: ${formattedAverage}`;
+
+            // ✨ NUEVA LÓGICA: Mostrar círculo o estrellas según la nota.
+            if (average <= 5.5) {
+                elements.lowRatingCircle.style.display = 'block';
+                elements.averageRatingStars.style.display = 'none';
+            } else {
+                elements.lowRatingCircle.style.display = 'none';
+                elements.averageRatingStars.style.display = 'flex';
+                const filledStars = calculateStars(average);
+                renderStars(elements.averageRatingStars, filledStars);
+            }
         } else {
-            elements.averageRating.style.display = 'none';
+            elements.lowRatingCircle.style.display = 'none';
+            elements.averageRatingStars.style.display = 'none';
+            elements.lowRatingCircle.title = '';
+            elements.averageRatingStars.title = '';
         }
     }
 

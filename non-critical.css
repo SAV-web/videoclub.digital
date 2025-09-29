@@ -302,18 +302,6 @@ body {
     line-height: 1;
 }
 
-/* ✨ NUEVO: Estilo para el enlace de filtro excluido en el menú */
-.filter-link.is-excluded {
-    color: #fff;
-    font-weight: bold;
-    background-color: #B08D57; /* ✨ NUEVO: Ocre oscuro */
-}
-.filter-link.is-excluded:hover {
-    background-color: #D4AC6E; /* ✨ NUEVO: Ocre claro */
-    color: #fff;
-}
-
-/* Estilo para el botón de excluir (pausar) un filtro */
 .exclude-filter-btn {
     display: inline-flex;
     align-items: center;
@@ -526,6 +514,12 @@ body.dark-mode .year-input:focus {
 .main-header-primary-controls, .search-and-theme-group {
     flex-wrap: nowrap;
 }
+/* ✨ CORRECCIÓN: Aseguramos que los controles primarios tengan espacio en móvil. */
+@media (max-width: 768px) {
+    .main-header-primary-controls {
+        flex-basis: 100%;
+    }
+}
 
 /* Icono de flechas para el control de ordenación. */
 .sort-control label {
@@ -737,7 +731,7 @@ body.dark-mode .sun-icon { transform: scale(1) rotate(0deg); }
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    padding: 0.75rem 1rem;
+    padding: 0.25rem 0.6rem 0.4rem; /* ✨ AJUSTE: Reducimos aún más el padding para compactar el texto */
     overflow: hidden;
 }
 
@@ -752,7 +746,7 @@ body.dark-mode .sun-icon { transform: scale(1) rotate(0deg); }
 
 /* Título de la película en la parte frontal. */
 .flip-card-front .movie-info h3 {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.1rem; /* ✨ AJUSTE: Reducimos el espacio inferior del título */
     font-family: var(--font-title);
     font-size: 1.125rem;
     font-weight: 700;
@@ -787,7 +781,7 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
 
 /* Metadatos en la parte frontal (año, nota, bandera). */
 .flip-card-front .movie-meta {
-    padding-top: 0.5rem;
+    padding-top: 0; /* ✨ AJUSTE: Eliminamos el espacio superior para acercarlo al título */
     color: var(--color-text-secondary);
     font-size: var(--font-size-sm);
     line-height: var(--line-height-normal);
@@ -806,11 +800,44 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
     gap: 0.4em;
 }
 
-/* Nota media en la parte frontal. */
-.front-average-rating {
+/* ✨ NUEVO: Contenedor para las estrellas de valoración */
+.star-rating-container {
+    display: flex;
+    align-items: center; /* ✨ CORRECCIÓN: Centra verticalmente las estrellas */
+    gap: 1px; /* ✨ AJUSTE: Reducimos el espacio entre estrellas */
+}
+
+/* ✨ REFACTORIZACIÓN: Usamos una técnica de superposición para el relleno parcial */
+.star-icon {
+    position: relative;
+    width: 13px; /* ✨ AJUSTE: Reducimos aún más el tamaño de las estrellas */
+    height: 13px;
+}
+
+/* ✨ NUEVO: Estilo para el círculo de nota baja */
+.low-rating-circle {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--color-accent);
+    border-radius: 50%;
+    display: none; /* Oculto por defecto */
+}
+.year-country-line > span[data-template="year"] {
     font-weight: bold;
-    color: var(--color-text-primary);
-    font-size: var(--font-size-base);
+}
+
+.star-icon-path {
+    stroke: var(--color-accent);
+    stroke-width: 1.5;
+}
+
+.star-icon-path--empty {
+    fill: transparent;
+}
+
+.star-icon-path--filled {
+    fill: var(--color-accent);
+    clip-path: inset(0 100% 0 0); /* Se recorta por defecto */
 }
 
 .fi { font-size: 0.9rem; }
@@ -819,7 +846,7 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
 .flip-card-back {
     display: flex;
     flex-direction: column;
-    padding: 1.25rem 1rem;
+    padding: 0.8rem 0.6rem; /* ✨ AJUSTE: Reducimos aún más el padding para compactar el texto */
     background-color: var(--color-surface);
     color: var(--color-text-primary);
     transform: rotateY(180deg);
@@ -845,6 +872,7 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
     display: flex;
     align-items: center;
     gap: 0.75em;
+    text-decoration: none; /* ✨ MEJORA: Eliminamos el subrayado de los enlaces de valoración */
 }
 
 /* Barra de fondo para la visualización de votos. */

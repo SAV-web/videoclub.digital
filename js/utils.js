@@ -45,7 +45,8 @@ export const formatRuntime = (minutesString) => {
     if (isNaN(minutes) || minutes <= 0) return '';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return h > 0 ? `${h}h ${m}min` : `${m}min`;
+    if (h > 0 && m === 0) return `${h}h`; // ✨ MEJORA: Muestra "1h" en lugar de "1h 0min"
+    return h > 0 ? `${h}h ${m}min` : `${m}min`; // Mantiene "1h 30min" o "50min"
 };
 
 /**
