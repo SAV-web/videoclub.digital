@@ -117,6 +117,13 @@ function populateCardText(elements, movieData) {
     }
     
     elements.duration.textContent = formatRuntime(movieData.minutes);
+
+    if (movieData.type?.toUpperCase().startsWith('S.') && movieData.episodes) {
+        elements.episodes.textContent = `${movieData.episodes} episodios`;
+    } else {
+        elements.episodes.textContent = '';
+    }
+
     elements.genre.textContent = movieData.genres || 'Género no disponible';
     elements.actors.textContent = (movieData.actors?.toUpperCase() === '(A)') ? "Animación" : (movieData.actors || 'Reparto no disponible');
     elements.synopsis.textContent = movieData.synopsis || 'Argumento no disponible.';
@@ -261,6 +268,9 @@ function createMovieCard(movieData, index) {
         lowRatingCircle: cardClone.querySelector('[data-template="low-rating-circle"]'),
         averageRatingStars: cardClone.querySelector('[data-template="average-rating-stars"]'),
         duration: cardClone.querySelector(SELECTORS.DURATION),
+        episodes: cardClone.querySelector('[data-template="episodes"]'),
+        wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'), // ✨ AÑADIDO
+        wikipediaIcon: cardClone.querySelector('[data-template="wikipedia-icon"]'), // ✨ AÑADIDO
         faLink: cardClone.querySelector(SELECTORS.FA_LINK),
         faIcon: cardClone.querySelector(SELECTORS.FA_ICON),
         faRating: cardClone.querySelector(SELECTORS.FA_RATING),
@@ -280,6 +290,13 @@ function createMovieCard(movieData, index) {
     setupCardImage(elements.img, movieData);
     populateCardText(elements, movieData);
     setupCardRatings(elements, movieData);
+
+    // --- ✨ AÑADIDO: Lógica de Wikipedia ---
+    if (elements.wikipediaLink && movieData.wikipedia && movieData.wikipedia.startsWith('http')) {
+        elements.wikipediaLink.href = movieData.wikipedia;
+        elements.wikipediaLink.style.display = 'flex';
+        elements.wikipediaIcon.src = CONFIG.WIKIPEDIA_ICON_URL;
+    }
 
     // --- ✨ REFACTORIZACIÓN: Cálculo y renderizado del nuevo sistema de estrellas ---
     if (elements.averageRatingStars && elements.lowRatingCircle) {

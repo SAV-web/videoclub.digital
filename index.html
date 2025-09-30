@@ -226,6 +226,11 @@
                         </form>
                     </div>
 
+                    <!-- ✨ NUEVO: Botón de Perfil/Login -->
+                    <div id="user-profile-container">
+                        <a href="auth.html" id="user-profile-button" class="header-pagination-btn" title="Acceder a tu cuenta">?</a>
+                    </div>
+
                     <!-- El contenedor del botón de tema se ha movido al sidebar -->
                 </div>
             </header>
@@ -275,7 +280,15 @@
                     </div>
                 </div>
                 <div class="flip-card-back">
-                    <div class="back-meta-header"><span class="duration-info" data-template="duration"></span></div>
+                    <div class="back-meta-header">
+                        <div class="meta-group">
+                            <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="wikipedia-link" style="display: none;" title="Ver en Wikipedia">
+                                <img class="rating-icon" alt="Wikipedia" width="24" height="24" loading="lazy" decoding="async" data-template="wikipedia-icon">
+                            </a>
+                            <span data-template="duration"></span>
+                        </div>
+                        <span data-template="episodes"></span>
+                    </div>
                     <div class="ratings-container">
 
                         <!-- ✨ MEJORA: Nueva estructura para alinear nota y barra -->
