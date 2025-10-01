@@ -7,6 +7,8 @@ import { CONFIG } from '../config.js';
 import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
 
+const ICON_PAUSE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+
 // --- VARIABLES Y CONSTANTES DEL MÓDULO ---
 const MAX_VOTES = {
     FA: 220000,
@@ -363,19 +365,10 @@ export function setupCardInteractions() {
             if (e.target.closest('a')) return; // Dejamos que otros enlaces (FA, IMDb) funcionen normalmente.
 
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-            const isPosterClick = e.target.tagName === 'IMG';
 
-            if (isRotationDisabled && isPosterClick) {
-                document.body.classList.remove('rotation-disabled');
-                const toggleBtn = document.getElementById('toggle-rotation-btn');
-                if (toggleBtn) {
-                    toggleBtn.textContent = '⏸︎';
-                    toggleBtn.setAttribute('aria-label', 'Pausar rotación de tarjetas');
-                }
-                return;
-            }
-
-            if (!isDesktop && !isRotationDisabled) {
+            if (!isDesktop || isRotationDisabled) {
+                // Cuando la rotación automática está desactivada, un clic en la tarjeta la gira individualmente.
+                // En modo normal, también la gira.
                 if (innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED)) {
                     collapseScrollableContentInstantly(card);
                 }

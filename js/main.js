@@ -37,6 +37,8 @@ import {
 import { showToast } from './toast.js'; 
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
 
+const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
+
 // Mapa para compactar los parámetros de la URL.
 const URL_PARAM_MAP = {
     q: 'searchTerm',
@@ -410,7 +412,7 @@ function init() {
         document.body.classList.add('rotation-disabled');
         const toggleBtn = document.getElementById('toggle-rotation-btn');
         if (toggleBtn) {
-            toggleBtn.textContent = '⏺︎';
+            toggleBtn.innerHTML = ICON_RECORD;
             toggleBtn.setAttribute('aria-label', 'Activar rotación de tarjetas');
         }
     }

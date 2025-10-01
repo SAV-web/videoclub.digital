@@ -28,6 +28,12 @@ import {
 } from '../state.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
 
+const ICON_REWIND = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`;
+const ICON_FORWARD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>`;
+const ICON_PAUSE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
+const ICON_PAUSE_SMALL = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+
 // Referencias cacheadas a los elementos del DOM específicos de la sidebar.
 const dom = {
     sidebarInnerWrapper: document.querySelector('.sidebar-inner-wrapper'),
@@ -66,7 +72,7 @@ function renderFilterPills() {
 
         // ✨ MEJORA: El aspa de eliminación solo se añade a las píldoras de exclusión.
         if (isExcluded) {
-            const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: '⏸︎', attributes: { 'aria-hidden': 'true' } });
+            const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: ICON_PAUSE_SMALL, attributes: { 'aria-hidden': 'true' } });
             pill.appendChild(removeButton);
         }
         return pill;
@@ -326,7 +332,7 @@ function setupEventListeners() {
                 isOpening = !document.body.classList.contains('sidebar-collapsed');
             }
 
-            e.currentTarget.textContent = isOpening ? '⏮︎' : '⏭︎';
+            e.currentTarget.innerHTML = isOpening ? ICON_REWIND : ICON_FORWARD;
             e.currentTarget.setAttribute('aria-label', isOpening ? 'Contraer sidebar' : 'Expandir sidebar');
         });
     }
@@ -336,7 +342,7 @@ function setupEventListeners() {
             document.body.classList.toggle('rotation-disabled');
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
             
-            e.currentTarget.textContent = isRotationDisabled ? '⏺︎' : '⏸︎';
+            e.currentTarget.innerHTML = isRotationDisabled ? ICON_RECORD : ICON_PAUSE;
             e.currentTarget.setAttribute('aria-label', isRotationDisabled ? 'Activar rotación de tarjetas' : 'Pausar rotación de tarjetas');
             
             // ✨ MEJORA: Guardamos la preferencia en localStorage.
@@ -433,7 +439,7 @@ export function initSidebar() {
     // El botón #rewind-button debe mostrar el icono de expandir (⏭︎).
     if (window.innerWidth <= 768) {
         if (dom.rewindButton) {
-            dom.rewindButton.textContent = '⏭︎';
+            dom.rewindButton.innerHTML = ICON_FORWARD;
             dom.rewindButton.setAttribute('aria-label', 'Expandir sidebar');
         }
     }
@@ -451,7 +457,7 @@ export function initSidebar() {
                 className: 'exclude-filter-btn',
                 dataset: { value: genreName, type: 'genre' },
                 attributes: { 'aria-label': `Excluir género ${genreName}`, 'type': 'button' },
-                innerHTML: '⏸︎'
+                innerHTML: ICON_PAUSE_SMALL
             });
             link.append(excludeBtn);
         }
@@ -469,7 +475,7 @@ export function initSidebar() {
                 className: 'exclude-filter-btn',
                 dataset: { value: countryName, type: 'country' },
                 attributes: { 'aria-label': `Excluir país ${countryName}`, 'type': 'button' },
-                innerHTML: '⏸︎'
+                innerHTML: ICON_PAUSE_SMALL
             });
             link.append(excludeBtn);
         }

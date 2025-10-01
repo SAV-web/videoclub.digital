@@ -89,9 +89,23 @@
                 </div>
 
                 <div class="play-button-container">
-                    <button id="rewind-button" class="sidebar-control-button" aria-label="Contraer sidebar">⏮︎</button>
-                    <button id="toggle-rotation-btn" class="sidebar-control-button" aria-label="Pausar rotación de tarjetas">⏸︎</button>
-                    <button id="play-button" class="sidebar-control-button" aria-label="Limpiar filtros">▶︎</button>
+                    <button id="rewind-button" class="sidebar-control-button" aria-label="Contraer sidebar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 19 2 12 11 5 11 19"></polygon>
+                            <polygon points="22 19 13 12 22 5 22 19"></polygon>
+                        </svg>
+                    </button>
+                    <button id="toggle-rotation-btn" class="sidebar-control-button" aria-label="Pausar rotación de tarjetas">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="6" y="4" width="4" height="16"></rect>
+                            <rect x="14" y="4" width="4" height="16"></rect>
+                        </svg>
+                    </button>
+                    <button id="play-button" class="sidebar-control-button" aria-label="Limpiar filtros">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </button>
                     <button id="theme-toggle" class="sidebar-control-button theme-toggle" title="Cambiar tema" aria-label="Cambiar entre tema claro y oscuro">
                         <svg class="theme-icon moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         <svg class="theme-icon sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
@@ -193,7 +207,12 @@
                     </div>
                 </div>
                 <div id="user-profile-container" class="profile-container">
-                    <a href="auth.html" id="user-profile-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta">?</a>
+                                        <a href="auth.html" id="user-profile-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </a>
                 </div>
             </div>
         </aside>
