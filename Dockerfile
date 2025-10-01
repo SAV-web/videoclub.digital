@@ -1,20 +1,26 @@
-# Usar una imagen base de Node.js
+# --- FASE 1: Definir el entorno base ---
+# Empezamos desde una imagen oficial de Node.js (versión 18, ligera).
 FROM node:20-slim
 
-# Establecer el directorio de trabajo
+# Establecemos el directorio de trabajo dentro del contenedor.
 WORKDIR /usr/src/app
 
-# Copiar el package.json y package-lock.json (si existe)
+# --- FASE 2: Instalar dependencias ---
+# Copiamos solo el package.json para aprovechar la caché de Docker.
+# Si este fichero no cambia, Docker no volverá a instalar las dependencias.
 COPY package*.json ./
 
-# Instalar las dependencias de la aplicación
+# Ejecutamos el comando para instalar las dependencias de la aplicación
 RUN npm install
 
-# Copiar el resto de los archivos de la aplicación
+# --- FASE 3: Copiar el código y ejecutar ---
+# Copiamos el resto de los ficheros de nuestra aplicación (HTML, CSS, JS).
+# Gracias al .dockerignore, no se copiarán los ficheros que no queremos.
 COPY . .
 
 # Exponer el puerto en el que la aplicación se ejecutará
 EXPOSE 8080
 
-# Comando para iniciar la aplicación
+# Definimos el comando que se ejecutará cuando el contenedor se inicie.
+# Esto es equivalente a ejecutar "npm start" en la terminal.
 CMD ["npm", "start"]

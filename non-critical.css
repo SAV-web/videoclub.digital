@@ -855,17 +855,24 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
 
 .back-meta-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     width: 100%;
     margin-bottom: 0.75rem;
     font-size: var(--font-size-sm);
+    gap: 1rem;
 }
 
 .meta-group {
     display: flex;
     align-items: center;
     gap: 0.5em;
+}
+
+.episode-duration-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
 }
 
 /* Contenedor de las líneas de puntuación (FA, IMDb). */
@@ -910,7 +917,7 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
     font-weight: bold;
     text-decoration: none;
     flex-shrink: 0;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-base);
 }
 .rating-left.disabled {
     pointer-events: none;
@@ -1541,4 +1548,22 @@ html, body, .sidebar-autocomplete-results, #autocomplete-results {
 .auth-message--success {
     background-color: #28a74520;
     color: #28a745;
+}
+
+/* ================================================================= */
+/* 9. PERFIL DE USUARIO
+/* ================================================================= */
+
+.profile-container {
+    margin-top: auto;
+    padding-top: 1rem;
+    text-align: center;
+}
+
+.profile-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-weight: bold;
 }

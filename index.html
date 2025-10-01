@@ -192,6 +192,9 @@
                         </div>
                     </div>
                 </div>
+                <div id="user-profile-container" class="profile-container">
+                    <a href="auth.html" id="user-profile-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta">?</a>
+                </div>
             </div>
         </aside>
 
@@ -224,11 +227,6 @@
                             <input id="search-input" type="search" placeholder="Título..." maxlength="15" aria-label="Buscar películas o series por título" autocomplete="off">
                             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         </form>
-                    </div>
-
-                    <!-- ✨ NUEVO: Botón de Perfil/Login -->
-                    <div id="user-profile-container">
-                        <a href="auth.html" id="user-profile-button" class="header-pagination-btn" title="Acceder a tu cuenta">?</a>
                     </div>
 
                     <!-- El contenedor del botón de tema se ha movido al sidebar -->
@@ -281,13 +279,13 @@
                 </div>
                 <div class="flip-card-back">
                     <div class="back-meta-header">
-                        <div class="meta-group">
-                            <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="wikipedia-link" style="display: none;" title="Ver en Wikipedia">
-                                <img class="rating-icon" alt="Wikipedia" width="24" height="24" loading="lazy" decoding="async" data-template="wikipedia-icon">
-                            </a>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="wikipedia-link" style="display: none;" title="Ver en Wikipedia">
+                            <img class="rating-icon" alt="Wikipedia" width="24" height="24" loading="lazy" decoding="async" data-template="wikipedia-icon">
+                        </a>
+                        <div class="episode-duration-group">
+                            <span data-template="episodes"></span>
                             <span data-template="duration"></span>
                         </div>
-                        <span data-template="episodes"></span>
                     </div>
                     <div class="ratings-container">
 

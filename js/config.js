@@ -12,6 +12,7 @@ export const CONFIG = {
     POSTER_BASE_URL: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/',
     FA_ICON_URL: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/filmaffinity.png',
     IMDB_ICON_URL: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/imdb.png',
+    WIKIPEDIA_ICON_URL: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/wikipedia.png', // ✨ AÑADIDO
     ITEMS_PER_PAGE: 42,
     // ✨ AÑADIDO: Límite para mostrar resultados en una sola página.
     DYNAMIC_PAGE_SIZE_LIMIT: 56,

@@ -119,7 +119,7 @@ function populateCardText(elements, movieData) {
     elements.duration.textContent = formatRuntime(movieData.minutes);
 
     if (movieData.type?.toUpperCase().startsWith('S.') && movieData.episodes) {
-        elements.episodes.textContent = `${movieData.episodes} episodios`;
+        elements.episodes.textContent = `${movieData.episodes} x`;
     } else {
         elements.episodes.textContent = '';
     }
@@ -292,10 +292,17 @@ function createMovieCard(movieData, index) {
     setupCardRatings(elements, movieData);
 
     // --- ✨ AÑADIDO: Lógica de Wikipedia ---
-    if (elements.wikipediaLink && movieData.wikipedia && movieData.wikipedia.startsWith('http')) {
+    elements.wikipediaIcon.src = CONFIG.WIKIPEDIA_ICON_URL;
+    elements.wikipediaLink.style.display = 'flex';
+
+    if (movieData.wikipedia && movieData.wikipedia.startsWith('http')) {
         elements.wikipediaLink.href = movieData.wikipedia;
-        elements.wikipediaLink.style.display = 'flex';
-        elements.wikipediaIcon.src = CONFIG.WIKIPEDIA_ICON_URL;
+        elements.wikipediaLink.classList.remove(CSS_CLASSES.DISABLED);
+        elements.wikipediaLink.title = 'Ver en Wikipedia';
+    } else {
+        elements.wikipediaLink.classList.add(CSS_CLASSES.DISABLED);
+        elements.wikipediaLink.removeAttribute('href');
+        elements.wikipediaLink.title = 'No disponible en Wikipedia';
     }
 
     // --- ✨ REFACTORIZACIÓN: Cálculo y renderizado del nuevo sistema de estrellas ---
