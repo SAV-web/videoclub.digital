@@ -4,7 +4,7 @@
     <!-- ================================================================= -->
     <!-- 1. METADATOS ESENCIALES Y CONFIGURACIÓN DEL VIEWPORT
     <!-- ================================================================= -->
-<meta charset="UTF-8"> <!-- ✨ CORRECCIÓN: Aseguramos la codificación UTF-8 para caracteres especiales -->
+<meta charset="UTF-8">
     <meta name="color-scheme" content="light dark">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>videoclub.digital - Tu brújula cinéfila y seriéfila inteligente</title>
@@ -89,26 +89,32 @@
                 </div>
 
                 <div class="play-button-container">
-                    <button id="rewind-button" class="sidebar-control-button" aria-label="Contraer sidebar">
+                    
+                    <button id="play-button" class="sidebar-control-button" aria-label="Limpiar filtros">
+                        <!-- ✨ CAMBIO: Nuevo icono de "dos flechas circulando" -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="11 19 2 12 11 5 11 19"></polygon>
-                            <polygon points="22 19 13 12 22 5 22 19"></polygon>
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                         </svg>
                     </button>
+                    
                     <button id="toggle-rotation-btn" class="sidebar-control-button" aria-label="Pausar rotación de tarjetas">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="6" y="4" width="4" height="16"></rect>
                             <rect x="14" y="4" width="4" height="16"></rect>
                         </svg>
                     </button>
-                    <button id="play-button" class="sidebar-control-button" aria-label="Limpiar filtros">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg>
-                    </button>
+                    
                     <button id="theme-toggle" class="sidebar-control-button theme-toggle" title="Cambiar tema" aria-label="Cambiar entre tema claro y oscuro">
                         <svg class="theme-icon moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                         <svg class="theme-icon sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    </button>
+
+                    <button id="rewind-button" class="sidebar-control-button" aria-label="Contraer sidebar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 19 2 12 11 5 11 19"></polygon>
+                            <polygon points="22 19 13 12 22 5 22 19"></polygon>
+                        </svg>
                     </button>
                 </div>
                 
@@ -127,6 +133,7 @@
                 </div>
 
                 <div class="sidebar-scrollable-filters">
+                    <!-- ... el resto del sidebar no cambia ... -->
                     <div class="collapsible-section">
                         <button type="button" class="section-header" aria-expanded="false">
                             <span>Selección</span>
@@ -217,6 +224,7 @@
             </div>
         </aside>
 
+        <!-- ... el resto del fichero no cambia ... -->
         <div class="main-content-wrapper">
             <header class="main-header">
                 <div class="main-header-primary-controls">
@@ -247,8 +255,6 @@
                             <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         </form>
                     </div>
-
-                    <!-- El contenedor del botón de tema se ha movido al sidebar -->
                 </div>
             </header>
 
@@ -276,19 +282,14 @@
                         </div>
                         <div class="movie-meta">
                             <div class="year-country-line">
-                                <!-- ✨ REFACTORIZACIÓN: Estrellas a la izquierda -->
-                                <!-- ✨ NUEVO: Círculo para notas bajas -->
                                 <div class="low-rating-circle" data-template="low-rating-circle"></div>
                                 <div class="star-rating-container" data-template="average-rating-stars">
-                                    <!-- ✨ REFACTORIZACIÓN: Cada estrella ahora tiene una capa vacía y una llena -->
                                     <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                                     <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                                     <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                                     <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                                 </div>
-                                <!-- Año en el centro -->
                                 <span data-template="year"></span>
-                                <!-- Bandera a la derecha -->
                                 <span class="country-info" data-template="country-container">
                                     <span class="fi" data-template="country-flag"></span>
                                 </span>
@@ -307,8 +308,6 @@
                         </div>
                     </div>
                     <div class="ratings-container">
-
-                        <!-- ✨ MEJORA: Nueva estructura para alinear nota y barra -->
                         <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="fa-link">
                             <span class="rating-left">
                                 <img class="rating-icon" alt="FilmAffinity" width="24" height="24" loading="lazy" decoding="async" data-template="fa-icon">
@@ -318,8 +317,6 @@
                                 <div class="rating-bar" data-template="fa-votes-bar"></div>
                             </div>
                         </a>
-
-                        <!-- ✨ MEJORA: Nueva estructura para alinear nota y barra -->
                         <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="imdb-link">
                             <span class="rating-left">
                                 <img class="rating-icon" alt="IMDb" width="24" height="24" loading="lazy" decoding="async" data-template="imdb-icon">
@@ -329,10 +326,8 @@
                                 <div class="rating-bar" data-template="imdb-votes-bar"></div>
                             </div>
                         </a>
-
                     </div>
                     <div class="details-list">
-
                         <div class="detail-item"><span class="detail-label">🎬</span><span class="detail-data" data-template="genre"></span></div>
                         <div class="detail-item"><span class="detail-label">✨</span><span class="detail-data" data-template="actors"></span></div>
                     </div>
@@ -355,8 +350,55 @@
             </div>
         </div>
     </template>
-
+    
     <script src="vendor/nouislider/nouislider.min.js"></script>
     <script type="module" src="js/main.js"></script>
+
+    <div id="quick-view-overlay" class="quick-view-overlay"></div>
+    <div id="quick-view-modal" class="quick-view-modal" role="dialog" aria-modal="true" aria-labelledby="quick-view-title" hidden>
+        <button id="quick-view-close-btn" class="quick-view-close-btn" aria-label="Cerrar vista rápida">&times;</button>
+        <div id="quick-view-content" class="quick-view-content">
+        </div>
+    </div>
+
+    <template id="quick-view-template">
+        <div class="quick-view-poster">
+            <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" width="500" height="750" decoding="async" loading="lazy">
+        </div>
+        <div class="quick-view-details">
+            <div class="quick-view-header">
+                <h2 class="quick-view-title" id="quick-view-title" data-template="title"></h2>
+                <div class="quick-view-meta">
+                    <span data-template="year"></span>
+                    <span class="country-info" data-template="country-container">
+                        <span class="fi" data-template="country-flag"></span>
+                    </span>
+                    <span data-template="duration"></span>
+                    <span data-template="episodes"></span>
+                </div>
+            </div>
+
+            <div class="quick-view-ratings-container" data-template="ratings-container">
+            </div>
+
+            <div class="quick-view-scrollable-content">
+                <div class="quick-view-section">
+                    <h3 class="quick-view-section-title">Sinopsis</h3>
+                    <p data-template="synopsis"></p>
+                </div>
+                <div class="quick-view-section" data-template="critic-container">
+                    <h3 class="quick-view-section-title">Crítica</h3>
+                    <p data-template="critic"></p>
+                </div>
+                <div class="quick-view-section">
+                    <h3 class="quick-view-section-title">Equipo</h3>
+                    <div class="quick-view-crew"><strong>Dirección:</strong> <span data-template="director"></span></div>
+                    <div class="quick-view-crew"><strong>Reparto:</strong> <span data-template="actors"></span></div>
+                    <div class="quick-view-crew"><strong>Género:</strong> <span data-template="genre"></span></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
 </body>
 </html>

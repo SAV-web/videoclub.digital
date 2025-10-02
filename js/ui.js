@@ -8,6 +8,13 @@
 
 import { CSS_CLASSES, SELECTORS } from './constants.js';
 
+import { initQuickView } from './components/quick-view.js';
+
+// ... al final del fichero, junto a los otros exports
+export * from './components/pagination.js';
+export * from './components/autocomplete.js';
+export { initQuickView }; // ✨ AÑADIDO
+
 // Se re-exportan todas las funciones de los módulos de componentes.
 export * from './components/card.js';
 export * from './components/pagination.js';

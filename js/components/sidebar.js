@@ -24,15 +24,17 @@ import {
 import {
     getActiveFilters,
     setFilter,
-    toggleExcludedFilter, // ✨ NUEVO: Importamos la función para gestionar exclusiones
+    toggleExcludedFilter,
 } from '../state.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
 
 const ICON_REWIND = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`;
 const ICON_FORWARD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>`;
 const ICON_PAUSE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
-const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
-const ICON_PAUSE_SMALL = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+// ✨ CAMBIO: Reemplazamos el SVG del círculo relleno por uno hueco (solo borde).
+const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
+// ✨ CAMBIO: Reemplazamos el SVG de pausa por el carácter de texto, que es más simple y nítido.
+const ICON_PAUSE_SMALL = '⏸︎';
 
 // Referencias cacheadas a los elementos del DOM específicos de la sidebar.
 const dom = {
@@ -46,7 +48,6 @@ const dom = {
     yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
 };
 
-// ✨ NUEVO: Mapeo para mostrar nombres más amigables en las píldoras.
 const SELECTION_FRIENDLY_NAMES = new Map([
     ['C', 'Criterion'], ['M', '1001 Pelis'], ['A', 'Arrow'],
     ['K', 'Kino Lorber'], ['E', 'Eureka'], ['H', 'Series HBO'], ['N', 'Netflix']
@@ -57,20 +58,17 @@ const SELECTION_FRIENDLY_NAMES = new Map([
 function renderFilterPills() {
     const activeFilters = getActiveFilters();
 
-    // Limpiamos todos los contenedores de píldoras antes de volver a dibujar.
     document.querySelectorAll('.active-filters-list').forEach(container => container.innerHTML = '');
 
     const createPill = (type, value, isExcluded = false) => {
         const pill = createElement('div', {
             className: `filter-pill ${isExcluded ? 'filter-pill--exclude' : ''}`,
-            // ✨ MEJORA: Añadimos los datos para la eliminación directamente a la píldora.
             dataset: { filterType: type, filterValue: value }
         });
         const text = (type === 'selection') ? SELECTION_FRIENDLY_NAMES.get(value) || value : value;
         const textSpan = createElement('span', { textContent: text });
         pill.appendChild(textSpan);
 
-        // ✨ MEJORA: El aspa de eliminación solo se añade a las píldoras de exclusión.
         if (isExcluded) {
             const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: ICON_PAUSE_SMALL, attributes: { 'aria-hidden': 'true' } });
             pill.appendChild(removeButton);
@@ -95,14 +93,12 @@ function renderFilterPills() {
         });
     };
 
-    // Renderizar píldoras de inclusión (azules)
     renderPillsForSection('selection', activeFilters.selection);
     renderPillsForSection('genre', activeFilters.genre);
     renderPillsForSection('country', activeFilters.country);
     renderPillsForSection('director', activeFilters.director);
     renderPillsForSection('actor', activeFilters.actor);
 
-    // Renderizar píldoras de exclusión (rojas)
     renderPillsForSection('genre', activeFilters.excludedGenres, true);
     renderPillsForSection('country', activeFilters.excludedCountries, true);
 
@@ -116,8 +112,7 @@ function updateFilterLinksUI() {
         const type = link.dataset.filterType;
         const value = link.dataset.filterValue;
 
-        // Reseteamos los estilos antes de aplicar el correcto.
-        link.style.display = ''; // Aseguramos que el link sea visible por defecto.
+        link.style.display = '';
         link.classList.remove(CSS_CLASSES.ACTIVE, 'is-excluded');
 
         const isExcluded = (type === 'genre' && activeFilters.excludedGenres?.includes(value)) ||
@@ -125,8 +120,6 @@ function updateFilterLinksUI() {
         const isActive = activeFilters[type] === value;
 
         if (isActive || isExcluded) {
-            // ✨ CORRECCIÓN: Si el filtro está activo (píldora azul) O excluido (píldora roja),
-            // ocultamos el enlace del menú para evitar duplicidad.
             link.style.display = 'none';
         }
     });
@@ -138,7 +131,6 @@ async function handleFilterChange(type, value) {
     const activeFilters = getActiveFilters();
     const isActivating = activeFilters[type] !== value;
 
-    // ✨ LÓGICA DE LÍMITES RESTAURADA
     const inclusionFilters = ['genre', 'country', 'director', 'actor', 'selection'];
     const currentInclusionFilters = inclusionFilters.filter(key => activeFilters[key]).length;
     const isNewInclusionFilter = isActivating && !activeFilters[type];
@@ -146,7 +138,6 @@ async function handleFilterChange(type, value) {
 
     if (isNewInclusionFilter && currentInclusionFilters >= MAX_INCLUSION_FILTERS) {
         console.warn(`Límite de ${MAX_INCLUSION_FILTERS} filtros de inclusión alcanzado.`);
-        // Aquí podrías mostrar un toast de advertencia al usuario.
         return;
     }
 
@@ -282,8 +273,6 @@ function setupAutocompleteHandlers() {
             const suggestionItem = e.target.closest(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
             if (suggestionItem) {
                 const value = suggestionItem.dataset.value;
-                // ✨ CORRECCIÓN: Eliminamos la llamada a capitalizeWords().
-                // Usamos el valor directamente de la base de datos, que ya tiene la capitalización correcta.
                 handleFilterChange(filterType, value);
                 input.value = '';
                 clearAllSidebarAutocomplete();
@@ -293,7 +282,6 @@ function setupAutocompleteHandlers() {
 }
 
 function handlePillClick(e) {
-    // ✨ MEJORA: Ahora el evento se dispara al hacer clic en toda la píldora.
     const pill = e.target.closest('.filter-pill');
     if (!pill) return;
 
@@ -301,14 +289,12 @@ function handlePillClick(e) {
 
     pill.classList.add('is-removing');
     pill.addEventListener('animationend', () => {
-        // Si la píldora es de exclusión
         if (pill.classList.contains('filter-pill--exclude')) {
             if (toggleExcludedFilter(filterType, filterValue)) {
                 renderFilterPills();
                 document.dispatchEvent(new CustomEvent('filtersChanged'));
             }
-        } else { // Si es una píldora de inclusión normal
-            // Desactiva el filtro
+        } else {
             handleFilterChange(filterType, null);
         }
     }, { once: true });
@@ -318,8 +304,6 @@ function handlePillClick(e) {
 
 function setupEventListeners() {
     if (dom.rewindButton) {
-        // ✨ REFACTORIZACIÓN: Este botón ahora controla tanto el colapso en escritorio
-        // como la apertura/cierre en móvil, unificando la lógica.
         dom.rewindButton.addEventListener('click', (e) => {
             const isMobile = window.innerWidth <= 768;
             let isOpening;
@@ -345,14 +329,11 @@ function setupEventListeners() {
             e.currentTarget.innerHTML = isRotationDisabled ? ICON_RECORD : ICON_PAUSE;
             e.currentTarget.setAttribute('aria-label', isRotationDisabled ? 'Activar rotación de tarjetas' : 'Pausar rotación de tarjetas');
             
-            // ✨ MEJORA: Guardamos la preferencia en localStorage.
             localStorage.setItem('rotationState', isRotationDisabled ? 'disabled' : 'enabled');
             
             triggerPopAnimation(e.currentTarget);
         });
     }
-
-    // ✨ REFACTORIZACIÓN: Se elimina la lógica de los botones móviles duplicados.
 
     const sidebarOverlay = document.querySelector('#sidebar-overlay');
     if (sidebarOverlay) {
@@ -361,25 +342,20 @@ function setupEventListeners() {
     const sidebarScrollable = document.querySelector('.sidebar-scrollable-filters');
     if (sidebarScrollable) {
         sidebarScrollable.addEventListener('click', (e) => {
-            // ✨ MEJORA: Delegación de eventos para el clic en píldoras.
             handlePillClick(e);
 
-            // Gestionamos el clic en el botón de excluir
             const excludeBtn = e.target.closest('.exclude-filter-btn');
             if (excludeBtn) {
-                e.stopPropagation(); // Evitamos que se active el filtro normal
+                e.stopPropagation();
                 const value = excludeBtn.dataset.value;
                 const type = excludeBtn.dataset.type;
 
-                // ✨ CORRECCIÓN: Si el género que vamos a excluir está actualmente
-                // activo como filtro de inclusión, lo eliminamos de ahí primero.
                 if (getActiveFilters()[type] === value) {
                     setFilter(type, null);
                 }
 
-                // ✨ CORRECCIÓN: Solo actualizamos la UI si la operación de estado tuvo éxito.
                 if (toggleExcludedFilter(type, value)) {
-                    renderFilterPills(); // Redibujamos píldoras y enlaces.
+                    renderFilterPills();
                     document.dispatchEvent(new CustomEvent('filtersChanged'));
                     triggerPopAnimation(excludeBtn);
                 }
@@ -391,9 +367,6 @@ function setupEventListeners() {
                 triggerPopAnimation(link);
                 const { filterType, filterValue } = link.dataset;
 
-                // ✨ CORRECCIÓN: Lógica para manejar el clic en un género.
-                // Si el género está "pausado" (excluido), lo reactivamos.
-                // Si no, aplicamos el filtro de inclusión normal.
                 const activeFilters = getActiveFilters();
                 if ((filterType === 'genre' && activeFilters.excludedGenres?.includes(filterValue)) ||
                     (filterType === 'country' && activeFilters.excludedCountries?.includes(filterValue))) {
@@ -435,15 +408,12 @@ function setupEventListeners() {
  * Función pública que se llama desde main.js para inicializar todo el componente.
  */
 export function initSidebar() {
-    // ✨ REFACTORIZACIÓN: En móvil, el sidebar empieza colapsado.
-    // El botón #rewind-button debe mostrar el icono de expandir (⏭︎).
     if (window.innerWidth <= 768) {
         if (dom.rewindButton) {
             dom.rewindButton.innerHTML = ICON_FORWARD;
             dom.rewindButton.setAttribute('aria-label', 'Expandir sidebar');
         }
     }
-    // ✨ MEJORA: Añadimos botones de exclusión solo a géneros específicos.
     const EXCLUDABLE_GENRES = ['Animación', 'Documental'];
 
     document.querySelectorAll('#genres-list-container .filter-link').forEach(link => {

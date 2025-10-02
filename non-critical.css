@@ -1567,3 +1567,190 @@ html, body, .sidebar-autocomplete-results, #autocomplete-results {
     text-decoration: none;
     font-weight: bold;
 }
+
+/* ================================================================= */
+/* 10. COMPONENTE: VISTA RÁPIDA (QUICK VIEW MODAL)
+/* ================================================================= */
+
+/* Clase para el body cuando el modal está abierto. Evita el scroll del fondo. */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* El fondo oscuro semitransparente. */
+.quick-view-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1100; /* Debe estar por encima de todo */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.quick-view-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* El contenedor principal de la ventana modal. */
+.quick-view-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    z-index: 1101;
+    width: 90vw; /* Ancho por defecto para móviles */
+    max-width: 500px;
+    max-height: 85vh;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    display: flex; /* Usamos flex para el layout interno */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+
+.quick-view-modal.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Botón de cierre (la '×') */
+.quick-view-close-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+.quick-view-close-btn:hover {
+    color: var(--color-text-primary);
+    transform: scale(1.1);
+}
+
+/* Contenedor del contenido interno de la ventana. */
+.quick-view-content {
+    display: flex;
+    width: 100%;
+    padding: 2rem;
+    gap: 1.5rem;
+    overflow: hidden; /* Evitamos que el contenido se desborde */
+}
+
+/* Columna izquierda: el póster */
+.quick-view-poster {
+    flex-shrink: 0;
+    width: 35%;
+}
+
+.quick-view-poster img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+}
+
+/* Columna derecha: los detalles */
+.quick-view-details {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Truco de Flexbox para que el contenido se ajuste bien */
+}
+
+.quick-view-header {
+    margin-bottom: 1rem;
+}
+
+.quick-view-title {
+    font-family: var(--font-title);
+    font-size: var(--font-size-xl);
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+}
+
+.quick-view-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+/* Usamos el mismo contenedor de ratings de la tarjeta para consistencia */
+.quick-view-ratings-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* Contenido que puede tener scroll (sinopsis, crítica, etc.) */
+.quick-view-scrollable-content {
+    flex-grow: 1;
+    overflow-y: auto; /* ¡Magia! Si el contenido es largo, aparecerá una barra de scroll */
+    padding-right: 1rem; /* Espacio para la barra de scroll */
+    margin-right: -1rem;
+}
+
+.quick-view-section {
+    margin-bottom: 1.25rem;
+}
+.quick-view-section-title {
+    font-family: var(--font-title);
+    font-size: var(--font-size-base);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+.quick-view-section p, .quick-view-crew {
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+    color: var(--color-text-secondary);
+}
+.quick-view-crew { margin-bottom: 0.25rem; }
+
+/* REGLAS RESPONSIVAS: Aquí cumplimos tus requisitos de tamaño */
+
+/* Para pantallas de ordenador o tablet en horizontal */
+@media (min-width: 769px) {
+    .quick-view-modal {
+        max-width: 800px; /* Tamaño de ~dos tarjetas y media */
+        width: 60vw;
+    }
+}
+
+/* Para móviles en vertical */
+@media (max-width: 600px) {
+    .quick-view-modal {
+        flex-direction: column;
+        max-height: 90vh;
+    }
+    .quick-view-content {
+        flex-direction: column;
+        padding: 1.5rem 1rem 1rem;
+    }
+    .quick-view-poster {
+        display: none; /* Ocultamos el póster para dar espacio al texto */
+    }
+    .quick-view-scrollable-content {
+        padding-right: 0.5rem;
+        margin-right: -0.5rem;
+    }
+    .quick-view-title {
+        font-size: var(--font-size-lg);
+    }
+}

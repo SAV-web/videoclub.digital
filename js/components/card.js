@@ -1,13 +1,15 @@
 // =================================================================
 //                      COMPONENTE CARD
 // =================================================================
-// Este módulo se encarga de todo lo relacionado con las tarjetas de película.
+// Este módulo se encarga de todo lo relacionado con las tarjetas de película,
+// incluyendo su creación, renderizado y la gestión de interacciones del usuario
+// como el volteo de la tarjeta o la apertura de la Vista Rápida.
 
 import { CONFIG } from '../config.js';
 import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
-
-const ICON_PAUSE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+// ✨ NUEVO: Importamos la función para abrir nuestra Vista Rápida desde su propio módulo.
+import { openModal } from './quick-view.js';
 
 // --- VARIABLES Y CONSTANTES DEL MÓDULO ---
 const MAX_VOTES = {
@@ -24,20 +26,16 @@ let currentlyFlippedCard = null;
 const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 const NO_TRANSITION_CLASS = 'no-transition';
 
+// Observador para la carga perezosa de imágenes (lazy loading).
 const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             const img = entry.target;
-            
-            // ✨ REFACTORIZACIÓN: La animación se sincroniza con el evento 'load' de la imagen.
-            // Esto asegura que la transición suave ocurra siempre, incluso si el navegador
-            // ha descartado la imagen de la caché y necesita volver a descargarla.
             img.onload = () => {
                 img.classList.add(CSS_CLASSES.LOADED);
-                img.onload = null; // Limpiamos el listener para evitar ejecuciones múltiples.
+                img.onload = null;
             };
-            
-            img.src = img.dataset.src; // Asignamos la fuente de alta calidad para iniciar la carga.
+            img.src = img.dataset.src;
             observer.unobserve(img);
         }
     });
@@ -71,10 +69,6 @@ function setupCardImage(imgElement, movieData) {
         imgElement.classList.add(CSS_CLASSES.LAZY_LQIP);
     }
 
-    // ✨ REFACTORIZACIÓN: Unificamos la lógica de carga para TODAS las imágenes usando el IntersectionObserver.
-    // Para las primeras imágenes (críticas para el LCP), les damos prioridad con atributos HTML.
-    // Esto asegura que la transición suave .loaded se aplique consistentemente, incluso si el navegador
-    // descarta la imagen de la caché y necesita volver a descargarla.
     if (renderedCardCount < 6) { 
         imgElement.loading = 'eager';
         imgElement.setAttribute('fetchpriority', 'high');
@@ -149,8 +143,6 @@ function populateCardText(elements, movieData) {
     elements.year.textContent = displayYear;
 
     const countryCode = movieData.country_code;
-    const countryName = movieData.country;
-
     if (countryCode && elements.countryContainer) {
         elements.countryContainer.style.display = 'flex';
         elements.countryFlag.className = `fi fi-${countryCode}`;
@@ -164,7 +156,6 @@ function setupCardRatings(elements, movieData) {
     elements.faIcon.src = CONFIG.FA_ICON_URL;
     elements.imdbIcon.src = CONFIG.IMDB_ICON_URL;
 
-    // --- Lógica de FilmAffinity ---
     if (isValidHttpUrl(movieData.fa_id)) {
         elements.faLink.href = movieData.fa_id;
         elements.faLink.classList.remove(CSS_CLASSES.DISABLED);
@@ -190,7 +181,6 @@ function setupCardRatings(elements, movieData) {
         elements.faVotesBarContainer.style.display = 'none';
     }
 
-    // --- Lógica de IMDb ---
     if (isValidHttpUrl(movieData.imdb_id)) {
         elements.imdbLink.href = movieData.imdb_id;
         elements.imdbLink.classList.remove(CSS_CLASSES.DISABLED);
@@ -217,24 +207,12 @@ function setupCardRatings(elements, movieData) {
     }
 }
 
-/**
- * ✨ NUEVO: Calcula el número de estrellas (0-4) basado en una nota media (0-10).
- * La escala es lineal entre 5 y 9.
- * @param {number} averageRating - La nota media.
- * @returns {number} - El número de estrellas a rellenar (puede tener decimales).
- */
 function calculateStars(averageRating) {
-    if (averageRating <= 5.5) return 0; // ✨ AJUSTE: La escala de estrellas empieza después de 5.5
+    if (averageRating <= 5.5) return 0;
     if (averageRating >= 9) return 4;
-    // ✨ AJUSTE: Escala lineal de 5.5 a 9
     return ((averageRating - 5.5) / (9 - 5.5)) * 4;
 }
 
-/**
- * ✨ NUEVO: Actualiza los estilos de las 4 estrellas de una tarjeta.
- * @param {HTMLElement} starContainer - El elemento que contiene los SVGs de las estrellas.
- * @param {number} filledStars - El número de estrellas a rellenar (ej: 2.5).
- */
 function renderStars(starContainer, filledStars) {
     const stars = starContainer.querySelectorAll('.star-icon');
     stars.forEach((star, index) => {
@@ -246,12 +224,12 @@ function renderStars(starContainer, filledStars) {
             const clipPercentage = 100 - (fillValue * 100);
             filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
         } else {
-            star.style.display = 'none'; // Ocultamos las estrellas vacías
+            star.style.display = 'none';
         }
     });
 }
 
-function createMovieCard(movieData, index) {
+function createMovieCard(movieData) {
     if (!cardTemplate) return null;
     const cardClone = cardTemplate.content.cloneNode(true);
     const cardElement = cardClone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
@@ -271,8 +249,8 @@ function createMovieCard(movieData, index) {
         averageRatingStars: cardClone.querySelector('[data-template="average-rating-stars"]'),
         duration: cardClone.querySelector(SELECTORS.DURATION),
         episodes: cardClone.querySelector('[data-template="episodes"]'),
-        wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'), // ✨ AÑADIDO
-        wikipediaIcon: cardClone.querySelector('[data-template="wikipedia-icon"]'), // ✨ AÑADIDO
+        wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
+        wikipediaIcon: cardClone.querySelector('[data-template="wikipedia-icon"]'),
         faLink: cardClone.querySelector(SELECTORS.FA_LINK),
         faIcon: cardClone.querySelector(SELECTORS.FA_ICON),
         faRating: cardClone.querySelector(SELECTORS.FA_RATING),
@@ -289,11 +267,11 @@ function createMovieCard(movieData, index) {
         criticContainer: cardClone.querySelector('[data-template="critic-container"]'),
         critic: cardClone.querySelector('[data-template="critic"]')
     };
+
     setupCardImage(elements.img, movieData);
     populateCardText(elements, movieData);
     setupCardRatings(elements, movieData);
 
-    // --- ✨ AÑADIDO: Lógica de Wikipedia ---
     elements.wikipediaIcon.src = CONFIG.WIKIPEDIA_ICON_URL;
     elements.wikipediaLink.style.display = 'flex';
 
@@ -307,7 +285,6 @@ function createMovieCard(movieData, index) {
         elements.wikipediaLink.title = 'No disponible en Wikipedia';
     }
 
-    // --- ✨ REFACTORIZACIÓN: Cálculo y renderizado del nuevo sistema de estrellas ---
     if (elements.averageRatingStars && elements.lowRatingCircle) {
         const ratings = [movieData.fa_rating, movieData.imdb_rating].filter(r => r !== null && r !== undefined && r > 0);
         if (ratings.length > 0) {
@@ -315,11 +292,9 @@ function createMovieCard(movieData, index) {
             const average = sum / ratings.length;
             const formattedAverage = average.toFixed(1);
 
-            // ✨ MEJORA: Añadimos un tooltip con la nota exacta a ambos elementos.
             elements.lowRatingCircle.title = `Nota media: ${formattedAverage}`;
             elements.averageRatingStars.title = `Nota media: ${formattedAverage}`;
 
-            // ✨ NUEVA LÓGICA: Mostrar círculo o estrellas según la nota.
             if (average <= 5.5) {
                 elements.lowRatingCircle.style.display = 'block';
                 elements.averageRatingStars.style.display = 'none';
@@ -341,45 +316,58 @@ function createMovieCard(movieData, index) {
     return cardClone;
 }
 
+/**
+ * ✨ NUEVO: Esta función se encarga de decidir qué hacer cuando se pulsa una tarjeta.
+ * @param {Event} e - El evento de click.
+ */
+function handleCardClick(e) {
+    // `this` se refiere al elemento `.movie-card` que ha recibido el click.
+    const cardElement = this; 
+    const innerCard = cardElement.querySelector(SELECTORS.FLIP_CARD_INNER);
+
+    // Si se hizo click en el link del director, lo manejamos de forma especial.
+    const directorLink = e.target.closest('.front-director-info a');
+    if (directorLink) {
+        e.preventDefault();
+        const directorName = directorLink.textContent;
+        const eventDetail = { 
+            keepSort: true, 
+            newFilter: { type: 'director', value: directorName } 
+        };
+        document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
+        return; // Detenemos la ejecución para no hacer nada más.
+    }
+    // Si se hizo click en cualquier otro link (IMDb, FA, etc.), dejamos que el navegador haga su trabajo.
+    if (e.target.closest('a')) return;
+
+    // --- ¡AQUÍ ESTÁ LA NUEVA LÓGICA! ---
+    const isRotationDisabled = document.body.classList.contains('rotation-disabled');
+
+    if (isRotationDisabled) {
+        // MODO VISTA RÁPIDA: Si la rotación está desactivada (⏺︎), llamamos al cerebro del modal.
+        openModal(cardElement);
+    } else {
+        // MODO VOLTEO: Si la rotación está activada (⏸︎), hacemos la animación de volteo.
+        if (innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED)) {
+            collapseScrollableContentInstantly(cardElement);
+        }
+        if (currentlyFlippedCard && currentlyFlippedCard !== innerCard) {
+            currentlyFlippedCard.classList.remove(CSS_CLASSES.IS_FLIPPED);
+            collapseScrollableContentInstantly(currentlyFlippedCard.closest(`.${CSS_CLASSES.MOVIE_CARD}`));
+        }
+        innerCard.classList.toggle(CSS_CLASSES.IS_FLIPPED);
+        currentlyFlippedCard = innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED) ? innerCard : null;
+    }
+}
+
 // --- FUNCIONES PÚBLICAS (EXPORTADAS) ---
 
 export function setupCardInteractions() {
     document.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => {
-        const innerCard = card.querySelector(SELECTORS.FLIP_CARD_INNER);
-        if (!innerCard) return;
-
-        card.addEventListener('click', (e) => {
-            const directorLink = e.target.closest('.front-director-info a');
-            if (directorLink) {
-                e.preventDefault(); // Evitamos la navegación por defecto del enlace.
-                const directorName = directorLink.textContent;
-                
-                // Disparamos un evento para resetear los filtros y luego aplicar el nuevo.
-                const eventDetail = { 
-                    keepSort: true, 
-                    newFilter: { type: 'director', value: directorName } 
-                };
-                document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
-                return;
-            }
-            if (e.target.closest('a')) return; // Dejamos que otros enlaces (FA, IMDb) funcionen normalmente.
-
-            const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-
-            if (!isDesktop || isRotationDisabled) {
-                // Cuando la rotación automática está desactivada, un clic en la tarjeta la gira individualmente.
-                // En modo normal, también la gira.
-                if (innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED)) {
-                    collapseScrollableContentInstantly(card);
-                }
-                if (currentlyFlippedCard && currentlyFlippedCard !== innerCard) {
-                    currentlyFlippedCard.classList.remove(CSS_CLASSES.IS_FLIPPED);
-                    collapseScrollableContentInstantly(currentlyFlippedCard.closest(`.${CSS_CLASSES.MOVIE_CARD}`));
-                }
-                innerCard.classList.toggle(CSS_CLASSES.IS_FLIPPED);
-                currentlyFlippedCard = innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED) ? innerCard : null;
-            }
-        });
+        // Primero eliminamos cualquier listener antiguo para evitar que se acumulen.
+        card.removeEventListener('click', handleCardClick);
+        // Añadimos el nuevo listener que contiene toda nuestra lógica.
+        card.addEventListener('click', handleCardClick);
 
         if (isDesktop) {
             const scrollableContent = card.querySelector(SELECTORS.SCROLLABLE_CONTENT);
@@ -415,8 +403,8 @@ export function renderMovieGrid(gridContainer, movies) {
     
     gridContainer.innerHTML = '';
     const fragment = document.createDocumentFragment();
-    movies.forEach((movie, index) => {
-        const card = createMovieCard(movie, index);
+    movies.forEach((movie) => {
+        const card = createMovieCard(movie);
         if (card) fragment.appendChild(card);
     });
     gridContainer.appendChild(fragment);

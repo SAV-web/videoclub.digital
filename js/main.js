@@ -17,7 +17,8 @@ import {
     updateHeaderPaginationState,
     clearAllSidebarAutocomplete,
     setupCardInteractions,
-    prefetchNextPage
+    prefetchNextPage,
+    initQuickView // Importamos el inicializador de la Vista Rápida
 } from './ui.js';
 import { CSS_CLASSES, SELECTORS, DEFAULTS } from './constants.js';
 import {
@@ -37,7 +38,8 @@ import {
 import { showToast } from './toast.js'; 
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
 
-const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
+// Icono de círculo hueco para el botón de reanudar rotación.
+const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
 
 // Mapa para compactar los parámetros de la URL.
 const URL_PARAM_MAP = {
@@ -69,7 +71,8 @@ async function loadAndRenderMovies(page = 1) {
 
     const supportsViewTransitions = !!document.startViewTransition;
 
-    // Si el navegador no soporta transiciones, mostramos los skeletons de la forma tradicional.
+    // Lógica de "Carga Mágica": Solo mostramos esqueletos si el navegador
+    // no soporta transiciones. Para el resto, la transición es el feedback.
     if (!supportsViewTransitions) {
         dom.gridContainer.setAttribute('aria-busy', 'true');
         renderSkeletons(dom.gridContainer, dom.paginationContainer);
@@ -86,22 +89,21 @@ async function loadAndRenderMovies(page = 1) {
         
         if (requestId !== getLatestRequestId()) return;
 
-        // Si la API no es compatible, actualizamos el DOM y el estado 'busy'.
-        if (!supportsViewTransitions) {
+        if (supportsViewTransitions) {
+            // Navegadores modernos: usamos la transición para una actualización suave.
+            document.startViewTransition(() => {
+                updateDomWithResults(movies, totalMovies);
+            });
+        } else {
+            // Navegadores antiguos: actualizamos el DOM de la forma tradicional.
             updateDomWithResults(movies, totalMovies);
             dom.gridContainer.setAttribute('aria-busy', 'false');
-            return;
         }
 
-        // Si la API es compatible, envolvemos la actualización del DOM en la transición.
-        // No mostramos skeletons, ya que la transición en sí misma proporciona un feedback visual.
-        document.startViewTransition(() => {
-            updateDomWithResults(movies, totalMovies);
-        });
-
     } catch (error) {
-        // Aseguramos que el estado de 'busy' se quite si la petición falla.
-        if (!supportsViewTransitions) dom.gridContainer.setAttribute('aria-busy', 'false');
+        if (!supportsViewTransitions) {
+            dom.gridContainer.setAttribute('aria-busy', 'false');
+        }
         
         if (error.name === 'AbortError') {
             console.log('Petición de películas cancelada deliberadamente.');
@@ -213,7 +215,6 @@ function setupKeyboardShortcuts() {
         const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
         if (e.key === 'Escape') {
-            // ✨ MEJORA: Si se pulsa Escape en el buscador principal, se limpia la búsqueda.
             if (activeElement === dom.searchInput && dom.searchInput.value !== '') {
                 e.preventDefault();
                 dom.searchInput.value = '';
@@ -250,7 +251,6 @@ function setupGlobalListeners() {
             clearAllSidebarAutocomplete();
         }
 
-        // ✨ MEJORA: Si se hace clic fuera del sidebar, se cierran los submenús.
         if (!e.target.closest('.sidebar')) {
             collapseAllSections();
         }
@@ -259,7 +259,7 @@ function setupGlobalListeners() {
     dom.paginationContainer.addEventListener('click', async (e) => {
         const button = e.target.closest(SELECTORS.PAGINATION_BUTTON_ACTIVE);
         if (button) {
-            document.dispatchEvent(new CustomEvent('uiActionTriggered'));
+            document.dispatchEvent(new CustomEvent('uiActionTriggerred'));
             triggerPopAnimation(button);
             const page = parseInt(button.dataset.page, 10);
             if (!isNaN(page)) {
@@ -282,9 +282,6 @@ function setupGlobalListeners() {
         localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
     });
 
-    // ✨ REFACTORIZACIÓN AVANZADA: Se usa una variable de estado (`isHeaderScrolled`) junto con
-    // requestAnimationFrame para eliminar definitivamente el parpadeo del header.
-    // La lógica ahora solo modifica el DOM cuando el estado realmente cambia.
     let isTicking = false;
     let isHeaderScrolled = false;
     window.addEventListener('scroll', () => {
@@ -293,7 +290,6 @@ function setupGlobalListeners() {
                 const scrollY = window.scrollY;
                 dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
 
-                // Comprobamos si el estado debe cambiar
                 if (scrollY > 10 && !isHeaderScrolled) {
                     isHeaderScrolled = true;
                     dom.mainHeader.classList.add(CSS_CLASSES.IS_SCROLLED);
@@ -309,8 +305,6 @@ function setupGlobalListeners() {
 
     dom.backToTopButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-    // ✨ CORRECCIÓN: La lógica de apertura/cierre del sidebar ahora está en sidebar.js.
-    // El overlay ahora delega el clic al botón de control del sidebar.
     const rewindButton = document.querySelector('#rewind-button');
     if (dom.sidebarOverlay && rewindButton) {
         dom.sidebarOverlay.addEventListener('click', () => rewindButton.click());
@@ -318,7 +312,8 @@ function setupGlobalListeners() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
-            closeSidebar();
+            const rewindButton = document.querySelector('#rewind-button');
+            if (rewindButton) rewindButton.click();
         }
     });
 }
@@ -380,7 +375,7 @@ function updateUrl() {
     const currentPage = getCurrentPage();
 
     Object.entries(activeFilters).forEach(([key, value]) => {
-        if (value) {
+        if (value && typeof value === 'string' && value.trim() !== '') { // Asegurarse de que el valor no está vacío
             const shortKey = REVERSE_URL_PARAM_MAP[key];
             if (!shortKey) return;
             
@@ -403,7 +398,11 @@ function updateUrl() {
     }
 }
 
+/**
+ * Función principal de inicialización de la aplicación.
+ */
 function init() {
+    // Restaurar preferencias del usuario desde localStorage
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
     }
@@ -417,21 +416,26 @@ function init() {
         }
     }
 
+    // Listener para la navegación de historial (botones de atrás/adelante del navegador)
     window.addEventListener('popstate', () => {
         readUrlAndSetState();
         document.dispatchEvent(new CustomEvent('updateSidebarUI'));
         loadAndRenderMovies(getCurrentPage());
     });
 
+    // Inicializar los componentes principales
     initSidebar();
+    initQuickView(); // Pone en marcha la lógica de la Vista Rápida
     setupHeaderListeners();
     setupGlobalListeners();
     setupKeyboardShortcuts();
     
+    // Cargar el estado inicial desde la URL y mostrar las películas
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));
     loadAndRenderMovies(getCurrentPage());
 
+    // Listeners para eventos personalizados que desacoplan los módulos
     document.addEventListener('filtersChanged', () => {
         document.dispatchEvent(new CustomEvent('uiActionTriggered'));
         loadAndRenderMovies(1);
@@ -455,4 +459,5 @@ function init() {
     });
 }
 
+// Arrancar la aplicación una vez que el DOM esté listo.
 document.addEventListener('DOMContentLoaded', init);
