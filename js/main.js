@@ -18,7 +18,9 @@ import {
     clearAllSidebarAutocomplete,
     setupCardInteractions,
     prefetchNextPage,
-    initQuickView // Importamos el inicializador de la Vista Rápida
+    initQuickView,
+    initInlineExpansion,
+    closeInlineExpansion
 } from './ui.js';
 import { CSS_CLASSES, SELECTORS, DEFAULTS } from './constants.js';
 import {
@@ -38,10 +40,8 @@ import {
 import { showToast } from './toast.js'; 
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
 
-// Icono de círculo hueco para el botón de reanudar rotación.
 const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
 
-// Mapa para compactar los parámetros de la URL.
 const URL_PARAM_MAP = {
     q: 'searchTerm',
     genre: 'genre',
@@ -64,6 +64,8 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
 // =================================================================
 
 async function loadAndRenderMovies(page = 1) {
+    closeInlineExpansion();
+
     const requestId = incrementRequestId();
     setCurrentPage(page);
     updatePageTitle();
@@ -71,8 +73,6 @@ async function loadAndRenderMovies(page = 1) {
 
     const supportsViewTransitions = !!document.startViewTransition;
 
-    // Lógica de "Carga Mágica": Solo mostramos esqueletos si el navegador
-    // no soporta transiciones. Para el resto, la transición es el feedback.
     if (!supportsViewTransitions) {
         dom.gridContainer.setAttribute('aria-busy', 'true');
         renderSkeletons(dom.gridContainer, dom.paginationContainer);
@@ -90,12 +90,10 @@ async function loadAndRenderMovies(page = 1) {
         if (requestId !== getLatestRequestId()) return;
 
         if (supportsViewTransitions) {
-            // Navegadores modernos: usamos la transición para una actualización suave.
             document.startViewTransition(() => {
                 updateDomWithResults(movies, totalMovies);
             });
         } else {
-            // Navegadores antiguos: actualizamos el DOM de la forma tradicional.
             updateDomWithResults(movies, totalMovies);
             dom.gridContainer.setAttribute('aria-busy', 'false');
         }
@@ -118,9 +116,6 @@ async function loadAndRenderMovies(page = 1) {
 
 /**
  * Encapsula toda la lógica de actualización del DOM con los resultados de la API.
- * Es llamada por loadAndRenderMovies.
- * @param {Array} movies - Array de películas a renderizar.
- * @param {number} totalMovies - Conteo total de películas de la búsqueda.
  */
 function updateDomWithResults(movies, totalMovies) {
     setTotalMovies(totalMovies);
@@ -215,6 +210,7 @@ function setupKeyboardShortcuts() {
         const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
         if (e.key === 'Escape') {
+            closeInlineExpansion();
             if (activeElement === dom.searchInput && dom.searchInput.value !== '') {
                 e.preventDefault();
                 dom.searchInput.value = '';
@@ -375,7 +371,7 @@ function updateUrl() {
     const currentPage = getCurrentPage();
 
     Object.entries(activeFilters).forEach(([key, value]) => {
-        if (value && typeof value === 'string' && value.trim() !== '') { // Asegurarse de que el valor no está vacío
+        if (value && typeof value === 'string' && value.trim() !== '') {
             const shortKey = REVERSE_URL_PARAM_MAP[key];
             if (!shortKey) return;
             
@@ -402,7 +398,6 @@ function updateUrl() {
  * Función principal de inicialización de la aplicación.
  */
 function init() {
-    // Restaurar preferencias del usuario desde localStorage
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
     }
@@ -416,26 +411,23 @@ function init() {
         }
     }
 
-    // Listener para la navegación de historial (botones de atrás/adelante del navegador)
     window.addEventListener('popstate', () => {
         readUrlAndSetState();
         document.dispatchEvent(new CustomEvent('updateSidebarUI'));
         loadAndRenderMovies(getCurrentPage());
     });
 
-    // Inicializar los componentes principales
     initSidebar();
-    initQuickView(); // Pone en marcha la lógica de la Vista Rápida
+    initQuickView();
+    initInlineExpansion();
     setupHeaderListeners();
     setupGlobalListeners();
     setupKeyboardShortcuts();
     
-    // Cargar el estado inicial desde la URL y mostrar las películas
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));
     loadAndRenderMovies(getCurrentPage());
 
-    // Listeners para eventos personalizados que desacoplan los módulos
     document.addEventListener('filtersChanged', () => {
         document.dispatchEvent(new CustomEvent('uiActionTriggered'));
         loadAndRenderMovies(1);
@@ -459,5 +451,4 @@ function init() {
     });
 }
 
-// Arrancar la aplicación una vez que el DOM esté listo.
 document.addEventListener('DOMContentLoaded', init);

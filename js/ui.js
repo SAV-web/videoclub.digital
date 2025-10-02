@@ -2,23 +2,18 @@
 //                  MÓDULO DE MANIPULACIÓN DE UI (DOM)
 // =================================================================
 // Este archivo actúa como un punto central para la gestión de la interfaz de usuario.
-// 1. Agrupa y exporta las funciones de los componentes de UI más específicos.
-// 2. Almacena en caché las referencias a los elementos del DOM más utilizados para un acceso eficiente.
-// 3. Contiene funciones de UI que son globales o no pertenecen a un componente concreto.
+// Agrupa y re-exporta las funciones de todos los componentes de UI para que
+// el resto de la aplicación solo necesite importar desde este fichero.
 
-import { CSS_CLASSES, SELECTORS } from './constants.js';
-
-import { initQuickView } from './components/quick-view.js';
-
-// ... al final del fichero, junto a los otros exports
-export * from './components/pagination.js';
-export * from './components/autocomplete.js';
-export { initQuickView }; // ✨ AÑADIDO
-
-// Se re-exportan todas las funciones de los módulos de componentes.
+// ✨ CORRECCIÓN CRÍTICA: Nos aseguramos de re-exportar TODAS las funciones
+// de cada componente para que estén disponibles para main.js y otros módulos.
 export * from './components/card.js';
 export * from './components/pagination.js';
 export * from './components/autocomplete.js';
+export * from './components/quick-view.js';
+export * from './components/inline-expansion.js';
+
+import { CSS_CLASSES, SELECTORS } from './constants.js';
 
 /**
  * Objeto que contiene referencias cacheadas a los elementos del DOM más utilizados.

@@ -2,14 +2,15 @@
 //                      COMPONENTE CARD
 // =================================================================
 // Este módulo se encarga de todo lo relacionado con las tarjetas de película,
-// incluyendo su creación, renderizado y la gestión de interacciones del usuario
-// como el volteo de la tarjeta o la apertura de la Vista Rápida.
+// incluyendo su creación, renderizado y la gestión de interacciones del usuario.
+// Contiene la lógica para decidir si voltear la tarjeta, abrir la Vista Rápida
+// (modal) o desplegar la expansión en línea (efecto libro).
 
 import { CONFIG } from '../config.js';
 import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
-// ✨ NUEVO: Importamos la función para abrir nuestra Vista Rápida desde su propio módulo.
 import { openModal } from './quick-view.js';
+import { toggleInlineExpansion, closeInlineExpansion } from './inline-expansion.js';
 
 // --- VARIABLES Y CONSTANTES DEL MÓDULO ---
 const MAX_VOTES = {
@@ -26,7 +27,6 @@ let currentlyFlippedCard = null;
 const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 const NO_TRANSITION_CLASS = 'no-transition';
 
-// Observador para la carga perezosa de imágenes (lazy loading).
 const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -317,15 +317,12 @@ function createMovieCard(movieData) {
 }
 
 /**
- * ✨ NUEVO: Esta función se encarga de decidir qué hacer cuando se pulsa una tarjeta.
+ * Función manejadora que decide qué acción tomar al hacer clic en una tarjeta.
  * @param {Event} e - El evento de click.
  */
 function handleCardClick(e) {
-    // `this` se refiere al elemento `.movie-card` que ha recibido el click.
     const cardElement = this; 
-    const innerCard = cardElement.querySelector(SELECTORS.FLIP_CARD_INNER);
-
-    // Si se hizo click en el link del director, lo manejamos de forma especial.
+    
     const directorLink = e.target.closest('.front-director-info a');
     if (directorLink) {
         e.preventDefault();
@@ -335,19 +332,23 @@ function handleCardClick(e) {
             newFilter: { type: 'director', value: directorName } 
         };
         document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
-        return; // Detenemos la ejecución para no hacer nada más.
+        return;
     }
-    // Si se hizo click en cualquier otro link (IMDb, FA, etc.), dejamos que el navegador haga su trabajo.
     if (e.target.closest('a')) return;
 
-    // --- ¡AQUÍ ESTÁ LA NUEVA LÓGICA! ---
     const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-
+    const isMobileVertical = window.innerWidth <= 600 && window.innerHeight > window.innerWidth;
+    
     if (isRotationDisabled) {
-        // MODO VISTA RÁPIDA: Si la rotación está desactivada (⏺︎), llamamos al cerebro del modal.
-        openModal(cardElement);
+        if (isMobileVertical) {
+            toggleInlineExpansion(cardElement);
+        } else {
+            openModal(cardElement);
+        }
     } else {
-        // MODO VOLTEO: Si la rotación está activada (⏸︎), hacemos la animación de volteo.
+        closeInlineExpansion();
+        const innerCard = cardElement.querySelector(SELECTORS.FLIP_CARD_INNER);
+        
         if (innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED)) {
             collapseScrollableContentInstantly(cardElement);
         }
@@ -364,9 +365,7 @@ function handleCardClick(e) {
 
 export function setupCardInteractions() {
     document.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => {
-        // Primero eliminamos cualquier listener antiguo para evitar que se acumulen.
         card.removeEventListener('click', handleCardClick);
-        // Añadimos el nuevo listener que contiene toda nuestra lógica.
         card.addEventListener('click', handleCardClick);
 
         if (isDesktop) {
