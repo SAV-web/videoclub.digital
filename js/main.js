@@ -18,7 +18,9 @@ import {
     clearAllSidebarAutocomplete,
     setupCardInteractions,
     prefetchNextPage,
-    initQuickView
+    initQuickView,
+    initInlineExpansion,
+    closeInlineExpansion
 } from './ui.js';
 import { CSS_CLASSES, SELECTORS, DEFAULTS } from './constants.js';
 import {
@@ -62,6 +64,8 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
 // =================================================================
 
 async function loadAndRenderMovies(page = 1) {
+    closeInlineExpansion();
+
     const requestId = incrementRequestId();
     setCurrentPage(page);
     updatePageTitle();
@@ -206,6 +210,7 @@ function setupKeyboardShortcuts() {
         const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
 
         if (e.key === 'Escape') {
+            closeInlineExpansion();
             if (activeElement === dom.searchInput && dom.searchInput.value !== '') {
                 e.preventDefault();
                 dom.searchInput.value = '';
@@ -414,6 +419,7 @@ function init() {
 
     initSidebar();
     initQuickView();
+    initInlineExpansion();
     setupHeaderListeners();
     setupGlobalListeners();
     setupKeyboardShortcuts();
