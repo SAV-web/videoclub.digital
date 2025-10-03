@@ -1,16 +1,13 @@
 // =================================================================
 //                      COMPONENTE CARD
 // =================================================================
-// Este módulo se encarga de todo lo relacionado con las tarjetas de película,
-// incluyendo su creación, renderizado y la gestión de interacciones del usuario.
-// Contiene la lógica para decidir si voltear la tarjeta, abrir la Vista Rápida
-// (modal) o desplegar la expansión en línea (efecto libro).
+// Este módulo se encarga de todo lo relacionado con las tarjetas de película.
+// Lógica final: o voltea la tarjeta, o abre el modal de Vista Rápida.
 
 import { CONFIG } from '../config.js';
 import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
 import { openModal } from './quick-view.js';
-import { toggleInlineExpansion, closeInlineExpansion } from './inline-expansion.js';
 
 // --- VARIABLES Y CONSTANTES DEL MÓDULO ---
 const MAX_VOTES = {
@@ -336,17 +333,14 @@ function handleCardClick(e) {
     }
     if (e.target.closest('a')) return;
 
+    // --- LÓGICA DE DECISIÓN SIMPLIFICADA ---
     const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-    const isMobileVertical = window.innerWidth <= 600 && window.innerHeight > window.innerWidth;
     
     if (isRotationDisabled) {
-        if (isMobileVertical) {
-            toggleInlineExpansion(cardElement);
-        } else {
-            openModal(cardElement);
-        }
+        // MODO VISTA RÁPIDA (⏺︎ activado): Siempre abrimos el modal.
+        openModal(cardElement);
     } else {
-        closeInlineExpansion();
+        // MODO VOLTEO (⏸︎ activado): Volteamos la tarjeta.
         const innerCard = cardElement.querySelector(SELECTORS.FLIP_CARD_INNER);
         
         if (innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED)) {
