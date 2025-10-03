@@ -362,40 +362,50 @@
     </div>
 
     <template id="quick-view-template">
-        <div class="quick-view-poster">
-            <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" width="500" height="750" decoding="async" loading="lazy">
+        <div class="quick-view-front">
+            <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" class="lazy-image" width="500" height="750" decoding="async" loading="lazy">
+            <div class="movie-info">
+                <div class="title-director-block">
+                    <h3 data-template="title"></h3>
+                    <div class="front-director-info" data-template="director"></div>
+                </div>
+                <div class="movie-meta">
+                    <div class="year-country-line">
+                        <div class="low-rating-circle" data-template="low-rating-circle"></div>
+                        <div class="star-rating-container" data-template="average-rating-stars">
+                            <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                            <svg class="star-icon" viewBox="0 0 24 24"><path class="star-icon-path star-icon-path--empty" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/><path class="star-icon-path star-icon-path--filled" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        </div>
+                        <span data-template="year"></span>
+                        <span class="country-info" data-template="country-container">
+                            <span class="fi" data-template="country-flag"></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="quick-view-details">
-            <div class="quick-view-header">
-                <h2 class="quick-view-title" id="quick-view-title" data-template="title"></h2>
-                <div class="quick-view-meta">
-                    <span data-template="year"></span>
-                    <span class="country-info" data-template="country-container">
-                        <span class="fi" data-template="country-flag"></span>
-                    </span>
-                    <span data-template="duration"></span>
+        <div class="quick-view-back">
+            <div class="back-meta-header">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="rating-line" data-template="wikipedia-link" style="display: none;" title="Ver en Wikipedia">
+                    <img class="rating-icon" alt="Wikipedia" width="24" height="24" loading="lazy" decoding="async" data-template="wikipedia-icon">
+                </a>
+                <div class="episode-duration-group">
                     <span data-template="episodes"></span>
+                    <span data-template="duration"></span>
                 </div>
             </div>
-
-            <div class="quick-view-ratings-container" data-template="ratings-container">
+            <div class="ratings-container">
+                <!-- Ratings will be populated by JS -->
             </div>
-
-            <div class="quick-view-scrollable-content">
-                <div class="quick-view-section">
-                    <h3 class="quick-view-section-title">Sinopsis</h3>
-                    <p data-template="synopsis"></p>
-                </div>
-                <div class="quick-view-section" data-template="critic-container">
-                    <h3 class="quick-view-section-title">Crítica</h3>
-                    <p data-template="critic"></p>
-                </div>
-                <div class="quick-view-section">
-                    <h3 class="quick-view-section-title">Equipo</h3>
-                    <div class="quick-view-crew"><strong>Dirección:</strong> <span data-template="director"></span></div>
-                    <div class="quick-view-crew"><strong>Reparto:</strong> <span data-template="actors"></span></div>
-                    <div class="quick-view-crew"><strong>Género:</strong> <span data-template="genre"></span></div>
-                </div>
+            <div class="details-list">
+                <div class="detail-item"><span class="detail-label">🎬</span><span class="detail-data" data-template="genre"></span></div>
+                <div class="detail-item"><span class="detail-label">✨</span><span class="detail-data" data-template="actors"></span></div>
+            </div>
+            <div class="scrollable-content">
+                <div class="plot-summary-final" title="Sinopsis"><span class="detail-label">🔹</span><span data-template="synopsis"></span></div>
+                <div class="critic-review" title="Crítica" data-template="critic-container"><span class="detail-label">🔸</span><span data-template="critic"></span></div>
             </div>
         </div>
     </template>

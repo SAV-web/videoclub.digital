@@ -1583,12 +1583,10 @@ html, body, .sidebar-autocomplete-results, #autocomplete-results {
 /* 10. COMPONENTE: VISTA RÁPIDA (QUICK VIEW MODAL)
 /* ================================================================= */
 
-/* Clase para el body cuando el modal está abierto. Evita el scroll del fondo. */
 body.modal-open {
     overflow: hidden;
 }
 
-/* El fondo oscuro semitransparente. */
 .quick-view-overlay {
     position: fixed;
     top: 0;
@@ -1596,7 +1594,7 @@ body.modal-open {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
-    z-index: 1100; /* Debe estar por encima de todo */
+    z-index: 1100;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -1607,24 +1605,23 @@ body.modal-open {
     visibility: visible;
 }
 
-/* El contenedor principal de la ventana modal. */
 .quick-view-modal {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0.95);
     z-index: 1101;
-    width: 95vw; /* Ocupa casi todo el ancho en la vista más pequeña (móvil vertical) */
-    max-width: 450px; /* Un límite para que no se estire demasiado en pantallas intermedias */
-    max-height: 85vh;
+    width: 95vw;
+    max-width: 300px; /* Ancho de una tarjeta para moviles */
+    max-height: 90vh;
     background-color: var(--color-surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
     display: flex;
-    flex-direction: column; /* ✨ CAMBIO: Por defecto, el layout es vertical para móviles */
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease, max-width 0.3s ease;
+    overflow: hidden;
 }
 
 .quick-view-modal.is-visible {
@@ -1633,7 +1630,6 @@ body.modal-open {
     transform: translate(-50%, -50%) scale(1);
 }
 
-/* Botón de cierre (la '×') */
 .quick-view-close-btn {
     position: absolute;
     top: 0.5rem;
@@ -1647,128 +1643,110 @@ body.modal-open {
     color: var(--color-text-secondary);
     cursor: pointer;
     transition: transform 0.2s ease, color 0.2s ease;
-    z-index: 10; /* Aseguramos que esté por encima del contenido */
+    z-index: 10;
 }
 .quick-view-close-btn:hover {
     color: var(--color-text-primary);
     transform: scale(1.1);
 }
 
-/* Contenedor del contenido interno de la ventana. */
 .quick-view-content {
     display: flex;
-    flex-direction: column; /* ✨ CAMBIO: El contenido interno también es vertical por defecto */
     width: 100%;
-    padding: 1.5rem 1rem 1rem;
-    gap: 1.5rem;
+    height: 100%;
     overflow: hidden;
 }
 
-/* Columna del póster */
-.quick-view-poster {
-    display: none; /* ✨ CAMBIO: Por defecto (móvil vertical), el póster está oculto para ahorrar espacio */
-    flex-shrink: 0;
-    width: 35%;
+.quick-view-front,
+.quick-view-back {
+    position: relative;
+    width: 100%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
 }
 
-.quick-view-poster img {
+.quick-view-front {
+    display: none; /* Oculto en movil */
+}
+
+.quick-view-front img {
     width: 100%;
     height: auto;
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow);
+    margin-bottom: 1rem;
 }
 
-/* Columna de los detalles */
-.quick-view-details {
+.quick-view-front .movie-info {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+}
+
+.quick-view-back {
     min-width: 0;
 }
 
-.quick-view-header {
-    margin-bottom: 1rem;
-    padding-right: 2rem; /* Espacio para que el título no se solape con el botón de cerrar */
+.quick-view-back .scrollable-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 25%;
+    padding: 0 1rem 1rem 1rem;
+    background-color: var(--color-surface);
+    z-index: 20;
+    scrollbar-width: none;
+    transition: height 3s ease-out;
 }
 
-.quick-view-title {
-    font-family: var(--font-title);
-    font-size: var(--font-size-lg); /* Tamaño ajustado para móvil */
-    line-height: 1.2;
-    margin-bottom: 0.5rem;
-}
-
-.quick-view-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-}
-
-.quick-view-ratings-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.quick-view-scrollable-content {
-    flex-grow: 1;
+.quick-view-back .scrollable-content.full-view {
+    height: 100%;
     overflow-y: auto;
-    padding-right: 0.5rem;
-    margin-right: -0.5rem;
 }
 
-.quick-view-section {
-    margin-bottom: 1.25rem;
+.quick-view-back .scrollable-content::-webkit-scrollbar {
+    display: none;
 }
-.quick-view-section-title {
-    font-family: var(--font-title);
-    font-size: var(--font-size-base);
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: 0.25rem;
-    margin-bottom: 0.5rem;
+
+.quick-view-back .scrollable-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to top, var(--color-surface) 20%, transparent);
+    pointer-events: none;
+    transition: opacity var(--transition-duration-normal) ease;
 }
-.quick-view-section p, .quick-view-crew {
-    font-size: var(--font-size-sm);
-    line-height: var(--line-height-relaxed);
-    color: var(--color-text-secondary);
+
+.quick-view-back .scrollable-content.full-view::after {
+    opacity: 0;
 }
-.quick-view-crew { margin-bottom: 0.25rem; }
 
 
-/* ================================================================= */
-/* ✨ REGLAS RESPONSIVAS ESPECÍFICAS PARA LA VISTA RÁPIDA
-/* ================================================================= */
-
-/* ✨ NUEVO: Para móviles y tablets pequeñas EN HORIZONTAL */
-@media (min-width: 601px) and (max-height: 500px), (min-width: 768px) {
+/* Responsive adjustments */
+@media (min-width: 768px) {
     .quick-view-modal {
-        flex-direction: row; /* Volvemos al layout horizontal */
+        max-width: 550px; /* Ancho para dos tarjetas */
     }
 
     .quick-view-content {
-        flex-direction: row; /* El contenido también se pone en horizontal */
-        padding: 2rem;
+        flex-direction: row;
     }
-    
-    .quick-view-poster {
-        display: block; /* Mostramos el póster de nuevo */
+
+    .quick-view-front {
+        display: flex;
+        width: 50%;
+        border-right: 1px solid var(--color-border);
+    }
+
+    .quick-view-back {
+        width: 50%;
     }
 }
 
-
-/* ✨ MEJORA: Para tablets y escritorio, ajustamos el tamaño */
-@media (min-width: 768px) {
-    .quick-view-modal {
-        max-width: 800px; /* Tamaño de ~dos tarjetas y media */
-        width: 70vw;
-    }
-    .quick-view-title {
-        font-size: var(--font-size-xl);
-    }
-}
 
 /* ================================================================= */
 /* 11. COMPONENTE: EXPANSIÓN INLINE (EFECTO LIBRO)
