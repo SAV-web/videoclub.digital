@@ -1612,7 +1612,7 @@ body.modal-open {
     transform: translate(-50%, -50%) scale(0.95);
     z-index: 1101;
     width: 95vw;
-    max-width: 300px; /* Ancho de una tarjeta para moviles */
+    max-width: 250px; /* Ancho de una tarjeta para moviles */
     max-height: 90vh;
     background-color: var(--color-surface);
     border-radius: var(--radius-lg);
@@ -1621,7 +1621,7 @@ body.modal-open {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease, max-width 0.3s ease;
-    overflow: hidden;
+    overflow-y: auto; /* Permitir scroll en móvil */
 }
 
 .quick-view-modal.is-visible {
@@ -1652,57 +1652,99 @@ body.modal-open {
 
 .quick-view-content {
     display: flex;
+    flex-direction: column; /* Vertical por defecto */
     width: 100%;
-    height: 100%;
-    overflow: hidden;
 }
 
-.quick-view-front,
-.quick-view-back {
+/*
+ * REFACTOR: .quick-view-front ahora imita a .flip-card-front
+ */
+.quick-view-front {
+    display: flex; /* Visible por defecto */
+    flex-direction: column;
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
     position: relative;
     width: 100%;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.quick-view-front {
-    display: none; /* Oculto en movil */
+    border-bottom: 1px solid var(--color-border); /* Separador para móvil */
 }
 
 .quick-view-front img {
     width: 100%;
     height: auto;
-    border-radius: var(--radius-md);
-    margin-bottom: 1rem;
+    object-fit: contain;
+    flex-shrink: 0;
+    border: 3px solid var(--color-surface);
+    border-radius: var(--radius-lg);
 }
 
 .quick-view-front .movie-info {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    padding: 0.25rem 0.6rem 0.4rem;
+    overflow: hidden;
 }
 
+.quick-view-front .title-director-block {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: left;
+}
+
+.quick-view-front .movie-info h3 {
+    margin-bottom: 0.1rem;
+    font-family: var(--font-title);
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.quick-view-front .front-director-info {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.quick-view-front .movie-meta {
+    padding-top: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+}
+
+/*
+ * .quick-view-back mantiene su padding y estilos
+ */
 .quick-view-back {
+    position: relative;
+    width: 100%;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
 }
 
+
 .quick-view-back .scrollable-content {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 25%;
-    padding: 0 1rem 1rem 1rem;
-    background-color: var(--color-surface);
-    z-index: 20;
-    scrollbar-width: none;
-    transition: height 3s ease-out;
+    position: static; /* Cambiado para flujo normal */
+    height: auto;
+    padding: 0;
+    z-index: auto;
 }
 
 .quick-view-back .scrollable-content.full-view {
-    height: 100%;
-    overflow-y: auto;
+    height: auto;
+    overflow-y: visible;
 }
 
 .quick-view-back .scrollable-content::-webkit-scrollbar {
@@ -1710,19 +1752,7 @@ body.modal-open {
 }
 
 .quick-view-back .scrollable-content::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    background: linear-gradient(to top, var(--color-surface) 20%, transparent);
-    pointer-events: none;
-    transition: opacity var(--transition-duration-normal) ease;
-}
-
-.quick-view-back .scrollable-content.full-view::after {
-    opacity: 0;
+    display: none; /* No se necesita gradiente en móvil */
 }
 
 
@@ -1730,20 +1760,52 @@ body.modal-open {
 @media (min-width: 768px) {
     .quick-view-modal {
         max-width: 550px; /* Ancho para dos tarjetas */
+        overflow-y: hidden; /* Ocultar scroll en desktop */
     }
 
     .quick-view-content {
-        flex-direction: row;
+        flex-direction: row; /* Horizontal en desktop */
+        height: 100%;
     }
 
     .quick-view-front {
-        display: flex;
         width: 50%;
         border-right: 1px solid var(--color-border);
+        border-bottom: none; /* Quitar separador de móvil */
     }
 
     .quick-view-back {
         width: 50%;
+    }
+
+    .quick-view-back .scrollable-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 25%;
+        padding: 0 1rem 1rem 1rem;
+        background-color: var(--color-surface);
+        z-index: 20;
+        transition: height 3s ease-out;
+    }
+
+    .quick-view-back .scrollable-content.full-view {
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .quick-view-back .scrollable-content::after {
+        display: block; /* Restaurar gradiente en desktop */
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: linear-gradient(to top, var(--color-surface) 20%, transparent);
+        pointer-events: none;
+        transition: opacity var(--transition-duration-normal) ease;
     }
 }
 
