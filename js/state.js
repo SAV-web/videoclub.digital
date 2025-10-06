@@ -1,7 +1,7 @@
 // =================================================================
 //                      MÓDULO DE ESTADO
 // =================================================================
-// Este fichero es el "cerebro" o la "única fuente de verdad" de la aplicación.
+// Este fichero es el "cerebro" o la "única fuente de verdad" (Single Source of Truth) de la aplicación.
 // Centraliza todos los datos dinámicos (filtros, paginación, etc.) en un solo lugar.
 // Esto previene que el estado se disperse por la aplicación, facilitando su gestión y depuración.
 
@@ -94,6 +94,32 @@ export const getCurrentPage = () => {
  */
 export function getLatestRequestId() {
     return state.latestRequestId;
+}
+
+/**
+ * Comprueba si hay filtros "significativos" activos.
+ * Un filtro es significativo si no es el de tipo de medio ('mediaType')
+ * o el de ordenación por defecto.
+ * @returns {boolean}
+ */
+export function hasActiveMeaningfulFilters() {
+    const { activeFilters } = state;
+
+    for (const key in activeFilters) {
+        const value = activeFilters[key];
+
+        // ✨ CORRECCIÓN: Ignoramos siempre los filtros de tipo de medio y de ordenación.
+        if (key === 'mediaType' || key === 'sort') {
+            continue;
+        }
+
+        // Si encontramos cualquier otro filtro con un valor (que no sea un array vacío),
+        // significa que hay un filtro significativo activo.
+        if (Array.isArray(value) ? value.length > 0 : value) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // =================================================================

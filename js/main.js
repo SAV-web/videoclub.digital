@@ -14,7 +14,7 @@ import { fetchMovies } from './api.js';
 import {
     dom, renderMovieGrid, renderSkeletons, renderNoResults, renderErrorState,
     renderPagination, updateTypeFilterUI,
-    updateHeaderPaginationState,
+    updateHeaderPaginationState, updateTotalResultsUI,
     clearAllSidebarAutocomplete,
     setupCardInteractions,
     prefetchNextPage,
@@ -33,7 +33,8 @@ import {
     setMediaType,
     incrementRequestId,
     getLatestRequestId,
-    resetFiltersState
+    resetFiltersState,
+    hasActiveMeaningfulFilters
 } from './state.js';
 import { showToast } from './toast.js'; 
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
@@ -115,6 +116,10 @@ async function loadAndRenderMovies(page = 1) {
  */
 function updateDomWithResults(movies, totalMovies) {
     setTotalMovies(totalMovies);
+    // ✨ CORRECCIÓN: Llamamos a la función para actualizar el contador de resultados.
+    // Esta es la línea que faltaba.
+    updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
+
     const currentState = getState();
 
     if (currentState.totalMovies === 0) {

@@ -302,9 +302,6 @@ CREATE INDEX IF NOT EXISTS movies_title_unaccent_trgm_idx ON public.movies USING
 -- =================================================================
 -- PASO ADICIONAL: Añadir columnas episodes y wikipedia
 -- =================================================================
-ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS episodes INTEGER;
-ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS wikipedia TEXT;
-
 
 CREATE OR REPLACE FUNCTION public.process_staging_data()
  RETURNS void
@@ -424,7 +421,9 @@ BEGIN
     SELECT m.id, d.id
     FROM public.movies_staging s
     JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.directors, ',')) AS director_name(name)
+    -- ✨ CORRECCIÓN ROBUSTA: Normalizamos el delimitador antes de dividir.
+    -- Reemplazamos ', ' por ',' y luego dividimos por ',', asegurando que ambos casos funcionen.
+    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) AS director_name(name)
     JOIN public.directors d ON d.name = TRIM(director_name.name)
     WHERE m.id = ANY(affected_movie_ids) ON CONFLICT DO NOTHING;
 
@@ -432,7 +431,8 @@ BEGIN
     SELECT m.id, a.id
     FROM public.movies_staging s
     JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.actors, ',')) AS actor_name(name)
+    -- ✨ CORRECCIÓN ROBUSTA: Aplicamos la misma lógica para los actores.
+    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) AS actor_name(name)
     JOIN public.actors a ON a.name = TRIM(actor_name.name)
     WHERE m.id = ANY(affected_movie_ids) AND s.actors <> '(A)' ON CONFLICT DO NOTHING;
 

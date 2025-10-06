@@ -481,6 +481,22 @@ body.dark-mode .year-input:focus {
 .sidebar-inner-wrapper.is-compact .sidebar-static-filters { padding-bottom: 0.5rem; }
 
 
+/* Contenedor para el total de resultados en el sidebar */
+.total-results-container {
+    padding: 1rem 0 0.5rem;
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    font-weight: bold;
+    transition: opacity 0.3s ease;
+}
+
+/* El número en sí, con un estilo más destacado */
+.total-results-count {
+    color: var(--color-text-primary);
+    font-family: var(--font-title);
+}
+
 
 
 /* ================================================================= */

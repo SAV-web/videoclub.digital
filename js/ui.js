@@ -29,7 +29,9 @@ export const dom = {
     headerNextBtn: document.querySelector(SELECTORS.HEADER_NEXT_BTN),
     autocompleteResults: document.querySelector(SELECTORS.AUTOCOMPLETE_RESULTS),
     mainHeader: document.querySelector('.main-header'),
-    clearFiltersBtn: document.querySelector(SELECTORS.CLEAR_FILTERS_BTN)
+    clearFiltersBtn: document.querySelector(SELECTORS.CLEAR_FILTERS_BTN),
+    totalResultsContainer: document.getElementById('total-results-container'),
+    totalResultsCount: document.getElementById('total-results-count'),
 };
 
 /**
@@ -54,5 +56,22 @@ export function updateTypeFilterUI(mediaType) {
         default:
             button.textContent = 'Todo';
             break;
+    }
+}
+
+/**
+ * Actualiza el contador de resultados totales en el sidebar.
+ * @param {number} total - El número total de resultados.
+ * @param {boolean} hasFilters - Indica si hay filtros significativos activos.
+ */
+export function updateTotalResultsUI(total, hasFilters) {
+    const { totalResultsContainer, totalResultsCount } = dom;
+    if (!totalResultsContainer || !totalResultsCount) return;
+
+    if (hasFilters && total > 0) {
+        totalResultsCount.textContent = total.toLocaleString('es-ES');
+        totalResultsContainer.hidden = false;
+    } else {
+        totalResultsContainer.hidden = true;
     }
 }
