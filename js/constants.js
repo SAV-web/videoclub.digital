@@ -15,7 +15,7 @@ export const CSS_CLASSES = {
 
     // Clases de componentes y elementos
     MOVIE_CARD: 'movie-card',
-    PAGINATION_BUTTON: 'pagination-button',
+    // ✨ CORRECCIÓN: 'pagination-button' eliminado, ya que ahora se usa '.btn'
     FILTER_PILL_REMOVE_BTN: 'remove-filter-btn',
     SIDEBAR_AUTOCOMPLETE_ITEM: 'sidebar-autocomplete-item',
     AUTOCOMPLETE_ITEM: 'autocomplete-item',
@@ -48,7 +48,7 @@ export const SELECTORS = {
     ACTORS: '[data-template="actors"]',
     SYNOPSIS: '[data-template="synopsis"]',
 
-    // ✨ AÑADIDO: Selectores de ID para acceso centralizado
+    // Selectores de ID para acceso centralizado
     GRID_CONTAINER: '#grid-container',
     PAGINATION_CONTAINER: '#pagination-container',
     SEARCH_FORM: '#search-form',
@@ -74,7 +74,11 @@ export const SELECTORS = {
     SIDEBAR_FILTER_FORM: '.sidebar-filter-form',
     SIDEBAR_AUTOCOMPLETE_RESULTS: '.sidebar-autocomplete-results',
     SIDEBAR_FILTER_INPUT: '.sidebar-filter-input',
-    PAGINATION_BUTTON_ACTIVE: '.pagination-button:not(.active)',
+
+    // ✨ CORRECCIÓN: Selector actualizado para usar la nueva clase '.btn'.
+    // Ahora es un selector más genérico para cualquier botón clickable que no esté activo.
+    CLICKABLE_BTN: '.btn:not(.active)',
+
     FLIP_CARD_INNER: '.flip-card-inner',
     SCROLLABLE_CONTENT: '.scrollable-content',
     PLOT_SUMMARY: '.plot-summary-final',

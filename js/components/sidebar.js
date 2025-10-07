@@ -405,6 +405,50 @@ function setupEventListeners() {
 }
 
 /**
+ * ✨ NUEVA FUNCIÓN: Configura los listeners para los botones stepper de los inputs de año.
+ */
+function setupYearInputSteppers() {
+    // Seleccionamos todos los contenedores de los inputs de año
+    document.querySelectorAll('.year-input-wrapper').forEach(wrapper => {
+        const input = wrapper.querySelector('.year-input');
+        const stepperUp = wrapper.querySelector('.stepper-btn.stepper-up');
+        const stepperDown = wrapper.querySelector('.stepper-btn.stepper-down');
+        
+        // Obtenemos los límites del fichero de configuración
+        const minYear = CONFIG.YEAR_MIN;
+        const maxYear = CONFIG.YEAR_MAX;
+
+        if (!input || !stepperUp || !stepperDown) return;
+
+        // Listener para el botón de 'subir'
+        stepperUp.addEventListener('click', () => {
+            let currentValue = parseInt(input.value, 10);
+            if (isNaN(currentValue)) currentValue = minYear; // Si el valor no es un número, empezar por el mínimo
+            
+            // Incrementamos el valor, pero sin pasarnos del máximo
+            const newValue = Math.min(currentValue + 1, maxYear);
+            input.value = newValue;
+
+            // ¡CRÍTICO! Disparamos el evento 'change' para que el slider (noUiSlider) se actualice.
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        // Listener para el botón de 'bajar'
+        stepperDown.addEventListener('click', () => {
+            let currentValue = parseInt(input.value, 10);
+            if (isNaN(currentValue)) currentValue = maxYear; // Si el valor no es un número, empezar por el máximo
+
+            // Decrementamos el valor, pero sin bajar del mínimo
+            const newValue = Math.max(currentValue - 1, minYear);
+            input.value = newValue;
+
+            // Disparamos el evento 'change' también aquí.
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    });
+}
+
+/**
  * Función pública que se llama desde main.js para inicializar todo el componente.
  */
 export function initSidebar() {
@@ -454,6 +498,7 @@ export function initSidebar() {
     initYearSlider();
     setupEventListeners();
     setupAutocompleteHandlers();
+    setupYearInputSteppers();
 
     document.addEventListener('updateSidebarUI', () => {
         dom.sidebarFilterForms.forEach(form => {

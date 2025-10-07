@@ -253,8 +253,11 @@ function setupGlobalListeners() {
     });
 
     dom.paginationContainer.addEventListener('click', async (e) => {
-        const button = e.target.closest(SELECTORS.PAGINATION_BUTTON_ACTIVE);
-        if (button) {
+        // ✨ CORRECCIÓN APLICADA: 
+        // Se utiliza el nuevo selector genérico 'CLICKABLE_BTN' que busca '.btn:not(.active)'.
+        // Ahora el listener encontrará los botones generados dinámicamente.
+        const button = e.target.closest(SELECTORS.CLICKABLE_BTN);
+        if (button && button.dataset.page) { // Añadida comprobación de dataset.page por seguridad
             document.dispatchEvent(new CustomEvent('uiActionTriggerred'));
             triggerPopAnimation(button);
             const page = parseInt(button.dataset.page, 10);

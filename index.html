@@ -124,10 +124,27 @@
                         <div id="year-slider-wrapper">
                             <div id="year-slider"></div>
                         </div>
+                        <!-- 
+                          CAMBIO APLICADO:
+                          - Cada input de año ahora está envuelto en un <div class="year-input-wrapper">.
+                          - Se ha añadido un <div class="year-input-stepper"> con dos botones para las flechas.
+                        -->
                         <div id="year-input-container">
-                            <input type="number" id="year-start-input" class="year-input" aria-label="Año de inicio">
-                            <span class="year-range-separator">-</span>
-                            <input type="number" id="year-end-input" class="year-input" aria-label="Año de fin">
+                            <div class="year-input-wrapper">
+                                <input type="number" id="year-start-input" class="year-input" aria-label="Año de inicio">
+                                <div class="year-input-stepper">
+                                    <button type="button" class="stepper-btn stepper-up" aria-label="Incrementar año de inicio">▲</button>
+                                    <button type="button" class="stepper-btn stepper-down" aria-label="Decrementar año de inicio">▼</button>
+                                </div>
+                            </div>
+                            <span class="year-range-separator">·</span>
+                            <div class="year-input-wrapper">
+                                <input type="number" id="year-end-input" class="year-input" aria-label="Año de fin">
+                                <div class="year-input-stepper">
+                                    <button type="button" class="stepper-btn stepper-up" aria-label="Incrementar año de fin">▲</button>
+                                    <button type="button" class="stepper-btn stepper-down" aria-label="Decrementar año de fin">▼</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div id="total-results-container" class="total-results-container" hidden>
@@ -228,7 +245,6 @@
             </div>
         </aside>
 
-        <!-- ... el resto del fichero no cambia ... -->
         <div class="main-content-wrapper">
             <header class="main-header">
                 <div class="main-header-primary-controls">
@@ -247,8 +263,12 @@
                     <button id="type-filter-toggle" class="type-filter-toggle" type="button" title="Filtrar por Cine o TV">Todo</button>
                     
                     <div class="header-pagination-group">
-                        <button id="header-prev-btn" class="pagination-button" title="Página anterior" aria-label="Ir a la página anterior">&lt;</button>
-                        <button id="header-next-btn" class="pagination-button" title="Página siguiente" aria-label="Ir a la página siguiente">&gt;</button>
+                        <!-- 
+                          CAMBIO APLICADO: 
+                          Se ha reemplazado la clase 'pagination-button' por el nuevo sistema de componentes: 'btn' y 'btn--icon'.
+                        -->
+                        <button id="header-prev-btn" class="btn btn--icon" title="Página anterior" aria-label="Ir a la página anterior">&lt;</button>
+                        <button id="header-next-btn" class="btn btn--icon" title="Página siguiente" aria-label="Ir a la página siguiente">&gt;</button>
                     </div>
                 </div>
 
@@ -273,6 +293,7 @@
     <button id="back-to-top" class="back-to-top" title="Volver al inicio">↑</button>
 
     <div id="toast-container" class="toast-container"></div>
+
 
     <template id="movie-card-template">
         <div class="movie-card">

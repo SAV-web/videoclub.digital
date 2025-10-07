@@ -397,7 +397,7 @@ export function renderMovieGrid(gridContainer, movies) {
     gridContainer.innerHTML = '';
     const fragment = document.createDocumentFragment();
     movies.forEach((movie) => {
-        const card = createMovieCard(movie);
+        const card = createMovieCard(movie); // createMovieCard no necesita cambios
         if (card) fragment.appendChild(card);
     });
     gridContainer.appendChild(fragment);
@@ -433,9 +433,12 @@ export function renderNoResults(gridContainer, paginationContainer, activeFilter
         noResultsDiv.appendChild(createElement('p', { textContent: 'Intenta eliminar algunos filtros para obtener más resultados.' }));
     }
 
+    // ✨ CAMBIO APLICADO: 
+    // Se reemplaza 'clear-filters-btn-empty' por el nuevo sistema de componentes 'btn btn--outline'.
+    // Se mantiene el ID original para que el event listener en main.js siga funcionando sin cambios.
     noResultsDiv.appendChild(createElement('button', {
         id: 'clear-filters-from-empty',
-        className: 'clear-filters-btn-empty',
+        className: 'btn btn--outline',
         textContent: 'Limpiar todos los filtros'
     }));
     gridContainer.appendChild(noResultsDiv);
