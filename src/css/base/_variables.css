@@ -1,0 +1,46 @@
+/* Contiene todas las variables CSS globales (colores, tamaños, etc.) */
+:root {
+    /* ---- Colores ---- */
+    --color-accent-darker: #263238;
+    --color-accent-exclude-darker: #78909C;
+    --color-border-soft: rgba(0, 0, 0, 0.07);
+
+    /* ---- Radios y Tamaños ---- */
+    --radius-sm: 4px;
+    --radius-lg: 8px;
+    --radius-pill: 1rem;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.25rem;
+    --font-size-xl: 1.5rem;
+    --font-size-xxl: 2rem;
+
+    /* ---- Escala de Espaciado ---- */
+    --space-xxs: 0.25rem; /* 4px */
+    --space-xs:  0.5rem;  /* 8px */
+    --space-sm:  0.75rem; /* 12px */
+    --space-md:  1rem;    /* 16px */
+    --space-lg:  1.5rem;  /* 24px */
+    --space-xl:  2rem;    /* 32px */
+
+    /* ---- Tipografía y Transiciones ---- */
+    --line-height-normal: 1.4;
+    --line-height-relaxed: 1.65;
+    --transition-duration-fast: 0.2s;
+    --transition-duration-normal: 0.3s;
+    --transition-duration-slow: 0.6s;
+    --transition-timing-function: ease;
+
+    /* ---- Stacking Context (Capas) ---- */
+    --z-index-card-content: 20;
+    --z-index-autocomplete: 850;
+    --z-index-overlay: 999;
+    --z-index-sidebar-toggle: 1001;
+    --z-index-toast: 2000;
+}
+
+body.dark-mode {
+    --color-accent-darker: #B0BEC5;
+    --color-accent-exclude-darker: #607D8B;
+}

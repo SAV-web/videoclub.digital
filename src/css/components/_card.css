@@ -1,0 +1,316 @@
+/* ================================================================= */
+/* Componente: Tarjeta de Película y Estilos Compartidos
+/* ================================================================= */
+
+.movie-card {
+    perspective: 1000px;
+    aspect-ratio: 500 / 950;
+    transition: transform var(--transition-duration-fast) ease, box-shadow var(--transition-duration-fast) ease;
+}
+
+.flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    transform-style: preserve-3d;
+    transition: transform var(--transition-duration-slow);
+}
+.flip-card-inner.is-flipped { transform: rotateY(180deg); }
+
+@media (hover: hover) and (pointer: fine) {
+    body:not(.rotation-disabled) .movie-card:hover .flip-card-inner { 
+        transform: rotateY(180deg); 
+    }
+    .movie-card:not(.is-flipped):hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+    body.dark-mode .movie-card:not(.is-flipped):hover {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+}
+
+.flip-card-front,
+.flip-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+.flip-card-front {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+.flip-card-front img {
+    width: 100%;
+    height: 66%;
+    border: 3px solid var(--color-surface);
+    border-radius: var(--radius-lg);
+    flex-shrink: 0;
+    object-fit: cover;
+}
+
+.flip-card-front img.lazy-lqip {
+    filter: blur(10px);
+    transform: scale(1.1);
+    transition: filter var(--transition-duration-normal) ease-in-out, transform var(--transition-duration-normal) ease-in-out;
+}
+.flip-card-front img.lazy-lqip.loaded {
+    filter: blur(0);
+    transform: scale(1);
+}
+
+/* --- Estilos compartidos entre Tarjeta y Vista Rápida --- */
+.flip-card-front .movie-info,
+.quick-view-front .movie-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-xxs) var(--space-sm) var(--space-xs);
+    overflow: hidden;
+}
+
+.flip-card-front .title-director-block,
+.quick-view-front .title-director-block {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: left;
+}
+
+.flip-card-front .movie-info h3,
+.quick-view-front .movie-info h3 {
+    margin-bottom: var(--space-xxs);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-family: var(--font-title);
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.flip-card-front .front-director-info,
+.quick-view-front .front-director-info {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+}
+
+.flip-card-front .front-director-info a,
+.quick-view-front .front-director-info a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--transition-duration-fast);
+}
+
+body.rotation-disabled .flip-card-front .front-director-info a:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+}
+
+.flip-card-front .movie-meta,
+.quick-view-front .movie-meta {
+    padding-top: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+}
+
+.year-country-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.year-country-line > span[data-template="year"] {
+    font-weight: bold;
+}
+
+.country-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+}
+
+.star-rating-container {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+}
+
+.star-icon {
+    position: relative;
+    width: 13px;
+    height: 13px;
+}
+.star-icon-path {
+    stroke: var(--color-accent);
+    stroke-width: 1.5;
+}
+.star-icon-path--empty { fill: transparent; }
+.star-icon-path--filled {
+    fill: var(--color-accent);
+    clip-path: inset(0 100% 0 0);
+}
+
+.low-rating-circle {
+    display: none;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--color-accent);
+    border-radius: 50%;
+}
+
+.fi { font-size: 0.9rem; }
+
+/* --- Estilos específicos de la parte trasera de la tarjeta --- */
+
+.flip-card-back {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-xs) var(--space-sm);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    line-height: var(--line-height-normal);
+    transform: rotateY(180deg);
+}
+
+.back-meta-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-md);
+    width: 100%;
+    margin-bottom: var(--space-sm);
+    font-size: var(--font-size-sm);
+}
+
+.meta-group, .episode-duration-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3em;
+}
+
+.ratings-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+.rating-line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    text-decoration: none;
+}
+.rating-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+    color: var(--color-text-primary);
+    text-decoration: none;
+    font-size: var(--font-size-base);
+    font-weight: bold;
+}
+.rating-left.disabled {
+    pointer-events: none;
+    opacity: 0.7;
+}
+.rating-icon {
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 3px;
+    object-fit: contain;
+}
+
+.rating-bar-container {
+    flex-grow: 1;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background-color: var(--color-bg);
+    overflow: hidden;
+}
+.rating-bar {
+    width: 0;
+    height: 100%;
+    border-radius: 4px;
+    background-color: var(--color-accent);
+    transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.scrollable-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-index-card-content);
+    height: 25%;
+    padding: 0 var(--space-md) var(--space-md);
+    background-color: var(--color-surface);
+    scrollbar-width: none;
+    transition: height 3s ease-out;
+}
+.scrollable-content.no-transition { transition: none; }
+.scrollable-content.full-view {
+    height: 100%;
+    overflow-y: auto;
+}
+.scrollable-content::-webkit-scrollbar { display: none; }
+
+.scrollable-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to top, var(--color-surface) 20%, transparent);
+    pointer-events: none;
+    transition: opacity var(--transition-duration-normal) ease;
+}
+.scrollable-content.full-view::after { opacity: 0; }
+
+.details-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin: var(--space-sm) 0 var(--space-xs);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--color-border);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+}
+.detail-item {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+.detail-label { margin-right: 0.5em; }
+
+.plot-summary-final,
+.critic-review {
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--color-border);
+    opacity: 0.8;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+}
+.plot-summary-final { cursor: pointer; }
+.critic-review { margin-top: var(--space-sm); }

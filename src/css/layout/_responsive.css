@@ -1,0 +1,176 @@
+/* ================================================================= */
+/* Fichero de Layout: Responsive
+/* -----------------------------------------------------------------
+/* Contiene todas las media queries que adaptan la maquetación a
+/* diferentes tamaños de pantalla. Se carga al final para asegurar
+/* que sus reglas sobreescriban a los estilos base.
+/* ================================================================= */
+
+/* --- Tablets y móviles en horizontal (hasta 991px) --- */
+@media (max-width: 991px) {
+    .grid-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-sm);
+    }
+    
+    @media (orientation: landscape) {
+        .grid-container {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+}
+
+/* --- Caso especial para móviles muy estrechos con un solo resultado --- */
+@media (max-width: 400px) and (orientation: portrait) {
+    .grid-container:has(> .movie-card:only-child) {
+        grid-template-columns: 1fr;
+        max-width: 70%;
+        margin: 0 auto;
+    }
+}
+
+/* --- Móviles y tablets pequeñas (hasta 768px) --- */
+@media (max-width: 768px) {
+    /* Reducimos el tamaño de fuente base para mejorar la legibilidad en pantallas pequeñas */
+    html { 
+        font-size: 14px; 
+    }
+
+    /* El sidebar sale del flujo normal y se posiciona de forma fija */
+    .sidebar {
+        position: fixed;
+        width: 65px; /* Comienza colapsado */
+        flex-basis: auto; /* Reseteamos la base flexible, ya no es parte del layout flex principal */
+        transform: translateX(0);
+        background-color: transparent;
+        border-right: none;
+        transition: width var(--transition-duration-normal), 
+                    background-color var(--transition-duration-normal), 
+                    border-color var(--transition-duration-normal);
+    }
+
+    /* Ocultamos los elementos internos del sidebar cuando está colapsado */
+    .sidebar .sidebar-inner-wrapper { padding: var(--space-xs); align-items: flex-start; }
+    .sidebar .logo-area,
+    .sidebar .sidebar-static-filters,
+    .sidebar .sidebar-scrollable-filters { display: none; }
+    
+    /* Adaptamos los botones de control a una columna */
+    .sidebar .play-button-container { 
+        flex-direction: column; 
+        gap: var(--space-md); 
+        margin-top: var(--space-xs); 
+    }
+
+    /* Los botones de control se vuelven circulares y con fondo */
+    .sidebar .sidebar-control-button {
+        width: 44px;
+        height: 44px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-round);
+        background-color: var(--color-surface);
+        box-shadow: var(--shadow);
+    }
+
+    /* Estilos del sidebar cuando se expande en móvil */
+    body.sidebar-is-open .sidebar {
+        width: 200px;
+        background-color: var(--color-surface);
+        border-right: 2px solid var(--color-border);
+    }
+    body.sidebar-is-open .sidebar .sidebar-inner-wrapper { 
+        padding: var(--space-xl) var(--space-lg); 
+        align-items: initial; 
+    }
+    body.sidebar-is-open .sidebar .logo-area,
+    body.sidebar-is-open .sidebar .sidebar-static-filters,
+    body.sidebar-is-open .sidebar .sidebar-scrollable-filters { 
+        display: block; 
+    }
+    body.sidebar-is-open .sidebar .play-button-container { 
+        flex-direction: row; 
+        gap: var(--space-md); 
+        margin-top: 0; 
+    }
+
+    /* Los botones de control vuelven a su estado transparente en el sidebar expandido */
+    body.sidebar-is-open .sidebar .sidebar-control-button {
+        width: auto;
+        height: auto;
+        border: none;
+        background: none;
+        box-shadow: none;
+    }
+    body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Ajustes generales de layout para pantallas pequeñas */
+    .content { padding: var(--space-md) var(--space-md) var(--space-lg); }
+    .main-header { padding: var(--space-xs) var(--space-md); gap: var(--space-xs); flex-wrap: nowrap; }
+    .grid-container { grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); }
+    #sort-select { padding: 0.4rem; height: 36px; }
+    .search-form input { height: 36px; width: 100px; }
+}
+
+/* --- Escritorio (a partir de 769px) --- */
+@media (min-width: 769px) {
+    /*
+     * CORRECCIÓN APLICADA: 
+     * En lugar de cambiar 'width', ahora cambiamos 'flex-basis'.
+     * Flexbox se encargará automáticamente de que el contenido principal se expanda
+     * para rellenar el espacio, solucionando el bug del hueco.
+    */
+    body.sidebar-collapsed .sidebar {
+        flex-basis: 65px;
+    }
+    
+    body.sidebar-collapsed .sidebar-inner-wrapper {
+        padding: var(--space-lg) var(--space-xs);
+        align-items: center;
+    }
+    body.sidebar-collapsed .logo-area,
+    body.sidebar-collapsed .sidebar-static-filters,
+    body.sidebar-collapsed .sidebar-scrollable-filters {
+        display: none;
+    }
+    body.sidebar-collapsed .play-button-container {
+        flex-direction: column;
+        gap: var(--space-lg);
+        margin-top: var(--space-md);
+    }
+}
+
+/* --- Puntos de ruptura para rejilla de películas en pantallas grandes --- */
+
+/* Pantallas grandes (aprox. 992px+) */
+@media (min-width: 62em) {
+    .grid-container { 
+        grid-template-columns: repeat(4, 1fr); 
+        gap: var(--space-lg) var(--space-md); 
+    }
+    body.sidebar-collapsed .grid-container { 
+        grid-template-columns: repeat(5, 1fr); 
+    }
+}
+
+/* Pantallas más grandes (aprox. 1168px+) */
+@media (min-width: 73em) {
+    .grid-container { 
+        grid-template-columns: repeat(5, 1fr); 
+    }
+    body.sidebar-collapsed .grid-container { 
+        grid-template-columns: repeat(6, 1fr); 
+    }
+}
+
+/* Pantallas extra grandes (aprox. 1360px+) */
+@media (min-width: 85em) {
+    .grid-container { 
+        grid-template-columns: repeat(6, 1fr); 
+    }
+    body.sidebar-collapsed .grid-container { 
+        grid-template-columns: repeat(7, 1fr); 
+    }
+}

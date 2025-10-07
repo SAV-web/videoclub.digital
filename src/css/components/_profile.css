@@ -1,0 +1,16 @@
+/* ================================================================= */
+/* Componente: Perfil de Usuario
+/* ================================================================= */
+
+.profile-container {
+    margin-top: auto;
+    padding-top: var(--space-md);
+    text-align: center;
+}
+.profile-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    text-decoration: none;
+}
