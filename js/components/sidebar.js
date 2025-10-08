@@ -1,13 +1,6 @@
 // =================================================================
-//                      COMPONENTE SIDEBAR (MODIFICADO)
+//                      COMPONENTE SIDEBAR (LÓGICA RESTAURADA)
 // =================================================================
-// Este módulo encapsula toda la funcionalidad de la barra lateral.
-// Es uno de los componentes más complejos, ya que gestiona:
-// - El renderizado de filtros estáticos y dinámicos.
-// - El funcionamiento del slider de años (noUiSlider).
-// - La lógica de autocompletado para los campos de búsqueda (incluyendo accesibilidad y teclado).
-// - La visualización y eliminación de los filtros activos ("pills").
-// - El comportamiento de las secciones desplegables (acordeón). 
 
 import { CONFIG } from '../config.js';
 import { debounce, capitalizeWords, triggerPopAnimation, createElement } from '../utils.js';
@@ -28,15 +21,15 @@ import {
 } from '../state.js';
 import { CSS_CLASSES, SELECTORS } from '../constants.js';
 
-const ICON_REWIND = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`;
-const ICON_FORWARD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>`;
-const ICON_PAUSE = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
-// ✨ CAMBIO: Reemplazamos el SVG del círculo relleno por uno hueco (solo borde).
-const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
-// ✨ CAMBIO: Reemplazamos el SVG de pausa por el carácter de texto, que es más simple y nítido.
+const ICON_REWIND = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`;
+const ICON_FORWARD = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>`;
+const ICON_PAUSE = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+
+// ✨ CAMBIO: Se reemplaza el SVG del círculo por un SVG de un cuadrado (stop).
+const ICON_RECORD = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`;
+
 const ICON_PAUSE_SMALL = '⏸︎';
 
-// Referencias cacheadas a los elementos del DOM específicos de la sidebar.
 const dom = {
     sidebarInnerWrapper: document.querySelector('.sidebar-inner-wrapper'),
     rewindButton: document.querySelector('#rewind-button'),
@@ -52,8 +45,6 @@ const SELECTION_FRIENDLY_NAMES = new Map([
     ['C', 'Criterion'], ['M', '1001 Pelis'], ['A', 'Arrow'],
     ['K', 'Kino Lorber'], ['E', 'Eureka'], ['H', 'Series HBO'], ['N', 'Netflix']
 ]);
-
-// --- Lógica de renderizado de la UI --- 
 
 function renderFilterPills() {
     const activeFilters = getActiveFilters();
@@ -72,6 +63,9 @@ function renderFilterPills() {
         if (isExcluded) {
             const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: ICON_PAUSE_SMALL, attributes: { 'aria-hidden': 'true' } });
             pill.appendChild(removeButton);
+        } else {
+             const removeButton = createElement('span', { className: 'remove-filter-btn', textContent: '×', attributes: { 'aria-hidden': 'true' } });
+             pill.appendChild(removeButton);
         }
         return pill;
     };
@@ -112,7 +106,8 @@ function updateFilterLinksUI() {
         const type = link.dataset.filterType;
         const value = link.dataset.filterValue;
 
-        link.style.display = '';
+        // ✨ LÓGICA RESTAURADA: Volvemos a la manipulación directa de 'display'.
+        link.style.display = 'flex';
         link.classList.remove(CSS_CLASSES.ACTIVE, 'is-excluded');
 
         const isExcluded = (type === 'genre' && activeFilters.excludedGenres?.includes(value)) ||
@@ -125,7 +120,6 @@ function updateFilterLinksUI() {
     });
 }
 
-// --- Lógica de eventos ---
 
 async function handleFilterChange(type, value) {
     const activeFilters = getActiveFilters();
@@ -192,6 +186,37 @@ function initYearSlider() {
             const values = [null, null];
             values[index] = e.target.value;
             sliderInstance.set(values);
+        });
+    });
+}
+
+function setupYearInputSteppers() {
+    document.querySelectorAll('.year-input-wrapper').forEach(wrapper => {
+        const input = wrapper.querySelector('.year-input');
+        const stepperUp = wrapper.querySelector('.stepper-btn.stepper-up');
+        const stepperDown = wrapper.querySelector('.stepper-btn.stepper-down');
+        
+        const minYear = CONFIG.YEAR_MIN;
+        const maxYear = CONFIG.YEAR_MAX;
+
+        if (!input || !stepperUp || !stepperDown) return;
+
+        stepperUp.addEventListener('click', () => {
+            let currentValue = parseInt(input.value, 10);
+            if (isNaN(currentValue)) currentValue = minYear;
+            
+            const newValue = Math.min(currentValue + 1, maxYear);
+            input.value = newValue;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        stepperDown.addEventListener('click', () => {
+            let currentValue = parseInt(input.value, 10);
+            if (isNaN(currentValue)) currentValue = maxYear;
+
+            const newValue = Math.max(currentValue - 1, minYear);
+            input.value = newValue;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
         });
     });
 }
@@ -300,8 +325,6 @@ function handlePillClick(e) {
     }, { once: true });
 }
 
-
-
 function setupEventListeners() {
     if (dom.rewindButton) {
         dom.rewindButton.addEventListener('click', (e) => {
@@ -404,53 +427,6 @@ function setupEventListeners() {
     });
 }
 
-/**
- * ✨ NUEVA FUNCIÓN: Configura los listeners para los botones stepper de los inputs de año.
- */
-function setupYearInputSteppers() {
-    // Seleccionamos todos los contenedores de los inputs de año
-    document.querySelectorAll('.year-input-wrapper').forEach(wrapper => {
-        const input = wrapper.querySelector('.year-input');
-        const stepperUp = wrapper.querySelector('.stepper-btn.stepper-up');
-        const stepperDown = wrapper.querySelector('.stepper-btn.stepper-down');
-        
-        // Obtenemos los límites del fichero de configuración
-        const minYear = CONFIG.YEAR_MIN;
-        const maxYear = CONFIG.YEAR_MAX;
-
-        if (!input || !stepperUp || !stepperDown) return;
-
-        // Listener para el botón de 'subir'
-        stepperUp.addEventListener('click', () => {
-            let currentValue = parseInt(input.value, 10);
-            if (isNaN(currentValue)) currentValue = minYear; // Si el valor no es un número, empezar por el mínimo
-            
-            // Incrementamos el valor, pero sin pasarnos del máximo
-            const newValue = Math.min(currentValue + 1, maxYear);
-            input.value = newValue;
-
-            // ¡CRÍTICO! Disparamos el evento 'change' para que el slider (noUiSlider) se actualice.
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-
-        // Listener para el botón de 'bajar'
-        stepperDown.addEventListener('click', () => {
-            let currentValue = parseInt(input.value, 10);
-            if (isNaN(currentValue)) currentValue = maxYear; // Si el valor no es un número, empezar por el máximo
-
-            // Decrementamos el valor, pero sin bajar del mínimo
-            const newValue = Math.max(currentValue - 1, minYear);
-            input.value = newValue;
-
-            // Disparamos el evento 'change' también aquí.
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-    });
-}
-
-/**
- * Función pública que se llama desde main.js para inicializar todo el componente.
- */
 export function initSidebar() {
     if (window.innerWidth <= 768) {
         if (dom.rewindButton) {

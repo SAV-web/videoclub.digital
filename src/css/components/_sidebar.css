@@ -3,15 +3,7 @@
 /* ================================================================= */
 
 .sidebar {
-    /* ✨ CORRECCIÓN CLAVE: 
-       - Se establece una base flexible y se evita que se encoja.
-       - La transición ahora se aplica a 'flex-basis' en lugar de 'width'.
-    */
-    flex-shrink: 0;
-    flex-basis: 200px; /* Ancho base del sidebar */
-    width: 200px; /* Fallback para navegadores antiguos */
-    
-    transition: flex-basis var(--transition-duration-normal), 
+    transition: width var(--transition-duration-normal), 
                 background-color var(--transition-duration-normal), 
                 border-color var(--transition-duration-normal);
 }
@@ -52,19 +44,29 @@
     margin-bottom: var(--space-lg);
 }
 
+/* ✨ CORRECCIÓN: Se eliminó 'font-size' y se añadieron propiedades flex para centrar. */
 .sidebar-control-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 0;
     border: none;
     background: none;
     color: var(--color-accent);
     cursor: pointer;
-    font-size: var(--font-size-xl);
     line-height: 1;
     transition: transform var(--transition-duration-fast) ease;
 }
 
 .sidebar-control-button:hover { transform: scale(1.1); }
 .sidebar-control-button:active { transform: scale(0.95); transition-duration: 0.1s; }
+
+/* ✨ NUEVA REGLA: Estandariza el tamaño de todos los iconos del control del sidebar. */
+.sidebar-control-button .sidebar-icon,
+.sidebar-control-button .theme-icon {
+    width: 24px;
+    height: 24px;
+}
 
 .active-filters-list {
     display: flex;
@@ -74,11 +76,15 @@
     min-height: 1px;
 }
 
+@keyframes pill-pop-in {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
 .filter-pill {
     display: flex;
     align-items: center;
     padding: var(--space-xxs) var(--space-sm);
-    border: none;
     border-radius: var(--radius-pill);
     background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -86,7 +92,7 @@
     cursor: pointer;
     font-size: var(--font-size-xs);
     font-weight: bold;
-    animation: fadeIn var(--transition-duration-normal) var(--transition-timing-function);
+    animation: pill-pop-in 0.3s var(--transition-timing-function);
 }
 .filter-pill--exclude {
     background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
@@ -105,9 +111,9 @@
 .filter-pill .remove-filter-btn:hover { opacity: 1; }
 .filter-pill .remove-filter-btn:active { transform: scale(0.9); }
 
-@keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-@keyframes fadeOut { to { opacity: 0; transform: scale(0.8); } }
-.filter-pill.is-removing { animation: fadeOut 0.2s ease-out forwards; }
+@keyframes fadeOutPill { to { opacity: 0; transform: scale(0.8); } }
+.filter-pill.is-removing { animation: fadeOutPill 0.2s ease-out forwards; }
+
 
 .sidebar-scrollable-filters {
     flex-grow: 1;
@@ -157,11 +163,12 @@
 }
 .collapsible-section.active .section-content { max-height: 500px; }
 
+/* ✨ LÓGICA RESTAURADA: Se eliminan las transiciones complejas. */
 .filter-link {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-xxs) var(--space-xs);
+    padding: 0.4rem 0.5rem;
     border: none;
     border-radius: var(--radius-sm);
     background: none;
@@ -172,14 +179,17 @@
     font: inherit;
     font-size: var(--font-size-sm);
     font-weight: bold;
+    
     transition: color var(--transition-duration-fast), 
                 background-color var(--transition-duration-fast),
                 transform var(--transition-duration-fast);
 }
+
 .filter-link:hover {
     background-color: var(--color-bg);
     color: var(--color-text-primary);
 }
+
 .filter-link:active {
     transform: scale(0.98);
     transition-duration: 0.1s;
@@ -296,19 +306,17 @@
 }
 #year-input-container {
     display: flex;
-    justify-content: center; /* Mantiene los elementos centrados */
+    justify-content: center;
     align-items: center;
-    gap: 0.2rem; /* Un poco más de aire que 0.1, pero aún compacto */
-    width: 100%; /* Hacemos que el contenedor ocupe todo el ancho disponible */
+    gap: 0.2rem;
+    width: 100%;
 }
-/* ✨ NUEVO: Estilo para el separador, que antes no tenía clase */
 .year-range-separator {
     color: var(--color-text-secondary);
     font-weight: bold;
     transform: translateY(-1px);
-    flex-shrink: 0; /* Evita que el separador se encoja */
+    flex-shrink: 0;
 }
-
 #year-slider.noUi-target {
     height: 6px;
     border: 1px solid var(--color-border);
@@ -337,16 +345,14 @@
 
 .year-input {
     width: 100%;
-    /* Reducimos el padding vertical */
-    padding: 0.35rem var(--space-xs); 
+    padding: 0.35rem var(--space-xs);
     padding-right: 25px !important;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     background-color: var(--color-bg);
     color: var(--color-text-primary);
     text-align: center;
-    /* Reducimos el tamaño de la fuente */
-    font-size: 0.8rem; 
+    font-size: 0.8rem;
     -moz-appearance: textfield;
 }
 .year-input::-webkit-outer-spin-button,
@@ -363,17 +369,15 @@ body.dark-mode .year-input:focus {
     box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2);
 }
 
-/* --- Componente: Input de Año con Steppers (NUEVO) --- */
 .year-input-wrapper {
     position: relative;
-    flex: 1; /* Esto hará que cada wrapper ocupe el 50% del espacio restante */
-    min-width: 0; /* Importante en contenedores flex para evitar desbordamientos */
+    flex: 1;
+    min-width: 0;
 }
-
 .year-input-stepper {
     position: absolute;
     top: 0;
-    right: 1px; /* Posicionamiento fino para alinearse con el borde */
+    right: 1px;
     bottom: 0;
     display: flex;
     flex-direction: column;
@@ -383,19 +387,16 @@ body.dark-mode .year-input:focus {
     background-color: var(--color-surface);
     border-left: 1px solid var(--color-border);
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    opacity: 0; /* Oculto por defecto */
+    opacity: 0;
     visibility: hidden;
-    pointer-events: none; /* No interactuable cuando está oculto */
+    pointer-events: none;
     transition: opacity var(--transition-duration-fast), visibility var(--transition-duration-fast);
 }
-
-/* Muestra los steppers cuando el ratón está sobre el contenedor */
 .year-input-wrapper:hover .year-input-stepper {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
 }
-
 .stepper-btn {
     flex: 1;
     width: 100%;
@@ -403,30 +404,21 @@ body.dark-mode .year-input:focus {
     background: none;
     color: var(--color-text-secondary);
     cursor: pointer;
-    font-size: 8px; /* Tamaño pequeño para las flechas */
+    font-size: 8px;
     line-height: 1;
     padding: 0;
     transition: background-color var(--transition-duration-fast);
 }
-
 .stepper-btn:hover {
     background-color: var(--color-border-soft);
     color: var(--color-text-primary);
 }
-
 .stepper-btn:active {
     background-color: var(--color-border);
 }
-
 .stepper-btn.stepper-up {
     border-bottom: 1px solid var(--color-border);
     border-radius: 0 var(--radius-sm) 0 0;
-}
-
-/* Hacemos espacio en el input para que el texto no quede debajo de las flechas */
-.year-input {
-    width: 100%; /* Ahora ocupa el 100% de su nuevo wrapper */
-    padding-right: 25px !important; /* Añadimos !important para sobreescribir estilos inline si los hubiera */
 }
 
 .sidebar-inner-wrapper.is-compact { padding-top: var(--space-md); }
