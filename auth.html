@@ -1,53 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- ================================================================= -->
-    <!-- 1. METADATOS ESENCIALES Y CONFIGURACIÓN DEL VIEWPORT
-    <!-- ================================================================= -->
     <meta charset="UTF-8">
     <meta name="color-scheme" content="light dark">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso de Usuario | videoclub.digital</title>
     <meta name="description" content="Accede a tu cuenta o regístrate para guardar tus valoraciones y listas en videoclub.digital.">
 
-    <!-- ================================================================= -->
-    <!-- 2. OPTIMIZACIÓN DE CARGA Y CSS CRÍTICO
-    <!-- ================================================================= -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin>
 
     <style>
-      /* --- INICIO DEL CSS CRÍTICO COMPLETADO --- */
       :root{--color-bg:#f5f5f5;--color-surface:#FFFFFF;--color-text-primary:#333333;--color-text-secondary:#666666;--color-accent:#37474F;--color-accent-exclude:#90A4AE;--color-border:#E0E0E0;--font-title:'Roboto Slab',serif;--font-body:'Roboto',sans-serif;--radius-md:6px;--radius-round:50%;--shadow:0 5px 15px rgba(0,0,0,0.08);}
       body.dark-mode{--color-bg:#121212;--color-surface:#282828;--color-text-primary:#E0E0E0;--color-text-secondary:#AAAAAA;--color-accent:#90A4AE;--color-accent-exclude:#546E7A;--color-border:#333333;--shadow:0 5px 20px rgba(0,0,0,0.25)}
       *{box-sizing:border-box;margin:0;padding:0}
       body{background-color:var(--color-bg);color:var(--color-text-primary);font-family:var(--font-body)}
-      /* --- FIN DEL CSS CRÍTICO --- */
     </style>
 
-    <!-- ================================================================= -->
-    <!-- 3. CSS NO CRÍTICO Y DE TERCEROS (ASÍNCRONO)
-    <!-- ================================================================= -->
     <link rel="stylesheet" href="src/css/main.css">
-    <noscript><link rel="stylesheet" href="src/css/main.css"></noscript>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Roboto:wght@400;700&display=swap" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Roboto:wght@400;700&display=swap"></noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Roboto:wght@400;700&display=swap">
+    <noscript>
+        <link rel="stylesheet" href="src/css/main.css">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Roboto:wght@400;700&display=swap">
+    </noscript>
 </head>
 <body>
 
     <main class="auth-container">
         <div class="auth-box">
-            <div class="auth-header">
+            <header class="auth-header">
                 <a href="index.html" class="auth-logo">
                     <span>videoclub</span>.<span>digital</span>
                 </a>
-            </div>
+            </header>
 
-            <!-- Vista de Inicio de Sesión (Login) -->
-            <div id="login-view">
-                <h2>Iniciar Sesión</h2>
-                <form id="login-form">
+            <section id="login-view" aria-labelledby="login-title">
+                <h2 id="login-title">Iniciar Sesión</h2>
+                <form id="login-form" action="#" method="post">
                     <div class="form-group">
                         <label for="login-email">Email</label>
                         <input type="email" id="login-email" name="email" required autocomplete="email">
@@ -62,21 +52,20 @@
                     ¿No tienes cuenta? 
                     <button type="button" id="show-register-view">Regístrate</button>
                 </div>
-            </div>
+            </section>
 
-            <!-- Vista de Registro -->
-            <div id="register-view" style="display: none;">
-                <h2>Crear Cuenta</h2>
-                <form id="register-form">
+            <section id="register-view" style="display: none;" aria-labelledby="register-title">
+                <h2 id="register-title">Crear Cuenta</h2>
+                <form id="register-form" action="#" method="post">
                     <div class="form-group">
                         <label for="register-email">Email</label>
-                        <input type="email" id="register-email" name="email" required autocomplete="email">
-                        <small>Te enviaremos un email de confirmación.</small>
+                        <input type="email" id="register-email" name="email" required autocomplete="email" aria-describedby="email-hint">
+                        <small id="email-hint">Te enviaremos un email de confirmación.</small>
                     </div>
                     <div class="form-group">
                         <label for="register-password">Contraseña</label>
-                        <input type="password" id="register-password" name="password" required minlength="6" autocomplete="new-password">
-                        <small>Mínimo 6 caracteres.</small>
+                        <input type="password" id="register-password" name="password" required minlength="6" autocomplete="new-password" aria-describedby="password-hint">
+                        <small id="password-hint">Mínimo 6 caracteres.</small>
                     </div>
                     <button type="submit" class="auth-button">Crear Cuenta</button>
                 </form>
@@ -84,14 +73,14 @@
                     ¿Ya tienes una cuenta? 
                     <button type="button" id="show-login-view">Inicia sesión</button>
                 </div>
-            </div>
+            </section>
 
-            <div id="auth-message" class="auth-message" style="display: none;" role="alert"></div>
+            <div id="auth-message" class="auth-message" style="display: none;" role="alert" aria-live="assertive"></div>
 
         </div>
     </main>
 
-    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="src/js/auth.js"></script>
 
 </body>
 </html>
