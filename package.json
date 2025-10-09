@@ -4,11 +4,12 @@
   "description": "Static website for videoclub.digital",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2"
+    "start": "node server.js",
+    "build": "node build.js"
   },
   "author": "Gemini",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "dotenv": "^17.2.3"
+  }
 }

@@ -1,0 +1,11 @@
+# Dependencies
+/node_modules
+
+# Environment variables
+.env
+
+# Build output
+/dist
+
+# Generated config
+/src/js/config.js
