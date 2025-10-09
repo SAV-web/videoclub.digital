@@ -236,7 +236,12 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
     border-radius: 3px;
     object-fit: contain;
 }
-
+svg.rating-icon {
+    fill: currentColor;
+}
+body.dark-mode .rating-left {
+    color: var(--color-text-primary);
+}
 .rating-bar-container {
     flex-grow: 1;
     width: 100%;
