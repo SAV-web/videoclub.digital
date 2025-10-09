@@ -50,7 +50,8 @@ html {
 
 /* Estilos del sidebar cuando se expande en móvil */
 body.sidebar-is-open .sidebar {
-    width: 200px;
+    width: 280px; /* Más ancho para mejor legibilidad en móvil */
+    font-size: 16px; /* Texto más grande */
     background-color: var(--color-surface);
     border-right: 2px solid var(--color-border);
 }
@@ -82,9 +83,17 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
 
 /* Layout y grid base para móvil */
 .content { 
-    padding: var(--space-md) var(--space-md) var(--space-lg); 
+    padding: var(--space-md) var(--space-md) 80px; /* Aumentado para dejar espacio al header fijo */
 }
 .main-header { 
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    z-index: var(--z-index-header);
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-bg);
     padding: var(--space-xs) var(--space-md); 
     gap: var(--space-xs); 
     flex-wrap: nowrap; 
