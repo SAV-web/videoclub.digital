@@ -127,6 +127,21 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
     }
 }
 
+/* --- Posicionamiento de botones flotantes en móvil --- */
+.back-to-top {
+    bottom: 80px; /* Ajustado para estar sobre el header inferior */
+    right: var(--space-md);
+}
+
+.profile-container {
+    position: fixed;
+    bottom: 80px; /* Ajustado para estar sobre el header inferior */
+    left: var(--space-md);
+    z-index: var(--z-index-sidebar);
+    margin-top: 0; /* Resetear el margen automático */
+    padding-top: 0; /* Resetear el padding */
+}
+
 
 /* --- TABLET Y SUPERIOR (a partir de 769px) --- */
 @media (min-width: 769px) {
@@ -193,9 +208,28 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
         margin-top: var(--space-md);
     }
 
+    /* --- Reset de botones flotantes para escritorio --- */
+    .profile-container {
+        position: static; /* Resetear posición fija */
+        margin-top: auto; /* Restaurar margen original */
+        padding-top: var(--space-md); /* Restaurar padding original */
+    }
+    .back-to-top {
+        bottom: var(--space-md); /* Restaurar posición original */
+        right: var(--space-xl);
+    }
+
     /* Restauramos los estilos de layout y grid para escritorio */
     .content { padding: 1rem 3rem 0.5rem; }
-    .main-header { padding: 1.5rem 3rem 1rem; gap: 1rem 1.5rem; flex-wrap: wrap; }
+    .main-header { 
+        position: sticky;
+        top: 0;
+        bottom: auto; /* Resetear la posición inferior de móvil */
+        border-top: none; /* Resetear el borde de móvil */
+        padding: 1.5rem 3rem 1rem; 
+        gap: 1rem 1.5rem; 
+        flex-wrap: wrap; 
+    }
     .grid-container { grid-template-columns: repeat(3, 1fr); gap: 1.5rem 1rem; }
     #sort-select { padding: 0.5rem; height: 40px; }
     .search-form input { height: 40px; width: 115px; }
