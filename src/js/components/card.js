@@ -150,8 +150,8 @@ function populateCardText(elements, movieData) {
 
 function setupCardRatings(elements, movieData) {
     const isValidHttpUrl = (s) => s && (s.startsWith('http://') || s.startsWith('https://'));
-    elements.faIcon.src = CONFIG.FA_ICON_URL;
-    elements.imdbIcon.src = CONFIG.IMDB_ICON_URL;
+
+
 
     if (isValidHttpUrl(movieData.fa_id)) {
         elements.faLink.href = movieData.fa_id;
@@ -269,7 +269,6 @@ function createMovieCard(movieData) {
     populateCardText(elements, movieData);
     setupCardRatings(elements, movieData);
 
-    elements.wikipediaIcon.src = CONFIG.WIKIPEDIA_ICON_URL;
     elements.wikipediaLink.style.display = 'flex';
 
     if (movieData.wikipedia && movieData.wikipedia.startsWith('http')) {
