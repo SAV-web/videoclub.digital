@@ -1,26 +1,108 @@
 /* ================================================================= */
-/* Fichero de Layout: Responsive
+/* Fichero de Layout: Responsive (Mobile-First)
 /* -----------------------------------------------------------------
-/* Contiene todas las media queries que adaptan la maquetación a
-/* diferentes tamaños de pantalla. Se carga al final para asegurar
-/* que sus reglas sobreescriban a los estilos base.
+/* Contiene todas las media queries que adaptan la maquetación.
+/* El enfoque es "Mobile-First": los estilos base son para móvil
+/* y se añade complejidad progresivamente con `min-width`.
 /* ================================================================= */
 
-/* --- Tablets y móviles en horizontal (hasta 991px) --- */
-@media (max-width: 991px) {
-    .grid-container {
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-sm);
-    }
-    
-    @media (orientation: landscape) {
-        .grid-container {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
+/* --- ESTILOS BASE (MÓVIL - hasta 768px) --- */
+
+html { 
+    font-size: 14px; 
 }
 
-/* --- Caso especial para móviles muy estrechos con un solo resultado --- */
+/* En móvil, el sidebar es un panel flotante, fijo en la pantalla */
+.sidebar {
+    position: fixed;
+    width: 65px; /* Comienza colapsado */
+    transform: translateX(0);
+    background-color: transparent;
+    border-right: none;
+    transition: width var(--transition-duration-normal), 
+                background-color var(--transition-duration-normal), 
+                border-color var(--transition-duration-normal);
+}
+
+.sidebar .sidebar-inner-wrapper { 
+    padding: var(--space-xs); 
+    align-items: flex-start; 
+}
+.sidebar .logo-area,
+.sidebar .sidebar-static-filters,
+.sidebar .sidebar-scrollable-filters { 
+    display: none; 
+}
+.sidebar .play-button-container { 
+    flex-direction: column; 
+    gap: var(--space-md); 
+    margin-top: var(--space-xs); 
+}
+
+.sidebar .sidebar-control-button {
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-round);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow);
+}
+
+/* Estilos del sidebar cuando se expande en móvil */
+body.sidebar-is-open .sidebar {
+    width: 200px;
+    background-color: var(--color-surface);
+    border-right: 2px solid var(--color-border);
+}
+body.sidebar-is-open .sidebar .sidebar-inner-wrapper { 
+    padding: var(--space-xl) var(--space-lg); 
+    align-items: initial; 
+}
+body.sidebar-is-open .sidebar .logo-area,
+body.sidebar-is-open .sidebar .sidebar-static-filters,
+body.sidebar-is-open .sidebar .sidebar-scrollable-filters { 
+    display: block; 
+}
+body.sidebar-is-open .sidebar .play-button-container { 
+    flex-direction: row; 
+    gap: var(--space-md); 
+    margin-top: 0; 
+}
+body.sidebar-is-open .sidebar .sidebar-control-button {
+    width: auto;
+    height: auto;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
+    width: 24px;
+    height: 24px;
+}
+
+/* Layout y grid base para móvil */
+.content { 
+    padding: var(--space-md) var(--space-md) var(--space-lg); 
+}
+.main-header { 
+    padding: var(--space-xs) var(--space-md); 
+    gap: var(--space-xs); 
+    flex-wrap: nowrap; 
+}
+.grid-container { 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: var(--space-sm); 
+}
+#sort-select { 
+    padding: 0.4rem; 
+    height: 36px; 
+}
+.search-form input { 
+    height: 36px; 
+    width: 100px; 
+}
+
+/* Caso especial para 1 resultado en móvil estrecho */
 @media (max-width: 400px) and (orientation: portrait) {
     .grid-container:has(> .movie-card:only-child) {
         grid-template-columns: 1fr;
@@ -29,103 +111,64 @@
     }
 }
 
-/* --- Móviles y tablets pequeñas (hasta 768px) --- */
-@media (max-width: 768px) {
-    /* Reducimos el tamaño de fuente base para mejorar la legibilidad en pantallas pequeñas */
+/* Caso especial para móvil en horizontal */
+@media (max-height: 500px) and (orientation: landscape) {
+    .grid-container {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+
+/* --- TABLET Y SUPERIOR (a partir de 769px) --- */
+@media (min-width: 769px) {
+    /* Restauramos el tamaño de fuente base */
     html { 
-        font-size: 14px; 
+        font-size: 16px; 
     }
 
-    /* El sidebar sale del flujo normal y se posiciona de forma fija */
+    /* El sidebar vuelve a ser parte del layout principal */
     .sidebar {
-        position: fixed;
-        width: 65px; /* Comienza colapsado */
-        flex-basis: auto; /* Reseteamos la base flexible, ya no es parte del layout flex principal */
-        transform: translateX(0);
-        background-color: transparent;
-        border-right: none;
-        transition: width var(--transition-duration-normal), 
-                    background-color var(--transition-duration-normal), 
-                    border-color var(--transition-duration-normal);
-    }
-
-    /* Ocultamos los elementos internos del sidebar cuando está colapsado */
-    .sidebar .sidebar-inner-wrapper { padding: var(--space-xs); align-items: flex-start; }
-    .sidebar .logo-area,
-    .sidebar .sidebar-static-filters,
-    .sidebar .sidebar-scrollable-filters { display: none; }
-    
-    /* Adaptamos los botones de control a una columna */
-    .sidebar .play-button-container { 
-        flex-direction: column; 
-        gap: var(--space-md); 
-        margin-top: var(--space-xs); 
-    }
-
-    /* Los botones de control se vuelven circulares y con fondo */
-    .sidebar .sidebar-control-button {
-        width: 44px;
-        height: 44px;
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-round);
-        background-color: var(--color-surface);
-        box-shadow: var(--shadow);
-    }
-
-    /* Estilos del sidebar cuando se expande en móvil */
-    body.sidebar-is-open .sidebar {
+        position: sticky;
+        flex-basis: 200px; /* Ancho base del sidebar */
         width: 200px;
+        transform: none; /* Reseteamos la transformación de móvil */
         background-color: var(--color-surface);
         border-right: 2px solid var(--color-border);
     }
-    body.sidebar-is-open .sidebar .sidebar-inner-wrapper { 
+
+    .sidebar .sidebar-inner-wrapper { 
         padding: var(--space-xl) var(--space-lg); 
-        align-items: initial; 
+        align-items: initial;
     }
-    body.sidebar-is-open .sidebar .logo-area,
-    body.sidebar-is-open .sidebar .sidebar-static-filters,
-    body.sidebar-is-open .sidebar .sidebar-scrollable-filters { 
+    .sidebar .logo-area,
+    .sidebar .sidebar-static-filters,
+    .sidebar .sidebar-scrollable-filters { 
         display: block; 
     }
-    body.sidebar-is-open .sidebar .play-button-container { 
+    .sidebar .play-button-container { 
         flex-direction: row; 
         gap: var(--space-md); 
-        margin-top: 0; 
+        margin-top: 0;
+        margin-bottom: var(--space-lg);
     }
 
-    /* Los botones de control vuelven a su estado transparente en el sidebar expandido */
-    body.sidebar-is-open .sidebar .sidebar-control-button {
+    /* Los botones de control vuelven a ser transparentes y sin borde */
+    .sidebar .sidebar-control-button {
         width: auto;
         height: auto;
         border: none;
         background: none;
         box-shadow: none;
     }
-    body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
+    .sidebar .sidebar-control-button.theme-toggle {
         width: 24px;
         height: 24px;
     }
 
-    /* Ajustes generales de layout para pantallas pequeñas */
-    .content { padding: var(--space-md) var(--space-md) var(--space-lg); }
-    .main-header { padding: var(--space-xs) var(--space-md); gap: var(--space-xs); flex-wrap: nowrap; }
-    .grid-container { grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); }
-    #sort-select { padding: 0.4rem; height: 36px; }
-    .search-form input { height: 36px; width: 100px; }
-}
-
-/* --- Escritorio (a partir de 769px) --- */
-@media (min-width: 769px) {
-    /*
-     * CORRECCIÓN APLICADA: 
-     * En lugar de cambiar 'width', ahora cambiamos 'flex-basis'.
-     * Flexbox se encargará automáticamente de que el contenido principal se expanda
-     * para rellenar el espacio, solucionando el bug del hueco.
-    */
+    /* Comportamiento del sidebar colapsado en escritorio */
     body.sidebar-collapsed .sidebar {
         flex-basis: 65px;
     }
-    
     body.sidebar-collapsed .sidebar-inner-wrapper {
         padding: var(--space-lg) var(--space-xs);
         align-items: center;
@@ -140,12 +183,18 @@
         gap: var(--space-lg);
         margin-top: var(--space-md);
     }
+
+    /* Restauramos los estilos de layout y grid para escritorio */
+    .content { padding: 1rem 3rem 0.5rem; }
+    .main-header { padding: 1.5rem 3rem 1rem; gap: 1rem 1.5rem; flex-wrap: wrap; }
+    .grid-container { grid-template-columns: repeat(3, 1fr); gap: 1.5rem 1rem; }
+    #sort-select { padding: 0.5rem; height: 40px; }
+    .search-form input { height: 40px; width: 115px; }
 }
 
 /* --- Puntos de ruptura para rejilla de películas en pantallas grandes --- */
 
-/* Pantallas grandes (aprox. 992px+) */
-@media (min-width: 62em) {
+@media (min-width: 62em) { /* aprox. 992px+ */
     .grid-container { 
         grid-template-columns: repeat(4, 1fr); 
         gap: var(--space-lg) var(--space-md); 
@@ -155,8 +204,7 @@
     }
 }
 
-/* Pantallas más grandes (aprox. 1168px+) */
-@media (min-width: 73em) {
+@media (min-width: 73em) { /* aprox. 1168px+ */
     .grid-container { 
         grid-template-columns: repeat(5, 1fr); 
     }
@@ -165,8 +213,7 @@
     }
 }
 
-/* Pantallas extra grandes (aprox. 1360px+) */
-@media (min-width: 85em) {
+@media (min-width: 85em) { /* aprox. 1360px+ */
     .grid-container { 
         grid-template-columns: repeat(6, 1fr); 
     }
