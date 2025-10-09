@@ -14,19 +14,19 @@
  */
 
 /* --- 1. ESTILOS BASE Y GLOBALES --- */
-@import "base/_variables.css";
-@import "base/_globals.css";
+@import "base/variables.css";
+@import "base/globals.css";
 
 /* --- 2. COMPONENTES DE UI --- */
-@import "components/_auth.css";
-@import "components/_button.css";
-@import "components/_card.css";
-@import "components/_header.css";
-@import "components/_modal.css";
-@import "components/_profile.css";
-@import "components/_sidebar.css";
-@import "components/_ui-general.css";
+@import "components/auth.css";
+@import "components/button.css";
+@import "components/card.css";
+@import "components/header.css";
+@import "components/modal.css";
+@import "components/profile.css";
+@import "components/sidebar.css";
+@import "components/ui-general.css";
 
 /* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
-@import "layout/_main.css";
-@import "layout/_responsive.css";
+@import "layout/main.css";
+@import "layout/responsive.css";
