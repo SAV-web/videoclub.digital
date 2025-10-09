@@ -314,3 +314,10 @@ body.rotation-disabled .flip-card-front .front-director-info a:hover {
 }
 .plot-summary-final { cursor: pointer; }
 .critic-review { margin-top: var(--space-sm); }
+
+[data-template="wikipedia-link"] > .rating-icon {
+    width: 1.7em;
+    height: 1.7em;
+    /* Un pequeño ajuste vertical para centrarlo mejor si fuese necesario */
+    transform: translateY(-1px); 
+}

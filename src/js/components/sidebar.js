@@ -19,15 +19,12 @@ import {
     setFilter,
     toggleExcludedFilter,
 } from '../state.js';
-import { CSS_CLASSES, SELECTORS } from '../constants.js';
+// ✨ MEJORA: Importamos los iconos SVG centralizados desde el fichero de constantes.
+import { CSS_CLASSES, SELECTORS, ICONS } from '../constants.js';
 
+// Iconos para botones de control que no necesitan cambiar dinámicamente.
 const ICON_REWIND = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`;
 const ICON_FORWARD = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>`;
-const ICON_PAUSE = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
-
-// ✨ CAMBIO: Se reemplaza el SVG del círculo por un SVG de un cuadrado (stop).
-const ICON_RECORD = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`;
-
 const ICON_PAUSE_SMALL = '⏸︎';
 
 const dom = {
@@ -106,7 +103,6 @@ function updateFilterLinksUI() {
         const type = link.dataset.filterType;
         const value = link.dataset.filterValue;
 
-        // ✨ LÓGICA RESTAURADA: Volvemos a la manipulación directa de 'display'.
         link.style.display = 'flex';
         link.classList.remove(CSS_CLASSES.ACTIVE, 'is-excluded');
 
@@ -348,13 +344,21 @@ function setupEventListeners() {
         dom.toggleRotationBtn.addEventListener('click', (e) => {
             document.body.classList.toggle('rotation-disabled');
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-            
-            e.currentTarget.innerHTML = isRotationDisabled ? ICON_RECORD : ICON_PAUSE;
-            e.currentTarget.setAttribute('aria-label', isRotationDisabled ? 'Activar rotación de tarjetas' : 'Pausar rotación de tarjetas');
+            const button = e.currentTarget;
+
+            // ✨ LÓGICA DE ACTUALIZACIÓN: Cambia el icono y el tooltip simultáneamente.
+            if (isRotationDisabled) {
+                button.innerHTML = ICONS.SQUARE_STOP;
+                button.setAttribute('aria-label', 'Activar rotación de tarjetas');
+                button.setAttribute('title', 'Giro automático');
+            } else {
+                button.innerHTML = ICONS.PAUSE;
+                button.setAttribute('aria-label', 'Pausar rotación de tarjetas');
+                button.setAttribute('title', 'Vista Rápida');
+            }
             
             localStorage.setItem('rotationState', isRotationDisabled ? 'disabled' : 'enabled');
-            
-            triggerPopAnimation(e.currentTarget);
+            triggerPopAnimation(button);
         });
     }
 
@@ -470,6 +474,21 @@ export function initSidebar() {
             link.append(excludeBtn);
         }
     });
+    
+    // ✨ INICIALIZACIÓN: Establece el estado visual correcto del botón de rotación al cargar la página.
+    const toggleBtn = dom.toggleRotationBtn;
+    if (toggleBtn) {
+        const isRotationDisabled = document.body.classList.contains('rotation-disabled');
+        if (isRotationDisabled) {
+            toggleBtn.innerHTML = ICONS.SQUARE_STOP;
+            toggleBtn.setAttribute('aria-label', 'Activar rotación de tarjetas');
+            toggleBtn.setAttribute('title', 'Giro automático');
+        } else {
+            toggleBtn.innerHTML = ICONS.PAUSE;
+            toggleBtn.setAttribute('aria-label', 'Pausar rotación de tarjetas');
+            toggleBtn.setAttribute('title', 'Vista Rápida');
+        }
+    }
 
     initYearSlider();
     setupEventListeners();

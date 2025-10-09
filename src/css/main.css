@@ -28,5 +28,5 @@
 @import "components/ui-general.css";
 
 /* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
-@import "layout/main.css";
+@import "layout/principal.css";
 @import "layout/responsive.css";

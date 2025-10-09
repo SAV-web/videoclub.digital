@@ -330,34 +330,30 @@ function handleCardClick(e) {
         document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
         return;
     }
+    // Permitir que los enlaces dentro de la tarjeta funcionen normalmente.
     if (e.target.closest('a')) return;
 
-    // --- LÓGICA DE DECISIÓN SIMPLIFICADA ---
+    // --- ✨ LÓGICA REVISADA ---
     const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-    
+
+    // Si la rotación automática está DESACTIVADA (modo Vista Rápida ⏹︎),
+    // el clic abrirá el modal.
     if (isRotationDisabled) {
-        // MODO VISTA RÁPIDA (⏺︎ activado): Siempre abrimos el modal.
         openModal(cardElement);
-    } else {
-        // MODO VOLTEO (⏸︎ activado): Volteamos la tarjeta.
-        const innerCard = cardElement.querySelector(SELECTORS.FLIP_CARD_INNER);
-        
-        if (innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED)) {
-            collapseScrollableContentInstantly(cardElement);
-        }
-        if (currentlyFlippedCard && currentlyFlippedCard !== innerCard) {
-            currentlyFlippedCard.classList.remove(CSS_CLASSES.IS_FLIPPED);
-            collapseScrollableContentInstantly(currentlyFlippedCard.closest(`.${CSS_CLASSES.MOVIE_CARD}`));
-        }
-        innerCard.classList.toggle(CSS_CLASSES.IS_FLIPPED);
-        currentlyFlippedCard = innerCard.classList.contains(CSS_CLASSES.IS_FLIPPED) ? innerCard : null;
     }
+    
+    // Si la rotación automática está ACTIVADA (modo Volteo ⏸︎), el clic del ratón
+    // no hace NADA. La función simplemente termina aquí, permitiendo que el hover
+    // de CSS controle el volteo de forma natural y sin interrupciones.
 }
+
 
 // --- FUNCIONES PÚBLICAS (EXPORTADAS) ---
 
 export function setupCardInteractions() {
     document.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => {
+        // ✨ NOTA: Se ha simplificado la lógica. Eliminamos el listener de 'mouseleave'
+        // que ya no es necesario para el nuevo comportamiento.
         card.removeEventListener('click', handleCardClick);
         card.addEventListener('click', handleCardClick);
 
@@ -377,13 +373,10 @@ export function setupCardInteractions() {
                 
                 scrollableContent.addEventListener('mouseleave', () => {
                     clearTimeout(scrollTimeoutId);
+                    // Ahora el scrollable se colapsa solo al quitar el ratón.
                     scrollableContent.classList.remove('full-view');
                 });
             }
-
-            card.addEventListener('mouseleave', () => {
-                collapseScrollableContentInstantly(card);
-            });
         }
     });
 }

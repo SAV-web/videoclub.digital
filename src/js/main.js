@@ -20,7 +20,8 @@ import {
     prefetchNextPage,
     initQuickView
 } from './ui.js';
-import { CSS_CLASSES, SELECTORS, DEFAULTS } from './constants.js';
+// ✨ MEJORA: Se importan los ICONOS centralizados para usarlos en la inicialización.
+import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from './constants.js';
 import {
     getState,
     getActiveFilters,
@@ -36,10 +37,8 @@ import {
     resetFiltersState,
     hasActiveMeaningfulFilters
 } from './state.js';
-import { showToast } from './toast.js'; 
+import { showToast } from './toast.js';
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
-
-const ICON_RECORD = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>`;
 
 const URL_PARAM_MAP = {
     q: 'searchTerm',
@@ -68,46 +67,73 @@ async function loadAndRenderMovies(page = 1) {
     updatePageTitle();
     updateUrl();
 
+    // Comprobamos la compatibilidad una sola vez.
     const supportsViewTransitions = !!document.startViewTransition;
 
-    if (!supportsViewTransitions) {
+    // ✨ MEJORA CLAVE: Si el navegador soporta View Transitions, entramos en el nuevo flujo.
+    if (supportsViewTransitions) {
+        // Envolvemos TODO el proceso de cambio de estado en la transición.
+        document.startViewTransition(async () => {
+            try {
+                // 1. Pedimos los datos y esperamos a que lleguen.
+                //    Mientras tanto, el navegador mantiene la vista antigua visible.
+                const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+                const { items: movies, total: totalMovies } = await fetchMovies(getActiveFilters(), page, pageSize);
+
+                // Precargamos la imagen LCP (Largest Contentful Paint) tan pronto como tengamos los datos.
+                if (movies && movies.length > 0) {
+                    preloadLcpImage(movies[0]);
+                }
+                
+                // Si ha habido una petición más nueva mientras esperábamos, abortamos el renderizado.
+                if (requestId !== getLatestRequestId()) return;
+
+                // 2. Actualizamos el DOM en memoria. El navegador aún no muestra nada.
+                updateDomWithResults(movies, totalMovies);
+
+            } catch (error) {
+                // Si algo falla, también actualizamos el DOM dentro de la transición para mostrar el error.
+                if (error.name === 'AbortError') {
+                    console.log('Petición de películas cancelada deliberadamente.');
+                    return;
+                }
+                console.error('Error en el proceso de carga:', error);
+                const friendlyMessage = getFriendlyErrorMessage(error);
+                showToast(friendlyMessage, 'error');
+                renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
+            }
+        });
+    } else {
+        // --- FALLBACK PARA NAVEGADORES ANTIGUOS ---
+        // Esta es nuestra lógica original, que ahora sirve como plan de respaldo.
         dom.gridContainer.setAttribute('aria-busy', 'true');
         renderSkeletons(dom.gridContainer, dom.paginationContainer);
         updateHeaderPaginationState(getCurrentPage(), 0);
-    }
     
-    try {
-        const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
-        const { items: movies, total: totalMovies } = await fetchMovies(getActiveFilters(), page, pageSize);
+        try {
+            const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+            const { items: movies, total: totalMovies } = await fetchMovies(getActiveFilters(), page, pageSize);
 
-        if (movies && movies.length > 0) {
-            preloadLcpImage(movies[0]);
-        }
-        
-        if (requestId !== getLatestRequestId()) return;
+            if (movies && movies.length > 0) {
+                preloadLcpImage(movies[0]);
+            }
+            
+            if (requestId !== getLatestRequestId()) return;
 
-        if (supportsViewTransitions) {
-            document.startViewTransition(() => {
-                updateDomWithResults(movies, totalMovies);
-            });
-        } else {
             updateDomWithResults(movies, totalMovies);
             dom.gridContainer.setAttribute('aria-busy', 'false');
-        }
 
-    } catch (error) {
-        if (!supportsViewTransitions) {
+        } catch (error) {
             dom.gridContainer.setAttribute('aria-busy', 'false');
+            if (error.name === 'AbortError') {
+                console.log('Petición de películas cancelada deliberadamente.');
+                return;
+            }
+            console.error('Error en el proceso de carga:', error);
+            const friendlyMessage = getFriendlyErrorMessage(error);
+            showToast(friendlyMessage, 'error');
+            renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
         }
-        
-        if (error.name === 'AbortError') {
-            console.log('Petición de películas cancelada deliberadamente.');
-            return;
-        }
-        console.error('Error en el proceso de carga:', error);
-        const friendlyMessage = getFriendlyErrorMessage(error);
-        showToast(friendlyMessage, 'error');
-        renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
     }
 }
 
@@ -116,8 +142,6 @@ async function loadAndRenderMovies(page = 1) {
  */
 function updateDomWithResults(movies, totalMovies) {
     setTotalMovies(totalMovies);
-    // ✨ CORRECCIÓN: Llamamos a la función para actualizar el contador de resultados.
-    // Esta es la línea que faltaba.
     updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
 
     const currentState = getState();
@@ -253,11 +277,8 @@ function setupGlobalListeners() {
     });
 
     dom.paginationContainer.addEventListener('click', async (e) => {
-        // ✨ CORRECCIÓN APLICADA: 
-        // Se utiliza el nuevo selector genérico 'CLICKABLE_BTN' que busca '.btn:not(.active)'.
-        // Ahora el listener encontrará los botones generados dinámicamente.
         const button = e.target.closest(SELECTORS.CLICKABLE_BTN);
-        if (button && button.dataset.page) { // Añadida comprobación de dataset.page por seguridad
+        if (button && button.dataset.page) {
             document.dispatchEvent(new CustomEvent('uiActionTriggerred'));
             triggerPopAnimation(button);
             const page = parseInt(button.dataset.page, 10);
@@ -409,7 +430,8 @@ function init() {
         document.body.classList.add('rotation-disabled');
         const toggleBtn = document.getElementById('toggle-rotation-btn');
         if (toggleBtn) {
-            toggleBtn.innerHTML = ICON_RECORD;
+            // ✨ CORRECCIÓN: Usa el icono centralizado para asegurar que se cargue correctamente.
+            toggleBtn.innerHTML = ICONS.SQUARE_STOP;
             toggleBtn.setAttribute('aria-label', 'Activar rotación de tarjetas');
         }
     }

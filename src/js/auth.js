@@ -2,11 +2,15 @@
 //                  LÓGICA DE AUTENTICACIÓN
 // =================================================================
 // Este script gestiona los formularios de login y registro en auth.html
+// src/js/auth.js
+// =================================================================
+//                  LÓGICA DE AUTENTICACIÓN
+// =================================================================
+// Este script gestiona los formularios de login y registro en auth.html
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8';
+// ✨ CAMBIO 1: Importamos la instancia ÚNICA de supabase desde nuestro módulo central.
+import { supabase } from './supabaseClient.js';
 import { CONFIG } from './config.js';
-
-const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
 const dom = {
     loginView: document.getElementById('login-view'),
@@ -17,6 +21,11 @@ const dom = {
     showLoginBtn: document.getElementById('show-login-view'),
     authMessage: document.getElementById('auth-message'),
 };
+
+// ... (El resto del fichero 'auth.js' no necesita cambios ya que ya usaba la variable 'supabase')
+// ... (handleRegister, handleLogin, etc. seguirán funcionando igual)
+
+// ... (resto del código del fichero sin cambios)
 
 /**
  * Muestra un mensaje en la interfaz de autenticación.

@@ -10,15 +10,16 @@
 // 5. Normalizar todas las respuestas a un formato consistente { items, total }.
 // 6. Gestionar los errores de forma centralizada.
 
+// src/js/api.js
+// =================================================================
+//                MÓDULO DE SERVICIO API (SUPABASE)
+// =================================================================
+// ... (resto de la descripción del fichero)
+
 import { CONFIG } from './config.js';
-// ✨ MEJORA: Se usa una URL de esm.sh con versión bloqueada para mayor estabilidad.
-// En un proyecto con build step, estos módulos estarían instalados localmente.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8';
+// ✨ CAMBIO 1: Importamos la instancia ÚNICA de supabase desde nuestro módulo central.
+import { supabase } from './supabaseClient.js';
 import { LRUCache } from 'https://esm.sh/lru-cache@10.2.0';
-
-
-const supabaseClient = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-
 
 const cache = new LRUCache({
     max: 50,
@@ -57,19 +58,16 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
         p_excluded_countries: excludedCountries,
         p_limit: pageSize, p_offset: offset
     };
-
-    const { data, error } = await supabaseClient
+    
+    // ✨ CAMBIO 2: Usamos la instancia importada 'supabase' en lugar de 'supabaseClient'.
+    const { data, error } = await supabase
         .rpc('search_and_count', rpcParams)
         .abortSignal(movieFetchController.signal);
 
-    // ✨ MEJORA: Gestión de errores centralizada. Si hay un error, se lanza para que
-    // el llamador (la UI en main.js) decida cómo gestionarlo. No se loguea aquí.
     if (error) {
         throw error;
     }
     
-    // ✨ MEJORA CRÍTICA: Normalización de la respuesta.
-    // Independientemente del resultado, la estructura de la respuesta siempre es la misma.
     const items = data || [];
     const total = items.length > 0 ? items[0].total_count : 0;
     const result = { items, total };
@@ -91,12 +89,11 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
     suggestionControllers[rpcName] = new AbortController();
 
     try {
-        const { data, error } = await supabaseClient
+        // ✨ CAMBIO 3: Usamos la instancia importada 'supabase' aquí también.
+        const { data, error } = await supabase
             .rpc(rpcName, { search_term: searchTerm })
             .abortSignal(suggestionControllers[rpcName].signal);
 
-        // Para las sugerencias (no críticas), si hay un error que no sea de aborto,
-        // lo logueamos aquí pero devolvemos un array vacío para no romper la UI.
         if (error) {
             if (error.name !== 'AbortError') {
                 console.error(`Error fetching suggestions for '${rpcName}':`, error);
