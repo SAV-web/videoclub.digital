@@ -16,7 +16,7 @@
 // =================================================================
 // ... (resto de la descripción del fichero)
 
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.template.js';
 // ✨ CAMBIO 1: Importamos la instancia ÚNICA de supabase desde nuestro módulo central.
 import { supabase } from './supabaseClient.js';
 import { LRUCache } from 'https://esm.sh/lru-cache@10.2.0';
