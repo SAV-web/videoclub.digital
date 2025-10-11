@@ -22,6 +22,8 @@ html {
     transition: width var(--transition-duration-normal), 
                 background-color var(--transition-duration-normal), 
                 border-color var(--transition-duration-normal);
+    height: 100vh; /* Fallback para navegadores antiguos */
+    height: 100dvh; /* ✨ LA SOLUCIÓN MODERNA */
 }
 
 .sidebar .sidebar-inner-wrapper { 
