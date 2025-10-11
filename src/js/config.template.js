@@ -9,7 +9,6 @@
 export const CONFIG = {
     SUPABASE_URL: '%%SUPABASE_URL%%',
     SUPABASE_ANON_KEY: '%%SUPABASE_ANON_KEY%%',
-    SEARCH_MOVIES_API_KEY: '%%SEARCH_MOVIES_API_KEY%%',
     POSTER_BASE_URL: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/',
     ITEMS_PER_PAGE: 42,
     // ✨ AÑADIDO: Límite para mostrar resultados en una sola página.
