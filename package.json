@@ -9,6 +9,7 @@
   "author": "Gemini",
   "license": "ISC",
   "devDependencies": {
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "supabase": "^2.48.3"
   }
 }

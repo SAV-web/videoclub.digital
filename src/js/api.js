@@ -16,7 +16,7 @@
 // =================================================================
 // ... (resto de la descripción del fichero)
 
-import { CONFIG } from './config.template.js';
+import { CONFIG } from './config.js'; 
 // ✨ CAMBIO 1: Importamos la instancia ÚNICA de supabase desde nuestro módulo central.
 import { supabase } from './supabaseClient.js';
 import { LRUCache } from 'https://esm.sh/lru-cache@10.2.0';
@@ -47,34 +47,36 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
     }
     movieFetchController = new AbortController();
 
-    const { searchTerm, genre, year, country, director, actor, sort, mediaType, selection, excludedGenres, excludedCountries } = activeFilters;
-    const offset = (currentPage - 1) * pageSize;
+    const edgeFunctionUrl = `${CONFIG.SUPABASE_URL}/functions/v1/search-movies`;
 
-    const rpcParams = {
-        search_term: searchTerm || '', p_genre_name: genre, p_year: year,
-        p_country_name: country, p_director_name: director, p_actor_name: actor,
-        p_media_type: mediaType, p_selection: selection, p_sort: sort,
-        p_excluded_genres: excludedGenres,
-        p_excluded_countries: excludedCountries,
-        p_limit: pageSize, p_offset: offset
-    };
-    
-    // ✨ CAMBIO 2: Usamos la instancia importada 'supabase' en lugar de 'supabaseClient'.
-    const { data, error } = await supabase
-        .rpc('search_and_count', rpcParams)
-        .abortSignal(movieFetchController.signal);
+    try {
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CONFIG.SEARCH_MOVIES_API_KEY}`
+            },
+            body: JSON.stringify({ activeFilters, currentPage, pageSize }),
+            signal: movieFetchController.signal
+        });
 
-    if (error) {
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        cache.set(queryKey, result);
+        return result;
+
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Petición a la Edge Function cancelada.');
+            // Devolvemos una promesa que nunca se resuelve para detener la cadena
+            return new Promise(() => {});
+        }
         throw error;
     }
-    
-    const items = data || [];
-    const total = items.length > 0 ? items[0].total_count : 0;
-    const result = { items, total };
-
-    cache.set(queryKey, result);
-
-    return result;
 }
 
 /**

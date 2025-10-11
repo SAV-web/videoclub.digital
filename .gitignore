@@ -9,3 +9,6 @@
 
 # Generated config
 /src/js/config.js
+
+# Documentos de ayuda
+/documents
