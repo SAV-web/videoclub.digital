@@ -18,7 +18,8 @@ import {
     clearAllSidebarAutocomplete,
     setupCardInteractions,
     prefetchNextPage,
-    initQuickView
+    initQuickView,
+    setupAuthModal
 } from './ui.js';
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from './constants.js';
 import {
@@ -39,6 +40,7 @@ import {
 import { showToast } from './toast.js';
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
 import { supabase } from './supabaseClient.js';
+import { initAuthForms } from './auth.js';
 
 const URL_PARAM_MAP = {
     q: 'searchTerm',
@@ -387,7 +389,7 @@ function setupAuthSystem() {
 function updatePageTitle() {
     const { searchTerm, genre, year, country, director, actor, selection } = getActiveFilters();
     let title = "Tu brújula cinéfila y seriéfila inteligente";
-    if (searchTerm) { title = `Resultados para \"${searchTerm}\"`; }
+    if (searchTerm) { title = `Resultados para "${searchTerm}"`; } 
     else if (genre) { title = `Películas de ${genre}`}
     else if (director) { title = `Películas de ${director}`}
     else if (actor) { title = `Películas con ${actor}`}
@@ -489,6 +491,8 @@ function init() {
     setupGlobalListeners();
     setupKeyboardShortcuts();
     setupAuthSystem();
+    setupAuthModal();
+    initAuthForms();
     
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));

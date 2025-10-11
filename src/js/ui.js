@@ -32,7 +32,49 @@ export const dom = {
     clearFiltersBtn: document.querySelector(SELECTORS.CLEAR_FILTERS_BTN),
     totalResultsContainer: document.getElementById('total-results-container'),
     totalResultsCount: document.getElementById('total-results-count'),
+    // Elementos de la Modal de Autenticación
+    authModal: document.getElementById('auth-modal'),
+    authOverlay: document.getElementById('auth-overlay'),
+    authCloseBtn: document.getElementById('auth-close-btn'),
+    loginButton: document.getElementById('login-button'),
 };
+
+/**
+ * Cierra la modal de autenticación.
+ */
+export function closeAuthModal() {
+    if (dom.authModal && dom.authOverlay) {
+        dom.authModal.hidden = true;
+        dom.authOverlay.hidden = true;
+    }
+}
+
+/**
+ * Abre la modal de autenticación.
+ */
+export function openAuthModal() {
+    if (dom.authModal && dom.authOverlay) {
+        dom.authModal.hidden = false;
+        dom.authOverlay.hidden = false;
+    }
+}
+
+/**
+ * Configura los listeners para la modal de autenticación.
+ */
+export function setupAuthModal() {
+    if (!dom.loginButton || !dom.authModal || !dom.authOverlay || !dom.authCloseBtn) return;
+
+    dom.loginButton.addEventListener('click', openAuthModal);
+    dom.authCloseBtn.addEventListener('click', closeAuthModal);
+    dom.authOverlay.addEventListener('click', closeAuthModal);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !dom.authModal.hidden) {
+            closeAuthModal();
+        }
+    });
+}
 
 /**
  * Actualiza la apariencia y el texto del botón de filtro por tipo de medio (Todo/Cine/TV).

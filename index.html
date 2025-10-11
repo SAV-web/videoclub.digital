@@ -232,12 +232,12 @@
                     
                     <!-- BOTÓN DE LOGIN (Icono de "carita") -->
                     <!-- Se muestra solo cuando el usuario NO está logueado. -->
-                    <a href="auth.html" id="login-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta" aria-label="Acceder a tu cuenta de usuario">
+                    <button id="login-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta" aria-label="Acceder a tu cuenta de usuario">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
-                    </a>
+                    </button>
 
                     <!-- GRUPO DE SESIÓN DE USUARIO (Avatar + Logout) -->
                     <!-- Se muestra solo cuando el usuario SÍ está logueado. -->
@@ -302,6 +302,63 @@
     <button id="back-to-top" class="back-to-top" title="Volver al inicio" aria-label="Volver al inicio de la página">↑</button>
 
     <div id="toast-container" class="toast-container" aria-live="assertive"></div>
+    
+    <!-- ================================================================= -->
+    <!-- MODAL DE AUTENTICACIÓN
+    <!-- ================================================================= -->
+    <div id="auth-overlay" class="auth-overlay" hidden></div>
+    <div id="auth-modal" class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" hidden>
+        <div class="auth-box">
+            <header class="auth-header">
+                <h2 id="auth-title" class="auth-logo-modal">
+                    <span>videoclub</span>.<span>digital</span>
+                </h2>
+                <button id="auth-close-btn" class="auth-close-btn" aria-label="Cerrar">&times;</button>
+            </header>
+
+            <section id="login-view" aria-labelledby="login-title">
+                <h3 id="login-title">Iniciar Sesión</h3>
+                <form id="login-form" action="#" method="post">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" name="email" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" name="password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="auth-button">Acceder</button>
+                </form>
+                <div class="auth-toggle-text">
+                    ¿No tienes cuenta? 
+                    <button type="button" id="show-register-view">Regístrate</button>
+                </div>
+            </section>
+
+            <section id="register-view" style="display: none;" aria-labelledby="register-title">
+                <h3 id="register-title">Crear Cuenta</h3>
+                <form id="register-form" action="#" method="post">
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" name="email" required autocomplete="email" aria-describedby="email-hint">
+                        <small id="email-hint">Te enviaremos un email de confirmación.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Contraseña</label>
+                        <input type="password" id="register-password" name="password" required minlength="6" autocomplete="new-password" aria-describedby="password-hint">
+                        <small id="password-hint">Mínimo 6 caracteres.</small>
+                    </div>
+                    <button type="submit" class="auth-button">Crear Cuenta</button>
+                </form>
+                <div class="auth-toggle-text">
+                    ¿Ya tienes una cuenta? 
+                    <button type="button" id="show-login-view">Inicia sesión</button>
+                </div>
+            </section>
+
+            <div id="auth-message" class="auth-message" style="display: none;" role="alert" aria-live="assertive"></div>
+        </div>
+    </div>
     
     <!-- ================================================================= -->
     <!-- PLANTILLAS PARA GENERACIÓN DINÁMICA DE CONTENIDO
@@ -388,6 +445,7 @@
     </template>
     
     <script src="src/vendor/nouislider/nouislider.min.js" defer></script>
+    <script type="module" src="src/js/auth.js"></script>
     <script type="module" src="src/js/main.js"></script>
     
     <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>

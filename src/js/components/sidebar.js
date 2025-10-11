@@ -1,9 +1,11 @@
 // =================================================================
-//                      COMPONENTE SIDEBAR (LÓGICA RESTAURADA)
+//                      COMPONENTE SIDEBAR
 // =================================================================
+// Gestiona toda la interactividad del sidebar: colapsar/expandir,
+// secciones desplegables, filtros, autocompletado y slider de año.
 
 import { CONFIG } from '../config.js';
-import { debounce, capitalizeWords, triggerPopAnimation, createElement } from '../utils.js';
+import { debounce, triggerPopAnimation, createElement } from '../utils.js';
 import {
     fetchDirectorSuggestions,
     fetchActorSuggestions,
@@ -19,14 +21,13 @@ import {
     setFilter,
     toggleExcludedFilter,
 } from '../state.js';
-// ✨ MEJORA: Importamos los iconos SVG centralizados desde el fichero de constantes.
+// ✨ REFACTORIZACIÓN: Importamos ICONS desde el fichero de constantes.
 import { CSS_CLASSES, SELECTORS, ICONS } from '../constants.js';
 
-// Iconos para botones de control que no necesitan cambiar dinámicamente.
-const ICON_REWIND = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`;
-const ICON_FORWARD = `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>`;
+// Icono para el botón de pausa en los filtros de exclusión.
 const ICON_PAUSE_SMALL = '⏸︎';
 
+// Referencias cacheadas a los elementos del DOM del sidebar.
 const dom = {
     sidebarInnerWrapper: document.querySelector('.sidebar-inner-wrapper'),
     rewindButton: document.querySelector('#rewind-button'),
@@ -43,6 +44,7 @@ const SELECTION_FRIENDLY_NAMES = new Map([
     ['K', 'Kino Lorber'], ['E', 'Eureka'], ['H', 'Series HBO'], ['N', 'Netflix']
 ]);
 
+// Renderiza las "píldoras" de filtros activos en cada sección.
 function renderFilterPills() {
     const activeFilters = getActiveFilters();
 
@@ -57,13 +59,10 @@ function renderFilterPills() {
         const textSpan = createElement('span', { textContent: text });
         pill.appendChild(textSpan);
 
-        if (isExcluded) {
-            const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: ICON_PAUSE_SMALL, attributes: { 'aria-hidden': 'true' } });
-            pill.appendChild(removeButton);
-        } else {
-             const removeButton = createElement('span', { className: 'remove-filter-btn', textContent: '×', attributes: { 'aria-hidden': 'true' } });
-             pill.appendChild(removeButton);
-        }
+        const removeButtonHTML = isExcluded ? ICON_PAUSE_SMALL : '×';
+        const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: removeButtonHTML, attributes: { 'aria-hidden': 'true' } });
+        pill.appendChild(removeButton);
+        
         return pill;
     };
 
@@ -75,12 +74,10 @@ function renderFilterPills() {
         const container = section.querySelector('.active-filters-list');
         if (!container) return;
 
-        const valuesArray = Array.isArray(values) ? values : [values];
+        const valuesArray = Array.isArray(values) ? values : [values].filter(Boolean);
         valuesArray.forEach(value => {
-            if (value) {
-                const pill = createPill(filterType, value, isExcluded);
-                container.appendChild(pill);
-            }
+            const pill = createPill(filterType, value, isExcluded);
+            container.appendChild(pill);
         });
     };
 
@@ -96,6 +93,7 @@ function renderFilterPills() {
     updateFilterLinksUI();
 }
 
+// Actualiza la UI de los enlaces de filtro para ocultar los que ya están activos.
 function updateFilterLinksUI() {
     const activeFilters = getActiveFilters();
 
@@ -104,7 +102,6 @@ function updateFilterLinksUI() {
         const value = link.dataset.filterValue;
 
         link.style.display = 'flex';
-        link.classList.remove(CSS_CLASSES.ACTIVE, 'is-excluded');
 
         const isExcluded = (type === 'genre' && activeFilters.excludedGenres?.includes(value)) ||
                            (type === 'country' && activeFilters.excludedCountries?.includes(value));
@@ -116,32 +113,24 @@ function updateFilterLinksUI() {
     });
 }
 
-
+// Maneja el cambio de un filtro de inclusión.
 async function handleFilterChange(type, value) {
     const activeFilters = getActiveFilters();
     const isActivating = activeFilters[type] !== value;
-
-    const inclusionFilters = ['genre', 'country', 'director', 'actor', 'selection'];
-    const currentInclusionFilters = inclusionFilters.filter(key => activeFilters[key]).length;
-    const isNewInclusionFilter = isActivating && !activeFilters[type];
-    const MAX_INCLUSION_FILTERS = 2;
-
-    if (isNewInclusionFilter && currentInclusionFilters >= MAX_INCLUSION_FILTERS) {
-        console.warn(`Límite de ${MAX_INCLUSION_FILTERS} filtros de inclusión alcanzado.`);
-        return;
-    }
-
+    
     setFilter(type, isActivating ? value : null);
     renderFilterPills();
     document.dispatchEvent(new CustomEvent('filtersChanged'));
 }
 
+// Resetea todos los filtros.
 function resetFilters() {
     const playButton = document.querySelector('#play-button');
     if (playButton) triggerPopAnimation(playButton);
     document.dispatchEvent(new CustomEvent('filtersReset'));
 }
 
+// Colapsa todas las secciones desplegables del sidebar.
 export function collapseAllSections() {
     dom.collapsibleSections.forEach(section => section.classList.remove(CSS_CLASSES.ACTIVE));
     if (dom.sidebarInnerWrapper) {
@@ -149,6 +138,7 @@ export function collapseAllSections() {
     }
 }
 
+// Inicializa el slider de años (noUiSlider).
 function initYearSlider() {
     if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
 
@@ -186,34 +176,25 @@ function initYearSlider() {
     });
 }
 
+// Configura los botones de subir/bajar en los inputs de año.
 function setupYearInputSteppers() {
     document.querySelectorAll('.year-input-wrapper').forEach(wrapper => {
         const input = wrapper.querySelector('.year-input');
         const stepperUp = wrapper.querySelector('.stepper-btn.stepper-up');
         const stepperDown = wrapper.querySelector('.stepper-btn.stepper-down');
         
-        const minYear = CONFIG.YEAR_MIN;
-        const maxYear = CONFIG.YEAR_MAX;
-
         if (!input || !stepperUp || !stepperDown) return;
 
-        stepperUp.addEventListener('click', () => {
+        const updateYearValue = (increment) => {
             let currentValue = parseInt(input.value, 10);
-            if (isNaN(currentValue)) currentValue = minYear;
-            
-            const newValue = Math.min(currentValue + 1, maxYear);
+            if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
+            const newValue = Math.min(Math.max(currentValue + increment, CONFIG.YEAR_MIN), CONFIG.YEAR_MAX);
             input.value = newValue;
             input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        };
 
-        stepperDown.addEventListener('click', () => {
-            let currentValue = parseInt(input.value, 10);
-            if (isNaN(currentValue)) currentValue = maxYear;
-
-            const newValue = Math.max(currentValue - 1, minYear);
-            input.value = newValue;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        stepperUp.addEventListener('click', () => updateYearValue(1));
+        stepperDown.addEventListener('click', () => updateYearValue(-1));
     });
 }
 
@@ -224,6 +205,7 @@ const suggestionFetchers = {
     country: fetchCountrySuggestions
 };
 
+// Configura la lógica de autocompletado para los formularios de filtro.
 function setupAutocompleteHandlers() {
     dom.sidebarFilterForms.forEach(form => {
         const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -293,8 +275,7 @@ function setupAutocompleteHandlers() {
         form.addEventListener('click', (e) => {
             const suggestionItem = e.target.closest(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
             if (suggestionItem) {
-                const value = suggestionItem.dataset.value;
-                handleFilterChange(filterType, value);
+                handleFilterChange(filterType, suggestionItem.dataset.value);
                 input.value = '';
                 clearAllSidebarAutocomplete();
             }
@@ -302,6 +283,7 @@ function setupAutocompleteHandlers() {
     });
 }
 
+// Maneja el clic en una píldora de filtro para eliminarla.
 function handlePillClick(e) {
     const pill = e.target.closest('.filter-pill');
     if (!pill) return;
@@ -321,6 +303,7 @@ function handlePillClick(e) {
     }, { once: true });
 }
 
+// Configura todos los event listeners del sidebar.
 function setupEventListeners() {
     if (dom.rewindButton) {
         dom.rewindButton.addEventListener('click', (e) => {
@@ -335,7 +318,8 @@ function setupEventListeners() {
                 isOpening = !document.body.classList.contains('sidebar-collapsed');
             }
 
-            e.currentTarget.innerHTML = isOpening ? ICON_REWIND : ICON_FORWARD;
+            // ✨ REFACTORIZACIÓN: Usamos la biblioteca de iconos.
+            e.currentTarget.innerHTML = isOpening ? ICONS.REWIND : ICONS.FORWARD;
             e.currentTarget.setAttribute('aria-label', isOpening ? 'Contraer sidebar' : 'Expandir sidebar');
         });
     }
@@ -346,26 +330,15 @@ function setupEventListeners() {
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
             const button = e.currentTarget;
 
-            // ✨ LÓGICA DE ACTUALIZACIÓN: Cambia el icono y el tooltip simultáneamente.
-            if (isRotationDisabled) {
-                button.innerHTML = ICONS.SQUARE_STOP;
-                button.setAttribute('aria-label', 'Activar rotación de tarjetas');
-                button.setAttribute('title', 'Giro automático');
-            } else {
-                button.innerHTML = ICONS.PAUSE;
-                button.setAttribute('aria-label', 'Pausar rotación de tarjetas');
-                button.setAttribute('title', 'Vista Rápida');
-            }
+            button.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
+            button.setAttribute('aria-label', isRotationDisabled ? 'Activar rotación de tarjetas' : 'Pausar rotación de tarjetas');
+            button.title = isRotationDisabled ? 'Giro automático' : 'Vista Rápida';
             
             localStorage.setItem('rotationState', isRotationDisabled ? 'disabled' : 'enabled');
             triggerPopAnimation(button);
         });
     }
 
-    const sidebarOverlay = document.querySelector('#sidebar-overlay');
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', () => dom.rewindButton.click());
-    }
     const sidebarScrollable = document.querySelector('.sidebar-scrollable-filters');
     if (sidebarScrollable) {
         sidebarScrollable.addEventListener('click', (e) => {
@@ -374,14 +347,7 @@ function setupEventListeners() {
             const excludeBtn = e.target.closest('.exclude-filter-btn');
             if (excludeBtn) {
                 e.stopPropagation();
-                const value = excludeBtn.dataset.value;
-                const type = excludeBtn.dataset.type;
-
-                if (getActiveFilters()[type] === value) {
-                    setFilter(type, null);
-                }
-
-                if (toggleExcludedFilter(type, value)) {
+                if (toggleExcludedFilter(excludeBtn.dataset.type, excludeBtn.dataset.value)) {
                     renderFilterPills();
                     document.dispatchEvent(new CustomEvent('filtersChanged'));
                     triggerPopAnimation(excludeBtn);
@@ -392,18 +358,7 @@ function setupEventListeners() {
             const link = e.target.closest('.filter-link');
             if (link) {
                 triggerPopAnimation(link);
-                const { filterType, filterValue } = link.dataset;
-
-                const activeFilters = getActiveFilters();
-                if ((filterType === 'genre' && activeFilters.excludedGenres?.includes(filterValue)) ||
-                    (filterType === 'country' && activeFilters.excludedCountries?.includes(filterValue))) {
-                    if (toggleExcludedFilter(filterType, filterValue)) {
-                        renderFilterPills();
-                        document.dispatchEvent(new CustomEvent('filtersChanged'));
-                    }
-                } else {
-                    handleFilterChange(filterType, filterValue);
-                }
+                handleFilterChange(link.dataset.filterType, link.dataset.filterValue);
             }
         });
     }
@@ -415,79 +370,56 @@ function setupEventListeners() {
 
     dom.collapsibleSections.forEach(clickedSection => {
         const header = clickedSection.querySelector('.section-header');
-        if (header) {
-            header.addEventListener('click', () => {
-                const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
-                dom.collapsibleSections.forEach(section => section.classList.remove(CSS_CLASSES.ACTIVE));
-                if (!wasActive) {
-                    clickedSection.classList.add(CSS_CLASSES.ACTIVE);
-                }
-                const isAnySectionActive = Array.from(dom.collapsibleSections).some(section => section.classList.contains(CSS_CLASSES.ACTIVE));
-                if (dom.sidebarInnerWrapper) {
-                    dom.sidebarInnerWrapper.classList.toggle('is-compact', isAnySectionActive);
-                }
-            });
-        }
+        header?.addEventListener('click', () => {
+            const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
+            dom.collapsibleSections.forEach(section => section.classList.remove(CSS_CLASSES.ACTIVE));
+            if (!wasActive) clickedSection.classList.add(CSS_CLASSES.ACTIVE);
+            dom.sidebarInnerWrapper?.classList.toggle('is-compact', !wasActive);
+        });
     });
 }
 
+// Función principal de inicialización del sidebar.
 export function initSidebar() {
     if (window.innerWidth <= 768) {
         if (dom.rewindButton) {
-            dom.rewindButton.innerHTML = ICON_FORWARD;
+            // ✨ REFACTORIZACIÓN: Usamos la biblioteca de iconos también aquí.
+            dom.rewindButton.innerHTML = ICONS.FORWARD;
             dom.rewindButton.setAttribute('aria-label', 'Expandir sidebar');
         }
     }
-    const EXCLUDABLE_GENRES = ['Animación', 'Documental'];
 
-    document.querySelectorAll('#genres-list-container .filter-link').forEach(link => {
-        const genreName = link.dataset.filterValue;
+    const createExcludeButton = (name, type, excludableList) => {
+        if (excludableList.includes(name)) {
+            return createElement('button', {
+                className: 'exclude-filter-btn',
+                dataset: { value: name, type },
+                attributes: { 'aria-label': `Excluir ${type} ${name}`, type: 'button' },
+                innerHTML: ICON_PAUSE_SMALL
+            });
+        }
+        return null;
+    };
+
+    document.querySelectorAll('.filter-link').forEach(link => {
+        const { filterType, filterValue } = link.dataset;
         const textWrapper = createElement('span', { textContent: link.textContent });
         link.innerHTML = '';
         link.append(textWrapper);
 
-        if (EXCLUDABLE_GENRES.includes(genreName)) {
-            const excludeBtn = createElement('button', {
-                className: 'exclude-filter-btn',
-                dataset: { value: genreName, type: 'genre' },
-                attributes: { 'aria-label': `Excluir género ${genreName}`, 'type': 'button' },
-                innerHTML: ICON_PAUSE_SMALL
-            });
-            link.append(excludeBtn);
+        const excludable = { genre: ['Animación', 'Documental'], country: ['EEUU'] };
+        if (excludable[filterType]) {
+            const excludeBtn = createExcludeButton(filterValue, filterType, excludable[filterType]);
+            if (excludeBtn) link.append(excludeBtn);
         }
     });
 
-    const EXCLUDABLE_COUNTRIES = ['EEUU'];
-    document.querySelectorAll('#countries-list-container .filter-link').forEach(link => {
-        const countryName = link.dataset.filterValue;
-        const textWrapper = createElement('span', { textContent: link.textContent });
-        link.innerHTML = '';
-        link.append(textWrapper);
-
-        if (EXCLUDABLE_COUNTRIES.includes(countryName)) {
-            const excludeBtn = createElement('button', {
-                className: 'exclude-filter-btn',
-                dataset: { value: countryName, type: 'country' },
-                attributes: { 'aria-label': `Excluir país ${countryName}`, 'type': 'button' },
-                innerHTML: ICON_PAUSE_SMALL
-            });
-            link.append(excludeBtn);
-        }
-    });
-    
-    // ✨ INICIALIZACIÓN: Establece el estado visual correcto del botón de rotación al cargar la página.
     const toggleBtn = dom.toggleRotationBtn;
     if (toggleBtn) {
         const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-        if (isRotationDisabled) {
-            toggleBtn.innerHTML = ICONS.SQUARE_STOP;
-            toggleBtn.setAttribute('aria-label', 'Activar rotación de tarjetas');
-            toggleBtn.setAttribute('title', 'Giro automático');
-        } else {
-            toggleBtn.innerHTML = ICONS.PAUSE;
-            toggleBtn.setAttribute('aria-label', 'Pausar rotación de tarjetas');
-            toggleBtn.setAttribute('title', 'Vista Rápida');
-        }
+        toggleBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
+        toggleBtn.setAttribute('aria-label', isRotationDisabled ? 'Activar rotación de tarjetas' : 'Pausar rotación de tarjetas');
+        toggleBtn.title = isRotationDisabled ? 'Giro automático' : 'Vista Rápida';
     }
 
     initYearSlider();
@@ -503,7 +435,7 @@ export function initSidebar() {
 
         const currentFilters = getActiveFilters();
         const years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split('-').map(Number);
-        if (dom.yearSlider && dom.yearSlider.noUiSlider) {
+        if (dom.yearSlider?.noUiSlider) {
             dom.yearSlider.noUiSlider.set(years, false);
         }
 

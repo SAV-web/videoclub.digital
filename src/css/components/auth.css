@@ -88,3 +88,58 @@
 }
 .auth-message--error { background-color: #dc354520; color: #dc3545; }
 .auth-message--success { background-color: #28a74520; color: #28a745; }
+
+/* Estilos para la Modal de Autenticación */
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1999; /* Justo debajo de la modal */
+    backdrop-filter: blur(4px);
+}
+
+.auth-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+}
+
+.auth-modal .auth-box {
+    max-width: 420px;
+    margin: 0;
+}
+
+.auth-modal .auth-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.auth-logo-modal {
+    color: var(--color-text-primary);
+    text-decoration: none;
+    font-family: var(--font-title);
+    font-size: 1.5rem; /* Un poco más pequeño para la modal */
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.auth-close-btn {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.auth-modal h3 {
+    margin-bottom: var(--space-lg);
+    font-family: var(--font-title);
+    font-size: var(--font-size-lg);
+}
