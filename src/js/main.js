@@ -6,8 +6,10 @@
 // 2. Orquestar el flujo de datos principal (pedir datos y pintarlos).
 // 3. Configurar todos los event listeners (clicks, cambios en selectores, etc.).
 // 4. Gestionar el estado de la URL para permitir compartir y guardar búsquedas.
-// 5. Inicializar la aplicación completa.
+// 5. Gestionar la interfaz de usuario de autenticación.
+// 6. Inicializar la aplicación completa.
 
+// ✅ CORRECCIÓN: Importa la configuración final, no la plantilla.
 import { CONFIG } from './config.js';
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from './utils.js';
 import { fetchMovies } from './api.js';
@@ -20,7 +22,6 @@ import {
     prefetchNextPage,
     initQuickView
 } from './ui.js';
-// ✨ MEJORA: Se importan los ICONOS centralizados para usarlos en la inicialización.
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from './constants.js';
 import {
     getState,
@@ -39,6 +40,13 @@ import {
 } from './state.js';
 import { showToast } from './toast.js';
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
+// ✨ NUEVO: Importamos el cliente de Supabase para manejar la autenticación.
+import { supabase } from './supabaseClient.js';
+
+
+// =================================================================
+//          VARIABLES GLOBALES Y CONSTANTES DEL MÓDULO
+// =================================================================
 
 const URL_PARAM_MAP = {
     q: 'searchTerm',
@@ -57,6 +65,14 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
     Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
+// ✨ NUEVO: Referencias a los elementos del DOM para la autenticación.
+const loginButton = document.getElementById('login-button');
+const userSessionGroup = document.getElementById('user-session-group');
+const userAvatarInitials = document.getElementById('user-avatar-initials');
+const userEmailText = document.getElementById('user-email-text');
+const logoutButton = document.getElementById('logout-button');
+
+
 // =================================================================
 //                      LÓGICA PRINCIPAL DE DATOS
 // =================================================================
@@ -67,32 +83,23 @@ async function loadAndRenderMovies(page = 1) {
     updatePageTitle();
     updateUrl();
 
-    // Comprobamos la compatibilidad una sola vez.
     const supportsViewTransitions = !!document.startViewTransition;
 
-    // ✨ MEJORA CLAVE: Si el navegador soporta View Transitions, entramos en el nuevo flujo.
     if (supportsViewTransitions) {
-        // Envolvemos TODO el proceso de cambio de estado en la transición.
         document.startViewTransition(async () => {
             try {
-                // 1. Pedimos los datos y esperamos a que lleguen.
-                //    Mientras tanto, el navegador mantiene la vista antigua visible.
                 const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
                 const { items: movies, total: totalMovies } = await fetchMovies(getActiveFilters(), page, pageSize);
 
-                // Precargamos la imagen LCP (Largest Contentful Paint) tan pronto como tengamos los datos.
                 if (movies && movies.length > 0) {
                     preloadLcpImage(movies[0]);
                 }
                 
-                // Si ha habido una petición más nueva mientras esperábamos, abortamos el renderizado.
                 if (requestId !== getLatestRequestId()) return;
 
-                // 2. Actualizamos el DOM en memoria. El navegador aún no muestra nada.
                 updateDomWithResults(movies, totalMovies);
 
             } catch (error) {
-                // Si algo falla, también actualizamos el DOM dentro de la transición para mostrar el error.
                 if (error.name === 'AbortError') {
                     console.log('Petición de películas cancelada deliberadamente.');
                     return;
@@ -104,8 +111,6 @@ async function loadAndRenderMovies(page = 1) {
             }
         });
     } else {
-        // --- FALLBACK PARA NAVEGADORES ANTIGUOS ---
-        // Esta es nuestra lógica original, que ahora sirve como plan de respaldo.
         dom.gridContainer.setAttribute('aria-busy', 'true');
         renderSkeletons(dom.gridContainer, dom.paginationContainer);
         updateHeaderPaginationState(getCurrentPage(), 0);
@@ -137,9 +142,6 @@ async function loadAndRenderMovies(page = 1) {
     }
 }
 
-/**
- * Encapsula toda la lógica de actualización del DOM con los resultados de la API.
- */
 function updateDomWithResults(movies, totalMovies) {
     setTotalMovies(totalMovies);
     updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
@@ -166,6 +168,49 @@ function updateDomWithResults(movies, totalMovies) {
         prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
     }
 }
+
+// =================================================================
+//                      LÓGICA DE AUTENTICACIÓN
+// =================================================================
+
+/**
+ * ✨ NUEVO: Actualiza la UI para reflejar el estado de sesión del usuario.
+ * @param {object|null} user - El objeto de usuario de Supabase o null.
+ */
+function updateAuthUI(user) {
+    if (user) {
+        // Usuario está logueado
+        document.body.classList.add('user-logged-in');
+        userSessionGroup.hidden = false;
+        loginButton.hidden = true;
+
+        const userEmail = user.email || '';
+        userEmailText.textContent = userEmail;
+        userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
+    } else {
+        // Usuario NO está logueado
+        document.body.classList.remove('user-logged-in');
+        userSessionGroup.hidden = true;
+        loginButton.hidden = false;
+    }
+}
+
+/**
+ * ✨ NUEVO: Maneja la acción de cerrar sesión.
+ */
+async function handleLogout() {
+    triggerPopAnimation(logoutButton);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        console.error('Error al cerrar sesión:', error);
+        showToast('No se pudo cerrar la sesión.', 'error');
+    } else {
+        // Limpiamos la UI y recargamos la página para un estado limpio
+        updateAuthUI(null);
+        window.location.reload();
+    }
+}
+
 
 // =================================================================
 //          MANEJADORES DE EVENTOS (EVENT HANDLERS)
@@ -247,33 +292,17 @@ function setupKeyboardShortcuts() {
         if (isTyping) return;
 
         switch (e.key) {
-            case '/':
-                e.preventDefault();
-                dom.searchInput.focus();
-                break;
-            case 'k':
-                if (dom.headerNextBtn && !dom.headerNextBtn.disabled) {
-                    dom.headerNextBtn.click();
-                }
-                break;
-            case 'j':
-                if (dom.headerPrevBtn && !dom.headerPrevBtn.disabled) {
-                    dom.headerPrevBtn.click();
-                }
-                break;
+            case '/': e.preventDefault(); dom.searchInput.focus(); break;
+            case 'k': if (dom.headerNextBtn && !dom.headerNextBtn.disabled) dom.headerNextBtn.click(); break;
+            case 'j': if (dom.headerPrevBtn && !dom.headerPrevBtn.disabled) dom.headerPrevBtn.click(); break;
         }
     });
 }
 
 function setupGlobalListeners() {
     document.addEventListener('click', (e) => {
-        if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) {
-            clearAllSidebarAutocomplete();
-        }
-
-        if (!e.target.closest('.sidebar')) {
-            collapseAllSections();
-        }
+        if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
+        if (!e.target.closest('.sidebar')) collapseAllSections();
     });
 
     dom.paginationContainer.addEventListener('click', async (e) => {
@@ -289,7 +318,7 @@ function setupGlobalListeners() {
         }
     });
 
-    dom.gridContainer.addEventListener('click', async (e) => {
+    dom.gridContainer.addEventListener('click', (e) => {
         if (e.target.id === 'clear-filters-from-empty') {
             document.dispatchEvent(new CustomEvent('filtersReset'));
         }
@@ -309,7 +338,6 @@ function setupGlobalListeners() {
             window.requestAnimationFrame(() => {
                 const scrollY = window.scrollY;
                 dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
-
                 if (scrollY > 10 && !isHeaderScrolled) {
                     isHeaderScrolled = true;
                     dom.mainHeader.classList.add(CSS_CLASSES.IS_SCROLLED);
@@ -332,8 +360,7 @@ function setupGlobalListeners() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
-            const rewindButton = document.querySelector('#rewind-button');
-            if (rewindButton) rewindButton.click();
+            rewindButton?.click();
         }
     });
 }
@@ -365,17 +392,11 @@ function readUrlAndSetState() {
     Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
         const value = params.get(shortKey);
         if (value !== null) {
-            if (stateKey === 'page') {
-                setCurrentPage(parseInt(value, 10) || 1);
-            } else if (stateKey === 'searchTerm') {
-                setSearchTerm(value);
-            } else if (stateKey === 'sort') {
-                setSort(value);
-            } else if (stateKey === 'mediaType') {
-                setMediaType(value);
-            } else {
-                setFilter(stateKey, value);
-            }
+            if (stateKey === 'page') setCurrentPage(parseInt(value, 10) || 1);
+            else if (stateKey === 'searchTerm') setSearchTerm(value);
+            else if (stateKey === 'sort') setSort(value);
+            else if (stateKey === 'mediaType') setMediaType(value);
+            else setFilter(stateKey, value);
         }
     });
 
@@ -430,7 +451,6 @@ function init() {
         document.body.classList.add('rotation-disabled');
         const toggleBtn = document.getElementById('toggle-rotation-btn');
         if (toggleBtn) {
-            // ✨ CORRECCIÓN: Usa el icono centralizado para asegurar que se cargue correctamente.
             toggleBtn.innerHTML = ICONS.SQUARE_STOP;
             toggleBtn.setAttribute('aria-label', 'Activar rotación de tarjetas');
         }
@@ -447,6 +467,15 @@ function init() {
     setupHeaderListeners();
     setupGlobalListeners();
     setupKeyboardShortcuts();
+
+    // ✨ INICIALIZACIÓN DE LA LÓGICA DE AUTENTICACIÓN
+    logoutButton.addEventListener('click', handleLogout);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        updateAuthUI(session?.user);
+    });
+    supabase.auth.onAuthStateChange((_event, session) => {
+        updateAuthUI(session?.user);
+    });
     
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));

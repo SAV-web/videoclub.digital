@@ -2,15 +2,66 @@
 /* Componente: Perfil de Usuario
 /* ================================================================= */
 
+/* src/css/components/profile.css */
+
 .profile-container {
     margin-top: auto;
     padding-top: var(--space-md);
-    text-align: center;
+    border-top: 1px solid var(--color-border);
+    /* ✨ NUEVO: Usamos flex para alinear los elementos */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
 }
+
 .profile-button {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: var(--space-xs);
     font-weight: bold;
     text-decoration: none;
+    padding: var(--space-xs);
+    border-radius: var(--radius-md);
+    transition: background-color var(--transition-duration-fast);
+}
+
+.profile-button:hover {
+    background-color: var(--color-bg);
+}
+
+/* Oculta el texto por defecto (sidebar colapsado) */
+.profile-button-text {
+    display: none;
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px; /* Evita que emails largos rompan el layout */
+}
+
+.user-session-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    width: 100%;
+}
+
+.user-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-round);
+    background-color: var(--color-accent);
+    color: #fff;
+    font-size: var(--font-size-sm);
+    font-weight: bold;
+    flex-shrink: 0; /* Evita que el avatar se encoja */
+}
+
+.logout-button {
+    margin-left: auto; /* Empuja el botón de logout a la derecha */
+    flex-shrink: 0;
 }

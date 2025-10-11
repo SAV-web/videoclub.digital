@@ -1,23 +1,19 @@
 // =================================================================
-//                MÓDULO DE SERVICIO API (SUPABASE)
+//          MÓDULO DE SERVICIO API (Versión Segura)
 // =================================================================
-// Este módulo actúa como la única puerta de entrada para la obtención de datos.
+// Ubicación: src/js/api.js
+//
 // Responsabilidades:
-// 1. Conectarse a Supabase usando createClient desde ESM.
-// 2. Encapsular las llamadas a funciones RPC (Remote Procedure Call).
-// 3. Gestionar la cancelación de peticiones de red obsoletas (AbortController).
-// 4. Implementar una caché (LRU) para mejorar el rendimiento.
-// 5. Normalizar todas las respuestas a un formato consistente { items, total }.
-// 6. Gestionar los errores de forma centralizada.
-
-// src/js/api.js
+// 1. Usar el cliente de Supabase para invocar la Edge Function 'search-movies'.
+//    - Si el usuario está logueado, el cliente adjuntará el token JWT automáticamente.
+//    - Si es anónimo, no se adjuntará ningún token.
+// 2. Eliminar la dependencia de la API Key pública.
+// 3. Mantener la lógica de caché y cancelación de peticiones.
 // =================================================================
-//                MÓDULO DE SERVICIO API (SUPABASE)
-// =================================================================
-// ... (resto de la descripción del fichero)
 
-import { CONFIG } from './config.js'; 
-// ✨ CAMBIO 1: Importamos la instancia ÚNICA de supabase desde nuestro módulo central.
+import { CONFIG } from './config.js';
+// Importamos la instancia ÚNICA del cliente de Supabase.
+// Este cliente es "inteligente": conoce el estado de autenticación del usuario.
 import { supabase } from './supabaseClient.js';
 import { LRUCache } from 'https://esm.sh/lru-cache@10.2.0';
 
@@ -30,8 +26,7 @@ let movieFetchController = null;
 const suggestionControllers = {};
 
 /**
- * Busca y recupera películas de la base de datos.
- * Esta es la función principal de obtención de datos.
+ * Busca y recupera películas invocando de forma segura la Edge Function.
  */
 export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE) {
     const queryKey = JSON.stringify({ ...activeFilters, currentPage, pageSize });
@@ -47,40 +42,43 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
     }
     movieFetchController = new AbortController();
 
-    const edgeFunctionUrl = `${CONFIG.SUPABASE_URL}/functions/v1/search-movies`;
-
     try {
-        const response = await fetch(edgeFunctionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${CONFIG.SEARCH_MOVIES_API_KEY}`
-            },
-            body: JSON.stringify({ activeFilters, currentPage, pageSize }),
-            signal: movieFetchController.signal
+        // =================================================================
+        // CAMBIO CRÍTICO: De 'fetch' a 'supabase.functions.invoke'
+        // =================================================================
+        // Usamos el método 'invoke' del cliente de Supabase. Esto se encarga de:
+        // - Construir la URL correcta a la Edge Function.
+        // - Adjuntar el token JWT del usuario si está logueado.
+        // - Manejar las cabeceras estándar de Supabase.
+        const { data, error } = await supabase.functions.invoke('search-movies', {
+            body: { activeFilters, currentPage, pageSize },
+            signal: movieFetchController.signal,
         });
+        // =================================================================
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+        // Si la función devuelve un error (ej. el token expiró), lo lanzamos.
+        if (error) {
+            throw new Error(error.message);
         }
 
-        const result = await response.json();
+        // La respuesta de la función ahora está en la propiedad 'data'.
+        const result = data;
         cache.set(queryKey, result);
         return result;
 
     } catch (error) {
         if (error.name === 'AbortError') {
             console.log('Petición a la Edge Function cancelada.');
-            // Devolvemos una promesa que nunca se resuelve para detener la cadena
-            return new Promise(() => {});
+            return new Promise(() => {}); // Detiene la cadena de promesas.
         }
+        // Propagamos el error para que sea manejado en main.js y se muestre un toast.
         throw error;
     }
 }
 
 /**
  * Función genérica y reutilizable para obtener sugerencias de autocompletado.
+ * Esta función no necesita cambios, ya que llama a RPCs que son públicamente legibles.
  */
 const fetchSuggestions = async (rpcName, searchTerm) => {
     if (!searchTerm || searchTerm.length < 2) return [];
@@ -91,7 +89,6 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
     suggestionControllers[rpcName] = new AbortController();
 
     try {
-        // ✨ CAMBIO 3: Usamos la instancia importada 'supabase' aquí también.
         const { data, error } = await supabase
             .rpc(rpcName, { search_term: searchTerm })
             .abortSignal(suggestionControllers[rpcName].signal);

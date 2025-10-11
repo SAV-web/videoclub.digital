@@ -1,63 +1,66 @@
-
 // =================================================================
-//                  EDGE FUNCTION: search-movies
+//          EDGE FUNCTION: search-movies (Versión Segura)
 // =================================================================
 // Ubicación: supabase/functions/search-movies/index.ts
 //
 // Propósito:
-// 1. Actuar como un proxy seguro entre el cliente y la base de datos.
-// 2. Proteger la función RPC 'search_and_count' contra abusos.
-// 3. Requerir una API key secreta para su uso.
+// 1. Actuar como un proxy seguro para la función RPC 'search_and_count'.
+// 2. Eliminar por completo el uso de la 'service_role_key' para peticiones de clientes.
+// 3. Implementar una lógica dual:
+//    - Si la petición incluye un token JWT válido, se ejecuta con los permisos de ESE usuario (respetando RLS).
+//    - Si la petición NO incluye token (usuario anónimo), se ejecuta con permisos públicos ('anon role').
 // 4. Gestionar CORS para permitir peticiones desde el frontend.
 // =================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-// Variables de entorno que se configurarán en el panel de Supabase
-const PROJECT_SUPABASE_URL = Deno.env.get('PROJECT_SUPABASE_URL');
-const PROJECT_SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('PROJECT_SUPABASE_SERVICE_ROLE_KEY');
-const SEARCH_MOVIES_API_KEY = Deno.env.get('SEARCH_MOVIES_API_KEY');
+// Leemos las credenciales base del proyecto desde las variables de entorno una sola vez.
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-// El handler principal que se ejecuta con cada petición
+// El handler principal que se ejecuta con cada petición.
 Deno.serve(async (req) => {
-  // =================================================================
-  // 1. GESTIÓN DE CORS (Cross-Origin Resource Sharing)
-  // =================================================================
-  // El navegador envía una petición OPTIONS "pre-flight" para verificar
-  // si el servidor permite la petición real. Debemos responder a ella.
+  // Manejamos la petición de pre-vuelo (preflight) de CORS.
+  // El navegador la envía automáticamente antes de la petición POST real.
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // =================================================================
-    // 2. VALIDACIÓN DE SEGURIDAD (API KEY)
-    // =================================================================
-    const apiKey = req.headers.get('Authorization')?.replace('Bearer ', '');
+    // Obtenemos la cabecera de autorización, que contendrá el JWT si el usuario está logueado.
+    const authorization = req.headers.get('Authorization');
 
-    if (!apiKey || apiKey !== SEARCH_MOVIES_API_KEY) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // =================================================================
+    // LÓGICA DE CLIENTE DUAL: La clave de la seguridad del sistema.
+    // =================================================================
+    let supabaseClient;
+
+    if (authorization) {
+      // CASO 1: Usuario Autenticado.
+      // Creamos un cliente de Supabase específico para la sesión del usuario que hace la llamada.
+      // Supabase-js se encarga de validar el JWT. Si es falso o ha expirado, las llamadas fallarán.
+      // Este cliente actuará con los permisos de RLS definidos para el rol 'authenticated'.
+      console.log('Edge Function: Creando cliente para usuario autenticado.');
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authorization } },
       });
+    } else {
+      // CASO 2: Usuario Anónimo.
+      // Si no hay cabecera de autorización, es un visitante público.
+      // Creamos un cliente estándar que usa la 'anon_key'.
+      // Este cliente actuará con los permisos de RLS definidos para el rol 'anon'.
+      console.log('Edge Function: Creando cliente para usuario anónimo.');
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     }
+    // =================================================================
 
-    // =================================================================
-    // 3. PROCESAMIENTO DE LA PETICIÓN
-    // =================================================================
-    // Obtenemos los parámetros de búsqueda del cuerpo de la petición.
+    // Extraemos los parámetros de búsqueda del cuerpo de la petición.
     const { activeFilters, currentPage, pageSize } = await req.json();
 
-    // Creamos un cliente de Supabase especial para el servidor.
-    // Usamos la 'service_role_key' para que tenga permisos elevados
-    // y pueda saltarse las políticas de RLS si fuera necesario.
-    const supabaseAdmin = createClient(PROJECT_SUPABASE_URL, PROJECT_SUPABASE_SERVICE_ROLE_KEY);
-
-    // =================================================================
-    // 4. LLAMADA A LA FUNCIÓN RPC
-    // =================================================================
-    const { data, error } = await supabaseAdmin.rpc('search_and_count', {
+    // Invocamos la función RPC usando el cliente correspondiente (autenticado o anónimo).
+    // La base de datos aplicará las políticas de RLS adecuadas automáticamente.
+    const { data, error } = await supabaseClient.rpc('search_and_count', {
         search_term: activeFilters.searchTerm || '',
         p_genre_name: activeFilters.genre,
         p_year: activeFilters.year,
@@ -73,31 +76,28 @@ Deno.serve(async (req) => {
         p_offset: (currentPage - 1) * pageSize
     });
 
+    // Si la llamada a la RPC devuelve un error, lo lanzamos para que sea manejado por el bloque catch.
     if (error) {
-      // Si la base de datos devuelve un error, lo propagamos.
-      throw new Error(error.message);
+      throw error;
     }
-
-    // =================================================================
-    // 5. RESPUESTA EXITOSA
-    // =================================================================
-    // Normalizamos la respuesta para que coincida con lo que el frontend
-    // esperaba de la llamada RPC directa.
+    
+    // Normalizamos la respuesta para que coincida con lo que el frontend espera.
     const items = data || [];
     const total = items.length > 0 ? items[0].total_count : 0;
     const responsePayload = { items, total };
 
+    // Devolvemos la respuesta exitosa.
     return new Response(JSON.stringify(responsePayload), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (err) {
-    // =================================================================
-    // 6. GESTIÓN DE ERRORES
-    // =================================================================
+    // Capturamos cualquier error que haya ocurrido en el proceso.
+    console.error('Error en la Edge Function:', err);
     return new Response(JSON.stringify({ error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      // Devolvemos un 500 para errores del servidor. El frontend mostrará un mensaje genérico.
       status: 500,
     });
   }

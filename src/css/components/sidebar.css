@@ -439,3 +439,18 @@ body.dark-mode .year-input:focus {
     color: var(--color-text-primary);
     font-family: var(--font-title);
 }
+
+/* Mostrar texto del perfil cuando el sidebar está expandido */
+body.sidebar-is-open .profile-button-text,
+body:not(.sidebar-collapsed) .sidebar .profile-button-text {
+    display: inline;
+}
+
+/* Ocultar el botón de login si la sesión está iniciada */
+body.user-logged-in #login-button {
+    display: none;
+}
+/* Mostrar el grupo de sesión si el usuario está logueado */
+body.user-logged-in #user-session-group {
+    display: flex;
+}

@@ -229,13 +229,32 @@
                     </section>
                 </nav>
                 <div id="user-profile-container" class="profile-container">
-                    <a href="auth.html" id="user-profile-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta" aria-label="Acceder a tu cuenta de usuario">
+                    <!-- Botón de Login (visible para usuarios anónimos) -->
+                    <a href="auth.html" id="login-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta" aria-label="Acceder a tu cuenta de usuario">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
+                        <!-- ✨ NUEVO: Texto opcional para cuando el sidebar está expandido -->
+                        <span class="profile-button-text">Acceder</span>
                     </a>
+
+                    <!-- Grupo de Usuario Logueado (oculto por defecto) -->
+                    <div id="user-session-group" class="user-session-group" hidden>
+                        <button id="user-avatar-button" class="sidebar-control-button profile-button" title="Mi perfil" aria-label="Ver mi perfil">
+                            <span id="user-avatar-initials" class="user-avatar"></span>
+                            <span id="user-email-text" class="profile-button-text"></span>
+                        </button>
+                        <button id="logout-button" class="sidebar-control-button logout-button" title="Cerrar sesión" aria-label="Cerrar sesión">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
+
             </div>
         </aside>
 
