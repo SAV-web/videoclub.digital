@@ -6,7 +6,7 @@
     <!-- ================================================================= -->
     <meta charset="UTF-8">
     <meta name="color-scheme" content="light dark">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"> <!-- ✨ MEJORA: viewport-fit=cover añadido -->
     <title>videoclub.digital - Tu brújula cinéfila y seriéfila inteligente</title>
     <meta name="description" content="Explora, filtra y descubre miles de películas y series. Tu brújula cinéfila y seriéfila inteligente para seguir tus gustos y encontrar tu próxima obra maestra.">
 
@@ -19,10 +19,11 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://esm.sh" crossorigin>
 
-    <link rel="modulepreload" href="src/js/main.js">
-    <link rel="modulepreload" href="src/js/ui.js">
-    <link rel="modulepreload" href="src/js/api.js">
-    <link rel="modulepreload" href="src/js/state.js">
+    <!-- ✨ MEJORA: Preloads de módulos JS clave -->
+    <link rel="modulepreload" href="/src/js/main.js">
+    <link rel="modulepreload" href="/src/js/ui.js">
+    <link rel="modulepreload" href="/src/js/api.js">
+    <link rel="modulepreload" href="/src/js/state.js">
     <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2">
 
     <!-- ================================================================= -->
@@ -285,7 +286,7 @@
 
                 <div class="search-and-theme-group">
                     <form id="search-form" class="search-form" role="search">
-                        <input id="search-input" type="search" placeholder="Buscar título..." maxlength="50" aria-label="Buscar películas o series por título" autocomplete="off">
+                        <input id="search-input" type="search" placeholder="Título" maxlength="50" aria-label="Buscar películas o series por título" autocomplete="off">
                         <svg class="search-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </form>
                 </div>

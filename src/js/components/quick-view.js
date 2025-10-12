@@ -15,9 +15,19 @@ const dom = {
 let currentMovieData = null;
 
 /**
+ * Maneja los clics fuera de la modal para cerrarla.
+ * @param {Event} event
+ */
+function handleOutsideClick(event) {
+    if (dom.modal.classList.contains('is-visible') && !dom.modal.contains(event.target)) {
+        closeModal();
+    }
+}
+
+/**
  * Cierra la ventana de Vista Rápida.
  */
-function closeModal() {
+export function closeModal() {
     dom.modal.classList.remove('is-visible');
     dom.overlay.classList.remove('is-visible');
     document.body.classList.remove('modal-open');
@@ -26,6 +36,8 @@ function closeModal() {
     dom.modal.addEventListener('transitionend', () => {
         dom.modal.hidden = true;
     }, { once: true });
+
+    document.removeEventListener('click', handleOutsideClick);
 }
 
 /**
@@ -121,6 +133,9 @@ function populateModal(cardElement) {
 export function openModal(cardElement) {
     if (!cardElement) return;
 
+    // Resetea el scroll al principio cada vez que se abre una nueva modal
+    dom.content.scrollTop = 0;
+
     populateModal(cardElement);
     
     dom.modal.hidden = false;
@@ -130,19 +145,18 @@ export function openModal(cardElement) {
     setTimeout(() => {
         dom.modal.classList.add('is-visible');
         dom.overlay.classList.add('is-visible');
+        document.addEventListener('click', handleOutsideClick);
     }, 10);
 }
 
 /**
- * Inicializa los listeners para la Vista Rápida (cerrar al pulsar botón, overlay o Escape).
+ * Inicializa los listeners para la Vista Rápida (cerrar al pulsar Escape).
  */
 export function initQuickView() {
-    if (!dom.modal || !dom.overlay || !dom.closeBtn) {
-        console.error("Quick View DOM elements not found. Initialization failed.");
+    if (!dom.modal) {
+        console.error("Quick View modal element not found. Initialization failed.");
         return;
     }
-    dom.closeBtn.addEventListener('click', closeModal);
-    dom.overlay.addEventListener('click', closeModal);
 
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && dom.modal.classList.contains('is-visible')) {

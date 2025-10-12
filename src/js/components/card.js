@@ -316,9 +316,22 @@ function createMovieCard(movieData) {
  * Función manejadora que decide qué acción tomar al hacer clic en una tarjeta.
  * @param {Event} e - El evento de click.
  */
+function handleDocumentClick(e) {
+    if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) {
+        const inner = currentlyFlippedCard.querySelector('.flip-card-inner');
+        if (inner) {
+            inner.classList.remove('is-flipped');
+            currentlyFlippedCard = null;
+        }
+        document.removeEventListener('click', handleDocumentClick);
+    }
+}
+
 function handleCardClick(e) {
-    const cardElement = this; 
-    
+    const cardElement = this;
+    const isRotationDisabled = document.body.classList.contains('rotation-disabled');
+
+    // Intercept links early
     const directorLink = e.target.closest('.front-director-info a');
     if (directorLink) {
         e.preventDefault();
@@ -330,25 +343,63 @@ function handleCardClick(e) {
         document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
         return;
     }
-    // Permitir que los enlaces dentro de la tarjeta funcionen normalmente.
     if (e.target.closest('a')) return;
 
-    // --- ✨ LÓGICA REVISADA ---
-    const isRotationDisabled = document.body.classList.contains('rotation-disabled');
+    // --- Lógica de Volteo Táctil ---
+    if (!isDesktop && !isRotationDisabled) {
+        e.preventDefault();
+        e.stopPropagation();
 
-    // Si la rotación automática está DESACTIVADA (modo Vista Rápida ⏹︎),
-    // el clic abrirá el modal.
+        const inner = cardElement.querySelector('.flip-card-inner');
+        if (!inner) return;
+
+        const isThisCardFlipped = inner.classList.contains('is-flipped');
+
+        // Si hay otra tarjeta volteada, la des-volteamos primero
+        if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) {
+            currentlyFlippedCard.querySelector('.flip-card-inner').classList.remove('is-flipped');
+            document.removeEventListener('click', handleDocumentClick);
+        }
+
+        // Voltear/des-voltear la tarjeta actual
+        inner.classList.toggle('is-flipped');
+
+        if (!isThisCardFlipped) {
+            // La tarjeta acaba de ser volteada
+            currentlyFlippedCard = cardElement;
+            // Añadimos un listener para des-voltearla si se hace clic fuera
+            setTimeout(() => {
+                document.addEventListener('click', handleDocumentClick);
+            }, 0);
+        } else {
+            // La tarjeta acaba de ser des-volteada
+            currentlyFlippedCard = null;
+            document.removeEventListener('click', handleDocumentClick);
+        }
+        
+        return;
+    }
+
+    // --- Lógica para Escritorio o modo Vista Rápida ---
     if (isRotationDisabled) {
         openModal(cardElement);
     }
-    
-    // Si la rotación automática está ACTIVADA (modo Volteo ⏸︎), el clic del ratón
-    // no hace NADA. La función simplemente termina aquí, permitiendo que el hover
-    // de CSS controle el volteo de forma natural y sin interrupciones.
+    // En escritorio con rotación activada, el hover de CSS se encarga de todo.
 }
 
 
 // --- FUNCIONES PÚBLICAS (EXPORTADAS) ---
+
+export function unflipAllCards() {
+    if (currentlyFlippedCard) {
+        const inner = currentlyFlippedCard.querySelector('.flip-card-inner');
+        if (inner) {
+            inner.classList.remove('is-flipped');
+        }
+        currentlyFlippedCard = null;
+        document.removeEventListener('click', handleDocumentClick);
+    }
+}
 
 export function setupCardInteractions() {
     document.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => {
@@ -356,6 +407,23 @@ export function setupCardInteractions() {
         // que ya no es necesario para el nuevo comportamiento.
         card.removeEventListener('click', handleCardClick);
         card.addEventListener('click', handleCardClick);
+
+        // Añadir listener para el scroll táctil en el reverso
+        if (!isDesktop) {
+            const scrollableContent = card.querySelector(SELECTORS.SCROLLABLE_CONTENT);
+            if (scrollableContent) {
+                scrollableContent.addEventListener('click', (e) => {
+                    const inner = card.querySelector(SELECTORS.FLIP_CARD_INNER);
+                    const isRotationDisabled = document.body.classList.contains('rotation-disabled');
+                    
+                    // Aplicar solo en modo pausa (táctil) y si la tarjeta está volteada
+                    if (!isRotationDisabled && inner && inner.classList.contains(CSS_CLASSES.IS_FLIPPED)) {
+                        e.stopPropagation(); // Evita que el clic des-voltee la tarjeta
+                        scrollableContent.classList.toggle('full-view');
+                    }
+                });
+            }
+        }
 
         if (isDesktop) {
             const scrollableContent = card.querySelector(SELECTORS.SCROLLABLE_CONTENT);

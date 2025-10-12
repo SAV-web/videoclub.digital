@@ -85,7 +85,13 @@ WITH filtered_and_paginated_movies AS (
     FROM public.movies m
     WHERE
         (search_term IS NULL OR search_term = '' OR public.unaccent_immutable(m.title) ILIKE '%' || public.unaccent_immutable(search_term) || '%')
-        AND (p_year IS NULL OR (p_year LIKE '%-%' AND m.year BETWEEN (split_part(p_year, '-', 1)::int) AND (split_part(p_year, '-', 2)::int)) OR (p_year NOT LIKE '%-%' AND m.year = p_year::int))
+        AND (p_year IS NULL OR 
+            (p_year LIKE '%-%' AND (
+                m.year <= (split_part(p_year, '-', 2)::int) AND 
+                ((split_part(p_year, '-', 1)::int) = 1926 OR m.year >= (split_part(p_year, '-', 1)::int))
+            )) OR 
+            (p_year NOT LIKE '%-%' AND m.year = p_year::int)
+        )
         AND (p_media_type IS NULL OR p_media_type = 'all' OR (p_media_type = 'movies' AND (m.type IS NULL OR m.type IN ('D', 'A'))) OR (p_media_type = 'series' AND m.type ILIKE 'S%'))
         AND (p_country_name IS NULL OR m.country_id = (SELECT c.id FROM public.countries c WHERE c.name = p_country_name))
         AND (p_genre_name IS NULL OR EXISTS (SELECT 1 FROM public.movie_genres mg JOIN public.genres g ON mg.genre_id = g.id WHERE mg.movie_id = m.id AND g.name = p_genre_name))

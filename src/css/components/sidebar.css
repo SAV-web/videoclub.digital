@@ -123,6 +123,8 @@
     overflow-x: hidden;
     scrollbar-gutter: stable;
     scrollbar-width: none;
+    touch-action: pan-y; /* Permite solo scroll vertical */
+    overscroll-behavior-y: contain; /* Evita que el scroll del sidebar afecte a la página principal */
 }
 .sidebar-scrollable-filters::-webkit-scrollbar { display: none; }
 
@@ -179,7 +181,6 @@
     font: inherit;
     font-size: var(--font-size-sm);
     font-weight: bold;
-    
     transition: color var(--transition-duration-fast), 
                 background-color var(--transition-duration-fast),
                 transform var(--transition-duration-fast);

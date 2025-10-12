@@ -16,6 +16,8 @@ import {
     renderSidebarAutocomplete,
     clearAllSidebarAutocomplete
 } from './autocomplete.js';
+import { unflipAllCards } from './card.js';
+import { closeModal } from './quick-view.js';
 import {
     getActiveFilters,
     setFilter,
@@ -326,6 +328,10 @@ function setupEventListeners() {
 
     if (dom.toggleRotationBtn) {
         dom.toggleRotationBtn.addEventListener('click', (e) => {
+            // Limpia los efectos de la UI antes de cambiar de modo.
+            unflipAllCards();
+            closeModal();
+
             document.body.classList.toggle('rotation-disabled');
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
             const button = e.currentTarget;
