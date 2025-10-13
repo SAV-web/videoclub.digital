@@ -22,7 +22,7 @@ export function renderSidebarAutocomplete(formElement, suggestions, searchTerm) 
         formElement.appendChild(resultsContainer);
     }
 
-    resultsContainer.innerHTML = '';
+    resultsContainer.textContent = '';
 
     if (suggestions.length === 0) {
         input.removeAttribute('aria-expanded');

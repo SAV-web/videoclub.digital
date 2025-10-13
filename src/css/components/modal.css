@@ -38,8 +38,8 @@
     top: 50%;
     left: 50%;
     width: 90%;
-    max-width: 450px;
-    max-height: 90vh;
+    max-width: 500px; /* ✨ Aumentado para más espacio */
+    max-height: 92vh; /* ✨ Aumentado ligeramente */
     border-radius: var(--radius-lg);
     background-color: var(--color-surface);
     box-shadow: var(--shadow);
@@ -100,7 +100,7 @@
         left: 0;
         width: 100%;
         max-width: 100%;
-        max-height: 85vh;
+        max-height: 90vh; /* ✨ Aumentado para más espacio */
         border-radius: var(--radius-lg) var(--radius-lg) 0 0;
         transform: translateY(100%);
     }
@@ -111,10 +111,10 @@
 
     /* Estilos para la modal flotante en móvil (rotación desactivada) */
     body.rotation-disabled .quick-view-modal {
-        width: 60%;
-        height: 60vh;
-        max-width: 60%;
-        max-height: 60vh;
+        width: 85%; /* ✨ Aumentado para más espacio */
+        height: 80vh; /* ✨ Aumentado para más espacio */
+        max-width: 85%;
+        max-height: 80vh;
     }
 
     .quick-view-content {
@@ -125,5 +125,27 @@
 
     .quick-view-content::-webkit-scrollbar {
         display: none; /* Ocultar scrollbar en Chrome, Safari y Opera */
+    }
+}
+
+/* --- ✨ MEJORA: Desenfoque del fondo en móvil al abrir la modal --- */
+/* Se aplica solo en pantallas pequeñas cuando la modal está abierta */
+@media (max-width: 768px) {
+    body.modal-open .content {
+        /* Aplicamos un desenfoque y evitamos que se pueda interactuar con el fondo */
+        filter: blur(4px);
+        pointer-events: none;
+        /* Añadimos una transición para que el efecto sea suave */
+        transition: filter 0.3s ease;
+    }
+}
+
+/* --- ✨ MEJORA: Desenfoque del fondo en ESCRITORIO al abrir la modal --- */
+/* Se aplica solo en pantallas grandes cuando la modal está abierta */
+@media (min-width: 769px) {
+    body.modal-open .content {
+        filter: blur(4px);
+        pointer-events: none;
+        transition: filter 0.3s ease;
     }
 }

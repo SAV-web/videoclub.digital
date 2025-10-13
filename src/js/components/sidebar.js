@@ -50,7 +50,7 @@ const SELECTION_FRIENDLY_NAMES = new Map([
 function renderFilterPills() {
     const activeFilters = getActiveFilters();
 
-    document.querySelectorAll('.active-filters-list').forEach(container => container.innerHTML = '');
+    document.querySelectorAll('.active-filters-list').forEach(container => container.textContent = '');
 
     const createPill = (type, value, isExcluded = false) => {
         const pill = createElement('div', {
@@ -410,7 +410,7 @@ export function initSidebar() {
     document.querySelectorAll('.filter-link').forEach(link => {
         const { filterType, filterValue } = link.dataset;
         const textWrapper = createElement('span', { textContent: link.textContent });
-        link.innerHTML = '';
+        link.textContent = '';
         link.append(textWrapper);
 
         const excludable = { genre: ['Animación', 'Documental'], country: ['EEUU'] };

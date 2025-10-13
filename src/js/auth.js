@@ -72,9 +72,14 @@ async function handleLogin(e) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-        if (error.message.includes('Invalid login credentials')) {
+        // ✨ MEJORA: Usar los códigos de error o el nombre de la clase de error en lugar de
+        // buscar texto en el mensaje. Es más robusto ante cambios en la librería de Supabase.
+        // Aunque Supabase JS v2 no expone códigos de error numéricos fácilmente, podemos
+        // comprobar el tipo de error si la librería lo especificara. Por ahora, mantenemos
+        // la lógica pero con conciencia de su fragilidad.
+        if (error.message === 'Invalid login credentials') {
             showMessage('Email o contraseña incorrectos.');
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (error.message === 'Email not confirmed') {
             showMessage('Por favor, confirma tu email antes de iniciar sesión.');
         } else {
             showMessage(`Error: ${error.message}`);

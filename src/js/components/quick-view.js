@@ -16,13 +16,18 @@ let currentMovieData = null;
 
 /**
  * Maneja los clics fuera de la modal para cerrarla.
+ * Se asegura de que el clic no sea en la propia modal.
  * @param {Event} event
  */
 function handleOutsideClick(event) {
-    if (dom.modal.classList.contains('is-visible') && !dom.modal.contains(event.target)) {
+    // Si la modal es visible y el clic ocurrió fuera de ella...
+    // Y también nos aseguramos de que el clic no fue en una tarjeta (para evitar doble comportamiento)
+    if (dom.modal.classList.contains('is-visible') && !dom.modal.contains(event.target) && !event.target.closest('.movie-card')) {
         closeModal();
     }
 }
+
+
 
 /**
  * Cierra la ventana de Vista Rápida.
@@ -37,6 +42,7 @@ export function closeModal() {
         dom.modal.hidden = true;
     }, { once: true });
 
+    // Dejamos de escuchar clics fuera una vez que la modal se cierra.
     document.removeEventListener('click', handleOutsideClick);
 }
 
@@ -55,9 +61,25 @@ function populateModal(cardElement) {
     frontImg.src = cardImg.src;
     frontImg.alt = cardImg.alt;
 
-    front.querySelector('[data-template="title"]').textContent = cardElement.querySelector('[data-template="title"]').textContent;
-    front.querySelector('[data-template="director"]').innerHTML = cardElement.querySelector('[data-template="director"]').innerHTML;
-    front.querySelector('[data-template="year"]').textContent = cardElement.querySelector('[data-template="year"]').textContent;
+    // Usar textContent para datos simples y clonación de nodos para HTML
+    const titleSource = cardElement.querySelector('[data-template="title"]');
+    const directorSource = cardElement.querySelector('[data-template="director"]');
+    const yearSource = cardElement.querySelector('[data-template="year"]');
+
+    const titleTarget = front.querySelector('[data-template="title"]');
+    const directorTarget = front.querySelector('[data-template="director"]');
+    const yearTarget = front.querySelector('[data-template="year"]');
+
+    if (titleTarget && titleSource) titleTarget.textContent = titleSource.textContent;
+    if (yearTarget && yearSource) yearTarget.textContent = yearSource.textContent;
+
+    // Reemplazar innerHTML con clonación de nodos para seguridad
+    if (directorTarget && directorSource) {
+        directorTarget.textContent = ''; // Limpiar contenido existente
+        Array.from(directorSource.childNodes).forEach(node => {
+            directorTarget.appendChild(node.cloneNode(true));
+        });
+    }
     
     const lowRatingCircle = cardElement.querySelector('[data-template="low-rating-circle"]');
     if (lowRatingCircle) {
@@ -121,7 +143,7 @@ function populateModal(cardElement) {
         }
     }
 
-    dom.content.innerHTML = '';
+    dom.content.textContent = '';
     dom.content.appendChild(clone);
 }
 
@@ -145,7 +167,9 @@ export function openModal(cardElement) {
     setTimeout(() => {
         dom.modal.classList.add('is-visible');
         dom.overlay.classList.add('is-visible');
-        document.addEventListener('click', handleOutsideClick);
+        // Empezamos a escuchar clics "fuera" solo DESPUÉS de que la modal se haya abierto.
+        // El `setTimeout` es clave para que el mismo clic que abre la modal no la cierre.
+        setTimeout(() => document.addEventListener('click', handleOutsideClick), 0);
     }, 10);
 }
 
@@ -163,4 +187,13 @@ export function initQuickView() {
             closeModal();
         }
     });
+
+    // ✨ CORRECCIÓN: La lógica de cierre exterior se gestiona ahora dinámicamente
+    // para evitar conflictos. Mantenemos el listener del overlay como una
+    // capa de seguridad, pero la lógica principal está en `handleOutsideClick`.
+    dom.overlay.addEventListener('click', (e) => {
+        if (e.target === dom.overlay) closeModal();
+    });
+    // El botón de cierre explícito (la 'X') también debe cerrar la modal.
+    if (dom.closeBtn) dom.closeBtn.addEventListener('click', closeModal);
 }

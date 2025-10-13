@@ -6,8 +6,8 @@
 
 import { CONFIG } from '../config.js';
 import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
-import { CSS_CLASSES, SELECTORS } from '../constants.js';
-import { openModal } from './quick-view.js';
+import { CSS_CLASSES, SELECTORS } from '../constants.js'; 
+import { openModal, closeModal } from './quick-view.js';
 
 // --- VARIABLES Y CONSTANTES DEL MÓDULO ---
 const MAX_VOTES = {
@@ -87,7 +87,7 @@ function populateCardText(elements, movieData) {
     const directorContainer = elements.director;
     const directorsString = movieData.directors || 'Director no disponible';
     
-    directorContainer.innerHTML = '';
+    directorContainer.textContent = '';
     
     if (directorsString && directorsString !== 'Director no disponible') {
         const directors = directorsString.split(',').map(name => name.trim());
@@ -382,6 +382,13 @@ function handleCardClick(e) {
 
     // --- Lógica para Escritorio o modo Vista Rápida ---
     if (isRotationDisabled) {
+        // ✨ MEJORA: Si la modal ya está abierta, el clic en una tarjeta la cierra.
+        const quickViewModal = document.getElementById('quick-view-modal');
+        if (quickViewModal && quickViewModal.classList.contains('is-visible')) { 
+            closeModal();
+            return; 
+        }
+
         openModal(cardElement);
     }
     // En escritorio con rotación activada, el hover de CSS se encarga de todo.
@@ -454,7 +461,7 @@ export function renderMovieGrid(gridContainer, movies) {
     currentlyFlippedCard = null;
     if (!gridContainer) return;
     
-    gridContainer.innerHTML = '';
+    gridContainer.textContent = '';
     const fragment = document.createDocumentFragment();
     movies.forEach((movie) => {
         const card = createMovieCard(movie); // createMovieCard no necesita cambios
@@ -464,8 +471,8 @@ export function renderMovieGrid(gridContainer, movies) {
 }
 
 export function renderSkeletons(gridContainer, paginationContainer) {
-    if (gridContainer) gridContainer.innerHTML = '';
-    if (paginationContainer) paginationContainer.innerHTML = '';
+    if (gridContainer) gridContainer.textContent = '';
+    if (paginationContainer) paginationContainer.textContent = '';
     if (!gridContainer) return;
 
     const fragment = document.createDocumentFragment();
@@ -476,8 +483,8 @@ export function renderSkeletons(gridContainer, paginationContainer) {
 }
 
 export function renderNoResults(gridContainer, paginationContainer, activeFilters) {
-    if (gridContainer) gridContainer.innerHTML = '';
-    if (paginationContainer) paginationContainer.innerHTML = '';
+    if (gridContainer) gridContainer.textContent = '';
+    if (paginationContainer) paginationContainer.textContent = '';
     if (!gridContainer) return;
 
     const noResultsDiv = createElement('div', {
@@ -505,8 +512,8 @@ export function renderNoResults(gridContainer, paginationContainer, activeFilter
 }
 
 export function renderErrorState(gridContainer, paginationContainer, message) {
-    if (gridContainer) gridContainer.innerHTML = '';
-    if (paginationContainer) paginationContainer.innerHTML = '';
+    if (gridContainer) gridContainer.textContent = '';
+    if (paginationContainer) paginationContainer.textContent = '';
     if (!gridContainer) return;
     
     const errorDiv = createElement('div', {

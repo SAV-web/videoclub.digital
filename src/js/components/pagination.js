@@ -13,7 +13,7 @@ import { fetchMovies } from '../api.js';
 export function renderPagination(paginationContainer, totalMovies, currentPage) {
     if (!paginationContainer) return;
 
-    paginationContainer.innerHTML = '';
+    paginationContainer.textContent = '';
     const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);
 
     if (totalPages <= 1) return;

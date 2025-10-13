@@ -143,7 +143,7 @@ function updateDomWithResults(movies, totalMovies) {
     } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT) {
         renderMovieGrid(dom.gridContainer, movies);
         setupCardInteractions();
-        dom.paginationContainer.innerHTML = '';
+        dom.paginationContainer.textContent = '';
         updateHeaderPaginationState(1, 1);
     } else {
         const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);

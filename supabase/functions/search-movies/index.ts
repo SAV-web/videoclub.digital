@@ -1,103 +1,102 @@
 // =================================================================
-//          EDGE FUNCTION: search-movies (Versión Segura)
+//                 EDGE FUNCTION: search-movies
 // =================================================================
-// Ubicación: supabase/functions/search-movies/index.ts
+// v2.0 - Optimizado con Seguridad JWT y Caché en CDN
 //
 // Propósito:
-// 1. Actuar como un proxy seguro para la función RPC 'search_and_count'.
-// 2. Eliminar por completo el uso de la 'service_role_key' para peticiones de clientes.
-// 3. Implementar una lógica dual:
-//    - Si la petición incluye un token JWT válido, se ejecuta con los permisos de ESE usuario (respetando RLS).
-//    - Si la petición NO incluye token (usuario anónimo), se ejecuta con permisos públicos ('anon role').
-// 4. Gestionar CORS para permitir peticiones desde el frontend.
+// 1. Actuar como un proxy seguro entre el cliente y la base de datos.
+// 2. Requerir autenticación de usuario (JWT) o tratar como anónimo.
+// 3. NUNCA usar la 'service_role_key' para peticiones de clientes.
+// 4. Implementar una estrategia de caché a nivel de CDN para reducir la carga
+//    de la base de datos y mejorar la latencia.
+// 5. Gestionar CORS para permitir peticiones desde el frontend.
 // =================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
-// Leemos las credenciales base del proyecto desde las variables de entorno una sola vez.
+// Leemos las credenciales base desde las variables de entorno una sola vez.
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-// El handler principal que se ejecuta con cada petición.
 Deno.serve(async (req) => {
-  // Manejamos la petición de pre-vuelo (preflight) de CORS.
-  // El navegador la envía automáticamente antes de la petición POST real.
+  // Las peticiones OPTIONS de pre-vuelo de CORS son cruciales.
+  // No deben ser cacheadas y deben responder inmediatamente.
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // ✨ MEJORA: Definimos las cabeceras de caché para reutilizarlas.
+  // s-maxage: El CDN puede cachear la respuesta por 120 segundos.
+  // stale-while-revalidate: El CDN sirve una respuesta vieja mientras pide una nueva en segundo plano.
+  const cacheHeaders = {
+    'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600'
+  };
+
   try {
-    // Obtenemos la cabecera de autorización, que contendrá el JWT si el usuario está logueado.
+    // Obtenemos la cabecera de autorización que contiene el JWT del usuario.
     const authorization = req.headers.get('Authorization');
+    
+    let supabaseClient: SupabaseClient;
 
-    // =================================================================
-    // LÓGICA DE CLIENTE DUAL: La clave de la seguridad del sistema.
-    // =================================================================
-    let supabaseClient;
-
+    // --- Lógica de Cliente Dual: Autenticado vs. Anónimo ---
     if (authorization) {
-      // CASO 1: Usuario Autenticado.
-      // Creamos un cliente de Supabase específico para la sesión del usuario que hace la llamada.
-      // Supabase-js se encarga de validar el JWT. Si es falso o ha expirado, las llamadas fallarán.
-      // Este cliente actuará con los permisos de RLS definidos para el rol 'authenticated'.
-      console.log('Edge Function: Creando cliente para usuario autenticado.');
+      // Si hay una cabecera, es un usuario autenticado. Creamos un cliente
+      // que actúa en su nombre. Las llamadas a la DB respetarán las políticas RLS
+      // específicas para ese usuario.
       supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: authorization } },
       });
     } else {
-      // CASO 2: Usuario Anónimo.
-      // Si no hay cabecera de autorización, es un visitante público.
-      // Creamos un cliente estándar que usa la 'anon_key'.
-      // Este cliente actuará con los permisos de RLS definidos para el rol 'anon'.
-      console.log('Edge Function: Creando cliente para usuario anónimo.');
+      // Si NO hay cabecera, es un usuario anónimo. Creamos un cliente público
+      // estándar que solo tiene los permisos del rol 'anon'.
       supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     }
-    // =================================================================
 
     // Extraemos los parámetros de búsqueda del cuerpo de la petición.
     const { activeFilters, currentPage, pageSize } = await req.json();
 
-    // Invocamos la función RPC usando el cliente correspondiente (autenticado o anónimo).
-    // La base de datos aplicará las políticas de RLS adecuadas automáticamente.
+    // Invocamos la función RPC 'search_and_count' usando el cliente apropiado.
     const { data, error } = await supabaseClient.rpc('search_and_count', {
-        search_term: activeFilters.searchTerm || '',
-        p_genre_name: activeFilters.genre,
-        p_year: activeFilters.year,
-        p_country_name: activeFilters.country,
-        p_director_name: activeFilters.director,
-        p_actor_name: activeFilters.actor,
-        p_media_type: activeFilters.mediaType,
-        p_selection: activeFilters.selection,
-        p_sort: activeFilters.sort,
-        p_excluded_genres: activeFilters.excludedGenres,
-        p_excluded_countries: activeFilters.excludedCountries,
+        search_term: activeFilters.searchTerm || null,
+        p_genre_name: activeFilters.genre || null,
+        p_year: activeFilters.year || null,
+        p_country_name: activeFilters.country || null,
+        p_director_name: activeFilters.director || null,
+        p_actor_name: activeFilters.actor || null,
+        p_media_type: activeFilters.mediaType || 'all',
+        p_selection: activeFilters.selection || null,
+        p_sort: activeFilters.sort || 'relevance,asc',
+        p_excluded_genres: activeFilters.excludedGenres || [],
+        p_excluded_countries: activeFilters.excludedCountries || [],
         p_limit: pageSize,
         p_offset: (currentPage - 1) * pageSize
     });
 
-    // Si la llamada a la RPC devuelve un error, lo lanzamos para que sea manejado por el bloque catch.
     if (error) {
+      // Si la RPC devuelve un error (ej. RLS deniega el acceso), lo propagamos.
       throw error;
     }
     
-    // Normalizamos la respuesta para que coincida con lo que el frontend espera.
+    // Normalizamos la respuesta para el cliente.
     const items = data || [];
     const total = items.length > 0 ? items[0].total_count : 0;
     const responsePayload = { items, total };
 
-    // Devolvemos la respuesta exitosa.
+    // Devolvemos la respuesta exitosa con las cabeceras de caché.
     return new Response(JSON.stringify(responsePayload), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, ...cacheHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
   } catch (err) {
-    // Capturamos cualquier error que haya ocurrido en el proceso.
-    console.error('Error en la Edge Function:', err);
+    // Gestionamos cualquier error que haya ocurrido en el bloque try.
+    console.error('Error en la Edge Function "search-movies":', err);
+    
+    // Devolvemos una respuesta de error, también con cabeceras de caché
+    // para evitar que un pico de errores sobrecargue el sistema.
     return new Response(JSON.stringify({ error: err.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      // Devolvemos un 500 para errores del servidor. El frontend mostrará un mensaje genérico.
+      headers: { ...corsHeaders, ...cacheHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }
