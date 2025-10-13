@@ -63,16 +63,14 @@
     <!-- ================================================================= -->
     <!-- 4. HOJAS DE ESTILO EXTERNAS
     <!-- ================================================================= -->
-    <link rel="stylesheet" href="src/css/main.css">
+    <!-- ✨ MEJORA: Carga asíncrona del CSS principal para evitar bloqueo de renderizado -->
+    <link rel="stylesheet" href="src/css/main.css" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Roboto:wght@400;700&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/css/flag-icons.min.css">
     <link rel="stylesheet" href="src/vendor/nouislider/nouislider.min.css"/>
     
     <noscript>
       <link rel="stylesheet" href="src/css/main.css"/>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Roboto:wght@400;700&display=swap"/>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/css/flag-icons.min.css">
-      <link rel="stylesheet" href="src/vendor/nouislider/nouislider.min.css"/>
     </noscript>
 </head>
 
