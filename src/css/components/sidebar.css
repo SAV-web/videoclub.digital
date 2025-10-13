@@ -158,12 +158,35 @@
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
-    max-height: 0;
     padding-left: var(--space-xs);
+    
+    /* Estado Colapsado */
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
     overflow: hidden;
-    transition: max-height var(--transition-duration-normal) ease-out;
+    visibility: hidden;
+
+    /* ✨ MEJORA: Transición más rica para un efecto suave */
+    transition: max-height 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+                opacity 0.3s ease-in-out,
+                transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+                visibility 0s linear 0.4s; /* Retrasa la ocultación hasta que la animación termine */
 }
-.collapsible-section.active .section-content { max-height: 500px; }
+
+.collapsible-section.active .section-content {
+    /* Estado Expandido */
+    max-height: 40rem; /* Un valor suficientemente grande para el contenido */
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+
+    /* ✨ MEJORA: Transición de apertura con un ligero retraso en la opacidad */
+    transition: max-height 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+                opacity 0.4s ease-in-out 0.1s,
+                transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+                visibility 0s linear 0s;
+}
 
 /* ✨ LÓGICA RESTAURADA: Se eliminan las transiciones complejas. */
 .filter-link {

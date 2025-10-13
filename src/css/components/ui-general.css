@@ -135,3 +135,26 @@ body.sidebar-is-open .sidebar-overlay {
 .toast--success { background-color: #28a745; }
 @keyframes toast-in { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes toast-out { to { transform: translateY(100%); opacity: 0; } }
+
+/* ================================================================= */
+/* Animaciones para View Transitions
+/* ================================================================= */
+
+/*
+  Define la animación de entrada para los nuevos elementos.
+  Empiezan transparentes y ligeramente desplazados hacia abajo.
+*/
+@keyframes card-enter-animation {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+}
+
+/*
+  Aplica la animación a la "vista nueva" durante una transición de vista.
+  Esto crea un efecto de entrada suave para el contenido que aparece.
+*/
+::view-transition-new(root) {
+  animation: card-enter-animation 0.4s ease-out;
+}
