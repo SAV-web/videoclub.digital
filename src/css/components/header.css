@@ -10,6 +10,7 @@
                 padding-bottom 0.3s ease, 
                 box-shadow 0.3s ease,
                 border-color var(--transition-duration-normal);
+    view-transition-name: main-header; /* ✨ MEJORA: Asigna un nombre a la cabecera para la View Transition API */
 }
 
 .main-header.is-scrolled {
@@ -254,4 +255,12 @@ body.modal-open { overflow: hidden; }
         /* Se anula la animación de escritorio y se aplica la de móvil */
         transform: translateY(0);
     }
+}
+
+/*
+  Asegura que el grupo de animación de la cabecera tenga una capa
+  superior a la del resto del contenido durante la transición.
+*/
+::view-transition-group(main-header) {
+  z-index: 1;
 }

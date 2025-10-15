@@ -89,29 +89,6 @@
     padding: var(--space-sm);
 }
 
-/* --- ✨ MEJORA: Tipografía más grande y legible en la modal --- */
-.quick-view-content {
-    font-size: 1rem; /* Aumentamos el tamaño base para móvil */
-}
-
-.quick-view-front .movie-info h3 {
-    font-size: 1.4rem; /* Título más grande */
-}
-
-.quick-view-front .front-director-info {
-    font-size: 0.9rem; /* Director más legible */
-}
-
-.quick-view-front .movie-meta {
-    font-size: 0.9rem; /* Meta info más legible */
-}
-
-.quick-view-back .details-list,
-.quick-view-back .plot-summary-final,
-.quick-view-back .critic-review {
-    font-size: 0.95rem; /* Texto de detalles más grande */
-}
-
 /* --- Override para móvil: Bottom Sheet --- */
 /* Se aplica solo en pantallas pequeñas Y cuando el body NO tiene la clase .rotation-disabled */
 @media (max-width: 768px) {
@@ -138,11 +115,19 @@
         max-height: 80vh;
     }
 
-    .quick-view-content {
+    .quick-view-content, .quick-view-back {
         overflow-y: auto; /* Permitir scroll en móvil */
         scrollbar-width: none; /* Ocultar scrollbar en Firefox */
         -ms-overflow-style: none; /* Ocultar scrollbar en IE 10+ */
     }
+    
+    /* ✨ MEJORA: Tipografía más grande y legible en la modal */
+    .quick-view-modal .movie-summary h3 { font-size: 1.4rem; }
+    .quick-view-modal .movie-summary .front-director-info { font-size: 0.9rem; }
+    .quick-view-modal .movie-summary .movie-meta { font-size: 0.9rem; }
+    .quick-view-back .details-list,
+    .quick-view-back .plot-summary-final,
+    .quick-view-back .critic-review { font-size: 0.95rem; }
 
     .quick-view-content::-webkit-scrollbar {
         display: none; /* Ocultar scrollbar en Chrome, Safari y Opera */
@@ -150,7 +135,7 @@
 
     /* Ajuste fino para escritorio */
     @media (min-width: 769px) {
-        .quick-view-front .movie-info h3 { font-size: 1.6rem; }
+        .quick-view-modal .movie-summary h3 { font-size: 1.6rem; }
     }
 }
 

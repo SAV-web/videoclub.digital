@@ -19,9 +19,10 @@ html {
     transform: translateX(0);
     background-color: transparent;
     border-right: none;
-    transition: width var(--transition-duration-normal), 
-                background-color var(--transition-duration-normal), 
-                border-color var(--transition-duration-normal);
+    /* ✨ MEJORA: Curva de aceleración personalizada para mayor fluidez */
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100vh; /* Fallback para navegadores antiguos */
     height: 100dvh; /* ✨ LA SOLUCIÓN MODERNA */
 }
@@ -30,10 +31,14 @@ html {
     padding: var(--space-xs); 
     align-items: flex-start; 
 }
+
+/* ✨ MEJORA: Transición de opacidad en lugar de display:none */
 .sidebar .logo-area,
 .sidebar .sidebar-static-filters,
-.sidebar .sidebar-scrollable-filters { 
-    display: none; 
+.sidebar .sidebar-scrollable-filters {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
 }
 .sidebar .play-button-container { 
     flex-direction: column; 
@@ -61,10 +66,14 @@ body.sidebar-is-open .sidebar .sidebar-inner-wrapper {
     padding: var(--space-xl) var(--space-lg); 
     align-items: initial; 
 }
+
+/* ✨ MEJORA: Transición de opacidad en lugar de display:block */
 body.sidebar-is-open .sidebar .logo-area,
 body.sidebar-is-open .sidebar .sidebar-static-filters,
-body.sidebar-is-open .sidebar .sidebar-scrollable-filters { 
-    display: block; 
+body.sidebar-is-open .sidebar .sidebar-scrollable-filters {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s; /* Retrasa el fade-in */
 }
 body.sidebar-is-open .sidebar .play-button-container { 
     flex-direction: row; 
@@ -152,26 +161,29 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
         font-size: 16px; 
     }
 
-    /* El sidebar vuelve a ser parte del layout principal */
-    .sidebar {
-        position: sticky;
-        flex-basis: 200px; /* Ancho base del sidebar */
-        width: 200px;
-        transform: none; /* Reseteamos la transformación de móvil */
-        background-color: var(--color-surface);
-        border-right: 2px solid var(--color-border);
-    }
-
-    .sidebar .sidebar-inner-wrapper { 
-        padding: var(--space-xl) var(--space-lg); 
-        align-items: initial;
-    }
-    .sidebar .logo-area,
-    .sidebar .sidebar-static-filters,
-    .sidebar .sidebar-scrollable-filters { 
-        display: block; 
-    }
-    .sidebar .play-button-container { 
+        /* El sidebar vuelve a ser parte del layout principal */
+        .sidebar {
+            position: sticky;
+            flex-basis: 200px; /* Ancho base del sidebar */
+            width: 200px;
+            transform: none; /* Reseteamos la transformación de móvil */
+            background-color: var(--color-surface);
+            border-right: 2px solid var(--color-border);
+        }
+    
+        .sidebar .sidebar-inner-wrapper { 
+            padding: var(--space-xl) var(--space-lg); 
+            align-items: initial; 
+        }
+        .sidebar .logo-area,
+        .sidebar .sidebar-static-filters,
+        .sidebar .sidebar-scrollable-filters { 
+            display: block; 
+            /* ✨ CORRECCIÓN: Restaurar opacidad y visibilidad para escritorio */
+            opacity: 1;
+            visibility: visible;
+            transition: none;
+        }    .sidebar .play-button-container { 
         flex-direction: row; 
         gap: var(--space-md); 
         margin-top: 0;
