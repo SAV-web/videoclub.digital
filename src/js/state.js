@@ -157,6 +157,10 @@ export function setFilter(filterType, value) {
             state.activeFilters.excludedCountries = [];
         }
 
+        if (filterType === 'genre' && value !== null) {
+            state.activeFilters.excludedGenres = [];
+        }
+
         state.activeFilters[filterType] = value;
     }
 }
@@ -223,6 +227,10 @@ export function toggleExcludedFilter(filterType, value) {
         // ✨ NUEVA LÓGICA: Si se añade una exclusión de país, se limpia cualquier filtro de inclusión de país.
         if (filterType === 'country') {
             state.activeFilters.country = null;
+        }
+
+        if (filterType === 'genre') {
+            state.activeFilters.genre = null;
         }
 
         if (list.length >= limit) {

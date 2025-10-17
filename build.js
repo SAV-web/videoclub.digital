@@ -17,6 +17,7 @@ fs.readFile(configTemplatePath, 'utf8', (err, data) => {
 
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+    const searchMoviesApiKey = process.env.SEARCH_MOVIES_API_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey || !searchMoviesApiKey) {
         return console.error('Error: Las variables SUPABASE_URL, SUPABASE_ANON_KEY y SEARCH_MOVIES_API_KEY deben estar definidas en el fichero .env');

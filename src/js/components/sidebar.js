@@ -26,8 +26,7 @@ import {
 // ✨ REFACTORIZACIÓN: Importamos ICONS desde el fichero de constantes.
 import { CSS_CLASSES, SELECTORS, ICONS } from '../constants.js';
 
-// Icono para el botón de pausa en los filtros de exclusión.
-const ICON_PAUSE_SMALL = '⏸︎';
+
 
 // Referencias cacheadas a los elementos del DOM del sidebar.
 const dom = {
@@ -61,7 +60,7 @@ function renderFilterPills() {
         const textSpan = createElement('span', { textContent: text });
         pill.appendChild(textSpan);
 
-        const removeButtonHTML = isExcluded ? ICON_PAUSE_SMALL : '×';
+        const removeButtonHTML = isExcluded ? ICONS.PAUSE_SMALL : '×';
         const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: removeButtonHTML, attributes: { 'aria-hidden': 'true' } });
         pill.appendChild(removeButton);
         
@@ -401,7 +400,7 @@ export function initSidebar() {
                 className: 'exclude-filter-btn',
                 dataset: { value: name, type },
                 attributes: { 'aria-label': `Excluir ${type} ${name}`, type: 'button' },
-                innerHTML: ICON_PAUSE_SMALL
+                innerHTML: ICONS.PAUSE_SMALL
             });
         }
         return null;

@@ -1,58 +1,105 @@
-/* Componente de Botón reutilizable */
+/* =================================================================
+                         SISTEMA DE BOTONES
+================================================================= */
+
+/* ----------------------------------------------------------------- 
+    1. BLOQUE BASE (.btn)
+   ----------------------------------------------------------------- */
+/*
+ * El plano original para cualquier elemento clickable que se comporte como un botón.
+ * Define propiedades comunes como la tipografía, el borde, la transición y el cursor.
+ * Es agnóstico en cuanto a colores para máxima flexibilidad.
+ */
 .btn {
-    display: inline-flex;
+    display: inline-flex; /* Permite alinear el contenido interno (texto, iconos) fácilmente. */
     align-items: center;
     justify-content: center;
-    height: 40px;
-    padding: 0 var(--space-md);
+    height: var(--btn-height, 40px); /* Altura personalizable, con un valor por defecto. */
+    padding: 0 1.2rem;
+    font-family: inherit; /* Hereda la fuente del body. */
+    font-size: 0.9rem;
+    font-weight: 700; /* Botones suelen tener un peso mayor para destacar. */
+    text-decoration: none;
+    white-space: nowrap; /* Evita que el texto del botón se parta en varias líneas. */
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background-color: var(--color-surface);
-    color: var(--color-text-secondary);
+    color: var(--color-text-primary);
     cursor: pointer;
-    font-weight: bold;
-    text-decoration: none;
-    transition: all var(--transition-duration-fast);
+    user-select: none; /* Evita que el texto del botón se pueda seleccionar. */
+    transition: all 0.15s ease-out;
 }
 
-.btn:hover:not(:disabled) {
-    border-color: var(--color-accent);
-    background-color: var(--color-accent);
-    color: #fff;
-}
-
-.btn:active:not(:disabled) {
-    transform: scale(0.98);
-    transition-duration: 0.1s;
-}
-
-.btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-/* Modificador de botón activo o primario */
-.btn--active,
-.btn.active {
-    border-color: var(--color-accent);
-    background-color: var(--color-accent);
-    color: #fff;
-    pointer-events: none;
-}
-
-/* Modificador para botones tipo "outline" */
-.btn--outline {
-    background-color: transparent;
+/* Estado hover y focus para dar feedback visual. */
+.btn:hover {
     border-color: var(--color-accent);
     color: var(--color-accent);
-}
-.btn--outline:hover:not(:disabled) {
-    background-color: var(--color-accent);
-    color: #fff;
+    transform: translateY(-1px); /* Ligero efecto de elevación. */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-/* Modificador para botones de icono (cuadrados) */
+/* Estado de foco para accesibilidad (navegación con teclado). */
+.btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* Estado activo (mientras se está pulsando). */
+.btn:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* Estado deshabilitado. */
+.btn:disabled, .btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ----------------------------------------------------------------- 
+    2. MODIFICADORES
+   ----------------------------------------------------------------- */
+
+/*
+ * .btn--outline: Modificador para un botón con fondo transparente.
+ * Perfecto para acciones secundarias.
+ */
+.btn--outline {
+    background-color: transparent;
+    border-color: var(--color-border);
+}
+
+.btn--outline:hover {
+    background-color: var(--color-surface);
+    border-color: var(--color-accent);
+}
+
+/*
+ * .btn--icon: Modificador para botones que solo contienen un icono.
+ * Les da forma cuadrada o circular y elimina el padding extra.
+ */
 .btn--icon {
-    width: 40px;
+    width: var(--btn-height, 40px); /* Hace que el botón sea cuadrado por defecto. */
     padding: 0;
+}
+
+/*
+ * .btn--active: Modificador para indicar que un botón está seleccionado.
+ * Útil para grupos de botones o filtros.
+ */
+.btn--active {
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+    border-color: var(--color-accent);
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn--active:hover {
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+    border-color: var(--color-accent);
 }

@@ -25,42 +25,6 @@
 
 .sort-control label { font-size: var(--font-size-lg); }
 
-#sort-select {
-    height: 40px;
-    padding: 0 var(--space-xs);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
-    cursor: pointer;
-    font-weight: bold;
-    transition: border-color var(--transition-duration-fast), box-shadow var(--transition-duration-fast);
-}
-#sort-select:hover { border-color: var(--color-text-secondary); }
-
-.type-filter-toggle {
-    height: 40px;
-    padding: 0 var(--space-sm);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
-    cursor: pointer;
-    font-weight: bold;
-    transition: transform var(--transition-duration-fast), 
-                box-shadow var(--transition-duration-fast),
-                background-color var(--transition-duration-fast),
-                border-color var(--transition-duration-fast);
-}
-.type-filter-toggle:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-.type-filter-toggle:active {
-    transform: translateY(0) scale(0.98);
-    box-shadow: none;
-    transition-duration: 0.1s;
-}
 .type-filter-toggle.type-filter--movies {
     border-color: var(--color-accent);
     background-color: var(--color-accent);
