@@ -12,6 +12,10 @@ html {
     font-size: 14px; 
 }
 
+:root {
+    --mobile-header-height: 57px;
+}
+
 /* En móvil, el sidebar es un panel flotante, fijo en la pantalla */
 .sidebar {
     position: fixed;
@@ -94,7 +98,7 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
 
 /* Layout y grid base para móvil */
 .content { 
-    padding: var(--space-md) var(--space-md) 80px; /* Aumentado para dejar espacio al header fijo */
+    padding: var(--space-md) var(--space-md) calc(var(--mobile-header-height) + var(--space-md));
 }
 .main-header { 
     position: fixed;
@@ -140,13 +144,13 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
 
 /* --- Posicionamiento de botones flotantes en móvil --- */
 .back-to-top {
-    bottom: 80px; /* Ajustado para estar sobre el header inferior */
+    bottom: calc(var(--mobile-header-height) + var(--space-md));
     right: var(--space-md);
 }
 
 .profile-container {
     position: fixed;
-    bottom: 80px; /* Ajustado para estar sobre el header inferior */
+    bottom: calc(var(--mobile-header-height) + var(--space-md));
     left: var(--space-md);
     z-index: var(--z-index-sidebar);
     margin-top: 0; /* Resetear el margen automático */
