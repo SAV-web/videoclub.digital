@@ -9,7 +9,6 @@
 export const CONFIG = {
     SUPABASE_URL: 'https://wibygecgfczcvaqewleq.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc',
-    SEARCH_MOVIES_API_KEY: 'oY7DZBvB5U4GXQrkJbxeW1iM65keZkak',
     POSTER_BASE_URL: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/',
     ITEMS_PER_PAGE: 42,
     // ✨ AÑADIDO: Límite para mostrar resultados en una sola página.

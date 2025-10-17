@@ -1,30 +1,26 @@
 -- =================================================================
---        SCRIPT DE CONFIGURACIÓN COMPLETO PARA VIDEOCLUB.DIGITAL (REFACTORIZADO v2.0)
+-- SCRIPT DE CONFIGURACIÓN COMPLETO PARA VIDEOCLUB.DIGITAL
 -- =================================================================
--- Este script es idempotente y se puede ejecutar de forma segura.
--- Orden de ejecución:
--- 1. Habilitación de Extensiones.
+-- Este script es idempotente y se puede ejecutar de forma segura. Orden de ejecución:
+-- 1. Habilitación de Extensiones
 -- 2. Creación de Funciones Auxiliares y modificaciones esquema/tabla
--- 3. ✨ REFACTORIZADO: Definición de la Lógica de Negocio (Función de búsqueda ultra-optimizada).
--- 4. Creación de Tablas de Usuario y Triggers.
--- 5. ✨ MEJORA: Optimización de Rendimiento (Índices y Columnas Generadas).
--- 6. Configuración de Seguridad (Row Level Security).
--- 7. ✨ REFACTORIZADO: Función de Ingesta de Datos (ETL) con fase de Desnormalización.
+-- 3. Definición de la Lógica de Negocio (Función de búsqueda ultra-optimizada)
+-- 4. Creación de Tablas de Usuario y Triggers
+-- 5. Optimización de Rendimiento (Índices y Columnas Generadas)
+-- 6. Configuración de Seguridad (Row Level Security)
+-- 7. Función de Ingesta de Datos (ETL) con fase de Desnormalización
 -- =================================================================
 
-
+-- =================================================================
 -- PASO 1: HABILITACIÓN DE EXTENSIONES
--- -----------------------------------------------------------------
+-- =================================================================
 CREATE EXTENSION IF NOT EXISTS unaccent; -- Para búsquedas insensibles a acentos.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- Para búsquedas por similitud y `ILIKE` rápido.
 
-
--- PASO 2: CREACIÓN DE FUNCIONES AUXILIARES Y DE UTILIDAD
--- ✨ NUEVO PASO: MODIFICACIONES DE ESQUEMA Y ESTRUCTURA DE TABLAS
 -- =================================================================
--- Se mueven aquí todas las modificaciones de esquema para que existan
--- ANTES de que cualquier función intente usarlas.
--- -----------------------------------------------------------------
+-- PASO 2: CREACIÓN DE FUNCIONES AUXILIARES Y DE UTILIDAD
+-- MODIFICACIONES DE ESQUEMA Y ESTRUCTURA DE TABLAS
+-- =================================================================
 
 -- Función "wrapper" inmutable para `unaccent`, necesaria para crear índices funcionales.
 CREATE OR REPLACE FUNCTION public.unaccent_immutable(text)
@@ -53,6 +49,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+-- Modificaciones de esquema para que existan ANTES de que cualquier función intente usarlas.
 -- Añadimos las nuevas columnas a la tabla `movies` para la desnormalización.
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS genres_list TEXT;
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS directors_list TEXT;
@@ -66,10 +63,9 @@ ALTER TABLE public.countries ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED A
 ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
 
 -- =================================================================
--- PASO 3: ✨ REFACTORIZADO - LÓGICA DE BÚSQUEDA OPTIMIZADA
+-- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA
 -- =================================================================
--- v2.0: Esta nueva versión es radicalmente más simple y rápida.
--- Elimina TODOS los JOINs complejos en tiempo de lectura al consultar
+-- Versión simple y rápida. Elimina TODOS los JOINs complejos en tiempo de lectura al consultar
 -- las columnas de texto pre-calculadas (genres_list, directors_list, etc.).
 
 DROP FUNCTION IF EXISTS public.search_and_count(text, text, text, text, text, text, text, text, text, text[], text[], integer, integer);
@@ -124,7 +120,7 @@ WITH filtered_movies AS (
         -- Filtro de país (sin cambios, usa índice en country_id)
         AND (p_country_name IS NULL OR m.country_id = (SELECT c.id FROM public.countries c WHERE c.name = p_country_name))
 
-        -- ✨ MEJORA RADICAL: Filtros de texto ahora usan las columnas desnormalizadas.
+        -- Filtros de texto ahora usan las columnas desnormalizadas.
         -- Usar ILIKE aquí es increíblemente rápido porque no hay JOINs.
         AND (p_genre_name IS NULL OR m.genres_list ILIKE '%' || p_genre_name || '%')
         AND (p_director_name IS NULL OR m.directors_list ILIKE '%' || p_director_name || '%')
@@ -133,13 +129,13 @@ WITH filtered_movies AS (
         -- Filtro de selección (sin cambios, ya era eficiente con EXISTS)
         AND (p_selection IS NULL OR EXISTS (SELECT 1 FROM public.movie_collections mc JOIN public.collections coll ON mc.collection_id = coll.id WHERE mc.movie_id = m.id AND coll.code = p_selection))
         
-        -- ✨ MEJORA RADICAL: Filtros de exclusión también usan las columnas desnormalizadas.
+        -- Filtros de exclusión también usan las columnas desnormalizadas.
         AND (p_excluded_genres IS NULL OR NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(p_excluded_genres) as g))
         AND (p_excluded_countries IS NULL OR array_length(p_excluded_countries, 1) IS NULL OR m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(p_excluded_countries)))
 
     ORDER BY
-        -- La ordenación permanece igual.
-        CASE WHEN split_part(p_sort, ',', 1) = 'relevance' THEN public.similarity(m.title, search_term) END DESC,
+        CASE WHEN split_part(p_sort, ',', 1) = 'relevance' AND search_term IS NOT NULL AND search_term <> '' 
+        THEN public.similarity(m.title, search_term) END DESC NULLS LAST,
         CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'desc' THEN m.year END DESC,
         CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'asc' THEN m.year END ASC,
         CASE WHEN split_part(p_sort, ',', 1) = 'fa_rating' AND split_part(p_sort, ',', 2) = 'desc' THEN m.fa_rating END DESC NULLS LAST,
@@ -153,7 +149,7 @@ WITH filtered_movies AS (
 -- La consulta final ahora es trivial. Solo necesita unir con `countries` para el código de país.
 SELECT
     m.id, m.title, m.year, m.year_end, m.type,
-    -- ¡EL GRAN CAMBIO! Leemos directamente las columnas pre-calculadas.
+    -- Leemos directamente las columnas pre-calculadas.
     m.genres_list AS genres,
     m.directors_list AS directors,
     m.actors_list AS actors,
@@ -170,9 +166,9 @@ LEFT JOIN public.countries c ON m.country_id = c.id
 ;
 $function$;
 
-
+-- =================================================================
 -- PASO 4: CREACIÓN DE TABLAS DE USUARIO Y TRIGGERS
--- -----------------------------------------------------------------
+-- =================================================================
 
 -- Tabla para almacenar las valoraciones de los usuarios.
 CREATE TABLE IF NOT EXISTS public.user_ratings (
@@ -201,7 +197,6 @@ DROP TRIGGER IF EXISTS on_user_ratings_update ON public.user_ratings;
 CREATE TRIGGER on_user_ratings_update
 BEFORE UPDATE ON public.user_ratings
 FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
-
 
 -- =================================================================
 -- PASO 5: OPTIMIZACIÓN DE RENDIMIENTO (ÍNDICES)
@@ -282,9 +277,9 @@ RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     LIMIT 5;
 $$;
 
-
+-- =================================================================
 -- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY)
--- -----------------------------------------------------------------
+-- =================================================================
 
 -- Habilitamos RLS y definimos políticas de "solo lectura" para todas las tablas públicas.
 DO $$
@@ -315,7 +310,7 @@ WITH CHECK ( auth.uid() = user_id );
 
 
 -- =================================================================
--- PASO 7: ✨ REFACTORIZADO - FUNCIÓN DE INGESTA (ETL) CON DESNORMALIZACIÓN
+-- PASO 7: FUNCIÓN DE INGESTA (ETL) CON DESNORMALIZACIÓN
 -- =================================================================
 -- v2.0: Añade una fase final de desnormalización para pre-calcular las listas
 -- de géneros, directores y actores, optimizando drásticamente el rendimiento de lectura.
@@ -329,10 +324,10 @@ DECLARE
     affected_movie_ids INT[];
 BEGIN
 
-    -- FASE 0: POBLAR TABLAS DE CATÁLOGO (ACTORES, DIRECTORES, GÉNEROS, PAÍSES)
+    -- FASE 0: POBLAR TABLAS DE CATÁLOGO (SIN LÓGICA DE PAÍSES)
     -- ----------------------------------------------------------------
-    -- Se extraen los nombres únicos de la tabla de staging y se insertan en
-    -- las tablas de catálogo correspondientes si aún no existen.
+    -- Se asume que la tabla `countries` está pre-poblada y es la única fuente de verdad.
+    -- Solo se pueblan los catálogos que pueden crecer dinámicamente (géneros, directores, actores).
     
     INSERT INTO public.genres (name)
     SELECT DISTINCT TRIM(g.name)
@@ -352,42 +347,11 @@ BEGIN
     WHERE actors IS NOT NULL AND TRIM(a.name) <> '' AND actors <> '(A)'
     ON CONFLICT (name) DO NOTHING;
 
-    -- Se insertan los países, manejando alias y asegurando un código de país único.
-    INSERT INTO public.countries (name, code)
-    SELECT
-        MIN(name) as name, -- Se elige un nombre canónico
-        code
-    FROM (
-        SELECT DISTINCT
-            TRIM(country) as name,
-            CASE TRIM(country)
-                WHEN 'EEUU' THEN 'us' WHEN 'Nueva Zelanda' THEN 'nz' WHEN 'Italia' THEN 'it' WHEN 'UK' THEN 'gb' WHEN 'Francia' THEN 'fr' WHEN 'Brasil' THEN 'br'
-                WHEN 'Japón' THEN 'jp' WHEN 'España' THEN 'es' WHEN 'Corea del Sur' THEN 'kr' WHEN 'Australia' THEN 'au' WHEN 'Argentina' THEN 'ar'
-                WHEN 'Sudáfrica' THEN 'za' WHEN 'Alemania' THEN 'de' WHEN 'Irlanda' THEN 'ie' WHEN 'México' THEN 'mx' WHEN 'Dinamarca' THEN 'dk'
-                WHEN 'Suecia' THEN 'se' WHEN 'Canadá' THEN 'ca' WHEN 'Taiwán' THEN 'tw' WHEN 'Bélgica' THEN 'be' WHEN 'Hong Kong' THEN 'hk'
-                WHEN 'Austria' THEN 'at' WHEN 'Irán' THEN 'ir' WHEN 'India' THEN 'in' WHEN 'Líbano' THEN 'lb' WHEN 'Grecia' THEN 'gr'
-                WHEN 'China' THEN 'cn' WHEN 'Israel' THEN 'il' WHEN 'Palestina' THEN 'ps' WHEN 'Letonia' THEN 'lv' WHEN 'Noruega' THEN 'no'
-                WHEN 'Polonia' THEN 'pl' WHEN 'Estonia' THEN 'ee' WHEN 'Colombia' THEN 'co' WHEN 'Islandia' THEN 'is' WHEN 'Rumanía' THEN 'ro'
-                WHEN 'Indonesia' THEN 'id' WHEN 'Serbia' THEN 'rs' WHEN 'Suiza' THEN 'ch' WHEN 'Turquía' THEN 'tr' WHEN 'Rusia' THEN 'ru'
-                WHEN 'Bosnia' THEN 'ba' WHEN 'Chile' THEN 'cl' WHEN 'Holanda' THEN 'nl' WHEN 'Finlandia' THEN 'fi' WHEN 'Tailandia' THEN 'th'
-                WHEN 'Hungría' THEN 'hu' WHEN 'Uruguay' THEN 'uy' WHEN 'Arabia Saudí' THEN 'sa' WHEN 'Ucrania' THEN 'ua' WHEN 'Croacia' THEN 'hr'
-                WHEN 'Marruecos' THEN 'ma' WHEN 'Egipto' THEN 'eg' WHEN 'República Checa' THEN 'cz' WHEN 'Rep.Checa' THEN 'cz' WHEN 'Paquistán' THEN 'pk'
-                WHEN 'Georgia' THEN 'ge' WHEN 'Cuba' THEN 'cu' WHEN 'Portugal' THEN 'pt' WHEN 'Macedonia' THEN 'mk' WHEN 'Senegal' THEN 'sn'
-                WHEN 'Afganistán' THEN 'af' WHEN 'Camboya' THEN 'kh' WHEN 'Kazajstán' THEN 'kz' WHEN 'Vietnam' THEN 'vn' WHEN 'Argelia' THEN 'dz'
-                WHEN 'Botsuana' THEN 'bw' WHEN 'Eslovaquia' THEN 'sk'
-                ELSE LOWER(SUBSTRING(TRIM(country) FROM 1 FOR 2))
-            END as code
-        FROM public.movies_staging
-        WHERE country IS NOT NULL AND TRIM(country) <> ''
-    ) as mapped_countries
-    GROUP BY code
-    ON CONFLICT (code) DO NOTHING;
-
-
     -- FASE 1: UPSERT DE PELÍCULAS Y CAPTURA DE IDs AFECTADOS
     -- ----------------------------------------------------------------
-    -- Se insertan nuevas películas o se actualizan las existentes basadas en la columna 'image'.
-    -- Los IDs de las filas afectadas se guardan para procesar sus relaciones.
+    -- Se insertan o actualizan películas. La columna `country_id` se obtiene
+    -- mediante un `LEFT JOIN` directo a la tabla `countries`.
+    
     WITH upserted_movies AS (
         INSERT INTO public.movies (
             image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
@@ -398,17 +362,21 @@ BEGIN
             TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
-            s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
+            s.original_title,
+            -- Aquí está la lógica clave: se une directamente por el nombre.
+            -- Si no hay coincidencia, c.id será NULL.
+            c.id,
+            public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
             s.imdb_id, s.critic, sync_timestamp,
             public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia)
         FROM public.movies_staging s
-        LEFT JOIN public.countries c ON s.country = c.name
+        LEFT JOIN public.countries c ON TRIM(s.country) = c.name
         WHERE s.image IS NOT NULL AND TRIM(s.image) <> ''
         ON CONFLICT (image) DO UPDATE SET
             title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating,
             imdb_votes = EXCLUDED.imdb_votes, original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id,
-            minutes = EXCLUDED.minutes, synopsis = EXcluded.synopsis, fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id,
+            minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis, fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id,
             critic = EXCLUDED.critic, last_synced_at = sync_timestamp,
             episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia
         RETURNING id
@@ -468,9 +436,8 @@ BEGIN
     JOIN public.collections c ON c.code = TRIM(collection_code.code)
     WHERE m.id = ANY(affected_movie_ids) ON CONFLICT DO NOTHING;
 
-    -- =================================================================
-    --  ✨ NUEVA FASE 4: DESNORMALIZACIÓN (EL "MISE EN PLACE")
-    -- =================================================================
+    -- FASE 4: DESNORMALIZACIÓN (EL "MISE EN PLACE")
+    -- ----------------------------------------------------------------
     -- Una vez que todas las relaciones están actualizadas, pre-calculamos
     -- las listas de texto. Este trabajo pesado se hace aquí, en tiempo de escritura,
     -- para que las lecturas del usuario sean ultrarrápidas.

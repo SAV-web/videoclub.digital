@@ -4,12 +4,14 @@
   "description": "Static website for videoclub.digital",
   "main": "server.js",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "start": "serve -s ."
   },
   "author": "Gemini",
   "license": "ISC",
   "devDependencies": {
     "dotenv": "^17.2.3",
-    "supabase": "^2.48.3"
+    "supabase": "^2.48.3",
+    "serve": "^14.2.3"
   }
 }

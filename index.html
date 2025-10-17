@@ -5,13 +5,41 @@
     <!-- 1. METADATOS Y CONFIGURACIÓN
     <!-- ================================================================= -->
     <meta charset="UTF-8">
-    <meta name="color-scheme" content="light dark">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"> <!-- ✨ MEJORA: viewport-fit=cover añadido -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>videoclub.digital - Tu brújula cinéfila y seriéfila inteligente</title>
     <meta name="description" content="Explora, filtra y descubre miles de películas y series. Tu brújula cinéfila y seriéfila inteligente para seguir tus gustos y encontrar tu próxima obra maestra.">
+    <meta name="theme-color" content="#37474F">
 
     <!-- ================================================================= -->
-    <!-- 2. OPTIMIZACIÓN DE CARGA (RESOURCE HINTS)
+    <!-- 2. MANIFEST Y SEO
+    <!-- ================================================================= -->
+    <link rel="manifest" href="/manifest.webmanifest">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "url": "https://videoclub.digital/",
+        "name": "videoclub.digital",
+        "description": "Explora, filtra y descubre miles de películas y series. Tu brújula cinéfila y seriéfila inteligente para seguir tus gustos y encontrar tu próxima obra maestra.",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://videoclub.digital/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+
+    <!-- ================================================================= -->
+    <!-- 3. OPEN GRAPH (PARA REDES SOCIALES)
+    <!-- ================================================================= -->
+    <meta property="og:title" content="videoclub.digital">
+    <meta property="og:description" content="Tu brújula cinéfila y seriéfila inteligente.">
+    <meta property="og:image" content="https://videoclub.digital/src/img/og-image.png">
+    <meta property="og:url" content="https://videoclub.digital">
+    <meta property="og:type" content="website">
+
+    <!-- ================================================================= -->
+    <!-- 4. OPTIMIZACIÓN DE CARGA (RESOURCE HINTS)
     <!-- ================================================================= -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +47,6 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://esm.sh" crossorigin>
 
-    <!-- ✨ MEJORA: Preloads de módulos JS clave -->
     <link rel="modulepreload" href="/src/js/main.js">
     <link rel="modulepreload" href="/src/js/ui.js">
     <link rel="modulepreload" href="/src/js/api.js">
@@ -27,7 +54,7 @@
     <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2">
 
     <!-- ================================================================= -->
-    <!-- 3. CSS CRÍTICO (ESTILOS PARA LA PRIMERA PINTURA)
+    <!-- 5. CSS CRÍTICO (ESTILOS PARA LA PRIMERA PINTURA)
     <!-- ================================================================= -->
     <style>
       :root{--color-bg:#f5f5f5;--color-surface:#FFFFFF;--color-text-primary:#333333;--color-text-secondary:#666666;--color-accent:#37474F;--color-accent-exclude:#90A4AE;--color-border:#E0E0E0;--font-title:'Roboto Slab',serif;--font-body:'Roboto',sans-serif;--radius-md:6px;--radius-round:50%;--shadow:0 5px 15px rgba(0,0,0,0.08);--z-index-header:900;--z-index-sidebar:1000}
@@ -61,9 +88,8 @@
     </style>
 
     <!-- ================================================================= -->
-    <!-- 4. HOJAS DE ESTILO EXTERNAS
+    <!-- 6. HOJAS DE ESTILO EXTERNAS
     <!-- ================================================================= -->
-    <!-- ✨ MEJORA: Carga asíncrona del CSS principal para evitar bloqueo de renderizado -->
     <link rel="stylesheet" href="src/css/main.css" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&family=Roboto:wght@400;700&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/css/flag-icons.min.css">
@@ -232,7 +258,7 @@
                     <!-- BOTÓN DE LOGIN (Icono de "carita") -->
                     <!-- Se muestra solo cuando el usuario NO está logueado. -->
                     <button id="login-button" class="sidebar-control-button profile-button" title="Acceder a tu cuenta" aria-label="Acceder a tu cuenta de usuario">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>

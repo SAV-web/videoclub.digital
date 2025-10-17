@@ -6,3 +6,6 @@
 
 # Build output
 /dist
+
+# Generated config file
+src/js/config.js

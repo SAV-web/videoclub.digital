@@ -1,0 +1,21 @@
+{
+  "name": "videoclub.digital",
+  "short_name": "videoclub",
+  "description": "Tu brújula cinéfila y seriéfila inteligente para explorar, filtrar y descubrir miles de películas y series.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#37474F",
+  "icons": [
+    {
+      "src": "/src/img/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/src/img/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
