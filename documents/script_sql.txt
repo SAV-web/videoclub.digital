@@ -21,14 +21,12 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;  -- Para búsquedas por similitud y `ILI
 -- PASO 2: CREACIÓN DE FUNCIONES AUXILIARES Y DE UTILIDAD
 -- MODIFICACIONES DE ESQUEMA Y ESTRUCTURA DE TABLAS
 -- =================================================================
-
 -- Función "wrapper" inmutable para `unaccent`, necesaria para crear índices funcionales.
 CREATE OR REPLACE FUNCTION public.unaccent_immutable(text)
 RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS
 $$
     SELECT public.unaccent('public.unaccent', $1);
 $$;
-
 -- Función para convertir texto a INTEGER de forma segura, devolviendo NULL en caso de error.
 CREATE OR REPLACE FUNCTION public.to_integer_safe(v_input TEXT)
 RETURNS INTEGER LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
@@ -38,7 +36,6 @@ EXCEPTION WHEN OTHERS THEN
     RETURN NULL;
 END;
 $$;
-
 -- Función para convertir texto a REAL de forma segura, devolviendo NULL en caso de error.
 CREATE OR REPLACE FUNCTION public.to_real_safe(v_input TEXT)
 RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
@@ -48,13 +45,11 @@ EXCEPTION WHEN OTHERS THEN
     RETURN NULL;
 END;
 $$;
-
 -- Modificaciones de esquema para que existan ANTES de que cualquier función intente usarlas.
 -- Añadimos las nuevas columnas a la tabla `movies` para la desnormalización.
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS genres_list TEXT;
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS directors_list TEXT;
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS actors_list TEXT;
-
 -- Añadimos columnas generadas para búsquedas normalizadas (insensibles a acentos/mayúsculas).
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS title_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(title))) STORED;
 ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
@@ -63,13 +58,10 @@ ALTER TABLE public.countries ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED A
 ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
 
 -- =================================================================
--- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA
+-- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA: FUNCIÓN BASADA EN CURSOR (KEYSET PAGINATION)
 -- =================================================================
--- Versión simple y rápida. Elimina TODOS los JOINs complejos en tiempo de lectura al consultar
--- las columnas de texto pre-calculadas (genres_list, directors_list, etc.).
-
-DROP FUNCTION IF EXISTS public.search_and_count(text, text, text, text, text, text, text, text, text, text[], text[], integer, integer);
-CREATE OR REPLACE FUNCTION public.search_and_count(
+CREATE OR REPLACE FUNCTION public.search_movies_cursor(
+-- PARÁMETROS DE FILTRADO (SIN CAMBIOS)
     search_term text, 
     p_genre_name text, 
     p_year text, 
@@ -82,7 +74,14 @@ CREATE OR REPLACE FUNCTION public.search_and_count(
     p_excluded_genres text[],
     p_excluded_countries text[],
     p_limit integer,
-    p_offset integer
+-- PARÁMETROS DE CURSOR (REEMPLAZAN A OFFSET)
+    -- Estos valores provienen de la última película de la página anterior.
+    -- Serán NULL para la primera página.
+    p_cursor_year integer,
+    p_cursor_rating real,
+    p_cursor_votes integer,
+    p_cursor_relevance integer, -- ✨ NUEVO: El valor 'relevance' de la última película de la página anterior.
+    p_cursor_id bigint -- El ID siempre es el ancla final y es obligatorio para la paginación.
 )
 RETURNS TABLE(
     id bigint, title text, year integer, year_end text, type text, genres text, 
@@ -92,84 +91,82 @@ RETURNS TABLE(
     critic text, last_synced_at timestamptz, episodes integer, wikipedia text, total_count bigint
 )
 LANGUAGE sql STABLE PARALLEL SAFE AS $function$
--- El CTE (Common Table Expression - Expresión de Tabla Común) inicial sigue siendo el corazón,
--- pero ahora es mucho más eficiente al no necesitar subconsultas complejas para filtros de texto.
 WITH filtered_movies AS (
     SELECT 
-        m.id,
-        -- La window function COUNT(*) OVER() sigue siendo la forma más eficiente
-        -- de obtener el conteo total sin ejecutar la consulta dos veces.
+        -- Seleccionamos las columnas necesarias para ordenar y el ID
+        m.id, m.title, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.relevance,
+        -- Mantenemos el conteo total para informar a la UI
         COUNT(*) OVER() AS total_count_unpaginated
     FROM public.movies m
     WHERE
-        -- Búsqueda de título (usa el índice GIN en la columna generada `title_norm`)
+-- BLOQUE DE FILTRADO (WHERE) - Se mantiene igual que en la versión anterior
         (search_term IS NULL OR search_term = '' OR m.title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
-        
-        -- Filtro de año (sin cambios, ya era eficiente)
-        AND (p_year IS NULL OR 
-            (p_year LIKE '%-%' AND (
-                m.year <= (split_part(p_year, '-', 2)::int) AND 
-                ((split_part(p_year, '-', 1)::int) = 1926 OR m.year >= (split_part(p_year, '-', 1)::int))
-            )) OR 
-            (p_year NOT LIKE '%-%' AND m.year = p_year::int)
-        )
-        
-        -- Filtro de tipo de medio (sin cambios)
+        AND (p_year IS NULL OR (p_year LIKE '%-%' AND (m.year <= (split_part(p_year, '-', 2)::int) AND ((split_part(p_year, '-', 1)::int) = 1926 OR m.year >= (split_part(p_year, '-', 1)::int))) OR (p_year NOT LIKE '%-%' AND m.year = p_year::int)))
         AND (p_media_type IS NULL OR p_media_type = 'all' OR (p_media_type = 'movies' AND (m.type IS NULL OR m.type IN ('D', 'A'))) OR (p_media_type = 'series' AND m.type ILIKE 'S%'))
-        
-        -- Filtro de país (sin cambios, usa índice en country_id)
         AND (p_country_name IS NULL OR m.country_id = (SELECT c.id FROM public.countries c WHERE c.name = p_country_name))
-
-        -- Filtros de texto ahora usan las columnas desnormalizadas.
-        -- Usar ILIKE aquí es increíblemente rápido porque no hay JOINs.
         AND (p_genre_name IS NULL OR m.genres_list ILIKE '%' || p_genre_name || '%')
         AND (p_director_name IS NULL OR m.directors_list ILIKE '%' || p_director_name || '%')
         AND (p_actor_name IS NULL OR m.actors_list ILIKE '%' || p_actor_name || '%')
-
-        -- Filtro de selección (sin cambios, ya era eficiente con EXISTS)
         AND (p_selection IS NULL OR EXISTS (SELECT 1 FROM public.movie_collections mc JOIN public.collections coll ON mc.collection_id = coll.id WHERE mc.movie_id = m.id AND coll.code = p_selection))
-        
-        -- Filtros de exclusión también usan las columnas desnormalizadas.
         AND (p_excluded_genres IS NULL OR NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(p_excluded_genres) as g))
         AND (p_excluded_countries IS NULL OR array_length(p_excluded_countries, 1) IS NULL OR m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(p_excluded_countries)))
+-- LÓGICA DE PAGINACIÓN POR CURSOR (SEEK METHOD)
+        AND (
+            p_cursor_id IS NULL OR -- Si no hay cursor, es la primera página, no se aplica este filtro.
+            
+            -- Si el orden es 'relevance', comparamos la tupla (relevance, id) con la del cursor.
+            -- (m.relevance, m.id) > (p_cursor_relevance, p_cursor_id) significa "dame la siguiente película en el orden de relevancia".
+            (split_part(p_sort, ',', 1) = 'relevance' AND (COALESCE(m.relevance, 2147483647), m.id) > (COALESCE(p_cursor_relevance, -1), p_cursor_id)) OR
+            
+            -- Lógica para 'year,desc'. Compara la tupla (año, id).
+            (split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'desc' AND (m.year, m.id) < (p_cursor_year, p_cursor_id)) OR
+            
+            -- Lógica para 'year,asc'
+            (split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'asc' AND (m.year, m.id) > (p_cursor_year, p_cursor_id)) OR
 
-    ORDER BY
-        CASE WHEN split_part(p_sort, ',', 1) = 'relevance' AND search_term IS NOT NULL AND search_term <> '' 
-        THEN public.similarity(m.title, search_term) END DESC NULLS LAST,
-        CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'desc' THEN m.year END DESC,
-        CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'asc' THEN m.year END ASC,
-        CASE WHEN split_part(p_sort, ',', 1) = 'fa_rating' AND split_part(p_sort, ',', 2) = 'desc' THEN m.fa_rating END DESC NULLS LAST,
-        CASE WHEN split_part(p_sort, ',', 1) = 'imdb_rating' AND split_part(p_sort, ',', 2) = 'desc' THEN m.imdb_rating END DESC NULLS LAST,
-        CASE WHEN split_part(p_sort, ',', 1) = 'fa_votes' AND split_part(p_sort, ',', 2) = 'desc' THEN m.fa_votes END DESC NULLS LAST,
-        CASE WHEN split_part(p_sort, ',', 1) = 'imdb_votes' AND split_part(p_sort, ',', 2) = 'desc' THEN m.imdb_votes END DESC NULLS LAST,
-        m.id ASC
-	LIMIT p_limit
-    OFFSET p_offset
+            -- Lógica para 'fa_rating,desc'
+            (split_part(p_sort, ',', 1) = 'fa_rating' AND (COALESCE(m.fa_rating, -1), m.id) < (COALESCE(p_cursor_rating, -1), p_cursor_id)) OR
+            
+            -- Lógica para 'imdb_rating,desc'
+            (split_part(p_sort, ',', 1) = 'imdb_rating' AND (COALESCE(m.imdb_rating, -1), m.id) < (COALESCE(p_cursor_rating, -1), p_cursor_id)) OR
+
+            -- Lógica para 'fa_votes,desc'
+            (split_part(p_sort, ',', 1) = 'fa_votes' AND (COALESCE(m.fa_votes, -1), m.id) < (COALESCE(p_cursor_votes, -1), p_cursor_id)) OR
+            
+            -- Lógica para 'imdb_votes,desc'
+            (split_part(p_sort, ',', 1) = 'imdb_votes' AND (COALESCE(m.imdb_votes, -1), m.id) < (COALESCE(p_cursor_votes, -1), p_cursor_id))
+        )
 )
--- La consulta final ahora es trivial. Solo necesita unir con `countries` para el código de país.
+-- La consulta final une los resultados filtrados y paginados para obtener todos los datos.
 SELECT
-    m.id, m.title, m.year, m.year_end, m.type,
-    -- Leemos directamente las columnas pre-calculadas.
-    m.genres_list AS genres,
-    m.directors_list AS directors,
-    m.actors_list AS actors,
-    c.name AS country, c.code AS country_code,
-    m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes, m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st,
-    m.critic, m.last_synced_at, m.episodes, m.wikipedia,
-    -- Obtenemos el conteo total del CTE.
-    (SELECT total_count_unpaginated FROM filtered_movies LIMIT 1)::bigint AS total_count
-FROM public.movies m
-JOIN filtered_movies fm ON m.id = fm.id
+    fm.id, m.title, m.year, m.year_end, m.type, m.genres_list AS genres, 
+    m.directors_list AS directors, m.actors_list AS actors, c.name AS country, 
+    c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes, 
+    m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic, 
+    m.last_synced_at, m.episodes, m.wikipedia, fm.total_count_unpaginated as total_count
+FROM filtered_movies fm
+JOIN public.movies m ON fm.id = m.id
 LEFT JOIN public.countries c ON m.country_id = c.id
--- El GROUP BY complejo ya no es necesario. La ordenación final tampoco es necesaria
--- porque los IDs de filtered_movies ya vienen en el orden correcto.
-;
+ORDER BY
+-- LA CLÁUSULA ORDER BY DEBE SER IDÉNTICA A LA LÓGICA DEL CURSOR
+    -- Cuando se busca por texto, la similitud sigue teniendo prioridad.
+    CASE WHEN split_part(p_sort, ',', 1) = 'relevance' AND search_term IS NOT NULL AND search_term <> '' 
+        THEN public.similarity(fm.title, search_term) END DESC NULLS LAST,
+    -- Cuando NO hay búsqueda de texto y el orden es 'relevance', usamos nuestra nueva columna.
+    CASE WHEN split_part(p_sort, ',', 1) = 'relevance' THEN fm.relevance END ASC,
+    CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.year END DESC,
+    CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'asc' THEN fm.year END ASC,
+    CASE WHEN split_part(p_sort, ',', 1) = 'fa_rating' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.fa_rating END DESC NULLS LAST,
+    CASE WHEN split_part(p_sort, ',', 1) = 'imdb_rating' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.imdb_rating END DESC NULLS LAST,
+    CASE WHEN split_part(p_sort, ',', 1) = 'fa_votes' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.fa_votes END DESC NULLS LAST,
+    CASE WHEN split_part(p_sort, ',', 1) = 'imdb_votes' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.imdb_votes END DESC NULLS LAST,
+    fm.id ASC
+LIMIT p_limit;
 $function$;
 
 -- =================================================================
 -- PASO 4: CREACIÓN DE TABLAS DE USUARIO Y TRIGGERS
 -- =================================================================
-
 -- Tabla para almacenar las valoraciones de los usuarios.
 CREATE TABLE IF NOT EXISTS public.user_ratings (
     id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -182,7 +179,6 @@ CREATE TABLE IF NOT EXISTS public.user_ratings (
 );
 CREATE INDEX IF NOT EXISTS user_ratings_user_id_idx ON public.user_ratings(user_id);
 CREATE INDEX IF NOT EXISTS user_ratings_movie_id_idx ON public.user_ratings(movie_id);
-
 -- Función de trigger para actualizar automáticamente el campo 'updated_at'.
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -191,7 +187,6 @@ BEGIN
     RETURN NEW;
 END;
 $$;
-
 -- Trigger que se activa en cada actualización de la tabla user_ratings.
 DROP TRIGGER IF EXISTS on_user_ratings_update ON public.user_ratings;
 CREATE TRIGGER on_user_ratings_update
@@ -201,17 +196,14 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 -- =================================================================
 -- PASO 5: OPTIMIZACIÓN DE RENDIMIENTO (ÍNDICES)
 -- =================================================================
-
 -- Creamos un índice GIN (Generalized Inverted Index) sobre la columna normalizada.
 -- Es el tipo de índice más eficiente para búsquedas con `ILIKE '%...%'` cuando se usa la extensión pg_trgm.
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm gin_trgm_ops);
-
 -- Índices para claves foráneas y campos de ordenación comunes.
 CREATE INDEX IF NOT EXISTS movies_country_id_idx ON public.movies(country_id);
 CREATE INDEX IF NOT EXISTS movies_year_idx ON public.movies(year DESC);
 CREATE INDEX IF NOT EXISTS movies_fa_rating_idx ON public.movies(fa_rating DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_imdb_rating_idx ON public.movies(imdb_rating DESC NULLS LAST);
-
 -- Índices para las tablas de relación.
 CREATE INDEX IF NOT EXISTS movie_genres_movie_id_idx ON public.movie_genres(movie_id);
 CREATE INDEX IF NOT EXISTS movie_genres_genre_id_idx ON public.movie_genres(genre_id);
@@ -221,7 +213,6 @@ CREATE INDEX IF NOT EXISTS movie_actors_movie_id_idx ON public.movie_actors(movi
 CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(actor_id);
 CREATE INDEX IF NOT EXISTS movie_collections_movie_id_idx ON public.movie_collections(movie_id);
 CREATE INDEX IF NOT EXISTS movie_collections_collection_id_idx ON public.movie_collections(collection_id);
-
 -- Índices híbridos para las tablas de entidad (sugerencias).
 CREATE INDEX IF NOT EXISTS directors_name_norm_prefix_idx ON public.directors (name_norm text_pattern_ops);
 CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm gin_trgm_ops);
@@ -231,7 +222,6 @@ CREATE INDEX IF NOT EXISTS countries_name_norm_prefix_idx ON public.countries (n
 CREATE INDEX IF NOT EXISTS countries_name_norm_trgm_idx ON public.countries USING gin (name_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS genres_name_norm_prefix_idx ON public.genres (name_norm text_pattern_ops);
 CREATE INDEX IF NOT EXISTS genres_name_norm_trgm_idx ON public.genres USING gin (name_norm gin_trgm_ops);
-
 -- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$
@@ -246,7 +236,6 @@ BEGIN
     LIMIT 10;
 END;
 $$;
-
 CREATE OR REPLACE FUNCTION public.get_director_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$
 BEGIN
@@ -260,7 +249,6 @@ BEGIN
     LIMIT 10;
 END;
 $$;
-
 CREATE OR REPLACE FUNCTION public.get_genre_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     SELECT name FROM public.genres
@@ -268,7 +256,6 @@ RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     ORDER BY similarity(name_norm, public.unaccent_immutable(lower(search_term))) DESC
     LIMIT 5;
 $$;
-
 CREATE OR REPLACE FUNCTION public.get_country_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     SELECT name FROM public.countries
@@ -280,7 +267,6 @@ $$;
 -- =================================================================
 -- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY)
 -- =================================================================
-
 -- Habilitamos RLS y definimos políticas de "solo lectura" para todas las tablas públicas.
 DO $$
 DECLARE
@@ -296,11 +282,9 @@ BEGIN
     END LOOP;
 END;
 $$;
-
 -- Definimos políticas específicas y más restrictivas para la tabla 'user_ratings'.
 ALTER TABLE public.user_ratings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_ratings; -- Quitamos la política pública genérica.
-
 -- Los usuarios solo pueden ver, insertar, actualizar o borrar SUS PROPIAS valoraciones.
 DROP POLICY IF EXISTS "Users can manage their own ratings" ON public.user_ratings;
 CREATE POLICY "Users can manage their own ratings" ON public.user_ratings
@@ -308,13 +292,11 @@ FOR ALL
 USING ( auth.uid() = user_id )
 WITH CHECK ( auth.uid() = user_id );
 
-
 -- =================================================================
 -- PASO 7: FUNCIÓN DE INGESTA (ETL) CON DESNORMALIZACIÓN
 -- =================================================================
 -- v2.0: Añade una fase final de desnormalización para pre-calcular las listas
 -- de géneros, directores y actores, optimizando drásticamente el rendimiento de lectura.
-
 CREATE OR REPLACE FUNCTION public.process_staging_data()
  RETURNS void
  LANGUAGE plpgsql
@@ -328,7 +310,6 @@ BEGIN
     -- ----------------------------------------------------------------
     -- Se asume que la tabla `countries` está pre-poblada y es la única fuente de verdad.
     -- Solo se pueblan los catálogos que pueden crecer dinámicamente (géneros, directores, actores).
-    
     INSERT INTO public.genres (name)
     SELECT DISTINCT TRIM(g.name)
     FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(genre, ',')) AS g(name)
@@ -351,15 +332,14 @@ BEGIN
     -- ----------------------------------------------------------------
     -- Se insertan o actualizan películas. La columna `country_id` se obtiene
     -- mediante un `LEFT JOIN` directo a la tabla `countries`.
-    
     WITH upserted_movies AS (
         INSERT INTO public.movies (
-            image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
+            relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
             original_title, country_id, minutes, synopsis, fa_id, imdb_id, critic, last_synced_at,
             episodes, wikipedia
         )
         SELECT
-            TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
+            s.relevance, TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title,
@@ -373,7 +353,7 @@ BEGIN
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
         WHERE s.image IS NOT NULL AND TRIM(s.image) <> ''
         ON CONFLICT (image) DO UPDATE SET
-            title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
+            relevance = EXCLUDED.relevance, title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating,
             imdb_votes = EXCLUDED.imdb_votes, original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id,
             minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis, fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id,
@@ -470,6 +450,5 @@ BEGIN
         actors_list = ad.actors
     FROM aggregated_data ad
     WHERE m.id = ad.id;
-
 END;
 $function$;

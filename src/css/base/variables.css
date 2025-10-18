@@ -4,6 +4,10 @@
     --color-accent-darker: #263238;
     --color-accent-exclude-darker: #78909C;
     --color-border-soft: rgba(0, 0, 0, 0.07);
+    --color-error: #dc3545;
+    --color-error-bg: #dc354520;
+    --color-success: #28a745;
+    --color-success-bg: #28a74520;
 
     /* ---- Radios y Tamaños ---- */
     --radius-sm: 4px;
@@ -43,4 +47,8 @@
 body.dark-mode {
     --color-accent-darker: #B0BEC5;
     --color-accent-exclude-darker: #607D8B;
+    --color-error: #28a745;
+    --color-error-bg: #28a74520;
+    --color-success: #dc3545;
+    --color-success-bg: #dc354520;
 }
