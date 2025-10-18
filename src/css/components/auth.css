@@ -21,7 +21,7 @@
     color: var(--color-text-primary);
     text-decoration: none;
     font-family: var(--font-title);
-    font-size: 1.75rem;
+    font-size: var(--font-size-xl);
     font-weight: 700;
     line-height: 1.2;
 }
@@ -86,8 +86,8 @@
     font-size: var(--font-size-sm);
     font-weight: bold;
 }
-.auth-message--error { background-color: #dc354520; color: #dc3545; }
-.auth-message--success { background-color: #28a74520; color: #28a745; }
+.auth-message--error { background-color: var(--color-error-bg); color: var(--color-error); }
+.auth-message--success { background-color: var(--color-success-bg); color: var(--color-success); }
 
 /* Estilos para la Modal de Autenticación */
 .auth-overlay {
@@ -98,7 +98,7 @@
     height: 100%;
     background-color: rgba(0, 0, 0, 0.6);
     z-index: 1999; /* Justo debajo de la modal */
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(var(--space-xxs));
 }
 
 .auth-modal {
@@ -124,7 +124,7 @@
     color: var(--color-text-primary);
     text-decoration: none;
     font-family: var(--font-title);
-    font-size: 1.5rem; /* Un poco más pequeño para la modal */
+    font-size: var(--font-size-xl); /* Un poco más pequeño para la modal */
     font-weight: 700;
     line-height: 1.2;
 }
@@ -132,7 +132,7 @@
 .auth-close-btn {
     background: none;
     border: none;
-    font-size: 2rem;
+    font-size: var(--font-size-xxl);
     line-height: 1;
     color: var(--color-text-secondary);
     cursor: pointer;
