@@ -1,7 +1,7 @@
 // =================================================================
 //                 EDGE FUNCTION: search-movies
 // =================================================================
-// v2.0 - Optimizado con Seguridad JWT y Caché en CDN
+// v2.1 - Optimizado con ETag, Vary, Seguridad JWT y Caché en CDN
 //
 // Propósito:
 // 1. Actuar como un proxy seguro entre el cliente y la base de datos.
@@ -10,6 +10,7 @@
 // 4. Implementar una estrategia de caché a nivel de CDN para reducir la carga
 //    de la base de datos y mejorar la latencia.
 // 5. Gestionar CORS para permitir peticiones desde el frontend.
+// 6. Añadir cabeceras Vary y ETag para validación condicional (304).
 // =================================================================
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -18,6 +19,16 @@ import { corsHeaders } from '../_shared/cors.ts';
 // Leemos las credenciales base desde las variables de entorno una sola vez.
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+// ✨ MEJORA: Generar ETag simple por parámetros de búsqueda.
+// Un ETag (Entity Tag) es como una huella digital para una respuesta.
+// Si el cliente ya tiene una respuesta con este ETag, puede evitar volver a descargarla.
+const makeETag = async (o: unknown) => {
+  const json = JSON.stringify(o);
+  const hash = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(json));
+  const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return `"${hex}"`; // El formato estándar de ETag requiere comillas dobles.
+};
 
 Deno.serve(async (req) => {
   // Las peticiones OPTIONS de pre-vuelo de CORS son cruciales.
@@ -32,6 +43,10 @@ Deno.serve(async (req) => {
   const cacheHeaders = {
     'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600'
   };
+  // ✨ MEJORA: La cabecera 'Vary' indica al CDN que la respuesta depende de estas
+  // cabeceras. Una petición con diferente 'Authorization' u 'Origin' se tratará
+  // como una entrada de caché distinta.
+  const varyHeaders = { 'Vary': 'Authorization, Origin' };
 
   try {
     // Obtenemos la cabecera de autorización que contiene el JWT del usuario.
@@ -55,6 +70,18 @@ Deno.serve(async (req) => {
 
     // Extraemos los parámetros de búsqueda del cuerpo de la petición.
     const { activeFilters, currentPage, pageSize } = await req.json();
+    
+    // ✨ MEJORA: Generamos el ETag a partir de los parámetros de la petición.
+    // Si los filtros, la página, etc., son idénticos, el ETag será el mismo.
+    const etag = await makeETag({ activeFilters, currentPage, pageSize, authorization });
+
+    // ✨ MEJORA: Comparamos el ETag generado con el que el cliente nos envía.
+    // La cabecera 'If-None-Match' la envía el navegador automáticamente.
+    if (req.headers.get('If-None-Match') === etag) {
+      // Si coinciden, significa que el cliente ya tiene la versión más reciente.
+      // Le enviamos una respuesta 304 Not Modified, vacía, ahorrando datos y tiempo.
+      return new Response(null, { status: 304, headers: { ...corsHeaders, ...cacheHeaders, ...varyHeaders, 'ETag': etag } });
+    }
 
     // Invocamos la función RPC 'search_and_count' usando el cliente apropiado.
     const { data, error } = await supabaseClient.rpc('search_and_count', {
@@ -83,9 +110,9 @@ Deno.serve(async (req) => {
     const total = items.length > 0 ? items[0].total_count : 0;
     const responsePayload = { items, total };
 
-    // Devolvemos la respuesta exitosa con las cabeceras de caché.
+    // Devolvemos la respuesta exitosa con las cabeceras de caché y el nuevo ETag.
     return new Response(JSON.stringify(responsePayload), {
-      headers: { ...corsHeaders, ...cacheHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, ...cacheHeaders, ...varyHeaders, 'ETag': etag, 'Content-Type': 'application/json' },
       status: 200,
     });
 
