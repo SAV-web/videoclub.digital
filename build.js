@@ -8,18 +8,16 @@ console.log('Iniciando el proceso de build...');
 const configTemplatePath = path.join(__dirname, 'src', 'js', 'config.template.js');
 const configOutputPath = path.join(__dirname, 'src', 'js', 'config.js');
 
-fs.readFile(configTemplatePath, 'utf8', (err, data) => {
-    if (err) {
-        return console.error('Error al leer la plantilla config.template.js:', err);
-    }
-
+try {
+    console.log('Leyendo plantilla de configuración...');
+    const data = fs.readFileSync(configTemplatePath, 'utf8');
     console.log('Plantilla leída correctamente.');
 
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-        return console.error('Error: Las variables SUPABASE_URL y SUPABASE_ANON_KEY deben estar definidas en el fichero .env');
+        throw new Error('Error: Las variables SUPABASE_URL y SUPABASE_ANON_KEY deben estar definidas.');
     }
 
     let result = data.replace('%%SUPABASE_URL%%', supabaseUrl);
@@ -27,10 +25,10 @@ fs.readFile(configTemplatePath, 'utf8', (err, data) => {
 
     console.log('Placeholders reemplazados.');
 
-    fs.writeFile(configOutputPath, result, 'utf8', (err) => {
-        if (err) {
-            return console.error('Error al escribir el fichero config.js:', err);
-        }
-        console.log('Éxito: El fichero src/js/config.js ha sido generado correctamente.');
-    });
-});
+    fs.writeFileSync(configOutputPath, result, 'utf8');
+    console.log('Éxito: El fichero src/js/config.js ha sido generado correctamente.');
+
+} catch (err) {
+    console.error('Ha ocurrido un error durante el proceso de build:', err);
+    process.exit(1); // Termina el proceso con un código de error
+}
