@@ -58,110 +58,85 @@ ALTER TABLE public.countries ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED A
 ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
 
 -- =================================================================
--- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA: FUNCIÓN BASADA EN CURSOR (KEYSET PAGINATION)
+-- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA: FUNCIÓN BASADA EN OFFSET
 -- =================================================================
-CREATE OR REPLACE FUNCTION public.search_movies_cursor(
--- PARÁMETROS DE FILTRADO (SIN CAMBIOS)
-    search_term text, 
-    p_genre_name text, 
-    p_year text, 
-    p_country_name text, 
-    p_director_name text, 
-    p_actor_name text, 
-    p_media_type text, 
-    p_selection text, 
-    p_sort text,
-    p_excluded_genres text[],
-    p_excluded_countries text[],
-    p_limit integer,
--- PARÁMETROS DE CURSOR (REEMPLAZAN A OFFSET)
-    -- Estos valores provienen de la última película de la página anterior.
-    -- Serán NULL para la primera página.
-    p_cursor_year integer,
-    p_cursor_rating real,
-    p_cursor_votes integer,
-    p_cursor_relevance integer, -- ✨ NUEVO: El valor 'relevance' de la última película de la página anterior.
-    p_cursor_id bigint -- El ID siempre es el ancla final y es obligatorio para la paginación.
+-- Esta función reemplaza la versión de cursor. Está optimizada para
+-- datasets de tamaño medio (hasta ~50,000 registros) donde la paginación
+-- por OFFSET es aceptable y se requiere poder saltar a páginas específicas.
+
+CREATE OR REPLACE FUNCTION public.search_movies_offset(
+    -- ✨ CORRECCIÓN: Nombres de argumentos simplificados y consistentes (sin 'p_').
+    search_term text,
+    genre_name text,
+    year_range text,
+    country_name text,
+    director_name text,
+    actor_name text,
+    media_type text,
+    selection_code text,
+    sort_by text,
+    excluded_genres text[],
+    excluded_countries text[],
+    page_limit integer,
+    page_offset integer
 )
 RETURNS TABLE(
-    id bigint, title text, year integer, year_end text, type text, genres text, 
-    directors text, actors text, country text, country_code text, minutes integer, 
-    image text, fa_id text, fa_rating real, fa_votes integer, imdb_id text, 
-    imdb_rating real, imdb_votes integer, synopsis text, thumbhash_st text, 
-    critic text, last_synced_at timestamptz, episodes integer, wikipedia text, total_count bigint
+    id bigint, title text, year integer, year_end text, type text, genres text,
+    directors text, actors text, country text, country_code text, minutes integer,
+    image text, fa_id text, fa_rating real, fa_votes integer, imdb_id text,
+    imdb_rating real, imdb_votes integer, synopsis text, thumbhash_st text,
+    critic text, last_synced_at timestamptz, episodes integer, wikipedia text,
+    total_count bigint
 )
 LANGUAGE sql STABLE PARALLEL SAFE AS $function$
 WITH filtered_movies AS (
-    SELECT 
-        -- Seleccionamos las columnas necesarias para ordenar y el ID
-        m.id, m.title, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.relevance,
-        -- Mantenemos el conteo total para informar a la UI
+    SELECT
+        m.id,
         COUNT(*) OVER() AS total_count_unpaginated
-    FROM public.movies m
+    FROM
+        public.movies m
     WHERE
--- BLOQUE DE FILTRADO (WHERE) - Se mantiene igual que en la versión anterior
         (search_term IS NULL OR search_term = '' OR m.title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
-        AND (p_year IS NULL OR (p_year LIKE '%-%' AND (m.year <= (split_part(p_year, '-', 2)::int) AND ((split_part(p_year, '-', 1)::int) = 1926 OR m.year >= (split_part(p_year, '-', 1)::int))) OR (p_year NOT LIKE '%-%' AND m.year = p_year::int)))
-        AND (p_media_type IS NULL OR p_media_type = 'all' OR (p_media_type = 'movies' AND (m.type IS NULL OR m.type IN ('D', 'A'))) OR (p_media_type = 'series' AND m.type ILIKE 'S%'))
-        AND (p_country_name IS NULL OR m.country_id = (SELECT c.id FROM public.countries c WHERE c.name = p_country_name))
-        AND (p_genre_name IS NULL OR m.genres_list ILIKE '%' || p_genre_name || '%')
-        AND (p_director_name IS NULL OR m.directors_list ILIKE '%' || p_director_name || '%')
-        AND (p_actor_name IS NULL OR m.actors_list ILIKE '%' || p_actor_name || '%')
-        AND (p_selection IS NULL OR EXISTS (SELECT 1 FROM public.movie_collections mc JOIN public.collections coll ON mc.collection_id = coll.id WHERE mc.movie_id = m.id AND coll.code = p_selection))
-        AND (p_excluded_genres IS NULL OR NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(p_excluded_genres) as g))
-        AND (p_excluded_countries IS NULL OR array_length(p_excluded_countries, 1) IS NULL OR m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(p_excluded_countries)))
--- LÓGICA DE PAGINACIÓN POR CURSOR (SEEK METHOD)
-        AND (
-            p_cursor_id IS NULL OR -- Si no hay cursor, es la primera página, no se aplica este filtro.
-            
-            -- Si el orden es 'relevance', comparamos la tupla (relevance, id) con la del cursor.
-            -- (m.relevance, m.id) > (p_cursor_relevance, p_cursor_id) significa "dame la siguiente película en el orden de relevancia".
-            (split_part(p_sort, ',', 1) = 'relevance' AND (COALESCE(m.relevance, 2147483647), m.id) > (COALESCE(p_cursor_relevance, -1), p_cursor_id)) OR
-            
-            -- Lógica para 'year,desc'. Compara la tupla (año, id).
-            (split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'desc' AND (m.year, m.id) < (p_cursor_year, p_cursor_id)) OR
-            
-            -- Lógica para 'year,asc'
-            (split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'asc' AND (m.year, m.id) > (p_cursor_year, p_cursor_id)) OR
-
-            -- Lógica para 'fa_rating,desc'
-            (split_part(p_sort, ',', 1) = 'fa_rating' AND (COALESCE(m.fa_rating, -1), m.id) < (COALESCE(p_cursor_rating, -1), p_cursor_id)) OR
-            
-            -- Lógica para 'imdb_rating,desc'
-            (split_part(p_sort, ',', 1) = 'imdb_rating' AND (COALESCE(m.imdb_rating, -1), m.id) < (COALESCE(p_cursor_rating, -1), p_cursor_id)) OR
-
-            -- Lógica para 'fa_votes,desc'
-            (split_part(p_sort, ',', 1) = 'fa_votes' AND (COALESCE(m.fa_votes, -1), m.id) < (COALESCE(p_cursor_votes, -1), p_cursor_id)) OR
-            
-            -- Lógica para 'imdb_votes,desc'
-            (split_part(p_sort, ',', 1) = 'imdb_votes' AND (COALESCE(m.imdb_votes, -1), m.id) < (COALESCE(p_cursor_votes, -1), p_cursor_id))
-        )
+        AND (year_range IS NULL OR (year_range LIKE '%-%' AND (m.year <= (split_part(year_range, '-', 2)::int) AND ((split_part(year_range, '-', 1)::int) = 1926 OR m.year >= (split_part(year_range, '-', 1)::int))) OR (year_range NOT LIKE '%-%' AND m.year = year_range::int)))
+        AND (media_type IS NULL OR media_type = 'all' OR (media_type = 'movies' AND (m.type IS NULL OR m.type IN ('D', 'A'))) OR (media_type = 'series' AND m.type ILIKE 'S%'))
+        AND (country_name IS NULL OR m.country_id = (SELECT c.id FROM public.countries c WHERE c.name = country_name))
+        AND (genre_name IS NULL OR m.genres_list ILIKE '%' || genre_name || '%')
+        AND (director_name IS NULL OR m.directors_list ILIKE '%' || director_name || '%')
+        AND (actor_name IS NULL OR m.actors_list ILIKE '%' || actor_name || '%')
+        AND (selection_code IS NULL OR EXISTS (SELECT 1 FROM public.movie_collections mc JOIN public.collections coll ON mc.collection_id = coll.id WHERE mc.movie_id = m.id AND coll.code = selection_code))
+        AND (excluded_genres IS NULL OR NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(excluded_genres) as g))
+        AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL OR m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(excluded_countries)))
+    ORDER BY
+        CASE WHEN split_part(sort_by, ',', 1) = 'relevance' OR COALESCE(TRIM(sort_by), '') = '' THEN m.relevance END ASC,
+        CASE WHEN split_part(sort_by, ',', 1) = 'year' AND split_part(sort_by, ',', 2) = 'desc' THEN m.year END DESC,
+        CASE WHEN split_part(sort_by, ',', 1) = 'year' AND split_part(sort_by, ',', 2) = 'asc' THEN m.year END ASC,
+        CASE WHEN split_part(sort_by, ',', 1) = 'fa_rating' AND split_part(sort_by, ',', 2) = 'desc' THEN m.fa_rating END DESC NULLS LAST,
+        CASE WHEN split_part(sort_by, ',', 1) = 'imdb_rating' AND split_part(sort_by, ',', 2) = 'desc' THEN m.imdb_rating END DESC NULLS LAST,
+        CASE WHEN split_part(sort_by, ',', 1) = 'fa_votes' AND split_part(sort_by, ',', 2) = 'desc' THEN m.fa_votes END DESC NULLS LAST,
+        CASE WHEN split_part(sort_by, ',', 1) = 'imdb_votes' AND split_part(sort_by, ',', 2) = 'desc' THEN m.imdb_votes END DESC NULLS LAST,
+        m.id ASC
 )
--- La consulta final une los resultados filtrados y paginados para obtener todos los datos.
 SELECT
-    fm.id, m.title, m.year, m.year_end, m.type, m.genres_list AS genres, 
-    m.directors_list AS directors, m.actors_list AS actors, c.name AS country, 
-    c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes, 
-    m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic, 
+    m.id, m.title, m.year, m.year_end, m.type, m.genres_list AS genres,
+    m.directors_list AS directors, m.actors_list AS actors, c.name AS country,
+    c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes,
+    m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic,
     m.last_synced_at, m.episodes, m.wikipedia, fm.total_count_unpaginated as total_count
-FROM filtered_movies fm
+FROM
+    filtered_movies fm
 JOIN public.movies m ON fm.id = m.id
 LEFT JOIN public.countries c ON m.country_id = c.id
 ORDER BY
--- LA CLÁUSULA ORDER BY DEBE SER IDÉNTICA A LA LÓGICA DEL CURSOR
-    -- Cuando se busca por texto, la similitud sigue teniendo prioridad.
-    CASE WHEN split_part(p_sort, ',', 1) = 'relevance' AND search_term IS NOT NULL AND search_term <> '' 
-        THEN public.similarity(fm.title, search_term) END DESC NULLS LAST,
-    -- Cuando NO hay búsqueda de texto y el orden es 'relevance', usamos nuestra nueva columna.
-    CASE WHEN split_part(p_sort, ',', 1) = 'relevance' THEN fm.relevance END ASC,
-    CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.year END DESC,
-    CASE WHEN split_part(p_sort, ',', 1) = 'year' AND split_part(p_sort, ',', 2) = 'asc' THEN fm.year END ASC,
-    CASE WHEN split_part(p_sort, ',', 1) = 'fa_rating' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.fa_rating END DESC NULLS LAST,
-    CASE WHEN split_part(p_sort, ',', 1) = 'imdb_rating' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.imdb_rating END DESC NULLS LAST,
-    CASE WHEN split_part(p_sort, ',', 1) = 'fa_votes' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.fa_votes END DESC NULLS LAST,
-    CASE WHEN split_part(p_sort, ',', 1) = 'imdb_votes' AND split_part(p_sort, ',', 2) = 'desc' THEN fm.imdb_votes END DESC NULLS LAST,
-    fm.id ASC
-LIMIT p_limit;
+    CASE WHEN split_part(sort_by, ',', 1) = 'relevance' OR COALESCE(TRIM(sort_by), '') = '' THEN m.relevance END ASC,
+    CASE WHEN split_part(sort_by, ',', 1) = 'year' AND split_part(sort_by, ',', 2) = 'desc' THEN m.year END DESC,
+    CASE WHEN split_part(sort_by, ',', 1) = 'year' AND split_part(sort_by, ',', 2) = 'asc' THEN m.year END ASC,
+    CASE WHEN split_part(sort_by, ',', 1) = 'fa_rating' AND split_part(sort_by, ',', 2) = 'desc' THEN m.fa_rating END DESC NULLS LAST,
+    CASE WHEN split_part(sort_by, ',', 1) = 'imdb_rating' AND split_part(sort_by, ',', 2) = 'desc' THEN m.imdb_rating END DESC NULLS LAST,
+    CASE WHEN split_part(sort_by, ',', 1) = 'fa_votes' AND split_part(sort_by, ',', 2) = 'desc' THEN m.fa_votes END DESC NULLS LAST,
+    CASE WHEN split_part(sort_by, ',', 1) = 'imdb_votes' AND split_part(sort_by, ',', 2) = 'desc' THEN m.imdb_votes END DESC NULLS LAST,
+    m.id ASC
+LIMIT page_limit
+OFFSET page_offset;
 $function$;
 
 -- =================================================================
