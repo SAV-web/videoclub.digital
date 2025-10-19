@@ -25,6 +25,10 @@ try {
 
     console.log('Placeholders reemplazados.');
 
+    console.log('--- BEGIN GENERATED CONFIG.JS ---');
+    console.log(result);
+    console.log('--- END GENERATED CONFIG.JS ---');
+
     fs.writeFileSync(configOutputPath, result, 'utf8');
     console.log('Éxito: El fichero src/js/config.js ha sido generado correctamente.');
 
