@@ -8,4 +8,4 @@
 /dist
 
 # Generated config file
-src/js/config.js
+# src/js/config.js
