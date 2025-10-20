@@ -27,6 +27,7 @@ import { CONFIG } from './config.js';
  * @typedef {object} AppState
  * @property {number} currentPage
  * @property {number} totalMovies
+ * @property {Array<object>} movies - La lista completa de películas de la respuesta.
  * @property {ActiveFilters} activeFilters
  * @property {number} latestRequestId - ID para evitar race conditions en las peticiones a la API.
  */
@@ -38,6 +39,7 @@ import { CONFIG } from './config.js';
 const initialState = {
     currentPage: 1,
     totalMovies: 0,
+    movies: [],
     activeFilters: {
         searchTerm: '',
         genre: null,
@@ -78,6 +80,14 @@ export const getState = () => {
  */
 export const getActiveFilters = () => {
     return structuredClone(state.activeFilters);
+};
+
+/**
+ * Devuelve la lista completa de películas del estado.
+ * @returns {Array<object>}
+ */
+export const getMovies = () => {
+    return state.movies;
 };
 
 /**
@@ -134,6 +144,14 @@ export function hasActiveMeaningfulFilters() {
  */
 export function setCurrentPage(page) {
     state.currentPage = page;
+}
+
+/**
+ * Establece la lista completa de películas en el estado.
+ * @param {Array<object>} movies
+ */
+export function setMovies(movies) {
+    state.movies = movies;
 }
 
 /**

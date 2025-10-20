@@ -6,7 +6,7 @@
   font-style: normal;
   font-weight: 400; /* Regular */
   font-display: swap; /* ¡CRUCIAL! Muestra texto con fuente de sistema mientras carga */
-  src: url('../../fonts/roboto.woff2') format('woff2'); /* Ruta relativa desde el CSS */
+  src: url('../../fonts/Roboto-VariableFont_wdth,wght.ttf') format('truetype'); /* Ruta relativa desde el CSS */
 }
 
 @font-face {
@@ -14,7 +14,7 @@
   font-style: normal;
   font-weight: 700; /* Bold */
   font-display: swap;
-  src: url('../../fonts/robotoblack.woff2') format('woff2');
+  src: url('../../fonts/Roboto_SemiCondensed-Black.ttf') format('truetype');
 }
 
 /* --- Roboto Slab --- */

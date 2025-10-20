@@ -48,7 +48,18 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
         if (lastPage > 0 && page - lastPage > 1) {
             paginationContainer.appendChild(createSeparator());
         }
-        paginationContainer.appendChild(createButton(page, page, page === currentPage));
+
+        if (page === currentPage) {
+            // ✨ CAMBIO: Para la página actual, crea un <span> no interactivo.
+            const currentPageElement = createElement('span', {
+                className: 'pagination-current',
+                textContent: page,
+                attributes: { 'aria-current': 'page', 'aria-label': `Página actual, página ${page}` }
+            });
+            paginationContainer.appendChild(currentPageElement);
+        } else {
+            paginationContainer.appendChild(createButton(page, page, false));
+        }
         lastPage = page;
     }
 

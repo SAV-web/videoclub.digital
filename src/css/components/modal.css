@@ -1,8 +1,12 @@
 /* ================================================================= */
-/* Componente: Modal (usado para Quick View y otros)
+/* Componente: Modal (Vista Rápida / Quick View)                    */
 /* ================================================================= */
+/* Define estilos para la modal, adaptándose entre escritorio (flotante)
+/* y móvil (bottom sheet), incluyendo el overlay y efecto de desenfoque. */
 
-/* --- Overlay de fondo --- */
+/* -----------------------------------------------------------------
+    1. Overlay de Fondo
+   ----------------------------------------------------------------- */
 .quick-view-overlay {
     position: fixed;
     top: 0;
@@ -10,57 +14,81 @@
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.6);
-    z-index: 1999;
+    z-index: 1999; /* Debajo de la modal */
     opacity: 0;
     transition: opacity 0.3s ease;
     pointer-events: none;
+    backdrop-filter: blur(var(--space-xxs)); /* Añade desenfoque al fondo */
 }
 
-/* --- Contenedor principal de la modal --- */
+/* -----------------------------------------------------------------
+    2. Contenedor Principal de la Modal (.quick-view-modal)
+   ----------------------------------------------------------------- */
 .quick-view-modal {
     position: fixed;
-    z-index: 2000;
+    z-index: 2000; /* Encima del overlay */
+    display: flex; /* Usa flexbox para el layout interno */
     opacity: 0;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s; /* Transición suave */
     pointer-events: none;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow);
+    visibility: hidden; /* Empieza oculto y no ocupa espacio */
+    overflow: hidden; /* Oculta contenido que se desborde inicialmente */
 }
 
-/* --- Estado visible --- */
+/* -----------------------------------------------------------------
+    3. Estado Visible (.is-visible)
+   ----------------------------------------------------------------- */
 .quick-view-overlay.is-visible,
 .quick-view-modal.is-visible {
     opacity: 1;
     pointer-events: auto;
+    visibility: visible; /* Hace visible */
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0s; /* Ajusta transición para visibilidad */
 }
 
-/* --- Estilos por defecto: Modal Flotante (Escritorio y táctil con rotación desactivada) --- */
+/* -----------------------------------------------------------------
+    4. Estilos por Defecto: Modal Flotante (Base/Escritorio)
+   ----------------------------------------------------------------- */
 .quick-view-modal {
     top: 50%;
     left: 50%;
     width: 90%;
-    max-width: 600px; /* ✨ Aumentado para más espacio */
-    max-height: 92vh; /* ✨ Aumentado ligeramente */
+    max-width: 600px; /* Ancho máximo para escritorio */
+    max-height: 92vh;
     border-radius: var(--radius-lg);
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow);
+    /* Comienza escalado hacia abajo y centrado */
     transform: translate(-50%, -50%) scale(0.95);
 }
 
+/* Estado visible: escala a tamaño completo */
 .quick-view-modal.is-visible {
     transform: translate(-50%, -50%) scale(1);
 }
 
+/* Contenedor del contenido interno */
 .quick-view-content {
-    height: 100%; /* Ocupar toda la altura de la modal */
-    overflow-y: hidden; /* Eliminar la barra de desplazamiento */
-    -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+    display: flex; /* Habilita Flexbox */
+    flex-direction: column; /* Dirección por defecto (móvil) */
+    width: 100%; /* Ocupa todo el ancho de la modal */
+    height: 100%;
+    overflow-y: auto; /* Permite scroll vertical si es necesario */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.quick-view-content::-webkit-scrollbar {
+    display: none;
 }
 
-/* --- Botón de cierre --- */
+/* -----------------------------------------------------------------
+    5. Botón de Cierre (X)
+   ----------------------------------------------------------------- */
 .quick-view-close-btn {
-    display: none; /* Ocultar el botón de aspa */
     position: absolute;
-    top: 0;
-    right: 0;
+    top: var(--space-xs);
+    right: var(--space-sm);
     width: 44px;
     height: 44px;
     border: none;
@@ -70,91 +98,181 @@
     color: var(--color-text-secondary);
     cursor: pointer;
     z-index: 10;
+    /* Ajuste: Mostrar siempre, ya que puede ser útil */
+    display: block; /* Siempre visible */
+    padding: 0; /* Asegura que no haya padding extra */
+}
+.quick-view-close-btn:hover {
+    color: var(--color-text-primary); /* Cambia color al pasar el ratón */
 }
 
-/* --- Contenido de la modal --- */
+
+/* -----------------------------------------------------------------
+    6. Estructura del Contenido Interno (Front y Back)
+   ----------------------------------------------------------------- */
 .quick-view-front {
-    padding: var(--space-sm);
+    padding: var(--space-md); /* Aumenta padding */
     border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0; /* Evita que se encoja en layout flex */
 }
 
 .quick-view-front img {
     width: 100%;
     height: auto;
     border-radius: var(--radius-md);
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-md); /* Aumenta margen */
+    display: block;
+    border: 3px solid var(--color-surface); /* Borde sutil opcional */
 }
 
 .quick-view-back {
-    padding: var(--space-sm);
+    padding: var(--space-md); /* Aumenta padding */
+    flex-grow: 1; /* Permite que ocupe el espacio restante */
+    position: relative; /* Necesario para posicionar .scrollable-content en escritorio */
+    overflow-y: auto; /* Permite scroll interno si es necesario */
+    min-width: 0; /* Soluciona problemas de overflow en flexbox */
 }
 
-/* --- Override para móvil: Bottom Sheet --- */
-/* Se aplica solo en pantallas pequeñas Y cuando el body NO tiene la clase .rotation-disabled */
-@media (max-width: 768px) {
-    body:not(.rotation-disabled) .quick-view-modal {
-        top: auto;
+/* Tipografía dentro de la modal */
+.quick-view-modal .movie-summary h3 { font-size: 1.4rem; }
+.quick-view-modal .movie-summary .front-director-info { font-size: 0.9rem; }
+.quick-view-modal .movie-summary .movie-meta { font-size: 0.9rem; }
+.quick-view-back .details-list,
+.quick-view-back .plot-summary-final,
+.quick-view-back .critic-review { font-size: 0.95rem; }
+
+/* -----------------------------------------------------------------
+    7. Adaptación Responsiva
+   ----------------------------------------------------------------- */
+
+/* --- A) Escritorio (Tablet y superior) --- */
+@media (min-width: 769px) {
+    .quick-view-modal {
+        /* max-width: 600px; Reafirmado (puede ajustarse) */
+        overflow: hidden; /* Evita scroll en la modal principal */
+    }
+
+    .quick-view-content {
+        flex-direction: row; /* Cambia a layout horizontal */
+        overflow: hidden; /* Evita scroll aquí también */
+    }
+
+    .quick-view-front {
+        width: 40%; /* Ancho para la imagen */
+        border-right: 1px solid var(--color-border); /* Separador vertical */
+        border-bottom: none; /* Elimina separador inferior */
+        overflow-y: auto; /* Permite scroll si la info básica es muy larga */
+        padding: var(--space-lg); /* Más padding en escritorio */
+    }
+     .quick-view-front img {
+        margin-bottom: var(--space-lg); /* Más espacio bajo la imagen */
+     }
+
+    .quick-view-back {
+        width: 60%; /* Ancho para el texto */
+        padding: var(--space-lg); /* Más padding en escritorio */
+        /* overflow-y: auto; <- Quitamos esto para controlar scroll con .scrollable-content */
+    }
+
+    /* Contenedor scrollable para sinopsis y crítica en escritorio */
+    .quick-view-back .scrollable-content {
+        position: absolute; /* Posición absoluta respecto a .quick-view-back */
         bottom: 0;
         left: 0;
+        right: 0;
+        height: 30%; /* Altura inicial (puede ajustarse) */
+        padding: 0 var(--space-lg) var(--space-lg); /* Padding ajustado */
+        background-color: var(--color-surface); /* Fondo para tapar contenido inferior */
+        overflow: hidden; /* Oculta overflow inicial */
+        transition: height 3s ease-out; /* Animación de altura */
+        z-index: 5; /* Asegura que esté por encima de otros elementos en .quick-view-back */
+    }
+    /* Estado expandido para scrollable */
+    .quick-view-back .scrollable-content.full-view {
+        height: 100%; /* Ocupa toda la altura de .quick-view-back */
+        overflow-y: auto; /* Habilita scroll */
+    }
+    /* Degradado inferior para indicar que hay más contenido */
+    .quick-view-back .scrollable-content::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50px; /* Altura del degradado */
+        background: linear-gradient(to top, var(--color-surface) 30%, transparent);
+        pointer-events: none;
+        transition: opacity var(--transition-duration-normal) ease;
+        opacity: 1; /* Visible por defecto */
+    }
+    /* Oculta el degradado cuando está expandido */
+    .quick-view-back .scrollable-content.full-view::after {
+        opacity: 0;
+    }
+
+    /* Ajuste tipografía escritorio */
+     .quick-view-modal .movie-summary h3 { font-size: 1.6rem; }
+}
+
+/* --- B) Móvil (Bottom Sheet) --- */
+@media (max-width: 768px) {
+    /* Aplica SOLO si la rotación de tarjetas está HABILITADA */
+    body:not(.rotation-disabled) .quick-view-modal {
+        top: auto;
+        left: 0;
+        bottom: 0;
         width: 100%;
         max-width: 100%;
-        max-height: 90vh; /* ✨ Aumentado para más espacio */
+        max-height: 85dvh; /* Usa dvh para altura */
         border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        /* Animación desde abajo */
         transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); /* Easing suave */
     }
 
     body:not(.rotation-disabled) .quick-view-modal.is-visible {
-        transform: translateY(0);
+        transform: translateY(0); /* Desliza a la posición visible */
     }
 
-    /* Estilos para la modal flotante en móvil (rotación desactivada) */
+    /* Cuando la rotación está DESACTIVADA en móvil -> Modal flotante más grande */
     body.rotation-disabled .quick-view-modal {
-        width: 70%; /* ✨ Aumentado para más espacio */
-        height: 70vh; /* ✨ Aumentado para más espacio */
-        max-width: 85%;
-        max-height: 80vh;
+        width: 85%; /* Más ancha */
+        max-width: 95%;
+        height: auto; /* Altura automática basada en contenido */
+        max-height: 85vh; /* Limita altura */
+        /* Mantiene transformación centrada */
+        transform: translate(-50%, -50%) scale(0.95);
+        overflow-y: auto; /* Permite scroll en la modal principal si es necesario */
+    }
+    body.rotation-disabled .quick-view-modal.is-visible {
+         transform: translate(-50%, -50%) scale(1);
     }
 
-    .quick-view-content, .quick-view-back {
-        overflow-y: auto; /* Permitir scroll en móvil */
-        scrollbar-width: none; /* Ocultar scrollbar en Firefox */
-        -ms-overflow-style: none; /* Ocultar scrollbar en IE 10+ */
+     /* En móvil, el scrollable-content no necesita posicionamiento absoluto */
+    .quick-view-back .scrollable-content {
+        position: static;
+        height: auto;
+        padding: 0;
+        overflow: visible;
     }
-    
-    /* ✨ MEJORA: Tipografía más grande y legible en la modal */
-    .quick-view-modal .movie-summary h3 { font-size: 1.4rem; }
-    .quick-view-modal .movie-summary .front-director-info { font-size: 0.9rem; }
-    .quick-view-modal .movie-summary .movie-meta { font-size: 0.9rem; }
-    .quick-view-back .details-list,
-    .quick-view-back .plot-summary-final,
-    .quick-view-back .critic-review { font-size: 0.95rem; }
-
-    .quick-view-content::-webkit-scrollbar {
-        display: none; /* Ocultar scrollbar en Chrome, Safari y Opera */
-    }
-
-    /* Ajuste fino para escritorio */
-    @media (min-width: 769px) {
-        .quick-view-modal .movie-summary h3 { font-size: 1.6rem; }
+    .quick-view-back .scrollable-content::after {
+        display: none; /* No necesita degradado en móvil */
     }
 }
 
-/* --- ✨ MEJORA: Desenfoque del fondo en móvil al abrir la modal --- */
-/* Se aplica solo en pantallas pequeñas cuando la modal está abierta */
+
+/* -----------------------------------------------------------------
+    8. Efecto de Desenfoque del Fondo (body.modal-open)
+   ----------------------------------------------------------------- */
 @media (max-width: 768px) {
     body.modal-open .content {
-        /* Aplicamos un desenfoque y evitamos que se pueda interactuar con el fondo */
         filter: blur(4px);
         pointer-events: none;
-        /* Añadimos una transición para que el efecto sea suave */
         transition: filter 0.3s ease;
     }
 }
-
-/* --- ✨ MEJORA: Desenfoque del fondo en ESCRITORIO al abrir la modal --- */
-/* Se aplica solo en pantallas grandes cuando la modal está abierta */
 @media (min-width: 769px) {
-    body.modal-open .content {
+     body.modal-open .content {
         filter: blur(4px);
         pointer-events: none;
         transition: filter 0.3s ease;

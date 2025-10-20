@@ -140,17 +140,18 @@ function updateDomWithResults(movies, totalMovies) {
     if (currentState.totalMovies === 0) {
         renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
         updateHeaderPaginationState(1, 0);
-    } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT) {
-        renderMovieGrid(dom.gridContainer, movies);
-        setupCardInteractions();
-        dom.paginationContainer.textContent = '';
-        updateHeaderPaginationState(1, 1);
-    } else {
+    } else if (currentState.totalMovies > CONFIG.DYNAMIC_PAGE_SIZE_LIMIT) {
+        // Si hay MÁS resultados que el límite dinámico, usamos paginación.
         const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
         renderMovieGrid(dom.gridContainer, moviesForPage);
         setupCardInteractions();
         renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
         updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
+    } else {
+        // Si hay MENOS o IGUAL, usamos el scroll virtual para mostrar todo en una página.
+        initVirtualScroll();
+        dom.paginationContainer.textContent = '';
+        updateHeaderPaginationState(1, 1);
     }
 
     if (currentState.totalMovies > 0) {

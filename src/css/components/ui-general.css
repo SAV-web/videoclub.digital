@@ -51,6 +51,22 @@ body.dark-mode .skeleton::after, body.dark-mode .skeleton-card::after {
     padding: var(--space-xs);
 }
 
+/* Estilo para el indicador de la página actual (que es un <span>, no un botón) */
+.pagination-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--btn-height, 40px);
+    min-width: var(--btn-height, 40px); /* Asegura que sea al menos cuadrado */
+    padding: 0 0.8rem;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    font-weight: 700;
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+    cursor: default; /* Cursor normal, ya que no es clickable */
+}
+
 /* --- Botón de "Volver Arriba" --- */
 .back-to-top {
     position: fixed;

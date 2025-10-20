@@ -3,288 +3,164 @@
 /* ================================================================= */
 
 .main-header {
-    justify-content: center;
-    border-bottom: 1px solid transparent;
-    transition: background-color var(--transition-duration-normal), 
-                padding-top 0.3s ease, 
-                padding-bottom 0.3s ease, 
+    justify-content: center; /* Centra los controles si hay espacio extra */
+    border-bottom: 1px solid transparent; /* Borde inferior inicialmente transparente */
+    /* Transiciones suaves para cambios de estado y apariencia */
+    transition: background-color var(--transition-duration-normal),
+                padding-top 0.3s ease,
+                padding-bottom 0.3s ease,
                 box-shadow 0.3s ease,
                 border-color var(--transition-duration-normal);
-    view-transition-name: main-header; /* ✨ MEJORA: Asigna un nombre a la cabecera para la View Transition API */
+    /* Nombre para la View Transition API, permite animar la cabecera entre vistas */
+    view-transition-name: main-header;
 }
 
+/* Estilos aplicados cuando el usuario ha hecho scroll hacia abajo */
 .main-header.is-scrolled {
+    /* Reduce el padding vertical */
     padding-top: var(--space-sm);
     padding-bottom: var(--space-sm);
+    /* Muestra el borde inferior */
     border-bottom-color: var(--color-border);
+    /* Cambia el fondo para destacar sobre el contenido */
     background-color: var(--color-surface);
+    /* Añade una sombra para dar profundidad */
     box-shadow: var(--shadow);
 }
 
-.main-header-primary-controls, .search-and-theme-group { flex-wrap: nowrap; }
+/* Asegura que los grupos de controles no se rompan en varias líneas */
+.main-header-primary-controls, .search-and-theme-group {
+    flex-wrap: nowrap;
+}
 
-.sort-control label { font-size: var(--font-size-lg); }
+/* Etiqueta para el selector de ordenación (actualmente oculta o no usada) */
+.sort-control label {
+    font-size: var(--font-size-lg);
+}
 
+/* Botón para filtrar por tipo (Todo/Cine/TV) */
 .type-filter-toggle {
     border: none;
     cursor: pointer;
-    box-shadow: 0 2px 3px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.08);
-    transition: all 0.1s ease-in-out;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.08); /* Sombra sutil */
+    transition: all 0.1s ease-in-out; /* Transición rápida para interacciones */
 }
 
+/* Efecto visual al pasar el ratón por encima */
 .type-filter-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.08);
+    transform: translateY(-1px); /* Ligera elevación */
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.08); /* Sombra más pronunciada */
 }
 
+/* Efecto visual al hacer clic */
 .type-filter-toggle:active {
-    transform: translateY(1px);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    transform: translateY(1px); /* Ligero hundimiento */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15); /* Sombra reducida */
 }
 
+/* Estilos específicos cuando el filtro 'Cine' está activo */
 .type-filter-toggle.type-filter--movies {
-    background-color: var(--color-accent);
-    color: #fff;
+    background-color: var(--color-accent); /* Color de acento */
+    color: #fff; /* Texto blanco */
 }
+/* Estilos específicos cuando el filtro 'TV' está activo */
 .type-filter-toggle.type-filter--series {
-    background-color: var(--color-accent-exclude);
-    color: #fff;
+    background-color: var(--color-accent-exclude); /* Color de acento para exclusión/alternativo */
+    color: #fff; /* Texto blanco */
 }
 
+/* Asegura que el botón 'Todo' tenga el color de fondo correcto en modo oscuro */
 body.dark-mode .type-filter-toggle:not(.type-filter--movies):not(.type-filter--series) {
     background-color: var(--color-surface);
     color: var(--color-text-primary);
 }
 
+/* Input de búsqueda */
 .search-form input {
-    height: 40px;
-    padding: 0 2.5rem 0 var(--space-md);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-    color: var(--color-text-primary);
+    height: 40px; /* Altura estándar */
+    padding: 0 2.5rem 0 var(--space-md); /* Padding: derecha para icono, izquierda para texto */
+    border-radius: var(--radius-md); /* Bordes redondeados */
+    border: 1px solid var(--color-border); /* Borde estándar */
+    background: var(--color-surface); /* Fondo */
+    color: var(--color-text-primary); /* Color del texto */
+    /* Transición para el cambio de ancho al enfocar */
     transition: min-width var(--transition-duration-normal) ease-in-out;
+    min-width: 90px; /* Ancho mínimo inicial */
 }
 
+/* Placeholder del input de búsqueda */
 .search-form input::placeholder {
-    color: var(--color-text-secondary);
+    color: var(--color-text-secondary); /* Color secundario para el placeholder */
 }
-.search-form input:focus { min-width: 135px; }
+/* Expande ligeramente el input al enfocarlo */
+.search-form input:focus {
+    min-width: 135px; /* Ancho expandido */
+    outline: none; /* Quita el borde de foco por defecto */
+    border-color: var(--color-accent); /* Cambia el color del borde al enfocar */
+    box-shadow: 0 0 0 2px rgba(0, 115, 230, 0.2); /* Sombra de foco sutil (ajustar color si es necesario) */
+}
+body.dark-mode .search-form input:focus {
+    box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2); /* Sombra de foco para modo oscuro */
+}
 
+
+/* Botón para cambiar tema (claro/oscuro) */
 .theme-toggle {
-    position: relative;
+    position: relative; /* Para posicionar los iconos internos */
     width: 24px;
     height: 24px;
+    background: none; /* Sin fondo */
+    border: none; /* Sin borde */
+    cursor: pointer; /* Cursor de mano */
+    padding: 0; /* Sin padding interno */
 }
-.sidebar-control-button.theme-toggle { font-size: initial; }
+/* Hereda tamaño cuando está dentro del botón general del sidebar */
+.sidebar-control-button.theme-toggle {
+    font-size: initial;
+}
+/* Efecto hover/active */
 .theme-toggle:hover { transform: scale(1.1); }
 .theme-toggle:active { transform: scale(0.9); }
 
+/* Iconos de luna y sol dentro del botón de tema */
 .theme-icon {
+    position: absolute; /* Superpuestos en el mismo lugar */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Centrado perfecto */
+    /* Transición suave para opacidad y transformación (rotación/escala) */
     transition: opacity 0.4s ease-in-out, transform 0.4s cubic-bezier(0.445, 0.05, 0.55, 0.95);
 }
-.moon-icon { transform: scale(1) rotate(0deg); }
-.sun-icon { transform: scale(0.5) rotate(-90deg); }
-body.dark-mode .moon-icon { transform: scale(0.5) rotate(90deg); }
-body.dark-mode .sun-icon { transform: scale(1) rotate(0deg); }
 
-/* ================================================================= */
-/* Componente: Vista Rápida (Modal)
-/* ================================================================= */
-
-body.modal-open { overflow: hidden; }
-
-.quick-view-overlay {
-    position: fixed;
-    top: 0; left: 0;
-    z-index: 1100;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+/* Estado inicial (tema claro) */
+.moon-icon {
+    opacity: 1; /* Luna visible */
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+}
+.sun-icon {
+    opacity: 0; /* Sol oculto */
+    transform: translate(-50%, -50%) scale(0.5) rotate(-90deg); /* Encogido y rotado */
 }
 
-.quick-view-modal {
-    position: fixed;
-    top: 50%; left: 50%;
-    z-index: 1101;
-    display: flex;
-    width: 95vw;
-    max-width: 250px;
-    max-height: 90vh;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow);
-    opacity: 0;
-    visibility: hidden;
-    overflow-y: auto;
-    transform: translate(-50%, -50%) scale(0.95);
-    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease, max-width 0.3s ease;
+/* Estado tema oscuro */
+body.dark-mode .moon-icon {
+    opacity: 0; /* Luna oculta */
+    transform: translate(-50%, -50%) scale(0.5) rotate(90deg); /* Encogida y rotada */
+}
+body.dark-mode .sun-icon {
+    opacity: 1; /* Sol visible */
+    transform: translate(-50%, -50%) scale(1) rotate(0deg); /* Tamaño y rotación normal */
 }
 
-.quick-view-overlay.is-visible,
-.quick-view-modal.is-visible {
-    opacity: 1;
-    visibility: visible;
-}
-.quick-view-modal.is-visible {
-    transform: translate(-50%, -50%) scale(1);
-}
 
-.quick-view-close-btn {
-    position: absolute;
-    top: var(--space-xs);
-    right: var(--space-sm);
-    z-index: 10;
-    width: var(--space-xl);
-    height: var(--space-xl);
-    border: none;
-    background: none;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    font-size: var(--font-size-xxl);
-    line-height: 1;
-    transition: transform 0.2s ease, color 0.2s ease;
-}
+/* --- SECCIÓN ELIMINADA --- */
+/* Los estilos para .quick-view-overlay, .quick-view-modal, etc., han sido eliminados de aquí. */
+/* Deben residir únicamente en src/css/components/modal.css */
+/* --- FIN SECCIÓN ELIMINADA --- */
 
-.quick-view-close-btn:hover {
-    transform: scale(1.1);
-    color: var(--color-text-primary);
-}
 
-.quick-view-content {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-.quick-view-front {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    border-bottom: 1px solid var(--color-border);
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
-}
-
-.quick-view-front img {
-    width: 100%;
-    height: auto;
-    border: 3px solid var(--color-surface);
-    border-radius: var(--radius-lg);
-    flex-shrink: 0;
-    object-fit: contain;
-}
-
-.quick-view-back {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    min-width: 0;
-    padding: var(--space-md);
-}
-
-.quick-view-back .scrollable-content {
-    position: static;
-    height: auto;
-    padding: 0;
-    z-index: auto;
-}
-
-.quick-view-back .scrollable-content.full-view {
-    height: auto;
-    overflow-y: visible;
-}
-
-.quick-view-back .scrollable-content::after { display: none; }
-
-/* --- Vista de Escritorio (Tablet y superior) --- */
-@media (min-width: 769px) {
-    .quick-view-modal { max-width: 550px; overflow-y: hidden; }
-    .quick-view-content { flex-direction: row; }
-    .quick-view-front { width: 50%; border-right: 1px solid var(--color-border); border-bottom: none; }
-    .quick-view-back { width: 50%; }
-
-    .quick-view-back .scrollable-content {
-        position: absolute;
-        bottom: 0; left: 0; right: 0;
-        z-index: 20;
-        height: 25%;
-        padding: 0 var(--space-md) var(--space-md);
-        background-color: var(--color-surface);
-        transition: height 3s ease-out;
-    }
-    .quick-view-back .scrollable-content.full-view { height: 100%; overflow-y: auto; }
-    .quick-view-back .scrollable-content::after { display: block; }
-}
-
-/* --- ✨ NUEVO: Estilos para la experiencia "Bottom Sheet" en móvil --- */
-@media (max-width: 768px) {
-    .quick-view-modal {
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-width: 100%;
-        max-height: 85dvh; /* Usamos dvh para adaptarnos a las barras del navegador */
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0; /* Bordes redondeados solo arriba */
-        
-        /* Animación para que deslice desde abajo */
-        transform: translateY(100%);
-        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); /* Curva de easing más suave */
-    }
-
-    .quick-view-modal.is-visible {
-        /* Se anula la animación de escritorio y se aplica la de móvil */
-        transform: translateY(0);
-    }
-}
-
-/*
-  Asegura que el grupo de animación de la cabecera tenga una capa
-  superior a la del resto del contenido durante la transición.
-*/
-::view-transition-group(main-header) {
-  z-index: 1;
-}: var(--color-surface);
-        transition: height 3s ease-out;
-    }
-    .quick-view-back .scrollable-content.full-view { height: 100%; overflow-y: auto; }
-    .quick-view-back .scrollable-content::after { display: block; }
-}
-
-/* --- ✨ NUEVO: Estilos para la experiencia "Bottom Sheet" en móvil --- */
-@media (max-width: 768px) {
-    .quick-view-modal {
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-width: 100%;
-        max-height: 85dvh; /* Usamos dvh para adaptarnos a las barras del navegador */
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0; /* Bordes redondeados solo arriba */
-        
-        /* Animación para que deslice desde abajo */
-        transform: translateY(100%);
-        transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); /* Curva de easing más suave */
-    }
-
-    .quick-view-modal.is-visible {
-        /* Se anula la animación de escritorio y se aplica la de móvil */
-        transform: translateY(0);
-    }
-}
-
-/*
-  Asegura que el grupo de animación de la cabecera tenga una capa
-  superior a la del resto del contenido durante la transición.
-*/
+/* Asegura que el grupo de animación de la cabecera tenga una capa
+   superior a la del resto del contenido durante la transición de vista. */
 ::view-transition-group(main-header) {
   z-index: 1;
 }
