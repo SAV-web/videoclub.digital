@@ -1,5 +1,6 @@
 /* Contiene estilos globales para el body, animaciones reutilizables y scrollbars. */
 body {
+    font-family: var(--font-body);
     overflow-x: hidden;
     transition: background-color var(--transition-duration-normal) var(--transition-timing-function), 
                 color var(--transition-duration-normal) var(--transition-timing-function);

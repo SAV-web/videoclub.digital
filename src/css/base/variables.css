@@ -29,6 +29,8 @@
     --space-xl:  2rem;    /* 32px */
 
     /* ---- Tipografía y Transiciones ---- */
+    --font-title: 'Roboto Slab';
+    --font-body: 'Roboto';
     --line-height-normal: 1.4;
     --line-height-relaxed: 1.65;
     --transition-duration-fast: 0.2s;
