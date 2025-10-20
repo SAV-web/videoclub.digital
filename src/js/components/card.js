@@ -231,12 +231,6 @@ function createMovieCard(movieData) {
     const cardClone = cardTemplate.content.cloneNode(true);
     const cardElement = cardClone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
     
-    // Para el modo virtual, posicionamos la tarjeta de forma absoluta
-    if (movieData._virtual) {
-        cardElement.style.position = 'absolute';
-        cardElement.style.top = `${movieData._virtual.top}px`;
-    }
-
     if (movieData.id) {
         cardElement.style.viewTransitionName = `movie-${movieData.id}`;
     }
@@ -462,27 +456,17 @@ export function setupCardInteractions() {
     });
 }
 
-export function renderMovieGrid(gridContainer, movies, isVirtual = false) {
+export function renderMovieGrid(gridContainer, movies) {
     renderedCardCount = 0;
     currentlyFlippedCard = null;
     if (!gridContainer) return;
     
-    // En modo no virtual, limpiamos como siempre.
-    // En modo virtual, el contenedor ya tiene el "spacer" y no debe limpiarse.
-    if (!isVirtual) {
-        gridContainer.textContent = '';
-    } else {
-        // En modo virtual, eliminamos solo las tarjetas antiguas para reemplazarlas.
-        gridContainer.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => card.remove());
-    }
-
+    gridContainer.textContent = '';
     const fragment = document.createDocumentFragment();
     movies.forEach((movie) => {
-        const card = createMovieCard(movie);
+        const card = createMovieCard(movie); // createMovieCard no necesita cambios
         if (card) fragment.appendChild(card);
     });
-
-    // Añadimos el fragmento con las nuevas tarjetas.
     gridContainer.appendChild(fragment);
 }
 
