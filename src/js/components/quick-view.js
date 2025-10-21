@@ -11,9 +11,6 @@ const dom = {
     template: document.getElementById('quick-view-template').content,
 };
 
-// Variable para guardar la película que se está mostrando
-let currentMovieData = null;
-
 /**
  * Maneja los clics fuera de la modal para cerrarla.
  * Se asegura de que el clic no sea en la propia modal.
