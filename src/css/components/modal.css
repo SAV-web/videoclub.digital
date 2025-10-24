@@ -135,11 +135,28 @@
 
 /* Tipografía dentro de la modal */
 .quick-view-modal .movie-summary h3 { font-size: 1.4rem; }
-.quick-view-modal .movie-summary .front-director-info { font-size: 0.9rem; }
-.quick-view-modal .movie-summary .movie-meta { font-size: 0.9rem; }
+.quick-view-modal .movie-summary .front-director-info { font-size: 1.35rem; } /* Aumentado al 150% */
+.quick-view-modal .movie-summary .movie-meta { font-size: 1.35rem; } /* Aumentado al 150% */
 .quick-view-back .details-list,
 .quick-view-back .plot-summary-final,
 .quick-view-back .critic-review { font-size: 0.95rem; }
+
+/* --- Ajustes de tamaño para elementos específicos en Quick View --- */
+
+/* Aumenta el tamaño de las estrellas y el círculo de suspenso */
+.quick-view-modal .star-rating-container,
+.quick-view-modal .low-rating-circle {
+    transform: scale(1.5);
+    transform-origin: left center; /* Escala desde la izquierda para mantener alineación */
+    margin-left: 1rem; /* Añade margen para compensar el aumento de tamaño */
+}
+
+/* Aumenta el tamaño de la bandera */
+.quick-view-modal .country-container {
+    transform: scale(1.5);
+    transform-origin: left center; /* Escala desde la izquierda */
+    margin-left: 0.5rem; /* Añade margen para compensar */
+}
 
 /* -----------------------------------------------------------------
     7. Adaptación Responsiva
@@ -148,7 +165,7 @@
 /* --- A) Escritorio (Tablet y superior) --- */
 @media (min-width: 769px) {
     .quick-view-modal {
-        /* max-width: 600px; Reafirmado (puede ajustarse) */
+        max-width: 720px; /* Aumentado para acomodar el nuevo ancho de las secciones */
         overflow: hidden; /* Evita scroll en la modal principal */
     }
 
@@ -158,7 +175,7 @@
     }
 
     .quick-view-front {
-        width: 40%; /* Ancho para la imagen */
+        width: 50%; /* Ajustado para mantener el tamaño visual del póster en la modal más ancha */
         border-right: 1px solid var(--color-border); /* Separador vertical */
         border-bottom: none; /* Elimina separador inferior */
         overflow-y: auto; /* Permite scroll si la info básica es muy larga */
@@ -169,10 +186,17 @@
      }
 
     .quick-view-back {
-        width: 60%; /* Ancho para el texto */
+        width: 50%; /* Aumentado al 150% de su ancho anterior, ajustado para la modal más ancha */
         padding: var(--space-lg); /* Más padding en escritorio */
         /* overflow-y: auto; <- Quitamos esto para controlar scroll con .scrollable-content */
     }
+
+    /* Reduce el ancho de los contenedores de las barras de votos a la mitad solo en la modal */
+    .quick-view-modal [data-template$="-votes-bar-container"] {
+        transform: scaleX(0.5);
+        transform-origin: left; /* Asegura que la barra se encoja desde la izquierda */
+    }
+
 
     /* Contenedor scrollable para sinopsis y crítica en escritorio */
     .quick-view-back .scrollable-content {

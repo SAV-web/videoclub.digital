@@ -1,0 +1,108 @@
+/* ================================================================= */
+/* Componente: Acciones de Tarjeta (Watchlist / Rating)
+/* ================================================================= */
+
+/* --- Contenedor Principal de Acciones (Botón Watchlist) --- */
+
+.card-actions-container {
+    position: absolute;
+    top: 4px;  /* Desplazado más a la esquina */
+    right: 4px; /* Desplazado más a la esquina */
+    z-index: 10; /* Se posiciona por encima de la imagen de la tarjeta */
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+
+    /* Estado por defecto: oculto para usuarios anónimos o antes de que JS cargue */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
+}
+
+/* Cuando el usuario está logueado, la clase 'user-logged-in' en el <body>
+   hace que el contenedor de acciones aparezca con una animación suave. */
+body.user-logged-in .card-actions-container {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+/* --- Botón de Acción Individual (ej. Watchlist) --- */
+
+.card-action-btn {
+    width: 28px;  /* Círculo aún más pequeño */
+    height: 28px; /* Círculo aún más pequeño */
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-round);
+    background-color: rgba(0, 0, 0, 0.4); /* Mayor transparencia */
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    backdrop-filter: blur(4px); /* Efecto de desenfoque del fondo para legibilidad */
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.card-action-btn:hover {
+    background-color: rgba(0, 0, 0, 0.6); /* Mayor transparencia en hover */
+    transform: scale(1.1);
+}
+
+.card-action-btn svg {
+    width: 14px;  /* Ojo aún más pequeño */
+    height: 14px; /* Ojo aún más pequeño */
+    transition: all 0.2s ease;
+}
+
+/* --- Estado ACTIVO para el botón de Watchlist --- */
+
+.card-action-btn.is-active {
+    background-color: rgba(0, 0, 0, 0.6); /* Mayor transparencia en estado activo */
+}
+
+/* El icono del ojo (iris y contorno) se vuelve amarillo cuando está activo */
+.card-action-btn.is-active svg {
+    color: #FFC107; /* Amarillo dorado, igual que las estrellas de usuario */
+    transform: scale(1.1);
+}
+
+
+/* --- Estilos para las Estrellas y Círculo de Valoración Interactivas --- */
+
+/* Añade el cursor de puntero solo cuando los elementos son interactivos (usuario logueado) */
+.star-rating-container.is-interactive,
+.low-rating-circle.is-interactive {
+    cursor: pointer;
+}
+
+.star-rating-container.is-interactive .star-icon,
+.low-rating-circle.is-interactive {
+    transition: transform 0.1s ease-out;
+}
+
+/* Efecto hover sobre las estrellas interactivas para dar feedback */
+.star-rating-container.is-interactive:hover .star-icon,
+.low-rating-circle.is-interactive:hover {
+    transform: scale(1.2);
+}
+
+/* Cuando una valoración de usuario existe, las estrellas cambian a un color distintivo */
+.star-rating-container.has-user-rating .star-icon-path {
+    stroke: #FFC107; /* Amarillo dorado para el borde */
+}
+
+.star-rating-container.has-user-rating .star-icon-path--filled {
+    fill: #FFC107; /* Amarillo dorado para el relleno */
+}
+
+/* Cuando el círculo representa la valoración "suspenso" del usuario */
+.low-rating-circle.has-user-rating {
+    border-color: #FFC107;
+    background-color: transparent; /* Explícitamente transparente */
+}

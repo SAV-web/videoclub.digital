@@ -76,6 +76,17 @@ function populateModal(cardElement) {
         Array.from(directorSource.childNodes).forEach(node => {
             directorTarget.appendChild(node.cloneNode(true));
         });
+        
+        // Añadir listeners de clic a los enlaces de director clonados
+        directorTarget.querySelectorAll('a[data-director-name]').forEach(directorLink => {
+            directorLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const directorName = e.target.dataset.directorName;
+                closeModal();
+                // Disparar evento para filtrar por director, similar a la lógica de la tarjeta principal
+                document.dispatchEvent(new CustomEvent('filtersReset', { detail: { keepSort: true, newFilter: { type: 'director', value: directorName } } }));
+            });
+        });
     }
     
     const lowRatingCircle = cardElement.querySelector('[data-template="low-rating-circle"]');

@@ -1,32 +1,25 @@
 // =================================================================
-//                      COMPONENTE SIDEBAR
+//                      COMPONENTE SIDEBAR (Versión Optimista)
 // =================================================================
-// Gestiona toda la interactividad del sidebar: colapsar/expandir,
-// secciones desplegables, filtros, autocompletado y slider de año.
+// v2.0 - Implementada la lógica de UI Optimista. Los cambios de filtro
+//        actualizan la UI instantáneamente y luego llaman a la API.
+//        Se incluye un mecanismo de reversión en caso de error de red.
 
 import { CONFIG } from '../config.js';
 import { debounce, triggerPopAnimation, createElement } from '../utils.js';
-import {
-    fetchDirectorSuggestions,
-    fetchActorSuggestions,
-    fetchCountrySuggestions,
-    fetchGenreSuggestions
-} from '../api.js';
-import {
-    renderSidebarAutocomplete,
-    clearAllSidebarAutocomplete
-} from './autocomplete.js';
+import { fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions } from '../api.js';
+import { renderSidebarAutocomplete, clearAllSidebarAutocomplete } from './autocomplete.js';
 import { unflipAllCards } from './card.js';
 import { closeModal } from './quick-view.js';
-import {
-    getActiveFilters,
-    setFilter,
-    toggleExcludedFilter,
-} from '../state.js';
-// ✨ REFACTORIZACIÓN: Importamos ICONS desde el fichero de constantes.
-import { CSS_CLASSES, SELECTORS, ICONS } from '../constants.js';
+import { getActiveFilters, setFilter, toggleExcludedFilter } from '../state.js';
+import { ICONS, CSS_CLASSES, SELECTORS } from '../constants.js';
 
-
+// --- NUEVAS IMPORTACIONES ---
+// Importamos la función de carga principal para orquestar desde aquí.
+import { loadAndRenderMovies } from '../main.js';
+// Importamos la función de notificación para el manejo de errores.
+import { showToast } from '../toast.js';
+// --- FIN NUEVAS IMPORTACIONES ---
 
 // Referencias cacheadas a los elementos del DOM del sidebar.
 const dom = {
@@ -48,7 +41,6 @@ const SELECTION_FRIENDLY_NAMES = new Map([
 // Renderiza las "píldoras" de filtros activos en cada sección.
 function renderFilterPills() {
     const activeFilters = getActiveFilters();
-
     document.querySelectorAll('.active-filters-list').forEach(container => container.textContent = '');
 
     const createPill = (type, value, isExcluded = false) => {
@@ -87,51 +79,118 @@ function renderFilterPills() {
     renderPillsForSection('country', activeFilters.country);
     renderPillsForSection('director', activeFilters.director);
     renderPillsForSection('actor', activeFilters.actor);
-
     renderPillsForSection('genre', activeFilters.excludedGenres, true);
     renderPillsForSection('country', activeFilters.excludedCountries, true);
 
     updateFilterLinksUI();
 }
 
-// Actualiza la UI de los enlaces de filtro para ocultar los que ya están activos.
 function updateFilterLinksUI() {
     const activeFilters = getActiveFilters();
-
     document.querySelectorAll('.filter-link').forEach(link => {
         const type = link.dataset.filterType;
         const value = link.dataset.filterValue;
-
         link.style.display = 'flex';
-
         const isExcluded = (type === 'genre' && activeFilters.excludedGenres?.includes(value)) ||
                            (type === 'country' && activeFilters.excludedCountries?.includes(value));
         const isActive = activeFilters[type] === value;
-
         if (isActive || isExcluded) {
             link.style.display = 'none';
         }
     });
 }
 
-// Maneja el cambio de un filtro de inclusión.
-async function handleFilterChange(type, value) {
-    const activeFilters = getActiveFilters();
-    const isActivating = activeFilters[type] !== value;
-    
-    setFilter(type, isActivating ? value : null);
+// =================================================================
+// == NUEVA LÓGICA DE MANEJO DE FILTROS CON UI OPTIMISTA ==
+// =================================================================
+
+/**
+ * Maneja el cambio de un filtro de forma optimista.
+ * Actualiza la UI instantáneamente y luego dispara la llamada a la API.
+ * Revierte la UI si la llamada a la API falla.
+ * @param {string} type - El tipo de filtro (ej: 'genre', 'country').
+ * @param {string|null} value - El nuevo valor del filtro.
+ */
+async function handleFilterChangeOptimistic(type, value) {
+    const previousFilters = getActiveFilters();
+    const isActivating = previousFilters[type] !== value;
+    const newValue = isActivating ? value : null;
+
+    // 1. ACTUALIZACIÓN OPTIMISTA: Modificar estado y UI al instante.
+    setFilter(type, newValue);
     renderFilterPills();
-    document.dispatchEvent(new CustomEvent('filtersChanged'));
+    document.dispatchEvent(new CustomEvent('uiActionTriggered'));
+
+    try {
+        // 2. LLAMADA A LA API: Se ejecuta en segundo plano.
+        await loadAndRenderMovies(1);
+    } catch (error) {
+        // 3. MANEJO DE ERROR Y REVERSIÓN
+        // Ignoramos los errores de 'AbortError' ya que son intencionados.
+        if (error.name === 'AbortError') return;
+
+        console.error(`Error optimista al aplicar el filtro ${type}:`, error);
+        showToast(`No se pudo aplicar el filtro.`, 'error');
+
+        // Revertimos el estado al que teníamos antes del clic.
+        // NOTA: Una función `setState(previousState)` sería ideal, pero
+        // por ahora revertimos el filtro específico que falló.
+        setFilter(type, previousFilters[type]);
+        
+        // Volvemos a renderizar la UI del sidebar para que refleje el estado revertido.
+        renderFilterPills();
+    }
 }
 
-// Resetea todos los filtros.
+/**
+ * Maneja el cambio de un filtro de exclusión de forma optimista.
+ * @param {string} type - El tipo de filtro ('genre' o 'country').
+ * @param {string} value - El valor a incluir/excluir.
+ */
+async function handleToggleExcludedFilterOptimistic(type, value) {
+    const previousState = getActiveFilters(); // Guardamos todo el estado de filtros
+
+    // 1. ACTUALIZACIÓN OPTIMISTA
+    if (!toggleExcludedFilter(type, value)) {
+        // La acción fue prevenida (ej. límite alcanzado), no hacemos nada.
+        showToast(`Límite de 3 exclusiones alcanzado.`, 'error');
+        return;
+    }
+    renderFilterPills();
+    document.dispatchEvent(new CustomEvent('uiActionTriggered'));
+
+    try {
+        // 2. LLAMADA A LA API
+        await loadAndRenderMovies(1);
+    } catch (error) {
+        // 3. REVERSIÓN
+        if (error.name === 'AbortError') return;
+        
+        console.error(`Error optimista al excluir ${type}:`, error);
+        showToast(`No se pudo aplicar el filtro de exclusión.`, 'error');
+
+        // Revertimos la acción. Es más seguro restaurar todo el objeto.
+        // Aquí necesitaríamos una función `setFilters(filtersObject)` en state.js.
+        // Solución simple por ahora: revertir la acción manualmente.
+        toggleExcludedFilter(type, value); // Esto deshará el toggle
+        setFilter('country', previousState.country); // Restaura el filtro de inclusión si se borró
+        setFilter('genre', previousState.genre);
+        
+        renderFilterPills();
+    }
+}
+
+// =================================================================
+// == FIN DE LA NUEVA LÓGICA ==
+// =================================================================
+
+
 function resetFilters() {
     const playButton = document.querySelector('#play-button');
     if (playButton) triggerPopAnimation(playButton);
     document.dispatchEvent(new CustomEvent('filtersReset'));
 }
 
-// Colapsa todas las secciones desplegables del sidebar.
 export function collapseAllSections() {
     dom.collapsibleSections.forEach(section => section.classList.remove(CSS_CLASSES.ACTIVE));
     if (dom.sidebarInnerWrapper) {
@@ -139,13 +198,11 @@ export function collapseAllSections() {
     }
 }
 
-// Inicializa el slider de años (noUiSlider).
 function initYearSlider() {
     if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
 
     const yearInputs = [dom.yearStartInput, dom.yearEndInput];
-
-    noUiSlider.create(dom.yearSlider, {
+    const sliderInstance = noUiSlider.create(dom.yearSlider, {
         start: [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX],
         connect: true,
         step: 1,
@@ -153,18 +210,14 @@ function initYearSlider() {
         format: { to: value => Math.round(value), from: value => Number(value) }
     });
 
-    const sliderInstance = dom.yearSlider.noUiSlider;
-
     sliderInstance.on('update', (values, handle) => {
         yearInputs[handle].value = values[handle];
     });
 
     const debouncedUpdate = debounce(values => {
         const yearFilter = `${values[0]}-${values[1]}`;
-        if (getActiveFilters().year !== yearFilter) {
-            setFilter('year', yearFilter);
-            document.dispatchEvent(new CustomEvent('filtersChanged'));
-        }
+        // En lugar de llamar a `setFilter` y despachar, llamamos a la función optimista.
+        handleFilterChangeOptimistic('year', yearFilter);
     }, 500);
     sliderInstance.on('set', debouncedUpdate);
 
@@ -177,7 +230,6 @@ function initYearSlider() {
     });
 }
 
-// Configura los botones de subir/bajar en los inputs de año.
 function setupYearInputSteppers() {
     document.querySelectorAll('.year-input-wrapper').forEach(wrapper => {
         const input = wrapper.querySelector('.year-input');
@@ -206,7 +258,6 @@ const suggestionFetchers = {
     country: fetchCountrySuggestions
 };
 
-// Configura la lógica de autocompletado para los formularios de filtro.
 function setupAutocompleteHandlers() {
     dom.sidebarFilterForms.forEach(form => {
         const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -217,7 +268,6 @@ function setupAutocompleteHandlers() {
         input.setAttribute('role', 'combobox');
         input.setAttribute('aria-autocomplete', 'list');
         input.setAttribute('aria-expanded', 'false');
-
         let activeIndex = -1;
 
         const debouncedFetch = debounce(async () => {
@@ -236,9 +286,7 @@ function setupAutocompleteHandlers() {
         input.addEventListener('keydown', (e) => {
             const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
             if (!resultsContainer || resultsContainer.children.length === 0) return;
-
             const items = Array.from(resultsContainer.children);
-
             const updateActiveSuggestion = (index) => {
                 items.forEach(item => item.classList.remove('is-active'));
                 if (index >= 0 && items[index]) {
@@ -250,33 +298,17 @@ function setupAutocompleteHandlers() {
             };
             
             switch (e.key) {
-                case 'ArrowDown':
-                    e.preventDefault();
-                    activeIndex = Math.min(activeIndex + 1, items.length - 1);
-                    updateActiveSuggestion(activeIndex);
-                    break;
-                case 'ArrowUp':
-                    e.preventDefault();
-                    activeIndex = Math.max(activeIndex - 1, -1);
-                    updateActiveSuggestion(activeIndex);
-                    break;
-                case 'Enter':
-                    e.preventDefault();
-                    if (activeIndex >= 0 && items[activeIndex]) {
-                        items[activeIndex].click();
-                    }
-                    break;
-                case 'Escape':
-                    e.preventDefault();
-                    clearAllSidebarAutocomplete();
-                    break;
+                case 'ArrowDown': e.preventDefault(); activeIndex = Math.min(activeIndex + 1, items.length - 1); updateActiveSuggestion(activeIndex); break;
+                case 'ArrowUp': e.preventDefault(); activeIndex = Math.max(activeIndex - 1, -1); updateActiveSuggestion(activeIndex); break;
+                case 'Enter': e.preventDefault(); if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].click(); break;
+                case 'Escape': e.preventDefault(); clearAllSidebarAutocomplete(); break;
             }
         });
 
         form.addEventListener('click', (e) => {
             const suggestionItem = e.target.closest(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
             if (suggestionItem) {
-                handleFilterChange(filterType, suggestionItem.dataset.value);
+                handleFilterChangeOptimistic(filterType, suggestionItem.dataset.value);
                 input.value = '';
                 clearAllSidebarAutocomplete();
             }
@@ -284,33 +316,25 @@ function setupAutocompleteHandlers() {
     });
 }
 
-// Maneja el clic en una píldora de filtro para eliminarla.
 function handlePillClick(e) {
     const pill = e.target.closest('.filter-pill');
     if (!pill) return;
-
     const { filterType, filterValue } = pill.dataset;
-
     pill.classList.add('is-removing');
     pill.addEventListener('animationend', () => {
         if (pill.classList.contains('filter-pill--exclude')) {
-            if (toggleExcludedFilter(filterType, filterValue)) {
-                renderFilterPills();
-                document.dispatchEvent(new CustomEvent('filtersChanged'));
-            }
+            handleToggleExcludedFilterOptimistic(filterType, filterValue);
         } else {
-            handleFilterChange(filterType, null);
+            handleFilterChangeOptimistic(filterType, null);
         }
     }, { once: true });
 }
 
-// Configura todos los event listeners del sidebar.
 function setupEventListeners() {
     if (dom.rewindButton) {
         dom.rewindButton.addEventListener('click', (e) => {
             const isMobile = window.innerWidth <= 768;
             let isOpening;
-
             if (isMobile) {
                 document.body.classList.toggle('sidebar-is-open');
                 isOpening = document.body.classList.contains('sidebar-is-open');
@@ -318,8 +342,6 @@ function setupEventListeners() {
                 document.body.classList.toggle('sidebar-collapsed');
                 isOpening = !document.body.classList.contains('sidebar-collapsed');
             }
-
-            // ✨ REFACTORIZACIÓN: Usamos la biblioteca de iconos.
             e.currentTarget.innerHTML = isOpening ? ICONS.REWIND : ICONS.FORWARD;
             e.currentTarget.setAttribute('aria-label', isOpening ? 'Contraer sidebar' : 'Expandir sidebar');
         });
@@ -327,18 +349,14 @@ function setupEventListeners() {
 
     if (dom.toggleRotationBtn) {
         dom.toggleRotationBtn.addEventListener('click', (e) => {
-            // Limpia los efectos de la UI antes de cambiar de modo.
             unflipAllCards();
             closeModal();
-
             document.body.classList.toggle('rotation-disabled');
             const isRotationDisabled = document.body.classList.contains('rotation-disabled');
             const button = e.currentTarget;
-
             button.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
             button.setAttribute('aria-label', isRotationDisabled ? 'Activar rotación de tarjetas' : 'Pausar rotación de tarjetas');
             button.title = isRotationDisabled ? 'Giro automático' : 'Vista Rápida';
-            
             localStorage.setItem('rotationState', isRotationDisabled ? 'disabled' : 'enabled');
             triggerPopAnimation(button);
         });
@@ -348,22 +366,17 @@ function setupEventListeners() {
     if (sidebarScrollable) {
         sidebarScrollable.addEventListener('click', (e) => {
             handlePillClick(e);
-
             const excludeBtn = e.target.closest('.exclude-filter-btn');
             if (excludeBtn) {
                 e.stopPropagation();
-                if (toggleExcludedFilter(excludeBtn.dataset.type, excludeBtn.dataset.value)) {
-                    renderFilterPills();
-                    document.dispatchEvent(new CustomEvent('filtersChanged'));
-                    triggerPopAnimation(excludeBtn);
-                }
+                triggerPopAnimation(excludeBtn);
+                handleToggleExcludedFilterOptimistic(excludeBtn.dataset.type, excludeBtn.dataset.value);
                 return;
             }
-
             const link = e.target.closest('.filter-link');
             if (link) {
                 triggerPopAnimation(link);
-                handleFilterChange(link.dataset.filterType, link.dataset.filterValue);
+                handleFilterChangeOptimistic(link.dataset.filterType, link.dataset.filterValue);
             }
         });
     }
@@ -384,11 +397,9 @@ function setupEventListeners() {
     });
 }
 
-// Función principal de inicialización del sidebar.
 export function initSidebar() {
     if (window.innerWidth <= 768) {
         if (dom.rewindButton) {
-            // ✨ REFACTORIZACIÓN: Usamos la biblioteca de iconos también aquí.
             dom.rewindButton.innerHTML = ICONS.FORWARD;
             dom.rewindButton.setAttribute('aria-label', 'Expandir sidebar');
         }
@@ -411,7 +422,6 @@ export function initSidebar() {
         const textWrapper = createElement('span', { textContent: link.textContent });
         link.textContent = '';
         link.append(textWrapper);
-
         const excludable = { genre: ['Animación', 'Documental'], country: ['EEUU'] };
         if (excludable[filterType]) {
             const excludeBtn = createExcludeButton(filterValue, filterType, excludable[filterType]);
@@ -443,7 +453,6 @@ export function initSidebar() {
         if (dom.yearSlider?.noUiSlider) {
             dom.yearSlider.noUiSlider.set(years, false);
         }
-
         renderFilterPills();
     });
     

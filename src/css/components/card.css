@@ -88,8 +88,9 @@
     display: none;
     width: 10px;
     height: 10px;
-    border: 1.5px solid var(--color-accent);
+    border: 1.5px solid var(--color-accent); /* Borde de acento por defecto (para media FA/IMDb) */
     border-radius: 50%;
+    background-color: transparent; /* ASEGURA QUE ES HUECO POR DEFECTO */
 }
 
 .fi { font-size: var(--font-size-sm); }
@@ -235,6 +236,17 @@
 [data-template="wikipedia-link"] > .rating-icon {
     width: 1.7em;
     height: 1.7em;
-    /* Un pequeño ajuste vertical para centrarlo mejor si fuese necesario */
     transform: translateY(-1px); 
+}
+
+/* --- REGLA AÑADIDA --- */
+/* 
+  Establece el cursor por defecto para el contenedor de estrellas.
+  La clase '.is-interactive' (añadida por JS cuando el usuario está logueado)
+  tendrá una regla en 'card-actions.css' que sobreescribirá esto
+  con 'cursor: pointer'. Esto previene que el cursor de puntero aparezca
+  para usuarios anónimos.
+*/
+.star-rating-container {
+    cursor: default;
 }

@@ -22,6 +22,7 @@
 @import "components/auth.css";
 @import "components/button.css";
 @import "components/card.css";
+@import "components/card-actions.css";
 @import "components/header.css";
 @import "components/modal.css";
 @import "components/movie-summary.css";
@@ -32,3 +33,13 @@
 /* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
 @import "layout/principal.css";
 @import "layout/responsive.css";
+
+/* REVELADO ANTI-FOUC - Esta es la última regla que el navegador procesará */
+.sidebar--loading {
+    /* No necesitamos hacer nada a la clase en sí */
+}
+.sidebar--loading > * {
+    transition: opacity 0.2s ease-in, visibility 0s linear;
+    opacity: 1;
+    visibility: visible;
+}

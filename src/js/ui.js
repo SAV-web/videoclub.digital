@@ -2,7 +2,9 @@
 //                  MÓDULO DE MANIPULACIÓN DE UI (DOM)
 // =================================================================
 // Este archivo actúa como un punto central para la gestión de la interfaz de usuario.
-// Agrupa y re-exporta las funciones de todos los componentes de UI.
+// Agrupa y re-exporta las funciones de todos los componentes de UI,
+// mantiene referencias cacheadas a los elementos del DOM y contiene
+// funciones de UI globales como la gestión de la modal de autenticación.
 
 export * from './components/card.js';
 export * from './components/pagination.js';
@@ -12,7 +14,8 @@ export * from './components/quick-view.js';
 import { CSS_CLASSES, SELECTORS } from './constants.js';
 
 /**
- * Objeto que contiene referencias cacheadas a los elementos del DOM más utilizados.
+ * Objeto que contiene referencias cacheadas a los elementos del DOM más utilizados
+ * para evitar consultas repetitivas y mejorar el rendimiento.
  */
 export const dom = {
     gridContainer: document.querySelector(SELECTORS.GRID_CONTAINER),
@@ -60,7 +63,7 @@ export function openAuthModal() {
 }
 
 /**
- * Configura los listeners para la modal de autenticación.
+ * Configura los listeners para la modal de autenticación (abrir, cerrar, escape).
  */
 export function setupAuthModal() {
     if (!dom.loginButton || !dom.authModal || !dom.authOverlay || !dom.authCloseBtn) return;
