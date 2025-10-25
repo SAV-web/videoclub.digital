@@ -106,3 +106,44 @@ body.user-logged-in .card-actions-container {
     border-color: #FFC107;
     background-color: transparent; /* Explícitamente transparente */
 }
+
+/* --- Scrollable Content en la cara trasera de la tarjeta --- */
+
+/* Contenedor scrollable para sinopsis y crítica en la tarjeta */
+.flip-card-back .scrollable-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30%; /* Altura inicial, mostrando solo parte de la sinopsis */
+    padding: 0 var(--space-md) var(--space-md);
+    background-color: var(--color-surface);
+    overflow: hidden;
+    transition: height 3s ease-out; /* Animación de altura más rápida */
+    z-index: 5;
+}
+
+/* Estado expandido */
+.flip-card-back .scrollable-content.full-view {
+    height: 100%; /* Ocupa toda la altura de la cara trasera */
+    overflow-y: auto; /* Habilita scroll */
+}
+
+/* Degradado inferior para indicar que hay más contenido */
+.flip-card-back .scrollable-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to top, var(--color-surface) 30%, transparent);
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    opacity: 1;
+}
+
+/* Oculta el degradado cuando está expandido */
+.flip-card-back .scrollable-content.full-view::after {
+    opacity: 0;
+}

@@ -280,6 +280,30 @@ function createMovieCard(movieData) {
         lowRatingCircle?.addEventListener('click', handleFirstOptionClick);
     }
 
+    // Lógica para el scroll de la sinopsis en la cara trasera (solo en escritorio)
+    if (isDesktop) {
+        const backFace = cardElement.querySelector('.flip-card-back');
+        const scrollableContent = backFace?.querySelector('.scrollable-content');
+        const plotSummary = backFace?.querySelector('.plot-summary-final');
+
+        if (scrollableContent && plotSummary) {
+            let scrollTimeoutId = null;
+            plotSummary.addEventListener('mouseenter', () => {
+                scrollTimeoutId = setTimeout(() => {
+                    // Solo expandir si hay contenido que hacer scroll
+                    if (scrollableContent.scrollHeight > scrollableContent.clientHeight) {
+                        scrollableContent.classList.add('full-view');
+                    }
+                }, 500); // Un delay más corto para la tarjeta
+            });
+            
+            scrollableContent.addEventListener('mouseleave', () => {
+                clearTimeout(scrollTimeoutId);
+                scrollableContent.classList.remove('full-view');
+            });
+        }
+    }
+
     renderedCardCount++;
     return cardClone;
 }

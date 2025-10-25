@@ -102,8 +102,8 @@
     display: block; /* Siempre visible */
     padding: 0; /* Asegura que no haya padding extra */
 }
-.quick-view-close-btn:hover {
-    color: var(--color-text-primary); /* Cambia color al pasar el ratón */
+.quick-view-close-btn {
+    display: none; /* Oculta permanentemente el botón de cierre */
 }
 
 
@@ -120,7 +120,7 @@
     width: 100%;
     height: auto;
     border-radius: var(--radius-md);
-    margin-bottom: var(--space-md); /* Aumenta margen */
+    margin-bottom: var(--space-xs); /* Reduce aún más el margen inferior */
     display: block;
     border: 3px solid var(--color-surface); /* Borde sutil opcional */
 }
@@ -134,26 +134,62 @@
 }
 
 /* Tipografía dentro de la modal */
-.quick-view-modal .movie-summary h3 { font-size: 1.4rem; }
-.quick-view-modal .movie-summary .front-director-info { font-size: 1.35rem; } /* Aumentado al 150% */
-.quick-view-modal .movie-summary .movie-meta { font-size: 1.35rem; } /* Aumentado al 150% */
+.quick-view-modal .movie-summary h3 { font-size: 1.75rem; } /* Título al 125% */
+.quick-view-modal .movie-summary h3[data-template="title"] {
+    margin-bottom: 0; /* Elimina espacio inferior del título */
+    min-height: 2.2rem; /* Reserva espacio para 2 líneas (1.75rem * 1.2 * 2) */
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limita a un máximo de 2 líneas */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.quick-view-modal .movie-summary .front-director-info {
+    font-size: 1.08rem; /* Director al 80% */
+    margin-bottom: var(--space-md); /* Aumenta espacio inferior */
+    overflow: hidden;
+}
+.quick-view-modal .movie-summary .movie-meta { font-size: 1.35rem; } /* Año al 125% */
 .quick-view-back .details-list,
 .quick-view-back .plot-summary-final,
 .quick-view-back .critic-review { font-size: 0.95rem; }
 
+/* Aumenta el tamaño de episodios y duración al 125% */
+.quick-view-modal [data-template="episodes"],
+.quick-view-modal [data-template="duration"] {
+    font-size: 1.2rem;
+}
+
+/* Aumenta el tamaño de las notas de Filmaffinity e IMDb al 125% */
+.quick-view-modal [data-template="fa-rating"],
+.quick-view-modal [data-template="imdb-rating"] {
+    font-size: 1.5rem;
+}
+
+/* Aumenta el espacio debajo de las notas y entre género/actores */
+.quick-view-modal .ratings-container {
+    margin-bottom: var(--space-md);
+}
+.quick-view-modal .details-list p:has([data-template="genre"]) {
+    margin-bottom: var(--space-md);
+}
+
+
+
+
 /* --- Ajustes de tamaño para elementos específicos en Quick View --- */
 
-/* Aumenta el tamaño de las estrellas y el círculo de suspenso */
+/* Reduce el tamaño de las estrellas y el círculo de suspenso al 80% */
 .quick-view-modal .star-rating-container,
 .quick-view-modal .low-rating-circle {
-    transform: scale(1.5);
+    transform: scale(1.2); /* 1.5 * 0.80 = 1.2 */
     transform-origin: left center; /* Escala desde la izquierda para mantener alineación */
     margin-left: 1rem; /* Añade margen para compensar el aumento de tamaño */
 }
 
-/* Aumenta el tamaño de la bandera */
+/* Reduce el tamaño de la bandera al 80% */
 .quick-view-modal .country-container {
-    transform: scale(1.5);
+    transform: scale(1.2); /* 1.5 * 0.80 = 1.2 */
     transform-origin: left center; /* Escala desde la izquierda */
     margin-left: 0.5rem; /* Añade margen para compensar */
 }
@@ -165,7 +201,7 @@
 /* --- A) Escritorio (Tablet y superior) --- */
 @media (min-width: 769px) {
     .quick-view-modal {
-        max-width: 720px; /* Aumentado para acomodar el nuevo ancho de las secciones */
+        max-width: 630px; /* Ancho total ajustado */
         overflow: hidden; /* Evita scroll en la modal principal */
     }
 
@@ -175,18 +211,18 @@
     }
 
     .quick-view-front {
-        width: 50%; /* Ajustado para mantener el tamaño visual del póster en la modal más ancha */
+        width: 57%; /* ~360px. Mantiene el tamaño del póster */
         border-right: 1px solid var(--color-border); /* Separador vertical */
         border-bottom: none; /* Elimina separador inferior */
         overflow-y: auto; /* Permite scroll si la info básica es muy larga */
         padding: var(--space-lg); /* Más padding en escritorio */
     }
      .quick-view-front img {
-        margin-bottom: var(--space-lg); /* Más espacio bajo la imagen */
+        margin-bottom: var(--space-sm); /* Reduce margen inferior en escritorio */
      }
 
     .quick-view-back {
-        width: 50%; /* Aumentado al 150% de su ancho anterior, ajustado para la modal más ancha */
+        width: 43%; /* ~270px. Reducido al 75% del ancho anterior */
         padding: var(--space-lg); /* Más padding en escritorio */
         /* overflow-y: auto; <- Quitamos esto para controlar scroll con .scrollable-content */
     }
@@ -235,7 +271,7 @@
     }
 
     /* Ajuste tipografía escritorio */
-     .quick-view-modal .movie-summary h3 { font-size: 1.6rem; }
+     .quick-view-modal .movie-summary h3 { font-size: 1.5rem; } /* Asegura que el título se mantenga grande en escritorio */
 }
 
 /* --- B) Móvil (Bottom Sheet) --- */
