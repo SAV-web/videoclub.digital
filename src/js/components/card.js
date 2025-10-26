@@ -213,6 +213,24 @@ function populateCardText(elements, movieData) {
     elements.year.textContent = displayYear;
     elements.countryContainer.style.display = movieData.country_code ? 'flex' : 'none';
     if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
+    // ==========================================================
+    //  ▼▼▼ NUEVA LÓGICA DE ICONOS DE PLATAFORMA ▼▼▼
+    // ==========================================================
+    const collections = movieData.collections_list || '';
+
+    // Lógica de visualización:
+    // Por defecto, ambos iconos están ocultos.
+    elements.netflixIcon.style.display = 'none';
+    elements.hboIcon.style.display = 'none';
+
+    // Mostramos el que corresponda. Si una película está en ambas
+    // colecciones, Netflix tiene prioridad visual (esto es una decisión de producto).
+    if (collections.includes('N')) {
+        elements.netflixIcon.style.display = 'block';
+    } else if (collections.includes('H')) {
+        elements.hboIcon.style.display = 'block';
+    }
+    // ==========================================================
 }
 
 function setupCardRatings(elements, movieData) {
@@ -253,7 +271,14 @@ function createMovieCard(movieData) {
         faVotesBar: cardClone.querySelector('[data-template="fa-votes-bar"]'), imdbLink: cardClone.querySelector(SELECTORS.IMDB_LINK),
         imdbRating: cardClone.querySelector(SELECTORS.IMDB_RATING), imdbVotesBarContainer: cardClone.querySelector('[data-template="imdb-votes-bar-container"]'),
         imdbVotesBar: cardClone.querySelector('[data-template="imdb-votes-bar"]'), duration: cardClone.querySelector(SELECTORS.DURATION),
-        episodes: cardClone.querySelector('[data-template="episodes"]'), wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
+        episodes: cardClone.querySelector('[data-template="episodes"]'), comedyIcon: cardClone.querySelector('[data-template="comedy-icon"]'),
+    // ==========================================================
+    //  ▼▼▼ SECCIÓN DE ICONOS ACTUALIZADA ▼▼▼
+    // ==========================================================
+    netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
+    hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'),
+    // ==========================================================
+        wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
         genre: cardClone.querySelector(SELECTORS.GENRE), actors: cardClone.querySelector(SELECTORS.ACTORS), synopsis: cardClone.querySelector(SELECTORS.SYNOPSIS),
         criticContainer: cardClone.querySelector('[data-template="critic-container"]'), critic: cardClone.querySelector('[data-template="critic"]')
     };

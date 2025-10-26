@@ -1,34 +1,4 @@
 /* ================================================================= */
-/* Componente: Acciones de Tarjeta (Watchlist / Rating)
-/* ================================================================= */
-
-/* --- Contenedor Principal de Acciones (Botón Watchlist) --- */
-
-.card-actions-container {
-    position: absolute;
-    top: 4px;  /* Desplazado más a la esquina */
-    right: 4px; /* Desplazado más a la esquina */
-    z-index: 10; /* Se posiciona por encima de la imagen de la tarjeta */
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-
-    /* Estado por defecto: oculto para usuarios anónimos o antes de que JS cargue */
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transform: translateY(-10px);
-    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
-}
-
-/* Cuando el usuario está logueado, la clase 'user-logged-in' en el <body>
-   hace que el contenedor de acciones aparezca con una animación suave. */
-body.user-logged-in .card-actions-container {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transform: translateY(0);
-}
 
 /* --- Botón de Acción Individual (ej. Watchlist) --- */
 
@@ -38,19 +8,16 @@ body.user-logged-in .card-actions-container {
     padding: 0;
     border: none;
     border-radius: var(--radius-round);
-    background-color: rgba(0, 0, 0, 0.4); /* Mayor transparencia */
-    color: #fff;
+    background-color: transparent;
+    color: var(--color-accent); /* Mismo color que las estrellas por defecto */
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    backdrop-filter: blur(4px); /* Efecto de desenfoque del fondo para legibilidad */
-    transition: background-color 0.2s ease, transform 0.2s ease;
+    transition: transform 0.2s ease;
 }
 
 .card-action-btn:hover {
-    background-color: rgba(0, 0, 0, 0.6); /* Mayor transparencia en hover */
     transform: scale(1.1);
 }
 
@@ -63,13 +30,24 @@ body.user-logged-in .card-actions-container {
 /* --- Estado ACTIVO para el botón de Watchlist --- */
 
 .card-action-btn.is-active {
-    background-color: rgba(0, 0, 0, 0.6); /* Mayor transparencia en estado activo */
+    background-color: transparent;
 }
 
 /* El icono del ojo (iris y contorno) se vuelve amarillo cuando está activo */
 .card-action-btn.is-active svg {
     color: #FFC107; /* Amarillo dorado, igual que las estrellas de usuario */
     transform: scale(1.1);
+}
+
+/* Rellena solo la forma del ojo, no el iris */
+.card-action-btn.is-active svg path {
+    fill: #FFC107;
+}
+
+/* Rellena el iris (círculo central) con un color oscuro para que contraste */
+.card-action-btn.is-active svg circle {
+    fill: var(--color-bg); /* Usa el color de fondo para el iris */
+    stroke: var(--color-bg); /* Y también para el borde del iris */
 }
 
 
@@ -105,6 +83,30 @@ body.user-logged-in .card-actions-container {
 .low-rating-circle.has-user-rating {
     border-color: #FFC107;
     background-color: transparent; /* Explícitamente transparente */
+}
+
+/* Nuevo contenedor para las estrellas en la tarjeta */
+.card-rating-block {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: translateY(66.66%); /* Desplazado 2/3 hacia abajo */
+    z-index: 5;
+    display: flex;
+    justify-content: space-between; /* Coloca los elementos en los extremos */
+    align-items: center;
+    padding: 0 var(--space-sm); /* Añade padding horizontal */
+    /* Se eliminan los estilos de fondo para un look más limpio */
+    background-color: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
+    pointer-events: none; /* El contenedor no captura clics */
+}
+
+/* Permite que los hijos del contenedor sí capturen clics */
+.card-rating-block > * {
+    pointer-events: auto;
 }
 
 /* --- Scrollable Content en la cara trasera de la tarjeta --- */

@@ -33,17 +33,6 @@ BEGIN RETURN v_input::INTEGER; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 CREATE OR REPLACE FUNCTION public.to_real_safe(v_input TEXT)
 RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
 BEGIN RETURN v_input::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
--- Modificaciones de esquema para que existan ANTES de que cualquier función intente usarlas.
--- Añadimos las nuevas columnas a la tabla `movies` para la desnormalización.
-ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS genres_list TEXT;
-ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS directors_list TEXT;
-ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS actors_list TEXT;
--- Añadimos columnas generadas para búsquedas normalizadas (insensibles a acentos/mayúsculas).
-ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS title_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(title))) STORED;
-ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
-ALTER TABLE public.actors ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
-ALTER TABLE public.countries ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
-ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS name_norm TEXT GENERATED ALWAYS AS (public.unaccent_immutable(lower(name))) STORED;
 
 -- =================================================================
 -- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA: FUNCIÓN BASADA EN OFFSET
@@ -61,11 +50,17 @@ RETURNS TABLE(
     directors text, actors text, country text, country_code text, minutes integer,
     image text, fa_id text, fa_rating real, fa_votes integer, imdb_id text,
     imdb_rating real, imdb_votes integer, synopsis text, thumbhash_st text,
-    critic text, last_synced_at timestamptz, episodes integer, wikipedia text,
+    critic text, last_synced_at timestamp with time zone, episodes integer, wikipedia text,
+    -- ==========================================================
+    --  ▼▼▼ 1. AÑADIR LA NUEVA COLUMNA A LA DEFINICIÓN DE RETORNO ▼▼▼
+    -- ==========================================================
+    collections_list text,
+    -- ==========================================================
     total_count bigint
 )
 LANGUAGE sql STABLE PARALLEL SAFE AS $function$
 WITH filtered_movies AS (
+    -- ... (esta parte interna de la función no cambia) ...
     SELECT
         m.id,
         COUNT(*) OVER() AS total_count_unpaginated
@@ -97,7 +92,13 @@ SELECT
     m.directors_list AS directors, m.actors_list AS actors, c.name AS country,
     c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes,
     m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic,
-    m.last_synced_at, m.episodes, m.wikipedia, fm.total_count_unpaginated as total_count
+    m.last_synced_at, m.episodes, m.wikipedia,
+    -- ==========================================================
+    --  ▼▼▼ 2. AÑADIR LA NUEVA COLUMNA AL SELECT FINAL ▼▼▼
+    -- ==========================================================
+    m.collections_list,
+    -- ==========================================================
+    fm.total_count_unpaginated as total_count
 FROM
     filtered_movies fm
 JOIN public.movies m ON fm.id = m.id
@@ -179,6 +180,8 @@ CREATE INDEX IF NOT EXISTS movie_actors_movie_id_idx ON public.movie_actors(movi
 CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(actor_id);
 CREATE INDEX IF NOT EXISTS movie_collections_movie_id_idx ON public.movie_collections(movie_id);
 CREATE INDEX IF NOT EXISTS movie_collections_collection_id_idx ON public.movie_collections(collection_id);
+-- Índice para guardar el orden de los actores y su índice.
+CREATE INDEX IF NOT EXISTS movie_actors_ordinality_idx ON public.movie_actors(ordinality);
 -- Índices híbridos para las tablas de entidad (sugerencias).
 CREATE INDEX IF NOT EXISTS directors_name_norm_prefix_idx ON public.directors (name_norm text_pattern_ops);
 CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm gin_trgm_ops);
@@ -365,15 +368,18 @@ BEGIN
     JOIN public.movies m ON TRIM(s.image) = m.image
     CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) AS director_name(name)
     JOIN public.directors d ON d.name = TRIM(director_name.name)
-    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT DO NOTHING;
+    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, director_id) DO NOTHING;
 
-    INSERT INTO public.movie_actors (movie_id, actor_id)
-    SELECT m.id, a.id
+    INSERT INTO public.movie_actors (movie_id, actor_id, ordinality)
+    -- Usamos DISTINCT ON para asegurarnos de que solo insertamos la primera aparición de cada actor por película,
+    -- evitando así el error "cannot affect row a second time" si un actor está duplicado en la cadena de texto.
+    SELECT DISTINCT ON (m.id, a.id) m.id, a.id, actor_name.ordinality
     FROM public.movies_staging s
     JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) AS actor_name(name)
+    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) WITH ORDINALITY AS actor_name(name, ordinality)
     JOIN public.actors a ON a.name = TRIM(actor_name.name)
-    WHERE m.id = ANY(affected_movie_ids) AND s.actors <> '(A)' ON CONFLICT DO NOTHING;
+    WHERE m.id = ANY(affected_movie_ids) AND s.actors <> '(A)'
+    ORDER BY m.id, a.id, actor_name.ordinality ASC ON CONFLICT (movie_id, actor_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
 
     INSERT INTO public.movie_collections (movie_id, collection_id)
     SELECT m.id, c.id
@@ -381,7 +387,7 @@ BEGIN
     JOIN public.movies m ON TRIM(s.image) = m.image
     CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS collection_code(code)
     JOIN public.collections c ON c.code = TRIM(collection_code.code)
-    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT DO NOTHING;
+    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, collection_id) DO NOTHING;
 
     -- FASE 4: DESNORMALIZACIÓN (EL "MISE EN PLACE")
     -- ----------------------------------------------------------------
@@ -393,18 +399,37 @@ BEGIN
         SELECT
             m.id,
             -- Usamos STRING_AGG para concatenar los nombres de las tablas relacionadas.
-            -- El 'DISTINCT' previene duplicados y 'ORDER BY' asegura un orden consistente.
             STRING_AGG(DISTINCT g.name, ', ' ORDER BY g.name) AS genres,
             STRING_AGG(DISTINCT d.name, ', ' ORDER BY d.name) AS directors,
-            STRING_AGG(DISTINCT a.name, ', ' ORDER BY a.name) AS actors
+            -- ==========================================================
+            --  ▼▼▼ NUEVA LÍNEA AÑADIDA ▼▼▼
+            -- ==========================================================
+            STRING_AGG(DISTINCT c.code, ',') AS collections, -- Agregamos los códigos de colección
+            -- ==========================================================
+            (
+                -- Subconsulta para obtener actores únicos ordenados por su aparición original.
+                -- Esto evita la duplicación causada por los JOINs con géneros/directores.
+                SELECT STRING_AGG(actor_name, ', ' ORDER BY ordinality)
+                FROM (
+                    SELECT DISTINCT ON (a.name) a.name as actor_name, ma.ordinality
+                    FROM public.movie_actors ma
+                    JOIN public.actors a ON ma.actor_id = a.id
+                    WHERE ma.movie_id = m.id
+                    ORDER BY a.name, ma.ordinality
+                ) AS unique_actors
+            ) AS actors
         FROM public.movies m
         -- Hacemos LEFT JOIN para asegurarnos de que se incluyan todas las películas.
         LEFT JOIN public.movie_genres mg ON m.id = mg.movie_id
         LEFT JOIN public.genres g ON mg.genre_id = g.id
         LEFT JOIN public.movie_directors md ON m.id = md.movie_id
         LEFT JOIN public.directors d ON md.director_id = d.id
-        LEFT JOIN public.movie_actors ma ON m.id = ma.movie_id
-        LEFT JOIN public.actors a ON ma.actor_id = a.id
+        -- ==========================================================
+        --  ▼▼▼ NUEVOS JOINS AÑADIDOS ▼▼▼
+        -- ==========================================================
+        LEFT JOIN public.movie_collections mc ON m.id = mc.movie_id
+        LEFT JOIN public.collections c ON mc.collection_id = c.id
+        -- ==========================================================
         -- ¡CRÍTICO! Solo procesamos las películas que fueron afectadas en esta ejecución.
         WHERE m.id = ANY(affected_movie_ids)
         GROUP BY m.id
@@ -414,7 +439,12 @@ BEGIN
     SET
         genres_list = ad.genres,
         directors_list = ad.directors,
-        actors_list = ad.actors
+        actors_list = ad.actors,
+        -- ==========================================================
+        --  ▼▼▼ NUEVA ASIGNACIÓN AÑADIDA ▼▼▼
+        -- ==========================================================
+        collections_list = ad.collections
+        -- ==========================================================
     FROM aggregated_data ad
     WHERE m.id = ad.id;
 END;

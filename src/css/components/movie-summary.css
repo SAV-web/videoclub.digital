@@ -9,7 +9,7 @@
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    padding: var(--space-xxs) var(--space-sm) var(--space-xs);
+    padding: var(--space-md) var(--space-sm) var(--space-xs);
     overflow: hidden;
 }
 
@@ -22,7 +22,7 @@
 }
 
 .movie-summary h3 {
-    margin-bottom: var(--space-xxs);
+    margin-bottom: 1px;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -53,19 +53,54 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     text-decoration: underline;
 }
 
+/* ----------------------------------------------------------------- */
+/* Estilos para la sección de meta-información (Iconos, Año, Bandera)
+/* ----------------------------------------------------------------- */
+
 .movie-summary .movie-meta {
-    padding-top: 0;
+    padding-top: var(--space-xs);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 24px;
     color: var(--color-text-secondary);
     font-size: var(--font-size-sm);
     line-height: var(--line-height-normal);
 }
 
-.year-country-line {
+/* Contenedor para los iconos de plataforma (se alineará a la izquierda) */
+.card-icons-line {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: var(--space-xs);
 }
-.year-country-line > span[data-template="year"] {
+
+/* Regla base para cualquier icono de plataforma */
+.platform-icon svg {
+    vertical-align: middle;
+}
+
+/* Colores de marca específicos */
+.netflix-icon {
+    color: #E50914;
+}
+
+[data-template="hbo-icon"] {
+    color: #002BE7;
+}
+
+/* Contenedor para año y bandera (se alineará a la derecha) */
+.year-country-line {
+    /* Esta clase ahora es solo un contenedor semántico, el layout lo gestiona .movie-meta */
+}
+
+.year-flag-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.year-country-line span[data-template="year"] {
     font-weight: bold;
 }
 
@@ -74,6 +109,10 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     align-items: center;
     gap: 0.4em;
 }
+
+/* ----------------------------------------------------------------- */
+/* Estilos para las Estrellas de Valoración (Componente Separado)
+/* ----------------------------------------------------------------- */
 
 .star-rating-container {
     display: flex;
