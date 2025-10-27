@@ -1,59 +1,110 @@
 /* ================================================================= */
+/*          Componente: Acciones de Tarjeta
+/* ================================================================= */
+/*
+ * Contiene los estilos para los botones interactivos sobre la tarjeta,
+ * como la valoración por estrellas, el círculo de suspenso y el botón
+ * de añadir a la lista (watchlist).
+ *
+ * v2.0 - Añadidas micro-interacciones avanzadas y curvas de animación
+ *        personalizadas para una experiencia de usuario más rica.
+ */
 
-/* --- Botón de Acción Individual (ej. Watchlist) --- */
+/* --- Contenedor Principal de Acciones --- */
+
+.card-rating-block {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: translateY(66.66%);
+    z-index: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 var(--space-sm);
+    pointer-events: none; /* El contenedor no captura clics, solo sus hijos */
+}
+
+.card-rating-block > * {
+    pointer-events: auto; /* Los hijos sí capturan clics */
+}
+
+
+/* --- Botón de Watchlist (con Personalidad) --- */
 
 .card-action-btn {
-    width: 28px;  /* Círculo aún más pequeño */
-    height: 28px; /* Círculo aún más pequeño */
+    width: 28px;
+    height: 28px;
     padding: 0;
     border: none;
     border-radius: var(--radius-round);
     background-color: transparent;
-    color: var(--color-accent); /* Mismo color que las estrellas por defecto */
+    color: var(--color-accent);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s ease;
+    /* Aplicando la nueva transición personalizada */
+    transition: all var(--duration-normal) var(--ease-smooth);
 }
 
 .card-action-btn:hover {
-    transform: scale(1.1);
+    /* Rotación sutil y aumento de tamaño para feedback en hover */
+    transform: scale(1.15) rotate(10deg);
 }
 
 .card-action-btn svg {
-    width: 14px;  /* Ojo aún más pequeño */
-    height: 14px; /* Ojo aún más pequeño */
-    transition: all 0.2s ease;
+    width: 18px;
+    height: 18px;
+    transition: all var(--duration-normal) var(--ease-smooth);
 }
 
-/* --- Estado ACTIVO para el botón de Watchlist --- */
+/* --- ESTADO ACTIVO del botón de Watchlist --- */
 
+/* Animación de "pop" con rebote al activar */
 .card-action-btn.is-active {
-    background-color: transparent;
+    animation: watchlist-pop var(--duration-normal) var(--ease-bounce);
 }
 
-/* El icono del ojo (iris y contorno) se vuelve amarillo cuando está activo */
+/* El icono del ojo parpadea sutilmente cuando está activo */
 .card-action-btn.is-active svg {
     color: #FFC107; /* Amarillo dorado, igual que las estrellas de usuario */
-    transform: scale(1.1);
+    animation: eye-blink 4s ease-in-out infinite 1s; /* Retrasamos el inicio 1s */
 }
 
-/* Rellena solo la forma del ojo, no el iris */
 .card-action-btn.is-active svg path {
     fill: #FFC107;
 }
 
-/* Rellena el iris (círculo central) con un color oscuro para que contraste */
 .card-action-btn.is-active svg circle {
-    fill: var(--color-bg); /* Usa el color de fondo para el iris */
-    stroke: var(--color-bg); /* Y también para el borde del iris */
+    fill: var(--color-bg);
+    stroke: var(--color-bg);
 }
 
 
-/* --- Estilos para las Estrellas y Círculo de Valoración Interactivas --- */
+/* --- Keyframes para las Animaciones --- */
 
-/* Añade el cursor de puntero solo cuando los elementos son interactivos (usuario logueado) */
+@keyframes watchlist-pop {
+    0% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.3) rotate(-5deg); } /* Rebote con rotación inversa */
+    100% { transform: scale(1); }
+}
+
+@keyframes eye-blink {
+    0%, 90%, 100% {
+        opacity: 1;
+        transform: scaleY(1); /* Ojo abierto */
+    }
+    95% {
+        opacity: 0.8;
+        transform: scaleY(0.1); /* Simula el cierre del párpado */
+    }
+}
+
+
+/* --- Estrellas y Círculo de Valoración Interactivas --- */
+
 .star-rating-container.is-interactive,
 .low-rating-circle.is-interactive {
     cursor: pointer;
@@ -61,16 +112,15 @@
 
 .star-rating-container.is-interactive .star-icon,
 .low-rating-circle.is-interactive {
-    transition: transform 0.1s ease-out;
+    transition: transform var(--duration-fast) var(--ease-spring);
 }
 
-/* Efecto hover sobre las estrellas interactivas para dar feedback */
 .star-rating-container.is-interactive:hover .star-icon,
 .low-rating-circle.is-interactive:hover {
     transform: scale(1.2);
 }
 
-/* Cuando una valoración de usuario existe, las estrellas cambian a un color distintivo */
+/* Estado visual cuando hay una valoración de usuario */
 .star-rating-container.has-user-rating .star-icon-path {
     stroke: #FFC107; /* Amarillo dorado para el borde */
 }
@@ -79,59 +129,32 @@
     fill: #FFC107; /* Amarillo dorado para el relleno */
 }
 
-/* Cuando el círculo representa la valoración "suspenso" del usuario */
 .low-rating-circle.has-user-rating {
     border-color: #FFC107;
-    background-color: transparent; /* Explícitamente transparente */
-}
-
-/* Nuevo contenedor para las estrellas en la tarjeta */
-.card-rating-block {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    transform: translateY(66.66%); /* Desplazado 2/3 hacia abajo */
-    z-index: 5;
-    display: flex;
-    justify-content: space-between; /* Coloca los elementos en los extremos */
-    align-items: center;
-    padding: 0 var(--space-sm); /* Añade padding horizontal */
-    /* Se eliminan los estilos de fondo para un look más limpio */
     background-color: transparent;
-    backdrop-filter: none;
-    box-shadow: none;
-    pointer-events: none; /* El contenedor no captura clics */
 }
 
-/* Permite que los hijos del contenedor sí capturen clics */
-.card-rating-block > * {
-    pointer-events: auto;
-}
 
-/* --- Scrollable Content en la cara trasera de la tarjeta --- */
+/* --- Contenido Scrollable de la Cara Trasera (sin cambios) --- */
 
-/* Contenedor scrollable para sinopsis y crítica en la tarjeta */
 .flip-card-back .scrollable-content {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 30%; /* Altura inicial, mostrando solo parte de la sinopsis */
+    height: 30%;
     padding: 0 var(--space-md) var(--space-md);
     background-color: var(--color-surface);
     overflow: hidden;
-    transition: height 3s ease-out; /* Animación de altura más rápida */
+    transition: height var(--duration-slower) var(--ease-smooth);
     z-index: 5;
 }
 
-/* Estado expandido */
 .flip-card-back .scrollable-content.full-view {
-    height: 100%; /* Ocupa toda la altura de la cara trasera */
-    overflow-y: auto; /* Habilita scroll */
+    height: 100%;
+    overflow-y: auto;
 }
 
-/* Degradado inferior para indicar que hay más contenido */
 .flip-card-back .scrollable-content::after {
     content: '';
     position: absolute;
@@ -141,11 +164,10 @@
     height: 40px;
     background: linear-gradient(to top, var(--color-surface) 30%, transparent);
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    transition: opacity var(--duration-normal) ease;
     opacity: 1;
 }
 
-/* Oculta el degradado cuando está expandido */
 .flip-card-back .scrollable-content.full-view::after {
     opacity: 0;
 }

@@ -1,8 +1,10 @@
 // =================================================================
-//          COMPONENTE CARD (v3.7 - Ciclo Corregido Final)
+//          COMPONENTE CARD (v3.8 - Carga de Imagen Híbrida)
 // =================================================================
-// v3.7 - Implementación final y robusta de la lógica de ciclo de
-//        votación y la asignación condicional de listeners.
+// v3.8 - Implementada estrategia de carga de imágenes híbrida:
+//        - Lazy loading nativo del navegador para imágenes sin placeholder (LQIP).
+//        - Intersection Observer solo para activar la transición suave de imágenes con LQIP.
+//        Esto mejora el rendimiento y reduce la carga de trabajo de JavaScript.
 
 import { CONFIG } from '../config.js';
 import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
@@ -86,17 +88,13 @@ async function handleFirstOptionClick(event) {
     const currentRating = currentUserData.rating;
 
     let newRating;
-    // LÓGICA DE CICLO DE 3 ESTADOS BASADA EN LA NOTA
     if (currentRating === null) {
-        // 1. De SIN NOTA a SUSPENSO
         newRating = 2;
-    } else if (currentRating === 2) { // Específicamente de Suspenso (nota 2)
-        // 2. De SUSPENSO a 1 ESTRELLA (Aprobado)
-        newRating = 3; // Cambiado a 3 para que se renderice como 1 estrella maciza
-    } else if (currentRating === 3) { // Si ya tiene 1 estrella
-        // 3. De 1 ESTRELLA a SIN NOTA
+    } else if (currentRating === 2) {
+        newRating = 3;
+    } else if (currentRating === 3) {
         newRating = null;
-    } else { // Si tiene 2, 3 o 4 estrellas, baja a 1 estrella
+    } else {
         newRating = 3;
     }
 
@@ -135,15 +133,12 @@ export function updateCardUI(cardElement) {
     if (isLoggedIn && userRating !== null && userRating !== undefined) {
         starContainer.classList.add('has-user-rating');
         lowRatingCircle.classList.add('has-user-rating');
-        const userStars = calculateUserStars(userRating);
         
-        // ✨ CORRECCIÓN: Diferenciamos entre nota 2 (suspenso) y nota 3 (1 estrella aprobada)
-        if (userRating === 2) { // Si la nota es 2, siempre es el círculo de suspenso
+        if (userRating === 2) {
             lowRatingCircle.style.display = 'block';
-        } else if (userRating >= 3) { // Si la nota es 3 o más, mostramos estrellas
+        } else if (userRating >= 3) {
             starContainer.style.display = 'flex';
-            // calculateUserStars(3) devuelve 1, calculateUserStars(5) devuelve 2, etc.
-            renderUserStars(starContainer, calculateUserStars(userRating), true); // true para ocultar estrellas huecas
+            renderUserStars(starContainer, calculateUserStars(userRating), true);
         }
     } else {
         starContainer.classList.remove('has-user-rating');
@@ -168,18 +163,45 @@ export function updateCardUI(cardElement) {
 //          LÓGICA DE RENDERIZADO DE TARJETAS
 // =================================================================
 
+/**
+ * Configura la imagen de la tarjeta usando una estrategia híbrida.
+ * Utiliza lazy loading nativo para eficiencia y Intersection Observer
+ * para transiciones suaves con placeholders (LQIP).
+ * @param {HTMLImageElement} imgElement - El elemento de la imagen a configurar.
+ * @param {object} movieData - Los datos de la película.
+ */
 function setupCardImage(imgElement, movieData) {
     const version = movieData.last_synced_at ? new Date(movieData.last_synced_at).getTime() : '1';
-    const basePosterUrl = (movieData.image && movieData.image !== '.') ? `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp` : `https://via.placeholder.com/500x750.png?text=${encodeURIComponent(movieData.title)}`;
+    const basePosterUrl = (movieData.image && movieData.image !== '.') 
+        ? `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp` 
+        : `https://via.placeholder.com/500x750.png?text=${encodeURIComponent(movieData.title)}`;
+    
     const highQualityPoster = `${basePosterUrl}?v=${version}`;
-    const lowQualityPlaceholder = movieData.thumbhash_st || 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-    imgElement.dataset.src = highQualityPoster;
+    
+    // --- ESTRATEGIA HÍBRIDA ---
+    if (movieData.thumbhash_st) {
+        // ---- Caso 1: Hay Thumbhash (LQIP) ----
+        imgElement.src = movieData.thumbhash_st;
+        imgElement.dataset.src = highQualityPoster;
+        imgElement.classList.add(CSS_CLASSES.LAZY_LQIP);
+        
+        // Usar Intersection Observer solo para la transición suave.
+        lazyLoadObserver.observe(imgElement);
+    } else {
+        // ---- Caso 2: No hay Thumbhash ----
+        // Delegar la carga completamente al navegador.
+        imgElement.src = highQualityPoster;
+        imgElement.loading = (renderedCardCount < 6) ? 'eager' : 'lazy';
+    }
+    
     imgElement.alt = `Póster de ${movieData.title}`;
-    imgElement.src = lowQualityPlaceholder;
-    if (movieData.thumbhash_st) imgElement.classList.add(CSS_CLASSES.LAZY_LQIP);
-    if (renderedCardCount < 6) { imgElement.loading = 'eager'; imgElement.setAttribute('fetchpriority', 'high'); }
-    lazyLoadObserver.observe(imgElement);
+    
+    // Asignar prioridad alta a las primeras imágenes para optimizar el LCP.
+    if (renderedCardCount < 6) { 
+        imgElement.setAttribute('fetchpriority', 'high');
+    }
 }
+
 
 function populateCardText(elements, movieData) {
     elements.title.textContent = movieData.title || 'Título no disponible';
@@ -190,7 +212,7 @@ function populateCardText(elements, movieData) {
     if (directorsString && directorsString !== 'Director no disponible') {
         directorsString.split(',').map(name => name.trim()).forEach((name, index, arr) => {
             const link = createElement('a', { textContent: name, href: `#` });
-            link.dataset.directorName = name; // Usado para el listener de clic
+            link.dataset.directorName = name;
             directorContainer.appendChild(link);
             if (index < arr.length - 1) directorContainer.appendChild(document.createTextNode(', '));
         });
@@ -213,24 +235,15 @@ function populateCardText(elements, movieData) {
     elements.year.textContent = displayYear;
     elements.countryContainer.style.display = movieData.country_code ? 'flex' : 'none';
     if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
-    // ==========================================================
-    //  ▼▼▼ NUEVA LÓGICA DE ICONOS DE PLATAFORMA ▼▼▼
-    // ==========================================================
-    const collections = movieData.collections_list || '';
 
-    // Lógica de visualización:
-    // Por defecto, ambos iconos están ocultos.
+    const collections = movieData.collections_list || '';
     elements.netflixIcon.style.display = 'none';
     elements.hboIcon.style.display = 'none';
-
-    // Mostramos el que corresponda. Si una película está en ambas
-    // colecciones, Netflix tiene prioridad visual (esto es una decisión de producto).
     if (collections.includes('N')) {
         elements.netflixIcon.style.display = 'block';
     } else if (collections.includes('H')) {
         elements.hboIcon.style.display = 'block';
     }
-    // ==========================================================
 }
 
 function setupCardRatings(elements, movieData) {
@@ -271,14 +284,8 @@ function createMovieCard(movieData) {
         faVotesBar: cardClone.querySelector('[data-template="fa-votes-bar"]'), imdbLink: cardClone.querySelector(SELECTORS.IMDB_LINK),
         imdbRating: cardClone.querySelector(SELECTORS.IMDB_RATING), imdbVotesBarContainer: cardClone.querySelector('[data-template="imdb-votes-bar-container"]'),
         imdbVotesBar: cardClone.querySelector('[data-template="imdb-votes-bar"]'), duration: cardClone.querySelector(SELECTORS.DURATION),
-        episodes: cardClone.querySelector('[data-template="episodes"]'), comedyIcon: cardClone.querySelector('[data-template="comedy-icon"]'),
-    // ==========================================================
-    //  ▼▼▼ SECCIÓN DE ICONOS ACTUALIZADA ▼▼▼
-    // ==========================================================
-    netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
-    hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'),
-    // ==========================================================
-        wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
+        episodes: cardClone.querySelector('[data-template="episodes"]'), netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
+        hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'), wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
         genre: cardClone.querySelector(SELECTORS.GENRE), actors: cardClone.querySelector(SELECTORS.ACTORS), synopsis: cardClone.querySelector(SELECTORS.SYNOPSIS),
         criticContainer: cardClone.querySelector('[data-template="critic-container"]'), critic: cardClone.querySelector('[data-template="critic"]')
     };
@@ -305,7 +312,6 @@ function createMovieCard(movieData) {
         lowRatingCircle?.addEventListener('click', handleFirstOptionClick);
     }
 
-    // Lógica para el scroll de la sinopsis en la cara trasera (solo en escritorio)
     if (isDesktop) {
         const backFace = cardElement.querySelector('.flip-card-back');
         const scrollableContent = backFace?.querySelector('.scrollable-content');
@@ -315,11 +321,10 @@ function createMovieCard(movieData) {
             let scrollTimeoutId = null;
             plotSummary.addEventListener('mouseenter', () => {
                 scrollTimeoutId = setTimeout(() => {
-                    // Solo expandir si hay contenido que hacer scroll
                     if (scrollableContent.scrollHeight > scrollableContent.clientHeight) {
                         scrollableContent.classList.add('full-view');
                     }
-                }, 500); // Un delay más corto para la tarjeta
+                }, 500);
             });
             
             scrollableContent.addEventListener('mouseleave', () => {
@@ -329,6 +334,14 @@ function createMovieCard(movieData) {
         }
     }
 
+    const watchlistButton = cardElement.querySelector('[data-action="toggle-watchlist"]');
+    if (watchlistButton) {
+        const randomDelay = - (Math.random() * 4);
+        watchlistButton.style.setProperty('--animation-delay', `${randomDelay}s`);
+    }
+    
+    // Incrementamos el contador aquí, después de configurar la imagen
+    // para que la lógica de `renderedCardCount < 6` sea correcta.
     renderedCardCount++;
     return cardClone;
 }
@@ -372,5 +385,5 @@ export function renderSkeletons(gridContainer, paginationContainer) { if (gridCo
 export function renderNoResults(gridContainer, paginationContainer, activeFilters) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const noResultsDiv = createElement('div', { className: 'no-results', attributes: { role: 'status' } }); noResultsDiv.appendChild(createElement('h3', { textContent: 'No se encontraron resultados' })); const hasActiveFilters = Object.values(activeFilters).some(value => value && value !== 'id,asc' && value !== 'all'); if (activeFilters.searchTerm) { noResultsDiv.appendChild(createElement('p', { textContent: `Prueba a simplificar tu búsqueda para "${activeFilters.searchTerm}".` })); } else if (hasActiveFilters) { noResultsDiv.appendChild(createElement('p', { textContent: 'Intenta eliminar algunos filtros para obtener más resultados.' })); } noResultsDiv.appendChild(createElement('button', { id: 'clear-filters-from-empty', className: 'btn btn--outline', textContent: 'Limpiar todos los filtros' })); gridContainer.appendChild(noResultsDiv); }
 export function renderErrorState(gridContainer, paginationContainer, message) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const errorDiv = createElement('div', { className: 'no-results', attributes: { role: 'alert' } }); errorDiv.appendChild(createElement('h3', { textContent: '¡Vaya! Algo ha ido mal' })); errorDiv.appendChild(createElement('p', { textContent: message })); gridContainer.appendChild(errorDiv); }
 
-// Inyectamos la dependencia para evitar `window` y dependencias circulares
+// Inyectamos la dependencia para evitar dependencias circulares
 setUpdateCardUIFn(updateCardUI);

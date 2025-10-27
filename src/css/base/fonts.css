@@ -1,27 +1,21 @@
 /* src/css/base/fonts.css */
 
-/* --- Roboto --- */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 400; /* Regular */
-  font-display: swap; /* ¡CRUCIAL! Muestra texto con fuente de sistema mientras carga */
-  src: url('../../fonts/Roboto-VariableFont_wdth,wght.ttf') format('truetype'); /* Ruta relativa desde el CSS */
-}
+/*
+ * =================================================================
+ * CARGA DE LA FUENTE PRINCIPAL DE LA UI: Inter
+ * =================================================================
 
+/* Se utiliza la versión variable de Inter para optimizar el rendimiento.
+ * Un único archivo contiene todos los pesos de fuente, reduciendo
+ * las peticiones de red y el peso total de la página.
+ */
 @font-face {
-  font-family: 'Roboto';
+  font-family: 'Inter';
   font-style: normal;
-  font-weight: 700; /* Bold */
+  /* Define el rango de pesos que soporta esta fuente variable */
+  font-weight: 100 900;
+  /* swap: Muestra texto con fuente de sistema mientras carga, crucial para el rendimiento percibido */
   font-display: swap;
-  src: url('../../fonts/Roboto_SemiCondensed-Black.ttf') format('truetype');
-}
-
-/* --- Roboto Slab --- */
-@font-face {
-  font-family: 'Roboto Slab';
-  font-style: normal;
-  font-weight: 700; /* Bold */
-  font-display: swap;
-  src: url('../../fonts/roboto-slab.woff2') format('woff2');
+  /* La ruta es relativa al fichero CSS que la importa (main.css en la raíz de /src/css/) */
+  src: url('../../fonts/Inter-Variable-v41.woff2') format('woff2-variations');
 }

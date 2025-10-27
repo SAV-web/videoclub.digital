@@ -35,9 +35,6 @@
 @import "layout/responsive.css";
 
 /* REVELADO ANTI-FOUC - Esta es la última regla que el navegador procesará */
-.sidebar--loading {
-    /* No necesitamos hacer nada a la clase en sí */
-}
 .sidebar--loading > * {
     transition: opacity 0.2s ease-in, visibility 0s linear;
     opacity: 1;

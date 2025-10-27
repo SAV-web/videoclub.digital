@@ -1,11 +1,11 @@
 // =================================================================
-//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3)
+//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.1)
 // =================================================================
-// v3.0 - Refactorizado para el nuevo sistema de Watchlist y Ratings.
-//        - Se integra con la nueva estructura de estado 'userMovieData'.
-//        - Se llama a la nueva API 'fetchUserMovieData' al iniciar sesión.
-//        - Se implementa un listener para 'userDataUpdated' que refresca
-//          la UI de todas las tarjetas visibles.
+// v3.1 - Optimización del re-renderizado de tarjetas.
+//        - Se añade un listener para 'userMovieDataChanged' que actualiza
+//          solo la tarjeta afectada por una acción del usuario.
+//        - Se mantiene el listener 'userDataUpdated' para cambios masivos
+//          (login/logout).
 
 import { CONFIG } from './config.js';
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from './utils.js';
@@ -15,9 +15,8 @@ import {
     renderPagination, updateTypeFilterUI,
     updateHeaderPaginationState, updateTotalResultsUI,
     clearAllSidebarAutocomplete,
-    // La función que falta estaba aquí
-    setupCardInteractions, // Probablemente tienes esta
-    prefetchNextPage,      // <-- AÑADE ESTA LÍNEA SI NO ESTÁ
+    setupCardInteractions,
+    prefetchNextPage,
     updateCardUI,
     initQuickView,
     setupAuthModal
@@ -27,18 +26,13 @@ import {
     getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies,
     setFilter, setSearchTerm, setSort, setMediaType, incrementRequestId,
     getLatestRequestId, resetFiltersState, hasActiveMeaningfulFilters,
-    // --- NUEVAS IMPORTACIONES DE ESTADO ---
     setUserMovieData, clearUserMovieData
 } from './state.js';
 import { showToast } from './toast.js';
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
 import { supabase } from './supabaseClient.js';
 import { initAuthForms } from './auth.js';
-// --- NUEVA IMPORTACIÓN DE API DE USUARIO ---
 import { fetchUserMovieData } from './api-user.js';
-
-
-// ... (URL_PARAM_MAP y REVERSE_URL_PARAM_MAP no cambian) ...
 
 const URL_PARAM_MAP = {
     q: 'searchTerm', genre: 'genre', year: 'year', country: 'country',
@@ -49,7 +43,6 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
     Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
-// ... (loadAndRenderMovies y updateDomWithResults no necesitan cambios) ...
 export async function loadAndRenderMovies(page = 1) {
     const requestId = incrementRequestId();
     setCurrentPage(page);
@@ -100,6 +93,7 @@ export async function loadAndRenderMovies(page = 1) {
         dom.gridContainer.setAttribute('aria-busy', 'false');
     }
 }
+
 function updateDomWithResults(movies, totalMovies) {
     setTotalMovies(totalMovies);
     updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
@@ -111,13 +105,13 @@ function updateDomWithResults(movies, totalMovies) {
         updateHeaderPaginationState(1, 0);
     } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
         renderMovieGrid(dom.gridContainer, movies);
-        setupCardInteractions(); // <-- Asegúrate de que esta llamada esté aquí
+        setupCardInteractions();
         dom.paginationContainer.textContent = '';
         updateHeaderPaginationState(1, 1);
     } else {
         const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
         renderMovieGrid(dom.gridContainer, moviesForPage);
-        setupCardInteractions(); // <-- Asegúrate de que esta llamada esté aquí
+        setupCardInteractions();
         renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
         updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
     }
@@ -126,13 +120,14 @@ function updateDomWithResults(movies, totalMovies) {
         prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
     }
 }
-// ... (Manejadores de eventos del header no cambian) ...
+
 async function handleSortChange(event) {
     triggerPopAnimation(event.target);
     document.dispatchEvent(new CustomEvent('uiActionTriggered'));
     setSort(dom.sortSelect.value);
     await loadAndRenderMovies(1);
 }
+
 async function handleMediaTypeToggle(event) {
     triggerPopAnimation(event.currentTarget);
     document.dispatchEvent(new CustomEvent('uiActionTriggered'));
@@ -143,6 +138,7 @@ async function handleMediaTypeToggle(event) {
     updateTypeFilterUI(newType);
     await loadAndRenderMovies(1);
 }
+
 async function handleSearchInput() {
     const searchTerm = dom.searchInput.value.trim();
     if (getState().activeFilters.searchTerm !== searchTerm) {
@@ -151,7 +147,7 @@ async function handleSearchInput() {
         await loadAndRenderMovies(1);
     }
 }
-// ... (setupHeaderListeners, setupKeyboardShortcuts y setupGlobalListeners no cambian) ...
+
 function setupHeaderListeners() {
     const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
     dom.searchInput.addEventListener('input', debouncedSearch);
@@ -178,6 +174,7 @@ function setupHeaderListeners() {
         }
     });
 }
+
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         const activeElement = document.activeElement;
@@ -200,6 +197,7 @@ function setupKeyboardShortcuts() {
         }
     });
 }
+
 function setupGlobalListeners() {
     document.addEventListener('click', (e) => {
         if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
@@ -266,9 +264,6 @@ function setupGlobalListeners() {
         }
     });
 }
-// =================================================================
-//          SISTEMA DE AUTENTICACIÓN Y UI (ACTUALIZADO)
-// =================================================================
 
 function setupAuthSystem() {
     const userAvatarInitials = document.getElementById('user-avatar-initials');
@@ -281,11 +276,8 @@ function setupAuthSystem() {
         userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
         
         try {
-            // Llama a la nueva función de API para obtener los datos
             const data = await fetchUserMovieData();
-            // Guarda los datos en la nueva estructura de estado
             setUserMovieData(data);
-            // Dispara el nuevo evento para que la UI reaccione
             document.dispatchEvent(new CustomEvent('userDataUpdated'));
         } catch (error) {
             showToast(error.message, 'error');
@@ -297,9 +289,7 @@ function setupAuthSystem() {
         userAvatarInitials.textContent = '';
         userAvatarInitials.title = '';
         
-        // Limpia la nueva estructura de estado
         clearUserMovieData();
-        // Dispara el mismo evento para que la UI se "limpie"
         document.dispatchEvent(new CustomEvent('userDataUpdated'));
     }
 
@@ -309,7 +299,6 @@ function setupAuthSystem() {
             console.error('Error al cerrar sesión:', error);
             showToast('No se pudo cerrar la sesión.', 'error');
         }
-        // onAuthStateChange se encargará de llamar a onLogout
     }
 
     if (logoutButton) {
@@ -325,8 +314,6 @@ function setupAuthSystem() {
     });
 }
 
-
-// ... (updatePageTitle, readUrlAndSetState, updateUrl no cambian) ...
 function updatePageTitle() {
     const { searchTerm, genre, year, country, director, actor, selection } = getActiveFilters();
     let title = "Tu brújula cinéfila y seriéfila inteligente";
@@ -342,6 +329,7 @@ function updatePageTitle() {
     }
     document.title = `${title} | videoclub.digital`;
 }
+
 function readUrlAndSetState() {
     resetFiltersState();
     const params = new URLSearchParams(window.location.search);
@@ -366,6 +354,7 @@ function readUrlAndSetState() {
     dom.sortSelect.value = activeFilters.sort;
     updateTypeFilterUI(activeFilters.mediaType);
 }
+
 function updateUrl() {
     const params = new URLSearchParams();
     const activeFilters = getActiveFilters();
@@ -394,12 +383,8 @@ function updateUrl() {
         history.pushState({ path: newUrl }, '', newUrl);
     }
 }
-// =================================================================
-//          INICIALIZACIÓN (ACTUALIZADO)
-// =================================================================
 
 function init() {
-    // El script anti-flicker en el HTML maneja la carga inicial del tema
     window.addEventListener('storage', (e) => {
         if (e.key === 'theme') {
             document.body.classList.toggle('dark-mode', e.newValue === 'dark');
@@ -434,13 +419,30 @@ function init() {
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));
     loadAndRenderMovies(getCurrentPage());
 
-    // --- NUEVO LISTENER PARA ACTUALIZAR LA UI DE LAS TARJETAS ---
+    // ==========================================================
+    //  ▼▼▼ SISTEMA DE LISTENERS DE DATOS DE USUARIO OPTIMIZADO ▼▼▼
+    // ==========================================================
+    
+    // Listener #1: Para actualizaciones granulares (una sola tarjeta)
+    document.addEventListener('userMovieDataChanged', (e) => {
+        const { movieId } = e.detail;
+        if (!movieId) return;
+        
+        const cardElement = document.querySelector(`.movie-card[data-movie-id="${movieId}"]`);
+        if (cardElement) {
+            updateCardUI(cardElement);
+        }
+    });
+
+    // Listener #2: Para actualizaciones masivas (todas las tarjetas visibles)
     document.addEventListener('userDataUpdated', () => {
         document.querySelectorAll('.movie-card').forEach(cardElement => {
             updateCardUI(cardElement);
         });
     });
 
+    // ==========================================================
+    
     document.addEventListener('filtersReset', (e) => {
         const { keepSort, newFilter } = e.detail || {};
         const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;

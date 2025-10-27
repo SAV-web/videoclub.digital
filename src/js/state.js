@@ -1,10 +1,9 @@
 // =================================================================
-//                      MÓDULO DE ESTADO (v3 - Consolidado)
+//                      MÓDULO DE ESTADO (v3.1 - Eventos Granulares)
 // =================================================================
-// v3.0 - Refactorizada la gestión de estado del usuario.
-//        Se reemplaza 'userLists' por 'userMovieData', un objeto
-//        que mapea movieId -> { onWatchlist, rating }.
-//        Esto se alinea con la nueva tabla 'user_movie_entries'.
+// v3.1 - Añadido un evento granular 'userMovieDataChanged' al actualizar
+//        los datos de una película. Esto permite a la UI realizar
+//        actualizaciones dirigidas y mucho más eficientes.
 
 import { DEFAULTS } from './constants.js';
 import { CONFIG } from './config.js';
@@ -60,7 +59,7 @@ const initialState = {
         excludedCountries: [],
     },
     latestRequestId: 0,
-    userMovieData: {}, // El estado inicial es un objeto vacío
+    userMovieData: {},
 };
 
 let state = structuredClone(initialState);
@@ -99,22 +98,10 @@ export function hasActiveMeaningfulFilters() {
     return false;
 }
 
-// --- GETTERS REFACTORIZADOS PARA DATOS DE USUARIO ---
-
-/**
- * Obtiene los datos de usuario para una película específica.
- * @param {number | string} movieId - El ID de la película.
- * @returns {UserMovieEntry | undefined} Una copia del objeto de datos, o undefined si no existe.
- */
 export const getUserDataForMovie = (movieId) => {
-    // Devuelve una copia para mantener la inmutabilidad
     return state.userMovieData[movieId] ? { ...state.userMovieData[movieId] } : undefined;
 };
 
-/**
- * Devuelve todos los datos de usuario.
- * @returns {UserMovieData}
- */
 export const getAllUserMovieData = () => {
     return structuredClone(state.userMovieData);
 };
@@ -190,13 +177,8 @@ export function resetFiltersState() {
     state.activeFilters = structuredClone(initialState.activeFilters);
 }
 
-// --- SETTERS REFACTORIZADOS PARA DATOS DE USUARIO ---
+// --- SETTERS DE DATOS DE USUARIO ---
 
-/**
- * Reemplaza completamente los datos de película del usuario.
- * Se usa al cargar los datos después del login.
- * @param {UserMovieData} data - El objeto completo de datos de usuario.
- */
 export function setUserMovieData(data) {
     state.userMovieData = data || {};
 }
@@ -204,21 +186,22 @@ export function setUserMovieData(data) {
 /**
  * Actualiza (o crea) la entrada para una película específica.
  * Permite actualizaciones parciales (ej. solo cambiar 'rating').
+ * Despacha un evento granular 'userMovieDataChanged' para una actualización de UI dirigida.
  * @param {number | string} movieId - El ID de la película.
  * @param {Partial<UserMovieEntry>} data - Los datos a actualizar.
  */
 export function updateUserDataForMovie(movieId, data) {
     if (!state.userMovieData[movieId]) {
-        // Si no existe una entrada para esta película, la creamos con valores por defecto.
         state.userMovieData[movieId] = { onWatchlist: false, rating: null };
     }
-    // Fusionamos los nuevos datos con los existentes.
     Object.assign(state.userMovieData[movieId], data);
+    
+    // --- ¡NUEVO! Evento granular para actualizaciones de UI eficientes ---
+    document.dispatchEvent(new CustomEvent('userMovieDataChanged', { 
+        detail: { movieId } 
+    }));
 }
 
-/**
- * Limpia todos los datos de película del usuario. Se usa al cerrar sesión.
- */
 export function clearUserMovieData() {
     state.userMovieData = {};
 }

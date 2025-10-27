@@ -1,80 +1,89 @@
 // =================================================================
-//          COMPONENTE: Rating Stars (v2.6 - Final)
+//          COMPONENTE: Rating Stars (v2.7 - Refactorizado)
 // =================================================================
+// v2.7 - Refactorizada la lógica de renderizado para eliminar duplicación.
+//        Se introduce una función interna 'renderStars' que maneja toda
+//        la manipulación del DOM, configurable para casos de relleno
+//        entero, fraccionario y ocultación de estrellas vacías.
+
 import { getUserDataForMovie, updateUserDataForMovie } from '../state.js';
 import { setUserMovieDataAPI } from '../api-user.js';
 import { showToast } from '../toast.js';
 
-// NOTAS EXACTAS para cada nivel de estrellas. El índice corresponde al nivel - 1.
-// 1 estrella = nota 3, 2 estrellas = nota 5, etc.
 const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
+let updateCardUI; // Dependencia inyectada
 
-// --- LÓGICA DE CÁLCULO ---
+// --- LÓGICA DE CÁLCULO (sin cambios) ---
 export function calculateUserStars(rating) {
     if (rating === null || rating === undefined) return 0;
     if (rating >= 9) return 4;
     if (rating >= 7) return 3;
     if (rating >= 5) return 2;
-    if (rating >= 1) return 1; // Incluye la nota de suspenso (ej. 2)
+    if (rating >= 1) return 1;
     return 0;
 }
-/**
- * Calcula el número fraccionario de estrellas para la nota media.
- * @param {number} averageRating - La nota media (1-10).
- * @returns {number} El número de estrellas a rellenar (0-4).
- */
+
 export function calculateAverageStars(averageRating) {
     if (averageRating <= 5.5) return 0;
     if (averageRating >= 9) return 4;
     return ((averageRating - 5.5) / (9 - 5.5)) * 4;
 }
 
-// --- LÓGICA DE RENDERIZADO ---
+// =================================================================
+//          LÓGICA DE RENDERIZADO (REFACTORIZADA)
+// =================================================================
 
 /**
- * Renderiza estrellas con relleno fraccionario.
- * @param {HTMLElement} starContainer - El contenedor de las estrellas.
- * @param {number} filledStars - El número fraccionario de estrellas.
+ * Función interna y genérica que renderiza las estrellas.
+ * Es el único punto de verdad para la manipulación del DOM de las estrellas.
+ * @param {HTMLElement} starContainer El contenedor de los elementos SVG de las estrellas.
+ * @param {number} filledStars El número de estrellas a rellenar (puede ser fraccionario).
+ * @param {object} [options] Opciones de configuración.
+ * @param {boolean} [options.hideUnfilled=false] Si es true, oculta las estrellas que no están rellenas.
+ * @param {boolean} [options.snapToInteger=false] Si es true, redondea el relleno al entero más cercano.
  */
-export function renderAverageStars(starContainer, filledStars) {
+function renderStars(starContainer, filledStars, { hideUnfilled = false, snapToInteger = false } = {}) {
     const stars = starContainer.querySelectorAll('.star-icon');
+    const effectiveFilledStars = snapToInteger ? Math.round(filledStars) : filledStars;
+    
     stars.forEach((star, index) => {
-        const fillValue = Math.max(0, Math.min(1, filledStars - index));
-        if (fillValue > 0) {
+        // Calcula cuánto debe rellenarse esta estrella (un valor entre 0 y 1)
+        const fillValue = Math.max(0, Math.min(1, effectiveFilledStars - index));
+        
+        if (hideUnfilled && fillValue === 0) {
+            star.style.display = 'none';
+        } else {
             star.style.display = 'block';
             const filledPath = star.querySelector('.star-icon-path--filled');
+            // Usa clip-path para controlar el relleno visual de la estrella
             const clipPercentage = 100 - (fillValue * 100);
             filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
-        } else {
-            star.style.display = 'none';
         }
     });
 }
 
 /**
- * Renderiza un número de estrellas completas.
- * @param {HTMLElement} starContainer - El contenedor de las estrellas.
- * @param {number} filledLevel - El número de estrellas a rellenar.
- * @param {boolean} [hideHollowStars=false] - Si es true, las estrellas no rellenas se ocultan.
+ * Renderiza las estrellas para la nota media (relleno fraccionario).
+ * @param {HTMLElement} starContainer Contenedor de las estrellas.
+ * @param {number} filledStars Número fraccionario de estrellas a rellenar.
+ */
+export function renderAverageStars(starContainer, filledStars) {
+    renderStars(starContainer, filledStars, { hideUnfilled: false, snapToInteger: false });
+}
+
+/**
+ * Renderiza las estrellas para la valoración del usuario (relleno entero).
+ * @param {HTMLElement} starContainer Contenedor de las estrellas.
+ * @param {number} filledLevel Número de estrellas completas a mostrar.
+ * @param {boolean} [hideHollowStars=false] Si es true, oculta las estrellas vacías.
  */
 export function renderUserStars(starContainer, filledLevel, hideHollowStars = false) {
-    const stars = starContainer.querySelectorAll('.star-icon');
-    stars.forEach((star, index) => {
-        if (hideHollowStars && index >= filledLevel) {
-            star.style.display = 'none'; // Oculta las estrellas que deberían ser huecas
-        } else {
-            star.style.display = 'block'; // Asegura que las estrellas estén visibles
-            const filledPath = star.querySelector('.star-icon-path--filled');
-            filledPath.style.clipPath = (index < filledLevel) ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)';
-        }
-    });
+    renderStars(starContainer, filledLevel, { hideUnfilled: hideHollowStars, snapToInteger: true });
 }
 
-// --- LÓGICA DE INTERACCIÓN ---
 
-/**
- * Maneja el clic en las estrellas 2, 3 o 4.
- */
+// --- LÓGICA DE INTERACCIÓN (sin cambios) ---
+
 async function handleRatingClick(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -105,18 +114,12 @@ async function handleRatingClick(event) {
     }
 }
 
-/**
- * Maneja el movimiento del ratón sobre las estrellas.
- */
 function handleRatingMouseMove(event) {
     const starContainer = event.currentTarget.closest('.star-rating-container');
     const hoverLevel = parseInt(event.currentTarget.dataset.ratingLevel, 10);
     renderUserStars(starContainer, hoverLevel);
 }
 
-/**
- * Maneja cuando el ratón sale del contenedor de estrellas.
- */
 function handleRatingMouseLeave(event) {
     const card = event.currentTarget.closest('.movie-card');
     if (card && updateCardUI) {
@@ -124,11 +127,6 @@ function handleRatingMouseLeave(event) {
     }
 }
 
-/**
- * Asigna los listeners de eventos para la interactividad de las estrellas.
- * @param {HTMLElement} starContainer - El contenedor de las estrellas.
- * @param {boolean} isInteractive - Si es true, se añaden los listeners de clic y hover.
- */
 export function setupRatingListeners(starContainer, isInteractive) {
     const stars = starContainer.querySelectorAll('.star-icon[data-rating-level]');
     if (isInteractive) {
@@ -143,8 +141,6 @@ export function setupRatingListeners(starContainer, isInteractive) {
     }
 }
 
-// Setter para inyectar la dependencia de `updateCardUI` desde `card.js`.
-let updateCardUI;
 export function setUpdateCardUIFn(fn) {
     updateCardUI = fn;
 }

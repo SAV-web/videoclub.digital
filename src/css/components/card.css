@@ -5,7 +5,8 @@
 .movie-card {
     perspective: 1000px;
     aspect-ratio: 500 / 950;
-    transition: transform var(--transition-duration-fast) ease, box-shadow var(--transition-duration-fast) ease;
+    /* Transición para el efecto de hover */
+    transition: transform var(--duration-fast) var(--ease-spring);
 }
 
 .flip-card-inner {
@@ -15,16 +16,28 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
     transform-style: preserve-3d;
-    transition: transform var(--transition-duration-slow);
+    /* Aplicando la nueva curva de animación y duración */
+    transition: transform var(--duration-slow) var(--ease-smooth),
+                filter var(--duration-slow) var(--ease-smooth);
 }
-.flip-card-inner.is-flipped { transform: rotateY(180deg); }
 
+/* Estado volteado con sombra dinámica */
+.flip-card-inner.is-flipped {
+    transform: rotateY(180deg);
+    filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.25));
+}
+body.dark-mode .flip-card-inner.is-flipped {
+    filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.4));
+}
+
+/* Micro-animación en hover antes del flip */
 @media (hover: hover) and (pointer: fine) {
     body:not(.rotation-disabled) .movie-card:hover .flip-card-inner { 
         transform: rotateY(180deg); 
     }
     .movie-card:not(.is-flipped):hover {
-        transform: translateY(calc(-1 * var(--space-xxs)));
+        /* Sutil elevación y rotación */
+        transform: translateY(-5px) rotateZ(-1deg);
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     }
     body.dark-mode .movie-card:not(.is-flipped):hover {

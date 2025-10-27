@@ -1,8 +1,9 @@
+/* src/css/components/movie-summary.css */
+
 /* ================================================================= */
 /* Componente: Resumen de Película (Movie Summary)
 /* -----------------------------------------------------------------
-/* Estilos compartidos para mostrar la información de una película
-/* tanto en la tarjeta como en la vista rápida.
+/* APLICANDO EL NUEVO SISTEMA TIPOGRÁFICO
 /* ================================================================= */
 
 .movie-summary {
@@ -21,25 +22,30 @@
     text-align: left;
 }
 
+/* Título de la tarjeta: más grande y con más peso */
 .movie-summary h3 {
-    margin-bottom: 1px;
+    margin-bottom: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     font-family: var(--font-title);
-    font-size: 1.1rem;
-    font-weight: 700;
-    line-height: 1.25;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.3;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
+/* Director: más legible */
 .movie-summary .front-director-info {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--color-text-secondary);
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-xs); /* Era xs, pero xs ahora es 0.8rem */
+    font-weight: var(--font-weight-medium); /* Era normal, ahora 500 */
 }
 
 .movie-summary .front-director-info a {
@@ -53,34 +59,27 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     text-decoration: underline;
 }
 
-/* ----------------------------------------------------------------- */
-/* Estilos para la sección de meta-información (Iconos, Año, Bandera)
-/* ----------------------------------------------------------------- */
-
+/* Meta-información (iconos, año, etc.) */
 .movie-summary .movie-meta {
     padding-top: var(--space-xs);
     display: flex;
     justify-content: space-between;
     align-items: center;
     min-height: 24px;
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-sm); /* Tamaño base para meta-info */
     line-height: var(--line-height-normal);
 }
 
-/* Contenedor para los iconos de plataforma (se alineará a la izquierda) */
 .card-icons-line {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
 }
 
-/* Regla base para cualquier icono de plataforma */
 .platform-icon svg {
     vertical-align: middle;
 }
 
-/* Colores de marca específicos */
 .netflix-icon {
     color: #E50914;
 }
@@ -89,19 +88,16 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     color: #002BE7;
 }
 
-/* Contenedor para año y bandera (se alineará a la derecha) */
+/* Año y bandera */
 .year-country-line {
-    /* Esta clase ahora es solo un contenedor semántico, el layout lo gestiona .movie-meta */
+    /* Las reglas antiguas ya no son necesarias */
 }
 
 .year-flag-group {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-}
-
-.year-country-line span[data-template="year"] {
-    font-weight: bold;
+    font-weight: var(--font-weight-medium); /* Damos un poco más de peso al año */
 }
 
 .country-info {
@@ -110,10 +106,7 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     gap: 0.4em;
 }
 
-/* ----------------------------------------------------------------- */
-/* Estilos para las Estrellas de Valoración (Componente Separado)
-/* ----------------------------------------------------------------- */
-
+/* Estrellas (sin cambios de tipografía) */
 .star-rating-container {
     display: flex;
     align-items: center;
