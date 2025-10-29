@@ -53,8 +53,6 @@ html {
 }
 
 .sidebar .sidebar-control-button {
-    width: 44px;
-    height: 44px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-round);
     background-color: var(--color-surface);

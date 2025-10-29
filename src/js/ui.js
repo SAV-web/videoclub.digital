@@ -120,3 +120,21 @@ export function updateTotalResultsUI(total, hasFilters) {
         totalResultsContainer.hidden = true;
     }
 }
+
+/**
+ * Inicializa el botón de cambio de tema y guarda la preferencia en localStorage.
+ */
+export function initThemeToggle() {
+    if (dom.themeToggleButton) {
+        dom.themeToggleButton.addEventListener('click', () => {
+            // Alterna la clase 'dark-mode' en <html> y <body> para consistencia.
+            // El script de inicialización y los estilos CSS dependen de esto.
+            // Alterna la clase 'dark-mode' en el elemento raíz (<html>).
+            // Los estilos CSS en cascada se encargarán de aplicarse al resto del documento.
+            const isDarkMode = document.documentElement.classList.toggle('dark-mode');
+            document.body.classList.toggle('dark-mode', isDarkMode);
+            
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+        });
+    }
+}

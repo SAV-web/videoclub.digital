@@ -169,3 +169,43 @@
     /* Para navegadores muy antiguos de IE */
     -ms-overflow-style: none;
 }
+
+/* ----------------------------------------------------------------- 
+    4. MEJORAS DE ACCESIBILIDAD TÁCTIL (Estrellas de Rating)
+   ----------------------------------------------------------------- */
+/*
+ * Aumenta el tamaño de las estrellas de rating y su área clickable
+ * para dispositivos táctiles (sin hover, puntero grueso).
+ */
+@media (hover: none) and (pointer: coarse) {
+    .star-icon {
+        width: 24px;
+        height: 24px;
+    }
+    
+    /* Aumentar área clickable invisible */
+    .star-rating-container .star-icon {
+        position: relative;
+    }
+    
+    .star-rating-container .star-icon::before {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        right: -8px;
+        bottom: -8px;
+        /* Área invisible de 40x40px (24px estrella + 8px padding por cada lado) */
+    }
+
+    /* Aumentar tamaño del icono de watchlist y su área clickable */
+    .card-action-btn {
+        width: 40px; /* Asegura un área táctil mínima de 40x40px */
+        height: 40px;
+    }
+
+    .card-action-btn svg {
+        width: 24px; /* Tamaño visual del icono */
+        height: 24px;
+    }
+}

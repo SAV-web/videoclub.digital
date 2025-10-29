@@ -51,16 +51,11 @@ RETURNS TABLE(
     image text, fa_id text, fa_rating real, fa_votes integer, imdb_id text,
     imdb_rating real, imdb_votes integer, synopsis text, thumbhash_st text,
     critic text, last_synced_at timestamp with time zone, episodes integer, wikipedia text,
-    -- ==========================================================
-    --  ▼▼▼ 1. AÑADIR LA NUEVA COLUMNA A LA DEFINICIÓN DE RETORNO ▼▼▼
-    -- ==========================================================
     collections_list text,
-    -- ==========================================================
     total_count bigint
 )
 LANGUAGE sql STABLE PARALLEL SAFE AS $function$
 WITH filtered_movies AS (
-    -- ... (esta parte interna de la función no cambia) ...
     SELECT
         m.id,
         COUNT(*) OVER() AS total_count_unpaginated
@@ -71,9 +66,13 @@ WITH filtered_movies AS (
         AND (p_year_start IS NULL OR m.year >= p_year_start) AND (p_year_end IS NULL OR m.year <= p_year_end)
         AND (media_type IS NULL OR media_type = 'all' OR (media_type = 'movies' AND (m.type IS NULL OR m.type IN ('D', 'A'))) OR (media_type = 'series' AND m.type ILIKE 'S%'))
         AND (country_name IS NULL OR m.country_id = (SELECT c.id FROM public.countries c WHERE c.name = country_name))
-        AND (genre_name IS NULL OR m.genres_list ILIKE '%' || genre_name || '%')
-        AND (director_name IS NULL OR m.directors_list ILIKE '%' || director_name || '%')
-        AND (actor_name IS NULL OR m.actors_list ILIKE '%' || actor_name || '%')
+        /* ========================================================== */
+        /*  ▼▼▼ OPTIMIZACIÓN: Reemplazar ILIKE con Full-Text Search ▼▼▼ */
+        /* ========================================================== */
+        AND (genre_name IS NULL OR m.genres_tsv @@ plainto_tsquery('spanish', genre_name))
+        AND (director_name IS NULL OR m.directors_tsv @@ plainto_tsquery('spanish', director_name))
+        AND (actor_name IS NULL OR m.actors_tsv @@ plainto_tsquery('spanish', actor_name))
+        /* ========================================================== */
         AND (selection_code IS NULL OR EXISTS (SELECT 1 FROM public.movie_collections mc JOIN public.collections coll ON mc.collection_id = coll.id WHERE mc.movie_id = m.id AND coll.code = selection_code))
         AND (excluded_genres IS NULL OR NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(excluded_genres) as g))
         AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL OR m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(excluded_countries)))
@@ -93,11 +92,7 @@ SELECT
     c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes,
     m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic,
     m.last_synced_at, m.episodes, m.wikipedia,
-    -- ==========================================================
-    --  ▼▼▼ 2. AÑADIR LA NUEVA COLUMNA AL SELECT FINAL ▼▼▼
-    -- ==========================================================
     m.collections_list,
-    -- ==========================================================
     fm.total_count_unpaginated as total_count
 FROM
     filtered_movies fm
@@ -191,6 +186,19 @@ CREATE INDEX IF NOT EXISTS countries_name_norm_prefix_idx ON public.countries (n
 CREATE INDEX IF NOT EXISTS countries_name_norm_trgm_idx ON public.countries USING gin (name_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS genres_name_norm_prefix_idx ON public.genres (name_norm text_pattern_ops);
 CREATE INDEX IF NOT EXISTS genres_name_norm_trgm_idx ON public.genres USING gin (name_norm gin_trgm_ops);
+-- Índices GIN sobre las nuevas columnas
+CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
+CREATE INDEX IF NOT EXISTS movies_directors_tsv_idx ON public.movies USING GIN(directors_tsv);
+CREATE INDEX IF NOT EXISTS movies_actors_tsv_idx ON public.movies USING GIN(actors_tsv);
+-- Índices compuesto para combinaciones de filtros común: País + Año, sólo Series, sólo Películas
+CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx 
+ON public.movies(country_id, year DESC);
+CREATE INDEX IF NOT EXISTS movies_only_movies_year_desc_idx 
+ON public.movies(year DESC) 
+WHERE type IS NULL OR type IN ('D', 'A');
+CREATE INDEX IF NOT EXISTS movies_only_series_year_desc_idx 
+ON public.movies(year DESC) 
+WHERE lower(type::text) LIKE 's%';
 -- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$

@@ -89,7 +89,44 @@
       body.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
       @keyframes skeleton-loading{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}body.dark-mode #sort-select{background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E0E0E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')}
       .sidebar--loading > * {opacity: 0; visibility: hidden;}
+      /* ========================================================== */
+      /*  ▼▼▼ REGLA ANTI-PARPADEO PARA EL SIDEBAR (NUEVO) ▼▼▼
+      /*      Asegura que el sidebar tenga el fondo oscuro correcto
+      /*      desde el primer renderizado, eliminando el flash.
+      /* ========================================================== */
+      body.dark-mode .sidebar { background-color: var(--color-surface); }
     </style>
+
+    <!-- ================================================================= -->
+    <!-- SCRIPT DE INICIALIZACIÓN DEL TEMA (ANTI-FLICKER)
+    <!-- ================================================================= -->
+    <script>
+      // Este script se ejecuta de forma síncrona antes de que la página se renderice
+      // para evitar el parpadeo del tema (FOUC).
+      (function() {
+        try {
+          const theme = localStorage.getItem('theme');
+          if (theme === 'dark') {
+            // 1. Aplica la clase a <html> inmediatamente. Esto es síncrono y bloqueante.
+            document.documentElement.classList.add('dark-mode');
+            
+            // 2. Para asegurar compatibilidad con los selectores CSS existentes (body.dark-mode),
+            //    también aplicamos la clase al <body> tan pronto como esté disponible,
+            //    sin esperar a que se carguen todos los scripts.
+            document.addEventListener('DOMContentLoaded', function() {
+              // Comprobamos de nuevo por si el usuario ha cambiado de opinión mientras cargaba la página.
+              if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+              }
+            });
+          } 
+          // No es necesario un 'else' porque el tema claro es el predeterminado.
+        } catch (e) {
+          // Si localStorage falla, no hacemos nada para evitar errores.
+          console.error('Error applying initial theme:', e);
+        }
+      })();
+    </script>
 
     <!-- ================================================================= -->
     <!-- 6. HOJAS DE ESTILO EXTERNAS

@@ -102,9 +102,6 @@
     display: block; /* Siempre visible */
     padding: 0; /* Asegura que no haya padding extra */
 }
-.quick-view-close-btn {
-    display: none; /* Oculta permanentemente el botón de cierre */
-}
 
 
 /* -----------------------------------------------------------------
