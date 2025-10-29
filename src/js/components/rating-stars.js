@@ -50,12 +50,16 @@ function renderStars(starContainer, filledStars, { hideUnfilled = false, snapToI
         // Calcula cuánto debe rellenarse esta estrella (un valor entre 0 y 1)
         const fillValue = Math.max(0, Math.min(1, effectiveFilledStars - index));
         
+        // ==========================================================
+        //  ▼▼▼ LÓGICA DE OCULTACIÓN CORREGIDA ▼▼▼
+        //      La condición ahora es simple: si el valor de relleno es CERO,
+        //      y la opción de ocultar está activa, se oculta.
+        // ==========================================================
         if (hideUnfilled && fillValue === 0) {
             star.style.display = 'none';
         } else {
             star.style.display = 'block';
             const filledPath = star.querySelector('.star-icon-path--filled');
-            // Usa clip-path para controlar el relleno visual de la estrella
             const clipPercentage = 100 - (fillValue * 100);
             filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
         }
@@ -68,7 +72,11 @@ function renderStars(starContainer, filledStars, { hideUnfilled = false, snapToI
  * @param {number} filledStars Número fraccionario de estrellas a rellenar.
  */
 export function renderAverageStars(starContainer, filledStars) {
-    renderStars(starContainer, filledStars, { hideUnfilled: false, snapToInteger: false });
+    // ==========================================================
+    //  ▼▼▼ CAMBIO CLAVE: hideUnfilled ahora es 'true' ▼▼▼
+    //      Esto asegura que solo se muestren las estrellas con relleno.
+    // ==========================================================
+    renderStars(starContainer, filledStars, { hideUnfilled: true, snapToInteger: false });
 }
 
 /**
@@ -78,9 +86,10 @@ export function renderAverageStars(starContainer, filledStars) {
  * @param {boolean} [hideHollowStars=false] Si es true, oculta las estrellas vacías.
  */
 export function renderUserStars(starContainer, filledLevel, hideHollowStars = false) {
+    // Esta función ya funcionaba correctamente, pero se beneficia de la lógica
+    // simplificada en renderStars.
     renderStars(starContainer, filledLevel, { hideUnfilled: hideHollowStars, snapToInteger: true });
 }
-
 
 // --- LÓGICA DE INTERACCIÓN (sin cambios) ---
 

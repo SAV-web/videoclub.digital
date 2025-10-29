@@ -1,10 +1,4 @@
-// =================================================================
-//          COMPONENTE CARD (v3.8 - Carga de Imagen Híbrida)
-// =================================================================
-// v3.8 - Implementada estrategia de carga de imágenes híbrida:
-//        - Lazy loading nativo del navegador para imágenes sin placeholder (LQIP).
-//        - Intersection Observer solo para activar la transición suave de imágenes con LQIP.
-//        Esto mejora el rendimiento y reduce la carga de trabajo de JavaScript.
+// src/js/components/card.js
 
 import { CONFIG } from '../config.js';
 import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
@@ -22,7 +16,6 @@ import {
     setUpdateCardUIFn 
 } from './rating-stars.js';
 
-// --- VARIABLES Y CONSTANTES DEL MÓDULO ---
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
 const cardTemplate = document.getElementById(SELECTORS.MOVIE_CARD_TEMPLATE.substring(1));
@@ -41,10 +34,24 @@ const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
     });
 }, { rootMargin: '0px 0px 800px 0px' });
 
+function setupIntentionalHover(cardElement) {
+    let hoverTimeout;
+    const HOVER_DELAY = 300;
 
-// =================================================================
-//          LÓGICA DE INTERACCIÓN Y UI
-// =================================================================
+    cardElement.addEventListener('mouseenter', () => {
+        if (document.body.classList.contains('rotation-disabled')) {
+            return;
+        }
+        hoverTimeout = setTimeout(() => {
+            cardElement.classList.add('is-hovered');
+        }, HOVER_DELAY);
+    });
+
+    cardElement.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimeout);
+        cardElement.classList.remove('is-hovered');
+    });
+}
 
 function updateWatchlistActionUI(cardElement) {
     const movieId = parseInt(cardElement.dataset.movieId, 10);
@@ -67,13 +74,11 @@ async function handleWatchlistClick(event) {
     const newUserData = { onWatchlist: !wasOnWatchlist };
     const previousUserData = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
     updateUserDataForMovie(movieId, newUserData);
-    updateWatchlistActionUI(card);
     try {
         await setUserMovieDataAPI(movieId, newUserData);
     } catch (error) {
         showToast(error.message, 'error');
         updateUserDataForMovie(movieId, previousUserData);
-        updateWatchlistActionUI(card);
     }
 }
 
@@ -88,28 +93,21 @@ async function handleFirstOptionClick(event) {
     const currentRating = currentUserData.rating;
 
     let newRating;
-    if (currentRating === null) {
-        newRating = 2;
-    } else if (currentRating === 2) {
-        newRating = 3;
-    } else if (currentRating === 3) {
-        newRating = null;
-    } else {
-        newRating = 3;
-    }
+    if (currentRating === null) { newRating = 2; } 
+    else if (currentRating === 2) { newRating = 3; } 
+    else if (currentRating === 3) { newRating = null; } 
+    else { newRating = 3; }
 
     const newUserData = { rating: newRating };
     const previousUserData = JSON.parse(card.dataset.previousUserData || '{}');
 
     updateUserDataForMovie(movieId, newUserData);
-    updateCardUI(card);
     
     try {
         await setUserMovieDataAPI(movieId, newUserData);
     } catch (error) {
         showToast(error.message, 'error');
         updateUserDataForMovie(movieId, previousUserData);
-        updateCardUI(card);
     }
 }
 
@@ -159,49 +157,26 @@ export function updateCardUI(cardElement) {
     lowRatingCircle.classList.toggle('is-interactive', isLoggedIn);
 }
 
-// =================================================================
-//          LÓGICA DE RENDERIZADO DE TARJETAS
-// =================================================================
-
-/**
- * Configura la imagen de la tarjeta usando una estrategia híbrida.
- * Utiliza lazy loading nativo para eficiencia y Intersection Observer
- * para transiciones suaves con placeholders (LQIP).
- * @param {HTMLImageElement} imgElement - El elemento de la imagen a configurar.
- * @param {object} movieData - Los datos de la película.
- */
 function setupCardImage(imgElement, movieData) {
     const version = movieData.last_synced_at ? new Date(movieData.last_synced_at).getTime() : '1';
-    const basePosterUrl = (movieData.image && movieData.image !== '.') 
-        ? `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp` 
-        : `https://via.placeholder.com/500x750.png?text=${encodeURIComponent(movieData.title)}`;
-    
+    const basePosterUrl = (movieData.image && movieData.image !== '.') ? `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp` : `https://via.placeholder.com/500x750.png?text=${encodeURIComponent(movieData.title)}`;
     const highQualityPoster = `${basePosterUrl}?v=${version}`;
     
-    // --- ESTRATEGIA HÍBRIDA ---
     if (movieData.thumbhash_st) {
-        // ---- Caso 1: Hay Thumbhash (LQIP) ----
         imgElement.src = movieData.thumbhash_st;
         imgElement.dataset.src = highQualityPoster;
         imgElement.classList.add(CSS_CLASSES.LAZY_LQIP);
-        
-        // Usar Intersection Observer solo para la transición suave.
         lazyLoadObserver.observe(imgElement);
     } else {
-        // ---- Caso 2: No hay Thumbhash ----
-        // Delegar la carga completamente al navegador.
         imgElement.src = highQualityPoster;
         imgElement.loading = (renderedCardCount < 6) ? 'eager' : 'lazy';
     }
     
     imgElement.alt = `Póster de ${movieData.title}`;
-    
-    // Asignar prioridad alta a las primeras imágenes para optimizar el LCP.
     if (renderedCardCount < 6) { 
         imgElement.setAttribute('fetchpriority', 'high');
     }
 }
-
 
 function populateCardText(elements, movieData) {
     elements.title.textContent = movieData.title || 'Título no disponible';
@@ -217,6 +192,7 @@ function populateCardText(elements, movieData) {
             if (index < arr.length - 1) directorContainer.appendChild(document.createTextNode(', '));
         });
     } else { directorContainer.textContent = directorsString; }
+    
     elements.duration.textContent = formatRuntime(movieData.minutes);
     elements.episodes.textContent = (movieData.type?.toUpperCase().startsWith('S.') && movieData.episodes) ? `${movieData.episodes} x` : '';
     elements.genre.textContent = movieData.genres || 'Género no disponible';
@@ -224,6 +200,7 @@ function populateCardText(elements, movieData) {
     elements.synopsis.textContent = movieData.synopsis || 'Argumento no disponible.';
     elements.criticContainer.style.display = (movieData.critic && movieData.critic.trim() !== '') ? 'block' : 'none';
     if (elements.criticContainer.style.display === 'block') elements.critic.textContent = movieData.critic;
+    
     let displayYear = movieData.year || 'N/A';
     if (movieData.type?.toUpperCase().startsWith('S.') && movieData.year_end) {
         const yearEnd = String(movieData.year_end).trim();
@@ -233,9 +210,10 @@ function populateCardText(elements, movieData) {
         else displayYear = `${movieData.year} - ${yearEnd}`;
     }
     elements.year.textContent = displayYear;
+    
     elements.countryContainer.style.display = movieData.country_code ? 'flex' : 'none';
     if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
-
+    
     const collections = movieData.collections_list || '';
     elements.netflixIcon.style.display = 'none';
     elements.hboIcon.style.display = 'none';
@@ -333,22 +311,10 @@ function createMovieCard(movieData) {
             });
         }
     }
-
-    const watchlistButton = cardElement.querySelector('[data-action="toggle-watchlist"]');
-    if (watchlistButton) {
-        const randomDelay = - (Math.random() * 4);
-        watchlistButton.style.setProperty('--animation-delay', `${randomDelay}s`);
-    }
     
-    // Incrementamos el contador aquí, después de configurar la imagen
-    // para que la lógica de `renderedCardCount < 6` sea correcta.
-    renderedCardCount++;
     return cardClone;
 }
 
-// =================================================================
-//          FUNCIONES PÚBLICAS Y MANEJADORES GLOBALES
-// =================================================================
 export function unflipAllCards() { if (currentlyFlippedCard) { currentlyFlippedCard.querySelector('.flip-card-inner')?.classList.remove('is-flipped'); currentlyFlippedCard = null; document.removeEventListener('click', handleDocumentClick); } }
 function handleDocumentClick(e) { if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) { unflipAllCards(); } }
 
@@ -379,11 +345,39 @@ function handleCardClick(e) {
         openModal(cardElement);
     }
 }
-export function setupCardInteractions() { document.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => { card.removeEventListener('click', handleCardClick); card.addEventListener('click', handleCardClick); }); }
-export function renderMovieGrid(gridContainer, movies) { renderedCardCount = 0; unflipAllCards(); if (!gridContainer) return; gridContainer.textContent = ''; const fragment = document.createDocumentFragment(); movies.forEach((movie) => { const card = createMovieCard(movie); if (card) fragment.appendChild(card); }); gridContainer.appendChild(fragment); }
+
+export function setupCardInteractions() { 
+    document.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => { 
+        card.removeEventListener('click', handleCardClick); 
+        card.addEventListener('click', handleCardClick);
+        setupIntentionalHover(card);
+    }); 
+}
+
+export function renderMovieGrid(gridContainer, movies) { 
+    renderedCardCount = 0; 
+    unflipAllCards(); 
+    if (!gridContainer) return; 
+    
+    gridContainer.textContent = ''; 
+    const fragment = document.createDocumentFragment(); 
+    
+    movies.forEach((movie, index) => {
+        const cardNode = createMovieCard(movie); 
+        if (cardNode) {
+            const cardElement = cardNode.querySelector('.movie-card');
+            if (cardElement) {
+                cardElement.style.setProperty('--card-index', index);
+            }
+            fragment.appendChild(cardNode); 
+        }
+    }); 
+    
+    gridContainer.appendChild(fragment); 
+}
+
 export function renderSkeletons(gridContainer, paginationContainer) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const fragment = document.createDocumentFragment(); for (let i = 0; i < CONFIG.ITEMS_PER_PAGE; i++) { fragment.appendChild(createElement('div', { className: 'skeleton-card' })); } gridContainer.appendChild(fragment); }
 export function renderNoResults(gridContainer, paginationContainer, activeFilters) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const noResultsDiv = createElement('div', { className: 'no-results', attributes: { role: 'status' } }); noResultsDiv.appendChild(createElement('h3', { textContent: 'No se encontraron resultados' })); const hasActiveFilters = Object.values(activeFilters).some(value => value && value !== 'id,asc' && value !== 'all'); if (activeFilters.searchTerm) { noResultsDiv.appendChild(createElement('p', { textContent: `Prueba a simplificar tu búsqueda para "${activeFilters.searchTerm}".` })); } else if (hasActiveFilters) { noResultsDiv.appendChild(createElement('p', { textContent: 'Intenta eliminar algunos filtros para obtener más resultados.' })); } noResultsDiv.appendChild(createElement('button', { id: 'clear-filters-from-empty', className: 'btn btn--outline', textContent: 'Limpiar todos los filtros' })); gridContainer.appendChild(noResultsDiv); }
 export function renderErrorState(gridContainer, paginationContainer, message) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const errorDiv = createElement('div', { className: 'no-results', attributes: { role: 'alert' } }); errorDiv.appendChild(createElement('h3', { textContent: '¡Vaya! Algo ha ido mal' })); errorDiv.appendChild(createElement('p', { textContent: message })); gridContainer.appendChild(errorDiv); }
 
-// Inyectamos la dependencia para evitar dependencias circulares
 setUpdateCardUIFn(updateCardUI);

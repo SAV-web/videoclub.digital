@@ -1,12 +1,34 @@
-/* ================================================================= */
-/* Componente: Tarjeta de Película y Estilos Compartidos
-/* ================================================================= */
+/* src/css/components/card.css */
+
+/*
+ * =================================================================
+ * Componente: Tarjeta de Película y Estilos Compartidos
+ * =================================================================
+ */
+
+/* Keyframes para la animación de aparición en cascada */
+@keyframes card-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
 
 .movie-card {
     perspective: 1000px;
     aspect-ratio: 500 / 950;
-    /* Transición para el efecto de hover */
-    transition: transform var(--duration-fast) var(--ease-spring);
+
+    /* Animación de aparición secuencial */
+    animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
+    animation-delay: calc(var(--card-index, 0) * 50ms);
+
+    /* Transición para la interacción de hover */
+    transition: transform var(--duration-quick) var(--ease-spring),
+                box-shadow var(--duration-normal) var(--ease-smooth-out);
 }
 
 .flip-card-inner {
@@ -16,32 +38,43 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
     transform-style: preserve-3d;
-    /* Aplicando la nueva curva de animación y duración */
-    transition: transform var(--duration-slow) var(--ease-smooth),
-                filter var(--duration-slow) var(--ease-smooth);
+    transition: transform var(--duration-leisurely) var(--ease-smooth-out),
+                filter var(--duration-leisurely) var(--ease-smooth-out);
 }
 
-/* Estado volteado con sombra dinámica */
+/* Estado volteado con sombra dinámica para dar profundidad */
 .flip-card-inner.is-flipped {
     transform: rotateY(180deg);
-    filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.25));
 }
 body.dark-mode .flip-card-inner.is-flipped {
     filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.4));
 }
 
-/* Micro-animación en hover antes del flip */
+/* Interacción de hover avanzada */
 @media (hover: hover) and (pointer: fine) {
-    body:not(.rotation-disabled) .movie-card:hover .flip-card-inner { 
+    
+    /* ========================================================== */
+    /*  ▼▼▼ CAMBIO DE DISPARADOR: DE :hover A .is-hovered ▼▼▼
+    /*      La clase .is-hovered será añadida por JavaScript
+    /*      después de un segundo.
+    /* ========================================================== */
+    body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner { 
         transform: rotateY(180deg); 
     }
+    
+    /* El efecto de elevación y sombra SÍ lo mantenemos en el :hover inmediato
+       para dar feedback instantáneo de que la tarjeta es interactiva. */
     .movie-card:not(.is-flipped):hover {
-        /* Sutil elevación y rotación */
-        transform: translateY(-5px) rotateZ(-1deg);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 
+            0 12px 24px rgba(0, 0, 0, 0.12),
+            0 8px 16px rgba(0, 0, 0, 0.08);
     }
+    
     body.dark-mode .movie-card:not(.is-flipped):hover {
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        box-shadow: 
+            0 12px 24px rgba(0, 0, 0, 0.3),
+            0 8px 16px rgba(0, 0, 0, 0.2);
     }
 }
 
@@ -78,10 +111,11 @@ body.dark-mode .flip-card-inner.is-flipped {
     object-fit: cover;
 }
 
+/* Transición suave para placeholders de baja calidad (LQIP) */
 .flip-card-front img.lazy-lqip {
     filter: blur(10px);
     transform: scale(1.1);
-    transition: filter var(--transition-duration-normal) ease-in-out, transform var(--transition-duration-normal) ease-in-out;
+    transition: filter var(--duration-normal) ease-in-out, transform var(--duration-normal) ease-in-out;
 }
 .flip-card-front img.lazy-lqip.loaded {
     filter: blur(0);
@@ -90,8 +124,8 @@ body.dark-mode .flip-card-inner.is-flipped {
 
 .star-icon {
     position: relative;
-    width: 16px; /* Aumentado al 120% */
-    height: 16px; /* Aumentado al 120% */
+    width: 16px;
+    height: 16px;
 }
 .star-icon-path {
     stroke: var(--color-accent);
@@ -107,15 +141,14 @@ body.dark-mode .flip-card-inner.is-flipped {
     display: none;
     width: 10px;
     height: 10px;
-    border: 1.5px solid var(--color-accent); /* Borde de acento por defecto (para media FA/IMDb) */
+    border: 1.5px solid var(--color-accent);
     border-radius: 50%;
-    background-color: transparent; /* ASEGURA QUE ES HUECO POR DEFECTO */
+    background-color: transparent;
 }
 
 .fi { font-size: var(--font-size-sm); }
 
-/* --- Estilos específicos de la parte trasera de la tarjeta --- */
-
+/* --- Estilos de la cara trasera --- */
 .flip-card-back {
     display: flex;
     flex-direction: column;
@@ -136,7 +169,7 @@ body.dark-mode .flip-card-inner.is-flipped {
     font-size: var(--font-size-sm);
 }
 
-.meta-group, .episode-duration-group {
+.episode-duration-group {
     display: flex;
     align-items: center;
     gap: 0.3em;
@@ -161,7 +194,7 @@ body.dark-mode .flip-card-inner.is-flipped {
     color: var(--color-text-primary);
     text-decoration: none;
     font-size: var(--font-size-base);
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
 }
 .rating-left.disabled {
     pointer-events: none;
@@ -190,38 +223,6 @@ body.dark-mode .flip-card-inner.is-flipped {
     transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.scrollable-content {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: var(--z-index-card-content);
-    height: 25%;
-    padding: 0 var(--space-md) var(--space-md);
-    background-color: var(--color-surface);
-    scrollbar-width: none;
-    transition: height 3s ease-out;
-}
-.scrollable-content.no-transition { transition: none; }
-.scrollable-content.full-view {
-    height: 100%;
-    overflow-y: auto;
-}
-.scrollable-content::-webkit-scrollbar { display: none; }
-
-.scrollable-content::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    background: linear-gradient(to top, var(--color-surface) 20%, transparent);
-    pointer-events: none;
-    transition: opacity var(--transition-duration-normal) ease;
-}
-.scrollable-content.full-view::after { opacity: 0; }
-
 .details-list {
     display: flex;
     flex-direction: column;
@@ -230,7 +231,7 @@ body.dark-mode .flip-card-inner.is-flipped {
     padding-top: var(--space-sm);
     border-top: 1px solid var(--color-border);
     font-size: var(--font-size-xs);
-    line-height: 1.5;
+    line-height: var(--line-height-normal);
 }
 .detail-item {
     overflow: hidden;
@@ -258,14 +259,6 @@ body.dark-mode .flip-card-inner.is-flipped {
     transform: translateY(-1px); 
 }
 
-/* --- REGLA AÑADIDA --- */
-/* 
-  Establece el cursor por defecto para el contenedor de estrellas.
-  La clase '.is-interactive' (añadida por JS cuando el usuario está logueado)
-  tendrá una regla en 'card-actions.css' que sobreescribirá esto
-  con 'cursor: pointer'. Esto previene que el cursor de puntero aparezca
-  para usuarios anónimos.
-*/
 .star-rating-container {
     cursor: default;
 }

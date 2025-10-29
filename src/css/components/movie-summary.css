@@ -1,10 +1,16 @@
-/* src/css/components/movie-summary.css */
-
-/* ================================================================= */
-/* Componente: Resumen de Película (Movie Summary)
-/* -----------------------------------------------------------------
-/* APLICANDO EL NUEVO SISTEMA TIPOGRÁFICO
-/* ================================================================= */
+/*
+ * =================================================================
+ *              Componente: Resumen de Película (Movie Summary)
+ * =================================================================
+ * Contiene los estilos para la sección inferior de la cara frontal
+ * de la tarjeta, mostrando la información esencial de la película.
+ *
+ * Versión 3.0:
+ * - Aplica la nueva escala tipográfica modular para una jerarquía clara.
+ * - Utiliza variables semánticas de peso y altura de línea.
+ * - Estructura el layout de meta-información con Flexbox para una
+ *   alineación robusta de iconos y texto.
+ */
 
 .movie-summary {
     flex-grow: 1;
@@ -22,7 +28,7 @@
     text-align: left;
 }
 
-/* Título de la tarjeta: más grande y con más peso */
+/* Título de la tarjeta: usa el nivel 'md' de la escala para impacto */
 .movie-summary h3 {
     margin-bottom: 2px;
     overflow: hidden;
@@ -31,27 +37,27 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     font-family: var(--font-title);
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-md); /* 1.25rem (20px) */
     font-weight: var(--font-weight-bold);
-    line-height: 1.3;
+    line-height: var(--line-height-tight); /* 1.25, para títulos */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Director: más legible */
+/* Director: usa el nivel 'sm' para información secundaria */
 .movie-summary .front-director-info {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     color: var(--color-text-secondary);
-    font-size: var(--font-size-xs); /* Era xs, pero xs ahora es 0.8rem */
-    font-weight: var(--font-weight-medium); /* Era normal, ahora 500 */
+    font-size: var(--font-size-sm); /* 0.8rem (12.8px) */
+    font-weight: var(--font-weight-medium);
 }
 
 .movie-summary .front-director-info a {
     color: inherit;
     text-decoration: none;
-    transition: color var(--transition-duration-fast);
+    transition: color var(--duration-fast);
 }
 
 body.rotation-disabled .movie-summary .front-director-info a:hover {
@@ -59,17 +65,21 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     text-decoration: underline;
 }
 
-/* Meta-información (iconos, año, etc.) */
+/*
+ * Contenedor principal para la fila de meta-información
+ * (iconos, año, bandera).
+ */
 .movie-summary .movie-meta {
     padding-top: var(--space-xs);
     display: flex;
-    justify-content: space-between;
+    justify-content: space-between; /* Alinea iconos a la izq, año/bandera a la der */
     align-items: center;
     min-height: 24px;
-    font-size: var(--font-size-sm); /* Tamaño base para meta-info */
+    font-size: var(--font-size-sm);
     line-height: var(--line-height-normal);
 }
 
+/* Contenedor para iconos de plataforma (se alinea a la izquierda) */
 .card-icons-line {
     display: flex;
     align-items: center;
@@ -80,6 +90,7 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     vertical-align: middle;
 }
 
+/* Colores de marca para los iconos */
 .netflix-icon {
     color: #E50914;
 }
@@ -88,16 +99,16 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     color: #002BE7;
 }
 
-/* Año y bandera */
+/* Contenedor para año y bandera (se alinea a la derecha) */
 .year-country-line {
-    /* Las reglas antiguas ya no son necesarias */
+    /* Ya no necesita propiedades flex propias, el padre (.movie-meta) lo gestiona */
 }
 
 .year-flag-group {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    font-weight: var(--font-weight-medium); /* Damos un poco más de peso al año */
+    font-weight: var(--font-weight-semibold); /* Destaca el año */
 }
 
 .country-info {
@@ -106,7 +117,7 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     gap: 0.4em;
 }
 
-/* Estrellas (sin cambios de tipografía) */
+/* Contenedor de estrellas de valoración (sin cambios de tipografía) */
 .star-rating-container {
     display: flex;
     align-items: center;
