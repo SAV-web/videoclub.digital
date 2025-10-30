@@ -30,6 +30,7 @@ import {
 } from './state.js';
 import { showToast } from './toast.js';
 import { initSidebar, collapseAllSections } from './components/sidebar.js';
+import { initTouchDrawer } from './components/touch-drawer.js';
 import { supabase } from './supabaseClient.js';
 import { initAuthForms } from './auth.js';
 import { fetchUserMovieData } from './api-user.js';
@@ -409,6 +410,7 @@ function init() {
     initSidebar();
     initQuickView();
     setupHeaderListeners();
+    initTouchDrawer(); // Inicializar el drawer táctil
     setupGlobalListeners();
     setupKeyboardShortcuts();
     setupAuthSystem();

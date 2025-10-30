@@ -19,18 +19,24 @@ html {
 }
 
 /* En móvil, el sidebar es un panel flotante, fijo en la pantalla */
-.sidebar {
-    position: fixed;
-    width: 65px; /* Comienza colapsado */
-    transform: translateX(0);
-    background-color: transparent;
-    border-right: none;
-    /* ✨ MEJORA: Curva de aceleración personalizada para mayor fluidez */
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-                background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-                border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    height: 100vh; /* Fallback para navegadores antiguos */
-    height: 100dvh; /* ✨ LA SOLUCIÓN MODERNA */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 280px; /* Ancho del drawer */
+        transform: translateX(-280px); /* Fuera de pantalla por defecto */
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Transición para abrir/cerrar */
+        z-index: 1001; /* Asegura que esté por encima del contenido */
+        background-color: var(--color-surface); /* Fondo del drawer */
+        border-right: 2px solid var(--color-border); /* Borde del drawer */
+        height: 100vh; /* Fallback para navegadores antiguos */
+        height: 100dvh; /* ✨ LA SOLUCIÓN MODERNA */
+    }
+    
+    body.sidebar-is-open .sidebar {
+        transform: translateX(0); /* Desliza hacia dentro */
+    }
 }
 
 .sidebar .sidebar-inner-wrapper { 

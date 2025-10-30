@@ -141,7 +141,7 @@ body.dark-mode .flip-card-inner.is-flipped {
     display: none;
     width: 10px;
     height: 10px;
-    border: 1.5px solid var(--color-accent);
+    border: 3px solid var(--color-accent);
     border-radius: 50%;
     background-color: transparent;
 }

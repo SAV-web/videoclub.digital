@@ -208,4 +208,22 @@
         width: 24px; /* Tamaño visual del icono */
         height: 24px;
     }
+
+    /* Aumentar tamaño y área de pulsación del círculo de nota baja */
+    .low-rating-circle {
+        width: 20px;
+        height: 20px;
+        border-width: 5px;
+        position: relative; /* Necesario para el pseudo-elemento */
+    }
+
+    .low-rating-circle::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: -6px;
+        right: -6px;
+        bottom: -6px;
+        /* Área invisible total de 40x40px */
+    }
 }
