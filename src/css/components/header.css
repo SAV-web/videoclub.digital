@@ -78,7 +78,7 @@ body.dark-mode .type-filter-toggle:not(.type-filter--movies):not(.type-filter--s
 /* Input de búsqueda */
 .search-form input {
     height: 40px; /* Altura estándar */
-    padding: 0 2.5rem 0 var(--space-md); /* Padding: derecha para icono, izquierda para texto */
+    padding: 0 var(--space-xl) 0 var(--space-md); /* Padding: derecha para icono, izquierda para texto */
     border-radius: var(--radius-md); /* Bordes redondeados */
     border: 1px solid var(--color-border); /* Borde estándar */
     background: var(--color-surface); /* Fondo */

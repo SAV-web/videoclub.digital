@@ -26,18 +26,19 @@
     flex-direction: column;
     justify-content: center;
     text-align: left;
+    margin-top: var(--space-xs); /* Desplaza el bloque hacia abajo */
 }
 
-/* Título de la tarjeta: usa el nivel 'md' de la escala para impacto */
+/* Título de la tarjeta: usa el nivel 'sm' para mantener la legibilidad en un espacio reducido */
 .movie-summary h3 {
-    margin-bottom: 2px;
+    margin-bottom: var(--space-xxs);
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     font-family: var(--font-title);
-    font-size: var(--font-size-md); /* 1.25rem (20px) */
+    font-size: var(--font-size-base); /* 1.25rem (20px) */
     font-weight: var(--font-weight-bold);
     line-height: var(--line-height-tight); /* 1.25, para títulos */
     -webkit-font-smoothing: antialiased;
@@ -114,12 +115,12 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
 .country-info {
     display: flex;
     align-items: center;
-    gap: 0.4em;
+    gap: var(--space-xxs);
 }
 
 /* Contenedor de estrellas de valoración (sin cambios de tipografía) */
 .star-rating-container {
     display: flex;
     align-items: center;
-    gap: 1px;
+    gap: 0;
 }

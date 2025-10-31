@@ -165,7 +165,7 @@ body.dark-mode .filter-pill .remove-filter-btn {
 .section-content {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: var(--space-xxs);
     padding-left: var(--space-xs);
     
     /* Estado Colapsado */
@@ -279,7 +279,7 @@ body.dark-mode .filter-link.active {
 }
 .sidebar-filter-input {
     width: 100%;
-    padding: 0.1rem var(--space-xs);
+    padding: var(--space-xxs) var(--space-xs);
     border: none;
     border-bottom: 1px solid var(--color-border);
     border-radius: 0;
@@ -343,7 +343,7 @@ body.dark-mode .filter-link.active {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 0.2rem;
+    gap: var(--space-xxs);
     width: 100%;
 }
 .year-range-separator {
@@ -458,7 +458,7 @@ body.dark-mode .year-input:focus {
 
 .sidebar-inner-wrapper.is-compact { padding-top: var(--space-md); }
 .sidebar-inner-wrapper.is-compact .logo-area { margin-bottom: var(--space-xs); }
-.sidebar-inner-wrapper.is-compact .play-button-container { margin-bottom: 0.1rem; }
+.sidebar-inner-wrapper.is-compact .play-button-container { margin-bottom: var(--space-xxs); }
 .sidebar-inner-wrapper.is-compact #year-slider-container { padding-top: 0; }
 .sidebar-inner-wrapper.is-compact .sidebar-static-filters { padding-bottom: var(--space-xs); }
 

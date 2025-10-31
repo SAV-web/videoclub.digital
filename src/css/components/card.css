@@ -124,8 +124,21 @@ body.dark-mode .flip-card-inner.is-flipped {
 
 .star-icon {
     position: relative;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
+}
+
+/* Expande el área táctil del icono a 48x48px sin afectar el layout */
+.star-icon::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+    /* Descomentar para visualizar el área táctil */
+    /* background-color: rgba(255, 0, 0, 0.2); */
 }
 .star-icon-path {
     stroke: var(--color-accent);
@@ -139,9 +152,9 @@ body.dark-mode .flip-card-inner.is-flipped {
 
 .low-rating-circle {
     display: none;
-    width: 10px;
-    height: 10px;
-    border: 3px solid var(--color-accent);
+    width: 20px;
+    height: 20px;
+    border: 5px solid var(--color-accent);
     border-radius: 50%;
     background-color: transparent;
 }
@@ -172,7 +185,7 @@ body.dark-mode .flip-card-inner.is-flipped {
 .episode-duration-group {
     display: flex;
     align-items: center;
-    gap: 0.3em;
+    gap: var(--space-xxs);
 }
 
 .ratings-container {
@@ -240,7 +253,7 @@ body.dark-mode .flip-card-inner.is-flipped {
     -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
 }
-.detail-label { margin-right: 0.5em; }
+.detail-label { margin-right: var(--space-xs); }
 
 .plot-summary-final,
 .critic-review {

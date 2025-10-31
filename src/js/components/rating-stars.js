@@ -1,10 +1,11 @@
 // =================================================================
-//          COMPONENTE: Rating Stars (v2.7 - Refactorizado)
+//          COMPONENTE: Rating Stars (v2.8 - Renderizado Optimizado)
 // =================================================================
-// v2.7 - Refactorizada la lógica de renderizado para eliminar duplicación.
-//        Se introduce una función interna 'renderStars' que maneja toda
-//        la manipulación del DOM, configurable para casos de relleno
-//        entero, fraccionario y ocultación de estrellas vacías.
+// v2.8 - Refactorizada la lógica de renderizado para mejorar el rendimiento.
+//        - Se reemplaza 'display: none' por 'visibility: hidden' para evitar
+//          reflows costosos al ocultar estrellas.
+//        - Se mantiene la precisión del clip-path para valoraciones fraccionarias.
+// =================================================================
 
 import { getUserDataForMovie, updateUserDataForMovie } from '../state.js';
 import { setUserMovieDataAPI } from '../api-user.js';
@@ -34,7 +35,7 @@ export function calculateAverageStars(averageRating) {
 // =================================================================
 
 /**
- * Función interna y genérica que renderiza las estrellas.
+ * Función interna y genérica que renderiza las estrellas de forma optimizada.
  * Es el único punto de verdad para la manipulación del DOM de las estrellas.
  * @param {HTMLElement} starContainer El contenedor de los elementos SVG de las estrellas.
  * @param {number} filledStars El número de estrellas a rellenar (puede ser fraccionario).
@@ -45,22 +46,25 @@ export function calculateAverageStars(averageRating) {
 function renderStars(starContainer, filledStars, { hideUnfilled = false, snapToInteger = false } = {}) {
     const stars = starContainer.querySelectorAll('.star-icon');
     const effectiveFilledStars = snapToInteger ? Math.round(filledStars) : filledStars;
-    
+
     stars.forEach((star, index) => {
-        // Calcula cuánto debe rellenarse esta estrella (un valor entre 0 y 1)
         const fillValue = Math.max(0, Math.min(1, effectiveFilledStars - index));
+        const filledPath = star.querySelector('.star-icon-path--filled');
         
-        // ==========================================================
-        //  ▼▼▼ LÓGICA DE OCULTACIÓN CORREGIDA ▼▼▼
-        //      La condición ahora es simple: si el valor de relleno es CERO,
-        //      y la opción de ocultar está activa, se oculta.
-        // ==========================================================
+        // ▼▼▼ MEJORA CLAVE ▼▼▼
+        // En lugar de cambiar 'display', que causa un reflow, usamos 'visibility'.
+        // 'visibility: hidden' hace el elemento invisible pero sigue ocupando su espacio,
+        // evitando que el layout de los elementos hermanos (las otras estrellas) se recalcule.
         if (hideUnfilled && fillValue === 0) {
-            star.style.display = 'none';
+            star.style.visibility = 'hidden';
         } else {
-            star.style.display = 'block';
-            const filledPath = star.querySelector('.star-icon-path--filled');
+            star.style.visibility = 'visible';
+            
+            // Calculamos el porcentaje para el clip-path.
             const clipPercentage = 100 - (fillValue * 100);
+            
+            // Aplicamos el estilo. Cambiar clip-path es una operación mucho más barata
+            // que cambiar el layout, y a menudo está acelerada por hardware.
             filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
         }
     });

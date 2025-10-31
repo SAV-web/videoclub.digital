@@ -96,7 +96,7 @@ async function handleLogin(e) {
  * Inicializa los listeners para los formularios de autenticación.
  */
 export function initAuthForms() {
-    if (!dom.loginForm) return; // Si no estamos en la página correcta, no hacer nada
+    if (!dom.loginForm) return;
 
     dom.loginForm.addEventListener('submit', handleLogin);
     dom.registerForm.addEventListener('submit', handleRegister);
@@ -105,11 +105,19 @@ export function initAuthForms() {
         clearMessage();
         dom.loginView.style.display = 'none';
         dom.registerView.style.display = 'block';
+        
+        // ▼▼▼ MEJORA DE ACCESIBILIDAD AÑADIDA ▼▼▼
+        // Mover el foco al primer campo del formulario de registro.
+        dom.registerForm.elements['register-email'].focus();
     });
 
     dom.showLoginBtn.addEventListener('click', () => {
         clearMessage();
         dom.registerView.style.display = 'none';
         dom.loginView.style.display = 'block';
+        
+        // ▼▼▼ MEJORA DE ACCESIBILIDAD AÑADIDA ▼▼▼
+        // Mover el foco al primer campo del formulario de login.
+        dom.loginForm.elements['login-email'].focus();
     });
 }

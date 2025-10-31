@@ -204,3 +204,43 @@ export function preloadLcpImage(movieData) {
     document.head.appendChild(link);
     console.log(`%c[LCP PRELOAD] Iniciando precarga responsiva para: ${baseImageUrl}`, 'color: #9c27b0');
 }
+// =================================================================
+//                      FEEDBACK HÁPTICO (TÁCTIL)
+// =================================================================
+
+/**
+ * Dispara una vibración sutil en dispositivos que lo soporten para mejorar
+ * la experiencia táctil del usuario.
+ * @param {'light' | 'medium' | 'success'} [style='light'] - El estilo de vibración.
+ */
+export function triggerHapticFeedback(style = 'light') {
+    // Solo continuar si la API de Vibración está disponible en el navegador.
+    if ('vibrate' in navigator) {
+        // Desactivar si el usuario prefiere movimiento reducido.
+        const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        if (motionQuery && motionQuery.matches) {
+            return;
+        }
+
+        try {
+            switch (style) {
+                case 'light':
+                    // Una pulsación muy corta y sutil, ideal para toques simples.
+                    navigator.vibrate(10);
+                    break;
+                case 'medium':
+                    // Una pulsación ligeramente más larga para acciones más importantes.
+                    navigator.vibrate(20);
+                    break;
+                case 'success':
+                    // Un patrón de doble vibración para indicar éxito o confirmación.
+                    navigator.vibrate([10, 50, 20]); // pulso-pausa-pulso
+                    break;
+                // Podríamos añadir 'error', 'warning', etc. en el futuro.
+            }
+        } catch (e) {
+            // Algunos navegadores pueden lanzar errores si se abusa de la API.
+            console.warn("Haptic feedback failed.", e);
+        }
+    }
+}

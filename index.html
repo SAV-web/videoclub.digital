@@ -67,17 +67,17 @@
       .main-layout{display:flex}
       .sidebar{width:200px;height:100vh;background-color:var(--color-surface);border-right:2px solid var(--color-border);position:sticky;top:0;z-index:var(--z-index-sidebar)}
       .main-content-wrapper {flex-grow: 1; display: flex; flex-direction: column; min-width: 0;}
-      .content{flex-grow:1;padding:1rem 3rem 0.5rem;max-width:1920px;margin:0 auto;width: 100%;}
-      .main-header{display:flex;align-items:center;flex-wrap:wrap;gap:1rem 1.5rem;position:sticky;top:0;z-index:var(--z-index-header);background-color:var(--color-bg);padding:1.5rem 3rem 1rem;margin-bottom:0;}
-      .grid-container{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));justify-content:start;}
-      .main-header-primary-controls,.search-and-theme-group{display:flex;align-items:center;gap:1rem}
-      .sort-control{display:flex;align-items:center;gap:.5rem}
-      #sort-select{width:100px;color:var(--color-text-primary);background-color:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:.5rem .8rem;padding-right:2em;-moz-appearance:none;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right .7em top 50%;background-size:.65em auto;background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')}
-      .type-filter-toggle{padding:0 .8rem;height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center}
+      .content{flex-grow:1;padding:var(--space-md) var(--space-xxl) var(--space-xs);max-width:1920px;margin:0 auto;width: 100%;}
+      .main-header{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-md) var(--space-lg);position:sticky;top:0;z-index:var(--z-index-header);background-color:var(--color-bg);padding:var(--space-lg) var(--space-xxl) var(--space-md);margin-bottom:0;}
+      .grid-container{display:grid;gap:var(--space-md);grid-template-columns:repeat(auto-fit,minmax(165px,1fr));justify-content:start;}
+      .main-header-primary-controls,.search-and-theme-group{display:flex;align-items:center;gap:var(--space-md)}
+      .sort-control{display:flex;align-items:center;gap:var(--space-xs)}
+      #sort-select{width:100px;color:var(--color-text-primary);background-color:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-xs) var(--space-sm);padding-right:2em;-moz-appearance:none;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right .7em top 50%;background-size:.65em auto;background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E')}
+      .type-filter-toggle{padding:0 var(--space-sm);height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center}
       .header-pagination-group{display:flex}
       .search-form{position:relative;display:flex;align-items:center}
-      .search-form input{border:1px solid var(--color-border);padding:.6rem 2.5rem .6rem 1rem;border-radius:var(--radius-md);width:90px}
-      .search-icon{position:absolute;right:.75rem;top:50%;transform:translateY(-50%);color:var(--color-text-secondary);pointer-events:none}
+      .search-form input{border:1px solid var(--color-border);padding:var(--space-xs) var(--space-xl) var(--space-xs) var(--space-md);border-radius:var(--radius-md);width:90px}
+      .search-icon{position:absolute;right:var(--space-sm);top:50%;transform:translateY(-50%);color:var(--color-text-secondary);pointer-events:none}
       .theme-toggle{width:40px;height:40px;border-radius:var(--radius-round);cursor:pointer;display:flex;justify-content:center;align-items:center;padding:0;position:relative}
       .theme-icon{position:absolute;width:20px;height:20px}
       .moon-icon{opacity:1}
@@ -372,7 +372,7 @@
     <!-- MODAL DE AUTENTICACIÓN
     <!-- ================================================================= -->
     <div id="auth-overlay" class="auth-overlay" hidden></div>
-    <div id="auth-modal" class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" hidden>
+    <div id="auth-modal" class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" hidden aria-hidden="true">
         <div class="auth-box">
             <header class="auth-header">
                 <h2 id="auth-title" class="auth-logo-modal">
@@ -548,7 +548,7 @@
     <script type="module" src="src/js/components/touch-drawer.js"></script>
     
     <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>
-    <div id="quick-view-modal" class="quick-view-modal" role="dialog" aria-modal="true" aria-labelledby="quick-view-title" hidden>
+    <div id="quick-view-modal" class="quick-view-modal" role="dialog" aria-modal="true" aria-labelledby="quick-view-title" hidden aria-hidden="true">
         <button id="quick-view-close-btn" class="quick-view-close-btn" aria-label="Cerrar vista rápida">&times;</button>
         <div id="quick-view-content" class="quick-view-content"></div>
     </div>

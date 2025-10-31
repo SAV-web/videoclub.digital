@@ -35,10 +35,8 @@ RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
 BEGIN RETURN v_input::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 
 -- =================================================================
--- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA: FUNCIÓN BASADA EN OFFSET
+-- PASO 3: LÓGICA DE BÚSQUEDA OPTIMIZADA (VERSIÓN 2.0 - RESPUESTA JSON)
 -- =================================================================
--- Aplazamos la versión de cursor, ya que la paginación por OFFSET está optimizada para datasets
--- de tamaño medio (hasta ~50,000 registros) y se requiere poder saltar a páginas específicas.
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
     search_term text,
     genre_name text,
@@ -51,50 +49,19 @@ CREATE OR REPLACE FUNCTION public.search_movies_offset(
     selection_code text,
     excluded_genres text[],
     excluded_countries text[],
-    sort_field text,      -- Parámetro nuevo: 'relevance', 'year', 'fa_rating', etc.
-    sort_direction text,  -- Parámetro nuevo: 'asc' o 'desc'
+    sort_field text,
+    sort_direction text,
     page_limit integer,
     page_offset integer
 )
-RETURNS TABLE(
-    id bigint,
-    title text,
-    year integer,
-    year_end text,
-    type text,
-    genres text,
-    directors text,
-    actors text,
-    country text,
-    country_code text,
-    minutes integer,
-    image text,
-    fa_id text,
-    fa_rating real,
-    fa_votes integer,
-    imdb_id text,
-    imdb_rating real,
-    imdb_votes integer,
-    synopsis text,
-    thumbhash_st text,
-    critic text,
-    last_synced_at timestamp with time zone,
-    episodes integer,
-    wikipedia text,
-    collections_list text,
-    total_count bigint
-)
+RETURNS json -- << CAMBIO CLAVE 1: El tipo de retorno ahora es un único objeto JSON.
 LANGUAGE sql STABLE PARALLEL SAFE AS $function$
 WITH filtered_movies AS (
+    -- Este CTE (Common Table Expression - Expresión de Tabla Común) es muy eficiente.
+    -- Primero, obtiene solo los IDs y los campos de ordenación de las películas que coinciden.
     SELECT
         m.id,
-        m.relevance, 
-        m.year, 
-        m.fa_rating, 
-        m.imdb_rating, 
-        m.fa_votes, 
-        m.imdb_votes,
-        COUNT(*) OVER() AS total_count_unpaginated
+        m.relevance, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes
     FROM
         public.movies m
     WHERE
@@ -108,42 +75,52 @@ WITH filtered_movies AS (
         AND (selection_code IS NULL OR m.collections_list ILIKE '%' || selection_code || '%')
         AND (excluded_genres IS NULL OR NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(excluded_genres) as g))
         AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL OR m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(excluded_countries)))
+),
+paginated_ids AS (
+    -- << NUEVO CTE >>: Aplica la ordenación y paginación SOBRE LOS RESULTADOS FILTRADOS.
+    -- Esto es mucho más rápido que ordenar y paginar sobre la tabla completa con joins.
+    SELECT id
+    FROM filtered_movies
+    ORDER BY
+        CASE WHEN sort_field = 'relevance' AND sort_direction = 'asc' THEN relevance END ASC,
+        CASE WHEN sort_field = 'relevance' AND sort_direction = 'desc' THEN relevance END DESC,
+        CASE WHEN sort_field = 'year' AND sort_direction = 'asc' THEN year END ASC,
+        CASE WHEN sort_field = 'year' AND sort_direction = 'desc' THEN year END DESC,
+        CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'asc' THEN fa_rating END ASC NULLS LAST,
+        CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'desc' THEN fa_rating END DESC NULLS LAST,
+        CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'asc' THEN imdb_rating END ASC NULLS LAST,
+        CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'desc' THEN imdb_rating END DESC NULLS LAST,
+        CASE WHEN sort_field = 'fa_votes' AND sort_direction = 'asc' THEN fa_votes END ASC NULLS LAST,
+        CASE WHEN sort_field = 'fa_votes' AND sort_direction = 'desc' THEN fa_votes END DESC NULLS LAST,
+        CASE WHEN sort_field = 'imdb_votes' AND sort_direction = 'asc' THEN imdb_votes END ASC NULLS LAST,
+        CASE WHEN sort_field = 'imdb_votes' AND sort_direction = 'desc' THEN imdb_votes END DESC NULLS LAST,
+        id ASC -- Tie-breaker para estabilidad
+    LIMIT page_limit
+    OFFSET page_offset
+),
+total AS (
+    -- << NUEVO CTE >>: Obtiene el conteo total una sola vez.
+    SELECT count(*) as value FROM filtered_movies
 )
-SELECT
-    m.id, m.title, m.year, m.year_end, m.type, m.genres_list AS genres,
-    m.directors_list AS directors, m.actors_list AS actors, c.name AS country,
-    c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes,
-    m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic,
-    m.last_synced_at, m.episodes, m.wikipedia, m.collections_list,
-    fm.total_count_unpaginated as total_count
-FROM
-    filtered_movies fm
-JOIN public.movies m ON fm.id = m.id
-LEFT JOIN public.countries c ON m.country_id = c.id
-ORDER BY
-    -- Ordenación dinámica refactorizada, segura y más legible
-    CASE WHEN sort_field = 'relevance' AND sort_direction = 'asc' THEN fm.relevance END ASC,
-    CASE WHEN sort_field = 'relevance' AND sort_direction = 'desc' THEN fm.relevance END DESC,
-
-    CASE WHEN sort_field = 'year' AND sort_direction = 'asc' THEN fm.year END ASC,
-    CASE WHEN sort_field = 'year' AND sort_direction = 'desc' THEN fm.year END DESC,
-    
-    CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'asc' THEN fm.fa_rating END ASC NULLS LAST,
-    CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'desc' THEN fm.fa_rating END DESC NULLS LAST,
-    
-    CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'asc' THEN fm.imdb_rating END ASC NULLS LAST,
-    CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'desc' THEN fm.imdb_rating END DESC NULLS LAST,
-    
-    CASE WHEN sort_field = 'fa_votes' AND sort_direction = 'asc' THEN fm.fa_votes END ASC NULLS LAST,
-    CASE WHEN sort_field = 'fa_votes' AND sort_direction = 'desc' THEN fm.fa_votes END DESC NULLS LAST,
-    
-    CASE WHEN sort_field = 'imdb_votes' AND sort_direction = 'asc' THEN fm.imdb_votes END ASC NULLS LAST,
-    CASE WHEN sort_field = 'imdb_votes' AND sort_direction = 'desc' THEN fm.imdb_votes END DESC NULLS LAST,
-    
-    -- Tie-breaker para una ordenación estable, asegurando resultados consistentes
-    m.id ASC
-LIMIT page_limit
-OFFSET page_offset;
+-- << CAMBIO CLAVE 2: Construcción del objeto JSON final.
+SELECT json_build_object(
+    'total', (SELECT value FROM total), -- Clave 'total' con el conteo único.
+    'items', (                         -- Clave 'items' con la lista de películas.
+        SELECT COALESCE(json_agg(rows), '[]'::json) -- json_agg crea un array JSON a partir de las filas.
+        FROM (
+            -- La consulta final une los datos completos SÓLO para los IDs de la página actual.
+            SELECT
+                m.id, m.title, m.year, m.year_end, m.type, m.genres_list AS genres,
+                m.directors_list AS directors, m.actors_list AS actors, c.name AS country,
+                c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes,
+                m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic,
+                m.last_synced_at, m.episodes, m.wikipedia, m.collections_list
+            FROM paginated_ids pi
+            JOIN public.movies m ON pi.id = m.id
+            LEFT JOIN public.countries c ON m.country_id = c.id
+        ) as rows
+    )
+);
 $function$;
 
 -- =================================================================

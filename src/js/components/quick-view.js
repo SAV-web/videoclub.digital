@@ -1,6 +1,12 @@
 // =================================================================
-//                      COMPONENTE QUICK VIEW (VISTA RÁPIDA)
+//          COMPONENTE QUICK VIEW (VISTA RÁPIDA) - v2 (Accesible)
 // =================================================================
+// v2.0 - Se integra con el nuevo 'modal-manager.js' para delegar toda la
+//        lógica de accesibilidad, incluyendo la trampa de foco, la
+//        restauración del foco al cerrar y la gestión de atributos ARIA.
+// =================================================================
+
+import { openAccessibleModal, closeAccessibleModal } from './modal-manager.js';
 
 const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 const dom = {
@@ -12,128 +18,95 @@ const dom = {
 };
 
 /**
- * Maneja los clics fuera de la modal para cerrarla.
- * Se asegura de que el clic no sea en la propia modal.
+ * Maneja los clics fuera de la modal para cerrarla, asegurándose de que el clic
+ * no sea en la propia tarjeta que la abrió.
  * @param {Event} event
  */
 function handleOutsideClick(event) {
-    // Si la modal es visible y el clic ocurrió fuera de ella...
-    // Y también nos aseguramos de que el clic no fue en una tarjeta (para evitar doble comportamiento)
     if (dom.modal.classList.contains('is-visible') && !dom.modal.contains(event.target) && !event.target.closest('.movie-card')) {
         closeModal();
     }
 }
 
-
-
 /**
- * Cierra la ventana de Vista Rápida.
+ * Cierra la ventana de Vista Rápida de forma controlada.
  */
 export function closeModal() {
+    // 1. Gestionar las clases para las animaciones CSS de salida.
     dom.modal.classList.remove('is-visible');
     dom.overlay.classList.remove('is-visible');
     document.body.classList.remove('modal-open');
 
-    // Esperamos a que la animación de salida termine para ocultarlo del todo
-    dom.modal.addEventListener('transitionend', () => {
-        dom.modal.hidden = true;
-    }, { once: true });
-
-    // Dejamos de escuchar clics fuera una vez que la modal se cierra.
+    // 2. Delegar la lógica de accesibilidad (liberar foco, ARIA, 'hidden') al gestor.
+    closeAccessibleModal(dom.modal, dom.overlay);
+    
+    // 3. Limpiar el listener de clic exterior para evitar ejecuciones innecesarias.
     document.removeEventListener('click', handleOutsideClick);
 }
 
 /**
- * Rellena la ventana con los datos de una película.
- * @param {HTMLElement} cardElement - El elemento de la tarjeta desde donde leer los datos.
+ * Rellena la ventana de Vista Rápida con los datos de una tarjeta específica.
+ * @param {HTMLElement} cardElement - El elemento de la tarjeta desde donde se leerán los datos.
  */
 function populateModal(cardElement) {
     const clone = dom.template.cloneNode(true);
     const front = clone.querySelector('.quick-view-front');
     const back = clone.querySelector('.quick-view-back');
 
-    // --- Populate Front ---
+    // --- Rellenar Cara Frontal ---
     const frontImg = front.querySelector('img');
     const cardImg = cardElement.querySelector('.flip-card-front img');
     frontImg.src = cardImg.src;
     frontImg.alt = cardImg.alt;
 
-    // Usar textContent para datos simples y clonación de nodos para HTML
-    const titleSource = cardElement.querySelector('[data-template="title"]');
-    const directorSource = cardElement.querySelector('[data-template="director"]');
-    const yearSource = cardElement.querySelector('[data-template="year"]');
-
-    const titleTarget = front.querySelector('[data-template="title"]');
-    const directorTarget = front.querySelector('[data-template="director"]');
-    const yearTarget = front.querySelector('[data-template="year"]');
-
-    if (titleTarget && titleSource) titleTarget.textContent = titleSource.textContent;
-    if (yearTarget && yearSource) yearTarget.textContent = yearSource.textContent;
-
-    // Reemplazar innerHTML con clonación de nodos para seguridad
-    if (directorTarget && directorSource) {
-        directorTarget.textContent = ''; // Limpiar contenido existente
-        Array.from(directorSource.childNodes).forEach(node => {
-            directorTarget.appendChild(node.cloneNode(true));
-        });
-        
-        // Añadir listeners de clic a los enlaces de director clonados
-        directorTarget.querySelectorAll('a[data-director-name]').forEach(directorLink => {
-            directorLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                const directorName = e.target.dataset.directorName;
-                closeModal();
-                // Disparar evento para filtrar por director, similar a la lógica de la tarjeta principal
-                document.dispatchEvent(new CustomEvent('filtersReset', { detail: { keepSort: true, newFilter: { type: 'director', value: directorName } } }));
-            });
-        });
-    }
+    const copyContent = (sourceSelector, targetSelector, targetParent = front) => {
+        const source = cardElement.querySelector(sourceSelector);
+        const target = targetParent.querySelector(targetSelector);
+        if (source && target) {
+            target.replaceWith(source.cloneNode(true));
+        }
+    };
     
-    const lowRatingCircle = cardElement.querySelector('[data-template="low-rating-circle"]');
-    if (lowRatingCircle) {
-        front.querySelector('[data-template="low-rating-circle"]').replaceWith(lowRatingCircle.cloneNode(true));
-    }
+    copyContent('[data-template="title"]', '[data-template="title"]');
+    copyContent('[data-template="director"]', '[data-template="director"]');
+    copyContent('[data-template="year"]', '[data-template="year"]');
+    copyContent('[data-template="low-rating-circle"]', '[data-template="low-rating-circle"]');
+    copyContent('[data-template="average-rating-stars"]', '[data-template="average-rating-stars"]');
+    copyContent('[data-template="country-container"]', '[data-template="country-container"]');
 
-    const starContainer = cardElement.querySelector('[data-template="average-rating-stars"]');
-    if (starContainer) {
-        front.querySelector('[data-template="average-rating-stars"]').replaceWith(starContainer.cloneNode(true));
-    }
+    // --- Rellenar Cara Trasera ---
+    copyContent('[data-template="wikipedia-link"]', '[data-template="wikipedia-link"]', back);
+    copyContent('.ratings-container', '.ratings-container', back);
+
+    const copyText = (sourceSelector, targetSelector, targetParent = back) => {
+        const source = cardElement.querySelector(sourceSelector);
+        const target = targetParent.querySelector(targetSelector);
+        if (source && target) {
+            target.textContent = source.textContent;
+        }
+    };
+
+    copyText('[data-template="episodes"]', '[data-template="episodes"]', back);
+    copyText('[data-template="duration"]', '[data-template="duration"]', back);
+    copyText('[data-template="genre"]', '[data-template="genre"]', back);
+    copyText('[data-template="actors"]', '[data-template="actors"]', back);
+    copyText('[data-template="synopsis"]', '[data-template="synopsis"]', back);
     
-    const countryContainer = cardElement.querySelector('[data-template="country-container"]');
-    if (countryContainer) {
-        front.querySelector('[data-template="country-container"]').replaceWith(countryContainer.cloneNode(true));
+    const criticContainerSource = cardElement.querySelector('[data-template="critic-container"]');
+    const criticContainerTarget = back.querySelector('[data-template="critic-container"]');
+    if (criticContainerSource && criticContainerTarget) {
+        if (criticContainerSource.style.display !== 'none') {
+            criticContainerTarget.style.display = 'block';
+            copyText('[data-template="critic"]', '[data-template="critic"]', back);
+        } else {
+            criticContainerTarget.style.display = 'none';
+        }
     }
 
-    // --- Populate Back ---
-    const wikipediaLink = cardElement.querySelector('[data-template="wikipedia-link"]');
-    if (wikipediaLink) {
-        back.querySelector('[data-template="wikipedia-link"]').replaceWith(wikipediaLink.cloneNode(true));
-    }
-    
-    back.querySelector('[data-template="episodes"]').textContent = cardElement.querySelector('[data-template="episodes"]').textContent;
-    back.querySelector('[data-template="duration"]').textContent = cardElement.querySelector('[data-template="duration"]').textContent;
-
-    const ratingsContainer = cardElement.querySelector('.ratings-container');
-    if (ratingsContainer) {
-        back.querySelector('.ratings-container').replaceWith(ratingsContainer.cloneNode(true));
-    }
-
-    back.querySelector('[data-template="genre"]').textContent = cardElement.querySelector('[data-template="genre"]').textContent;
-    back.querySelector('[data-template="actors"]').textContent = cardElement.querySelector('[data-template="actors"]').textContent;
-    back.querySelector('[data-template="synopsis"]').textContent = cardElement.querySelector('[data-template="synopsis"]').textContent;
-    
-    const criticContainer = cardElement.querySelector('[data-template="critic-container"]');
-    if (criticContainer && criticContainer.style.display !== 'none') {
-        back.querySelector('[data-template="critic-container"]').style.display = 'block';
-        back.querySelector('[data-template="critic"]').textContent = cardElement.querySelector('[data-template="critic"]').textContent;
-    } else {
-        back.querySelector('[data-template="critic-container"]').style.display = 'none';
-    }
-
+    // Lógica para expandir sinopsis en hover (solo en escritorio)
     if (isDesktop) {
         const scrollableContent = back.querySelector('.scrollable-content');
         const plotSummary = back.querySelector('.plot-summary-final');
-
         if (scrollableContent && plotSummary) {
             let scrollTimeoutId = null;
             plotSummary.addEventListener('mouseenter', () => {
@@ -143,7 +116,6 @@ function populateModal(cardElement) {
                     }
                 }, 1000);
             });
-            
             scrollableContent.addEventListener('mouseleave', () => {
                 clearTimeout(scrollTimeoutId);
                 scrollableContent.classList.remove('full-view');
@@ -163,26 +135,27 @@ function populateModal(cardElement) {
 export function openModal(cardElement) {
     if (!cardElement) return;
 
-    // Resetea el scroll al principio cada vez que se abre una nueva modal
-    dom.content.scrollTop = 0;
-
+    dom.content.scrollTop = 0; // Asegurar que la modal siempre empiece desde arriba
     populateModal(cardElement);
-    
-    dom.modal.hidden = false;
     document.body.classList.add('modal-open');
 
-    // Usamos un pequeño timeout para asegurar que el navegador aplica la transición
+    // Se usa un timeout para asegurar que el navegador aplique la transición correctamente
     setTimeout(() => {
+        // 1. Añadir clases para la animación visual de entrada.
         dom.modal.classList.add('is-visible');
         dom.overlay.classList.add('is-visible');
-        // Empezamos a escuchar clics "fuera" solo DESPUÉS de que la modal se haya abierto.
-        // El `setTimeout` es clave para que el mismo clic que abre la modal no la cierre.
+        
+        // 2. Delegar la lógica de accesibilidad (foco, ARIA, 'hidden') al gestor.
+        openAccessibleModal(dom.modal, dom.overlay);
+
+        // 3. Añadir el listener de clic exterior DESPUÉS de que la modal esté abierta
+        //    para evitar que el mismo clic que la abre la cierre inmediatamente.
         setTimeout(() => document.addEventListener('click', handleOutsideClick), 0);
     }, 10);
 }
 
 /**
- * Inicializa los listeners para la Vista Rápida (cerrar al pulsar Escape).
+ * Inicializa los listeners globales para la Vista Rápida.
  */
 export function initQuickView() {
     if (!dom.modal) {
@@ -190,18 +163,15 @@ export function initQuickView() {
         return;
     }
 
+    // Listener para la tecla 'Escape' para cerrar la modal
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && dom.modal.classList.contains('is-visible')) {
             closeModal();
         }
     });
 
-    // ✨ CORRECCIÓN: La lógica de cierre exterior se gestiona ahora dinámicamente
-    // para evitar conflictos. Mantenemos el listener del overlay como una
-    // capa de seguridad, pero la lógica principal está en `handleOutsideClick`.
-    dom.overlay.addEventListener('click', (e) => {
-        if (e.target === dom.overlay) closeModal();
-    });
-    // El botón de cierre explícito (la 'X') también debe cerrar la modal.
-    if (dom.closeBtn) dom.closeBtn.addEventListener('click', closeModal);
+    // Listener para el botón de cierre explícito (la 'X')
+    if (dom.closeBtn) {
+        dom.closeBtn.addEventListener('click', closeModal);
+    }
 }

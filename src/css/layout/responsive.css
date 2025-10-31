@@ -239,18 +239,18 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
     }
 
     /* Restauramos los estilos de layout y grid para escritorio */
-    .content { padding: 1rem 3rem 0.5rem; }
+    .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
     .main-header { 
         position: sticky;
         top: 0;
         bottom: auto; /* Resetear la posición inferior de móvil */
         border-top: none; /* Resetear el borde de móvil */
-        padding: 1.5rem 3rem 1rem; 
-        gap: 1rem 1.5rem; 
+        padding: var(--space-lg) var(--space-xxl) var(--space-md); 
+        gap: var(--space-md) var(--space-lg); 
         flex-wrap: wrap; 
     }
-    .grid-container { grid-template-columns: repeat(3, 1fr); gap: 1.5rem 1rem; }
-    #sort-select { padding: 0.5rem; height: 40px; }
+    .grid-container { grid-template-columns: repeat(3, 1fr); gap: var(--space-lg) var(--space-md); }
+    #sort-select { padding: var(--space-xs); height: 40px; }
     .search-form input { height: 40px; width: 115px; }
 }
 

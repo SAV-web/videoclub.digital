@@ -1,17 +1,26 @@
-// =================================================================
+// =
 //                  MÓDULO DE MANIPULACIÓN DE UI (DOM)
 // =================================================================
 // Este archivo actúa como un punto central para la gestión de la interfaz de usuario.
 // Agrupa y re-exporta las funciones de todos los componentes de UI,
 // mantiene referencias cacheadas a los elementos del DOM y contiene
 // funciones de UI globales como la gestión de la modal de autenticación.
+//
+// v2.0 - Integra el nuevo gestor de modales accesibles para manejar la
+//        apertura y cierre de la modal de autenticación, asegurando el
+//        cumplimiento de las mejores prácticas de accesibilidad (a11y).
+// =================================================================
 
+// --- Re-exportación de componentes de UI para un acceso centralizado ---
 export * from './components/card.js';
 export * from './components/pagination.js';
 export * from './components/autocomplete.js';
 export * from './components/quick-view.js';
 
+// --- Imports necesarios para la lógica de este fichero ---
 import { CSS_CLASSES, SELECTORS } from './constants.js';
+// ▼▼▼ IMPORTACIÓN CLAVE: Traemos el nuevo gestor de modales ▼▼▼
+import { openAccessibleModal, closeAccessibleModal } from './components/modal-manager.js';
 
 /**
  * Objeto que contiene referencias cacheadas a los elementos del DOM más utilizados
@@ -43,27 +52,22 @@ export const dom = {
 };
 
 /**
- * Cierra la modal de autenticación.
+ * Cierra la modal de autenticación delegando la lógica al gestor accesible.
  */
 export function closeAuthModal() {
-    if (dom.authModal && dom.authOverlay) {
-        dom.authModal.hidden = true;
-        dom.authOverlay.hidden = true;
-    }
+    closeAccessibleModal(dom.authModal, dom.authOverlay);
 }
 
 /**
- * Abre la modal de autenticación.
+ * Abre la modal de autenticación delegando la lógica al gestor accesible.
  */
 export function openAuthModal() {
-    if (dom.authModal && dom.authOverlay) {
-        dom.authModal.hidden = false;
-        dom.authOverlay.hidden = false;
-    }
+    openAccessibleModal(dom.authModal, dom.authOverlay);
 }
 
 /**
  * Configura los listeners para la modal de autenticación (abrir, cerrar, escape).
+ * Esta función no cambia, ya que solo establece los disparadores.
  */
 export function setupAuthModal() {
     if (!dom.loginButton || !dom.authModal || !dom.authOverlay || !dom.authCloseBtn) return;
@@ -127,13 +131,8 @@ export function updateTotalResultsUI(total, hasFilters) {
 export function initThemeToggle() {
     if (dom.themeToggleButton) {
         dom.themeToggleButton.addEventListener('click', () => {
-            // Alterna la clase 'dark-mode' en <html> y <body> para consistencia.
-            // El script de inicialización y los estilos CSS dependen de esto.
-            // Alterna la clase 'dark-mode' en el elemento raíz (<html>).
-            // Los estilos CSS en cascada se encargarán de aplicarse al resto del documento.
             const isDarkMode = document.documentElement.classList.toggle('dark-mode');
             document.body.classList.toggle('dark-mode', isDarkMode);
-            
             localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
         });
     }

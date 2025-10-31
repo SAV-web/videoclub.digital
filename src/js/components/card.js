@@ -1,28 +1,43 @@
-// src/js/components/card.js
+// =================================================================
+//          COMPONENTE: Movie Card (Tarjeta de Película)
+// =================================================================
+// Responsabilidades:
+// - Crear el elemento DOM para una tarjeta de película a partir de una plantilla.
+// - Poblar la tarjeta con los datos de la película (texto, imágenes, ratings).
+// - Gestionar los listeners de eventos individuales de la tarjeta (hover, no-click).
+// - Manejar la lógica de las acciones del usuario (watchlist, rating) con UI optimista
+//   y feedback háptico para una experiencia táctil mejorada.
+// =================================================================
 
 import { CONFIG } from '../config.js';
-import { formatRuntime, formatVotesUnified, createElement } from '../utils.js';
-import { CSS_CLASSES, SELECTORS } from '../constants.js'; 
+import { formatRuntime, formatVotesUnified, createElement, triggerHapticFeedback } from '../utils.js';
+import { CSS_CLASSES, SELECTORS } from '../constants.js';
 import { openModal, closeModal } from './quick-view.js';
 import { getUserDataForMovie, updateUserDataForMovie } from '../state.js';
 import { setUserMovieDataAPI } from '../api-user.js';
 import { showToast } from '../toast.js';
-import { 
-    calculateAverageStars, 
+import {
+    calculateAverageStars,
     renderAverageStars,
     calculateUserStars,
     renderUserStars,
     setupRatingListeners,
-    setUpdateCardUIFn 
+    setUpdateCardUIFn
 } from './rating-stars.js';
+
+// --- Constantes y Estado del Módulo ---
 
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
 const cardTemplate = document.getElementById(SELECTORS.MOVIE_CARD_TEMPLATE.substring(1));
-let renderedCardCount = 0;
+let renderedCardCount = 0; // Para priorizar la carga de las primeras imágenes
 let currentlyFlippedCard = null;
 const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
+/**
+ * Observador de Intersección para cargar imágenes de forma diferida (lazy-loading).
+ * Empieza a cargar las imágenes cuando están a 800px de entrar en el viewport.
+ */
 const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -34,25 +49,15 @@ const lazyLoadObserver = new IntersectionObserver((entries, observer) => {
     });
 }, { rootMargin: '0px 0px 800px 0px' });
 
-function setupIntentionalHover(cardElement) {
-    let hoverTimeout;
-    const HOVER_DELAY = 300;
 
-    cardElement.addEventListener('mouseenter', () => {
-        if (document.body.classList.contains('rotation-disabled')) {
-            return;
-        }
-        hoverTimeout = setTimeout(() => {
-            cardElement.classList.add('is-hovered');
-        }, HOVER_DELAY);
-    });
+// =================================================================
+//          LÓGICA DE ACCIONES DEL USUARIO (CON UI OPTIMISTA)
+// =================================================================
 
-    cardElement.addEventListener('mouseleave', () => {
-        clearTimeout(hoverTimeout);
-        cardElement.classList.remove('is-hovered');
-    });
-}
-
+/**
+ * Actualiza la UI del botón de watchlist basándose en el estado global.
+ * @param {HTMLElement} cardElement - El elemento de la tarjeta.
+ */
 function updateWatchlistActionUI(cardElement) {
     const movieId = parseInt(cardElement.dataset.movieId, 10);
     const userData = getUserDataForMovie(movieId);
@@ -64,6 +69,14 @@ function updateWatchlistActionUI(cardElement) {
     }
 }
 
+/**
+ * Maneja el clic en el botón de watchlist de forma optimista.
+ * 1. Da feedback háptico.
+ * 2. Actualiza el estado local y la UI inmediatamente.
+ * 3. Llama a la API en segundo plano.
+ * 4. Si la API falla, revierte el cambio y notifica al usuario.
+ * @param {Event} event - El evento de clic.
+ */
 async function handleWatchlistClick(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -73,15 +86,24 @@ async function handleWatchlistClick(event) {
     const wasOnWatchlist = button.classList.contains('is-active');
     const newUserData = { onWatchlist: !wasOnWatchlist };
     const previousUserData = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
+
+    triggerHapticFeedback('light');
     updateUserDataForMovie(movieId, newUserData);
+
     try {
         await setUserMovieDataAPI(movieId, newUserData);
+        triggerHapticFeedback('success');
     } catch (error) {
         showToast(error.message, 'error');
         updateUserDataForMovie(movieId, previousUserData);
     }
 }
 
+/**
+ * Maneja el clic en la primera opción de rating (suspenso/1 estrella).
+ * Es un atajo para ciclar entre: sin nota -> suspenso -> 1 estrella -> sin nota.
+ * @param {Event} event - El evento de clic.
+ */
 async function handleFirstOptionClick(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -96,21 +118,33 @@ async function handleFirstOptionClick(event) {
     if (currentRating === null) { newRating = 2; } 
     else if (currentRating === 2) { newRating = 3; } 
     else if (currentRating === 3) { newRating = null; } 
-    else { newRating = 3; }
+    else { newRating = 3; } // Si tiene otra nota, se establece a 1 estrella (rating 3)
 
     const newUserData = { rating: newRating };
     const previousUserData = JSON.parse(card.dataset.previousUserData || '{}');
 
+    triggerHapticFeedback('light');
     updateUserDataForMovie(movieId, newUserData);
     
     try {
         await setUserMovieDataAPI(movieId, newUserData);
+        triggerHapticFeedback('success');
     } catch (error) {
         showToast(error.message, 'error');
         updateUserDataForMovie(movieId, previousUserData);
     }
 }
 
+
+// =================================================================
+//          RENDERIZADO Y ACTUALIZACIÓN DE LA UI DE LA TARJETA
+// =================================================================
+
+/**
+ * Actualiza todos los elementos visuales de una tarjeta que dependen del estado del usuario.
+ * (Watchlist, rating, etc.).
+ * @param {HTMLElement} cardElement - El elemento de la tarjeta a actualizar.
+ */
 export function updateCardUI(cardElement) {
     const movieId = parseInt(cardElement.dataset.movieId, 10);
     const movieData = cardElement.movieData;
@@ -157,6 +191,11 @@ export function updateCardUI(cardElement) {
     lowRatingCircle.classList.toggle('is-interactive', isLoggedIn);
 }
 
+/**
+ * Configura la imagen del póster con lazy-loading y placeholders.
+ * @param {HTMLImageElement} imgElement - El elemento <img> de la tarjeta.
+ * @param {object} movieData - Los datos de la película.
+ */
 function setupCardImage(imgElement, movieData) {
     const version = movieData.last_synced_at ? new Date(movieData.last_synced_at).getTime() : '1';
     const basePosterUrl = (movieData.image && movieData.image !== '.') ? `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp` : `https://via.placeholder.com/500x750.png?text=${encodeURIComponent(movieData.title)}`;
@@ -178,6 +217,11 @@ function setupCardImage(imgElement, movieData) {
     }
 }
 
+/**
+ * Rellena los campos de texto y metadatos de la tarjeta.
+ * @param {object} elements - Un objeto con referencias a los elementos DOM de la tarjeta.
+ * @param {object} movieData - Los datos de la película.
+ */
 function populateCardText(elements, movieData) {
     elements.title.textContent = movieData.title || 'Título no disponible';
     elements.title.title = movieData.title || 'Título no disponible';
@@ -224,6 +268,11 @@ function populateCardText(elements, movieData) {
     }
 }
 
+/**
+ * Configura los elementos de rating (Filmaffinity, IMDb) en la tarjeta.
+ * @param {object} elements - Un objeto con referencias a los elementos DOM de la tarjeta.
+ * @param {object} movieData - Los datos de la película.
+ */
 function setupCardRatings(elements, movieData) {
     const isValidHttpUrl = (s) => s && (s.startsWith('http://') || s.startsWith('https://'));
     elements.faLink.href = isValidHttpUrl(movieData.fa_id) ? movieData.fa_id : '#';
@@ -246,6 +295,118 @@ function setupCardRatings(elements, movieData) {
     }
 }
 
+
+// =================================================================
+//          MANEJO DE EVENTOS Y CREACIÓN DE TARJETAS
+// =================================================================
+
+/**
+ * Voltea todas las tarjetas que estén mostrando su cara trasera.
+ */
+export function unflipAllCards() {
+    if (currentlyFlippedCard) {
+        currentlyFlippedCard.querySelector('.flip-card-inner')?.classList.remove('is-flipped');
+        currentlyFlippedCard = null;
+        document.removeEventListener('click', handleDocumentClick);
+    }
+}
+
+/**
+ * Listener para el documento que cierra una tarjeta volteada si se hace clic fuera de ella.
+ * @param {Event} e
+ */
+function handleDocumentClick(e) {
+    if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) {
+        unflipAllCards();
+    }
+}
+
+/**
+ * Función principal que maneja los clics en una tarjeta.
+ * Esta función es llamada por el listener delegado en main.js.
+ * @param {Event} event - El evento de clic.
+ */
+export function handleCardClick(event) {
+    const cardElement = this; // 'this' es establecido por .call() en el listener delegado
+    const e = event;
+
+    const directorLink = e.target.closest('.front-director-info a[data-director-name]');
+    if (directorLink) {
+        e.preventDefault();
+        const eventDetail = { keepSort: true, newFilter: { type: 'director', value: directorLink.dataset.directorName } };
+        document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
+        return;
+    }
+    if (e.target.closest('a')) return;
+
+    const isRotationDisabled = document.body.classList.contains('rotation-disabled');
+    if (!isDesktop && !isRotationDisabled) {
+        e.preventDefault(); e.stopPropagation();
+        const inner = cardElement.querySelector('.flip-card-inner');
+        if (!inner) return;
+        const isThisCardFlipped = inner.classList.contains('is-flipped');
+        if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) { unflipAllCards(); }
+        inner.classList.toggle('is-flipped');
+        if (!isThisCardFlipped) {
+            currentlyFlippedCard = cardElement;
+            setTimeout(() => document.addEventListener('click', handleDocumentClick), 0);
+        } else {
+            currentlyFlippedCard = null;
+        }
+        return;
+    }
+
+    if (isRotationDisabled) {
+        if (document.getElementById('quick-view-modal')?.classList.contains('is-visible')) {
+            closeModal();
+            return;
+        }
+        openModal(cardElement);
+    }
+}
+
+/**
+ * Añade listeners de hover a una tarjeta para el efecto de volteo retardado en escritorio.
+ * @param {HTMLElement} cardElement
+ */
+function setupIntentionalHover(cardElement) {
+    let hoverTimeout;
+    const HOVER_DELAY = 300;
+    cardElement.addEventListener('mouseenter', () => {
+        if (document.body.classList.contains('rotation-disabled')) return;
+        hoverTimeout = setTimeout(() => cardElement.classList.add('is-hovered'), HOVER_DELAY);
+    });
+    cardElement.addEventListener('mouseleave', () => {
+        clearTimeout(hoverTimeout);
+        cardElement.classList.remove('is-hovered');
+    });
+}
+
+/**
+ * Inicializa los listeners de eventos que son específicos de una tarjeta individual
+ * y no pueden ser delegados (ej. mouseenter/mouseleave).
+ * @param {HTMLElement} cardElement
+ */
+export function initializeCard(cardElement) {
+    setupIntentionalHover(cardElement);
+
+    const isLoggedIn = document.body.classList.contains('user-logged-in');
+    if (isLoggedIn) {
+        cardElement.querySelector('[data-action="toggle-watchlist"]')?.addEventListener('click', handleWatchlistClick);
+        const starContainer = cardElement.querySelector('[data-action="set-rating-estrellas"]');
+        if (starContainer) {
+            setupRatingListeners(starContainer, true);
+            starContainer.querySelector('[data-rating-level="1"]')?.addEventListener('click', handleFirstOptionClick);
+        }
+        cardElement.querySelector('[data-action="set-rating-suspenso"]')?.addEventListener('click', handleFirstOptionClick);
+    }
+}
+
+/**
+ * Crea una nueva tarjeta de película y la configura.
+ * @param {object} movieData - Los datos de la película.
+ * @returns {DocumentFragment | null} - Un fragmento de documento con la tarjeta o null si falla.
+ */
 function createMovieCard(movieData) {
     if (!cardTemplate) return null;
     const cardClone = cardTemplate.content.cloneNode(true);
@@ -272,88 +433,24 @@ function createMovieCard(movieData) {
     setupCardImage(elements.img, movieData);
     setupCardRatings(elements, movieData);
     elements.wikipediaLink.href = (movieData.wikipedia && movieData.wikipedia.startsWith('http')) ? movieData.wikipedia : '#';
-    elements.wikipediaLink.classList.toggle(CSS_CLASSES.DISABLED, !(movieData.wikipedia && movieData.wikipedia.startsWith('http')));
+    elements.wikipediaLink.style.display = (movieData.wikipedia && movieData.wikipedia.startsWith('http')) ? 'inline-flex' : 'none';
     
     updateCardUI(cardElement); 
-
-    const isLoggedIn = document.body.classList.contains('user-logged-in');
-    const starContainer = cardElement.querySelector('[data-action="set-rating-estrellas"]');
-    if (starContainer) {
-        setupRatingListeners(starContainer, isLoggedIn);
-    }
-
-    if (isLoggedIn) {
-        cardElement.querySelector('[data-action="toggle-watchlist"]')?.addEventListener('click', handleWatchlistClick);
-        const firstStar = starContainer?.querySelector('[data-rating-level="1"]');
-        firstStar?.addEventListener('click', handleFirstOptionClick);
-        const lowRatingCircle = cardElement.querySelector('[data-action="set-rating-suspenso"]');
-        lowRatingCircle?.addEventListener('click', handleFirstOptionClick);
-    }
-
-    if (isDesktop) {
-        const backFace = cardElement.querySelector('.flip-card-back');
-        const scrollableContent = backFace?.querySelector('.scrollable-content');
-        const plotSummary = backFace?.querySelector('.plot-summary-final');
-
-        if (scrollableContent && plotSummary) {
-            let scrollTimeoutId = null;
-            plotSummary.addEventListener('mouseenter', () => {
-                scrollTimeoutId = setTimeout(() => {
-                    if (scrollableContent.scrollHeight > scrollableContent.clientHeight) {
-                        scrollableContent.classList.add('full-view');
-                    }
-                }, 500);
-            });
-            
-            scrollableContent.addEventListener('mouseleave', () => {
-                clearTimeout(scrollTimeoutId);
-                scrollableContent.classList.remove('full-view');
-            });
-        }
-    }
+    initializeCard(cardElement);
     
     return cardClone;
 }
 
-export function unflipAllCards() { if (currentlyFlippedCard) { currentlyFlippedCard.querySelector('.flip-card-inner')?.classList.remove('is-flipped'); currentlyFlippedCard = null; document.removeEventListener('click', handleDocumentClick); } }
-function handleDocumentClick(e) { if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) { unflipAllCards(); } }
 
-function handleCardClick(e) {
-    const directorLink = e.target.closest('.front-director-info a[data-director-name]');
-    if (directorLink) {
-        e.preventDefault();
-        const eventDetail = { keepSort: true, newFilter: { type: 'director', value: directorLink.dataset.directorName } };
-        document.dispatchEvent(new CustomEvent('filtersReset', { detail: eventDetail }));
-        return;
-    }
-    if (e.target.closest('a')) return;
-    const cardElement = this;
-    const isRotationDisabled = document.body.classList.contains('rotation-disabled');
-    if (!isDesktop && !isRotationDisabled) {
-        e.preventDefault(); e.stopPropagation();
-        const inner = cardElement.querySelector('.flip-card-inner');
-        if (!inner) return;
-        const isThisCardFlipped = inner.classList.contains('is-flipped');
-        if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) { unflipAllCards(); }
-        inner.classList.toggle('is-flipped');
-        if (!isThisCardFlipped) { currentlyFlippedCard = cardElement; setTimeout(() => document.addEventListener('click', handleDocumentClick), 0); } 
-        else { currentlyFlippedCard = null; }
-        return;
-    }
-    if (isRotationDisabled) {
-        if (document.getElementById('quick-view-modal')?.classList.contains('is-visible')) { closeModal(); return; }
-        openModal(cardElement);
-    }
-}
+// =================================================================
+//          FUNCIONES PÚBLICAS DE RENDERIZADO
+// =================================================================
 
-export function setupCardInteractions() { 
-    document.querySelectorAll(`.${CSS_CLASSES.MOVIE_CARD}`).forEach(card => { 
-        card.removeEventListener('click', handleCardClick); 
-        card.addEventListener('click', handleCardClick);
-        setupIntentionalHover(card);
-    }); 
-}
-
+/**
+ * Renderiza la parrilla completa de tarjetas de películas.
+ * @param {HTMLElement} gridContainer - El elemento contenedor de la parrilla.
+ * @param {object[]} movies - Un array con los datos de las películas.
+ */
 export function renderMovieGrid(gridContainer, movies) { 
     renderedCardCount = 0; 
     unflipAllCards(); 
@@ -368,6 +465,7 @@ export function renderMovieGrid(gridContainer, movies) {
             const cardElement = cardNode.querySelector('.movie-card');
             if (cardElement) {
                 cardElement.style.setProperty('--card-index', index);
+                renderedCardCount++;
             }
             fragment.appendChild(cardNode); 
         }
@@ -376,8 +474,59 @@ export function renderMovieGrid(gridContainer, movies) {
     gridContainer.appendChild(fragment); 
 }
 
-export function renderSkeletons(gridContainer, paginationContainer) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const fragment = document.createDocumentFragment(); for (let i = 0; i < CONFIG.ITEMS_PER_PAGE; i++) { fragment.appendChild(createElement('div', { className: 'skeleton-card' })); } gridContainer.appendChild(fragment); }
-export function renderNoResults(gridContainer, paginationContainer, activeFilters) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const noResultsDiv = createElement('div', { className: 'no-results', attributes: { role: 'status' } }); noResultsDiv.appendChild(createElement('h3', { textContent: 'No se encontraron resultados' })); const hasActiveFilters = Object.values(activeFilters).some(value => value && value !== 'id,asc' && value !== 'all'); if (activeFilters.searchTerm) { noResultsDiv.appendChild(createElement('p', { textContent: `Prueba a simplificar tu búsqueda para "${activeFilters.searchTerm}".` })); } else if (hasActiveFilters) { noResultsDiv.appendChild(createElement('p', { textContent: 'Intenta eliminar algunos filtros para obtener más resultados.' })); } noResultsDiv.appendChild(createElement('button', { id: 'clear-filters-from-empty', className: 'btn btn--outline', textContent: 'Limpiar todos los filtros' })); gridContainer.appendChild(noResultsDiv); }
-export function renderErrorState(gridContainer, paginationContainer, message) { if (gridContainer) gridContainer.textContent = ''; if (paginationContainer) paginationContainer.textContent = ''; if (!gridContainer) return; const errorDiv = createElement('div', { className: 'no-results', attributes: { role: 'alert' } }); errorDiv.appendChild(createElement('h3', { textContent: '¡Vaya! Algo ha ido mal' })); errorDiv.appendChild(createElement('p', { textContent: message })); gridContainer.appendChild(errorDiv); }
+/**
+ * Renderiza los esqueletos de carga mientras se obtienen los datos.
+ * @param {HTMLElement} gridContainer
+ * @param {HTMLElement} paginationContainer
+ */
+export function renderSkeletons(gridContainer, paginationContainer) {
+    if (gridContainer) gridContainer.textContent = '';
+    if (paginationContainer) paginationContainer.textContent = '';
+    if (!gridContainer) return;
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < CONFIG.ITEMS_PER_PAGE; i++) {
+        fragment.appendChild(createElement('div', { className: 'skeleton-card' }));
+    }
+    gridContainer.appendChild(fragment);
+}
 
+/**
+ * Renderiza el mensaje de "Sin resultados".
+ * @param {HTMLElement} gridContainer
+ * @param {HTMLElement} paginationContainer
+ * @param {object} activeFilters
+ */
+export function renderNoResults(gridContainer, paginationContainer, activeFilters) {
+    if (gridContainer) gridContainer.textContent = '';
+    if (paginationContainer) paginationContainer.textContent = '';
+    if (!gridContainer) return;
+    const noResultsDiv = createElement('div', { className: 'no-results', attributes: { role: 'status' } });
+    noResultsDiv.appendChild(createElement('h3', { textContent: 'No se encontraron resultados' }));
+    const hasActiveFilters = Object.values(activeFilters).some(value => value && value !== 'id,asc' && value !== 'all');
+    if (activeFilters.searchTerm) {
+        noResultsDiv.appendChild(createElement('p', { textContent: `Prueba a simplificar tu búsqueda para "${activeFilters.searchTerm}".` }));
+    } else if (hasActiveFilters) {
+        noResultsDiv.appendChild(createElement('p', { textContent: 'Intenta eliminar algunos filtros para obtener más resultados.' }));
+    }
+    noResultsDiv.appendChild(createElement('button', { id: 'clear-filters-from-empty', className: 'btn btn--outline', textContent: 'Limpiar todos los filtros' }));
+    gridContainer.appendChild(noResultsDiv);
+}
+
+/**
+ * Renderiza un mensaje de error en la parrilla.
+ * @param {HTMLElement} gridContainer
+ * @param {HTMLElement} paginationContainer
+ * @param {string} message
+ */
+export function renderErrorState(gridContainer, paginationContainer, message) {
+    if (gridContainer) gridContainer.textContent = '';
+    if (paginationContainer) paginationContainer.textContent = '';
+    if (!gridContainer) return;
+    const errorDiv = createElement('div', { className: 'no-results', attributes: { role: 'alert' } });
+    errorDiv.appendChild(createElement('h3', { textContent: '¡Vaya! Algo ha ido mal' }));
+    errorDiv.appendChild(createElement('p', { textContent: message }));
+    gridContainer.appendChild(errorDiv);
+}
+
+// Inyecta la función de actualización de UI en el módulo de estrellas para evitar dependencias circulares.
 setUpdateCardUIFn(updateCardUI);

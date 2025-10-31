@@ -131,10 +131,10 @@
 }
 
 /* Tipografía dentro de la modal */
-.quick-view-modal .movie-summary h3 { font-size: 1.75rem; } /* Título al 125% */
+.quick-view-modal .movie-summary h3 { font-size: var(--font-size-lg); } /* Título al 125% */
 .quick-view-modal .movie-summary h3[data-template="title"] {
     margin-bottom: 0; /* Elimina espacio inferior del título */
-    min-height: 2.2rem; /* Reserva espacio para 2 líneas (1.75rem * 1.2 * 2) */
+    min-height: var(--space-xl); /* Reserva espacio para 2 líneas (1.75rem * 1.2 * 2) */
     display: -webkit-box;
     -webkit-line-clamp: 2; /* Limita a un máximo de 2 líneas */
     -webkit-box-orient: vertical;
@@ -142,25 +142,25 @@
     text-overflow: ellipsis;
 }
 .quick-view-modal .movie-summary .front-director-info {
-    font-size: 1.08rem; /* Director al 80% */
+    font-size: var(--font-size-md); /* Director al 80% */
     margin-bottom: var(--space-md); /* Aumenta espacio inferior */
     overflow: hidden;
 }
-.quick-view-modal .movie-summary .movie-meta { font-size: 1.35rem; } /* Año al 125% */
+.quick-view-modal .movie-summary .movie-meta { font-size: var(--font-size-lg); } /* Año al 125% */
 .quick-view-back .details-list,
 .quick-view-back .plot-summary-final,
-.quick-view-back .critic-review { font-size: 0.95rem; }
+.quick-view-back .critic-review { font-size: var(--font-size-base); }
 
 /* Aumenta el tamaño de episodios y duración al 125% */
 .quick-view-modal [data-template="episodes"],
 .quick-view-modal [data-template="duration"] {
-    font-size: 1.2rem;
+    font-size: var(--font-size-md);
 }
 
 /* Aumenta el tamaño de las notas de Filmaffinity e IMDb al 125% */
 .quick-view-modal [data-template="fa-rating"],
 .quick-view-modal [data-template="imdb-rating"] {
-    font-size: 1.5rem;
+    font-size: var(--font-size-lg);
 }
 
 /* Aumenta el espacio debajo de las notas y entre género/actores */
@@ -181,14 +181,14 @@
 .quick-view-modal .low-rating-circle {
     transform: scale(1.2); /* 1.5 * 0.80 = 1.2 */
     transform-origin: left center; /* Escala desde la izquierda para mantener alineación */
-    margin-left: 1rem; /* Añade margen para compensar el aumento de tamaño */
+    margin-left: var(--space-md); /* Añade margen para compensar el aumento de tamaño */
 }
 
 /* Reduce el tamaño de la bandera al 80% */
 .quick-view-modal .country-container {
     transform: scale(1.2); /* 1.5 * 0.80 = 1.2 */
     transform-origin: left center; /* Escala desde la izquierda */
-    margin-left: 0.5rem; /* Añade margen para compensar */
+    margin-left: var(--space-xs); /* Añade margen para compensar */
 }
 
 /* -----------------------------------------------------------------
@@ -268,7 +268,7 @@
     }
 
     /* Ajuste tipografía escritorio */
-     .quick-view-modal .movie-summary h3 { font-size: 1.5rem; } /* Asegura que el título se mantenga grande en escritorio */
+     .quick-view-modal .movie-summary h3 { font-size: var(--font-size-lg); } /* Asegura que el título se mantenga grande en escritorio */
 }
 
 /* --- B) Móvil (Bottom Sheet) --- */

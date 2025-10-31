@@ -1,25 +1,26 @@
 // =================================================================
-//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.1)
+//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.2)
 // =================================================================
-// v3.1 - Optimización del re-renderizado de tarjetas.
-//        - Se añade un listener para 'userMovieDataChanged' que actualiza
-//          solo la tarjeta afectada por una acción del usuario.
-//        - Se mantiene el listener 'userDataUpdated' para cambios masivos
-//          (login/logout).
+// v3.2 - Implementada la delegación de eventos para los clics en tarjetas.
+//        - Se elimina la llamada a setupCardInteractions.
+//        - Se añade un listener único y delegado en el gridContainer.
 
 import { CONFIG } from './config.js';
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from './utils.js';
 import { fetchMovies } from './api.js';
 import {
-    dom, renderMovieGrid, renderSkeletons, renderNoResults, renderErrorState,
-    renderPagination, updateTypeFilterUI,
-    updateHeaderPaginationState, updateTotalResultsUI,
-    clearAllSidebarAutocomplete,
-    setupCardInteractions,
-    prefetchNextPage,
-    updateCardUI,
-    initQuickView,
-    setupAuthModal
+    // DOM elements
+    dom,
+    // Card and Grid rendering
+    renderMovieGrid, renderSkeletons, renderNoResults, renderErrorState, updateCardUI,
+    // Pagination
+    renderPagination, updateHeaderPaginationState, prefetchNextPage,
+    // Quick View and Auth Modals
+    initQuickView, setupAuthModal,
+    // Other UI updates
+    updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete,
+    // Import card-specific handlers for delegation
+    handleCardClick
 } from './ui.js';
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from './constants.js';
 import {
@@ -35,6 +36,7 @@ import { supabase } from './supabaseClient.js';
 import { initAuthForms } from './auth.js';
 import { fetchUserMovieData } from './api-user.js';
 
+// --- MAPAS DE URL ---
 const URL_PARAM_MAP = {
     q: 'searchTerm', genre: 'genre', year: 'year', country: 'country',
     dir: 'director', actor: 'actor', sel: 'selection', sort: 'sort',
@@ -44,6 +46,7 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
     Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
+// --- LÓGICA PRINCIPAL DE CARGA Y RENDERIZADO ---
 export async function loadAndRenderMovies(page = 1) {
     const requestId = incrementRequestId();
     setCurrentPage(page);
@@ -106,13 +109,11 @@ function updateDomWithResults(movies, totalMovies) {
         updateHeaderPaginationState(1, 0);
     } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
         renderMovieGrid(dom.gridContainer, movies);
-        setupCardInteractions();
         dom.paginationContainer.textContent = '';
         updateHeaderPaginationState(1, 1);
     } else {
         const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
         renderMovieGrid(dom.gridContainer, moviesForPage);
-        setupCardInteractions();
         renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
         updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
     }
@@ -122,6 +123,7 @@ function updateDomWithResults(movies, totalMovies) {
     }
 }
 
+// --- MANEJADORES DE EVENTOS ---
 async function handleSortChange(event) {
     triggerPopAnimation(event.target);
     document.dispatchEvent(new CustomEvent('uiActionTriggered'));
@@ -149,6 +151,7 @@ async function handleSearchInput() {
     }
 }
 
+// --- CONFIGURACIÓN DE LISTENERS ---
 function setupHeaderListeners() {
     const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
     dom.searchInput.addEventListener('input', debouncedSearch);
@@ -218,8 +221,16 @@ function setupGlobalListeners() {
         }
     });
 
-    dom.gridContainer.addEventListener('click', async (e) => {
-        if (e.target.id === 'clear-filters-from-empty') {
+    // ▼▼▼ LISTENER DELEGADO PARA TARJETAS Y LIMPIEZA DE FILTROS ▼▼▼
+    dom.gridContainer.addEventListener('click', (e) => {
+        const cardElement = e.target.closest('.movie-card');
+        const clearButton = e.target.closest('#clear-filters-from-empty');
+        
+        if (cardElement) {
+            // Delega el manejo del clic a la función importada
+            handleCardClick.call(cardElement, e);
+        } else if (clearButton) {
+            // Maneja el clic en el botón de limpiar filtros desde el estado vacío
             document.dispatchEvent(new CustomEvent('filtersReset'));
         }
     });
@@ -266,6 +277,7 @@ function setupGlobalListeners() {
     });
 }
 
+// --- SISTEMA DE AUTENTICACIÓN Y DATOS DE USUARIO ---
 function setupAuthSystem() {
     const userAvatarInitials = document.getElementById('user-avatar-initials');
     const logoutButton = document.getElementById('logout-button');
@@ -315,6 +327,7 @@ function setupAuthSystem() {
     });
 }
 
+// --- GESTIÓN DE URL Y TÍTULO DE PÁGINA ---
 function updatePageTitle() {
     const { searchTerm, genre, year, country, director, actor, selection } = getActiveFilters();
     let title = "Tu brújula cinéfila y seriéfila inteligente";
@@ -385,6 +398,7 @@ function updateUrl() {
     }
 }
 
+// --- FUNCIÓN DE INICIALIZACIÓN ---
 function init() {
     window.addEventListener('storage', (e) => {
         if (e.key === 'theme') {
@@ -407,25 +421,23 @@ function init() {
         loadAndRenderMovies(getCurrentPage());
     });
 
+    // Inicialización de módulos
     initSidebar();
     initQuickView();
     setupHeaderListeners();
-    initTouchDrawer(); // Inicializar el drawer táctil
+    initTouchDrawer();
     setupGlobalListeners();
     setupKeyboardShortcuts();
     setupAuthSystem();
     setupAuthModal();
     initAuthForms();
     
+    // Carga inicial de datos
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));
     loadAndRenderMovies(getCurrentPage());
 
-    // ==========================================================
-    //  ▼▼▼ SISTEMA DE LISTENERS DE DATOS DE USUARIO OPTIMIZADO ▼▼▼
-    // ==========================================================
-    
-    // Listener #1: Para actualizaciones granulares (una sola tarjeta)
+    // Listeners para actualizaciones de datos de usuario
     document.addEventListener('userMovieDataChanged', (e) => {
         const { movieId } = e.detail;
         if (!movieId) return;
@@ -436,14 +448,11 @@ function init() {
         }
     });
 
-    // Listener #2: Para actualizaciones masivas (todas las tarjetas visibles)
     document.addEventListener('userDataUpdated', () => {
         document.querySelectorAll('.movie-card').forEach(cardElement => {
             updateCardUI(cardElement);
         });
     });
-
-    // ==========================================================
     
     document.addEventListener('filtersReset', (e) => {
         const { keepSort, newFilter } = e.detail || {};
