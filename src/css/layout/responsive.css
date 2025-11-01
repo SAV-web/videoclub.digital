@@ -9,9 +9,8 @@
 /* --- ESTILOS BASE (MÓVIL - hasta 768px) --- */
 
 html { 
-    /* ✨ MEJORA: Tipografía fluida que escala con el viewport */
-    /* Escala de 14px (en 320px) a 16px (en 768px) */
-    font-size: clamp(0.875rem, 0.7679rem + 0.4464vw, 1rem);
+    /* La gestión del tamaño de fuente base ahora se controla mediante
+       la redefinición de variables CSS en los puntos de ruptura (ver al final del fichero). */
 }
 
 :root {
@@ -53,6 +52,7 @@ html {
     transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
 }
 .sidebar .play-button-container { 
+    display: none; /* Oculto por defecto en móvil para evitar FOUC */
     flex-direction: column; 
     gap: var(--space-md); 
     margin-top: var(--space-xs); 
@@ -86,6 +86,7 @@ body.sidebar-is-open .sidebar .sidebar-scrollable-filters {
     transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s; /* Retrasa el fade-in */
 }
 body.sidebar-is-open .sidebar .play-button-container { 
+    display: flex; /* Se muestra al abrir */
     flex-direction: row; 
     gap: var(--space-md); 
     margin-top: 0; 
@@ -189,6 +190,7 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
             visibility: visible;
             transition: none;
         }    .sidebar .play-button-container { 
+        display: flex; /* Restaurar visibilidad en escritorio */
         flex-direction: row; 
         gap: var(--space-md); 
         margin-top: 0;
@@ -281,5 +283,29 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
     }
     body.sidebar-collapsed .grid-container { 
         grid-template-columns: repeat(7, 1fr); 
+    }
+}
+
+/* ================================================================= */
+/* Sistema de Tipografía Responsiva
+/* ================================================================= */
+/* Redefine las variables de tamaño de fuente en puntos de ruptura
+   para mejorar la jerarquía y legibilidad en cada viewport. */
+
+@media (min-width: 48em) { /* Tablet (768px+) */
+    :root {
+        --font-size-md: 1.25rem;  /* 20px */
+        --font-size-lg: 1.5rem;   /* 24px */
+        --font-size-xl: 1.75rem;  /* 28px */
+        --font-size-xxl: 2.25rem; /* 36px */
+    }
+}
+
+@media (min-width: 62em) { /* Desktop (992px+) */
+    :root {
+        --font-size-md: 1.5rem;   /* 24px */
+        --font-size-lg: 1.75rem;  /* 28px */
+        --font-size-xl: 2.25rem;  /* 36px */
+        --font-size-xxl: 3rem;    /* 48px */
     }
 }

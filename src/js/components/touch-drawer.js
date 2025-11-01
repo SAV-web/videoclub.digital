@@ -31,19 +31,33 @@ export function initTouchDrawer() {
     };
 
     function handleDrawerTouchStart(e) {
-        // Activar solo en móvil y si el toque está cerca del borde izquierdo de la pantalla,
-        // o si el toque empieza DENTRO de un sidebar ya abierto.
-        const canStartDrag = window.innerWidth <= 768 && 
-            (e.touches[0].clientX < 30 || e.target.closest('#sidebar'));
+        // En móvil, si el sidebar está abierto, solo se puede arrastrar desde él mismo.
+        // Si está cerrado, se puede iniciar un arrastre desde cualquier parte de la pantalla.
+        const sidebarIsOpen = document.body.classList.contains('sidebar-is-open');
+        if (window.innerWidth > 768) return; // Solo para móvil
 
-        if (canStartDrag) {
-            isDragging = true;
-            isHorizontalDrag = false; // Resetear la detección de dirección
-            touchStartX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            touchStartTime = Date.now();
-            sidebar.style.transition = 'none';
+        if (sidebarIsOpen) {
+            // Si está abierto, solo permitimos arrastrar desde el propio sidebar para cerrarlo.
+            if (!e.target.closest('#sidebar')) {
+                isDragging = false;
+                return;
+            }
+        } else {
+            // Si está cerrado, no queremos capturar toques en elementos interactivos como sliders.
+            const isOnSlider = e.target.closest('.noUi-target');
+            if (isOnSlider) {
+                isDragging = false;
+                return;
+            }
         }
+
+        // Si llegamos aquí, el gesto es válido para iniciar el seguimiento.
+        isDragging = true;
+        isHorizontalDrag = false; // Resetear la detección de dirección
+        touchStartX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+        sidebar.style.transition = 'none';
     }
 
     function handleDrawerTouchMove(e) {
