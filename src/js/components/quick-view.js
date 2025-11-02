@@ -134,7 +134,7 @@ function populateModal(cardElement) {
  */
 export function openModal(cardElement) {
     if (!cardElement) return;
-    triggerHapticFeedback('medium');
+
     dom.content.scrollTop = 0; // Asegurar que la modal siempre empiece desde arriba
     populateModal(cardElement);
     document.body.classList.add('modal-open');

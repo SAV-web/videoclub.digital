@@ -211,7 +211,6 @@ function setupGlobalListeners() {
     dom.paginationContainer.addEventListener('click', async (e) => {
         const button = e.target.closest(SELECTORS.CLICKABLE_BTN);
         if (button && button.dataset.page) {
-            triggerHapticFeedback('light');
             document.dispatchEvent(new CustomEvent('uiActionTriggerred'));
             triggerPopAnimation(button);
             const page = parseInt(button.dataset.page, 10);
@@ -237,7 +236,6 @@ function setupGlobalListeners() {
     });
 
     dom.themeToggleButton.addEventListener('click', (e) => {
-        triggerHapticFeedback('light');
         triggerPopAnimation(e.currentTarget);
         document.dispatchEvent(new CustomEvent('uiActionTriggered'));
         document.body.classList.toggle('dark-mode');
