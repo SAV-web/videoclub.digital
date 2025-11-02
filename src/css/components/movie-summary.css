@@ -101,7 +101,13 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
 [data-template="hbo-icon"] {
     color: #002BE7;
 }
-
+/* ▼▼▼ REGLA AÑADIDA PARA EL ICONO DE DISNEY ▼▼▼ */
+.disney-icon {
+    color: #1a3c77; /* Color corporativo azul oscuro de Disney */
+}
+.dark-mode .disney-icon {
+    color: #4da4f2; /* Un azul más claro y vibrante para el modo oscuro */
+}
 /* Contenedor para año y bandera (se alinea a la derecha) */
 .year-country-line {
     /* Ya no necesita propiedades flex propias, el padre (.movie-meta) lo gestiona */

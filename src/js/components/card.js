@@ -280,12 +280,19 @@ function populateCardText(elements, movieData) {
     if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
     
     const collections = movieData.collections_list || '';
-    elements.netflixIcon.style.display = 'none';
-    elements.hboIcon.style.display = 'none';
+    // 1. Ocultamos todos los iconos de forma segura.
+    // El operador 'optional chaining' (?.) evita el error si el elemento es null o undefined.
+    elements.netflixIcon?.style.setProperty('display', 'none');
+    elements.hboIcon?.style.setProperty('display', 'none');
+    elements.disneyIcon?.style.setProperty('display', 'none');
+
+    // 2. Mostramos el icono que corresponda, también de forma segura.
     if (collections.includes('N')) {
-        elements.netflixIcon.style.display = 'block';
+        if (elements.netflixIcon) elements.netflixIcon.style.setProperty('display', 'block');
     } else if (collections.includes('H')) {
-        elements.hboIcon.style.display = 'block';
+        if (elements.hboIcon) elements.hboIcon.style.setProperty('display', 'block');
+    } else if (collections.includes('D')) {
+        if (elements.disneyIcon) elements.disneyIcon.style.setProperty('display', 'block');
     }
 }
 
@@ -505,17 +512,34 @@ function createMovieCard(movieData) {
     if (movieData.id) cardElement.style.viewTransitionName = `movie-${movieData.id}`;
     
     const elements = {
-        img: cardClone.querySelector('img'), title: cardClone.querySelector(SELECTORS.TITLE), director: cardClone.querySelector(SELECTORS.DIRECTOR),
-        year: cardClone.querySelector(SELECTORS.YEAR), countryContainer: cardClone.querySelector(SELECTORS.COUNTRY_CONTAINER),
-        countryFlag: cardClone.querySelector(SELECTORS.COUNTRY_FLAG), faLink: cardClone.querySelector(SELECTORS.FA_LINK),
-        faRating: cardClone.querySelector(SELECTORS.FA_RATING), faVotesBarContainer: cardClone.querySelector('[data-template="fa-votes-bar-container"]'),
-        faVotesBar: cardClone.querySelector('[data-template="fa-votes-bar"]'), imdbLink: cardClone.querySelector(SELECTORS.IMDB_LINK),
-        imdbRating: cardClone.querySelector(SELECTORS.IMDB_RATING), imdbVotesBarContainer: cardClone.querySelector('[data-template="imdb-votes-bar-container"]'),
-        imdbVotesBar: cardClone.querySelector('[data-template="imdb-votes-bar"]'), duration: cardClone.querySelector(SELECTORS.DURATION),
-        episodes: cardClone.querySelector('[data-template="episodes"]'), netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
-        hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'), wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
-        genre: cardClone.querySelector(SELECTORS.GENRE), actors: cardClone.querySelector(SELECTORS.ACTORS), synopsis: cardClone.querySelector(SELECTORS.SYNOPSIS),
-        criticContainer: cardClone.querySelector('[data-template="critic-container"]'), critic: cardClone.querySelector('[data-template="critic"]')
+        img: cardClone.querySelector('img'),
+        title: cardClone.querySelector(SELECTORS.TITLE),
+        director: cardClone.querySelector(SELECTORS.DIRECTOR),
+        year: cardClone.querySelector(SELECTORS.YEAR),
+        countryContainer: cardClone.querySelector(SELECTORS.COUNTRY_CONTAINER),
+        countryFlag: cardClone.querySelector(SELECTORS.COUNTRY_FLAG),
+        faLink: cardClone.querySelector(SELECTORS.FA_LINK),
+        faRating: cardClone.querySelector(SELECTORS.FA_RATING),
+        faVotesBarContainer: cardClone.querySelector('[data-template="fa-votes-bar-container"]'),
+        faVotesBar: cardClone.querySelector('[data-template="fa-votes-bar"]'),
+        imdbLink: cardClone.querySelector(SELECTORS.IMDB_LINK),
+        imdbRating: cardClone.querySelector(SELECTORS.IMDB_RATING),
+        imdbVotesBarContainer: cardClone.querySelector('[data-template="imdb-votes-bar-container"]'),
+        imdbVotesBar: cardClone.querySelector('[data-template="imdb-votes-bar"]'),
+        duration: cardClone.querySelector(SELECTORS.DURATION),
+        episodes: cardClone.querySelector('[data-template="episodes"]'),
+        netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
+        hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'),
+        
+        // ▼▼▼ LÍNEA CORREGIDA/AÑADIDA ▼▼▼
+        disneyIcon: cardClone.querySelector('[data-template="disney-icon"]'),
+        
+        wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
+        genre: cardClone.querySelector(SELECTORS.GENRE),
+        actors: cardClone.querySelector(SELECTORS.ACTORS),
+        synopsis: cardClone.querySelector(SELECTORS.SYNOPSIS),
+        criticContainer: cardClone.querySelector('[data-template="critic-container"]'),
+        critic: cardClone.querySelector('[data-template="critic"]')
     };
 
     populateCardText(elements, movieData);
@@ -529,6 +553,7 @@ function createMovieCard(movieData) {
     
     return cardClone;
 }
+
 
 
 // =================================================================
