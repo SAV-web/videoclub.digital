@@ -86,7 +86,6 @@ async function handleWatchlistClick(event) {
     const wasOnWatchlist = button.classList.contains('is-active');
     const newUserData = { onWatchlist: !wasOnWatchlist };
     const previousUserData = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
-
     triggerHapticFeedback('light');
     updateUserDataForMovie(movieId, newUserData);
 

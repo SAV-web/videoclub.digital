@@ -186,6 +186,7 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
 
 
 function resetFilters() {
+    triggerHapticFeedback('medium');
     const playButton = document.querySelector('#play-button');
     if (playButton) triggerPopAnimation(playButton);
     document.dispatchEvent(new CustomEvent('filtersReset'));
@@ -375,6 +376,7 @@ function setupEventListeners() {
             }
             const link = e.target.closest('.filter-link');
             if (link) {
+                triggerHapticFeedback('light');
                 triggerPopAnimation(link);
                 handleFilterChangeOptimistic(link.dataset.filterType, link.dataset.filterValue);
             }

@@ -60,42 +60,70 @@ CREATE OR REPLACE FUNCTION public.search_movies_offset(
     page_offset integer
 )
 RETURNS json
-LANGUAGE plpgsql STABLE PARALLEL SAFE AS $function$ -- >> CAMBIO 1: Lenguaje cambiado a plpgsql
+LANGUAGE plpgsql STABLE PARALLEL SAFE AS $function$
 DECLARE
-    -- >> CAMBIO 2: Declaramos una variable para almacenar el ID del país.
+    -- Variables para IDs resueltos (solo los que realmente necesitas)
     v_country_id INT;
 BEGIN
-    -- >> CAMBIO 3: Pre-cálculo del ID del país.
-    -- Se ejecuta UNA SOLA VEZ al inicio de la función, si el filtro de país está activo.
-    IF country_name IS NOT NULL THEN
-        SELECT id INTO v_country_id FROM public.countries WHERE name = country_name;
+    -- ============================================================
+    -- FASE 1: PRE-PROCESAMIENTO (Resolución de IDs)
+    -- ============================================================
+    -- Solo resolvemos el país porque es un JOIN simple y frecuente
+    IF country_name IS NOT NULL AND country_name != '' THEN
+        SELECT id INTO v_country_id 
+        FROM public.countries 
+        WHERE name = country_name;
+        
+        -- Opcional: Validación
+        IF v_country_id IS NULL THEN
+            RAISE NOTICE 'País "%" no encontrado, ignorando filtro', country_name;
+            -- Puedes decidir si retornas vacío o continúas sin el filtro
+        END IF;
     END IF;
-
-    -- El resto de la lógica de la función, incluyendo los CTEs (Common Table Expressions),
-    -- se envuelve en un RETURN para devolver el resultado JSON.
+    
+    -- ============================================================
+    -- FASE 2: CONSULTA PRINCIPAL (Con ID Pre-resuelto)
+    -- ============================================================
     RETURN (
         WITH filtered_movies AS (
             SELECT
                 m.id,
-                m.relevance, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes
-            FROM
-                public.movies m
+                m.relevance, m.year, m.fa_rating, m.imdb_rating, 
+                m.fa_votes, m.imdb_votes
+            FROM public.movies m
             WHERE
-                (search_term IS NULL OR search_term = '' OR m.title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
-                AND (p_year_start IS NULL OR m.year >= p_year_start) AND (p_year_end IS NULL OR m.year <= p_year_end)
-                AND (media_type IS NULL OR media_type = 'all' OR (media_type = 'movies' AND (m.type IS NULL OR m.type IN ('D', 'A'))) OR (media_type = 'series' AND m.type ILIKE 'S%'))
-                -- >> CAMBIO 4: La condición ahora usa la variable pre-calculada.
-                -- Es una comparación directa de enteros (m.country_id = v_country_id), mucho más rápida.
+                -- Búsqueda de texto (CRÍTICO: Cambiar a FTS como propuse antes)
+                (search_term IS NULL OR search_term = '' OR 
+                 m.title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
+                
+                -- Filtros numéricos simples (PostgreSQL los optimiza perfectamente)
+                AND (p_year_start IS NULL OR m.year >= p_year_start)
+                AND (p_year_end IS NULL OR m.year <= p_year_end)
+                
+                -- Tipo de medio (condición compuesta pero simple)
+                AND (media_type IS NULL OR media_type = 'all' 
+                     OR (media_type = 'movies' AND (m.type IS NULL OR m.type IN ('D', 'A'))) 
+                     OR (media_type = 'series' AND m.type ILIKE 'S%'))
+                
+                -- ✅ País: Ahora usa el ID pre-resuelto
                 AND (v_country_id IS NULL OR m.country_id = v_country_id)
+                
+                -- ✅ Género, Director, Actor: MANTENER subconsultas con tsvector
+                -- Son búsquedas de texto sobre columnas indexadas con GIN, no lookups simples
                 AND (genre_name IS NULL OR m.genres_tsv @@ plainto_tsquery('spanish', genre_name))
                 AND (director_name IS NULL OR m.directors_tsv @@ plainto_tsquery('spanish', director_name))
                 AND (actor_name IS NULL OR m.actors_tsv @@ plainto_tsquery('spanish', actor_name))
+                
+                -- Colecciones (búsqueda simple en lista)
                 AND (selection_code IS NULL OR m.collections_list ILIKE '%' || selection_code || '%')
-                AND (excluded_genres IS NULL OR NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(excluded_genres) as g))
-                AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL OR m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(excluded_countries)))
+                
+                -- Exclusiones (arrays)
+                AND (excluded_genres IS NULL OR 
+                     NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(excluded_genres) as g))
+                AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL OR 
+                     m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(excluded_countries)))
         ),
         paginated_ids AS (
-            -- Esta parte no cambia. Sigue siendo una forma muy eficiente de paginar.
             SELECT id
             FROM filtered_movies
             ORDER BY
@@ -118,18 +146,24 @@ BEGIN
         total AS (
             SELECT count(*) as value FROM filtered_movies
         )
-        -- Esta parte tampoco cambia. Construye el objeto JSON final.
         SELECT json_build_object(
             'total', (SELECT value FROM total),
             'items', (
                 SELECT COALESCE(json_agg(rows), '[]'::json)
                 FROM (
                     SELECT
-                        m.id, m.title, m.year, m.year_end, m.type, m.genres_list AS genres,
-                        m.directors_list AS directors, m.actors_list AS actors, c.name AS country,
-                        c.code AS country_code, m.minutes, m.image, m.fa_id, m.fa_rating, m.fa_votes,
-                        m.imdb_id, m.imdb_rating, m.imdb_votes, m.synopsis, m.thumbhash_st, m.critic,
-                        m.last_synced_at, m.episodes, m.wikipedia, m.collections_list
+                        m.id, m.title, m.year, m.year_end, m.type, 
+                        m.genres_list AS genres,
+                        m.directors_list AS directors, 
+                        m.actors_list AS actors, 
+                        c.name AS country,
+                        c.code AS country_code, 
+                        m.minutes, m.image, m.fa_id, 
+                        m.fa_rating, m.fa_votes,
+                        m.imdb_id, m.imdb_rating, m.imdb_votes, 
+                        m.synopsis, m.thumbhash_st, m.critic,
+                        m.last_synced_at, m.episodes, m.wikipedia, 
+                        m.collections_list
                     FROM paginated_ids pi
                     JOIN public.movies m ON pi.id = m.id
                     LEFT JOIN public.countries c ON m.country_id = c.id

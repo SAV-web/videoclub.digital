@@ -170,38 +170,16 @@
     -ms-overflow-style: none;
 }
 
-/* ----------------------------------------------------------------- 
-    4. MEJORAS DE ACCESIBILIDAD TÁCTIL (Estrellas de Rating)
-   ----------------------------------------------------------------- */
-/*
- * Aumenta el tamaño de las estrellas de rating y su área clickable
- * para dispositivos táctiles (sin hover, puntero grueso).
- */
+/* =================================================================
+   MEJORAS DE ACCESIBILIDAD TÁCTIL (Mínimo 48x48px)
+   Se aplica a dispositivos sin hover y con puntero grueso.
+   ================================================================= */
 @media (hover: none) and (pointer: coarse) {
-    .star-icon {
-        width: 24px;
-        height: 24px;
-    }
     
-    /* Aumentar área clickable invisible */
-    .star-rating-container .star-icon {
-        position: relative;
-    }
-    
-    .star-rating-container .star-icon::before {
-        content: '';
-        position: absolute;
-        top: -8px;
-        left: -8px;
-        right: -8px;
-        bottom: -8px;
-        /* Área invisible de 40x40px (24px estrella + 8px padding por cada lado) */
-    }
-
-    /* Aumentar tamaño del icono de watchlist y su área clickable */
+    /* --- Botón de Watchlist --- */
     .card-action-btn {
-        width: 40px; /* Asegura un área táctil mínima de 40x40px */
-        height: 40px;
+        width: 48px; /* Área táctil mínima de 48x48px */
+        height: 48px;
     }
 
     .card-action-btn svg {
@@ -209,21 +187,39 @@
         height: 24px;
     }
 
-    /* Aumentar tamaño y área de pulsación del círculo de nota baja */
+    /* --- Estrellas de Rating --- */
+    .star-icon {
+        position: relative; /* Necesario para el pseudo-elemento */
+    }
+    
+    .star-icon::before {
+        content: '';
+        position: absolute;
+        /* Creamos un cuadrado de 48x48px centrado en el icono de 20px */
+        top: -14px;    /* (48 - 20) / 2 */
+        left: -14px;
+        right: -14px;
+        bottom: -14px;
+        /* Descomentar para visualizar el área táctil: */
+        /* background: rgba(255, 0, 0, 0.2); */
+    }
+
+    /* --- Círculo de Suspenso --- */
     .low-rating-circle {
-        width: 20px;
-        height: 20px;
-        border-width: 5px;
+        /* Aumentamos ligeramente el tamaño visual para mejor presencia */
+        width: 24px;
+        height: 24px;
+        border-width: 6px;
         position: relative; /* Necesario para el pseudo-elemento */
     }
 
     .low-rating-circle::before {
         content: '';
         position: absolute;
-        top: -6px;
+        /* Creamos un cuadrado de 48x48px centrado en el círculo total de 36px */
+        top: -6px;     /* (48 - 36) / 2 */
         left: -6px;
         right: -6px;
         bottom: -6px;
-        /* Área invisible total de 40x40px */
     }
 }
