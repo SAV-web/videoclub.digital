@@ -100,10 +100,16 @@ export function renderUserStars(starContainer, filledLevel, hideHollowStars = fa
 async function handleRatingClick(event) {
     event.preventDefault();
     event.stopPropagation();
-    
+
     const clickedElement = event.currentTarget;
-    const card = clickedElement.closest('.movie-card');
-    const movieId = parseInt(card.dataset.movieId, 10);
+    // ▼▼▼ CAMBIO CLAVE ▼▼▼
+    // Hacemos la búsqueda del contenedor más genérica. Buscamos el ancestro más
+    // cercano que tenga el ID de la película, ya sea una `.movie-card` o el
+    // contenedor de la Quick View (`#quick-view-content`).
+    const interactiveContainer = clickedElement.closest('[data-movie-id]');
+    if (!interactiveContainer) return;
+
+    const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
     const starIndex = parseInt(clickedElement.dataset.ratingLevel, 10) - 1;
 
     const currentUserData = getUserDataForMovie(movieId) || { rating: null };
@@ -111,19 +117,19 @@ async function handleRatingClick(event) {
     const numStarsClicked = starIndex + 1;
 
     let newRating = (numStarsClicked === currentStars) ? null : LEVEL_TO_RATING_MAP[starIndex];
-    
+
     const newUserData = { rating: newRating };
-    const previousUserData = JSON.parse(card.dataset.previousUserData || '{}');
+    const previousUserData = JSON.parse(interactiveContainer.dataset.previousUserData || '{}');
 
     updateUserDataForMovie(movieId, newUserData);
-    updateCardUI(card);
-    
+    updateCardUI(interactiveContainer);
+
     try {
         await setUserMovieDataAPI(movieId, newUserData);
     } catch (error) {
         showToast(error.message, 'error');
         updateUserDataForMovie(movieId, previousUserData);
-        updateCardUI(card);
+        updateCardUI(interactiveContainer);
     }
 }
 
@@ -134,9 +140,12 @@ function handleRatingMouseMove(event) {
 }
 
 function handleRatingMouseLeave(event) {
-    const card = event.currentTarget.closest('.movie-card');
-    if (card && updateCardUI) {
-        updateCardUI(card);
+    // ▼▼▼ CAMBIO CLAVE ▼▼▼
+    // Misma lógica que en handleRatingClick para encontrar el contenedor correcto.
+    const interactiveContainer = event.currentTarget.closest('[data-movie-id]');
+    if (interactiveContainer && updateCardUI) {
+        // Al salir el ratón, restauramos el estado visual actual (la nota guardada).
+        updateCardUI(interactiveContainer);
     }
 }
 

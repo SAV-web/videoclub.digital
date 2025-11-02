@@ -172,11 +172,27 @@ body.dark-mode .flip-card-inner.is-flipped {
     transform: rotateY(180deg);
 }
 
+.flip-card-back > *:not(.scrollable-content) {
+    transition: opacity var(--duration-quick) ease-out;
+}
+
+/* Cuando se expande, ocultamos el resto de los elementos */
+.flip-card-back.is-expanded > *:not(.scrollable-content) {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ▼▼▼ MEJORA: Eliminamos el padding del contenedor cuando está expandido ▼▼▼ */
+.flip-card-back.is-expanded {
+    padding: 0;
+    transition: padding var(--duration-normal) var(--ease-smooth-out);
+}
+
+
 .back-meta-header {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: var(--space-md);
     width: 100%;
     margin-bottom: var(--space-sm);
     font-size: var(--font-size-sm);
@@ -185,7 +201,7 @@ body.dark-mode .flip-card-inner.is-flipped {
 .episode-duration-group {
     display: flex;
     align-items: center;
-    gap: var(--space-xxs);
+    gap: var(--space-sm);
 }
 
 .ratings-container {
@@ -245,6 +261,7 @@ body.dark-mode .flip-card-inner.is-flipped {
     border-top: 1px solid var(--color-border);
     font-size: var(--font-size-xs);
     line-height: var(--line-height-normal);
+    color: var(--color-text-secondary);
 }
 .detail-item {
     overflow: hidden;
@@ -261,7 +278,100 @@ body.dark-mode .flip-card-inner.is-flipped {
     border-top: 1px solid var(--color-border);
     opacity: 0.8;
     font-size: var(--font-size-xs);
-    line-height: var(--line-height-relaxed);
+    color: var(--color-text-secondary); /* Secundario para buena legibilidad */
+    font-weight: var(--font-weight-normal); /* Usamos el peso normal, no light */    line-height: var(--line-height-relaxed);
+}
+
+.scrollable-content {
+    position: relative;
+    transition: all var(--duration-normal) var(--ease-smooth-out);
+    overflow: hidden; /* Oculta el scrollbar */
+}
+
+/* Estado expandido del contenido de scroll */
+.flip-card-back.is-expanded .scrollable-content {
+    position: absolute;
+    inset: 0; /* Ocupa todo el espacio */
+    padding: var(--space-md);
+    background-color: var(--color-surface);
+    overflow-y: auto; /* Permite el scroll manual si el usuario lo desea */
+}
+
+/* ▼▼▼ MEJORA: Ocultamos la barra de scroll en la vista expandida ▼▼▼ */
+.flip-card-back.is-expanded .scrollable-content {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE */
+}
+
+.flip-card-back.is-expanded .scrollable-content::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, etc. */
+}
+
+/* Máscara de degradado para indicar que hay más contenido */
+.scrollable-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to bottom, transparent, var(--color-surface));
+    pointer-events: none; /* Permite que los eventos de ratón pasen a través */
+}
+
+.flip-card-back.is-expanded .scrollable-content::after {
+    opacity: 0;
+}
+
+.plot-summary-final { cursor: default; }
+.critic-review { margin-top: var(--space-sm); }
+
+/* Botón de expansión (+) */
+.expand-content-btn {
+    position: absolute;
+    bottom: -5px;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--color-accent);
+    color: var(--color-surface);
+    font-size: 1.5rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all var(--duration-quick) ease-out;
+}
+
+.expand-content-btn:hover {
+    transform: scale(1.1);
+}
+
+/* En estado expandido, el botón se convierte en un botón de cierre (-) */
+.flip-card-back.is-expanded .expand-content-btn {
+    content: '-';
+}
+
+[data-template="wikipedia-link"] > .rating-icon {
+    width: 1.7em;
+    height: 1.7em;
+    transform: translateY(-1px);
+    /* Puedes ajustar el color aquí si lo necesitas */
+    color: var(--color-text-tertiary);
+}
+
+.star-rating-container {
+    cursor: default;
+}
+    border-top: 1px solid var(--color-border);
+    opacity: 0.8;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary); /* Secundario para buena legibilidad */
+    font-weight: var(--font-weight-normal); /* Usamos el peso normal, no light */    line-height: var(--line-height-relaxed);
 }
 .plot-summary-final { cursor: pointer; }
 .critic-review { margin-top: var(--space-sm); }
@@ -269,7 +379,9 @@ body.dark-mode .flip-card-inner.is-flipped {
 [data-template="wikipedia-link"] > .rating-icon {
     width: 1.7em;
     height: 1.7em;
-    transform: translateY(-1px); 
+    transform: translateY(-1px);
+    /* Puedes ajustar el color aquí si lo necesitas */
+    color: var(--color-text-tertiary);
 }
 
 .star-rating-container {

@@ -6,6 +6,15 @@ body {
                 color var(--transition-duration-normal) var(--transition-timing-function);
 }
 
+/* ========================================================== */
+/*  ▼▼▼ BLOQUEO DE SCROLL PARA MODALES ▼▼▼
+/*      Cuando una modal está activa, se añade esta clase al body
+/*      para evitar que el contenido de fondo se desplace.
+/* ========================================================== */
+body.modal-open {
+    overflow: hidden;
+}
+
 @keyframes pop-effect {
     50% { transform: scale(1.1); }
 }

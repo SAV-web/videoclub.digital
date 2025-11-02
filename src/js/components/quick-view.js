@@ -7,6 +7,12 @@
 // =================================================================
 
 import { openAccessibleModal, closeAccessibleModal } from './modal-manager.js';
+// ▼▼▼ IMPORTACIONES CLAVE ▼▼▼
+// Traemos las funciones de `card.js` para reutilizar la lógica de actualización
+// y configuración de listeners para los elementos interactivos (estrellas, watchlist).
+import { updateCardUI, initializeCard } from './card.js';
+import { unflipAllCards } from './card.js';
+
 
 const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 const dom = {
@@ -23,7 +29,10 @@ const dom = {
  * @param {Event} event
  */
 function handleOutsideClick(event) {
-    if (dom.modal.classList.contains('is-visible') && !dom.modal.contains(event.target) && !event.target.closest('.movie-card')) {
+    // Si el clic es fuera de la modal Y no es en la tarjeta que la abrió (o cualquier otra)
+    // la cerramos. Esto evita que el clic de apertura la cierre inmediatamente.
+    const isClickInsideCard = event.target.closest('.movie-card');
+    if (dom.modal.classList.contains('is-visible') && !dom.modal.contains(event.target) && !isClickInsideCard) {
         closeModal();
     }
 }
@@ -32,6 +41,8 @@ function handleOutsideClick(event) {
  * Cierra la ventana de Vista Rápida de forma controlada.
  */
 export function closeModal() {
+    if (!dom.modal.classList.contains('is-visible')) return;
+
     // 1. Gestionar las clases para las animaciones CSS de salida.
     dom.modal.classList.remove('is-visible');
     dom.overlay.classList.remove('is-visible');
@@ -45,6 +56,24 @@ export function closeModal() {
 }
 
 /**
+ * Maneja el clic en el nombre de un director dentro de la modal.
+ * Cierra la modal y aplica el filtro de director en la vista principal.
+ * @param {Event} event - El evento de clic.
+ */
+function handleDirectorClick(event) {
+    const directorLink = event.target.closest('.front-director-info a[data-director-name]');
+    if (!directorLink) return;
+
+    event.preventDefault();
+    const directorName = directorLink.dataset.directorName;
+
+    // 1. Cierra la modal.
+    closeModal();
+    // 2. Dispara el evento para que el sistema de filtros actúe.
+    document.dispatchEvent(new CustomEvent('filtersReset', { detail: { keepSort: true, newFilter: { type: 'director', value: directorName } } }));
+}
+
+/**
  * Rellena la ventana de Vista Rápida con los datos de una tarjeta específica.
  * @param {HTMLElement} cardElement - El elemento de la tarjeta desde donde se leerán los datos.
  */
@@ -53,78 +82,81 @@ function populateModal(cardElement) {
     const front = clone.querySelector('.quick-view-front');
     const back = clone.querySelector('.quick-view-back');
 
+    // ▼▼▼ MEJORA: Asignamos los datos de la película y el ID al contenido de la modal.
+    // Esto es crucial para que las funciones de `updateCardUI` e `initializeCard` funcionen.
+    dom.content.movieData = cardElement.movieData;
+    dom.content.dataset.movieId = cardElement.dataset.movieId;
+
     // --- Rellenar Cara Frontal ---
     const frontImg = front.querySelector('img');
     const cardImg = cardElement.querySelector('.flip-card-front img');
     frontImg.src = cardImg.src;
     frontImg.alt = cardImg.alt;
 
-    const copyContent = (sourceSelector, targetSelector, targetParent = front) => {
+    // Función segura para copiar texto sin romper el DOM.
+    const copyTextContent = (sourceSelector, targetSelector, parent) => {
         const source = cardElement.querySelector(sourceSelector);
-        const target = targetParent.querySelector(targetSelector);
-        if (source && target) {
-            target.replaceWith(source.cloneNode(true));
-        }
-    };
-    
-    copyContent('[data-template="title"]', '[data-template="title"]');
-    copyContent('[data-template="director"]', '[data-template="director"]');
-    copyContent('[data-template="year"]', '[data-template="year"]');
-    copyContent('[data-template="low-rating-circle"]', '[data-template="low-rating-circle"]');
-    copyContent('[data-template="average-rating-stars"]', '[data-template="average-rating-stars"]');
-    copyContent('[data-template="country-container"]', '[data-template="country-container"]');
-
-    // --- Rellenar Cara Trasera ---
-    copyContent('[data-template="wikipedia-link"]', '[data-template="wikipedia-link"]', back);
-    copyContent('.ratings-container', '.ratings-container', back);
-
-    const copyText = (sourceSelector, targetSelector, targetParent = back) => {
-        const source = cardElement.querySelector(sourceSelector);
-        const target = targetParent.querySelector(targetSelector);
-        if (source && target) {
-            target.textContent = source.textContent;
-        }
+        const target = parent.querySelector(targetSelector);
+        if (source && target) target.textContent = source.textContent;
     };
 
-    copyText('[data-template="episodes"]', '[data-template="episodes"]', back);
-    copyText('[data-template="duration"]', '[data-template="duration"]', back);
-    copyText('[data-template="genre"]', '[data-template="genre"]', back);
-    copyText('[data-template="actors"]', '[data-template="actors"]', back);
-    copyText('[data-template="synopsis"]', '[data-template="synopsis"]', back);
-    
-    const criticContainerSource = cardElement.querySelector('[data-template="critic-container"]');
-    const criticContainerTarget = back.querySelector('[data-template="critic-container"]');
-    if (criticContainerSource && criticContainerTarget) {
-        if (criticContainerSource.style.display !== 'none') {
-            criticContainerTarget.style.display = 'block';
-            copyText('[data-template="critic"]', '[data-template="critic"]', back);
-        } else {
-            criticContainerTarget.style.display = 'none';
+    // Función segura para copiar HTML interno.
+    const copyInnerHTML = (sourceSelector, targetSelector, parent) => {
+        const source = cardElement.querySelector(sourceSelector);
+        const target = parent.querySelector(targetSelector);
+        if (source && target) target.innerHTML = source.innerHTML;
+    };
+
+    // --- Rellenar Cara Frontal (de forma segura) ---
+    copyTextContent('[data-template="title"]', '#quick-view-title', front);
+    copyInnerHTML('[data-template="director"]', '[data-template="director"]', front);
+    copyTextContent('[data-template="year"]', '[data-template="year"]', front);
+    copyInnerHTML('[data-template="country-container"]', '[data-template="country-container"]', front);
+
+    // Copia de iconos de plataforma
+    ['[data-template="netflix-icon"]', '[data-template="hbo-icon"]'].forEach(selector => {
+        const sourceIcon = cardElement.querySelector(selector);
+        const targetIcon = front.querySelector(selector);
+        if (sourceIcon && targetIcon) {
+            targetIcon.style.display = sourceIcon.style.display;
         }
+    });
+    
+    // --- Rellenar Cara Trasera (de forma segura) ---
+    copyInnerHTML('.ratings-container', '.ratings-container', back);
+    copyInnerHTML('.details-list', '.details-list', back);
+    copyTextContent('[data-template="synopsis"]', '[data-template="synopsis"]', back);
+
+    // Lógica específica y segura para Wikipedia
+    const wikipediaLinkTarget = back.querySelector('[data-template="wikipedia-link"]');
+    const wikipediaLinkSource = cardElement.querySelector('[data-template="wikipedia-link"]');
+    if (wikipediaLinkTarget && wikipediaLinkSource) {
+        wikipediaLinkTarget.href = wikipediaLinkSource.href;
+        wikipediaLinkTarget.style.display = wikipediaLinkSource.style.display;
     }
 
-    // Lógica para expandir sinopsis en hover (solo en escritorio)
-    if (isDesktop) {
-        const scrollableContent = back.querySelector('.scrollable-content');
-        const plotSummary = back.querySelector('.plot-summary-final');
-        if (scrollableContent && plotSummary) {
-            let scrollTimeoutId = null;
-            plotSummary.addEventListener('mouseenter', () => {
-                scrollTimeoutId = setTimeout(() => {
-                    if (scrollableContent.scrollHeight > scrollableContent.clientHeight) {
-                        scrollableContent.classList.add('full-view');
-                    }
-                }, 1000);
-            });
-            scrollableContent.addEventListener('mouseleave', () => {
-                clearTimeout(scrollTimeoutId);
-                scrollableContent.classList.remove('full-view');
-            });
-        }
+    // Lógica específica y segura para duración y episodios
+    copyTextContent('[data-template="duration"]', '[data-template="duration"]', back);
+    const episodesTarget = back.querySelector('[data-template="episodes"]');
+    const episodesSource = cardElement.querySelector('[data-template="episodes"]');
+    if (episodesTarget && episodesSource) {
+        episodesTarget.textContent = episodesSource.textContent;
+        episodesTarget.style.display = episodesSource.textContent ? 'inline' : 'none';
     }
+    
+    copyInnerHTML('[data-template="critic-container"]', '[data-template="critic-container"]', back);
 
     dom.content.textContent = '';
     dom.content.appendChild(clone);
+
+    // ▼▼▼ PASO CLAVE: Reutilizamos la lógica de la tarjeta ▼▼▼
+    // 1. `updateCardUI` se encarga de mostrar el estado correcto de estrellas y watchlist.
+    updateCardUI(dom.content);
+    // 2. `initializeCard` añade los event listeners para que los botones sean funcionales.
+    initializeCard(dom.content);
+
+    // ▼▼▼ PASO ADICIONAL: Añadimos el listener para el clic en el director.
+    dom.content.addEventListener('click', handleDirectorClick);
 }
 
 
@@ -134,6 +166,9 @@ function populateModal(cardElement) {
  */
 export function openModal(cardElement) {
     if (!cardElement) return;
+
+    // Si hay alguna tarjeta volteada, la cerramos para evitar solapamientos visuales.
+    unflipAllCards();
 
     dom.content.scrollTop = 0; // Asegurar que la modal siempre empiece desde arriba
     populateModal(cardElement);

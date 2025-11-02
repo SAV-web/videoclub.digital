@@ -2,7 +2,7 @@
 
 :root {
     /* ========================================================== */
-    /*  ▼▼▼ SISTEMA DE DISEÑO v2.0 ▼▼▼
+    /*  ▼▼▼ SISTEMA TIPOGRÁFICO v2.1 (CON RANGO DINÁMICO) ▼▼▼ */
     /* ========================================================== */
     
     /* ---- Sistema Tipográfico (Escala Responsiva) ---- */
@@ -16,15 +16,22 @@
     --font-size-xxl: 2rem;     /* 32px */
     --font-title: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-body: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-weight-light: 300;      /* NUEVO: Para detalles sutiles */
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
-    --font-weight-extrabold: 800;
+    --font-weight-black: 900;      /* NUEVO: Para títulos impactantes (opcional, usar con moderación) */    --font-weight-extrabold: 800;
     --line-height-tight: 1.25;
     --line-height-normal: 1.5;
     --line-height-relaxed: 1.75;
     
+    /* ---- Paleta de Colores de Texto con Mayor Rango ---- */
+    --color-text-hero: #1a1a1a;        /* NUEVO: Casi negro para máxima atención */
+    --color-text-primary: #333333;   /* Mantenido: Para cuerpo de texto principal */
+    --color-text-secondary: #666666; /* Mantenido: Para labels y descripciones */
+    --color-text-tertiary: #999999;  /* NUEVO: Gris claro para metadatos no críticos */
+
     /* ---- Sistema de Movimiento (Avanzado) ---- */
     --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     --ease-smooth-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -84,8 +91,11 @@
 body.dark-mode {
     --color-bg: #121212;
     --color-surface: #242424;
-    --color-text-primary: #FFFFFF;
-    --color-text-secondary: #A8A8A8;
+    /* ▼▼▼ ACTUALIZACIÓN PARA MODO OSCURO ▼▼▼ */
+    --color-text-hero: #FFFFFF;        /* El blanco más puro para el título */
+    --color-text-primary: #E0E0E0;   /* Blanco ligeramente apagado para el texto principal */
+    --color-text-secondary: #A8A8A8; /* Gris medio para labels */
+    --color-text-tertiary: #757575;  /* Gris más oscuro para metadatos */
     --color-border: #2F2F2F;
     --color-accent: #B0BEC5;
     --color-accent-exclude: #546E7A;
