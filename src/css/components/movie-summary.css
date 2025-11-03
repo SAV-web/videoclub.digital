@@ -93,7 +93,6 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
     vertical-align: middle;
 }
 
-/* Colores de marca para los iconos */
 .netflix-icon {
     color: #E50914;
 }
@@ -101,12 +100,37 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
 [data-template="hbo-icon"] {
     color: #002BE7;
 }
-/* ▼▼▼ REGLA AÑADIDA PARA EL ICONO DE DISNEY ▼▼▼ */
+
 .disney-icon {
     color: #1a3c77; /* Color corporativo azul oscuro de Disney */
 }
 .dark-mode .disney-icon {
     color: #4da4f2; /* Un azul más claro y vibrante para el modo oscuro */
+}
+
+.wb-icon {
+color: #000b6c;
+}
+.dark-mode .wb-icon {
+    color: #4da4f2;
+}
+
+.universal-icon {
+    /* Hacemos que herede el color del texto secundario para una integración sutil */
+    color: var(--color-text-secondary);
+}
+.dark-mode .universal-icon {
+    /* En modo oscuro, también heredará el color secundario, que es más claro */
+    color: var(--color-text-secondary);
+}
+/* ▼▼▼ REGLA AÑADIDA PARA EL ICONO DE SONY ▼▼▼ */
+.sony-icon {
+    /* Un azul profesional que encaja con la marca Sony */
+    color: #004098; 
+}
+.dark-mode .sony-icon {
+    /* Una versión más clara y brillante para el modo oscuro */
+    color: #3182CE;
 }
 /* Contenedor para año y bandera (se alinea a la derecha) */
 .year-country-line {

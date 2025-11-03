@@ -253,7 +253,6 @@ function populateCardText(elements, movieData) {
     } else { directorContainer.textContent = directorsString; }
     
     elements.duration.textContent = formatRuntime(movieData.minutes);
-    // ▼▼▼ CORRECCIÓN: Ocultamos el span si no hay episodios para estabilizar el layout de Flexbox.
     const episodesText = (movieData.type?.toUpperCase().startsWith('S.') && movieData.episodes) ? `${movieData.episodes} x` : '';
     if (elements.episodes) {
         elements.episodes.textContent = episodesText;
@@ -279,20 +278,43 @@ function populateCardText(elements, movieData) {
     elements.countryContainer.style.display = movieData.country_code ? 'flex' : 'none';
     if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
     
+    // ==========================================================
+    //  ▼▼▼ LÓGICA DE ICONOS REFACTORIZADA PARA MÚLTIPLES ICONOS ▼▼▼
+    // ==========================================================
+    
     const collections = movieData.collections_list || '';
-    // 1. Ocultamos todos los iconos de forma segura.
-    // El operador 'optional chaining' (?.) evita el error si el elemento es null o undefined.
+    
+    // 1. Ocultamos todos los iconos al principio para limpiar el estado anterior.
     elements.netflixIcon?.style.setProperty('display', 'none');
     elements.hboIcon?.style.setProperty('display', 'none');
     elements.disneyIcon?.style.setProperty('display', 'none');
+    elements.wbIcon?.style.setProperty('display', 'none');
+    elements.universalIcon?.style.setProperty('display', 'none');
+    elements.sonyIcon?.style.setProperty('display', 'none');
+    elements.paramountIcon?.style.setProperty('display', 'none');
 
-    // 2. Mostramos el icono que corresponda, también de forma segura.
-    if (collections.includes('N')) {
-        if (elements.netflixIcon) elements.netflixIcon.style.setProperty('display', 'block');
-    } else if (collections.includes('H')) {
-        if (elements.hboIcon) elements.hboIcon.style.setProperty('display', 'block');
-    } else if (collections.includes('D')) {
-        if (elements.disneyIcon) elements.disneyIcon.style.setProperty('display', 'block');
+    // 2. Usamos una serie de 'if' independientes. Cada uno se evalúa
+    //    sin importar si los anteriores fueron verdaderos o no.
+    if (collections.includes('N') && elements.netflixIcon) {
+        elements.netflixIcon.style.setProperty('display', 'block');
+    }
+    if (collections.includes('H') && elements.hboIcon) {
+        elements.hboIcon.style.setProperty('display', 'block');
+    }
+    if (collections.includes('D') && elements.disneyIcon) {
+        elements.disneyIcon.style.setProperty('display', 'block');
+    }
+    if (collections.includes('W') && elements.wbIcon) {
+        elements.wbIcon.style.setProperty('display', 'block');
+    }
+    if (collections.includes('U') && elements.universalIcon) {
+        elements.universalIcon.style.setProperty('display', 'block');
+    }
+    if (collections.includes('S') && elements.sonyIcon) {
+        elements.sonyIcon.style.setProperty('display', 'block');
+    }
+    if (collections.includes('P') && elements.paramountIcon) {
+        elements.paramountIcon.style.setProperty('display', 'block');
     }
 }
 
@@ -530,10 +552,11 @@ function createMovieCard(movieData) {
         episodes: cardClone.querySelector('[data-template="episodes"]'),
         netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
         hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'),
-        
-        // ▼▼▼ LÍNEA CORREGIDA/AÑADIDA ▼▼▼
         disneyIcon: cardClone.querySelector('[data-template="disney-icon"]'),
-        
+        wbIcon: cardClone.querySelector('[data-template="wb-icon"]'), // <-- Añadido
+        universalIcon: cardClone.querySelector('[data-template="universal-icon"]'), // <-- Añadido
+        sonyIcon: cardClone.querySelector('[data-template="sony-icon"]'), // <-- Añadido
+        paramountIcon: cardClone.querySelector('[data-template="paramount-icon"]'), // <-- Añadido
         wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
         genre: cardClone.querySelector(SELECTORS.GENRE),
         actors: cardClone.querySelector(SELECTORS.ACTORS),
