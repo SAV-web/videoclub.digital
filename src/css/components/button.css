@@ -166,7 +166,7 @@ body.dark-mode .btn:hover {
 
 .btn.is-loading {
     opacity: 0.6;
-    pointer-events: none; /* Previene clics múltiples mientras una carga está en proceso */
+    /* pointer-events: none; <-- ¡ELIMINADO! El AbortController gestiona esto. */
     position: relative;
     cursor: wait;
 }
@@ -184,8 +184,8 @@ body.dark-mode .btn:hover {
     border-radius: 50%;
     border-top-color: currentColor;
     animation: btn-spinner 0.6s linear infinite;
-}*/
 
 @keyframes btn-spinner {
     to { transform: rotate(360deg); }
 }
+}*/
