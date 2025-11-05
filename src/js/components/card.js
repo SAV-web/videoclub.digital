@@ -233,6 +233,57 @@ function setupCardImage(imgElement, movieData) {
 }
 
 /**
+ * Formatea la lista de actores para que quepa en un espacio limitado sin cortar nombres.
+ * @param {string} actorsString - La cadena de actores separada por comas.
+ * @param {number} maxLength - La longitud máxima permitida para la cadena.
+ * @returns {string} La cadena de actores formateada y truncada de forma inteligente.
+ */
+function formatActorsWithEllipsis(actorsString, maxLength = 85) {
+    if (!actorsString || actorsString.trim() === '') {
+        return { truncated: 'Reparto no disponible', full: [], needsExpansion: false };
+    }
+    if (actorsString.toUpperCase() === '(A)') {
+        return { truncated: 'Animación', full: [], needsExpansion: false };
+    }
+
+    const allActors = actorsString.split(',').map(name => name.trim());
+
+    if (actorsString.length <= maxLength) {
+        return { truncated: actorsString, full: allActors, needsExpansion: false };
+    }
+
+    let truncatedActors = [];
+    let currentLength = 0;
+
+    for (const actor of allActors) {
+        const separatorLength = truncatedActors.length > 0 ? 2 : 0; // ', '.length
+        // Longitud que tendría la cadena si añadiéramos el nuevo actor
+        const potentialLength = currentLength + separatorLength + actor.length;
+
+        if (potentialLength > maxLength) {
+            break; // No cabe el siguiente actor, así que paramos.
+        }
+        truncatedActors.push(actor);
+        currentLength = potentialLength;
+    }
+
+    if (truncatedActors.length === 0 && allActors.length > 0) {
+        // Si ni siquiera el primer actor cabe, es un caso extremo.
+        // Devolvemos solo el primero para evitar un campo vacío.
+        truncatedActors.push(allActors[0]);
+    }
+    
+    const truncatedString = truncatedActors.join(', ');
+    const needsExpansion = truncatedActors.length < allActors.length;
+
+    return {
+        truncated: truncatedString,
+        full: allActors,
+        needsExpansion: needsExpansion
+    };
+}
+
+/**
  * Rellena los campos de texto y metadatos de la tarjeta.
  * @param {object} elements - Un objeto con referencias a los elementos DOM de la tarjeta.
  * @param {object} movieData - Los datos de la película.
@@ -260,7 +311,7 @@ function populateCardText(elements, movieData) {
     }
 
     elements.genre.textContent = movieData.genres || 'Género no disponible';
-    elements.actors.textContent = (movieData.actors?.toUpperCase() === '(A)') ? "Animación" : (movieData.actors || 'Reparto no disponible');
+    elements.actors.textContent = formatActorsWithEllipsis(movieData.actors);
     elements.synopsis.textContent = movieData.synopsis || 'Argumento no disponible.';
     elements.criticContainer.style.display = (movieData.critic && movieData.critic.trim() !== '') ? 'block' : 'none';
     if (elements.criticContainer.style.display === 'block') elements.critic.textContent = movieData.critic;
