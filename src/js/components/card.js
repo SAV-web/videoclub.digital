@@ -244,7 +244,7 @@ function populateCardText(elements, movieData) {
     directorContainer.textContent = '';
     const directorsString = movieData.directors || 'Director no disponible';
     if (directorsString && directorsString !== 'Director no disponible') {
-        directorsString.split(',').map(name => name.trim()).forEach((name, index, arr) => {
+        directorsString.split(', ').map(name => name.trim()).forEach((name, index, arr) => {
             const link = createElement('a', { textContent: name, href: `#` });
             link.dataset.directorName = name;
             directorContainer.appendChild(link);

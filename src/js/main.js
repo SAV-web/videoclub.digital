@@ -40,7 +40,7 @@ import { fetchUserMovieData } from './api-user.js';
 const URL_PARAM_MAP = {
     q: 'searchTerm', genre: 'genre', year: 'year', country: 'country',
     dir: 'director', actor: 'actor', sel: 'selection', sort: 'sort',
-    type: 'mediaType', p: 'page'
+    type: 'mediaType', p: 'page', exg: 'excludedGenres', exc: 'excludedCountries'
 };
 const REVERSE_URL_PARAM_MAP = Object.fromEntries(
     Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
@@ -351,11 +351,19 @@ function readUrlAndSetState() {
     Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
         const value = params.get(shortKey);
         if (value !== null) {
-            if (stateKey === 'page') setCurrentPage(parseInt(value, 10) || 1);
-            else if (stateKey === 'searchTerm') setSearchTerm(value);
-            else if (stateKey === 'sort') setSort(value);
-            else if (stateKey === 'mediaType') setMediaType(value);
-            else setFilter(stateKey, value);
+            if (stateKey === 'page') {
+                setCurrentPage(parseInt(value, 10) || 1);
+            } else if (stateKey === 'searchTerm') {
+                setSearchTerm(value);
+            } else if (stateKey === 'sort') {
+                setSort(value);
+            } else if (stateKey === 'mediaType') {
+                setMediaType(value);
+            } else if (stateKey === 'excludedGenres' || stateKey === 'excludedCountries') {
+                setFilter(stateKey, value.split(','));
+            } else {
+                setFilter(stateKey, value);
+            }
         }
     });
 
@@ -375,10 +383,12 @@ function updateUrl() {
     const currentPage = getCurrentPage();
 
     Object.entries(activeFilters).forEach(([key, value]) => {
-        if (value && typeof value === 'string' && value.trim() !== '') {
-            const shortKey = REVERSE_URL_PARAM_MAP[key];
-            if (!shortKey) return;
-            
+        const shortKey = REVERSE_URL_PARAM_MAP[key];
+        if (!shortKey) return;
+
+        if (Array.isArray(value) && value.length > 0) {
+            params.set(shortKey, value.join(','));
+        } else if (typeof value === 'string' && value.trim() !== '') {
             if (key === 'mediaType' && value !== DEFAULTS.MEDIA_TYPE) params.set(shortKey, value);
             else if (key === 'sort' && value !== DEFAULTS.SORT) params.set(shortKey, value);
             else if (key === 'year' && value !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) params.set(shortKey, value);

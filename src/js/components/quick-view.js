@@ -114,7 +114,10 @@ function populateModal(cardElement) {
     copyInnerHTML('[data-template="country-container"]', '[data-template="country-container"]', front);
 
     // Copia de iconos de plataforma
-    ['[data-template="netflix-icon"]', '[data-template="hbo-icon"]'].forEach(selector => {
+    [
+        '[data-template="netflix-icon"]', '[data-template="hbo-icon"]', '[data-template="disney-icon"]', 
+        '[data-template="wb-icon"]', '[data-template="universal-icon"]', '[data-template="sony-icon"]', 
+        '[data-template="paramount-icon"]'].forEach(selector => {
         const sourceIcon = cardElement.querySelector(selector);
         const targetIcon = front.querySelector(selector);
         if (sourceIcon && targetIcon) {
