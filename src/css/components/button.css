@@ -162,3 +162,30 @@ body.dark-mode .btn:hover {
         padding: 0; /* Eliminar padding extra si lo hubiera */
     }
 }
+/* Añadir al final de src/css/components/button.css */
+
+.btn.is-loading {
+    opacity: 0.6;
+    pointer-events: none; /* Previene clics múltiples mientras una carga está en proceso */
+    position: relative;
+    cursor: wait;
+}
+
+/* Opcional: añade un spinner sutil 
+.btn.is-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    border-top-color: currentColor;
+    animation: btn-spinner 0.6s linear infinite;
+}*/
+
+@keyframes btn-spinner {
+    to { transform: rotate(360deg); }
+}

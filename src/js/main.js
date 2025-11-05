@@ -1,26 +1,20 @@
 // =================================================================
-//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.2)
+//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v4.0 - UI Optimista)
 // =================================================================
-// v3.2 - Implementada la delegación de eventos para los clics en tarjetas.
-//        - Se elimina la llamada a setupCardInteractions.
-//        - Se añade un listener único y delegado en el gridContainer.
+// v4.0 - Implementada la carga de datos optimista con cancelación de peticiones.
+//        - La UI responde instantáneamente a la interacción del usuario.
+//        - Se utiliza AbortController para cancelar peticiones de red obsoletas.
+//        - Se añade un estado de carga visual global (barra de progreso y botones).
+// =================================================================
 
 import { CONFIG } from './config.js';
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from './utils.js';
 import { fetchMovies } from './api.js';
 import {
-    // DOM elements
-    dom,
-    // Card and Grid rendering
-    renderMovieGrid, renderSkeletons, renderNoResults, renderErrorState, updateCardUI,
-    // Pagination
-    renderPagination, updateHeaderPaginationState, prefetchNextPage,
-    // Quick View and Auth Modals
-    initQuickView, setupAuthModal,
-    // Other UI updates
-    updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete,
-    // Import card-specific handlers for delegation
-    handleCardClick
+    dom, renderMovieGrid, renderSkeletons, renderNoResults, renderErrorState,
+    updateCardUI, renderPagination, updateHeaderPaginationState, prefetchNextPage,
+    initQuickView, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI,
+    clearAllSidebarAutocomplete, handleCardClick
 } from './ui.js';
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from './constants.js';
 import {
@@ -36,6 +30,9 @@ import { supabase } from './supabaseClient.js';
 import { initAuthForms } from './auth.js';
 import { fetchUserMovieData } from './api-user.js';
 
+// --- GESTIÓN DE ESTADO DE CARGA Y PETICIONES ---
+let moviesAbortController = null;
+
 // --- MAPAS DE URL ---
 const URL_PARAM_MAP = {
     q: 'searchTerm', genre: 'genre', year: 'year', country: 'country',
@@ -46,84 +43,137 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
     Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
-// --- LÓGICA PRINCIPAL DE CARGA Y RENDERIZADO ---
+// =================================================================
+//          LÓGICA PRINCIPAL DE CARGA Y RENDERIZADO (OPTIMISTA)
+// =================================================================
+
+/**
+ * Orquesta la carga y renderizado de películas con una UI optimista y cancelación de peticiones.
+ * @param {number} [page=1] - El número de página a cargar.
+ */
 export async function loadAndRenderMovies(page = 1) {
+    if (moviesAbortController) {
+        moviesAbortController.abort("Nueva petición iniciada");
+    }
+    moviesAbortController = new AbortController();
+    const { signal } = moviesAbortController;
+    
     const requestId = incrementRequestId();
+    
+    setLoadingState(true);
     setCurrentPage(page);
     updatePageTitle();
     updateUrl();
 
-    const supportsViewTransitions = !!document.startViewTransition;
-
     const renderLogic = async () => {
         try {
+            renderSkeletons(dom.gridContainer, dom.paginationContainer);
+            updateHeaderPaginationState(getCurrentPage(), 0);
+
             const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
-            const { items: movies, total: totalMovies } = await fetchMovies(getActiveFilters(), page, pageSize);
-
-            if (movies && movies.length > 0) {
-                preloadLcpImage(movies[0]);
-            }
             
-            if (requestId !== getLatestRequestId()) {
-                const abortError = new DOMException('Request aborted by newer request', 'AbortError');
-                throw abortError;
+            const { items: movies, total: totalMovies } = await fetchMovies(
+                getActiveFilters(), page, pageSize, signal
+            );
+            
+            if (requestId === getLatestRequestId()) {
+                updateDomWithResults(movies, totalMovies);
             }
-
-            updateDomWithResults(movies, totalMovies);
-
         } catch (error) {
-            if (error.name === 'AbortError') {
-                console.log('Petición de películas cancelada deliberadamente.');
-                throw error;
+            if (error.name !== 'AbortError') {
+                console.error('Error en el proceso de carga:', error);
+                if (requestId === getLatestRequestId()) {
+                    const friendlyMessage = getFriendlyErrorMessage(error);
+                    showToast(friendlyMessage, 'error');
+                    renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
+                }
             }
-            console.error('Error en el proceso de carga:', error);
-            const friendlyMessage = getFriendlyErrorMessage(error);
-            showToast(friendlyMessage, 'error');
-            renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
-            throw error;
+        } finally {
+            if (requestId === getLatestRequestId()) {
+                setLoadingState(false);
+                moviesAbortController = null;
+            }
         }
     };
     
-    if (supportsViewTransitions) {
-        if (requestId === 1) {
-            renderSkeletons(dom.gridContainer, dom.paginationContainer);
-        }
-        await document.startViewTransition(renderLogic).ready;
+    if (document.startViewTransition) {
+        document.startViewTransition(renderLogic);
     } else {
-        dom.gridContainer.setAttribute('aria-busy', 'true');
-        renderSkeletons(dom.gridContainer, dom.paginationContainer);
-        updateHeaderPaginationState(getCurrentPage(), 0);
         await renderLogic();
-        dom.gridContainer.setAttribute('aria-busy', 'false');
     }
 }
 
+/**
+ * Actualiza el DOM con los resultados de la búsqueda de películas.
+ */
 function updateDomWithResults(movies, totalMovies) {
     setTotalMovies(totalMovies);
     updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
-
     const currentState = getState();
 
-    if (currentState.totalMovies === 0) {
+    if (!movies || movies.length === 0) {
         renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
         updateHeaderPaginationState(1, 0);
-    } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
+        return;
+    }
+    
+    preloadLcpImage(movies[0]);
+
+    if (totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
         renderMovieGrid(dom.gridContainer, movies);
         dom.paginationContainer.textContent = '';
         updateHeaderPaginationState(1, 1);
     } else {
         const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
         renderMovieGrid(dom.gridContainer, moviesForPage);
-        renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
-        updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
+        renderPagination(dom.paginationContainer, totalMovies, currentState.currentPage);
+        updateHeaderPaginationState(currentState.currentPage, totalMovies);
     }
 
-    if (currentState.totalMovies > 0) {
-        prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
+    if (totalMovies > 0) {
+        prefetchNextPage(currentState.currentPage, totalMovies, getActiveFilters());
     }
 }
 
-// --- MANEJADORES DE EVENTOS ---
+/**
+ * Gestiona el estado visual de carga de la aplicación.
+ * @param {boolean} isLoading - True si la carga está activa.
+ */
+function setLoadingState(isLoading) {
+    const loadingBar = document.getElementById('loading-bar');
+    const interactiveElements = [
+        dom.headerPrevBtn,
+        dom.headerNextBtn,
+        ...document.querySelectorAll('.pagination-container .btn')
+    ];
+
+    if (isLoading) {
+        interactiveElements.forEach(el => el?.classList.add('is-loading'));
+        document.body.style.cursor = 'wait';
+        if (loadingBar) {
+            loadingBar.hidden = false;
+            loadingBar.classList.remove('is-loading');
+            void loadingBar.offsetWidth;
+            loadingBar.classList.add('is-loading');
+        }
+    } else {
+        interactiveElements.forEach(el => el?.classList.remove('is-loading'));
+        document.body.style.cursor = '';
+        if (loadingBar) {
+            loadingBar.classList.remove('is-loading');
+            setTimeout(() => {
+                if (!loadingBar.classList.contains('is-loading')) {
+                    loadingBar.hidden = true;
+                }
+            }, 500);
+        }
+    }
+}
+
+// =================================================================
+//          MANEJADORES DE EVENTOS Y LISTENERS
+// =================================================================
+
 async function handleSortChange(event) {
     triggerPopAnimation(event.target);
     document.dispatchEvent(new CustomEvent('uiActionTriggered'));
@@ -151,7 +201,6 @@ async function handleSearchInput() {
     }
 }
 
-// --- CONFIGURACIÓN DE LISTENERS ---
 function setupHeaderListeners() {
     const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
     dom.searchInput.addEventListener('input', debouncedSearch);
@@ -182,7 +231,7 @@ function setupHeaderListeners() {
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         const activeElement = document.activeElement;
-        const isTyping = activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable;
+        const isTyping = ['INPUT', 'TEXTAREA'].includes(activeElement.tagName) || activeElement.isContentEditable;
 
         if (e.key === 'Escape') {
             if (activeElement === dom.searchInput && dom.searchInput.value !== '') {
@@ -196,8 +245,8 @@ function setupKeyboardShortcuts() {
         if (isTyping) return;
         switch (e.key) {
             case '/': e.preventDefault(); dom.searchInput.focus(); break;
-            case 'k': if (dom.headerNextBtn && !dom.headerNextBtn.disabled) dom.headerNextBtn.click(); break;
-            case 'j': if (dom.headerPrevBtn && !dom.headerPrevBtn.disabled) dom.headerPrevBtn.click(); break;
+            case 'k': dom.headerNextBtn?.click(); break;
+            case 'j': dom.headerPrevBtn?.click(); break;
         }
     });
 }
@@ -210,8 +259,8 @@ function setupGlobalListeners() {
 
     dom.paginationContainer.addEventListener('click', async (e) => {
         const button = e.target.closest(SELECTORS.CLICKABLE_BTN);
-        if (button && button.dataset.page) {
-            document.dispatchEvent(new CustomEvent('uiActionTriggerred'));
+        if (button?.dataset.page) {
+            document.dispatchEvent(new CustomEvent('uiActionTriggered'));
             triggerPopAnimation(button);
             const page = parseInt(button.dataset.page, 10);
             if (!isNaN(page)) {
@@ -221,16 +270,13 @@ function setupGlobalListeners() {
         }
     });
 
-    // ▼▼▼ LISTENER DELEGADO PARA TARJETAS Y LIMPIEZA DE FILTROS ▼▼▼
     dom.gridContainer.addEventListener('click', (e) => {
         const cardElement = e.target.closest('.movie-card');
         const clearButton = e.target.closest('#clear-filters-from-empty');
         
         if (cardElement) {
-            // Delega el manejo del clic a la función importada
             handleCardClick.call(cardElement, e);
         } else if (clearButton) {
-            // Maneja el clic en el botón de limpiar filtros desde el estado vacío
             document.dispatchEvent(new CustomEvent('filtersReset'));
         }
     });
@@ -238,24 +284,18 @@ function setupGlobalListeners() {
     dom.themeToggleButton.addEventListener('click', (e) => {
         triggerPopAnimation(e.currentTarget);
         document.dispatchEvent(new CustomEvent('uiActionTriggered'));
-        document.body.classList.toggle('dark-mode');
-        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        const isDark = document.documentElement.classList.toggle('dark-mode');
+        document.body.classList.toggle('dark-mode', isDark);
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
     });
 
     let isTicking = false;
-    let isHeaderScrolled = false;
     window.addEventListener('scroll', () => {
         if (!isTicking) {
             window.requestAnimationFrame(() => {
                 const scrollY = window.scrollY;
                 dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
-                if (scrollY > 10 && !isHeaderScrolled) {
-                    isHeaderScrolled = true;
-                    dom.mainHeader.classList.add(CSS_CLASSES.IS_SCROLLED);
-                } else if (scrollY < 5 && isHeaderScrolled) {
-                    isHeaderScrolled = false;
-                    dom.mainHeader.classList.remove(CSS_CLASSES.IS_SCROLLED);
-                }
+                dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, scrollY > 10);
                 isTicking = false;
             });
             isTicking = true;
@@ -271,13 +311,15 @@ function setupGlobalListeners() {
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
-            const rewindButton = document.querySelector('#rewind-button');
-            if (rewindButton) rewindButton.click();
+            rewindButton?.click();
         }
     });
 }
 
-// --- SISTEMA DE AUTENTICACIÓN Y DATOS DE USUARIO ---
+// =================================================================
+//          SISTEMA DE AUTENTICACIÓN Y DATOS DE USUARIO
+// =================================================================
+
 function setupAuthSystem() {
     const userAvatarInitials = document.getElementById('user-avatar-initials');
     const logoutButton = document.getElementById('logout-button');
@@ -287,7 +329,6 @@ function setupAuthSystem() {
         const userEmail = user.email || '';
         userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
         userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
-        
         try {
             const data = await fetchUserMovieData();
             setUserMovieData(data);
@@ -301,45 +342,36 @@ function setupAuthSystem() {
         document.body.classList.remove('user-logged-in');
         userAvatarInitials.textContent = '';
         userAvatarInitials.title = '';
-        
         clearUserMovieData();
         document.dispatchEvent(new CustomEvent('userDataUpdated'));
     }
 
-    async function handleLogout() {
+    logoutButton?.addEventListener('click', async () => {
         const { error } = await supabase.auth.signOut();
-        if (error) {
-            console.error('Error al cerrar sesión:', error);
-            showToast('No se pudo cerrar la sesión.', 'error');
-        }
-    }
-
-    if (logoutButton) {
-        logoutButton.addEventListener('click', handleLogout);
-    }
+        if (error) showToast('No se pudo cerrar la sesión.', 'error');
+    });
     
     supabase.auth.onAuthStateChange((_event, session) => {
-        if (session && session.user) {
-            onLogin(session.user);
-        } else {
-            onLogout();
-        }
+        session?.user ? onLogin(session.user) : onLogout();
     });
 }
 
-// --- GESTIÓN DE URL Y TÍTULO DE PÁGINA ---
+// =================================================================
+//          GESTIÓN DE URL Y ESTADO
+// =================================================================
+
 function updatePageTitle() {
     const { searchTerm, genre, year, country, director, actor, selection } = getActiveFilters();
     let title = "Tu brújula cinéfila y seriéfila inteligente";
-    if (searchTerm) { title = `Resultados para "${searchTerm}"`; } 
-    else if (genre) { title = `Películas de ${genre}`}
-    else if (director) { title = `Películas de ${director}`}
-    else if (actor) { title = `Películas con ${actor}`}
-    else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) { title = `Películas de ${year.replace('-', ' a ')}`}
-    else if (country) { title = `Películas de ${country}`}
+    if (searchTerm) title = `Resultados para "${searchTerm}"`; 
+    else if (genre) title = `Películas de ${genre}`;
+    else if (director) title = `Películas de ${director}`;
+    else if (actor) title = `Películas con ${actor}`;
+    else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `Películas de ${year.replace('-', ' a ')}`;
+    else if (country) title = `Películas de ${country}`;
     else if (selection) {
-        const names = {hbo: 'Series de HBO', criterion: 'Colección Criterion', miluno: '1001 Películas que ver'};
-        title = names[selection] || title;
+        const names = {H: 'Series de HBO', C: 'Colección Criterion', M: '1001 Películas que ver'};
+        title = names[selection] || `Selección ${selection}`;
     }
     document.title = `${title} | videoclub.digital`;
 }
@@ -351,28 +383,17 @@ function readUrlAndSetState() {
     Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
         const value = params.get(shortKey);
         if (value !== null) {
-            if (stateKey === 'page') {
-                setCurrentPage(parseInt(value, 10) || 1);
-            } else if (stateKey === 'searchTerm') {
-                setSearchTerm(value);
-            } else if (stateKey === 'sort') {
-                setSort(value);
-            } else if (stateKey === 'mediaType') {
-                setMediaType(value);
-            } else if (stateKey === 'excludedGenres' || stateKey === 'excludedCountries') {
-                setFilter(stateKey, value.split(','));
-            } else {
-                setFilter(stateKey, value);
-            }
+            if (stateKey === 'page') setCurrentPage(parseInt(value, 10) || 1);
+            else if (stateKey.startsWith('excluded')) setFilter(stateKey, value.split(','));
+            else setFilter(stateKey, value);
         }
     });
 
-    if (!params.has(REVERSE_URL_PARAM_MAP.sort)) setSort(DEFAULTS.SORT);
-    if (!params.has(REVERSE_URL_PARAM_MAP.mediaType)) setMediaType(DEFAULTS.MEDIA_TYPE);
-    if (!params.has(REVERSE_URL_PARAM_MAP.page)) setCurrentPage(1);
+    if (!params.has('sort')) setSort(DEFAULTS.SORT);
+    if (!params.has('type')) setMediaType(DEFAULTS.MEDIA_TYPE);
 
     const activeFilters = getActiveFilters();
-    dom.searchInput.value = activeFilters.searchTerm;
+    dom.searchInput.value = activeFilters.searchTerm || '';
     dom.sortSelect.value = activeFilters.sort;
     updateTypeFilterUI(activeFilters.mediaType);
 }
@@ -389,30 +410,33 @@ function updateUrl() {
         if (Array.isArray(value) && value.length > 0) {
             params.set(shortKey, value.join(','));
         } else if (typeof value === 'string' && value.trim() !== '') {
-            if (key === 'mediaType' && value !== DEFAULTS.MEDIA_TYPE) params.set(shortKey, value);
-            else if (key === 'sort' && value !== DEFAULTS.SORT) params.set(shortKey, value);
-            else if (key === 'year' && value !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) params.set(shortKey, value);
-            else if (!['mediaType', 'sort', 'year'].includes(key)) params.set(shortKey, value);
+            const isDefault = (key === 'mediaType' && value === DEFAULTS.MEDIA_TYPE) ||
+                              (key === 'sort' && value === DEFAULTS.SORT) ||
+                              (key === 'year' && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`);
+            if (!isDefault) params.set(shortKey, value);
         }
     });
 
     if (currentPage > 1) {
-        params.set(REVERSE_URL_PARAM_MAP.page, currentPage);
+        params.set('p', currentPage);
     }
 
-    const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-    const currentStateUrl = window.location.search;
-
-    if (newUrl !== `${window.location.pathname}${currentStateUrl}`) {
+    const newUrl = params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname;
+    if (newUrl !== `${window.location.pathname}${window.location.search}`) {
         history.pushState({ path: newUrl }, '', newUrl);
     }
 }
 
-// --- FUNCIÓN DE INICIALIZACIÓN ---
+// =================================================================
+//          INICIALIZACIÓN DE LA APLICACIÓN
+// =================================================================
+
 function init() {
     window.addEventListener('storage', (e) => {
         if (e.key === 'theme') {
-            document.body.classList.toggle('dark-mode', e.newValue === 'dark');
+            const isDark = e.newValue === 'dark';
+            document.documentElement.classList.toggle('dark-mode', isDark);
+            document.body.classList.toggle('dark-mode', isDark);
         }
     });
 
@@ -431,7 +455,6 @@ function init() {
         loadAndRenderMovies(getCurrentPage());
     });
 
-    // Inicialización de módulos
     initSidebar();
     initQuickView();
     setupHeaderListeners();
@@ -442,26 +465,19 @@ function init() {
     setupAuthModal();
     initAuthForms();
     
-    // Carga inicial de datos
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent('updateSidebarUI'));
     loadAndRenderMovies(getCurrentPage());
 
-    // Listeners para actualizaciones de datos de usuario
     document.addEventListener('userMovieDataChanged', (e) => {
         const { movieId } = e.detail;
         if (!movieId) return;
-        
         const cardElement = document.querySelector(`.movie-card[data-movie-id="${movieId}"]`);
-        if (cardElement) {
-            updateCardUI(cardElement);
-        }
+        if (cardElement) updateCardUI(cardElement);
     });
 
     document.addEventListener('userDataUpdated', () => {
-        document.querySelectorAll('.movie-card').forEach(cardElement => {
-            updateCardUI(cardElement);
-        });
+        document.querySelectorAll('.movie-card').forEach(updateCardUI);
     });
     
     document.addEventListener('filtersReset', (e) => {
