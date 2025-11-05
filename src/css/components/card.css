@@ -47,7 +47,9 @@
     transform: rotateY(180deg);
 }
 body.dark-mode .flip-card-inner.is-flipped {
-    filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.4));
+    box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.6),
+        0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
 /* Interacción de hover avanzada */
