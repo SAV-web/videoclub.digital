@@ -94,6 +94,11 @@ Deno.serve(async (req) => {
         }
     }
 
+    // Descomponer el parámetro de ordenación
+    const sortParts = (activeFilters.sort || 'relevance,asc').split(',');
+    const sortField = sortParts[0];
+    const sortDirection = sortParts[1];
+
     const { data, error } = await supabaseClient.rpc('search_movies_offset', {
         search_term: activeFilters.searchTerm || null,
         genre_name: activeFilters.genre || null,
@@ -104,7 +109,8 @@ Deno.serve(async (req) => {
         actor_name: activeFilters.actor || null,
         media_type: activeFilters.mediaType || 'all',
         selection_code: activeFilters.selection || null,
-        sort_by: activeFilters.sort || 'relevance,asc',
+        sort_field: sortField,
+        sort_direction: sortDirection,
         excluded_genres: activeFilters.excludedGenres || [],
         excluded_countries: activeFilters.excludedCountries || [],
         page_limit: pageSize,

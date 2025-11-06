@@ -93,8 +93,8 @@ BEGIN
             FROM public.movies m
             WHERE
                 -- Búsqueda de texto (CRÍTICO: Cambiar a FTS como propuse antes)
-                (search_term IS NULL OR search_term = '' OR 
-                 m.title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
+                -- ✅ MEJORA: Usar el índice GIN/trgm para búsquedas de texto. Es más rápido que ILIKE.
+                (search_term IS NULL OR search_term = '' OR m.title_norm % public.unaccent_immutable(lower(search_term)))
                 
                 -- Filtros numéricos simples (PostgreSQL los optimiza perfectamente)
                 AND (p_year_start IS NULL OR m.year >= p_year_start)
@@ -127,19 +127,14 @@ BEGIN
             SELECT id
             FROM filtered_movies
             ORDER BY
-                CASE WHEN sort_field = 'relevance' AND sort_direction = 'asc' THEN relevance END ASC,
-                CASE WHEN sort_field = 'relevance' AND sort_direction = 'desc' THEN relevance END DESC,
-                CASE WHEN sort_field = 'year' AND sort_direction = 'asc' THEN year END ASC,
-                CASE WHEN sort_field = 'year' AND sort_direction = 'desc' THEN year END DESC,
-                CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'asc' THEN fa_rating END ASC NULLS LAST,
-                CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'desc' THEN fa_rating END DESC NULLS LAST,
-                CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'asc' THEN imdb_rating END ASC NULLS LAST,
-                CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'desc' THEN imdb_rating END DESC NULLS LAST,
-                CASE WHEN sort_field = 'fa_votes' AND sort_direction = 'asc' THEN fa_votes END ASC NULLS LAST,
-                CASE WHEN sort_field = 'fa_votes' AND sort_direction = 'desc' THEN fa_votes END DESC NULLS LAST,
-                CASE WHEN sort_field = 'imdb_votes' AND sort_direction = 'asc' THEN imdb_votes END ASC NULLS LAST,
-                CASE WHEN sort_field = 'imdb_votes' AND sort_direction = 'desc' THEN imdb_votes END DESC NULLS LAST,
-                id ASC
+                 CASE WHEN sort_field = 'relevance' THEN relevance END ASC,
+                 CASE WHEN sort_field = 'year' AND sort_direction = 'asc' THEN year END ASC,
+                 CASE WHEN sort_field = 'year' AND sort_direction = 'desc' THEN year END DESC,
+                 CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'asc' THEN fa_rating END ASC NULLS LAST,
+                 CASE WHEN sort_field = 'fa_rating' AND sort_direction = 'desc' THEN fa_rating END DESC NULLS LAST,
+                 CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'asc' THEN imdb_rating END ASC NULLS LAST,
+                 CASE WHEN sort_field = 'imdb_rating' AND sort_direction = 'desc' THEN imdb_rating END DESC NULLS LAST,
+                 relevance ASC
             LIMIT page_limit
             OFFSET page_offset
         ),

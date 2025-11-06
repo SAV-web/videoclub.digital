@@ -311,7 +311,7 @@ function populateCardText(elements, movieData) {
     }
 
     elements.genre.textContent = movieData.genres || 'Género no disponible';
-    elements.actors.textContent = formatActorsWithEllipsis(movieData.actors);
+    elements.actors.textContent = formatActorsWithEllipsis(movieData.actors).truncated;
     elements.synopsis.textContent = movieData.synopsis || 'Argumento no disponible.';
     elements.criticContainer.style.display = (movieData.critic && movieData.critic.trim() !== '') ? 'block' : 'none';
     if (elements.criticContainer.style.display === 'block') elements.critic.textContent = movieData.critic;
