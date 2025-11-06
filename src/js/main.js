@@ -144,11 +144,32 @@ async function handleMediaTypeToggle(event) {
 
 async function handleSearchInput() {
     const searchTerm = dom.searchInput.value.trim();
-    if (getState().activeFilters.searchTerm !== searchTerm) {
+    const previousSearchTerm = getState().activeFilters.searchTerm;
+
+    // Si el término de búsqueda no ha cambiado, no hacemos nada para evitar peticiones redundantes.
+    if (searchTerm === previousSearchTerm) {
+        return;
+    }
+
+    // --- ▼▼▼ LÓGICA AÑADIDA ▼▼▼ ---
+
+    // CASO 1: El término de búsqueda tiene 3 o más caracteres.
+    // En este caso, procedemos a realizar la búsqueda.
+    if (searchTerm.length >= 3) {
         document.dispatchEvent(new CustomEvent('uiActionTriggered'));
         setSearchTerm(searchTerm);
         await loadAndRenderMovies(1);
+    } 
+    // CASO 2: El término es corto (0-2 caracteres), PERO ANTES había una búsqueda activa.
+    // Esto es crucial para cuando el usuario borra el texto del buscador.
+    // Debemos "resetear" la búsqueda para volver a la vista por defecto.
+    else if (previousSearchTerm.length > 0) {
+        document.dispatchEvent(new CustomEvent('uiActionTriggered'));
+        setSearchTerm(''); // Limpiamos el término de búsqueda en el estado global.
+        await loadAndRenderMovies(1); // Recargamos las películas sin filtro de búsqueda.
     }
+    // Si no se cumple ninguna de las condiciones anteriores (ej. escribir "a" y luego "ab"),
+    // no se hace nada, esperando a que el usuario alcance los 3 caracteres.
 }
 
 // --- CONFIGURACIÓN DE LISTENERS ---

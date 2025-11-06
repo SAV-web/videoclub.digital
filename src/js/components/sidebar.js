@@ -1,9 +1,13 @@
 // =================================================================
-//                      COMPONENTE SIDEBAR (Versión Optimista)
+//                      COMPONENTE SIDEBAR (Versión Optimizada y con Límites)
 // =================================================================
-// v2.0 - Implementada la lógica de UI Optimista. Los cambios de filtro
-//        actualizan la UI instantáneamente y luego llaman a la API.
-//        Se incluye un mecanismo de reversión en caso de error de red.
+// Responsabilidades:
+// - Gestionar la interactividad del menú lateral (filtros, secciones, slider de año).
+// - Implementar la lógica de UI Optimista para una respuesta instantánea.
+// - Renderizar los filtros activos como "píldoras" con animación en cascada.
+// - Validar y aplicar un límite máximo de filtros activos para mejorar la UX.
+// - Manejar los buscadores de autocompletado.
+// =================================================================
 
 import { CONFIG } from '../config.js';
 import { debounce, triggerPopAnimation, createElement } from '../utils.js';
@@ -11,15 +15,10 @@ import { fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestion
 import { renderSidebarAutocomplete, clearAllSidebarAutocomplete } from './autocomplete.js';
 import { unflipAllCards } from './card.js';
 import { closeModal } from './quick-view.js';
-import { getActiveFilters, setFilter, toggleExcludedFilter } from '../state.js';
+import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount } from '../state.js';
 import { ICONS, CSS_CLASSES, SELECTORS } from '../constants.js';
-
-// --- NUEVAS IMPORTACIONES ---
-// Importamos la función de carga principal para orquestar desde aquí.
 import { loadAndRenderMovies } from '../main.js';
-// Importamos la función de notificación para el manejo de errores.
 import { showToast } from '../toast.js';
-// --- FIN NUEVAS IMPORTACIONES ---
 
 // Referencias cacheadas a los elementos del DOM del sidebar.
 const dom = {
@@ -33,157 +32,151 @@ const dom = {
     yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
 };
 
+// Mapa para mostrar nombres amigables en las píldoras de "Selección".
 const SELECTION_FRIENDLY_NAMES = new Map([
     ['C', 'Criterion'], ['M', '1001 Pelis'], ['A', 'Arrow'],
     ['K', 'Kino Lorber'], ['E', 'Eureka'], ['H', 'Series HBO'], ['N', 'Netflix']
 ]);
 
-// Renderiza las "píldoras" de filtros activos en cada sección.
-function renderFilterPills() {
-    const activeFilters = getActiveFilters();
-    document.querySelectorAll('.active-filters-list').forEach(container => container.textContent = '');
+// =================================================================
+//          RENDERIZADO DE PÍLDORAS Y ACTUALIZACIÓN DE UI
+// =================================================================
 
-    const createPill = (type, value, isExcluded = false) => {
-        const pill = createElement('div', {
-            className: `filter-pill ${isExcluded ? 'filter-pill--exclude' : ''}`,
-            dataset: { filterType: type, filterValue: value }
-        });
-        const text = (type === 'selection') ? SELECTION_FRIENDLY_NAMES.get(value) || value : value;
-        const textSpan = createElement('span', { textContent: text });
-        pill.appendChild(textSpan);
+/**
+ * Deshabilita o habilita los elementos de filtro en la UI basado en el límite de filtros activos.
+ */
+function updateFilterAvailabilityUI() {
+    const activeCount = getActiveFilterCount();
+    const limitReached = activeCount >= CONFIG.MAX_ACTIVE_FILTERS;
 
-        const removeButtonHTML = isExcluded ? ICONS.PAUSE_SMALL : '×';
-        const removeButton = createElement('span', { className: 'remove-filter-btn', innerHTML: removeButtonHTML, attributes: { 'aria-hidden': 'true' } });
-        pill.appendChild(removeButton);
-        
-        return pill;
-    };
+    // Deshabilitar/Habilitar enlaces de filtro no activos
+    document.querySelectorAll('.filter-link').forEach(link => {
+        const isDisabled = limitReached && link.style.display !== 'none';
+        link.toggleAttribute('disabled', isDisabled);
+        link.style.pointerEvents = isDisabled ? 'none' : 'auto';
+        link.style.opacity = isDisabled ? '0.5' : '1';
+    });
 
-    const renderPillsForSection = (filterType, values, isExcluded = false) => {
-        const section = document.querySelector(`.sidebar-filter-form[data-filter-type="${filterType}"]`)?.closest('.collapsible-section') ||
-                        document.querySelector(`.filter-link[data-filter-type="${filterType}"]`)?.closest('.collapsible-section');
-        if (!section) return;
-
-        const container = section.querySelector('.active-filters-list');
-        if (!container) return;
-
-        const valuesArray = Array.isArray(values) ? values : [values].filter(Boolean);
-        valuesArray.forEach(value => {
-            const pill = createPill(filterType, value, isExcluded);
-            container.appendChild(pill);
-        });
-    };
-
-    renderPillsForSection('selection', activeFilters.selection);
-    renderPillsForSection('genre', activeFilters.genre);
-    renderPillsForSection('country', activeFilters.country);
-    renderPillsForSection('director', activeFilters.director);
-    renderPillsForSection('actor', activeFilters.actor);
-    renderPillsForSection('genre', activeFilters.excludedGenres, true);
-    renderPillsForSection('country', activeFilters.excludedCountries, true);
-
-    updateFilterLinksUI();
+    // Deshabilitar/Habilitar inputs de búsqueda de filtros
+    document.querySelectorAll('.sidebar-filter-input').forEach(input => {
+        input.disabled = limitReached;
+        input.placeholder = limitReached ? 'Límite de filtros' : `Otro ${input.closest('form').dataset.filterType}...`;
+    });
 }
 
+/**
+ * Actualiza la UI de los enlaces de filtro, ocultando los que ya están activos como píldoras.
+ */
 function updateFilterLinksUI() {
     const activeFilters = getActiveFilters();
     document.querySelectorAll('.filter-link').forEach(link => {
         const type = link.dataset.filterType;
         const value = link.dataset.filterValue;
-        link.style.display = 'flex';
         const isExcluded = (type === 'genre' && activeFilters.excludedGenres?.includes(value)) ||
                            (type === 'country' && activeFilters.excludedCountries?.includes(value));
         const isActive = activeFilters[type] === value;
-        if (isActive || isExcluded) {
-            link.style.display = 'none';
-        }
+        
+        link.style.display = (isActive || isExcluded) ? 'none' : 'flex';
     });
 }
 
+/**
+ * Renderiza las "píldoras" de filtros activos y actualiza el estado de la UI del sidebar.
+ */
+function renderFilterPills() {
+    const activeFilters = getActiveFilters();
+    document.querySelectorAll('.active-filters-list').forEach(container => container.textContent = '');
+    let pillIndex = 0;
+
+    const createPill = (type, value, isExcluded = false, index = 0) => {
+        const pill = createElement('div', {
+            className: `filter-pill ${isExcluded ? 'filter-pill--exclude' : ''}`,
+            dataset: { filterType: type, filterValue: value }
+        });
+        pill.style.setProperty('--pill-index', index);
+        const text = (type === 'selection') ? SELECTION_FRIENDLY_NAMES.get(value) || value : value;
+        pill.appendChild(createElement('span', { textContent: text }));
+        pill.appendChild(createElement('span', { className: 'remove-filter-btn', innerHTML: isExcluded ? ICONS.PAUSE_SMALL : '×', attributes: { 'aria-hidden': 'true' } }));
+        return pill;
+    };
+
+    const renderPillsForSection = (filterType, values, isExcluded = false, currentIndex) => {
+        const section = document.querySelector(`.sidebar-filter-form[data-filter-type="${filterType}"]`)?.closest('.collapsible-section') ||
+                        document.querySelector(`.filter-link[data-filter-type="${filterType}"]`)?.closest('.collapsible-section');
+        if (!section) return currentIndex;
+        const container = section.querySelector('.active-filters-list');
+        if (!container) return currentIndex;
+        const valuesArray = Array.isArray(values) ? values : [values].filter(Boolean);
+        valuesArray.forEach(value => {
+            container.appendChild(createPill(filterType, value, isExcluded, currentIndex++));
+        });
+        return currentIndex;
+    };
+
+    pillIndex = renderPillsForSection('selection', activeFilters.selection, false, pillIndex);
+    pillIndex = renderPillsForSection('genre', activeFilters.genre, false, pillIndex);
+    pillIndex = renderPillsForSection('country', activeFilters.country, false, pillIndex);
+    pillIndex = renderPillsForSection('director', activeFilters.director, false, pillIndex);
+    pillIndex = renderPillsForSection('actor', activeFilters.actor, false, pillIndex);
+    pillIndex = renderPillsForSection('genre', activeFilters.excludedGenres, true, pillIndex);
+    pillIndex = renderPillsForSection('country', activeFilters.excludedCountries, true, pillIndex);
+
+    // Tras renderizar las píldoras, actualizamos el estado visual de todo el sidebar.
+    updateFilterLinksUI();
+    updateFilterAvailabilityUI();
+}
+
 // =================================================================
-// == NUEVA LÓGICA DE MANEJO DE FILTROS CON UI OPTIMISTA ==
+//          MANEJO DE FILTROS CON UI OPTIMISTA Y LÍMITES
 // =================================================================
 
-/**
- * Maneja el cambio de un filtro de forma optimista.
- * Actualiza la UI instantáneamente y luego dispara la llamada a la API.
- * Revierte la UI si la llamada a la API falla.
- * @param {string} type - El tipo de filtro (ej: 'genre', 'country').
- * @param {string|null} value - El nuevo valor del filtro.
- */
 async function handleFilterChangeOptimistic(type, value) {
     const previousFilters = getActiveFilters();
     const isActivating = previousFilters[type] !== value;
     const newValue = isActivating ? value : null;
 
-    // 1. ACTUALIZACIÓN OPTIMISTA: Modificar estado y UI al instante.
-    setFilter(type, newValue);
+    // ✅ La llamada a setFilter ahora devuelve un booleano que indica si la acción fue permitida.
+    if (!setFilter(type, newValue)) {
+        showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, 'error');
+        return; // Detiene la ejecución si el estado no cambió.
+    }
+    
     renderFilterPills();
     document.dispatchEvent(new CustomEvent('uiActionTriggered'));
 
     try {
-        // 2. LLAMADA A LA API: Se ejecuta en segundo plano.
         await loadAndRenderMovies(1);
     } catch (error) {
-        // 3. MANEJO DE ERROR Y REVERSIÓN
-        // Ignoramos los errores de 'AbortError' ya que son intencionados.
         if (error.name === 'AbortError') return;
-
-        console.error(`Error optimista al aplicar el filtro ${type}:`, error);
         showToast(`No se pudo aplicar el filtro.`, 'error');
-
-        // Revertimos el estado al que teníamos antes del clic.
-        // NOTA: Una función `setState(previousState)` sería ideal, pero
-        // por ahora revertimos el filtro específico que falló.
         setFilter(type, previousFilters[type]);
-        
-        // Volvemos a renderizar la UI del sidebar para que refleje el estado revertido.
         renderFilterPills();
     }
 }
 
-/**
- * Maneja el cambio de un filtro de exclusión de forma optimista.
- * @param {string} type - El tipo de filtro ('genre' o 'country').
- * @param {string} value - El valor a incluir/excluir.
- */
 async function handleToggleExcludedFilterOptimistic(type, value) {
-    const previousState = getActiveFilters(); // Guardamos todo el estado de filtros
+    const previousState = getActiveFilters();
 
-    // 1. ACTUALIZACIÓN OPTIMISTA
+    // ✅ La llamada a toggleExcludedFilter ahora valida los límites y devuelve un booleano.
     if (!toggleExcludedFilter(type, value)) {
-        // La acción fue prevenida (ej. límite alcanzado), no hacemos nada.
-        showToast(`Límite de 3 exclusiones alcanzado.`, 'error');
+        showToast(`Límite de filtros alcanzado.`, 'error');
         return;
     }
+    
     renderFilterPills();
     document.dispatchEvent(new CustomEvent('uiActionTriggered'));
 
     try {
-        // 2. LLAMADA A LA API
         await loadAndRenderMovies(1);
     } catch (error) {
-        // 3. REVERSIÓN
         if (error.name === 'AbortError') return;
-        
-        console.error(`Error optimista al excluir ${type}:`, error);
         showToast(`No se pudo aplicar el filtro de exclusión.`, 'error');
-
-        // Revertimos la acción. Es más seguro restaurar todo el objeto.
-        // Aquí necesitaríamos una función `setFilters(filtersObject)` en state.js.
-        // Solución simple por ahora: revertir la acción manualmente.
-        toggleExcludedFilter(type, value); // Esto deshará el toggle
-        setFilter('country', previousState.country); // Restaura el filtro de inclusión si se borró
+        toggleExcludedFilter(type, value);
+        setFilter('country', previousState.country);
         setFilter('genre', previousState.genre);
-        
         renderFilterPills();
     }
 }
-
-// =================================================================
-// == FIN DE LA NUEVA LÓGICA ==
-// =================================================================
-
 
 function resetFilters() {
     const playButton = document.querySelector('#play-button');
@@ -198,29 +191,24 @@ export function collapseAllSections() {
     }
 }
 
+// =================================================================
+//          INICIALIZACIÓN DE COMPONENTES DEL SIDEBAR
+// =================================================================
+
 function initYearSlider() {
     if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
-
     const yearInputs = [dom.yearStartInput, dom.yearEndInput];
     const sliderInstance = noUiSlider.create(dom.yearSlider, {
-        start: [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX],
-        connect: true,
-        step: 1,
+        start: [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX], connect: true, step: 1,
         range: { 'min': CONFIG.YEAR_MIN, 'max': CONFIG.YEAR_MAX },
         format: { to: value => Math.round(value), from: value => Number(value) }
     });
-
-    sliderInstance.on('update', (values, handle) => {
-        yearInputs[handle].value = values[handle];
-    });
-
+    sliderInstance.on('update', (values, handle) => { yearInputs[handle].value = values[handle]; });
     const debouncedUpdate = debounce(values => {
         const yearFilter = `${values[0]}-${values[1]}`;
-        // En lugar de llamar a `setFilter` y despachar, llamamos a la función optimista.
         handleFilterChangeOptimistic('year', yearFilter);
     }, 500);
     sliderInstance.on('set', debouncedUpdate);
-
     yearInputs.forEach((input, index) => {
         input.addEventListener('change', (e) => {
             const values = [null, null];
@@ -235,9 +223,7 @@ function setupYearInputSteppers() {
         const input = wrapper.querySelector('.year-input');
         const stepperUp = wrapper.querySelector('.stepper-btn.stepper-up');
         const stepperDown = wrapper.querySelector('.stepper-btn.stepper-down');
-        
         if (!input || !stepperUp || !stepperDown) return;
-
         const updateYearValue = (increment) => {
             let currentValue = parseInt(input.value, 10);
             if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
@@ -245,17 +231,14 @@ function setupYearInputSteppers() {
             input.value = newValue;
             input.dispatchEvent(new Event('change', { bubbles: true }));
         };
-
         stepperUp.addEventListener('click', () => updateYearValue(1));
         stepperDown.addEventListener('click', () => updateYearValue(-1));
     });
 }
 
 const suggestionFetchers = {
-    genre: fetchGenreSuggestions,
-    director: fetchDirectorSuggestions,
-    actor: fetchActorSuggestions,
-    country: fetchCountrySuggestions
+    genre: fetchGenreSuggestions, director: fetchDirectorSuggestions,
+    actor: fetchActorSuggestions, country: fetchCountrySuggestions
 };
 
 function setupAutocompleteHandlers() {
@@ -264,25 +247,18 @@ function setupAutocompleteHandlers() {
         const filterType = form.dataset.filterType;
         const fetcher = suggestionFetchers[filterType];
         if (!input || !fetcher) return;
-
         input.setAttribute('role', 'combobox');
         input.setAttribute('aria-autocomplete', 'list');
         input.setAttribute('aria-expanded', 'false');
         let activeIndex = -1;
-
         const debouncedFetch = debounce(async () => {
             const searchTerm = input.value;
             activeIndex = -1;
-            if (searchTerm.length < 3) {
-                clearAllSidebarAutocomplete(form);
-                return;
-            }
+            if (searchTerm.length < 3) { clearAllSidebarAutocomplete(form); return; }
             const suggestions = await fetcher(searchTerm);
             renderSidebarAutocomplete(form, suggestions, searchTerm);
         }, CONFIG.SEARCH_DEBOUNCE_DELAY);
-
         input.addEventListener('input', debouncedFetch);
-        
         input.addEventListener('keydown', (e) => {
             const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
             if (!resultsContainer || resultsContainer.children.length === 0) return;
@@ -292,11 +268,8 @@ function setupAutocompleteHandlers() {
                 if (index >= 0 && items[index]) {
                     items[index].classList.add('is-active');
                     input.setAttribute('aria-activedescendant', items[index].id);
-                } else {
-                    input.removeAttribute('aria-activedescendant');
-                }
+                } else { input.removeAttribute('aria-activedescendant'); }
             };
-            
             switch (e.key) {
                 case 'ArrowDown': e.preventDefault(); activeIndex = Math.min(activeIndex + 1, items.length - 1); updateActiveSuggestion(activeIndex); break;
                 case 'ArrowUp': e.preventDefault(); activeIndex = Math.max(activeIndex - 1, -1); updateActiveSuggestion(activeIndex); break;
@@ -304,7 +277,6 @@ function setupAutocompleteHandlers() {
                 case 'Escape': e.preventDefault(); clearAllSidebarAutocomplete(); break;
             }
         });
-
         form.addEventListener('click', (e) => {
             const suggestionItem = e.target.closest(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
             if (suggestionItem) {
@@ -346,7 +318,6 @@ function setupEventListeners() {
             e.currentTarget.setAttribute('aria-label', isOpening ? 'Contraer sidebar' : 'Expandir sidebar');
         });
     }
-
     if (dom.toggleRotationBtn) {
         dom.toggleRotationBtn.addEventListener('click', (e) => {
             unflipAllCards();
@@ -361,7 +332,6 @@ function setupEventListeners() {
             triggerPopAnimation(button);
         });
     }
-
     const sidebarScrollable = document.querySelector('.sidebar-scrollable-filters');
     if (sidebarScrollable) {
         sidebarScrollable.addEventListener('click', (e) => {
@@ -374,18 +344,16 @@ function setupEventListeners() {
                 return;
             }
             const link = e.target.closest('.filter-link');
-            if (link) {
+            if (link && !link.hasAttribute('disabled')) {
                 triggerPopAnimation(link);
                 handleFilterChangeOptimistic(link.dataset.filterType, link.dataset.filterValue);
             }
         });
     }
-
     const playButton = document.querySelector('#play-button');
     if (playButton) {
         playButton.addEventListener('click', resetFilters);
     }
-
     dom.collapsibleSections.forEach(clickedSection => {
         const header = clickedSection.querySelector('.section-header');
         header?.addEventListener('click', () => {
@@ -397,6 +365,9 @@ function setupEventListeners() {
     });
 }
 
+/**
+ * Función principal que inicializa todo el componente del sidebar.
+ */
 export function initSidebar() {
     if (window.innerWidth <= 768) {
         if (dom.rewindButton) {
@@ -404,19 +375,16 @@ export function initSidebar() {
             dom.rewindButton.setAttribute('aria-label', 'Expandir sidebar');
         }
     }
-
     const createExcludeButton = (name, type, excludableList) => {
         if (excludableList.includes(name)) {
             return createElement('button', {
-                className: 'exclude-filter-btn',
-                dataset: { value: name, type },
+                className: 'exclude-filter-btn', dataset: { value: name, type },
                 attributes: { 'aria-label': `Excluir ${type} ${name}`, type: 'button' },
                 innerHTML: ICONS.PAUSE_SMALL
             });
         }
         return null;
     };
-
     document.querySelectorAll('.filter-link').forEach(link => {
         const { filterType, filterValue } = link.dataset;
         const textWrapper = createElement('span', { textContent: link.textContent });
@@ -428,7 +396,6 @@ export function initSidebar() {
             if (excludeBtn) link.append(excludeBtn);
         }
     });
-
     const toggleBtn = dom.toggleRotationBtn;
     if (toggleBtn) {
         const isRotationDisabled = document.body.classList.contains('rotation-disabled');
@@ -436,18 +403,15 @@ export function initSidebar() {
         toggleBtn.setAttribute('aria-label', isRotationDisabled ? 'Activar rotación de tarjetas' : 'Pausar rotación de tarjetas');
         toggleBtn.title = isRotationDisabled ? 'Giro automático' : 'Vista Rápida';
     }
-
     initYearSlider();
     setupEventListeners();
     setupAutocompleteHandlers();
     setupYearInputSteppers();
-
     document.addEventListener('updateSidebarUI', () => {
         dom.sidebarFilterForms.forEach(form => {
             const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
             if (input) input.value = '';
         });
-
         const currentFilters = getActiveFilters();
         const years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split('-').map(Number);
         if (dom.yearSlider?.noUiSlider) {
@@ -455,7 +419,6 @@ export function initSidebar() {
         }
         renderFilterPills();
     });
-    
     document.addEventListener('filtersReset', collapseAllSections);
     document.addEventListener('uiActionTriggered', collapseAllSections);
 }

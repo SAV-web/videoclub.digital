@@ -64,6 +64,7 @@ LANGUAGE plpgsql STABLE PARALLEL SAFE AS $function$
 DECLARE
     -- Variables para IDs resueltos (solo los que realmente necesitas)
     v_country_id INT;
+    v_excluded_country_ids INT[];
 BEGIN
     -- ============================================================
     -- FASE 1: PRE-PROCESAMIENTO (Resolución de IDs)
@@ -80,6 +81,12 @@ BEGIN
             -- Puedes decidir si retornas vacío o continúas sin el filtro
         END IF;
     END IF;
+
+    IF excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 0 THEN
+        SELECT array_agg(id) INTO v_excluded_country_ids
+        FROM public.countries
+        WHERE name = ANY(excluded_countries);
+    END IF;
     
     -- ============================================================
     -- FASE 2: CONSULTA PRINCIPAL (Con ID Pre-resuelto)
@@ -94,7 +101,7 @@ BEGIN
             WHERE
                 -- Búsqueda de texto (CRÍTICO: Cambiar a FTS como propuse antes)
                 -- ✅ MEJORA: Usar el índice GIN/trgm para búsquedas de texto. Es más rápido que ILIKE.
-                (search_term IS NULL OR search_term = '' OR m.title_norm % public.unaccent_immutable(lower(search_term)))
+                (search_term IS NULL OR search_term = '' OR m.title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
                 
                 -- Filtros numéricos simples (PostgreSQL los optimiza perfectamente)
                 AND (p_year_start IS NULL OR m.year >= p_year_start)
@@ -118,10 +125,10 @@ BEGIN
                 AND (selection_code IS NULL OR m.collections_list ILIKE '%' || selection_code || '%')
                 
                 -- Exclusiones (arrays)
-                AND (excluded_genres IS NULL OR 
-                     NOT m.genres_list ILIKE ANY (SELECT '%' || g || '%' FROM unnest(excluded_genres) as g))
-                AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL OR 
-                     m.country_id NOT IN (SELECT c.id FROM public.countries c WHERE c.name = ANY(excluded_countries)))
+                AND (excluded_genres IS NULL OR array_length(excluded_genres, 1) IS NULL OR
+                     NOT m.genres_tsv @@ to_tsquery('spanish', array_to_string(excluded_genres, ' | ')))
+                AND (v_excluded_country_ids IS NULL OR
+                     NOT (m.country_id = ANY(v_excluded_country_ids)))
         ),
         paginated_ids AS (
             SELECT id
