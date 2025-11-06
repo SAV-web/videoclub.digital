@@ -132,7 +132,6 @@ export function initThemeToggle() {
     if (dom.themeToggleButton) {
         dom.themeToggleButton.addEventListener('click', () => {
             const isDarkMode = document.documentElement.classList.toggle('dark-mode');
-            document.body.classList.toggle('dark-mode', isDarkMode);
             localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
         });
     }

@@ -238,8 +238,8 @@ function setupGlobalListeners() {
     dom.themeToggleButton.addEventListener('click', (e) => {
         triggerPopAnimation(e.currentTarget);
         document.dispatchEvent(new CustomEvent('uiActionTriggered'));
-        document.body.classList.toggle('dark-mode');
-        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        const isDarkMode = document.documentElement.classList.toggle('dark-mode');
+        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
     });
 
     let isTicking = false;

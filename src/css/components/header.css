@@ -70,7 +70,7 @@
 }
 
 /* Asegura que el botón 'Todo' tenga el color de fondo correcto en modo oscuro */
-body.dark-mode .type-filter-toggle:not(.type-filter--movies):not(.type-filter--series) {
+html.dark-mode .type-filter-toggle:not(.type-filter--movies):not(.type-filter--series) {
     background-color: var(--color-surface);
     color: var(--color-text-primary);
 }
@@ -99,7 +99,7 @@ body.dark-mode .type-filter-toggle:not(.type-filter--movies):not(.type-filter--s
     border-color: var(--color-accent); /* Cambia el color del borde al enfocar */
     box-shadow: 0 0 0 2px rgba(0, 115, 230, 0.2); /* Sombra de foco sutil (ajustar color si es necesario) */
 }
-body.dark-mode .search-form input:focus {
+html.dark-mode .search-form input:focus {
     box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2); /* Sombra de foco para modo oscuro */
 }
 
@@ -134,21 +134,21 @@ body.dark-mode .search-form input:focus {
 
 /* Estado inicial (tema claro) */
 .moon-icon {
-    opacity: 1; /* Luna visible */
-    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0deg); /* Mantenemos el translate para la animación */
 }
 .sun-icon {
-    opacity: 0; /* Sol oculto */
+    opacity: 0;
     transform: translate(-50%, -50%) scale(0.5) rotate(-90deg); /* Encogido y rotado */
 }
 
 /* Estado tema oscuro */
-body.dark-mode .moon-icon {
-    opacity: 0; /* Luna oculta */
+html.dark-mode .moon-icon {
+    opacity: 0;
     transform: translate(-50%, -50%) scale(0.5) rotate(90deg); /* Encogida y rotada */
 }
-body.dark-mode .sun-icon {
-    opacity: 1; /* Sol visible */
+html.dark-mode .sun-icon {
+    opacity: 1;
     transform: translate(-50%, -50%) scale(1) rotate(0deg); /* Tamaño y rotación normal */
 }
 
