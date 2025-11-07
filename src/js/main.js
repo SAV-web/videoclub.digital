@@ -107,10 +107,9 @@ export async function loadAndRenderMovies(page = 1) {
       if (movies && movies.length > 0) {
         preloadLcpImage(movies[0]);
       }
-      
+
       // La validación de requestId ya no es necesaria.
       updateDomWithResults(movies, totalMovies);
-      
     } catch (error) {
       // Si el error es un 'AbortError', fue una cancelación intencionada. Lo ignoramos.
       if (error.name === "AbortError") {
@@ -130,7 +129,8 @@ export async function loadAndRenderMovies(page = 1) {
   };
 
   if (supportsViewTransitions) {
-    if (page === 1) { // Condición simplificada para mostrar esqueletos solo en la primera carga/filtro.
+    if (page === 1) {
+      // Condición simplificada para mostrar esqueletos solo en la primera carga/filtro.
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
     }
     await document.startViewTransition(renderLogic).ready;
@@ -213,13 +213,12 @@ async function handleSearchInput() {
   if (searchTerm === previousSearchTerm) {
     return;
   }
-  
+
   if (searchTerm.length >= 3) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     setSearchTerm(searchTerm);
     await loadAndRenderMovies(1);
-  }
-  else if (previousSearchTerm.length > 0) {
+  } else if (previousSearchTerm.length > 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     setSearchTerm("");
     await loadAndRenderMovies(1);

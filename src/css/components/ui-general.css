@@ -100,6 +100,18 @@ body.dark-mode .skeleton-card::after {
   cursor: default; /* Cursor normal, ya que no es clickable */
 }
 
+/* ========================================================== */
+/*  ▼▼▼ CORRECCIÓN: BOTONES DE PAGINACIÓN UNIFORMES ▼▼▼       */
+/*      Forzamos un ancho fijo igual a la altura para que todos */
+/*      los botones sean perfectamente cuadrados, sin importar  */
+/*      el contenido (ej. '8' vs '12').                     */
+/* ========================================================== */
+.pagination-container > .btn,
+.pagination-container > .pagination-current {
+  width: var(--btn-height, 40px);
+  padding: 0; /* Eliminamos el padding para que el texto se centre en el cuadrado */
+}
+
 /* --- Botón de "Volver Arriba" --- */
 .back-to-top {
   position: fixed;
