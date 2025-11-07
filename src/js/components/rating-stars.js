@@ -31,7 +31,7 @@ export function calculateAverageStars(averageRating) {
 }
 
 // =================================================================
-//          LÓGICA DE RENDERIZADO (REFACTORIZADA)
+//          ▼▼▼ LÓGICA DE RENDERIZADO (REFACTORIZADA) ▼▼▼
 // =================================================================
 
 /**
@@ -57,8 +57,7 @@ function renderStars(
     const fillValue = Math.max(0, Math.min(1, effectiveFilledStars - index));
     const filledPath = star.querySelector(".star-icon-path--filled");
 
-    // ▼▼▼ MEJORA CLAVE ▼▼▼
-    // En lugar de cambiar 'display', que causa un reflow, usamos 'visibility'.
+    // ✅ MEJORA IMPLEMENTADA: Usamos 'visibility' en lugar de 'display'.
     // 'visibility: hidden' hace el elemento invisible pero sigue ocupando su espacio,
     // evitando que el layout de los elementos hermanos (las otras estrellas) se recalcule.
     if (hideUnfilled && fillValue === 0) {
@@ -82,10 +81,8 @@ function renderStars(
  * @param {number} filledStars Número fraccionario de estrellas a rellenar.
  */
 export function renderAverageStars(starContainer, filledStars) {
-  // ==========================================================
-  //  ▼▼▼ CAMBIO CLAVE: hideUnfilled ahora es 'true' ▼▼▼
-  //      Esto asegura que solo se muestren las estrellas con relleno.
-  // ==========================================================
+  // Ahora, la nota media solo mostrará las estrellas relevantes, ocultando
+  // las vacías sin coste de rendimiento.
   renderStars(starContainer, filledStars, {
     hideUnfilled: true,
     snapToInteger: false,
@@ -103,25 +100,18 @@ export function renderUserStars(
   filledLevel,
   hideHollowStars = false
 ) {
-  // Esta función ya funcionaba correctamente, pero se beneficia de la lógica
-  // simplificada en renderStars.
+  // Esta función se beneficia de la misma lógica optimizada.
   renderStars(starContainer, filledLevel, {
     hideUnfilled: hideHollowStars,
     snapToInteger: true,
   });
 }
 
-// --- LÓGICA DE INTERACCIÓN (sin cambios) ---
-
 async function handleRatingClick(event) {
   event.preventDefault();
   event.stopPropagation();
 
   const clickedElement = event.currentTarget;
-  // ▼▼▼ CAMBIO CLAVE ▼▼▼
-  // Hacemos la búsqueda del contenedor más genérica. Buscamos el ancestro más
-  // cercano que tenga el ID de la película, ya sea una `.movie-card` o el
-  // contenedor de la Quick View (`#quick-view-content`).
   const interactiveContainer = clickedElement.closest("[data-movie-id]");
   if (!interactiveContainer) return;
 
@@ -159,11 +149,8 @@ function handleRatingMouseMove(event) {
 }
 
 function handleRatingMouseLeave(event) {
-  // ▼▼▼ CAMBIO CLAVE ▼▼▼
-  // Misma lógica que en handleRatingClick para encontrar el contenedor correcto.
   const interactiveContainer = event.currentTarget.closest("[data-movie-id]");
   if (interactiveContainer && updateCardUI) {
-    // Al salir el ratón, restauramos el estado visual actual (la nota guardada).
     updateCardUI(interactiveContainer);
   }
 }

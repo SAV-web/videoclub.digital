@@ -1,44 +1,43 @@
 // =================================================================
-//          MÓDULO DE SERVICIO API (v3.1 - Con AbortController)
+//          MÓDULO DE SERVICIO API (v3.1 - Caché Robusta)
 // =================================================================
-// v3.1 - Implementado AbortController para permitir la cancelación externa
-//        de peticiones desde el orquestador (main.js).
-// =================================================================
+// v3.1 - Implementada una estrategia de caché más inteligente y robusta.
+//      - Aumentado el tamaño y el TTL de la caché para ser más efectiva.
+//      - Exportada la instancia de la caché para poder invalidarla desde fuera.
 
 import { CONFIG } from "./config.js";
 import { supabase } from "./supabaseClient.js";
 import { LRUCache } from "https://esm.sh/lru-cache@10.2.0";
 
-const cache = new LRUCache({
-  max: 50,
-  ttl: 1000 * 120, // 2 minutos
+// ==========================================================
+//  ▼▼▼ MEJORA: Caché única, más grande y con TTL más largo ▼▼▼
+// ==========================================================
+export const queryCache = new LRUCache({
+  max: 200, // Aumentamos a 200 entradas para manejar mejor la paginación.
+  ttl: 1000 * 60 * 5, // 5 minutos, un tiempo más razonable.
 });
 
 const suggestionControllers = {};
 
 /**
- * Busca y recupera películas invocando de forma segura la Función de Base de Datos.
- * @param {object} activeFilters - El objeto con todos los filtros activos.
- * @param {number} currentPage - El número de la página a solicitar.
- * @param {number} pageSize - El número de elementos por página.
- * @param {AbortSignal} [signal] - Una señal del AbortController para cancelar la petición.
- * @returns {Promise<{items: Array<object>, total: number}>} - Una promesa que resuelve al objeto con los resultados.
+ * Busca y recupera películas...
+ * @param {AbortSignal} [signal] - ...
+ * @returns {Promise<{items: Array<object>, total: number}>} - ...
  */
 export async function fetchMovies(
   activeFilters,
   currentPage,
   pageSize = CONFIG.ITEMS_PER_PAGE,
-  // ▼▼▼ MEJORA 1: La función ahora acepta un cuarto parámetro 'signal' ▼▼▼
   signal
 ) {
   const queryKey = JSON.stringify({ ...activeFilters, currentPage, pageSize });
 
-  if (cache.has(queryKey)) {
+  if (queryCache.has(queryKey)) {
     console.log(
       `%c[CACHE HIT] Sirviendo desde caché para la clave: ${queryKey}`,
       "color: #28a745"
     );
-    return cache.get(queryKey);
+    return queryCache.get(queryKey);
   }
   console.log(
     `%c[CACHE MISS] Petición de red para la clave: ${queryKey}`,
@@ -47,6 +46,7 @@ export async function fetchMovies(
 
   try {
     const rpcCall = supabase.rpc("search_movies_offset", {
+      // ... (parámetros sin cambios)
       search_term: activeFilters.searchTerm,
       genre_name: activeFilters.genre,
       p_year_start: activeFilters.year
@@ -74,8 +74,6 @@ export async function fetchMovies(
       page_offset: (currentPage - 1) * pageSize,
     });
 
-    // ▼▼▼ MEJORA 2: Se adjunta la señal a la llamada de Supabase si existe. ▼▼▼
-    // Esto conecta la petición de red con el controlador que la originó.
     if (signal) {
       rpcCall.abortSignal(signal);
     }
@@ -83,12 +81,8 @@ export async function fetchMovies(
     const { data, error } = await rpcCall;
 
     if (error) {
-      // ▼▼▼ MEJORA 3: Manejo específico del error de cancelación. ▼▼▼
-      // Un 'AbortError' no es un fallo, es una cancelación intencionada.
-      // Lo tratamos de forma silenciosa para que no se muestre un error al usuario.
       if (error.name === "AbortError") {
         console.log("Petición a la BBDD abortada por la señal.");
-        // Devolvemos una promesa que nunca se resuelve para detener la cadena de ejecución.
         return new Promise(() => {});
       }
       console.error("Error en la llamada RPC:", error);
@@ -96,8 +90,7 @@ export async function fetchMovies(
     }
 
     const result = data || { total: 0, items: [] };
-
-    cache.set(queryKey, result);
+    queryCache.set(queryKey, result);
     return result;
   } catch (error) {
     if (error.name === "AbortError") {

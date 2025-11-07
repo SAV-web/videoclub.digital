@@ -1,10 +1,10 @@
 // =================================================================
-//                      MÓDULO DE ESTADO (v3.2 - Con Límite de Filtros)
+//                      MÓDULO DE ESTADO (v3.3 - Getters Optimizados)
 // =================================================================
-// v3.2 - Implementado un límite global para el número de filtros "significativos" activos.
-//      - La lógica de validación reside aquí para actuar como única fuente de verdad.
-//      - Los setters (setFilter, toggleExcludedFilter) ahora devuelven un booleano
-//        para indicar si la operación de cambio de estado fue exitosa o fue bloqueada por el límite.
+// v3.3 - Se reemplaza el costoso `structuredClone()` en los getters por
+//        copias superficiales (`shallow copies`) usando el operador de propagación.
+//        Esto mejora significativamente el rendimiento en cada lectura de estado,
+//        ofreciendo una protección de inmutabilidad suficiente para la arquitectura actual.
 
 import { DEFAULTS } from "./constants.js";
 import { CONFIG } from "./config.js";
@@ -39,7 +39,6 @@ import { CONFIG } from "./config.js";
  * @property {number} currentPage
  * @property {number} totalMovies
  * @property {ActiveFilters} activeFilters
- * @property {number} latestRequestId
  * @property {UserMovieData} userMovieData
  */
 
@@ -59,34 +58,57 @@ const initialState = {
     excludedGenres: [],
     excludedCountries: [],
   },
-  latestRequestId: 0,
   userMovieData: {},
 };
 
+// Usamos `structuredClone` UNA SOLA VEZ para asegurar que el estado inicial
+// sea completamente independiente y no pueda ser mutado accidentalmente.
 let state = structuredClone(initialState);
 
 // =================================================================
-//          GETTERS (LECTORES DE ESTADO)
+//          GETTERS (LECTORES DE ESTADO OPTIMIZADOS)
 // =================================================================
 
+/**
+ * Devuelve una copia superficial y segura del estado global.
+ * @returns {AppState}
+ */
 export const getState = () => {
-  return structuredClone(state);
+  // 1. Copia superficial del objeto de estado principal.
+  const currentState = { ...state };
+
+  // 2. Reemplaza las propiedades anidadas con sus propias copias superficiales.
+  currentState.activeFilters = getActiveFilters(); // Reutiliza la función de abajo.
+  currentState.userMovieData = { ...state.userMovieData };
+
+  // Devuelve un objeto que es seguro contra mutaciones accidentales de primer y segundo nivel.
+  return currentState;
 };
 
+/**
+ * Devuelve una copia superficial y segura de los filtros activos.
+ * Es la función de lectura de estado más llamada, ahora es ultrarrápida.
+ * @returns {ActiveFilters}
+ */
 export const getActiveFilters = () => {
-  return structuredClone(state.activeFilters);
+  // 1. Copia superficial del objeto de filtros.
+  const filters = { ...state.activeFilters };
+
+  // 2. Clona explícitamente los arrays internos.
+  // Esto previene que `filters.excludedGenres.push(...)` afecte al estado original.
+  filters.excludedGenres = [...state.activeFilters.excludedGenres];
+  filters.excludedCountries = [...state.activeFilters.excludedCountries];
+
+  return filters;
 };
 
 export const getCurrentPage = () => {
   return state.currentPage;
 };
 
-export function getLatestRequestId() {
-  return state.latestRequestId;
-}
-
 export function hasActiveMeaningfulFilters() {
   const { activeFilters } = state;
+  // No necesitamos una copia aquí, es una lectura pura y sincrónica.
   for (const key in activeFilters) {
     if (key === "mediaType" || key === "sort") {
       continue;
@@ -100,29 +122,27 @@ export function hasActiveMeaningfulFilters() {
 }
 
 export const getUserDataForMovie = (movieId) => {
-  return state.userMovieData[movieId]
-    ? { ...state.userMovieData[movieId] }
-    : undefined;
+  const entry = state.userMovieData[movieId];
+  // Si la entrada existe, devuelve una copia. Si no, undefined.
+  return entry ? { ...entry } : undefined;
 };
 
 export const getAllUserMovieData = () => {
-  return structuredClone(state.userMovieData);
+  return { ...state.userMovieData };
 };
 
 // =================================================================
-//          LÓGICA DE LÍMITE DE FILTROS
+//          LÓGICA DE LÍMITE DE FILTROS Y SETTERS
 // =================================================================
 
 /**
  * Cuenta el número de filtros "significativos" que están actualmente activos.
- * Esta función es la base para la validación del límite.
  * @returns {number} El número total de filtros activos.
  */
 export function getActiveFilterCount() {
   const { activeFilters } = state;
   let count = 0;
 
-  // Lista de los tipos de filtro de inclusión que cuentan para el límite.
   const countableInclusionFilters = [
     "selection",
     "genre",
@@ -136,11 +156,9 @@ export function getActiveFilterCount() {
     }
   });
 
-  // Un grupo de exclusiones cuenta como un único filtro.
   if (activeFilters.excludedGenres.length > 0) count++;
   if (activeFilters.excludedCountries.length > 0) count++;
 
-  // El rango de años solo cuenta si ha sido modificado del valor por defecto.
   const defaultYearRange = `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`;
   if (activeFilters.year && activeFilters.year !== defaultYearRange) {
     count++;
@@ -169,8 +187,6 @@ export function setTotalMovies(total) {
  */
 export function setFilter(filterType, value) {
   if (filterType in state.activeFilters) {
-    // Validación: Solo comprobamos el límite si estamos intentando AÑADIR un nuevo filtro.
-    // Si `value` es null, estamos quitando un filtro, lo cual siempre está permitido.
     const isAddingNewFilter =
       value !== null && state.activeFilters[filterType] !== value;
     if (
@@ -180,11 +196,10 @@ export function setFilter(filterType, value) {
       console.warn(
         `Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado. La acción de añadir '${filterType}' fue bloqueada.`
       );
-      return false; // Indica a la UI que la acción falló.
+      return false;
     }
-
     state.activeFilters[filterType] = value;
-    return true; // Indica que el cambio de estado fue exitoso.
+    return true;
   }
   return false;
 }
@@ -218,40 +233,28 @@ export function toggleExcludedFilter(filterType, value) {
   const index = list.indexOf(value);
 
   if (index > -1) {
-    // Si el filtro ya está en la lista, lo quitamos. Esto siempre se permite.
     list.splice(index, 1);
     return true;
   } else {
-    // Si no está, intentamos añadirlo.
-
-    // Primero, validamos el límite de exclusiones por categoría (ej. max 3 géneros excluidos).
     if (list.length >= limit) {
       console.warn(
         `Límite de ${limit} filtros excluidos para ${filterType} alcanzado.`
       );
       return false;
     }
-
-    // Segundo, validamos el límite global de filtros activos.
-    // Esto es crucial si, por ejemplo, ya tenemos 3 filtros de inclusión y queremos añadir una exclusión.
     if (getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) {
       console.warn(
         `Límite global de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado. La exclusión fue bloqueada.`
       );
       return false;
     }
-
     list.push(value);
     return true;
   }
 }
 
-export function incrementRequestId() {
-  state.latestRequestId++;
-  return state.latestRequestId;
-}
-
 export function resetFiltersState() {
+  // Reseteamos usando el clon del estado inicial para mantener la integridad.
   state.activeFilters = structuredClone(initialState.activeFilters);
 }
 

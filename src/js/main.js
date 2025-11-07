@@ -1,9 +1,9 @@
 // =================================================================
-//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.3 - AbortController)
+//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.3)
 // =================================================================
-// v3.3 - Implementado AbortController para una cancelación de peticiones robusta.
-//        - Se elimina el sistema de requestId.
-// =================================================================
+// v3.3 - Integra la invalidación de caché al cambiar los datos de usuario.
+// v3.2 - Implementada la delegación de eventos para los clics en tarjetas.
+// v3.1 - Implementada la cancelación de peticiones con AbortController.
 
 import { CONFIG } from "./config.js";
 import {
@@ -12,22 +12,28 @@ import {
   getFriendlyErrorMessage,
   preloadLcpImage,
 } from "./utils.js";
-import { fetchMovies } from "./api.js";
+import { fetchMovies, queryCache } from "./api.js";
 import {
+  // DOM elements
   dom,
+  // Card and Grid rendering
   renderMovieGrid,
   renderSkeletons,
   renderNoResults,
   renderErrorState,
   updateCardUI,
+  // Pagination
   renderPagination,
   updateHeaderPaginationState,
   prefetchNextPage,
+  // Quick View and Auth Modals
   initQuickView,
   setupAuthModal,
+  // Other UI updates
   updateTypeFilterUI,
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
+  // Import card-specific handlers for delegation
   handleCardClick,
 } from "./ui.js";
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from "./constants.js";
@@ -53,6 +59,9 @@ import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
 import { fetchUserMovieData } from "./api-user.js";
 
+// Variable para gestionar el AbortController de las peticiones.
+let currentRequestController;
+
 // --- MAPAS DE URL ---
 const URL_PARAM_MAP = {
   q: "searchTerm",
@@ -72,17 +81,11 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
-// ▼▼▼ MEJORA 1: Variable a nivel de módulo para gestionar el AbortController. ▼▼▼
-let currentRequestController;
-
 // --- LÓGICA PRINCIPAL DE CARGA Y RENDERIZADO ---
 export async function loadAndRenderMovies(page = 1) {
-  // ▼▼▼ MEJORA 2: CANCELACIÓN. Si hay una petición en curso, la abortamos. ▼▼▼
   if (currentRequestController) {
     currentRequestController.abort();
   }
-
-  // ▼▼▼ MEJORA 3: CREACIÓN. Creamos un nuevo controlador para la nueva petición. ▼▼▼
   currentRequestController = new AbortController();
 
   setCurrentPage(page);
@@ -95,26 +98,22 @@ export async function loadAndRenderMovies(page = 1) {
     try {
       const pageSize =
         page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
-
-      // ▼▼▼ MEJORA 4: SEÑAL. Pasamos la señal del controlador a la API. ▼▼▼
       const { items: movies, total: totalMovies } = await fetchMovies(
         getActiveFilters(),
         page,
         pageSize,
-        currentRequestController.signal // <-- Aquí se pasa la señal
+        currentRequestController.signal
       );
 
       if (movies && movies.length > 0) {
         preloadLcpImage(movies[0]);
       }
 
-      // La validación de requestId ya no es necesaria.
       updateDomWithResults(movies, totalMovies);
     } catch (error) {
-      // Si el error es un 'AbortError', fue una cancelación intencionada. Lo ignoramos.
       if (error.name === "AbortError") {
         console.log("Petición de películas cancelada deliberadamente.");
-        throw error; // Propagamos para que la transición de vista se detenga correctamente.
+        throw error;
       }
       console.error("Error en el proceso de carga:", error);
       const friendlyMessage = getFriendlyErrorMessage(error);
@@ -129,8 +128,7 @@ export async function loadAndRenderMovies(page = 1) {
   };
 
   if (supportsViewTransitions) {
-    if (page === 1) {
-      // Condición simplificada para mostrar esqueletos solo en la primera carga/filtro.
+    if (!currentRequestController.signal.aborted) {
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
     }
     await document.startViewTransition(renderLogic).ready;
@@ -142,8 +140,6 @@ export async function loadAndRenderMovies(page = 1) {
     dom.gridContainer.setAttribute("aria-busy", "false");
   }
 }
-
-// ... (El resto del fichero main.js no necesita cambios)
 
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
@@ -188,6 +184,7 @@ function updateDomWithResults(movies, totalMovies) {
   }
 }
 
+// --- MANEJADORES DE EVENTOS ---
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
@@ -225,6 +222,7 @@ async function handleSearchInput() {
   }
 }
 
+// --- CONFIGURACIÓN DE LISTENERS ---
 function setupHeaderListeners() {
   const debouncedSearch = debounce(
     handleSearchInput,
@@ -371,12 +369,12 @@ function setupGlobalListeners() {
       e.key === "Escape" &&
       document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)
     ) {
-      const rewindButton = document.querySelector("#rewind-button");
       if (rewindButton) rewindButton.click();
     }
   });
 }
 
+// --- SISTEMA DE AUTENTICACIÓN Y DATOS DE USUARIO ---
 function setupAuthSystem() {
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
@@ -386,7 +384,6 @@ function setupAuthSystem() {
     const userEmail = user.email || "";
     userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
     userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
-
     try {
       const data = await fetchUserMovieData();
       setUserMovieData(data);
@@ -400,7 +397,6 @@ function setupAuthSystem() {
     document.body.classList.remove("user-logged-in");
     userAvatarInitials.textContent = "";
     userAvatarInitials.title = "";
-
     clearUserMovieData();
     document.dispatchEvent(new CustomEvent("userDataUpdated"));
   }
@@ -426,6 +422,7 @@ function setupAuthSystem() {
   });
 }
 
+// --- GESTIÓN DE URL Y TÍTULO DE PÁGINA ---
 function updatePageTitle() {
   const { searchTerm, genre, year, country, director, actor, selection } =
     getActiveFilters();
@@ -444,9 +441,13 @@ function updatePageTitle() {
     title = `Películas de ${country}`;
   } else if (selection) {
     const names = {
-      hbo: "Series de HBO",
-      criterion: "Colección Criterion",
-      miluno: "1001 Películas que ver",
+      C: "Colección Criterion",
+      M: "1001 Películas que ver",
+      A: "Arrow Video",
+      K: "Kino Lorber",
+      E: "Eureka",
+      H: "Series de HBO",
+      N: "Originales de Netflix",
     };
     title = names[selection] || title;
   }
@@ -530,6 +531,7 @@ function updateUrl() {
   }
 }
 
+// --- FUNCIÓN DE INICIALIZACIÓN ---
 function init() {
   window.addEventListener("storage", (e) => {
     if (e.key === "theme") {
@@ -566,10 +568,17 @@ function init() {
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   loadAndRenderMovies(getCurrentPage());
 
+  // Listener para invalidación de caché cuando un dato de usuario cambia
   document.addEventListener("userMovieDataChanged", (e) => {
+    console.log(
+      "%c[CACHE INVALIDATION] Datos de usuario cambiaron. Vaciando caché.",
+      "color: #f57c00"
+    );
+    queryCache.clear();
+
+    // Actualiza solo la tarjeta afectada para una respuesta visual instantánea
     const { movieId } = e.detail;
     if (!movieId) return;
-
     const cardElement = document.querySelector(
       `.movie-card[data-movie-id="${movieId}"]`
     );
@@ -578,7 +587,14 @@ function init() {
     }
   });
 
+  // Listener para invalidación de caché y actualización masiva de UI en login/logout
   document.addEventListener("userDataUpdated", () => {
+    console.log(
+      "%c[CACHE INVALIDATION] Sesión de usuario cambió. Vaciando caché.",
+      "color: #f57c00"
+    );
+    queryCache.clear();
+
     document.querySelectorAll(".movie-card").forEach((cardElement) => {
       updateCardUI(cardElement);
     });

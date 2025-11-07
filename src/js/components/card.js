@@ -4,9 +4,9 @@
 // Responsabilidades:
 // - Crear el elemento DOM para una tarjeta de película a partir de una plantilla.
 // - Poblar la tarjeta con los datos de la película (texto, imágenes, ratings).
-// - Gestionar los listeners de eventos individuales de la tarjeta (hover, no-click).
-// - Manejar la lógica de las acciones del usuario (watchlist, rating) con UI optimista
-//   y feedback háptico para una experiencia táctil mejorada.
+// - Exportar los manejadores de eventos de clic para ser usados por un listener delegado.
+// - Gestionar los listeners de eventos que no se pueden delegar (ej. hover, mousemove).
+// - Manejar la lógica de las acciones del usuario (watchlist, rating) con UI optimista.
 // =================================================================
 
 import { CONFIG } from "../config.js";
@@ -17,7 +17,7 @@ import {
   triggerHapticFeedback,
 } from "../utils.js";
 import { CSS_CLASSES, SELECTORS } from "../constants.js";
-import { openModal, closeModal } from "./quick-view.js";
+import { openModal } from "./quick-view.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api-user.js";
 import { showToast } from "../toast.js";
@@ -48,7 +48,6 @@ const isDesktop = window.matchMedia(
 
 /**
  * Observador de Intersección para cargar imágenes de forma diferida (lazy-loading).
- * Empieza a cargar las imágenes cuando están a 800px de entrar en el viewport.
  */
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
@@ -68,116 +67,95 @@ const lazyLoadObserver = new IntersectionObserver(
 );
 
 // =================================================================
-//          LÓGICA DE ACCIONES DEL USUARIO (CON UI OPTIMISTA)
+//          MANEJADORES DE ACCIONES (EXPORTADOS PARA DELEGACIÓN)
 // =================================================================
 
 /**
- * Actualiza la UI del botón de watchlist basándose en el estado global.
- * @param {HTMLElement} cardElement - El elemento de la tarjeta.
- */
-function updateWatchlistActionUI(cardElement) {
-  const movieId = parseInt(cardElement.dataset.movieId, 10);
-  const userData = getUserDataForMovie(movieId);
-  const watchlistButton = cardElement.querySelector(
-    '[data-action="toggle-watchlist"]'
-  );
-  if (watchlistButton) {
-    const isOnWatchlist = userData?.onWatchlist ?? false;
-    watchlistButton.classList.toggle("is-active", isOnWatchlist);
-    watchlistButton.setAttribute(
-      "aria-label",
-      isOnWatchlist ? "Quitar de mi lista" : "Añadir a mi lista"
-    );
-  }
-}
-
-/**
  * Maneja el clic en el botón de watchlist de forma optimista.
- * 1. Da feedback háptico.
- * 2. Actualiza el estado local y la UI inmediatamente.
- * 3. Llama a la API en segundo plano.
- * 4. Si la API falla, revierte el cambio y notifica al usuario.
  * @param {Event} event - El evento de clic.
  */
 async function handleWatchlistClick(event) {
   event.preventDefault();
   event.stopPropagation();
-  const button = event.currentTarget;
-  // ▼▼▼ CAMBIO CLAVE ▼▼▼
-  // Generalizamos la búsqueda del contenedor para que funcione en la tarjeta y en la Quick View.
-  const interactiveContainer = button.closest("[data-movie-id]");
-  if (!interactiveContainer) return;
+
+  // 'this' es el cardElement, establecido por .call() en el listener delegado
+  const interactiveContainer = this;
+  const button = event.target.closest('[data-action="toggle-watchlist"]');
+  if (!interactiveContainer || !button) return;
 
   const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
   const wasOnWatchlist = button.classList.contains("is-active");
   const newUserData = { onWatchlist: !wasOnWatchlist };
-  // Guardamos el estado previo completo para una reversión precisa.
   const previousUserData = JSON.parse(
     interactiveContainer.dataset.previousUserData || "{}"
   );
 
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newUserData);
-  // Actualizamos la UI inmediatamente para una respuesta optimista.
-  updateCardUI(interactiveContainer);
+  updateCardUI(interactiveContainer); // UI optimista
 
   try {
     await setUserMovieDataAPI(movieId, newUserData);
     triggerHapticFeedback("success");
   } catch (error) {
     showToast(error.message, "error");
-    // Si la API falla, revertimos el estado y la UI.
+    // Reversión en caso de error
     updateUserDataForMovie(movieId, previousUserData);
     updateCardUI(interactiveContainer);
   }
 }
 
 /**
- * Maneja el clic en la primera opción de rating (suspenso/1 estrella).
- * Es un atajo para ciclar entre: sin nota -> suspenso -> 1 estrella -> sin nota.
+ * Maneja el clic en las opciones de rating (suspenso y estrellas).
  * @param {Event} event - El evento de clic.
  */
-async function handleFirstOptionClick(event) {
+async function handleRatingClick(event) {
   event.preventDefault();
   event.stopPropagation();
-  // ▼▼▼ CAMBIO CLAVE ▼▼▼
-  // Hacemos la búsqueda del contenedor más genérica, igual que en rating-stars.js.
-  const interactiveContainer = event.currentTarget.closest("[data-movie-id]");
-  if (!interactiveContainer) return;
 
+  const interactiveContainer = this; // 'this' es el cardElement
   const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
   if (!movieId) return;
 
-  const currentUserData = getUserDataForMovie(movieId) || { rating: null };
-  const currentRating = currentUserData.rating;
-
-  let newRating;
-  if (currentRating === null) {
-    newRating = 2;
-  } else if (currentRating === 2) {
-    newRating = 3;
-  } else if (currentRating === 3) {
-    newRating = null;
-  } else {
-    newRating = 3;
-  } // Si tiene otra nota, se establece a 1 estrella (rating 3)
-
-  const newUserData = { rating: newRating };
   const previousUserData = JSON.parse(
     interactiveContainer.dataset.previousUserData || "{}"
-  ); // Aseguramos que se lee el estado previo correcto
+  );
+  const currentUserData = getUserDataForMovie(movieId) || { rating: null };
+  let newRating = null;
+
+  // Determinar qué se clickeó y calcular la nueva nota
+  const suspensoCircle = event.target.closest(
+    '[data-action="set-rating-suspenso"]'
+  );
+  const starElement = event.target.closest(".star-icon[data-rating-level]");
+
+  if (suspensoCircle) {
+    // Ciclo de rating bajo: null -> suspenso (2) -> 1 estrella (3) -> null
+    if (currentUserData.rating === null) newRating = 2;
+    else if (currentUserData.rating === 2) newRating = 3;
+    else newRating = null;
+  } else if (starElement) {
+    const level = parseInt(starElement.dataset.ratingLevel, 10);
+    const currentStars = calculateUserStars(currentUserData.rating);
+    // Si se hace clic en la misma estrella, se quita la nota. Si no, se establece la nueva.
+    newRating = level === currentStars ? null : [3, 5, 7, 9][level - 1];
+  }
+
+  if (newRating === currentUserData.rating) return; // No hubo cambios
+
+  const newUserData = { rating: newRating };
 
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newUserData);
-  updateCardUI(interactiveContainer); // Actualizamos la UI inmediatamente
+  updateCardUI(interactiveContainer); // UI Optimista
 
   try {
     await setUserMovieDataAPI(movieId, newUserData);
-    triggerHapticFeedback("success");
+    if (newRating !== null) triggerHapticFeedback("success");
   } catch (error) {
     showToast(error.message, "error");
     updateUserDataForMovie(movieId, previousUserData);
-    updateCardUI(interactiveContainer); // Revertimos la UI si hay error
+    updateCardUI(interactiveContainer); // Reversión
   }
 }
 
@@ -187,43 +165,60 @@ async function handleFirstOptionClick(event) {
 
 /**
  * Actualiza todos los elementos visuales de una tarjeta que dependen del estado del usuario.
- * (Watchlist, rating, etc.).
  * @param {HTMLElement} cardElement - El elemento de la tarjeta a actualizar.
  */
 export function updateCardUI(cardElement) {
   const movieId = parseInt(cardElement.dataset.movieId, 10);
   const movieData = cardElement.movieData;
   if (!movieData) return;
+
   const userData = getUserDataForMovie(movieId);
   const userRating = userData?.rating;
-  updateWatchlistActionUI(cardElement);
   const starContainer = cardElement.querySelector(
     '[data-action="set-rating-estrellas"]'
   );
   const lowRatingCircle = cardElement.querySelector(
     '[data-action="set-rating-suspenso"]'
   );
-  if (!starContainer || !lowRatingCircle) return;
-
+  const watchlistButton = cardElement.querySelector(
+    '[data-action="toggle-watchlist"]'
+  );
   const isLoggedIn = document.body.classList.contains("user-logged-in");
+
+  if (!starContainer || !lowRatingCircle || !watchlistButton) return;
+
+  // Guardar estado previo para posible reversión
   cardElement.dataset.previousUserData = JSON.stringify(
     userData || { onWatchlist: false, rating: null }
   );
 
+  // Actualizar UI de Watchlist
+  const isOnWatchlist = userData?.onWatchlist ?? false;
+  watchlistButton.classList.toggle("is-active", isOnWatchlist);
+  watchlistButton.setAttribute(
+    "aria-label",
+    isOnWatchlist ? "Quitar de mi lista" : "Añadir a mi lista"
+  );
+
+  // Actualizar UI de Rating
   lowRatingCircle.style.display = "none";
   starContainer.style.display = "none";
 
   if (isLoggedIn && userRating !== null && userRating !== undefined) {
+    // Hay una valoración del usuario
     starContainer.classList.add("has-user-rating");
     lowRatingCircle.classList.add("has-user-rating");
 
     if (userRating === 2) {
+      // Suspenso
       lowRatingCircle.style.display = "block";
     } else if (userRating >= 3) {
+      // 1 a 4 estrellas
       starContainer.style.display = "flex";
       renderUserStars(starContainer, calculateUserStars(userRating), true);
     }
   } else {
+    // No hay valoración del usuario, mostrar nota media
     starContainer.classList.remove("has-user-rating");
     lowRatingCircle.classList.remove("has-user-rating");
     const ratings = [movieData.fa_rating, movieData.imdb_rating].filter(
@@ -261,19 +256,26 @@ function setupCardImage(imgElement, movieData) {
         )}`;
   const highQualityPoster = `${basePosterUrl}?v=${version}`;
 
-  if (movieData.thumbhash_st) {
-    imgElement.src = movieData.thumbhash_st;
-    imgElement.dataset.src = highQualityPoster;
-    imgElement.classList.add(CSS_CLASSES.LAZY_LQIP);
-    lazyLoadObserver.observe(imgElement);
-  } else {
-    imgElement.src = highQualityPoster;
-    imgElement.loading = renderedCardCount < 6 ? "eager" : "lazy";
-  }
-
   imgElement.alt = `Póster de ${movieData.title}`;
+
   if (renderedCardCount < 6) {
+    // Carga prioritaria para las primeras imágenes (LCP)
+    imgElement.src = highQualityPoster;
+    imgElement.loading = "eager";
     imgElement.setAttribute("fetchpriority", "high");
+  } else {
+    // Carga diferida para el resto
+    if (movieData.thumbhash_st) {
+      imgElement.src = movieData.thumbhash_st; // Placeholder
+      imgElement.dataset.src = highQualityPoster;
+      imgElement.classList.add(CSS_CLASSES.LAZY_LQIP);
+      lazyLoadObserver.observe(imgElement);
+    } else {
+      imgElement.src =
+        "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="; // Placeholder transparente
+      imgElement.dataset.src = highQualityPoster;
+      lazyLoadObserver.observe(imgElement);
+    }
   }
 }
 
@@ -306,19 +308,16 @@ function formatActorsWithEllipsis(actorsString, maxLength = 85) {
 
   for (const actor of allActors) {
     const separatorLength = truncatedActors.length > 0 ? 2 : 0; // ', '.length
-    // Longitud que tendría la cadena si añadiéramos el nuevo actor
     const potentialLength = currentLength + separatorLength + actor.length;
 
     if (potentialLength > maxLength) {
-      break; // No cabe el siguiente actor, así que paramos.
+      break;
     }
     truncatedActors.push(actor);
     currentLength = potentialLength;
   }
 
   if (truncatedActors.length === 0 && allActors.length > 0) {
-    // Si ni siquiera el primer actor cabe, es un caso extremo.
-    // Devolvemos solo el primero para evitar un campo vacío.
     truncatedActors.push(allActors[0]);
   }
 
@@ -396,44 +395,25 @@ function populateCardText(elements, movieData) {
   if (movieData.country_code)
     elements.countryFlag.className = `fi fi-${movieData.country_code}`;
 
-  // ==========================================================
-  //  ▼▼▼ LÓGICA DE ICONOS REFACTORIZADA PARA MÚLTIPLES ICONOS ▼▼▼
-  // ==========================================================
-
   const collections = movieData.collections_list || "";
-
-  // 1. Ocultamos todos los iconos al principio para limpiar el estado anterior.
-  elements.netflixIcon?.style.setProperty("display", "none");
-  elements.hboIcon?.style.setProperty("display", "none");
-  elements.disneyIcon?.style.setProperty("display", "none");
-  elements.wbIcon?.style.setProperty("display", "none");
-  elements.universalIcon?.style.setProperty("display", "none");
-  elements.sonyIcon?.style.setProperty("display", "none");
-  elements.paramountIcon?.style.setProperty("display", "none");
-
-  // 2. Usamos una serie de 'if' independientes. Cada uno se evalúa
-  //    sin importar si los anteriores fueron verdaderos o no.
-  if (collections.includes("N") && elements.netflixIcon) {
-    elements.netflixIcon.style.setProperty("display", "block");
-  }
-  if (collections.includes("H") && elements.hboIcon) {
-    elements.hboIcon.style.setProperty("display", "block");
-  }
-  if (collections.includes("D") && elements.disneyIcon) {
-    elements.disneyIcon.style.setProperty("display", "block");
-  }
-  if (collections.includes("W") && elements.wbIcon) {
-    elements.wbIcon.style.setProperty("display", "block");
-  }
-  if (collections.includes("U") && elements.universalIcon) {
-    elements.universalIcon.style.setProperty("display", "block");
-  }
-  if (collections.includes("S") && elements.sonyIcon) {
-    elements.sonyIcon.style.setProperty("display", "block");
-  }
-  if (collections.includes("P") && elements.paramountIcon) {
-    elements.paramountIcon.style.setProperty("display", "block");
-  }
+  const iconMap = {
+    N: "netflixIcon",
+    H: "hboIcon",
+    D: "disneyIcon",
+    W: "wbIcon",
+    U: "universalIcon",
+    S: "sonyIcon",
+    P: "paramountIcon",
+  };
+  Object.values(iconMap).forEach((iconKey) => {
+    if (elements[iconKey]) elements[iconKey].style.display = "none";
+  });
+  collections.split(",").forEach((code) => {
+    const iconKey = iconMap[code];
+    if (iconKey && elements[iconKey]) {
+      elements[iconKey].style.display = "block";
+    }
+  });
 }
 
 /**
@@ -500,11 +480,6 @@ function setupCardRatings(elements, movieData) {
 //          MANEJO DE EVENTOS Y CREACIÓN DE TARJETAS
 // =================================================================
 
-/**
- * Resetea el estado de la cara trasera de una tarjeta a su estado inicial.
- * (Contrae la sinopsis, resetea el botón y el scroll).
- * @param {HTMLElement} cardElement - La tarjeta a resetear.
- */
 function resetCardBackState(cardElement) {
   const flipCardBack = cardElement.querySelector(".flip-card-back");
   if (flipCardBack?.classList.contains("is-expanded")) {
@@ -519,24 +494,17 @@ function resetCardBackState(cardElement) {
   }
 }
 
-/**
- * Voltea todas las tarjetas que estén mostrando su cara trasera.
- */
 export function unflipAllCards() {
   if (currentlyFlippedCard) {
     currentlyFlippedCard
       .querySelector(".flip-card-inner")
       ?.classList.remove("is-flipped");
-    resetCardBackState(currentlyFlippedCard); // <-- REINICIAMOS ESTADO
+    resetCardBackState(currentlyFlippedCard);
     currentlyFlippedCard = null;
     document.removeEventListener("click", handleDocumentClick);
   }
 }
 
-/**
- * Listener para el documento que cierra una tarjeta volteada si se hace clic fuera de ella.
- * @param {Event} e
- */
 function handleDocumentClick(e) {
   if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) {
     unflipAllCards();
@@ -549,28 +517,67 @@ function handleDocumentClick(e) {
  * @param {Event} event - El evento de clic.
  */
 export function handleCardClick(event) {
-  const cardElement = this; // 'this' es establecido por .call() en el listener delegado
+  const cardElement = this; // 'this' es establecido por .call()
   const e = event;
 
+  // Se comprueba en qué parte de la tarjeta se ha hecho clic
   const directorLink = e.target.closest(
     ".front-director-info a[data-director-name]"
   );
+  const watchlistBtn = e.target.closest('[data-action="toggle-watchlist"]');
+  const ratingElement = e.target.closest('[data-action^="set-rating-"]');
+  const expandBtn = e.target.closest(".expand-content-btn");
+  const externalLink = e.target.closest("a");
+
+  // PRIORIDAD 1: Acciones específicas que no deben voltear la tarjeta
   if (directorLink) {
     e.preventDefault();
-    const eventDetail = {
-      keepSort: true,
-      newFilter: { type: "director", value: directorLink.dataset.directorName },
-    };
     document.dispatchEvent(
-      new CustomEvent("filtersReset", { detail: eventDetail })
+      new CustomEvent("filtersReset", {
+        detail: {
+          keepSort: true,
+          newFilter: {
+            type: "director",
+            value: directorLink.dataset.directorName,
+          },
+        },
+      })
     );
     return;
   }
-  if (e.target.closest("a")) return;
+  if (watchlistBtn) {
+    handleWatchlistClick.call(cardElement, e);
+    return;
+  }
+  if (ratingElement) {
+    handleRatingClick.call(cardElement, e);
+    return;
+  }
+  if (expandBtn) {
+    e.stopPropagation();
+    const flipCardBack = cardElement.querySelector(".flip-card-back");
+    const scrollableContent = cardElement.querySelector(".scrollable-content");
+    const isExpanded = flipCardBack.classList.toggle("is-expanded");
+    expandBtn.textContent = isExpanded ? "−" : "+";
+    expandBtn.setAttribute(
+      "aria-label",
+      isExpanded ? "Contraer sinopsis" : "Expandir sinopsis"
+    );
+    if (!isExpanded && scrollableContent) {
+      scrollableContent.scrollTop = 0;
+    }
+    return;
+  }
+  if (externalLink && externalLink.href && !externalLink.href.endsWith("#")) {
+    // Si es un enlace externo válido, dejamos que el navegador actúe.
+    return;
+  }
 
+  // PRIORIDAD 2: Acción por defecto (voltear o abrir Quick View)
   const isRotationDisabled =
     document.body.classList.contains("rotation-disabled");
   if (!isDesktop && !isRotationDisabled) {
+    // Lógica de volteo para móvil
     e.preventDefault();
     e.stopPropagation();
     const inner = cardElement.querySelector(".flip-card-inner");
@@ -580,12 +587,6 @@ export function handleCardClick(event) {
       unflipAllCards();
     }
     inner.classList.toggle("is-flipped");
-    // ▼▼▼ MEJORA: Reiniciar el scroll al voltear la tarjeta ▼▼▼
-    // Si la tarjeta se va a mostrar (no estaba volteada), nos aseguramos
-    // de que el contenido de la cara trasera empiece desde arriba.
-    if (!isThisCardFlipped) {
-      cardElement.querySelector(".scrollable-content").scrollTop = 0;
-    }
     if (!isThisCardFlipped) {
       currentlyFlippedCard = cardElement;
       setTimeout(
@@ -594,52 +595,16 @@ export function handleCardClick(event) {
       );
     } else {
       currentlyFlippedCard = null;
-      resetCardBackState(cardElement); // <-- REINICIAMOS ESTADO
+      resetCardBackState(cardElement);
     }
     return;
   }
 
   if (isRotationDisabled) {
-    if (
-      document
-        .getElementById("quick-view-modal")
-        ?.classList.contains("is-visible")
-    ) {
-      closeModal();
-      return;
-    }
     openModal(cardElement);
   }
 }
 
-/**
- * Configura el botón de expansión para la sinopsis/crítica.
- * @param {HTMLElement} cardElement - El elemento de la tarjeta o modal.
- */
-function setupSynopsisExpansion(cardElement) {
-  const expandBtn = cardElement.querySelector(".expand-content-btn");
-  const flipCardBack = cardElement.querySelector(".flip-card-back");
-  const scrollableContent = cardElement.querySelector(".scrollable-content");
-
-  if (!expandBtn || !flipCardBack || !scrollableContent) return;
-
-  expandBtn.addEventListener("click", (e) => {
-    e.stopPropagation(); // Evita que el clic se propague y voltee la tarjeta
-    const isExpanded = flipCardBack.classList.toggle("is-expanded");
-
-    // Cambia el texto del botón y la etiqueta ARIA
-    expandBtn.textContent = isExpanded ? "−" : "+";
-    expandBtn.setAttribute(
-      "aria-label",
-      isExpanded ? "Contraer sinopsis" : "Expandir sinopsis"
-    );
-
-    // Si se contrae, resetea el scroll
-    if (!isExpanded) {
-      scrollableContent.scrollTop = 0;
-    }
-  });
-}
 /**
  * Añade listeners de hover a una tarjeta para el efecto de volteo retardado en escritorio.
  * @param {HTMLElement} cardElement
@@ -651,22 +616,22 @@ function setupIntentionalHover(cardElement) {
 
   const startFlipTimer = () => {
     if (document.body.classList.contains("rotation-disabled")) return;
-    clearTimeout(hoverTimeout); // Asegurarse de que no hay timers duplicados
-    hoverTimeout = setTimeout(
-      () => cardElement.classList.add("is-hovered"),
-      HOVER_DELAY
-    );
+    clearTimeout(hoverTimeout);
+    hoverTimeout = setTimeout(() => {
+      if (cardElement.matches(":hover")) {
+        // Doble check
+        cardElement.classList.add("is-hovered");
+      }
+    }, HOVER_DELAY);
   };
 
-  const cancelFlipTimer = () => {
-    clearTimeout(hoverTimeout);
-  };
+  const cancelFlipTimer = () => clearTimeout(hoverTimeout);
 
   cardElement.addEventListener("mouseenter", startFlipTimer);
   cardElement.addEventListener("mouseleave", () => {
     cancelFlipTimer();
-    resetCardBackState(cardElement); // <-- REINICIAMOS ESTADO AL SALIR EL RATÓN
     cardElement.classList.remove("is-hovered");
+    resetCardBackState(cardElement);
   });
 
   if (ratingBlock) {
@@ -676,38 +641,28 @@ function setupIntentionalHover(cardElement) {
 }
 
 /**
- * Inicializa los listeners de eventos que son específicos de una tarjeta individual
- * y no pueden ser delegados (ej. mouseenter/mouseleave).
+ * Inicializa los listeners de eventos que NO pueden ser delegados (hover, mousemove).
  * @param {HTMLElement} cardElement
  */
 export function initializeCard(cardElement) {
   setupIntentionalHover(cardElement);
-  setupSynopsisExpansion(cardElement); // <-- NUEVA LÓGICA DE EXPANSIÓN
 
-  const isLoggedIn = document.body.classList.contains("user-logged-in");
-  if (isLoggedIn) {
-    cardElement
-      .querySelector('[data-action="toggle-watchlist"]')
-      ?.addEventListener("click", handleWatchlistClick);
-    const starContainer = cardElement.querySelector(
-      '[data-action="set-rating-estrellas"]'
+  const starContainer = cardElement.querySelector(
+    '[data-action="set-rating-estrellas"]'
+  );
+  if (starContainer) {
+    // setupRatingListeners es necesario para los efectos de hover sobre las estrellas
+    setupRatingListeners(
+      starContainer,
+      document.body.classList.contains("user-logged-in")
     );
-    if (starContainer) {
-      setupRatingListeners(starContainer, true);
-      starContainer
-        .querySelector('[data-rating-level="1"]')
-        ?.addEventListener("click", handleFirstOptionClick);
-    }
-    cardElement
-      .querySelector('[data-action="set-rating-suspenso"]')
-      ?.addEventListener("click", handleFirstOptionClick);
   }
 }
 
 /**
  * Crea una nueva tarjeta de película y la configura.
  * @param {object} movieData - Los datos de la película.
- * @returns {DocumentFragment | null} - Un fragmento de documento con la tarjeta o null si falla.
+ * @returns {DocumentFragment | null} - Un fragmento con la tarjeta.
  */
 function createMovieCard(movieData) {
   if (!cardTemplate) return null;
@@ -742,10 +697,10 @@ function createMovieCard(movieData) {
     netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
     hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'),
     disneyIcon: cardClone.querySelector('[data-template="disney-icon"]'),
-    wbIcon: cardClone.querySelector('[data-template="wb-icon"]'), // <-- Añadido
-    universalIcon: cardClone.querySelector('[data-template="universal-icon"]'), // <-- Añadido
-    sonyIcon: cardClone.querySelector('[data-template="sony-icon"]'), // <-- Añadido
-    paramountIcon: cardClone.querySelector('[data-template="paramount-icon"]'), // <-- Añadido
+    wbIcon: cardClone.querySelector('[data-template="wb-icon"]'),
+    universalIcon: cardClone.querySelector('[data-template="universal-icon"]'),
+    sonyIcon: cardClone.querySelector('[data-template="sony-icon"]'),
+    paramountIcon: cardClone.querySelector('[data-template="paramount-icon"]'),
     wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
     genre: cardClone.querySelector(SELECTORS.GENRE),
     actors: cardClone.querySelector(SELECTORS.ACTORS),
@@ -759,14 +714,6 @@ function createMovieCard(movieData) {
   populateCardText(elements, movieData);
   setupCardImage(elements.img, movieData);
   setupCardRatings(elements, movieData);
-  elements.wikipediaLink.href =
-    movieData.wikipedia && movieData.wikipedia.startsWith("http")
-      ? movieData.wikipedia
-      : "#";
-  elements.wikipediaLink.style.display =
-    movieData.wikipedia && movieData.wikipedia.startsWith("http")
-      ? "inline-flex"
-      : "none";
 
   updateCardUI(cardElement);
   initializeCard(cardElement);
