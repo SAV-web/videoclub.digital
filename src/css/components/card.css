@@ -8,384 +8,368 @@
 
 /* Keyframes para la animación de aparición en cascada */
 @keyframes card-appear {
-    from {
-        opacity: 0;
-        transform: translateY(30px) scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .movie-card {
-    perspective: 1000px;
-    aspect-ratio: 500 / 950;
+  perspective: 1000px;
+  aspect-ratio: 500 / 950;
 
-    /* Animación de aparición secuencial */
-    animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
-    animation-delay: calc(var(--card-index, 0) * 50ms);
+  /* Animación de aparición secuencial */
+  animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
+  animation-delay: calc(var(--card-index, 0) * 50ms);
 
-    /* Transición para la interacción de hover */
-    transition: transform var(--duration-quick) var(--ease-spring),
-                box-shadow var(--duration-normal) var(--ease-smooth-out);
+  /* Transición para la interacción de hover */
+  transition: transform var(--duration-quick) var(--ease-spring),
+    box-shadow var(--duration-normal) var(--ease-smooth-out);
 }
 
 .flip-card-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-    transform-style: preserve-3d;
-    transition: transform var(--duration-leisurely) var(--ease-smooth-out),
-                filter var(--duration-leisurely) var(--ease-smooth-out);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  transform-style: preserve-3d;
+  transition: transform var(--duration-leisurely) var(--ease-smooth-out),
+    filter var(--duration-leisurely) var(--ease-smooth-out);
 }
 
 /* Estado volteado con sombra dinámica para dar profundidad */
 .flip-card-inner.is-flipped {
-    transform: rotateY(180deg);
+  transform: rotateY(180deg);
 }
 html.dark-mode .flip-card-inner.is-flipped {
-    box-shadow: 
-        0 20px 50px rgba(0, 0, 0, 0.6),
-        0 10px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
 /* Interacción de hover avanzada */
 @media (hover: hover) and (pointer: fine) {
-    
-    /* ========================================================== */
-    /*  ▼▼▼ CAMBIO DE DISPARADOR: DE :hover A .is-hovered ▼▼▼
+  /* ========================================================== */
+  /*  ▼▼▼ CAMBIO DE DISPARADOR: DE :hover A .is-hovered ▼▼▼
     /*      La clase .is-hovered será añadida por JavaScript
     /*      después de un segundo.
     /* ========================================================== */
-    body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner { 
-        transform: rotateY(180deg); 
-    }
-    
-    /* El efecto de elevación y sombra SÍ lo mantenemos en el :hover inmediato
+  body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+
+  /* El efecto de elevación y sombra SÍ lo mantenemos en el :hover inmediato
        para dar feedback instantáneo de que la tarjeta es interactiva. */
-    .movie-card:not(.is-flipped):hover {
-        transform: translateY(-8px) scale(1.02);
-        box-shadow: 
-            0 12px 24px rgba(0, 0, 0, 0.12),
-            0 8px 16px rgba(0, 0, 0, 0.08);
-    }
-    
-    html.dark-mode .movie-card:not(.is-flipped):hover {
-        box-shadow: 
-            0 12px 24px rgba(0, 0, 0, 0.3),
-            0 8px 16px rgba(0, 0, 0, 0.2);
-    }
+  .movie-card:not(.is-flipped):hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  html.dark-mode .movie-card:not(.is-flipped):hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
+  }
 }
 
 .flip-card-front,
 .flip-card-back {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .flip-card-front {
-    display: flex;
-    flex-direction: column;
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 .poster-container {
-    position: relative;
-    width: 100%;
-    height: 66%;
-    flex-shrink: 0;
+  position: relative;
+  width: 100%;
+  height: 66%;
+  flex-shrink: 0;
 }
 
 .poster-container img {
-    width: 100%;
-    height: 100%;
-    border: var(--space-xxs) solid var(--color-surface);
-    border-radius: var(--radius-lg);
-    object-fit: cover;
+  width: 100%;
+  height: 100%;
+  border: var(--space-xxs) solid var(--color-surface);
+  border-radius: var(--radius-lg);
+  object-fit: cover;
 }
 
 /* Transición suave para placeholders de baja calidad (LQIP) */
 .flip-card-front img.lazy-lqip {
-    filter: blur(10px);
-    transform: scale(1.1);
-    transition: filter var(--duration-normal) ease-in-out, transform var(--duration-normal) ease-in-out;
+  filter: blur(10px);
+  transform: scale(1.1);
+  transition: filter var(--duration-normal) ease-in-out,
+    transform var(--duration-normal) ease-in-out;
 }
 .flip-card-front img.lazy-lqip.loaded {
-    filter: blur(0);
-    transform: scale(1);
+  filter: blur(0);
+  transform: scale(1);
 }
 
 .star-icon {
-    position: relative;
-    width: 20px;
-    height: 20px;
+  position: relative;
+  width: 20px;
+  height: 20px;
 }
 
 /* Expande el área táctil del icono a 48x48px sin afectar el layout */
 .star-icon::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 48px;
-    height: 48px;
-    transform: translate(-50%, -50%);
-    /* Descomentar para visualizar el área táctil */
-    /* background-color: rgba(255, 0, 0, 0.2); */
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  /* Descomentar para visualizar el área táctil */
+  /* background-color: rgba(255, 0, 0, 0.2); */
 }
 .star-icon-path {
-    stroke: var(--color-accent);
-    stroke-width: 1.5;
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
 }
-.star-icon-path--empty { fill: transparent; }
+.star-icon-path--empty {
+  fill: transparent;
+}
 .star-icon-path--filled {
-    fill: var(--color-accent);
-    clip-path: inset(0 100% 0 0);
+  fill: var(--color-accent);
+  clip-path: inset(0 100% 0 0);
 }
 
 .low-rating-circle {
-    display: none;
-    width: 20px;
-    height: 20px;
-    border: 5px solid var(--color-accent);
-    border-radius: 50%;
-    background-color: transparent;
+  display: none;
+  width: 20px;
+  height: 20px;
+  border: 5px solid var(--color-accent);
+  border-radius: 50%;
+  background-color: transparent;
 }
 
-.fi { font-size: var(--font-size-sm); }
+.fi {
+  font-size: var(--font-size-sm);
+}
 
 /* --- Estilos de la cara trasera --- */
 .flip-card-back {
-    display: flex;
-    flex-direction: column;
-    padding: var(--space-xs) var(--space-sm);
-    background-color: var(--color-surface);
-    color: var(--color-text-primary);
-    line-height: var(--line-height-normal);
-    transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-xs) var(--space-sm);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-normal);
+  transform: rotateY(180deg);
 }
 
 .flip-card-back > *:not(.scrollable-content) {
-    transition: opacity var(--duration-quick) ease-out;
+  transition: opacity var(--duration-quick) ease-out;
 }
 
 /* Cuando se expande, ocultamos el resto de los elementos */
 .flip-card-back.is-expanded > *:not(.scrollable-content) {
-    opacity: 0;
-    pointer-events: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ▼▼▼ MEJORA: Eliminamos el padding del contenedor cuando está expandido ▼▼▼ */
 .flip-card-back.is-expanded {
-    padding: 0;
-    transition: padding var(--duration-normal) var(--ease-smooth-out);
+  padding: 0;
+  transition: padding var(--duration-normal) var(--ease-smooth-out);
 }
 
-
 .back-meta-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    margin-bottom: var(--space-sm);
-    font-size: var(--font-size-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-size-sm);
 }
 
 .episode-duration-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .ratings-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
 }
 .rating-line {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  text-decoration: none;
 }
 .rating-left {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    flex-shrink: 0;
-    color: var(--color-text-primary);
-    text-decoration: none;
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
 }
 .rating-left.disabled {
-    pointer-events: none;
-    opacity: 0.7;
+  pointer-events: none;
+  opacity: 0.7;
 }
 .rating-icon {
-    width: 1.5em;
-    height: 1.5em;
-    border-radius: var(--radius-sm);
-    object-fit: contain;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
 }
 
 .rating-bar-container {
-    flex-grow: 1;
-    width: 100%;
-    height: var(--space-xs);
-    border-radius: var(--space-xxs);
-    background-color: var(--color-bg);
-    overflow: hidden;
+  flex-grow: 1;
+  width: 100%;
+  height: var(--space-xs);
+  border-radius: var(--space-xxs);
+  background-color: var(--color-bg);
+  overflow: hidden;
 }
 .rating-bar {
-    width: 0;
-    height: 100%;
-    border-radius: var(--space-xxs);
-    background-color: var(--color-accent);
-    transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  width: 0;
+  height: 100%;
+  border-radius: var(--space-xxs);
+  background-color: var(--color-accent);
+  transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .details-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-    margin: var(--space-sm) 0 var(--space-xs);
-    padding-top: var(--space-sm);
-    border-top: 1px solid var(--color-border);
-    font-size: var(--font-size-xs);
-    line-height: var(--line-height-normal);
-    color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: var(--space-sm) 0 var(--space-xs);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
 }
 .detail-item {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 4;
-    -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
-.detail-label { margin-right: var(--space-xs); }
+.detail-label {
+  margin-right: var(--space-xs);
+}
 
 .plot-summary-final,
 .critic-review {
-    padding-top: var(--space-sm);
-    border-top: 1px solid var(--color-border);
-    opacity: 0.8;
-    font-size: var(--font-size-xs);
-    color: var(--color-text-secondary); /* Secundario para buena legibilidad */
-    font-weight: var(--font-weight-normal); /* Usamos el peso normal, no light */    line-height: var(--line-height-relaxed);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+  opacity: 0.8;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary); /* Secundario para buena legibilidad */
+  font-weight: var(--font-weight-normal); /* Usamos el peso normal, no light */
+  line-height: var(--line-height-relaxed);
 }
 
 .scrollable-content {
-    position: relative;
-    transition: all var(--duration-normal) var(--ease-smooth-out);
-    overflow: hidden; /* Oculta el scrollbar */
+  position: relative;
+  transition: all var(--duration-normal) var(--ease-smooth-out);
+  overflow: hidden; /* Oculta el scrollbar */
 }
 
 /* Estado expandido del contenido de scroll */
 .flip-card-back.is-expanded .scrollable-content {
-    position: absolute;
-    inset: 0; /* Ocupa todo el espacio */
-    padding: var(--space-md);
-    background-color: var(--color-surface);
-    overflow-y: auto; /* Permite el scroll manual si el usuario lo desea */
+  position: absolute;
+  inset: 0; /* Ocupa todo el espacio */
+  padding: var(--space-md);
+  background-color: var(--color-surface);
+  overflow-y: auto; /* Permite el scroll manual si el usuario lo desea */
 }
 
 /* ▼▼▼ MEJORA: Ocultamos la barra de scroll en la vista expandida ▼▼▼ */
 .flip-card-back.is-expanded .scrollable-content {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE */
 }
 
 .flip-card-back.is-expanded .scrollable-content::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, etc. */
+  display: none; /* Chrome, Safari, etc. */
 }
 
 /* Máscara de degradado para indicar que hay más contenido */
 .scrollable-content::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: linear-gradient(to bottom, transparent, var(--color-surface));
-    pointer-events: none; /* Permite que los eventos de ratón pasen a través */
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, transparent, var(--color-surface));
+  pointer-events: none; /* Permite que los eventos de ratón pasen a través */
 }
 
 .flip-card-back.is-expanded .scrollable-content::after {
-    opacity: 0;
+  opacity: 0;
 }
 
-.plot-summary-final { cursor: default; }
-.critic-review { margin-top: var(--space-sm); }
+.plot-summary-final {
+  cursor: default;
+}
+.critic-review {
+  margin-top: var(--space-sm);
+}
 
 /* Botón de expansión (+) */
 .expand-content-btn {
-    position: absolute;
-    bottom: -5px;
-    right: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    border: none;
-    background-color: var(--color-accent);
-    color: var(--color-surface);
-    font-size: 1.5rem;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    transition: all var(--duration-quick) ease-out;
+  position: absolute;
+  bottom: -5px;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: all var(--duration-quick) ease-out;
 }
 
 .expand-content-btn:hover {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
 /* En estado expandido, el botón se convierte en un botón de cierre (-) */
 .flip-card-back.is-expanded .expand-content-btn {
-    content: '-';
+  content: "-";
 }
 
 [data-template="wikipedia-link"] > .rating-icon {
-    width: 1.7em;
-    height: 1.7em;
-    transform: translateY(-1px);
-    /* Puedes ajustar el color aquí si lo necesitas */
-    color: var(--color-text-tertiary);
+  width: 1.7em;
+  height: 1.7em;
+  transform: translateY(-1px);
+  /* Puedes ajustar el color aquí si lo necesitas */
+  color: var(--color-text-tertiary);
 }
 
 .star-rating-container {
-    cursor: default;
-}
-    border-top: 1px solid var(--color-border);
-    opacity: 0.8;
-    font-size: var(--font-size-xs);
-    color: var(--color-text-secondary); /* Secundario para buena legibilidad */
-    font-weight: var(--font-weight-normal); /* Usamos el peso normal, no light */    line-height: var(--line-height-relaxed);
-}
-.plot-summary-final { cursor: pointer; }
-.critic-review { margin-top: var(--space-sm); }
-
-[data-template="wikipedia-link"] > .rating-icon {
-    width: 1.7em;
-    height: 1.7em;
-    transform: translateY(-1px);
-    /* Puedes ajustar el color aquí si lo necesitas */
-    color: var(--color-text-tertiary);
-}
-
-.star-rating-container {
-    cursor: default;
+  cursor: default;
 }

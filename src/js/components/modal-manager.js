@@ -16,13 +16,13 @@ let focusTrapCleanup = null;
 let previouslyFocusedElement = null;
 
 const FOCUSABLE_ELEMENTS_SELECTOR = [
-    'a[href]:not([tabindex^="-"])',
-    'button:not([disabled]):not([tabindex^="-"])',
-    'textarea:not([disabled]):not([tabindex^="-"])',
-    'input:not([type="hidden"]):not([disabled]):not([tabindex^="-"])',
-    'select:not([disabled]):not([tabindex^="-"])',
-    '[tabindex]:not([tabindex^="-"])'
-].join(', ');
+  'a[href]:not([tabindex^="-"])',
+  'button:not([disabled]):not([tabindex^="-"])',
+  'textarea:not([disabled]):not([tabindex^="-"])',
+  'input:not([type="hidden"]):not([disabled]):not([tabindex^="-"])',
+  'select:not([disabled]):not([tabindex^="-"])',
+  '[tabindex]:not([tabindex^="-"])',
+].join(", ");
 
 /**
  * Verifica si un elemento es realmente visible en el DOM.
@@ -32,42 +32,46 @@ const FOCUSABLE_ELEMENTS_SELECTOR = [
  * @returns {boolean} `true` si el elemento es visible.
  */
 function isVisible(element) {
-    return element.offsetParent !== null;
+  return element.offsetParent !== null;
 }
 
 /**
  * Gestiona la navegación por Tab dentro de la modal para crear un ciclo.
  */
 function handleKeyDown(e) {
-    if (e.key !== 'Tab') {
-        return;
-    }
+  if (e.key !== "Tab") {
+    return;
+  }
 
-    // 1. Obtener todos los elementos potencialmente enfocables.
-    const allPotentials = Array.from(e.currentTarget.querySelectorAll(FOCUSABLE_ELEMENTS_SELECTOR));
-    
-    // 2. FILTRADO CRÍTICO: Quedarse solo con los elementos que son VISIBLES ahora mismo.
-    const focusableElements = allPotentials.filter(isVisible);
-    
-    if (focusableElements.length === 0) {
-        e.preventDefault(); // Si no hay nada enfocable, evitamos que el foco se escape.
-        return;
-    }
+  // 1. Obtener todos los elementos potencialmente enfocables.
+  const allPotentials = Array.from(
+    e.currentTarget.querySelectorAll(FOCUSABLE_ELEMENTS_SELECTOR)
+  );
 
-    const firstFocusable = focusableElements[0];
-    const lastFocusable = focusableElements[focusableElements.length - 1];
-    
-    if (e.shiftKey) { // Navegación hacia atrás (Shift + Tab)
-        if (document.activeElement === firstFocusable) {
-            e.preventDefault();
-            lastFocusable.focus();
-        }
-    } else { // Navegación hacia adelante (Tab)
-        if (document.activeElement === lastFocusable) {
-            e.preventDefault();
-            firstFocusable.focus();
-        }
+  // 2. FILTRADO CRÍTICO: Quedarse solo con los elementos que son VISIBLES ahora mismo.
+  const focusableElements = allPotentials.filter(isVisible);
+
+  if (focusableElements.length === 0) {
+    e.preventDefault(); // Si no hay nada enfocable, evitamos que el foco se escape.
+    return;
+  }
+
+  const firstFocusable = focusableElements[0];
+  const lastFocusable = focusableElements[focusableElements.length - 1];
+
+  if (e.shiftKey) {
+    // Navegación hacia atrás (Shift + Tab)
+    if (document.activeElement === firstFocusable) {
+      e.preventDefault();
+      lastFocusable.focus();
     }
+  } else {
+    // Navegación hacia adelante (Tab)
+    if (document.activeElement === lastFocusable) {
+      e.preventDefault();
+      firstFocusable.focus();
+    }
+  }
 }
 
 /**
@@ -75,39 +79,41 @@ function handleKeyDown(e) {
  * @param {HTMLElement} element El elemento modal.
  */
 function trapFocus(element) {
-    previouslyFocusedElement = document.activeElement;
-    element.addEventListener('keydown', handleKeyDown);
+  previouslyFocusedElement = document.activeElement;
+  element.addEventListener("keydown", handleKeyDown);
 
-    // Buscamos el primer elemento visible para enfocarlo.
-    const firstFocusable = Array.from(element.querySelectorAll(FOCUSABLE_ELEMENTS_SELECTOR)).find(isVisible);
+  // Buscamos el primer elemento visible para enfocarlo.
+  const firstFocusable = Array.from(
+    element.querySelectorAll(FOCUSABLE_ELEMENTS_SELECTOR)
+  ).find(isVisible);
 
-    // Usamos setTimeout para asegurar que el DOM se ha actualizado antes de mover el foco.
-    const focusTimeout = setTimeout(() => {
-        if (firstFocusable) {
-            firstFocusable.focus();
-        }
-    }, 0);
+  // Usamos setTimeout para asegurar que el DOM se ha actualizado antes de mover el foco.
+  const focusTimeout = setTimeout(() => {
+    if (firstFocusable) {
+      firstFocusable.focus();
+    }
+  }, 0);
 
-    // Preparamos la función que deshará todo lo que hemos hecho.
-    focusTrapCleanup = () => {
-        clearTimeout(focusTimeout);
-        element.removeEventListener('keydown', handleKeyDown);
-        if (previouslyFocusedElement) {
-            // Devolvemos el foco a donde estaba, también de forma asíncrona.
-            setTimeout(() => previouslyFocusedElement.focus(), 0);
-        }
-        focusTrapCleanup = null;
-        previouslyFocusedElement = null;
-    };
+  // Preparamos la función que deshará todo lo que hemos hecho.
+  focusTrapCleanup = () => {
+    clearTimeout(focusTimeout);
+    element.removeEventListener("keydown", handleKeyDown);
+    if (previouslyFocusedElement) {
+      // Devolvemos el foco a donde estaba, también de forma asíncrona.
+      setTimeout(() => previouslyFocusedElement.focus(), 0);
+    }
+    focusTrapCleanup = null;
+    previouslyFocusedElement = null;
+  };
 }
 
 /**
  * Libera la trampa de foco, ejecutando la función de limpieza.
  */
 export function releaseFocus() {
-    if (typeof focusTrapCleanup === 'function') {
-        focusTrapCleanup();
-    }
+  if (typeof focusTrapCleanup === "function") {
+    focusTrapCleanup();
+  }
 }
 
 /**
@@ -116,14 +122,14 @@ export function releaseFocus() {
  * @param {HTMLElement} [overlayElement]
  */
 export function openAccessibleModal(modalElement, overlayElement) {
-    if (!modalElement) return;
+  if (!modalElement) return;
 
-    modalElement.hidden = false;
-    if (overlayElement) overlayElement.hidden = false;
-    
-    modalElement.setAttribute('aria-hidden', 'false');
-    
-    trapFocus(modalElement);
+  modalElement.hidden = false;
+  if (overlayElement) overlayElement.hidden = false;
+
+  modalElement.setAttribute("aria-hidden", "false");
+
+  trapFocus(modalElement);
 }
 
 /**
@@ -132,12 +138,12 @@ export function openAccessibleModal(modalElement, overlayElement) {
  * @param {HTMLElement} [overlayElement]
  */
 export function closeAccessibleModal(modalElement, overlayElement) {
-    if (!modalElement) return;
+  if (!modalElement) return;
 
-    modalElement.hidden = true;
-    if (overlayElement) overlayElement.hidden = true;
+  modalElement.hidden = true;
+  if (overlayElement) overlayElement.hidden = true;
 
-    modalElement.setAttribute('aria-hidden', 'true');
-    
-    releaseFocus();
+  modalElement.setAttribute("aria-hidden", "true");
+
+  releaseFocus();
 }

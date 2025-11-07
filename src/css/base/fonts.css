@@ -17,21 +17,22 @@
 
 /* Paso 1 y 2: Crear el fallback perfecto */
 @font-face {
-  font-family: 'Inter Fallback';
+  font-family: "Inter Fallback";
   /* Usamos una fuente local que casi todos los sistemas tienen */
-  src: local('Arial');
+  src: local("Arial");
   /* Forzamos las métricas de Arial para que coincidan con las de Inter */
   ascent-override: 92.77%;
   descent-override: 24.41%;
-  line-gap-override: 0.00%;
-  size-adjust: 107.80%;
+  line-gap-override: 0%;
+  size-adjust: 107.8%;
 }
 
 /* Paso 3: Cargar la fuente web 'Inter' */
 @font-face {
-  font-family: 'Inter';
+  font-family: "Inter";
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
-  src: url('https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2') format('woff2-variations');
+  src: url("https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2")
+    format("woff2-variations");
 }
