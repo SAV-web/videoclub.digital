@@ -50,7 +50,7 @@ export function initTouchDrawer() {
     // Lógica para determinar si el gesto debe iniciar el seguimiento
     const canStartDrag =
       (sidebarIsOpen && e.target.closest("#sidebar")) || // Si está abierto, solo se arrastra desde el sidebar
-      (!sidebarIsOpen && e.touches[0].clientX < 40); // Si está cerrado, solo desde el borde izquierdo (40px)
+      (!sidebarIsOpen && e.touches[0].clientX < 80); // Si está cerrado, solo desde el borde izquierdo (80px)
 
     if (!canStartDrag) {
       isDragging = false;

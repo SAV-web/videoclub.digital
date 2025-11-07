@@ -4,60 +4,49 @@
  *                      --------------------------
  *
  * Componente: Quick View (Vista Rápida)
- * Versión: 3.0 (Accesible, Responsiva, Refinada)
+ * Versión: 3.1 (Bottom Sheet Interactivo y Responsivo)
  *
  * ESTRUCTURA DE ESTE FICHERO (ITCSS):
- * 1. LAYOUT Y ESTRUCTURA BASE: Reglas que definen la estructura principal
- *    de la modal y el overlay (posición, z-index, comportamiento flex).
- *
- * 2. ESTADO Y ANIMACIONES: Clases que controlan la visibilidad y las
- *    transiciones de entrada/salida (.is-visible).
- *
- * 3. COMPONENTES INTERNOS: Estilos específicos para las partes que componen
- *    la modal (header, contenido, botones, tipografía, etc.).
- *
- * 4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES): Ajustes para diferentes
- *    tamaños de pantalla, implementando el patrón "Bottom Sheet" en móvil.
+ * 1. LAYOUT Y ESTRUCTURA BASE
+ * 2. ESTADO Y ANIMACIONES
+ * 3. COMPONENTES INTERNOS (Handle, Contenido, etc.)
+ * 4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES)
  *
  * ================================================================= */
 
 /* =================================================================
    1. LAYOUT Y ESTRUCTURA BASE
-   - Define el esqueleto y posicionamiento de la modal y su fondo.
-   - Usa Flexbox para controlar la alineación interna.
    ================================================================= */
 
 /* --- Overlay de Fondo --- */
 .quick-view-overlay {
   position: fixed;
-  inset: 0; /* Atajo moderno para top, right, bottom, left = 0 */
+  inset: 0;
   z-index: 1999;
   background-color: rgba(0, 0, 0, 0.6);
-  /* Efecto de desenfoque en el fondo para centrar la atención en la modal */
   backdrop-filter: blur(var(--space-xxs));
-  -webkit-backdrop-filter: blur(
-    var(--space-xxs)
-  ); /* Para compatibilidad con Safari */
+  -webkit-backdrop-filter: blur(var(--space-xxs));
 }
 
 /* --- Contenedor Principal de la Modal --- */
 .quick-view-modal {
   position: fixed;
   z-index: 2000;
-  display: flex; /* Permite que el contenido interno se expanda correctamente */
+  display: flex;
+  flex-direction: column; /* Asegura que el handle se posicione sobre el contenido */
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
-  overflow: hidden; /* Clave para que los bordes redondeados afecten al contenido */
+  overflow: hidden;
+
+  /* ✅ MEJORA: Evita el scroll de la página de fondo al llegar al límite del modal. */
+  overscroll-behavior: contain;
 }
 
 /* --- Contenedor del Contenido Interno --- */
 .quick-view-content {
   width: 100%;
-  height: 100%;
-  overflow-y: auto; /* Permite el scroll vertical si el contenido excede la altura */
-  -webkit-overflow-scrolling: touch; /* Habilita el scroll "nativo" en iOS */
-
-  /* Ocultamos las barras de scroll para una apariencia más limpia */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE */
 }
@@ -67,7 +56,6 @@
 
 /* =================================================================
    2. ESTADO Y ANIMACIONES
-   - Gestiona la transición entre los estados oculto y visible.
    ================================================================= */
 
 /* --- Estado Oculto (Por Defecto) --- */
@@ -76,7 +64,7 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s var(--ease-snap), visibility 0s linear 0.3s; /* La visibilidad cambia al final de la animación */
+  transition: opacity 0.3s var(--ease-snap), visibility 0s linear 0.3s;
 }
 
 /* --- Estado Visible (Clase .is-visible añadida por JS) --- */
@@ -90,21 +78,34 @@
 
 /* =================================================================
    3. COMPONENTES INTERNOS
-   - Estilos para el contenido específico de la modal: póster,
-     texto, metadatos, etc.
    ================================================================= */
+
+/* ========================================================== */
+/*  ▼▼▼ MEJORA: HANDLE VISUAL PARA EL BOTTOM SHEET ▼▼▼
+/* ========================================================== */
+.quick-view-modal::before {
+  content: "";
+  display: block;
+  flex-shrink: 0; /* Evita que el handle se encoja */
+  width: 40px;
+  height: 4px;
+  background-color: var(--color-border);
+  border-radius: 2px;
+  margin: var(--space-sm) auto; /* Espaciado y centrado */
+  cursor: grab;
+}
 
 /* --- Layout de las secciones "Frontal" y "Trasera" --- */
 .quick-view-front {
-  padding: var(--space-lg);
+  padding: 0 var(--space-lg) var(--space-lg);
   border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0; /* Evita que esta sección se encoja */
+  flex-shrink: 0;
 }
 
 .quick-view-back {
   padding: var(--space-lg);
-  flex-grow: 1; /* Permite que esta sección ocupe el espacio restante */
-  min-width: 0; /* Solución clásica para problemas de overflow en contenedores flex */
+  flex-grow: 1;
+  min-width: 0;
 }
 
 /* --- Póster --- */
@@ -113,18 +114,16 @@
   height: auto;
   display: block;
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-xs); /* Reducido de --space-md a --space-sm */
+  margin-bottom: var(--space-sm);
 }
 
-/* --- Jerarquía Tipográfica (Refinada para la Modal) --- */
+/* --- Tipografía --- */
 .quick-view-modal .movie-summary h3[data-template="title"] {
-  font-size: var(--font-size-lg); /* Reducido de xl a lg */
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-hero);
   line-height: var(--line-height-tight);
   margin-bottom: var(--space-xxs);
-
-  /* Asegura que no desborde con títulos largos */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -136,80 +135,34 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-light);
   color: var(--color-text-tertiary);
-  margin-bottom: var(--space-sm); /* Reducido de --space-lg a --space-sm */
+  margin-bottom: var(--space-sm);
 }
 
-/* --- Bloque de Calificación y Acciones (Estrellas y Watchlist) --- */
+/* --- Bloque de Calificación y Acciones --- */
 .quick-view-modal .card-rating-block {
-  /* Reseteamos el posicionamiento absoluto de la tarjeta */
   position: static;
   transform: none;
-
-  /* Lo convertimos en un bloque normal con padding y margen */
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 var(--space-xs); /* Eliminamos el padding vertical */
-  margin-top: 0; /* Eliminamos el margen superior */
-  margin-bottom: 0; /* Eliminamos el margen inferior */
-  pointer-events: auto; /* Aseguramos que los elementos internos sean clickables */
+  padding: 0 var(--space-xs);
+  margin: 0;
+  pointer-events: auto;
 }
 
 .quick-view-modal .card-rating-block > * {
   pointer-events: auto;
 }
 
-/* Aumentamos el tamaño de los iconos de acción en la modal */
-.quick-view-modal .star-icon {
-  width: 28px;
-  height: 28px;
-}
-
-.quick-view-modal .low-rating-circle {
-  width: 26px;
-  height: 26px;
-}
-
-.quick-view-modal .card-action-btn {
-  width: 36px;
-  height: 36px;
-}
-
-/* --- Estilos para la parte trasera (back) de la modal --- */
+/* --- Estilos para la parte trasera (back) --- */
 .quick-view-modal .back-meta-header {
   display: flex;
-  justify-content: center; /* Centra el contenido horizontalmente */
+  justify-content: center;
 }
 .quick-view-modal .episode-duration-group {
   display: flex;
   align-items: center;
-  gap: var(--space-lg); /* Aumentamos el gap para mejor separación visual */
-}
-
-/* --- Línea de Metadatos (Iconos + Año/Bandera) --- */
-.quick-view-modal .movie-meta {
-  display: flex;
-  justify-content: space-between; /* Alinea los iconos a la izquierda y el año/bandera a la derecha */
-  align-items: center;
-  min-height: 28px; /* Altura mínima para consistencia visual */
-}
-
-.quick-view-modal .card-icons-line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.quick-view-modal .platform-icon svg {
-  /* Iconos ligeramente más grandes para mejor legibilidad en la modal */
-  width: 28px;
-  height: 28px;
-}
-
-.quick-view-modal .year-flag-group {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
+  gap: var(--space-lg);
 }
 
 /* --- Botón de Cierre (X) --- */
@@ -218,12 +171,8 @@
   top: var(--space-sm);
   right: var(--space-sm);
   z-index: 10;
-
-  /* Aumentamos el área táctil para cumplir con las guías de accesibilidad (mínimo 44x44px) */
   width: 44px;
   height: 44px;
-
-  /* Estilos del botón */
   padding: 0;
   border: none;
   background: transparent;
@@ -240,49 +189,55 @@
 
 /* =================================================================
    4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES)
-   - Define el comportamiento de la modal en diferentes breakpoints.
    ================================================================= */
 
 /* --- A) Móvil y Tablet Vertical (< 769px): Patrón "Bottom Sheet" --- */
 @media (max-width: 768px) {
   .quick-view-modal {
-    /* Posicionamiento en la parte inferior */
-    top: auto;
+    top: 0; /* Lo posicionamos arriba para que el translateY funcione desde ahí */
     left: 0;
+    right: 0;
     bottom: 0;
     width: 100%;
-    max-width: 100%;
-
-    /* Altura máxima usando unidades de viewport dinámicas para evitar la barra del navegador */
-    max-height: 85dvh;
-
+    height: 100dvh; /* Ocupa toda la altura del viewport */
+    max-height: 100dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 
-    /* Animación de entrada/salida desde abajo */
-    transform: translateY(100%);
+    /* El transform se gestiona con JS, pero este es el estado inicial cerrado */
+    transform: translateY(100dvh);
+    pointer-events: none; /* Desactivado cuando está cerrado */
+  }
+
+  .quick-view-modal.is-visible {
+    pointer-events: auto;
+  }
+
+  /* Clase para la animación de "snap" al soltar */
+  .quick-view-modal.is-snapping {
     transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   .quick-view-modal.is-visible {
-    transform: translateY(0);
+    /* Por defecto, se abre a media altura */
+    transform: translateY(50dvh);
   }
 }
 
 /* --- B) Escritorio y Tablet Horizontal (>= 769px): Modal Flotante --- */
 @media (min-width: 769px) {
+  /* Ocultamos el handle en la versión de escritorio */
+  .quick-view-modal::before {
+    display: none;
+  }
+
   .quick-view-modal {
-    /* Posicionamiento centrado */
     top: 50%;
     left: 50%;
-
-    /* Dimensiones y límites */
     width: 90%;
     max-width: 630px;
+    height: auto;
     max-height: 92vh;
-
     border-radius: var(--radius-lg);
-
-    /* Animación de entrada/salida con escalado */
     transform: translate(-50%, -50%) scale(0.95);
     transition: transform 0.3s var(--ease-snap), opacity 0.3s var(--ease-snap),
       visibility 0s linear 0.3s;
@@ -294,18 +249,18 @@
       visibility 0s linear 0s;
   }
 
-  /* Layout de contenido horizontal en escritorio */
   .quick-view-content {
     display: flex;
-    flex-direction: row; /* Cambia a layout de columnas lado a lado */
-    overflow: hidden; /* El scroll se gestionará en las columnas internas */
+    flex-direction: row;
+    overflow: hidden;
   }
 
   .quick-view-front {
-    width: 57%; /* ~360px: Prioriza un buen tamaño para el póster */
-    border-right: 1px solid var(--color-border); /* Separador visual */
+    width: 57%;
+    border-right: 1px solid var(--color-border);
     border-bottom: none;
-    overflow-y: auto; /* Permite scroll si la info del póster es muy larga */
+    padding: var(--space-lg); /* Restauramos el padding superior en desktop */
+    overflow-y: auto;
   }
 
   .quick-view-back {
