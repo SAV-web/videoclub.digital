@@ -121,6 +121,12 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
   gap: var(--space-xs);
   flex-wrap: nowrap;
 }
+
+/* Ocultamos los botones de paginación de la cabecera en móvil */
+.header-pagination-group {
+  display: none;
+}
+
 .grid-container {
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-sm);
@@ -253,6 +259,11 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
     padding: var(--space-lg) var(--space-xxl) var(--space-md);
     gap: var(--space-md) var(--space-lg);
     flex-wrap: wrap;
+  }
+
+  /* Restauramos la visibilidad de los botones de paginación en escritorio */
+  .header-pagination-group {
+    display: flex;
   }
   .grid-container {
     grid-template-columns: repeat(3, 1fr);

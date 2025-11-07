@@ -1,25 +1,19 @@
 // =================================================================
-//          MÓDULO DE SERVICIO API (v3 - Cancelación Externa)
+//          MÓDULO DE SERVICIO API (v3.1 - Con AbortController)
 // =================================================================
-// v3.0 - Refactorizado para una cancelación de peticiones más robusta.
-//        - La función `fetchMovies` ya no crea ni gestiona su propio AbortController.
-//        - Ahora acepta un parámetro opcional `signal` desde el orquestador (main.js).
-//        - Esto centraliza el control de las peticiones asíncronas, eliminando
-//          posibles race conditions y haciendo el código más predecible.
+// v3.1 - Implementado AbortController para permitir la cancelación externa
+//        de peticiones desde el orquestador (main.js).
 // =================================================================
 
 import { CONFIG } from "./config.js";
 import { supabase } from "./supabaseClient.js";
 import { LRUCache } from "https://esm.sh/lru-cache@10.2.0";
 
-// La caché se mantiene para evitar peticiones de red idénticas en un corto periodo de tiempo.
 const cache = new LRUCache({
   max: 50,
   ttl: 1000 * 120, // 2 minutos
 });
 
-// Los controladores para las sugerencias de autocompletado se mantienen aquí,
-// ya que son peticiones independientes y de bajo impacto.
 const suggestionControllers = {};
 
 /**
@@ -34,6 +28,7 @@ export async function fetchMovies(
   activeFilters,
   currentPage,
   pageSize = CONFIG.ITEMS_PER_PAGE,
+  // ▼▼▼ MEJORA 1: La función ahora acepta un cuarto parámetro 'signal' ▼▼▼
   signal
 ) {
   const queryKey = JSON.stringify({ ...activeFilters, currentPage, pageSize });
@@ -51,7 +46,6 @@ export async function fetchMovies(
   );
 
   try {
-    // La construcción de la llamada RPC se mantiene igual.
     const rpcCall = supabase.rpc("search_movies_offset", {
       search_term: activeFilters.searchTerm,
       genre_name: activeFilters.genre,
@@ -80,8 +74,8 @@ export async function fetchMovies(
       page_offset: (currentPage - 1) * pageSize,
     });
 
-    // << CAMBIO CLAVE >>: Si se proporcionó una señal de cancelación, se adjunta a la llamada.
-    // Esto permite que el orquestador (main.js) aborte esta petición desde fuera.
+    // ▼▼▼ MEJORA 2: Se adjunta la señal a la llamada de Supabase si existe. ▼▼▼
+    // Esto conecta la petición de red con el controlador que la originó.
     if (signal) {
       rpcCall.abortSignal(signal);
     }
@@ -89,25 +83,23 @@ export async function fetchMovies(
     const { data, error } = await rpcCall;
 
     if (error) {
-      // Si el error es de tipo 'AbortError', no es un fallo real, sino una cancelación
-      // intencionada. Lo manejamos específicamente para evitar mensajes de error innecesarios.
+      // ▼▼▼ MEJORA 3: Manejo específico del error de cancelación. ▼▼▼
+      // Un 'AbortError' no es un fallo, es una cancelación intencionada.
+      // Lo tratamos de forma silenciosa para que no se muestre un error al usuario.
       if (error.name === "AbortError") {
         console.log("Petición a la BBDD abortada por la señal.");
         // Devolvemos una promesa que nunca se resuelve para detener la cadena de ejecución.
         return new Promise(() => {});
       }
-      // Para otros errores, los propagamos.
       console.error("Error en la llamada RPC:", error);
       throw new Error("No se pudieron obtener los datos de la base de datos.");
     }
 
-    // Si la función SQL devuelve null (caso improbable), aseguramos una respuesta válida.
     const result = data || { total: 0, items: [] };
 
     cache.set(queryKey, result);
     return result;
   } catch (error) {
-    // Capturamos cualquier otro error, incluyendo el 'AbortError' si no fue manejado antes.
     if (error.name === "AbortError") {
       return new Promise(() => {});
     }
@@ -115,10 +107,6 @@ export async function fetchMovies(
   }
 }
 
-/**
- * Función genérica para obtener sugerencias de autocompletado.
- * (Sin cambios, su lógica es autocontenida y correcta).
- */
 const fetchSuggestions = async (rpcName, searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) return [];
 

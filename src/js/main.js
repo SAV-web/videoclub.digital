@@ -1,9 +1,9 @@
 // =================================================================
-//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.2)
+//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.3 - AbortController)
 // =================================================================
-// v3.2 - Implementada la delegación de eventos para los clics en tarjetas.
-//        - Se elimina la llamada a setupCardInteractions.
-//        - Se añade un listener único y delegado en el gridContainer.
+// v3.3 - Implementado AbortController para una cancelación de peticiones robusta.
+//        - Se elimina el sistema de requestId.
+// =================================================================
 
 import { CONFIG } from "./config.js";
 import {
@@ -14,26 +14,20 @@ import {
 } from "./utils.js";
 import { fetchMovies } from "./api.js";
 import {
-  // DOM elements
   dom,
-  // Card and Grid rendering
   renderMovieGrid,
   renderSkeletons,
   renderNoResults,
   renderErrorState,
   updateCardUI,
-  // Pagination
   renderPagination,
   updateHeaderPaginationState,
   prefetchNextPage,
-  // Quick View and Auth Modals
   initQuickView,
   setupAuthModal,
-  // Other UI updates
   updateTypeFilterUI,
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
-  // Import card-specific handlers for delegation
   handleCardClick,
 } from "./ui.js";
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from "./constants.js";
@@ -47,8 +41,6 @@ import {
   setSearchTerm,
   setSort,
   setMediaType,
-  incrementRequestId,
-  getLatestRequestId,
   resetFiltersState,
   hasActiveMeaningfulFilters,
   setUserMovieData,
@@ -80,9 +72,19 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
+// ▼▼▼ MEJORA 1: Variable a nivel de módulo para gestionar el AbortController. ▼▼▼
+let currentRequestController;
+
 // --- LÓGICA PRINCIPAL DE CARGA Y RENDERIZADO ---
 export async function loadAndRenderMovies(page = 1) {
-  const requestId = incrementRequestId();
+  // ▼▼▼ MEJORA 2: CANCELACIÓN. Si hay una petición en curso, la abortamos. ▼▼▼
+  if (currentRequestController) {
+    currentRequestController.abort();
+  }
+
+  // ▼▼▼ MEJORA 3: CREACIÓN. Creamos un nuevo controlador para la nueva petición. ▼▼▼
+  currentRequestController = new AbortController();
+
   setCurrentPage(page);
   updatePageTitle();
   updateUrl();
@@ -93,29 +95,27 @@ export async function loadAndRenderMovies(page = 1) {
     try {
       const pageSize =
         page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+
+      // ▼▼▼ MEJORA 4: SEÑAL. Pasamos la señal del controlador a la API. ▼▼▼
       const { items: movies, total: totalMovies } = await fetchMovies(
         getActiveFilters(),
         page,
-        pageSize
+        pageSize,
+        currentRequestController.signal // <-- Aquí se pasa la señal
       );
 
       if (movies && movies.length > 0) {
         preloadLcpImage(movies[0]);
       }
-
-      if (requestId !== getLatestRequestId()) {
-        const abortError = new DOMException(
-          "Request aborted by newer request",
-          "AbortError"
-        );
-        throw abortError;
-      }
-
+      
+      // La validación de requestId ya no es necesaria.
       updateDomWithResults(movies, totalMovies);
+      
     } catch (error) {
+      // Si el error es un 'AbortError', fue una cancelación intencionada. Lo ignoramos.
       if (error.name === "AbortError") {
         console.log("Petición de películas cancelada deliberadamente.");
-        throw error;
+        throw error; // Propagamos para que la transición de vista se detenga correctamente.
       }
       console.error("Error en el proceso de carga:", error);
       const friendlyMessage = getFriendlyErrorMessage(error);
@@ -130,7 +130,7 @@ export async function loadAndRenderMovies(page = 1) {
   };
 
   if (supportsViewTransitions) {
-    if (requestId === 1) {
+    if (page === 1) { // Condición simplificada para mostrar esqueletos solo en la primera carga/filtro.
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
     }
     await document.startViewTransition(renderLogic).ready;
@@ -142,6 +142,8 @@ export async function loadAndRenderMovies(page = 1) {
     dom.gridContainer.setAttribute("aria-busy", "false");
   }
 }
+
+// ... (El resto del fichero main.js no necesita cambios)
 
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
@@ -186,7 +188,6 @@ function updateDomWithResults(movies, totalMovies) {
   }
 }
 
-// --- MANEJADORES DE EVENTOS ---
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
@@ -209,33 +210,22 @@ async function handleSearchInput() {
   const searchTerm = dom.searchInput.value.trim();
   const previousSearchTerm = getState().activeFilters.searchTerm;
 
-  // Si el término de búsqueda no ha cambiado, no hacemos nada para evitar peticiones redundantes.
   if (searchTerm === previousSearchTerm) {
     return;
   }
-
-  // --- ▼▼▼ LÓGICA AÑADIDA ▼▼▼ ---
-
-  // CASO 1: El término de búsqueda tiene 3 o más caracteres.
-  // En este caso, procedemos a realizar la búsqueda.
+  
   if (searchTerm.length >= 3) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     setSearchTerm(searchTerm);
     await loadAndRenderMovies(1);
   }
-  // CASO 2: El término es corto (0-2 caracteres), PERO ANTES había una búsqueda activa.
-  // Esto es crucial para cuando el usuario borra el texto del buscador.
-  // Debemos "resetear" la búsqueda para volver a la vista por defecto.
   else if (previousSearchTerm.length > 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    setSearchTerm(""); // Limpiamos el término de búsqueda en el estado global.
-    await loadAndRenderMovies(1); // Recargamos las películas sin filtro de búsqueda.
+    setSearchTerm("");
+    await loadAndRenderMovies(1);
   }
-  // Si no se cumple ninguna de las condiciones anteriores (ej. escribir "a" y luego "ab"),
-  // no se hace nada, esperando a que el usuario alcance los 3 caracteres.
 }
 
-// --- CONFIGURACIÓN DE LISTENERS ---
 function setupHeaderListeners() {
   const debouncedSearch = debounce(
     handleSearchInput,
@@ -326,16 +316,13 @@ function setupGlobalListeners() {
     }
   });
 
-  // ▼▼▼ LISTENER DELEGADO PARA TARJETAS Y LIMPIEZA DE FILTROS ▼▼▼
   dom.gridContainer.addEventListener("click", (e) => {
     const cardElement = e.target.closest(".movie-card");
     const clearButton = e.target.closest("#clear-filters-from-empty");
 
     if (cardElement) {
-      // Delega el manejo del clic a la función importada
       handleCardClick.call(cardElement, e);
     } else if (clearButton) {
-      // Maneja el clic en el botón de limpiar filtros desde el estado vacío
       document.dispatchEvent(new CustomEvent("filtersReset"));
     }
   });
@@ -391,7 +378,6 @@ function setupGlobalListeners() {
   });
 }
 
-// --- SISTEMA DE AUTENTICACIÓN Y DATOS DE USUARIO ---
 function setupAuthSystem() {
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
@@ -441,7 +427,6 @@ function setupAuthSystem() {
   });
 }
 
-// --- GESTIÓN DE URL Y TÍTULO DE PÁGINA ---
 function updatePageTitle() {
   const { searchTerm, genre, year, country, director, actor, selection } =
     getActiveFilters();
@@ -546,7 +531,6 @@ function updateUrl() {
   }
 }
 
-// --- FUNCIÓN DE INICIALIZACIÓN ---
 function init() {
   window.addEventListener("storage", (e) => {
     if (e.key === "theme") {
@@ -569,7 +553,6 @@ function init() {
     loadAndRenderMovies(getCurrentPage());
   });
 
-  // Inicialización de módulos
   initSidebar();
   initQuickView();
   setupHeaderListeners();
@@ -580,12 +563,10 @@ function init() {
   setupAuthModal();
   initAuthForms();
 
-  // Carga inicial de datos
   readUrlAndSetState();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   loadAndRenderMovies(getCurrentPage());
 
-  // Listeners para actualizaciones de datos de usuario
   document.addEventListener("userMovieDataChanged", (e) => {
     const { movieId } = e.detail;
     if (!movieId) return;
