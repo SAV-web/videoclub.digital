@@ -127,6 +127,13 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
   display: none;
 }
 
+/*
+ * ▼▼▼ MEJORA: Reducir el tamaño de los botones de paginación en móvil ▼▼▼
+ */
+.pagination-container > .btn,
+.pagination-container > .pagination-current {
+  --btn-height: 36px; /* Nuevo tamaño para móvil */
+}
 .grid-container {
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-sm);
