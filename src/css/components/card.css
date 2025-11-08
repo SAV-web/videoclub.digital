@@ -4,6 +4,10 @@
  * =================================================================
  * Componente: Tarjeta de Película y Estilos Compartidos
  * =================================================================
+ * v2.0 - Implementada la aceleración por GPU para la sombra del hover.
+ *      - Se utiliza un pseudo-elemento ::after para animar la opacidad
+ *        de la sombra en lugar de la propiedad box-shadow directamente.
+ * =================================================================
  */
 
 /* Keyframes para la animación de aparición en cascada */
@@ -21,14 +25,46 @@
 .movie-card {
   perspective: 1000px;
   aspect-ratio: 500 / 950;
-
-  /* Animación de aparición secuencial */
   animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 50ms);
 
-  /* Transición para la interacción de hover */
-  transition: transform var(--duration-quick) var(--ease-spring),
-    box-shadow var(--duration-normal) var(--ease-smooth-out);
+  /* ========================================================== */
+  /*  ▼▼▼ MEJORA: Aceleración por GPU ▼▼▼
+  /*      - La transición ahora solo afecta a 'transform'.
+  /*      - Se añade 'position: relative' para posicionar el 
+  /*        pseudo-elemento de la sombra.
+  /* ========================================================== */
+  position: relative;
+  transition: transform var(--duration-quick) var(--ease-spring);
+}
+
+/* ========================================================== */
+/*  ▼▼▼ MEJORA: Pseudo-elemento para la Sombra Acelerada ▼▼▼
+/*      Este elemento contiene la sombra y solo se animará
+/*      su opacidad, que es una operación gestionada por la GPU.
+/* ========================================================== */
+.movie-card::after {
+  content: "";
+  position: absolute;
+  /* 'inset: 0' es un atajo para top, right, bottom, left = 0 */
+  inset: 0;
+  /* Hereda los bordes redondeados del flip-card-inner */
+  border-radius: var(--radius-lg);
+
+  /* Definimos la sombra final que queremos ver en el hover */
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
+
+  /* Estado inicial: invisible */
+  opacity: 0;
+  /* Transicionamos solo la opacidad */
+  transition: opacity var(--duration-normal) var(--ease-smooth-out);
+  /* Lo colocamos detrás del contenido de la tarjeta */
+  z-index: -1;
+}
+
+/* Sombra para el modo oscuro, misma técnica */
+html.dark-mode .movie-card::after {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .flip-card-inner {
@@ -36,7 +72,7 @@
   width: 100%;
   height: 100%;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow); /* Sombra estática base */
   transform-style: preserve-3d;
   transition: transform var(--duration-leisurely) var(--ease-smooth-out),
     filter var(--duration-leisurely) var(--ease-smooth-out);
@@ -52,24 +88,22 @@ html.dark-mode .flip-card-inner.is-flipped {
 
 /* Interacción de hover avanzada */
 @media (hover: hover) and (pointer: fine) {
-  /* ========================================================== */
-  /*  ▼▼▼ CAMBIO DE DISPARADOR: DE :hover A .is-hovered ▼▼▼
-    /*      La clase .is-hovered será añadida por JavaScript
-    /*      después de un segundo.
-    /* ========================================================== */
   body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
 
-  /* El efecto de elevación y sombra SÍ lo mantenemos en el :hover inmediato
-       para dar feedback instantáneo de que la tarjeta es interactiva. */
+  /* ========================================================== */
+  /*  ▼▼▼ MEJORA: Animación de Hover Acelerada por GPU ▼▼▼
+  /*      - Ya no se anima el 'box-shadow' de la tarjeta.
+  /*      - Solo se anima el 'transform' del elemento principal.
+  /*      - Se activa la opacidad del pseudo-elemento de la sombra.
+  /* ========================================================== */
   .movie-card:not(.is-flipped):hover {
     transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
   }
 
-  html.dark-mode .movie-card:not(.is-flipped):hover {
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
+  .movie-card:not(.is-flipped):hover::after {
+    opacity: 1;
   }
 }
 
@@ -133,8 +167,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   width: 48px;
   height: 48px;
   transform: translate(-50%, -50%);
-  /* Descomentar para visualizar el área táctil */
-  /* background-color: rgba(255, 0, 0, 0.2); */
 }
 .star-icon-path {
   stroke: var(--color-accent);
@@ -182,7 +214,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   pointer-events: none;
 }
 
-/* ▼▼▼ MEJORA: Eliminamos el padding del contenedor cuando está expandido ▼▼▼ */
 .flip-card-back.is-expanded {
   padding: 0;
   transition: padding var(--duration-normal) var(--ease-smooth-out);
@@ -279,28 +310,23 @@ html.dark-mode .flip-card-inner.is-flipped {
   border-top: 1px solid var(--color-border);
   opacity: 0.8;
   font-size: var(--font-size-xs);
-  color: var(--color-text-secondary); /* Secundario para buena legibilidad */
-  font-weight: var(--font-weight-normal); /* Usamos el peso normal, no light */
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-normal);
   line-height: var(--line-height-relaxed);
 }
 
 .scrollable-content {
   position: relative;
   transition: all var(--duration-normal) var(--ease-smooth-out);
-  overflow: hidden; /* Oculta el scrollbar */
+  overflow: hidden;
 }
 
-/* Estado expandido del contenido de scroll */
 .flip-card-back.is-expanded .scrollable-content {
   position: absolute;
-  inset: 0; /* Ocupa todo el espacio */
+  inset: 0;
   padding: var(--space-md);
   background-color: var(--color-surface);
-  overflow-y: auto; /* Permite el scroll manual si el usuario lo desea */
-}
-
-/* ▼▼▼ MEJORA: Ocultamos la barra de scroll en la vista expandida ▼▼▼ */
-.flip-card-back.is-expanded .scrollable-content {
+  overflow-y: auto;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE */
 }
@@ -309,7 +335,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   display: none; /* Chrome, Safari, etc. */
 }
 
-/* Máscara de degradado para indicar que hay más contenido */
 .scrollable-content::after {
   content: "";
   position: absolute;
@@ -318,7 +343,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   right: 0;
   height: 20px;
   background: linear-gradient(to bottom, transparent, var(--color-surface));
-  pointer-events: none; /* Permite que los eventos de ratón pasen a través */
+  pointer-events: none;
 }
 
 .flip-card-back.is-expanded .scrollable-content::after {
@@ -332,7 +357,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   margin-top: var(--space-sm);
 }
 
-/* Botón de expansión (+) */
 .expand-content-btn {
   position: absolute;
   bottom: -5px;
@@ -357,16 +381,14 @@ html.dark-mode .flip-card-inner.is-flipped {
   transform: scale(1.1);
 }
 
-/* En estado expandido, el botón se convierte en un botón de cierre (-) */
 .flip-card-back.is-expanded .expand-content-btn {
-  content: "-";
+  content: "−";
 }
 
 [data-template="wikipedia-link"] > .rating-icon {
   width: 1.7em;
   height: 1.7em;
   transform: translateY(-1px);
-  /* Puedes ajustar el color aquí si lo necesitas */
   color: var(--color-text-tertiary);
 }
 
