@@ -180,7 +180,7 @@
     /* Aumentamos ligeramente el tamaño visual para mejor presencia */
     width: 24px;
     height: 24px;
-    border-width: 6px;
+    border-width: 4px;
     position: relative; /* Necesario para el pseudo-elemento */
   }
 

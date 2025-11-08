@@ -135,10 +135,20 @@ async function handleRatingClick(event) {
     else if (currentUserData.rating === 2) newRating = 3;
     else newRating = null;
   } else if (starElement) {
+    // ==========================================================
+    //  ▼▼▼ CORRECCIÓN DE LÓGICA DE VOTACIÓN ▼▼▼
+    //      Se restaura el ciclo de votación para "suspenso".
+    // ==========================================================
     const level = parseInt(starElement.dataset.ratingLevel, 10);
     const currentStars = calculateUserStars(currentUserData.rating);
-    // Si se hace clic en la misma estrella, se quita la nota. Si no, se establece la nueva.
-    newRating = level === currentStars ? null : [3, 5, 7, 9][level - 1];
+
+    if (level === 1 && currentStars === 0) {
+      // Caso especial: Clic en la primera estrella sin tener nota -> Poner suspenso (2).
+      newRating = 2;
+    } else {
+      // Comportamiento normal: si se hace clic en la misma estrella, se quita la nota. Si no, se establece la nueva.
+      newRating = level === currentStars ? null : [3, 5, 7, 9][level - 1];
+    }
   }
 
   if (newRating === currentUserData.rating) return; // No hubo cambios

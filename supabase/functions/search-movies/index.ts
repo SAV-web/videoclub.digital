@@ -27,6 +27,20 @@ const generateETag = async (text: string): Promise<string> => {
     return `W/"${hashArray.map(b => b.toString(16).padStart(2, '0')).join('')}"`;
 }
 
+// ==========================================================
+//  ✅ MEJORA: Se integra tu idea de añadir un timeout
+//     en una función fetch personalizada y segura.
+// ==========================================================
+const TIMEOUT_MS = 8000; // 8 segundos de timeout
+
+const fetchWithTimeout = (resource: Request | string, options?: RequestInit) => {
+  return Promise.race([
+    fetch(resource, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out')), TIMEOUT_MS)
+    )
+  ]);
+};
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {

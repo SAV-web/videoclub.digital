@@ -313,8 +313,14 @@ function setupGlobalListeners() {
     }
   });
 
-  dom.gridContainer.addEventListener("click", (e) => {
-    const cardElement = e.target.closest(".movie-card");
+  // ==========================================================
+  //  ▼▼▼ CORRECCIÓN: Unificar manejador de clics para tarjetas y Quick View ▼▼▼
+  //      Se crea una función `handleInteractiveClick` que se asigna tanto
+  //      al grid como a la modal de vista rápida para que la lógica de
+  //      votación y watchlist sea idéntica en ambos.
+  // ==========================================================
+  const handleInteractiveClick = (e) => {
+    const cardElement = e.target.closest(".movie-card, #quick-view-content");
     const clearButton = e.target.closest("#clear-filters-from-empty");
 
     if (cardElement) {
@@ -322,7 +328,11 @@ function setupGlobalListeners() {
     } else if (clearButton) {
       document.dispatchEvent(new CustomEvent("filtersReset"));
     }
-  });
+  };
+
+  dom.gridContainer.addEventListener("click", handleInteractiveClick);
+  // Se añade el mismo listener a la modal de vista rápida.
+  document.getElementById("quick-view-content").addEventListener("click", handleInteractiveClick);
 
   dom.themeToggleButton.addEventListener("click", (e) => {
     triggerPopAnimation(e.currentTarget);
