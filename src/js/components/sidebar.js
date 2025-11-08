@@ -1,5 +1,5 @@
 // =================================================================
-//                      COMPONENTE SIDEBAR (Versión Optimizada y con Límites)
+//                      COMPONENTE SIDEBAR (Versión Optimizada y Dinámica)
 // =================================================================
 // Responsabilidades:
 // - Gestionar la interactividad del menú lateral (filtros, secciones, slider de año).
@@ -7,6 +7,7 @@
 // - Renderizar los filtros activos como "píldoras" con animación en cascada.
 // - Validar y aplicar un límite máximo de filtros activos para mejorar la UX.
 // - Manejar los buscadores de autocompletado.
+// - ✨ MEJORA: Generar dinámicamente los filtros desde una configuración central.
 // =================================================================
 
 import { CONFIG } from "../config.js";
@@ -29,7 +30,7 @@ import {
   toggleExcludedFilter,
   getActiveFilterCount,
 } from "../state.js";
-import { ICONS, CSS_CLASSES, SELECTORS } from "../constants.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG } from "../constants.js";
 import { loadAndRenderMovies } from "../main.js";
 import { showToast } from "../toast.js";
 
@@ -45,29 +46,14 @@ const dom = {
   yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
 };
 
-// Mapa para mostrar nombres amigables en las píldoras de "Selección".
-const SELECTION_FRIENDLY_NAMES = new Map([
-  ["C", "Criterion"],
-  ["M", "1001 Pelis"],
-  ["A", "Arrow"],
-  ["K", "Kino Lorber"],
-  ["E", "Eureka"],
-  ["H", "Series HBO"],
-  ["N", "Netflix"],
-]);
-
 // =================================================================
 //          RENDERIZADO DE PÍLDORAS Y ACTUALIZACIÓN DE UI
 // =================================================================
 
-/**
- * Deshabilita o habilita los elementos de filtro en la UI basado en el límite de filtros activos.
- */
 function updateFilterAvailabilityUI() {
   const activeCount = getActiveFilterCount();
   const limitReached = activeCount >= CONFIG.MAX_ACTIVE_FILTERS;
 
-  // Deshabilitar/Habilitar enlaces de filtro no activos
   document.querySelectorAll(".filter-link").forEach((link) => {
     const isDisabled = limitReached && link.style.display !== "none";
     link.toggleAttribute("disabled", isDisabled);
@@ -75,7 +61,6 @@ function updateFilterAvailabilityUI() {
     link.style.opacity = isDisabled ? "0.5" : "1";
   });
 
-  // Deshabilitar/Habilitar inputs de búsqueda de filtros
   document.querySelectorAll(".sidebar-filter-input").forEach((input) => {
     input.disabled = limitReached;
     input.placeholder = limitReached
@@ -84,9 +69,6 @@ function updateFilterAvailabilityUI() {
   });
 }
 
-/**
- * Actualiza la UI de los enlaces de filtro, ocultando los que ya están activos como píldoras.
- */
 function updateFilterLinksUI() {
   const activeFilters = getActiveFilters();
   document.querySelectorAll(".filter-link").forEach((link) => {
@@ -101,9 +83,6 @@ function updateFilterLinksUI() {
   });
 }
 
-/**
- * Renderiza las "píldoras" de filtros activos y actualiza el estado de la UI del sidebar.
- */
 function renderFilterPills() {
   const activeFilters = getActiveFilters();
   document
@@ -117,10 +96,9 @@ function renderFilterPills() {
       dataset: { filterType: type, filterValue: value },
     });
     pill.style.setProperty("--pill-index", index);
-    const text =
-      type === "selection"
-        ? SELECTION_FRIENDLY_NAMES.get(value) || value
-        : value;
+
+    const text = FILTER_CONFIG[type]?.items[value] || value;
+
     pill.appendChild(createElement("span", { textContent: text }));
     pill.appendChild(
       createElement("span", {
@@ -166,6 +144,12 @@ function renderFilterPills() {
     pillIndex
   );
   pillIndex = renderPillsForSection(
+    "studio",
+    activeFilters.studio,
+    false,
+    pillIndex
+  );
+  pillIndex = renderPillsForSection(
     "genre",
     activeFilters.genre,
     false,
@@ -202,7 +186,6 @@ function renderFilterPills() {
     pillIndex
   );
 
-  // Tras renderizar las píldoras, actualizamos el estado visual de todo el sidebar.
   updateFilterLinksUI();
   updateFilterAvailabilityUI();
 }
@@ -213,16 +196,30 @@ function renderFilterPills() {
 
 async function handleFilterChangeOptimistic(type, value) {
   const previousFilters = getActiveFilters();
+  // ▼▼▼ LÓGICA DE EXCLUSIVIDAD MUTUA AÑADIDA ▼▼▼
+  // Antes de aplicar el nuevo filtro, comprobamos si es de un tipo que entra en conflicto.
+  if (value) { // Solo aplicamos la lógica de limpieza si estamos ACTIVANDO un filtro.
+    if (type === 'selection' && previousFilters.studio) {
+      // Si estamos activando una 'selección' y ya hay un 'estudio', limpiamos el estudio.
+      setFilter('studio', null); 
+    } else if (type === 'studio' && previousFilters.selection) {
+      // Si estamos activando un 'estudio' y ya hay una 'selección', limpiamos la selección.
+      setFilter('selection', null);
+    }
+  }
+  // ▲▲▲ FIN DE LA LÓGICA AÑADIDA ▲▲▲
   const isActivating = previousFilters[type] !== value;
   const newValue = isActivating ? value : null;
 
-  // ✅ La llamada a setFilter ahora devuelve un booleano que indica si la acción fue permitida.
   if (!setFilter(type, newValue)) {
     showToast(
       `Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`,
       "error"
     );
-    return; // Detiene la ejecución si el estado no cambió.
+    // Si la acción fue bloqueada, debemos revertir la limpieza que hicimos antes.
+    if (type === 'selection' && previousFilters.studio) setFilter('studio', previousFilters.studio);
+    if (type === 'studio' && previousFilters.selection) setFilter('selection', previousFilters.selection);
+    return;
   }
 
   renderFilterPills();
@@ -233,7 +230,10 @@ async function handleFilterChangeOptimistic(type, value) {
   } catch (error) {
     if (error.name === "AbortError") return;
     showToast(`No se pudo aplicar el filtro.`, "error");
-    setFilter(type, previousFilters[type]);
+    // La reversión es más compleja ahora, debemos restaurar todo el estado previo.
+    setFilter('selection', previousFilters.selection);
+    setFilter('studio', previousFilters.studio);
+    setFilter(type, previousFilters[type]); // Asegura que el filtro original se restaure.
     renderFilterPills();
   }
 }
@@ -241,7 +241,6 @@ async function handleFilterChangeOptimistic(type, value) {
 async function handleToggleExcludedFilterOptimistic(type, value) {
   const previousState = getActiveFilters();
 
-  // ✅ La llamada a toggleExcludedFilter ahora valida los límites y devuelve un booleano.
   if (!toggleExcludedFilter(type, value)) {
     showToast(`Límite de filtros alcanzado.`, "error");
     return;
@@ -430,8 +429,23 @@ function handlePillClick(e) {
 }
 
 function setupEventListeners() {
+  // ▼▼▼ LÓGICA AÑADIDA PARA INYECTAR LOS ICONOS CHEVRON ▼▼▼
+  // Al inicio, buscamos todas las cabeceras de sección.
+  document.querySelectorAll(".collapsible-section .section-header").forEach((header) => {
+    // Creamos un elemento temporal para insertar el SVG de forma segura.
+    const iconWrapper = document.createElement('div');
+    iconWrapper.innerHTML = ICONS.CHEVRON_RIGHT;
+    
+    // Añadimos el icono SVG (que es el primer hijo del wrapper) al final del botón.
+    if (iconWrapper.firstChild) {
+      header.appendChild(iconWrapper.firstChild);
+    }
+  });
+  // ▲▲▲ FIN DE LA LÓGICA AÑADIDA ▲▲▲
+
   if (dom.rewindButton) {
     dom.rewindButton.addEventListener("click", (e) => {
+
       const isMobile = window.innerWidth <= 768;
       let isOpening;
       if (isMobile) {
@@ -524,37 +538,50 @@ export function initSidebar() {
       dom.rewindButton.setAttribute("aria-label", "Expandir sidebar");
     }
   }
-  const createExcludeButton = (name, type, excludableList) => {
-    if (excludableList.includes(name)) {
-      return createElement("button", {
-        className: "exclude-filter-btn",
-        dataset: { value: name, type },
-        attributes: { "aria-label": `Excluir ${type} ${name}`, type: "button" },
-        innerHTML: ICONS.PAUSE_SMALL,
+
+  const populateFilterSection = (filterType) => {
+    const config = FILTER_CONFIG[filterType];
+    if (!config) return;
+
+    // ✨ CORRECCIÓN: Se maneja el caso especial de "country" -> "countries"
+    const contentId = filterType === 'country' ? 'countries-content' : `${filterType}s-content`;
+    const listContainer = document.querySelector(`#${contentId} > div:first-child`);
+
+    if (!listContainer) {
+        console.warn(`No se encontró el contenedor de lista para el tipo de filtro: ${filterType}`);
+        return;
+    }
+
+    listContainer.textContent = "";
+    const fragment = document.createDocumentFragment();
+
+    Object.entries(config.items).forEach(([value, text]) => {
+      const link = createElement("button", {
+        type: "button",
+        className: "filter-link",
+        dataset: { filterType, filterValue: value },
       });
-    }
-    return null;
-  };
-  document.querySelectorAll(".filter-link").forEach((link) => {
-    const { filterType, filterValue } = link.dataset;
-    const textWrapper = createElement("span", {
-      textContent: link.textContent,
+
+      const textWrapper = createElement("span", { textContent: text });
+      link.appendChild(textWrapper);
+
+      if (config.excludable?.includes(value)) {
+        const excludeBtn = createElement("button", {
+          type: "button",
+          className: "exclude-filter-btn",
+          dataset: { value: value, type: filterType },
+          attributes: { "aria-label": `Excluir ${config.label} ${text}` },
+          innerHTML: ICONS.PAUSE_SMALL,
+        });
+        link.appendChild(excludeBtn);
+      }
+      fragment.appendChild(link);
     });
-    link.textContent = "";
-    link.append(textWrapper);
-    const excludable = {
-      genre: ["Animación", "Documental"],
-      country: ["EEUU"],
-    };
-    if (excludable[filterType]) {
-      const excludeBtn = createExcludeButton(
-        filterValue,
-        filterType,
-        excludable[filterType]
-      );
-      if (excludeBtn) link.append(excludeBtn);
-    }
-  });
+    listContainer.appendChild(fragment);
+  };
+
+  Object.keys(FILTER_CONFIG).forEach(populateFilterSection);
+
   const toggleBtn = dom.toggleRotationBtn;
   if (toggleBtn) {
     const isRotationDisabled =
@@ -568,10 +595,12 @@ export function initSidebar() {
     );
     toggleBtn.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
   }
+
   initYearSlider();
   setupEventListeners();
   setupAutocompleteHandlers();
   setupYearInputSteppers();
+
   document.addEventListener("updateSidebarUI", () => {
     dom.sidebarFilterForms.forEach((form) => {
       const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -588,6 +617,7 @@ export function initSidebar() {
     }
     renderFilterPills();
   });
+
   document.addEventListener("filtersReset", collapseAllSections);
   document.addEventListener("uiActionTriggered", collapseAllSections);
 }

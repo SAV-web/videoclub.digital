@@ -45,6 +45,7 @@ export async function fetchMovies(
   );
 
   try {
+    const selectionCodeForAPI = activeFilters.studio || activeFilters.selection;
     const rpcCall = supabase.rpc("search_movies_offset", {
       // ... (parámetros sin cambios)
       search_term: activeFilters.searchTerm,
@@ -59,7 +60,7 @@ export async function fetchMovies(
       director_name: activeFilters.director,
       actor_name: activeFilters.actor,
       media_type: activeFilters.mediaType,
-      selection_code: activeFilters.selection,
+      selection_code: selectionCodeForAPI, // <-- USAMOS LA NUEVA VARIABLE
       excluded_genres:
         activeFilters.excludedGenres.length > 0
           ? activeFilters.excludedGenres

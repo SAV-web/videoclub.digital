@@ -102,4 +102,85 @@ export const ICONS = {
   // Para el botón de "Limpiar filtros"
   PLAY: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>`,
   PAUSE_SMALL: "⏸︎",
+  
+  CHEVRON_RIGHT: `<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
+};
+
+/**
+ * @typedef {object} FilterItem
+ * @property {string} label - El texto que se muestra en la UI.
+ * @property {string[]|undefined} excludable - Opcional. Lista de valores que pueden ser excluidos.
+ */
+
+/** @type {Object.<string, FilterItem>} */
+export const FILTER_CONFIG = {
+  selection: {
+    label: "Selección",
+    items: {
+      C: "Criterion",
+      M: "1001 Movies",
+      A: "Arrow",
+      K: "Kino Lorber",
+      E: "Eureka",
+      H: "Series HBO",
+      N: "Netflix",
+    },
+  },
+  studio: {
+    label: "Estudios",
+    items: {
+      D: "Disney",
+      W: "Warner Bros.",
+      P: "Paramount",
+      U: "Universal",
+      S: "Sony / Columbia",
+      L: "Lionsgate",
+      F: "20th Century Fox",
+    },
+  },
+  genre: {
+    label: "Géneros",
+    items: {
+      Drama: "Drama",
+      Comedia: "Comedia",
+      Thriller: "Thriller",
+      Acción: "Acción",
+      Animación: "Animación",
+      Documental: "Documental",
+    },
+    // Propiedad especial para indicar qué géneros pueden tener un botón de exclusión.
+    excludable: ["Animación", "Documental"],
+  },
+  country: {
+    label: "Países",
+    items: {
+      EEUU: "EEUU",
+      España: "España",
+      UK: "UK",
+      Francia: "Francia",
+      Japón: "Japón",
+      Italia: "Italia",
+    },
+    excludable: ["EEUU"],
+  },
+  director: {
+    label: "Directores",
+    items: {
+      "Woody Allen": "Woody Allen",
+      "Alfred Hitchcock": "Hitchcock",
+      "Steven Spielberg": "Spielberg",
+      "Martin Scorsese": "Scorsese",
+      "Pedro Almodóvar": "Almodóvar",
+    },
+  },
+  actor: {
+    label: "Actores",
+    items: {
+      "Tom Cruise": "Tom Cruise",
+      "Robert De Niro": "De Niro",
+      "Brad Pitt": "Brad Pitt",
+      "Helen Mirren": "Helen Mirren",
+      "Javier Bardem": "Javier Bardem",
+    },
+  },
 };

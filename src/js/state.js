@@ -18,6 +18,7 @@ import { CONFIG } from "./config.js";
  * @property {string|null} director
  * @property {string|null} actor
  * @property {string|null} selection
+ * @property {string|null} studio // <-- NUEVA PROPIEDAD
  * @property {string} sort
  * @property {string} mediaType
  * @property {string[]} excludedGenres
@@ -53,6 +54,7 @@ const initialState = {
     director: null,
     actor: null,
     selection: null,
+    studio: null, // <-- NUEVA PROPIEDAD
     sort: DEFAULTS.SORT,
     mediaType: DEFAULTS.MEDIA_TYPE,
     excludedGenres: [],
@@ -145,6 +147,7 @@ export function getActiveFilterCount() {
 
   const countableInclusionFilters = [
     "selection",
+    "studio",
     "genre",
     "country",
     "director",

@@ -552,403 +552,104 @@
             aria-label="Filtros de contenido"
           >
             <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="selection-content"
-              >
-                <span>Selección</span>
-                <svg
-                  class="chevron-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
+<button
+  type="button"
+  class="section-header"
+  aria-expanded="false"
+  aria-controls="selections-content"
+>
+  <span>Selección</span>
+</button>
               <div class="active-filters-list"></div>
-              <div id="selection-content" class="section-content">
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="selection"
-                  data-filter-value="C"
-                >
-                  Criterion
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="selection"
-                  data-filter-value="M"
-                >
-                  1001 Movies
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="selection"
-                  data-filter-value="A"
-                >
-                  Arrow
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="selection"
-                  data-filter-value="K"
-                >
-                  Kino Lorber
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="selection"
-                  data-filter-value="E"
-                >
-                  Eureka
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="selection"
-                  data-filter-value="H"
-                >
-                  Series HBO
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="selection"
-                  data-filter-value="N"
-                >
-                  Netflix
-                </button>
-              </div>
+<div id="selections-content" class="section-content">
+  <div id="selections-list-container"></div> 
+  <form class="sidebar-filter-form" data-filter-type="selection">
+  </form>
+</div>
             </section>
             <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="genres-content"
-              >
-                <span>Géneros</span>
-                <svg
-                  class="chevron-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
+<button
+  type="button"
+  class="section-header"
+  aria-expanded="false"
+  aria-controls="studios-content"
+>
+  <span>Estudios</span>
+</button>
               <div class="active-filters-list"></div>
-              <div id="genres-content" class="section-content">
-                <div id="genres-list-container">
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="genre"
-                    data-filter-value="Drama"
-                  >
-                    Drama
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="genre"
-                    data-filter-value="Comedia"
-                  >
-                    Comedia
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="genre"
-                    data-filter-value="Thriller"
-                  >
-                    Thriller
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="genre"
-                    data-filter-value="Acción"
-                  >
-                    Acción
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="genre"
-                    data-filter-value="Animación"
-                  >
-                    Animación
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="genre"
-                    data-filter-value="Documental"
-                  >
-                    Documental
-                  </button>
-                </div>
-                <form class="sidebar-filter-form" data-filter-type="genre">
-                  <input
-                    type="text"
-                    placeholder="Otro género..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
+<div id="studios-content" class="section-content">
+  <div id="studios-list-container"></div> 
+  <form class="sidebar-filter-form" data-filter-type="studio">
+  </form>
+</div>
+            </section>
+            <section class="collapsible-section">
+<button
+  type="button"
+  class="section-header"
+  aria-expanded="false"
+  aria-controls="genres-content"
+>
+  <span>Géneros</span>
+</button>
+              <div class="active-filters-list"></div>
+<div id="genres-content" class="section-content">
+  <div id="genres-list-container"></div> 
+  <form class="sidebar-filter-form" data-filter-type="genre">
+    <input type="text" placeholder="Otro género..." class="sidebar-filter-input" />
+  </form>
+</div>
             </section>
             <section class="collapsible-section" id="countries-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="countries-content"
-              >
-                <span>Países</span>
-                <svg
-                  class="chevron-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
+<button
+  type="button"
+  class="section-header"
+  aria-expanded="false"
+  aria-controls="countries-content"
+>
+  <span>Países</span>
+</button>
               <div class="active-filters-list"></div>
-              <div id="countries-content" class="section-content">
-                <div id="countries-list-container">
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="country"
-                    data-filter-value="EEUU"
-                  >
-                    EEUU
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="country"
-                    data-filter-value="España"
-                  >
-                    España
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="country"
-                    data-filter-value="UK"
-                  >
-                    UK
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="country"
-                    data-filter-value="Francia"
-                  >
-                    Francia
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="country"
-                    data-filter-value="Japón"
-                  >
-                    Japón
-                  </button>
-                  <button
-                    type="button"
-                    class="filter-link"
-                    data-filter-type="country"
-                    data-filter-value="Italia"
-                  >
-                    Italia
-                  </button>
-                </div>
-                <form class="sidebar-filter-form" data-filter-type="country">
-                  <input
-                    type="text"
-                    placeholder="Otro país..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
+<div id="countries-content" class="section-content">
+  <div id="countries-list-container"></div> 
+  <form class="sidebar-filter-form" data-filter-type="country">
+    <input type="text" placeholder="Otro país..." class="sidebar-filter-input" />
+  </form>
+</div>
             </section>
             <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="directors-content"
-              >
-                <span>Directores</span>
-                <svg
-                  class="chevron-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
+<button
+  type="button"
+  class="section-header"
+  aria-expanded="false"
+  aria-controls="directors-content"
+>
+  <span>Directores</span>
+</button>
               <div class="active-filters-list"></div>
-              <div id="directors-content" class="section-content">
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="director"
-                  data-filter-value="Woody Allen"
-                >
-                  Woody Allen
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="director"
-                  data-filter-value="Alfred Hitchcock"
-                >
-                  Hitchcock
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="director"
-                  data-filter-value="Steven Spielberg"
-                >
-                  Spielberg
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="director"
-                  data-filter-value="Martin Scorsese"
-                >
-                  Scorsese
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="director"
-                  data-filter-value="Pedro Almodóvar"
-                >
-                  Almodóvar
-                </button>
-                <form class="sidebar-filter-form" data-filter-type="director">
-                  <input
-                    type="text"
-                    placeholder="Otro director..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
+<div id="directors-content" class="section-content">
+  <div id="directors-list-container"></div> 
+  <form class="sidebar-filter-form" data-filter-type="director">
+    <input type="text" placeholder="Otro director..." class="sidebar-filter-input" />
+  </form>
+</div>
             </section>
             <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="actors-content"
-              >
-                <span>Actores</span>
-                <svg
-                  class="chevron-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
+<button
+  type="button"
+  class="section-header"
+  aria-expanded="false"
+  aria-controls="actors-content"
+>
+  <span>Actores</span>
+</button>
               <div class="active-filters-list"></div>
-              <div id="actors-content" class="section-content">
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="actor"
-                  data-filter-value="Tom Cruise"
-                >
-                  Tom Cruise
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="actor"
-                  data-filter-value="Robert De Niro"
-                >
-                  De Niro
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="actor"
-                  data-filter-value="Brad Pitt"
-                >
-                  Brad Pitt
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="actor"
-                  data-filter-value="Helen Mirren"
-                >
-                  Helen Mirren
-                </button>
-                <button
-                  type="button"
-                  class="filter-link"
-                  data-filter-type="actor"
-                  data-filter-value="Javier Bardem"
-                >
-                  Javier Bardem
-                </button>
-                <form class="sidebar-filter-form" data-filter-type="actor">
-                  <input
-                    type="text"
-                    placeholder="Otro actor..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
+<div id="actors-content" class="section-content">
+  <div id="actors-list-container"></div> 
+  <form class="sidebar-filter-form" data-filter-type="actor">
+    <input type="text" placeholder="Otro actor..." class="sidebar-filter-input" />
+  </form>
+</div>
             </section>
           </nav>
           <div id="user-profile-container" class="profile-container">
