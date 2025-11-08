@@ -248,10 +248,16 @@
   .quick-view-modal {
     /* Posicionamiento en la parte inferior */
     top: auto;
-    left: 0;
+    left: 50%; /* Centrado horizontal */
     bottom: 0;
-    width: 100%;
-    max-width: 100%;
+
+    /* ========================================================== */
+    /*  ▼▼▼ CORRECCIÓN: Ancho reducido y altura definida ▼▼▼
+    /*      - Se establece un ancho del 95% para dejar márgenes.
+    /*      - Se define una altura explícita para habilitar el scroll.
+    /* ========================================================== */
+    width: 75%;
+    height: 85dvh; /* Altura fija para que el overflow funcione */
 
     /* Altura máxima usando unidades de viewport dinámicas para evitar la barra del navegador */
     max-height: 85dvh;
@@ -259,12 +265,22 @@
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 
     /* Animación de entrada/salida desde abajo */
-    transform: translateY(100%);
+    transform: translate(-50%, 100%); /* Ajuste para centrado y posición inicial */
     transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   .quick-view-modal.is-visible {
-    transform: translateY(0);
+    transform: translate(-50%, 0); /* Ajuste para centrado y posición final */
+  }
+
+  /* ========================================================== */
+  /*  ▼▼▼ CORRECCIÓN: Habilitar scroll en móvil ▼▼▼
+  /*      Forzamos un layout de columna para que el contenido
+  /*      se apile verticalmente y el `overflow-y: auto` del
+  /*      contenedor principal funcione correctamente.
+  /* ========================================================== */
+  .quick-view-content {
+    flex-direction: column;
   }
 }
 
