@@ -65,23 +65,30 @@ export function initTouchDrawer() {
     sidebar.style.transition = "none"; // Desactivamos la animación durante el arrastre
   }
 
-  function handleTouchMove(e) {
-    if (!isDragging) return;
+function handleTouchMove(e) {
+  if (!isDragging) return;
 
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const diffX = currentX - touchStartX;
+  const currentX = e.touches[0].clientX;
+  const currentY = e.touches[0].clientY;
+  const diffX = currentX - touchStartX; // <- ÚNICA DECLARACIÓN
+  const diffY = currentY - touchStartY; // <- Movemos esta declaración aquí también para agrupar
 
-    // MEJORA: Detección de dirección de gesto
-    if (!isHorizontalDrag) {
-      const diffY = currentY - touchStartY;
+  // MEJORA: Detección de dirección de gesto con umbral
+  if (!isHorizontalDrag) {
+    // Solo tomamos una decisión si el movimiento es significativo
+    if (Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
       // Si el movimiento vertical es significativamente mayor, es scroll.
       if (Math.abs(diffY) > Math.abs(diffX) * 1.5) {
         isDragging = false; // Liberamos el gesto
         return;
       }
+      // Si no es scroll, confirmamos que es un arrastre horizontal.
       isHorizontalDrag = true;
+    } else {
+      // El movimiento es demasiado pequeño, no hacemos nada todavía.
+      return;
     }
+  }
 
     // Una vez confirmado el arrastre horizontal, prevenimos el scroll de la página.
     e.preventDefault();

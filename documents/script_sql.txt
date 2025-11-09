@@ -66,30 +66,32 @@ DECLARE
     v_json_result JSON;
     v_country_id INT;
     v_excluded_country_ids INT[];
+    
+    -- ▼▼▼ VARIABLES LOCALES PARA VALORES SANEADOS ▼▼▼
     v_safe_sort_direction TEXT;
+    v_safe_sort_field TEXT;
 BEGIN
     -- ============================================================
-    -- FASE 1: VALIDACIÓN Y SANITIZACIÓN ROBUSTA (Anti-Inyección y Anti-Errores)
+    -- FASE 1: VALIDACIÓN Y SANITIZACIÓN ROBUSTA (AHORA MÁS LIMPIA)
     -- ============================================================
     
-    -- ✅ BUG #1 CORREGIDO: Validar NULL explícitamente para sort_direction.
+    -- 1.1: Normalizar y validar 'sort_direction'
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
         v_safe_sort_direction := 'ASC';
     ELSE
         v_safe_sort_direction := upper(sort_direction);
     END IF;
 
-    -- ✅ BUG #3 CORREGIDO: Validar sort_field contra una lista blanca.
-    IF sort_field IS NULL OR lower(sort_field) NOT IN ('relevance', 'year', 'fa_rating', 'imdb_rating', 'fa_votes', 'imdb_votes') THEN
-        IF sort_field IS NOT NULL THEN
-            RAISE WARNING 'Invalid sort_field: "%". Using "relevance" as default.', sort_field;
-        END IF;
-        sort_field := 'relevance';
+    -- 1.2: Normalizar y validar 'sort_field'
+    v_safe_sort_field := lower(coalesce(sort_field, 'relevance')); -- Normaliza y asigna 'relevance' si es NULL
+    
+    IF v_safe_sort_field NOT IN ('relevance', 'year', 'fa_rating', 'imdb_rating', 'fa_votes', 'imdb_votes') THEN
+        RAISE WARNING 'Invalid sort_field: "%". Using "relevance" as default.', sort_field;
+        v_safe_sort_field := 'relevance';
     END IF;
 
-    -- ✅ BUG #2 CORREGIDO: Construir la cláusula ORDER BY de forma 100% segura.
-    -- No se inyecta directamente la variable, se usa una construcción segura.
-    v_order_clause := CASE lower(sort_field)
+    -- 1.3: Construir la cláusula ORDER BY usando la variable saneada
+    v_order_clause := CASE v_safe_sort_field
         WHEN 'year' THEN format('ORDER BY m.year %s, m.relevance ASC', v_safe_sort_direction)
         WHEN 'fa_rating' THEN format('ORDER BY m.fa_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
         WHEN 'imdb_rating' THEN format('ORDER BY m.imdb_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)

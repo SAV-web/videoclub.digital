@@ -1,14 +1,16 @@
-// =================================================================
+// =-================================================================
 //                      MÓDULO DE ESTADO (v3.3 - Getters Optimizados)
 // =================================================================
 // v3.3 - Se reemplaza el costoso `structuredClone()` en los getters por
 //        copias superficiales (`shallow copies`) usando el operador de propagación.
 //        Esto mejora significativamente el rendimiento en cada lectura de estado,
 //        ofreciendo una protección de inmutabilidad suficiente para la arquitectura actual.
+// =================================================================
 
 import { DEFAULTS } from "./constants.js";
 import { CONFIG } from "./config.js";
 
+// ... (typedefs sin cambios)
 /**
  * @typedef {object} ActiveFilters
  * @property {string} searchTerm
@@ -18,7 +20,7 @@ import { CONFIG } from "./config.js";
  * @property {string|null} director
  * @property {string|null} actor
  * @property {string|null} selection
- * @property {string|null} studio // <-- NUEVA PROPIEDAD
+ * @property {string|null} studio
  * @property {string} sort
  * @property {string} mediaType
  * @property {string[]} excludedGenres
@@ -54,7 +56,7 @@ const initialState = {
     director: null,
     actor: null,
     selection: null,
-    studio: null, // <-- NUEVA PROPIEDAD
+    studio: null,
     sort: DEFAULTS.SORT,
     mediaType: DEFAULTS.MEDIA_TYPE,
     excludedGenres: [],
@@ -63,8 +65,6 @@ const initialState = {
   userMovieData: {},
 };
 
-// Usamos `structuredClone` UNA SOLA VEZ para asegurar que el estado inicial
-// sea completamente independiente y no pueda ser mutado accidentalmente.
 let state = structuredClone(initialState);
 
 // =================================================================
@@ -110,7 +110,6 @@ export const getCurrentPage = () => {
 
 export function hasActiveMeaningfulFilters() {
   const { activeFilters } = state;
-  // No necesitamos una copia aquí, es una lectura pura y sincrónica.
   for (const key in activeFilters) {
     if (key === "mediaType" || key === "sort") {
       continue;
@@ -123,24 +122,23 @@ export function hasActiveMeaningfulFilters() {
   return false;
 }
 
+// ▼▼▼ LA FUNCIÓN CLAVE, AHORA OPTIMIZADA ▼▼▼
 export const getUserDataForMovie = (movieId) => {
   const entry = state.userMovieData[movieId];
-  // Si la entrada existe, devuelve una copia. Si no, undefined.
+  // Si la entrada existe, devuelve una copia superficial. Si no, undefined.
   return entry ? { ...entry } : undefined;
 };
 
 export const getAllUserMovieData = () => {
+  // También optimizamos esta función para ser consistente.
   return { ...state.userMovieData };
 };
 
 // =================================================================
 //          LÓGICA DE LÍMITE DE FILTROS Y SETTERS
 // =================================================================
-
-/**
- * Cuenta el número de filtros "significativos" que están actualmente activos.
- * @returns {number} El número total de filtros activos.
- */
+// ... (resto del fichero sin cambios)
+// ... (getActiveFilterCount, setFilter, etc.)
 export function getActiveFilterCount() {
   const { activeFilters } = state;
   let count = 0;
@@ -170,10 +168,6 @@ export function getActiveFilterCount() {
   return count;
 }
 
-// =================================================================
-//          SETTERS (MODIFICADORES DE ESTADO)
-// =================================================================
-
 export function setCurrentPage(page) {
   state.currentPage = page;
 }
@@ -182,12 +176,6 @@ export function setTotalMovies(total) {
   state.totalMovies = total;
 }
 
-/**
- * Establece un filtro de inclusión, validando primero si se ha alcanzado el límite.
- * @param {string} filterType - El tipo de filtro a establecer.
- * @param {string|null} value - El valor del filtro.
- * @returns {boolean} `true` si el filtro se aplicó, `false` si fue bloqueado por el límite.
- */
 export function setFilter(filterType, value) {
   if (filterType in state.activeFilters) {
     const isAddingNewFilter =
@@ -219,12 +207,6 @@ export function setMediaType(mediaType) {
   state.activeFilters.mediaType = mediaType;
 }
 
-/**
- * Añade o quita un filtro de la lista de exclusión, validando el límite global.
- * @param {string} filterType - 'genre' o 'country'.
- * @param {string} value - El valor a añadir/quitar.
- * @returns {boolean} `true` si la operación tuvo éxito, `false` si fue bloqueada.
- */
 export function toggleExcludedFilter(filterType, value) {
   const config = {
     genre: { list: state.activeFilters.excludedGenres, limit: 3 },
@@ -257,21 +239,13 @@ export function toggleExcludedFilter(filterType, value) {
 }
 
 export function resetFiltersState() {
-  // Reseteamos usando el clon del estado inicial para mantener la integridad.
   state.activeFilters = structuredClone(initialState.activeFilters);
 }
-
-// --- SETTERS DE DATOS DE USUARIO ---
 
 export function setUserMovieData(data) {
   state.userMovieData = data || {};
 }
 
-/**
- * Actualiza (o crea) la entrada para una película específica.
- * @param {number | string} movieId - El ID de la película.
- * @param {Partial<UserMovieEntry>} data - Los datos a actualizar.
- */
 export function updateUserDataForMovie(movieId, data) {
   if (!state.userMovieData[movieId]) {
     state.userMovieData[movieId] = { onWatchlist: false, rating: null };
