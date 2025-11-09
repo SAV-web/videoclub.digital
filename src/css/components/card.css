@@ -1,16 +1,32 @@
-/* src/css/components/card.css */
+/* =================================================================
+ *
+ *                      COMPONENTE: Movie Card (v2.1)
+ *
+ * =================================================================
+ *
+ *  FICHERO:  src/css/components/card.css
+ *  AUTOR:    Tu Mentor Experto
+ *  VERSIÓN:  2.1
+ *
+ *  HISTORIAL DE CAMBIOS:
+ *    v2.1 - CORRECCIÓN CRÍTICA: Implementada la lógica de `pointer-events`
+ *           para prevenir interacciones "fantasma" (click-through) en la
+ *           cara oculta de la tarjeta al girar.
+ *         - REFACTOR: Reorganizadas las reglas para una mejor legibilidad
+ *           y mantenibilidad (Estructura: Contenedor -> Estado -> Partes).
+ *         - CONSOLIDACIÓN: Unificada la lógica del pseudo-elemento `::before`
+ *           del `.star-icon` en este fichero como única fuente de la verdad.
+ *
+ *    v2.0 - MEJORA DE RENDIMIENTO: Implementada la aceleración por GPU
+ *           para la sombra del hover, animando la opacidad de un
+ *           pseudo-elemento en lugar del `box-shadow` directamente.
+ *
+ * ================================================================= */
 
-/*
- * =================================================================
- * Componente: Tarjeta de Película y Estilos Compartidos
- * =================================================================
- * v2.0 - Implementada la aceleración por GPU para la sombra del hover.
- *      - Se utiliza un pseudo-elemento ::after para animar la opacidad
- *        de la sombra en lugar de la propiedad box-shadow directamente.
- * =================================================================
- */
 
-/* Keyframes para la animación de aparición en cascada */
+/* --- 1. Contenedor Principal y Perspectiva 3D --- */
+
+/* Keyframes para la animación de entrada en cascada de las tarjetas. */
 @keyframes card-appear {
   from {
     opacity: 0;
@@ -22,63 +38,35 @@
   }
 }
 
+/* El contenedor raíz de la tarjeta.
+   - `perspective`: Crea el espacio 3D necesario para la animación de giro.
+   - `animation`: Aplica la animación de entrada con un retraso escalonado.
+   - `position: relative`: Necesario para posicionar el pseudo-elemento de la sombra. */
 .movie-card {
   perspective: 1000px;
   aspect-ratio: 500 / 950;
   animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 50ms);
-
-  /* ========================================================== */
-  /*  ▼▼▼ MEJORA: Aceleración por GPU ▼▼▼
-  /*      - La transición ahora solo afecta a 'transform'.
-  /*      - Se añade 'position: relative' para posicionar el 
-  /*        pseudo-elemento de la sombra.
-  /* ========================================================== */
   position: relative;
   transition: transform var(--duration-quick) var(--ease-spring);
 }
 
-/* ========================================================== */
-/*  ▼▼▼ MEJORA: Pseudo-elemento para la Sombra Acelerada ▼▼▼
-/*      Este elemento contiene la sombra y solo se animará
-/*      su opacidad, que es una operación gestionada por la GPU.
-/* ========================================================== */
-.movie-card::after {
-  content: "";
-  position: absolute;
-  /* 'inset: 0' es un atajo para top, right, bottom, left = 0 */
-  inset: 0;
-  /* Hereda los bordes redondeados del flip-card-inner */
-  border-radius: var(--radius-lg);
-
-  /* Definimos la sombra final que queremos ver en el hover */
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
-
-  /* Estado inicial: invisible */
-  opacity: 0;
-  /* Transicionamos solo la opacidad */
-  transition: opacity var(--duration-normal) var(--ease-smooth-out);
-  /* Lo colocamos detrás del contenido de la tarjeta */
-  z-index: -1;
-}
-
-/* Sombra para el modo oscuro, misma técnica */
-html.dark-mode .movie-card::after {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
+/* El elemento interno que realiza la animación de giro.
+   - `transform-style: preserve-3d`: Permite que sus hijos (las caras) se posicionen en el espacio 3D. */
 .flip-card-inner {
   position: relative;
   width: 100%;
   height: 100%;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow); /* Sombra estática base */
+  box-shadow: var(--shadow); /* Sombra estática base para el estado normal. */
   transform-style: preserve-3d;
-  transition: transform var(--duration-leisurely) var(--ease-smooth-out),
-    filter var(--duration-leisurely) var(--ease-smooth-out);
+  transition: transform var(--duration-leisurely) var(--ease-smooth-out);
 }
 
-/* Estado volteado con sombra dinámica para dar profundidad */
+
+/* --- 2. Estados de Interacción (Hover y Flipped) --- */
+
+/* Estado de la tarjeta girada (aplicado por JS en móvil). */
 .flip-card-inner.is-flipped {
   transform: rotateY(180deg);
 }
@@ -86,18 +74,14 @@ html.dark-mode .flip-card-inner.is-flipped {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
-/* Interacción de hover avanzada */
+/* Lógica de hover solo para dispositivos con puntero fino (escritorio). */
 @media (hover: hover) and (pointer: fine) {
+  /* Gira la tarjeta cuando el ratón está encima y la rotación no está deshabilitada. */
   body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
 
-  /* ========================================================== */
-  /*  ▼▼▼ MEJORA: Animación de Hover Acelerada por GPU ▼▼▼
-  /*      - Ya no se anima el 'box-shadow' de la tarjeta.
-  /*      - Solo se anima el 'transform' del elemento principal.
-  /*      - Se activa la opacidad del pseudo-elemento de la sombra.
-  /* ========================================================== */
+  /* Eleva la tarjeta y muestra la sombra optimizada al hacer hover. */
   .movie-card:not(.is-flipped):hover {
     transform: translateY(-8px) scale(1.02);
   }
@@ -107,9 +91,16 @@ html.dark-mode .flip-card-inner.is-flipped {
   }
 }
 
+
+/* --- 3. Caras Frontal y Trasera (Estructura y Visibilidad) --- */
+
+/* Estilos base compartidos por ambas caras de la tarjeta.
+   - `backface-visibility: hidden`: La clave para la animación de giro. Oculta la
+     cara que está de espaldas al espectador. */
 .flip-card-front,
 .flip-card-back {
   position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border-radius: var(--radius-lg);
@@ -117,6 +108,39 @@ html.dark-mode .flip-card-inner.is-flipped {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+/* La cara trasera está girada 180 grados por defecto. */
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* =================================================================
+ *  ▼▼▼ CORRECCIÓN DE INTERACCIÓN FANTASMA (Click-Through) ▼▼▼
+ * =================================================================
+ * Por defecto, la cara trasera no puede recibir clics o toques.
+ * Cuando la tarjeta se gira, invertimos esta lógica para que la cara
+ * trasera se vuelva interactiva y la frontal (ahora oculta) no. */
+
+.flip-card-back {
+  pointer-events: none;
+}
+.flip-card-front {
+  pointer-events: auto;
+}
+
+/* Se aplica cuando la tarjeta está girada en móvil (.is-flipped) O en hover en escritorio. */
+.flip-card-inner.is-flipped .flip-card-back,
+body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-back {
+  pointer-events: auto;
+}
+
+.flip-card-inner.is-flipped .flip-card-front,
+body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-front {
+  pointer-events: none;
+}
+
+
+/* --- 4. Componentes Internos de la Cara Frontal --- */
 
 .flip-card-front {
   display: flex;
@@ -140,7 +164,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   object-fit: cover;
 }
 
-/* Transición suave para placeholders de baja calidad (LQIP) */
+/* Efecto de desenfoque para imágenes de baja calidad (LQIP) durante la carga. */
 .flip-card-front img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.1);
@@ -152,48 +176,9 @@ html.dark-mode .flip-card-inner.is-flipped {
   transform: scale(1);
 }
 
-.star-icon {
-  position: relative;
-  width: 20px;
-  height: 20px;
-}
 
-/* Expande el área táctil del icono a 48x48px sin afectar el layout */
-.star-icon::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 48px;
-  height: 48px;
-  transform: translate(-50%, -50%);
-}
-.star-icon-path {
-  stroke: var(--color-accent);
-  stroke-width: 1.5;
-}
-.star-icon-path--empty {
-  fill: transparent;
-}
-.star-icon-path--filled {
-  fill: var(--color-accent);
-  clip-path: inset(0 100% 0 0);
-}
+/* --- 5. Componentes Internos de la Cara Trasera --- */
 
-.low-rating-circle {
-  display: none;
-  width: 16px;
-  height: 16px;
-  border: 4px solid var(--color-accent);
-  border-radius: 50%;
-  background-color: transparent;
-}
-
-.fi {
-  font-size: var(--font-size-sm);
-}
-
-/* --- Estilos de la cara trasera --- */
 .flip-card-back {
   display: flex;
   flex-direction: column;
@@ -201,22 +186,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   background-color: var(--color-surface);
   color: var(--color-text-primary);
   line-height: var(--line-height-normal);
-  transform: rotateY(180deg);
-}
-
-.flip-card-back > *:not(.scrollable-content) {
-  transition: opacity var(--duration-quick) ease-out;
-}
-
-/* Cuando se expande, ocultamos el resto de los elementos */
-.flip-card-back.is-expanded > *:not(.scrollable-content) {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.flip-card-back.is-expanded {
-  padding: 0;
-  transition: padding var(--duration-normal) var(--ease-smooth-out);
 }
 
 .back-meta-header {
@@ -239,6 +208,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   flex-direction: column;
   gap: var(--space-sm);
 }
+
 .rating-line {
   display: flex;
   align-items: center;
@@ -258,12 +228,6 @@ html.dark-mode .flip-card-inner.is-flipped {
 .rating-left.disabled {
   pointer-events: none;
   opacity: 0.7;
-}
-.rating-icon {
-  width: 1.5em;
-  height: 1.5em;
-  border-radius: var(--radius-sm);
-  object-fit: contain;
 }
 
 .rating-bar-container {
@@ -300,8 +264,24 @@ html.dark-mode .flip-card-inner.is-flipped {
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
 }
-.detail-label {
-  margin-right: var(--space-xs);
+
+/* Contenido scrollable (sinopsis y crítica) */
+.scrollable-content {
+  position: relative;
+  transition: all var(--duration-normal) var(--ease-smooth-out);
+  overflow: hidden;
+}
+
+/* Degradado en la parte inferior para indicar que hay más contenido. */
+.scrollable-content::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, transparent, var(--color-surface));
+  pointer-events: none;
 }
 
 .plot-summary-final,
@@ -315,46 +295,33 @@ html.dark-mode .flip-card-inner.is-flipped {
   line-height: var(--line-height-relaxed);
 }
 
-.scrollable-content {
-  position: relative;
-  transition: all var(--duration-normal) var(--ease-smooth-out);
-  overflow: hidden;
+.critic-review {
+  margin-top: var(--space-sm);
 }
 
+/* Lógica de expansión de la sinopsis */
+.flip-card-back.is-expanded {
+  padding: 0;
+  transition: padding var(--duration-normal) var(--ease-smooth-out);
+}
+.flip-card-back.is-expanded > *:not(.scrollable-content) {
+  opacity: 0;
+  pointer-events: none;
+}
 .flip-card-back.is-expanded .scrollable-content {
   position: absolute;
   inset: 0;
   padding: var(--space-md);
   background-color: var(--color-surface);
   overflow-y: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-
 .flip-card-back.is-expanded .scrollable-content::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, etc. */
+  display: none;
 }
-
-.scrollable-content::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 20px;
-  background: linear-gradient(to bottom, transparent, var(--color-surface));
-  pointer-events: none;
-}
-
 .flip-card-back.is-expanded .scrollable-content::after {
-  opacity: 0;
-}
-
-.plot-summary-final {
-  cursor: default;
-}
-.critic-review {
-  margin-top: var(--space-sm);
+  opacity: 0; /* Oculta el degradado cuando se expande. */
 }
 
 .expand-content-btn {
@@ -376,13 +343,61 @@ html.dark-mode .flip-card-inner.is-flipped {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   transition: all var(--duration-quick) ease-out;
 }
-
 .expand-content-btn:hover {
   transform: scale(1.1);
 }
 
-.flip-card-back.is-expanded .expand-content-btn {
-  content: "−";
+
+/* --- 6. Elementos Reutilizables y de UI (Iconos, etc.) --- */
+
+.star-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+/* Expande el área interactiva del icono a 48x48px sin afectar el layout visual.
+   Beneficia tanto a usuarios de escritorio (hover más generoso) como a táctiles (accesibilidad). */
+.star-icon::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+}
+
+.star-icon-path {
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+}
+.star-icon-path--empty {
+  fill: transparent;
+}
+.star-icon-path--filled {
+  fill: var(--color-accent);
+  clip-path: inset(0 100% 0 0); /* Usado por JS para el efecto de relleno. */
+}
+
+.low-rating-circle {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 4px solid var(--color-accent);
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+.fi { /* Para los iconos de banderas (flag-icons) */
+  font-size: var(--font-size-sm);
+}
+
+.rating-icon {
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
 }
 
 [data-template="wikipedia-link"] > .rating-icon {
@@ -393,5 +408,26 @@ html.dark-mode .flip-card-inner.is-flipped {
 }
 
 .star-rating-container {
-  cursor: default;
+  cursor: default; /* El cursor de puntero se aplica a través de JS (`is-interactive`). */
+}
+
+/* ==========================================================
+ *  ▼▼▼ OPTIMIZACIÓN DE RENDIMIENTO: Sombra Acelerada ▼▼▼
+ * ==========================================================
+ * Este pseudo-elemento contiene solo la sombra del hover. Animamos su
+ * opacidad en lugar del `box-shadow` directamente, lo que permite a la
+ * GPU gestionar la animación de forma mucho más eficiente. */
+.movie-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-smooth-out);
+  z-index: -1;
+}
+
+html.dark-mode .movie-card::after {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
 }
