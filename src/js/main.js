@@ -294,16 +294,29 @@ function setupKeyboardShortcuts() {
 }
 
 function setupGlobalListeners() {
+  /**
+   * Listener delegado para clics en todo el documento.
+   * - Cierra los autocompletados y las secciones del sidebar si se hace clic fuera.
+   */
   document.addEventListener("click", (e) => {
-    if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM))
+    // Si el clic no fue dentro de un formulario de filtro del sidebar, cierra todos los autocompletados.
+    if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) {
       clearAllSidebarAutocomplete();
-    if (!e.target.closest(".sidebar")) collapseAllSections();
+    }
+    // Si el clic no fue dentro del sidebar, contrae todas las secciones.
+    if (!e.target.closest(".sidebar")) {
+      collapseAllSections();
+    }
   });
 
+  /**
+   * Listener delegado para la paginación inferior.
+   * Detecta clics en los botones de página y carga la página correspondiente.
+   */
   dom.paginationContainer.addEventListener("click", async (e) => {
     const button = e.target.closest(SELECTORS.CLICKABLE_BTN);
     if (button && button.dataset.page) {
-      document.dispatchEvent(new CustomEvent("uiActionTriggerred"));
+      document.dispatchEvent(new CustomEvent("uiActionTriggered"));
       triggerPopAnimation(button);
       const page = parseInt(button.dataset.page, 10);
       if (!isNaN(page)) {
@@ -313,27 +326,41 @@ function setupGlobalListeners() {
     }
   });
 
-  // ==========================================================
-  //  ▼▼▼ CORRECCIÓN: Unificar manejador de clics para tarjetas y Quick View ▼▼▼
-  //      Se crea una función `handleInteractiveClick` que se asigna tanto
-  //      al grid como a la modal de vista rápida para que la lógica de
-  //      votación y watchlist sea idéntica en ambos.
-  // ==========================================================
-  const handleInteractiveClick = (e) => {
-    const cardElement = e.target.closest(".movie-card, #quick-view-content");
-    const clearButton = e.target.closest("#clear-filters-from-empty");
-
+  /**
+   * Listener delegado principal para toda el área de contenido.
+   * Utiliza el patrón de "Event Delegation" para manejar todos los clics
+   * en las tarjetas de películas y en la vista de "Sin Resultados" con un solo listener.
+   * Es mucho más eficiente que añadir un listener a cada una de las 42 tarjetas.
+   */
+  dom.gridContainer.addEventListener("click", (e) => {
+    // Busca si el clic ocurrió dentro de una tarjeta de película.
+    const cardElement = e.target.closest(".movie-card");
     if (cardElement) {
+      // Si es así, llama a la función `handleCardClick` pasando la tarjeta
+      // como el contexto (`this`) y el evento.
       handleCardClick.call(cardElement, e);
-    } else if (clearButton) {
+      return; // Salimos para evitar otras comprobaciones.
+    }
+
+    // Busca si el clic ocurrió en el botón de "Limpiar filtros" de la vista de "Sin Resultados".
+    const clearButton = e.target.closest("#clear-filters-from-empty");
+    if (clearButton) {
       document.dispatchEvent(new CustomEvent("filtersReset"));
     }
-  };
+  });
 
-  dom.gridContainer.addEventListener("click", handleInteractiveClick);
-  // Se añade el mismo listener a la modal de vista rápida.
-  document.getElementById("quick-view-content").addEventListener("click", handleInteractiveClick);
+  // Se añade el mismo listener delegado al contenido de la modal de vista rápida.
+  // Esto reutiliza toda la lógica de `handleCardClick` para los botones de la modal.
+  document
+    .getElementById("quick-view-content")
+    .addEventListener("click", (e) => {
+      const cardElement = e.currentTarget; // En este caso, el contenedor es el "cardElement"
+      handleCardClick.call(cardElement, e);
+    });
 
+  /**
+   * Listener para el botón de cambio de tema.
+   */
   dom.themeToggleButton.addEventListener("click", (e) => {
     triggerPopAnimation(e.currentTarget);
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
@@ -341,6 +368,10 @@ function setupGlobalListeners() {
     localStorage.setItem("theme", isDarkMode ? "dark" : "light");
   });
 
+  /**
+   * Listener de scroll optimizado con `requestAnimationFrame` para
+   * gestionar la visibilidad del botón "Volver Arriba" y el estado "scrolled" del header.
+   */
   let isTicking = false;
   let isHeaderScrolled = false;
   window.addEventListener(
@@ -349,7 +380,10 @@ function setupGlobalListeners() {
       if (!isTicking) {
         window.requestAnimationFrame(() => {
           const scrollY = window.scrollY;
+          // Muestra u oculta el botón "Back to Top".
           dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
+
+          // Añade o quita la clase de "scrolled" al header para efectos visuales.
           if (scrollY > 10 && !isHeaderScrolled) {
             isHeaderScrolled = true;
             dom.mainHeader.classList.add(CSS_CLASSES.IS_SCROLLED);
@@ -365,10 +399,16 @@ function setupGlobalListeners() {
     { passive: true }
   );
 
+  /**
+   * Listener para el botón de "Volver Arriba".
+   */
   dom.backToTopButton.addEventListener("click", () =>
     window.scrollTo({ top: 0, behavior: "smooth" })
   );
 
+  /**
+   * Listeners para el overlay y la tecla Escape para cerrar el sidebar en móvil.
+   */
   const rewindButton = document.querySelector("#rewind-button");
   if (dom.sidebarOverlay && rewindButton) {
     dom.sidebarOverlay.addEventListener("click", () => rewindButton.click());
@@ -380,6 +420,23 @@ function setupGlobalListeners() {
       document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)
     ) {
       if (rewindButton) rewindButton.click();
+    }
+  });
+
+  // =================================================================
+  //  ▼▼▼ NUEVO LISTENER (PATRÓN EVENT BUS) ▼▼▼
+  // =================================================================
+  /**
+   * Listener global para el evento personalizado 'card:requestUpdate'.
+   * Desacopla el módulo `rating-stars` de `card`, permitiendo que cualquier
+   * componente solicite una actualización de UI para una tarjeta específica.
+   */
+  document.addEventListener("card:requestUpdate", (e) => {
+    // El elemento de la tarjeta que necesita ser actualizado viene en la propiedad 'detail' del evento.
+    const { cardElement } = e.detail;
+    if (cardElement) {
+      // Llamamos a la función de actualización correspondiente.
+      updateCardUI(cardElement);
     }
   });
 }
@@ -546,14 +603,15 @@ function init() {
   // ==========================================================
   //  ▼▼▼ MEJORA: Registro del Service Worker ▼▼▼
   // ==========================================================
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => {
-          console.log('Service Worker registrado con éxito:', registration);
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          console.log("Service Worker registrado con éxito:", registration);
         })
-        .catch(error => {
-          console.log('Fallo en el registro del Service Worker:', error);
+        .catch((error) => {
+          console.log("Fallo en el registro del Service Worker:", error);
         });
     });
   }

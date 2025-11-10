@@ -27,7 +27,7 @@ import {
   calculateUserStars,
   renderUserStars,
   setupRatingListeners,
-  setUpdateCardUIFn,
+  //  setUpdateCardUIFn,
 } from "./rating-stars.js";
 
 // --- Constantes y Estado del Módulo ---
@@ -848,5 +848,7 @@ export function renderErrorState(gridContainer, paginationContainer, message) {
   gridContainer.appendChild(errorDiv);
 }
 
+/*
 // Inyecta la función de actualización de UI en el módulo de estrellas para evitar dependencias circulares.
 setUpdateCardUIFn(updateCardUI);
+*/

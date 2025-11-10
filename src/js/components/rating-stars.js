@@ -12,7 +12,9 @@ import { setUserMovieDataAPI } from "../api-user.js";
 import { showToast } from "../toast.js";
 
 const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
+/*
 let updateCardUI; // Dependencia inyectada
+*/
 
 // --- LÓGICA DE CÁLCULO (sin cambios) ---
 export function calculateUserStars(rating) {
@@ -150,8 +152,15 @@ function handleRatingMouseMove(event) {
 
 function handleRatingMouseLeave(event) {
   const interactiveContainer = event.currentTarget.closest("[data-movie-id]");
-  if (interactiveContainer && updateCardUI) {
-    updateCardUI(interactiveContainer);
+  if (interactiveContainer) {
+    // ✨ CAMBIO: Emitimos un evento en lugar de llamar a una función.
+    // El evento "burbujea" y puede ser capturado por un listener en un elemento padre (o en document).
+    const updateEvent = new CustomEvent("card:requestUpdate", {
+      bubbles: true,
+      composed: true, // Permite que el evento cruce los límites del Shadow DOM si lo usaras en el futuro.
+      detail: { cardElement: interactiveContainer },
+    });
+    interactiveContainer.dispatchEvent(updateEvent);
   }
 }
 
@@ -169,6 +178,8 @@ export function setupRatingListeners(starContainer, isInteractive) {
   }
 }
 
+/*
 export function setUpdateCardUIFn(fn) {
   updateCardUI = fn;
 }
+*/
