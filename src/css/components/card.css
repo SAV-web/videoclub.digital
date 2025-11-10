@@ -292,13 +292,12 @@ body:not(.rotation-disabled)
 .critic-review {
   margin-top: var(--space-sm);
 }
-.flip-card-back.is-expanded {
-  padding: 0;
-  transition: padding var(--duration-normal) var(--ease-smooth-out);
-}
-.flip-card-back.is-expanded > *:not(.scrollable-content) {
+
+/* Cuando se expande, los elementos que no son el scrollable-content se desplazan y desvanecen */
+.flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn) {
   opacity: 0;
-  pointer-events: none;
+  transform: translateY(-100%);
+  transition: opacity var(--duration-quick), transform var(--duration-normal) var(--ease-smooth-out);
 }
 .flip-card-back.is-expanded .scrollable-content {
   position: absolute;
@@ -315,24 +314,26 @@ body:not(.rotation-disabled)
 .flip-card-back.is-expanded .scrollable-content::after {
   opacity: 0;
 }
+
 .expand-content-btn {
   position: absolute;
-  bottom: -5px;
-  right: 0;
-  width: 30px;
-  height: 30px;
+  bottom: 2px;
+  right: 2px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: none;
   background-color: var(--color-accent);
   color: var(--color-surface);
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  transition: all var(--duration-quick) ease-out;
+  transition: all var(--duration-quick) ease-out, background-color var(--duration-quick);
+  z-index: 10; /* Asegura que el botón esté por encima del contenido que hace scroll */
 }
 .expand-content-btn:hover {
   transform: scale(1.1);
@@ -407,4 +408,22 @@ body:not(.rotation-disabled)
 
 html.dark-mode .movie-card::after {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* =================================================================
+ *  ▼▼▼ COMPORTAMIENTO ESPECIAL PARA LA MODAL (QUICK VIEW) ▼▼▼
+ * ================================================================= */
+
+/*
+ * Dentro de la modal, no queremos el botón de expandir.
+ * Forzamos a que el contenido se muestre siempre expandido.
+ */
+.quick-view-modal .flip-card-back > *:not(.scrollable-content) {
+  display: none; /* Ocultamos todo lo que no sea la sinopsis */
+}
+
+.quick-view-modal .scrollable-content {
+  position: static; /* Quitamos el posicionamiento absoluto */
+  height: 100%; /* Hacemos que ocupe toda la altura de su contenedor (.quick-view-back) */
+  overflow-y: auto; /* Aseguramos que el scroll esté activo */
 }

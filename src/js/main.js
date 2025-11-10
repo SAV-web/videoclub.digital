@@ -71,6 +71,7 @@ const URL_PARAM_MAP = {
   dir: "director",
   actor: "actor",
   sel: "selection",
+  stu: "studio",
   sort: "sort",
   type: "mediaType",
   p: "page",
