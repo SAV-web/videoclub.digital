@@ -835,13 +835,6 @@
           <h2 id="auth-title" class="auth-logo-modal">
             <span>videoclub</span>.<span>digital</span>
           </h2>
-          <button
-            id="auth-close-btn"
-            class="auth-close-btn"
-            aria-label="Cerrar"
-          >
-            &times;
-          </button>
         </header>
 
         <section id="login-view" aria-labelledby="login-title">
@@ -1216,7 +1209,10 @@
                 <span class="detail-label">🎬</span
                 ><span class="detail-data" data-template="genre"></span>
               </div>
-              <div class="detail-item">
+              <div
+                class="detail-item"
+                data-template="actors-container"
+              >
                 <span class="detail-label">✨</span
                 ><span class="detail-data" data-template="actors"></span>
               </div>
@@ -1270,13 +1266,6 @@
       hidden
       aria-hidden="true"
     >
-      <button
-        id="quick-view-close-btn"
-        class="quick-view-close-btn"
-        aria-label="Cerrar vista rápida"
-      >
-        &times;
-      </button>
       <div id="quick-view-content" class="quick-view-content"></div>
     </div>
 
@@ -1451,7 +1440,10 @@
             <span class="detail-label">🎬</span
             ><span class="detail-data" data-template="genre"></span>
           </div>
-          <div class="detail-item">
+          <div
+            class="detail-item"
+            data-template="actors-container"
+          >
             <span class="detail-label">✨</span
             ><span class="detail-data" data-template="actors"></span>
           </div>

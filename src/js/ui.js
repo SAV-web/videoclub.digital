@@ -50,7 +50,6 @@ export const dom = {
   // Elementos de la Modal de Autenticación
   authModal: document.getElementById("auth-modal"),
   authOverlay: document.getElementById("auth-overlay"),
-  authCloseBtn: document.getElementById("auth-close-btn"),
   loginButton: document.getElementById("login-button"),
 };
 
@@ -73,16 +72,9 @@ export function openAuthModal() {
  * Esta función no cambia, ya que solo establece los disparadores.
  */
 export function setupAuthModal() {
-  if (
-    !dom.loginButton ||
-    !dom.authModal ||
-    !dom.authOverlay ||
-    !dom.authCloseBtn
-  )
-    return;
+  if (!dom.loginButton || !dom.authModal || !dom.authOverlay) return;
 
   dom.loginButton.addEventListener("click", openAuthModal);
-  dom.authCloseBtn.addEventListener("click", closeAuthModal);
   dom.authOverlay.addEventListener("click", closeAuthModal);
 
   document.addEventListener("keydown", (e) => {

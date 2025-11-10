@@ -20,7 +20,6 @@ const dom = {
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
   content: document.getElementById("quick-view-content"),
-  closeBtn: document.getElementById("quick-view-close-btn"),
   template: document.getElementById("quick-view-template").content,
 };
 
@@ -153,8 +152,17 @@ function populateModal(cardElement) {
   });
 
   // --- Rellenar Cara Trasera (de forma segura) ---
-  copyInnerHTML(".ratings-container", ".ratings-container", back);
-  copyInnerHTML(".details-list", ".details-list", back);
+  copyInnerHTML('.ratings-container', '.ratings-container', back);
+
+  // ▼▼▼ MEJORA: Rellenar la lista de detalles manualmente para mostrar todos los actores ▼▼▼
+  const detailsListTarget = back.querySelector('.details-list');
+  if (detailsListTarget) {
+      const genreTarget = detailsListTarget.querySelector('[data-template="genre"]');
+      const actorsTarget = detailsListTarget.querySelector('[data-template="actors"]');
+      if (genreTarget) genreTarget.textContent = dom.content.movieData.genres || 'Género no disponible';
+      if (actorsTarget) actorsTarget.textContent = dom.content.movieData.actors || 'Reparto no disponible';
+  }
+
   copyTextContent(
     '[data-template="synopsis"]',
     '[data-template="synopsis"]',
@@ -253,9 +261,4 @@ export function initQuickView() {
       closeModal();
     }
   });
-
-  // Listener para el botón de cierre explícito (la 'X')
-  if (dom.closeBtn) {
-    dom.closeBtn.addEventListener("click", closeModal);
-  }
 }

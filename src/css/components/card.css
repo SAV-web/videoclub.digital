@@ -257,12 +257,21 @@ body:not(.rotation-disabled)
   line-height: var(--line-height-normal);
   color: var(--color-text-secondary);
 }
-.detail-item {
+
+/* Limita la lista de actores a 2 líneas en la tarjeta para no ocupar demasiado espacio */
+.detail-item[data-template="actors-container"] {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
+}
+/* En la modal, permitimos que la lista de actores ocupe varias líneas */
+.quick-view-modal .detail-item[data-template="actors-container"] {
+  -webkit-line-clamp: initial; /* Quitamos el límite de líneas */
+  white-space: normal; /* Permitimos el salto de línea */
+  overflow: visible; /* Permitimos que el contenido desborde si es necesario */
+  display: block; /* Aseguramos que se comporte como un bloque */
 }
 .scrollable-content {
   position: relative;

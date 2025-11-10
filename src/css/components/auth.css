@@ -137,15 +137,6 @@
   line-height: 1.2;
 }
 
-.auth-close-btn {
-  background: none;
-  border: none;
-  font-size: var(--font-size-xxl);
-  line-height: 1;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
 .auth-modal h3 {
   margin-bottom: var(--space-lg);
   font-family: var(--font-title);

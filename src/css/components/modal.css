@@ -212,32 +212,6 @@
   color: var(--color-text-secondary);
 }
 
-/* --- Botón de Cierre (X) --- */
-.quick-view-close-btn {
-  position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  z-index: 10;
-
-  /* Aumentamos el área táctil para cumplir con las guías de accesibilidad (mínimo 44x44px) */
-  width: 44px;
-  height: 44px;
-
-  /* Estilos del botón */
-  padding: 0;
-  border: none;
-  background: transparent;
-  font-size: 2rem;
-  line-height: 1;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: transform 0.2s var(--ease-spring), color 0.2s;
-}
-.quick-view-close-btn:hover {
-  transform: scale(1.1);
-  color: var(--color-text-primary);
-}
-
 /* =================================================================
    4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES)
    - Define el comportamiento de la modal en diferentes breakpoints.
