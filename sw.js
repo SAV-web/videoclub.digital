@@ -26,33 +26,33 @@
 //
 // =================================================================
 
-const CACHE_STATIC_NAME = 'videoclub-static-v1';
-const CACHE_DYNAMIC_NAME = 'videoclub-dynamic-v1';
-const CACHE_API_NAME = 'videoclub-api-v1';
+const CACHE_STATIC_NAME = "videoclub-static-v1";
+const CACHE_DYNAMIC_NAME = "videoclub-dynamic-v1";
+const CACHE_API_NAME = "videoclub-api-v1";
 
 // Recursos de la "cáscara" de la aplicación que se cachean en la instalación.
 // Son los archivos mínimos necesarios para que la aplicación "arranque".
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/src/css/main.css',
-  '/src/js/main.js',
-  '/src/js/ui.js',
-  '/src/js/api.js',
-  '/src/js/state.js',
-  '/src/js/utils.js',
-  '/manifest.webmanifest',
+  "/",
+  "/index.html",
+  "/src/css/main.css",
+  "/src/js/main.js",
+  "/src/js/ui.js",
+  "/src/js/api.js",
+  "/src/js/state.js",
+  "/src/js/utils.js",
+  "/manifest.webmanifest",
   // Se podría añadir aquí el logo principal o un icono SVG sprite.
   // '/src/img/icons/sprite.svg'
 ];
 
 // Evento 'install': Se dispara una sola vez cuando el Service Worker se instala.
 // Ideal para pre-cachear los assets estáticos.
-self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Instalando...');
+self.addEventListener("install", (event) => {
+  console.log("[Service Worker] Instalando...");
   event.waitUntil(
     caches.open(CACHE_STATIC_NAME).then((cache) => {
-      console.log('[Service Worker] Pre-cacheando la App Shell...');
+      console.log("[Service Worker] Pre-cacheando la App Shell...");
       return cache.addAll(STATIC_ASSETS);
     })
   );
@@ -61,14 +61,18 @@ self.addEventListener('install', (event) => {
 
 // Evento 'activate': Se dispara cuando el Service Worker se activa.
 // Perfecto para limpiar cachés antiguas de versiones anteriores.
-self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activando...');
+self.addEventListener("activate", (event) => {
+  console.log("[Service Worker] Activando...");
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(
         keyList.map((key) => {
-          if (key !== CACHE_STATIC_NAME && key !== CACHE_DYNAMIC_NAME && key !== CACHE_API_NAME) {
-            console.log('[Service Worker] Eliminando caché antigua:', key);
+          if (
+            key !== CACHE_STATIC_NAME &&
+            key !== CACHE_DYNAMIC_NAME &&
+            key !== CACHE_API_NAME
+          ) {
+            console.log("[Service Worker] Eliminando caché antigua:", key);
             return caches.delete(key);
           }
         })
@@ -80,12 +84,12 @@ self.addEventListener('activate', (event) => {
 
 // Evento 'fetch': Se dispara para cada petición de red que hace la página.
 // Aquí es donde interceptamos las peticiones y aplicamos nuestras estrategias.
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // === ESTRATEGIA 1: API (Network First, falling back to Cache) ===
-  if (url.pathname.includes('/functions/v1/')) {
+  if (url.pathname.includes("/functions/v1/")) {
     event.respondWith(
       caches.open(CACHE_API_NAME).then(async (cache) => {
         try {
@@ -94,7 +98,9 @@ self.addEventListener('fetch', (event) => {
           cache.put(request, networkResponse.clone());
           return networkResponse;
         } catch (error) {
-          console.log(`[Service Worker] Red falló para API. Sirviendo desde caché para: ${request.url}`);
+          console.log(
+            `[Service Worker] Red falló para API. Sirviendo desde caché para: ${request.url}`
+          );
           const cachedResponse = await cache.match(request);
           return cachedResponse; // Puede ser 'undefined' si nunca se cacheó, lo cual es correcto.
         }
@@ -102,14 +108,21 @@ self.addEventListener('fetch', (event) => {
     );
   }
   // === ESTRATEGIA 2: Imágenes y Fuentes (Stale-While-Revalidate) ===
-  else if (request.destination === 'image' || request.destination === 'font') {
+  else if (request.destination === "image" || request.destination === "font") {
     event.respondWith(
       caches.open(CACHE_DYNAMIC_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(request);
-        const networkFetch = fetch(request).then((networkResponse) => {
-          cache.put(request, networkResponse.clone());
-          return networkResponse;
-        }).catch(err => console.warn(`[Service Worker] Fallo al buscar en red para ${request.url}:`, err));
+        const networkFetch = fetch(request)
+          .then((networkResponse) => {
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+          })
+          .catch((err) =>
+            console.warn(
+              `[Service Worker] Fallo al buscar en red para ${request.url}:`,
+              err
+            )
+          );
 
         // Devuelve la respuesta del caché inmediatamente si existe, si no, espera a la red.
         return cachedResponse || networkFetch;
@@ -123,14 +136,14 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) {
           return cachedResponse; // Sirve desde la caché estática.
         }
-        
+
         // ✨ MEJORA: Si no está en la caché estática, búscalo en la red
         // Y AÑÁDELO a la caché dinámica para futuras visitas.
-        return fetch(request).then(networkResponse => {
-          return caches.open(CACHE_DYNAMIC_NAME).then(cache => {
+        return fetch(request).then((networkResponse) => {
+          return caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
             // No cacheamos peticiones de extensiones de Chrome, etc.
-            if (request.url.startsWith('http')) {
-               cache.put(request, networkResponse.clone());
+            if (request.url.startsWith("http")) {
+              cache.put(request, networkResponse.clone());
             }
             return networkResponse;
           });
