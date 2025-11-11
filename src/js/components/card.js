@@ -424,6 +424,13 @@ function populateCardText(elements, movieData) {
       elements[iconKey].style.display = "block";
     }
   });
+      // Al final de la función, añade esto:
+    if (elements.wikipediaLink && movieData.wikipedia) {
+        elements.wikipediaLink.href = movieData.wikipedia;
+        elements.wikipediaLink.style.display = 'flex';
+    } else if (elements.wikipediaLink) {
+        elements.wikipediaLink.style.display = 'none';
+    }
 }
 
 /**

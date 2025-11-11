@@ -152,6 +152,7 @@ function populateModal(cardElement) {
   });
 
   // --- Rellenar Cara Trasera (de forma segura) ---
+  
   copyInnerHTML('.ratings-container', '.ratings-container', back);
 
   // ▼▼▼ MEJORA: Rellenar la lista de detalles manualmente para mostrar todos los actores ▼▼▼
