@@ -17,7 +17,7 @@
     <meta name="theme-color" content="#37474F" />
 
     <!-- === 2. MANIFEST Y SEO === -->
-    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -61,11 +61,6 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="modulepreload" href="./src/js/main.js" />
-    <link rel="modulepreload" href="./src/js/ui.js" />
-    <link rel="modulepreload" href="./src/js/api.js" />
-    <link rel="modulepreload" href="./src/js/state.js" />
-    <link rel="modulepreload" href="https://esm.sh/@supabase/supabase-js@2" />
 
     <!-- === 5. CSS CRÍTICO (ESTILOS PARA LA PRIMERA PINTURA) === -->
     <style>
@@ -311,10 +306,12 @@
       })();
     </script>
 
-    <!-- === 6. HOJAS DE ESTILO EXTERNAS === -->
+    <!-- ================================================================= -->
+    <!-- 6. HOJAS DE ESTILO EXTERNAS -->
+    <!-- ================================================================= -->
     <link
       rel="stylesheet"
-      href="src/css/main.css"
+      href="/src/css/main.css"
       media="print"
       onload="this.media='all'"
     />
@@ -322,14 +319,10 @@
       rel="stylesheet"
       href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/flag-icons.min.css"
     />
-    <link
-      rel="stylesheet"
-      href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/nouislider.min.css"
-    />
 
     <noscript>
-      <link rel="stylesheet" href="src/css/main.css" />
-    </noscript>
+<!-- PUEDES BORRAR O COMENTAR ESTA LÍNEA -->
+<!-- <link rel="stylesheet" href="/src/css/main.css" /> -->    </noscript>
   </head>
 
   <body>
@@ -819,7 +812,7 @@
     ></div>
 
     <!-- ================================================================= -->
-    <!-- MODAL DE AUTENTICACIÓN
+    <!-- MODAL DE AUTENTICACIÓN -->
     <!-- ================================================================= -->
     <div id="auth-overlay" class="auth-overlay" hidden></div>
     <div
@@ -922,7 +915,7 @@
     </div>
 
     <!-- ================================================================= -->
-    <!-- PLANTILLAS PARA GENERACIÓN DINÁMICA DE CONTENIDO
+    <!-- PLANTILLAS PARA GENERACIÓN DINÁMICA DE CONTENIDO -->
     <!-- ================================================================= -->
     <template id="movie-card-template">
       <div class="movie-card">
@@ -1039,10 +1032,10 @@
               </div>
               <div class="movie-meta">
                 <!-- ========================================================== -->
-                <!--  ▼▼▼ ESTRUCTURA HTML ACTUALIZADA ▼▼▼
-    <!--      - Se ha creado un nuevo contenedor `.card-icons-line` para los iconos.
-    <!--      - El antiguo `.year-country-line` ahora solo contiene año y bandera.
-    <!-- ========================================================== -->
+                <!--  ▼▼▼ ESTRUCTURA HTML ACTUALIZADA ▼▼▼ -->
+                <!--      Se ha creado un nuevo contenedor `.card-icons-line` para los iconos. -->
+                <!--      El antiguo `.year-country-line` ahora solo contiene año y bandera. -->
+                <!-- ========================================================== -->
                 <div class="card-icons-line">
                   <span
                     class="platform-icon netflix-icon"
@@ -1051,7 +1044,7 @@
                     title="Original de Netflix"
                   >
                     <svg width="25" height="25" fill="currentColor">
-                      <use href="src/img/icons/sprite.svg#icon-netflix"></use>
+                      <use href="/src/img/icons/sprite.svg#icon-netflix"></use>
                     </svg>
                   </span>
                   <span
@@ -1061,7 +1054,7 @@
                     title="Original de HBO"
                   >
                     <svg width="30" height="30" fill="currentColor">
-                      <use href="src/img/icons/sprite.svg#icon-hbo"></use>
+                      <use href="/src/img/icons/sprite.svg#icon-hbo"></use>
                     </svg>
                   </span>
                   <span
@@ -1071,7 +1064,7 @@
                     title="Disney"
                   >
                     <svg width="28" height="22" fill="currentColor">
-                      <use href="./src/img/icons/sprite.svg#icon-disney"></use>
+                      <use href="/src/img/icons/sprite.svg#icon-disney"></use>
                     </svg>
                   </span>
                   <span
@@ -1081,7 +1074,7 @@
                     title="Warner Bros."
                   >
                     <svg width="24" height="30" fill="currentColor">
-                      <use href="./src/img/icons/sprite.svg#icon-wb"></use>
+                      <use href="/src/img/icons/sprite.svg#icon-wb"></use>
                     </svg>
                   </span>
                   <span
@@ -1092,7 +1085,7 @@
                   >
                     <svg width="24" height="30" fill="currentColor">
                       <use
-                        href="./src/img/icons/sprite.svg#icon-universal"
+                        href="/src/img/icons/sprite.svg#icon-universal"
                       ></use>
                     </svg>
                   </span>
@@ -1103,7 +1096,7 @@
                     title="Sony-Columbia"
                   >
                     <svg width="16" height="25" fill="currentColor">
-                      <use href="./src/img/icons/sprite.svg#icon-sony"></use>
+                      <use href="/src/img/icons/sprite.svg#icon-sony"></use>
                     </svg>
                   </span>
                   <span
@@ -1114,7 +1107,7 @@
                   >
                     <svg width="35" height="35" fill="currentColor">
                       <use
-                        href="./src/img/icons/sprite.svg#icon-paramount"
+                        href="/src/img/icons/sprite.svg#icon-paramount"
                       ></use>
                     </svg>
                   </span>
@@ -1152,7 +1145,7 @@
                     data-template="wikipedia-icon"
                     fill="#B3404A"
                   >
-                    <use href="./src/img/icons/sprite.svg#icon-wikipedia"></use>
+                    <use href="/src/img/icons/sprite.svg#icon-wikipedia"></use>
                   </svg>
                 </a>
               </div>
@@ -1168,7 +1161,7 @@
                 <span class="rating-left">
                   <svg class="rating-icon" data-template="fa-icon">
                     <use
-                      href="./src/img/icons/sprite.svg#icon-filmaffinity"
+                      href="/src/img/icons/sprite.svg#icon-filmaffinity"
                     ></use>
                   </svg>
                   <span data-template="fa-rating"></span>
@@ -1193,7 +1186,7 @@
                     data-template="imdb-icon"
                     fill="#F5C618"
                   >
-                    <use href="./src/img/icons/sprite.svg#icon-imdb"></use>
+                    <use href="/src/img/icons/sprite.svg#icon-imdb"></use>
                   </svg>
                   <span data-template="imdb-rating"></span>
                 </span>
@@ -1247,12 +1240,8 @@
         </div>
       </div>
     </template>
-
-    <script
-      src="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/nouislider.min.js"
-      defer
-    ></script>
-    <script type="module" src="src/js/main.js"></script>
+    
+    <script type="module" src="/src/js/main.js"></script>
 
     <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>
     <div
@@ -1279,10 +1268,10 @@
           loading="lazy"
         />
         <!-- ========================================================== -->
-        <!--  ▼▼▼ BLOQUE DE CALIFICACIÓN Y ACCIONES (NUEVO) ▼▼▼
-            <!--      Reutilizamos la misma estructura que en la movie-card
-            <!--      para mantener la consistencia y facilitar la lógica JS.
-            <!-- ========================================================== -->
+        <!--  ▼▼▼ BLOQUE DE CALIFICACIÓN Y ACCIONES (NUEVO) ▼▼▼ -->
+        <!--      Reutilizamos la misma estructura que en la movie-card -->
+        <!--      para mantener la consistencia y facilitar la lógica JS. -->
+        <!-- ========================================================== -->
         <div class="card-rating-block">
           <div
             class="low-rating-circle"
@@ -1372,7 +1361,7 @@
                 title="Original de Netflix"
               >
                 <svg width="16" height="16" fill="currentColor">
-                  <use href="./src/img/icons/sprite.svg#icon-netflix"></use>
+                  <use href="/src/img/icons/sprite.svg#icon-netflix"></use>
                 </svg>
               </span>
               <span
@@ -1382,7 +1371,7 @@
                 title="Original de HBO"
               >
                 <svg width="24" height="24" fill="currentColor">
-                  <use href="./src/img/icons/sprite.svg#icon-hbo"></use>
+                  <use href="/src/img/icons/sprite.svg#icon-hbo"></use>
                 </svg>
               </span>
               <span
@@ -1392,7 +1381,7 @@
                 title="Disney"
               >
                 <svg width="28" height="22" fill="currentColor">
-                  <use href="./src/img/icons/sprite.svg#icon-disney"></use>
+                  <use href="/src/img/icons/sprite.svg#icon-disney"></use>
                 </svg>
               </span>
             </div>
@@ -1427,7 +1416,7 @@
                 data-template="wikipedia-icon"
                 fill="#B3404A"
               >
-                <use href="./src/img/icons/sprite.svg#icon-wikipedia"></use>
+                <use href="/src/img/icons/sprite.svg#icon-wikipedia"></use>
               </svg>
             </a>
           </div>

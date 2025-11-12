@@ -1,0 +1,73 @@
+/* Contiene estilos globales para el body, animaciones reutilizables y scrollbars. */
+body {
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  transition: background-color var(--transition-duration-normal)
+      var(--transition-timing-function),
+    color var(--transition-duration-normal) var(--transition-timing-function);
+}
+
+/* ========================================================== */
+/*  ▼▼▼ BLOQUEO DE SCROLL PARA MODALES ▼▼▼
+/*      Cuando una modal está activa, se añade esta clase al body
+/*      para evitar que el contenido de fondo se desplace.
+/* ========================================================== */
+body.modal-open {
+  overflow: hidden;
+}
+
+@keyframes pop-effect {
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.pop-animation {
+  animation: pop-effect 0.3s var(--transition-timing-function);
+}
+
+/* --- Barra de Scroll Personalizada --- */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 10px;
+  border: 1px solid var(--color-bg);
+}
+html,
+body,
+.sidebar-autocomplete-results,
+#autocomplete-results {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-bg);
+}
+
+/* --- Accesibilidad --- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

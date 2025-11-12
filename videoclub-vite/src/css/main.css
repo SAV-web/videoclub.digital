@@ -1,0 +1,42 @@
+/**
+ * =================================================================
+ * FICHERO CSS PRINCIPAL (ORQUESTADOR)
+ * -----------------------------------------------------------------
+ * Este fichero no contiene estilos. Su única función es importar
+ * todos los demás parciales en un orden lógico y predecible.
+ * Este es el único fichero que se debe enlazar en el HTML.
+ *
+ * ESTRUCTURA DE IMPORTACIÓN (ITCSS - Inverted Triangle CSS):
+ * 1. Base: Variables, estilos globales, keyframes.
+ * 2. Componentes: Piezas de UI encapsuladas y reutilizables.
+ * 3. Layout: Estilos de maquetación principal y responsive grids.
+ * =================================================================
+ */
+
+/* --- 1. ESTILOS BASE Y GLOBALES --- */
+@import "base/fonts.css";
+@import "base/variables.css";
+@import "base/globals.css";
+
+/* --- 2. COMPONENTES DE UI --- */
+@import "components/auth.css";
+@import "components/button.css";
+@import "components/card.css";
+@import "components/card-actions.css";
+@import "components/header.css";
+@import "components/modal.css";
+@import "components/movie-summary.css";
+@import "components/profile.css";
+@import "components/sidebar.css";
+@import "components/ui-general.css";
+
+/* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
+@import "layout/principal.css";
+@import "layout/responsive.css";
+
+/* REVELADO ANTI-FOUC - Esta es la última regla que el navegador procesará */
+.sidebar--loading > * {
+  transition: opacity 0.2s ease-in, visibility 0s linear;
+  opacity: 1;
+  visibility: visible;
+}

@@ -1,0 +1,346 @@
+/* ================================================================= */
+/* Fichero de Layout: Responsive (Mobile-First)
+/* -----------------------------------------------------------------
+/* Contiene todas las media queries que adaptan la maquetación.
+/* El enfoque es "Mobile-First": los estilos base son para móvil
+/* y se añade complejidad progresivamente con `min-width`.
+/* ================================================================= */
+
+/* --- ESTILOS BASE (MÓVIL - hasta 768px) --- */
+
+html {
+  /* La gestión del tamaño de fuente base ahora se controla mediante
+       la redefinición de variables CSS en los puntos de ruptura (ver al final del fichero). */
+}
+
+:root {
+  --mobile-header-height: 57px;
+}
+
+/* En móvil, el sidebar es un panel flotante, fijo en la pantalla */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 280px; /* Ancho del drawer */
+    transform: translateX(-280px); /* Fuera de pantalla por defecto */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Transición para abrir/cerrar */
+    z-index: 1001; /* Asegura que esté por encima del contenido */
+    background-color: var(--color-surface); /* Fondo del drawer */
+    border-right: 2px solid var(--color-border); /* Borde del drawer */
+    height: 100vh; /* Fallback para navegadores antiguos */
+    height: 100dvh; /* ✨ LA SOLUCIÓN MODERNA */
+  }
+
+  body.sidebar-is-open .sidebar {
+    transform: translateX(0); /* Desliza hacia dentro */
+  }
+}
+
+.sidebar .sidebar-inner-wrapper {
+  padding: var(--space-xs);
+  align-items: flex-start;
+}
+
+/* ✨ MEJORA: Transición de opacidad en lugar de display:none */
+.sidebar .logo-area,
+.sidebar .sidebar-static-filters,
+.sidebar .sidebar-scrollable-filters {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
+}
+.sidebar .play-button-container {
+  display: none; /* Oculto por defecto en móvil para evitar FOUC */
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+}
+
+.sidebar .sidebar-control-button {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-round);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow);
+}
+
+/* Estilos del sidebar cuando se expande en móvil */
+body.sidebar-is-open .sidebar {
+  width: 280px; /* Más ancho para mejor legibilidad en móvil */
+  font-size: 16px; /* Texto más grande */
+  background-color: var(--color-surface);
+  border-right: 2px solid var(--color-border);
+}
+body.sidebar-is-open .sidebar .sidebar-inner-wrapper {
+  padding: var(--space-xl) var(--space-lg);
+  align-items: initial;
+}
+
+/* ✨ MEJORA: Transición de opacidad en lugar de display:block */
+body.sidebar-is-open .sidebar .logo-area,
+body.sidebar-is-open .sidebar .sidebar-static-filters,
+body.sidebar-is-open .sidebar .sidebar-scrollable-filters {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s; /* Retrasa el fade-in */
+}
+body.sidebar-is-open .sidebar .play-button-container {
+  display: flex; /* Se muestra al abrir */
+  flex-direction: row;
+  gap: var(--space-md);
+  margin-top: 0;
+}
+body.sidebar-is-open .sidebar .sidebar-control-button {
+  width: auto;
+  height: auto;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
+  width: 24px;
+  height: 24px;
+}
+
+/* Layout y grid base para móvil */
+.content {
+  padding: var(--space-md) var(--space-md)
+    calc(var(--mobile-header-height) + var(--space-md));
+}
+.main-header {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: auto;
+  z-index: var(--z-index-header);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+  padding: var(--space-xs) var(--space-md);
+  gap: var(--space-xs);
+  flex-wrap: nowrap;
+}
+
+/* Ocultamos los botones de paginación de la cabecera en móvil */
+.header-pagination-group {
+  display: none;
+}
+
+/*
+ * ▼▼▼ MEJORA: Reducir el tamaño de los botones de paginación en móvil ▼▼▼
+ */
+.pagination-container > .btn,
+.pagination-container > .pagination-current {
+  --btn-height: 36px; /* Nuevo tamaño para móvil */
+}
+.grid-container {
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+}
+#sort-select {
+  padding: 0.4rem;
+  height: 36px;
+}
+.search-form input {
+  height: 36px;
+  width: 100px;
+}
+
+/* Caso especial para 1 resultado en móvil estrecho */
+@media (max-width: 400px) and (orientation: portrait) {
+  .grid-container:has(> .movie-card:only-child) {
+    grid-template-columns: 1fr;
+    max-width: 70%;
+    margin: 0 auto;
+  }
+}
+
+/* Caso especial para móvil en horizontal */
+@media (max-height: 500px) and (orientation: landscape) {
+  .grid-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* --- Posicionamiento de botones flotantes en móvil --- */
+.back-to-top {
+  bottom: calc(var(--mobile-header-height) + var(--space-md));
+  right: var(--space-md);
+}
+
+.profile-container {
+  position: fixed;
+  bottom: calc(var(--mobile-header-height) + var(--space-md));
+  left: var(--space-md);
+  z-index: var(--z-index-sidebar);
+  margin-top: 0; /* Resetear el margen automático */
+  padding-top: 0; /* Resetear el padding */
+}
+
+/* --- TABLET Y SUPERIOR (a partir de 769px) --- */
+@media (min-width: 769px) {
+  /* El sidebar vuelve a ser parte del layout principal */
+  .sidebar {
+    position: sticky;
+    flex-basis: 200px; /* Ancho base del sidebar */
+    width: 200px;
+    transform: none; /* Reseteamos la transformación de móvil */
+    background-color: var(--color-surface);
+    border-right: 2px solid var(--color-border);
+  }
+
+  .sidebar .sidebar-inner-wrapper {
+    padding: var(--space-xl) var(--space-lg);
+    align-items: initial;
+  }
+  .sidebar .logo-area,
+  .sidebar .sidebar-static-filters,
+  .sidebar .sidebar-scrollable-filters {
+    display: block;
+    /* ✨ CORRECCIÓN: Restaurar opacidad y visibilidad para escritorio */
+    opacity: 1;
+    visibility: visible;
+    transition: none;
+  }
+  .sidebar .play-button-container {
+    display: flex; /* Restaurar visibilidad en escritorio */
+    flex-direction: row;
+    gap: var(--space-md);
+    margin-top: 0;
+    margin-bottom: var(--space-lg);
+  }
+
+  /* Los botones de control vuelven a ser transparentes y sin borde */
+  .sidebar .sidebar-control-button {
+    width: auto;
+    height: auto;
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+  .sidebar .sidebar-control-button.theme-toggle {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* Comportamiento del sidebar colapsado en escritorio */
+  body.sidebar-collapsed .sidebar {
+    flex-basis: 65px;
+  }
+  body.sidebar-collapsed .sidebar-inner-wrapper {
+    padding: var(--space-lg) var(--space-xs);
+    align-items: center;
+  }
+  body.sidebar-collapsed .logo-area,
+  body.sidebar-collapsed .sidebar-static-filters,
+  body.sidebar-collapsed .sidebar-scrollable-filters {
+    display: none;
+  }
+  body.sidebar-collapsed .play-button-container {
+    flex-direction: column;
+    gap: var(--space-lg);
+    margin-top: var(--space-md);
+  }
+
+  /* --- Reset de botones flotantes para escritorio --- */
+  .profile-container {
+    position: static; /* Resetear posición fija */
+    margin-top: auto; /* Restaurar margen original */
+    padding-top: var(--space-md); /* Restaurar padding original */
+  }
+  .back-to-top {
+    bottom: var(--space-md); /* Restaurar posición original */
+    right: var(--space-xl);
+  }
+
+  /* Restauramos los estilos de layout y grid para escritorio */
+  .content {
+    padding: var(--space-md) var(--space-xxl) var(--space-xs);
+  }
+  .main-header {
+    position: sticky;
+    top: 0;
+    bottom: auto; /* Resetear la posición inferior de móvil */
+    border-top: none; /* Resetear el borde de móvil */
+    padding: var(--space-lg) var(--space-xxl) var(--space-md);
+    gap: var(--space-md) var(--space-lg);
+    flex-wrap: wrap;
+  }
+
+  /* Restauramos la visibilidad de los botones de paginación en escritorio */
+  .header-pagination-group {
+    display: flex;
+  }
+  .grid-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg) var(--space-md);
+  }
+  #sort-select {
+    padding: var(--space-xs);
+    height: 40px;
+  }
+  .search-form input {
+    height: 40px;
+    width: 115px;
+  }
+}
+
+/* --- Puntos de ruptura para rejilla de películas en pantallas grandes --- */
+
+@media (min-width: 62em) {
+  /* aprox. 992px+ */
+  .grid-container {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-lg) var(--space-md);
+  }
+  body.sidebar-collapsed .grid-container {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 73em) {
+  /* aprox. 1168px+ */
+  .grid-container {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  body.sidebar-collapsed .grid-container {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media (min-width: 85em) {
+  /* aprox. 1360px+ */
+  .grid-container {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  body.sidebar-collapsed .grid-container {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+/* ================================================================= */
+/* Sistema de Tipografía Responsiva
+/* ================================================================= */
+/* Redefine las variables de tamaño de fuente en puntos de ruptura
+   para mejorar la jerarquía y legibilidad en cada viewport. */
+
+@media (min-width: 48em) {
+  /* Tablet (768px+) */
+  :root {
+    --font-size-md: 1.25rem; /* 20px */
+    --font-size-lg: 1.5rem; /* 24px */
+    --font-size-xl: 1.75rem; /* 28px */
+    --font-size-xxl: 2.25rem; /* 36px */
+  }
+}
+
+@media (min-width: 62em) {
+  /* Desktop (992px+) */
+  :root {
+    --font-size-md: 1.5rem; /* 24px */
+    --font-size-lg: 1.75rem; /* 28px */
+    --font-size-xl: 2.25rem; /* 36px */
+    --font-size-xxl: 3rem; /* 48px */
+  }
+}

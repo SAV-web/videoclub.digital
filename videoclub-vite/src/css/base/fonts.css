@@ -1,0 +1,38 @@
+/*
+ * =================================================================
+ * ESTRATEGIA DE CARGA DE FUENTES DE ALTO RENDIMIENTO
+ * =================================================================
+ * 1. Se crea un @font-face para una fuente de fallback ('Inter Fallback')
+ *    que en realidad es la fuente de sistema (Arial).
+ * 2. Se usan "Font Metric Overrides" (size-adjust, ascent-override, etc.)
+ *    para forzar a 'Arial' a ocupar EXACTAMENTE el mismo espacio que 'Inter'.
+ * 3. Se carga 'Inter' de forma normal.
+ * 4. En el CSS, la pila de fuentes será: font-family: 'Inter', 'Inter Fallback';
+ *
+ * RESULTADO: El navegador renderiza texto INMEDIATAMENTE con la fuente de sistema
+ * modificada. Cuando 'Inter' carga (gracias a preload), reemplaza a la fuente
+ * de sistema SIN NINGÚN CAMBIO DE DISEÑO (LAYOUT SHIFT). El FOUT es visualmente
+ * imperceptible.
+ */
+
+/* Paso 1 y 2: Crear el fallback perfecto */
+@font-face {
+  font-family: "Inter Fallback";
+  /* Usamos una fuente local que casi todos los sistemas tienen */
+  src: local("Arial");
+  /* Forzamos las métricas de Arial para que coincidan con las de Inter */
+  ascent-override: 92.77%;
+  descent-override: 24.41%;
+  line-gap-override: 0%;
+  size-adjust: 107.8%;
+}
+
+/* Paso 3: Cargar la fuente web 'Inter' */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2")
+    format("woff2-variations");
+}
