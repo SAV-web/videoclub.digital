@@ -133,9 +133,9 @@ export const FILTER_CONFIG = {
       W: "Warner Bros.",
       P: "Paramount",
       U: "Universal",
-      S: "Sony / Columbia",
+      S: "Sony-Columbia",
       L: "Lionsgate",
-      F: "20th Century Fox",
+      F: "20th Century",
     },
   },
   genre: {

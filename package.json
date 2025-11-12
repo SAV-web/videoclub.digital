@@ -1,17 +1,20 @@
 {
-  "name": "videoclub-digital",
-  "version": "1.0.0",
-  "description": "Static website for videoclub.digital",
-  "main": "server.js",
+  "name": "videoclub-vite",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "build": "node build.js",
-    "start": "serve -s ."
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "author": "Gemini",
-  "license": "ISC",
   "devDependencies": {
-    "dotenv": "^17.2.3",
-    "supabase": "^2.48.3",
-    "serve": "^14.2.3"
+    "typescript": "~5.9.3",
+    "vite": "^7.2.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
+    "lru-cache": "^11.2.2",
+    "nouislider": "^15.8.1"
   }
 }

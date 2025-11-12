@@ -86,6 +86,13 @@ self.addEventListener("activate", (event) => {
 // Aquí es donde interceptamos las peticiones y aplicamos nuestras estrategias.
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+
+  // ▼▼▼ LÍNEA AÑADIDA ▼▼▼
+  // Si la petición no es GET, no la interceptes. Deja que el navegador la maneje.
+  if (request.method !== 'GET') {
+    return;
+  }
+  
   const url = new URL(request.url);
 
   // === ESTRATEGIA 1: API (Network First, falling back to Cache) ===

@@ -5,6 +5,7 @@
 // v3.2 - Implementada la delegación de eventos para los clics en tarjetas.
 // v3.1 - Implementada la cancelación de peticiones con AbortController.
 
+import '../css/main.css'; // ¡LA LÍNEA MÁGICA!
 import { CONFIG } from "./config.js";
 import {
   debounce,

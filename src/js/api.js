@@ -34,7 +34,10 @@ import { CONFIG } from "./config.js";
 import { supabase } from "./supabaseClient.js";
 // LRUCache es una implementación eficiente de una caché "Least Recently Used"
 // (El menos usado recientemente se descarta primero).
-import { LRUCache } from "https://esm.sh/lru-cache@10.2.0";
+// ANTES:
+// import { LRUCache } from "https://esm.sh/lru-cache@10.2.0";
+// DESPUÉS:
+import { LRUCache } from "lru-cache";
 
 /**
  * Instancia de la caché de consultas. Se exporta para poder ser invalidada
