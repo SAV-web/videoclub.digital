@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-base: '/videoclub.digital/videoclub-vite/dist',
+base: '/videoclub.digital/',
   server: {
     hmr: {
       host: 'localhost',
