@@ -519,17 +519,30 @@ function setupEventListeners() {
   if (playButton) {
     playButton.addEventListener("click", resetFilters);
   }
-  dom.collapsibleSections.forEach((clickedSection) => {
+dom.collapsibleSections.forEach((clickedSection) => {
     const header = clickedSection.querySelector(".section-header");
+    
     header?.addEventListener("click", () => {
+      // 1. Determina el estado final de la sección que se ha clickeado.
       const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
-      dom.collapsibleSections.forEach((section) =>
-        section.classList.remove(CSS_CLASSES.ACTIVE)
-      );
-      if (!wasActive) clickedSection.classList.add(CSS_CLASSES.ACTIVE);
-      dom.sidebarInnerWrapper?.classList.toggle("is-compact", !wasActive);
+      const isNowActive = !wasActive;
+
+      // 2. Cierra todas las demás secciones y actualiza su estado ARIA a 'false'.
+      dom.collapsibleSections.forEach((section) => {
+        if (section !== clickedSection) {
+          section.classList.remove(CSS_CLASSES.ACTIVE);
+          section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // 3. Activa/desactiva la sección clickeada y sincroniza su atributo ARIA.
+      clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
+      header.setAttribute('aria-expanded', isNowActive);
+
+      // 4. Gestiona la clase 'is-compact' en el contenedor principal.
+      dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive);
     });
-  });
+});
 }
 
 /**

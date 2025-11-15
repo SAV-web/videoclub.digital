@@ -1,12 +1,6 @@
 /* =================================================================
  *
- *                      COMPONENTE: Movie Card (v2.2 - Definitivo)
- *
- * =================================================================
- *
- *  FICHERO:  src/css/components/card.css
- *  AUTOR:    Tu Mentor Experto
- *  VERSIÓN:  2.2
+ *                      COMPONENTE: Movie Card (v2.3 - Hover Optimizado)
  *
  *  HISTORIAL DE CAMBIOS:
  *    v2.2 - SOLUCIÓN DEFINITIVA para Interacción Fantasma: Implementada
@@ -67,12 +61,16 @@ html.dark-mode .flip-card-inner.is-flipped {
     transform: rotateY(180deg);
   }
 
+  /* ▼▼▼ REGLA MODIFICADA ▼▼▼ */
   .movie-card:not(.is-flipped):hover {
-    transform: translateY(-8px) scale(1.02);
+    /* Forzamos la aceleración por GPU y añadimos la sombra con filter */
+    transform: translateY(-8px) translateZ(0) scale(1.02);
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
   }
-
-  .movie-card:not(.is-flipped):hover::after {
-    opacity: 1;
+  
+  /* Se añade una regla específica para el modo oscuro */
+  html.dark-mode .movie-card:not(.is-flipped):hover {
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.3));
   }
 }
 
@@ -402,7 +400,7 @@ body:not(.rotation-disabled)
   cursor: default;
 }
 
-/* --- 7. Sombra Acelerada por GPU (Optimización de Rendimiento) --- */
+/* --- 7. Sombra Acelerada por GPU (Optimización de Rendimiento) --- 
 
 .movie-card::after {
   content: "";
@@ -417,7 +415,7 @@ body:not(.rotation-disabled)
 
 html.dark-mode .movie-card::after {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2);
-}
+} */
 
 /* =================================================================
  *  ▼▼▼ COMPORTAMIENTO ESPECIAL PARA LA MODAL (QUICK VIEW) ▼▼▼

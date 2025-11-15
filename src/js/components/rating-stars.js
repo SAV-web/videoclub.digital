@@ -12,9 +12,6 @@ import { setUserMovieDataAPI } from "../api-user.js";
 import { showToast } from "../toast.js";
 
 const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
-/*
-let updateCardUI; // Dependencia inyectada
-*/
 
 // --- LÓGICA DE CÁLCULO (sin cambios) ---
 export function calculateUserStars(rating) {
@@ -177,9 +174,3 @@ export function setupRatingListeners(starContainer, isInteractive) {
     starContainer.addEventListener("mouseleave", handleRatingMouseLeave);
   }
 }
-
-/*
-export function setUpdateCardUIFn(fn) {
-  updateCardUI = fn;
-}
-*/
