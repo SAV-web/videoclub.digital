@@ -138,7 +138,8 @@ BEGIN
                     SELECT json_agg(rows)
                     FROM (
                         SELECT
-                            m.id, m.title, m.year, m.year_end, m.type, 
+                            m.id, m.title, m.original_title,
+                            m.year, m.year_end, m.type, 
                             m.genres_list AS genres,
                             m.directors_list AS directors, 
                             m.actors_list AS actors, 

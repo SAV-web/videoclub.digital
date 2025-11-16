@@ -1,50 +1,17 @@
 // =-================================================================
-//                      MÓDULO DE ESTADO (v3.3 - Getters Optimizados)
+//                      MÓDULO DE ESTADO (v3.4 - Inmutabilidad en Desarrollo)
 // =================================================================
-// v3.3 - Se reemplaza el costoso `structuredClone()` en los getters por
-//        copias superficiales (`shallow copies`) usando el operador de propagación.
-//        Esto mejora significativamente el rendimiento en cada lectura de estado,
-//        ofreciendo una protección de inmutabilidad suficiente para la arquitectura actual.
+// v3.4 - Se introduce Object.freeze() en los getters durante el desarrollo
+//        para prevenir mutaciones accidentales del estado, siguiendo
+//        las mejores prácticas de programación defensiva. Este código
+//        se elimina automáticamente en producción para no afectar el rendimiento.
+// v3.3 - Optimizados los getters con copias superficiales.
 // =================================================================
 
 import { DEFAULTS } from "./constants.js";
 import { CONFIG } from "./config.js";
 
 // ... (typedefs sin cambios)
-/**
- * @typedef {object} ActiveFilters
- * @property {string} searchTerm
- * @property {string|null} genre
- * @property {string|null} year
- * @property {string|null} country
- * @property {string|null} director
- * @property {string|null} actor
- * @property {string|null} selection
- * @property {string|null} studio
- * @property {string} sort
- * @property {string} mediaType
- * @property {string[]} excludedGenres
- * @property {string[]} excludedCountries
- */
-
-/**
- * @typedef {object} UserMovieEntry
- * @property {boolean} onWatchlist
- * @property {number|null} rating
- */
-
-/**
- * @typedef {object.<string, UserMovieEntry>} UserMovieData
- */
-
-/**
- * @typedef {object} AppState
- * @property {number} currentPage
- * @property {number} totalMovies
- * @property {ActiveFilters} activeFilters
- * @property {UserMovieData} userMovieData
- */
-
 const initialState = {
   currentPage: 1,
   totalMovies: 0,
@@ -68,39 +35,36 @@ const initialState = {
 let state = structuredClone(initialState);
 
 // =================================================================
-//          GETTERS (LECTORES DE ESTADO OPTIMIZADOS)
+//          GETTERS (CON PROTECCIÓN DE INMUTABILIDAD EN DESARROLLO)
 // =================================================================
 
-/**
- * Devuelve una copia superficial y segura del estado global.
- * @returns {AppState}
- */
 export const getState = () => {
-  // 1. Copia superficial del objeto de estado principal.
   const currentState = { ...state };
-
-  // 2. Reemplaza las propiedades anidadas con sus propias copias superficiales.
-  currentState.activeFilters = getActiveFilters(); // Reutiliza la función de abajo.
+  currentState.activeFilters = getActiveFilters();
   currentState.userMovieData = { ...state.userMovieData };
 
-  // Devuelve un objeto que es seguro contra mutaciones accidentales de primer y segundo nivel.
+  // Solo en desarrollo, congelamos el estado para detectar mutaciones.
+  if (import.meta.env.DEV) {
+    Object.freeze(currentState);
+  }
+  
   return currentState;
 };
 
-/**
- * Devuelve una copia superficial y segura de los filtros activos.
- * Es la función de lectura de estado más llamada, ahora es ultrarrápida.
- * @returns {ActiveFilters}
- */
 export const getActiveFilters = () => {
-  // 1. Copia superficial del objeto de filtros.
   const filters = { ...state.activeFilters };
-
-  // 2. Clona explícitamente los arrays internos.
-  // Esto previene que `filters.excludedGenres.push(...)` afecte al estado original.
   filters.excludedGenres = [...state.activeFilters.excludedGenres];
   filters.excludedCountries = [...state.activeFilters.excludedCountries];
 
+  // Solo en desarrollo: congelamos el objeto y sus arrays internos.
+  // Si cualquier otra parte del código intenta modificar este objeto,
+  // la consola lanzará un error, ayudándonos a encontrar bugs de mutación.
+  if (import.meta.env.DEV) {
+    Object.freeze(filters);
+    Object.freeze(filters.excludedGenres);
+    Object.freeze(filters.excludedCountries);
+  }
+  
   return filters;
 };
 
@@ -122,23 +86,37 @@ export function hasActiveMeaningfulFilters() {
   return false;
 }
 
-// ▼▼▼ LA FUNCIÓN CLAVE, AHORA OPTIMIZADA ▼▼▼
 export const getUserDataForMovie = (movieId) => {
   const entry = state.userMovieData[movieId];
-  // Si la entrada existe, devuelve una copia superficial. Si no, undefined.
-  return entry ? { ...entry } : undefined;
+  const userData = entry ? { ...entry } : undefined;
+
+  if (import.meta.env.DEV && userData) {
+    Object.freeze(userData);
+  }
+
+  return userData;
 };
 
 export const getAllUserMovieData = () => {
-  // También optimizamos esta función para ser consistente.
-  return { ...state.userMovieData };
+  const allData = { ...state.userMovieData };
+
+  if (import.meta.env.DEV) {
+    // Congelamos cada entrada individual del objeto
+    for(const key in allData) {
+        Object.freeze(allData[key]);
+    }
+    Object.freeze(allData);
+  }
+
+  return allData;
 };
 
 // =================================================================
-//          LÓGICA DE LÍMITE DE FILTROS Y SETTERS
+//          SETTERS (El único lugar donde se debe mutar el estado)
 // =================================================================
-// ... (resto del fichero sin cambios)
-// ... (getActiveFilterCount, setFilter, etc.)
+// ... (El resto del fichero permanece sin cambios)
+
+// (Pega aquí el resto de tus funciones setter: getActiveFilterCount, setCurrentPage, etc.)
 export function getActiveFilterCount() {
   const { activeFilters } = state;
   let count = 0;

@@ -10,10 +10,8 @@
 // - ✨ MEJORA: Generar dinámicamente los filtros desde una configuración central.
 // =================================================================
 
-// ▼▼▼ AÑADE ESTAS DOS LÍNEAS AL PRINCIPIO ▼▼▼
 import noUiSlider from 'nouislider';
 import 'nouislider/dist/nouislider.css'; 
-// ▲▲▲ FIN DE LÍNEAS A AÑADIR ▲▲▲
 import { CONFIG } from "../config.js";
 import { debounce, triggerPopAnimation, createElement } from "../utils.js";
 import {

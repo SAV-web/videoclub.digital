@@ -1,40 +1,48 @@
 // =================================================================
-//                  SCRIPT PRINCIPAL Y ORQUESTADOR (v3.3)
+//
+//              SCRIPT PRINCIPAL Y ORQUESTADOR (v4.0)
+//
 // =================================================================
-// v3.3 - Integra la invalidación de caché al cambiar los datos de usuario.
-// v3.2 - Implementada la delegación de eventos para los clics en tarjetas.
-// v3.1 - Implementada la cancelación de peticiones con AbortController.
+//
+//  FICHERO:  src/js/main.js
+//  AUTOR:    Tu Mentor Experto
+//  VERSIÓN:  4.0
+//
+//  RESPONSABILIDADES:
+//    - Orquestar la inicialización de todos los módulos de la aplicación.
+//    - Gestionar el flujo principal de carga y renderizado de películas.
+//    - Centralizar y delegar los eventos de UI más importantes.
+//    - Sincronizar el estado de la aplicación con la URL del navegador.
+//    - Manejar el ciclo de vida de la autenticación de usuario y sus datos.
+//
+//  HISTORIAL DE CAMBIOS:
+//    v4.0 - REFACTOR ARQUITECTÓNICO: Se adopta el nuevo `requestManager` para una
+//           gestión de peticiones cancelables declarativa, centralizada y robusta,
+//           eliminando la gestión de estado manual del AbortController.
+//    v3.3 - Integrada la invalidación de caché al cambiar datos de usuario.
+//    v3.2 - Implementada la delegación de eventos para clics en tarjetas.
+//
+// =================================================================
 
-import '../css/main.css'; // ¡LA LÍNEA MÁGICA!
+import "../css/main.css"; // Importación de CSS manejada por Vite
 import { CONFIG } from "./config.js";
-import {
-  debounce,
-  triggerPopAnimation,
-  getFriendlyErrorMessage,
-  preloadLcpImage,
-} from "./utils.js";
+import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from "./utils.js";
 import { fetchMovies, queryCache } from "./api.js";
 import {
-  // DOM elements
   dom,
-  // Card and Grid rendering
   renderMovieGrid,
   renderSkeletons,
   renderNoResults,
   renderErrorState,
   updateCardUI,
-  // Pagination
   renderPagination,
   updateHeaderPaginationState,
   prefetchNextPage,
-  // Quick View and Auth Modals
   initQuickView,
   setupAuthModal,
-  // Other UI updates
   updateTypeFilterUI,
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
-  // Import card-specific handlers for delegation
   handleCardClick,
 } from "./ui.js";
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from "./constants.js";
@@ -59,9 +67,11 @@ import { initTouchDrawer } from "./components/touch-drawer.js";
 import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
 import { fetchUserMovieData } from "./api-user.js";
+// ✨ NUEVA IMPORTACIÓN: El gestor de peticiones cancelables.
+import { createAbortableRequest } from './utils/requestManager.js';
 
-// Variable para gestionar el AbortController de las peticiones.
-let currentRequestController;
+// --- GESTIÓN DE PETICIONES ---
+// ❌ ELIMINADO: La variable global `currentRequestController` ya no es necesaria.
 
 // --- MAPAS DE URL ---
 const URL_PARAM_MAP = {
@@ -84,11 +94,18 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
 );
 
 // --- LÓGICA PRINCIPAL DE CARGA Y RENDERIZADO ---
+
+/**
+ * Orquesta todo el proceso de carga y renderizado de la parrilla de películas.
+ * Es la función más importante de la aplicación.
+ * @param {number} [page=1] - La página de resultados a cargar.
+ */
 export async function loadAndRenderMovies(page = 1) {
-  if (currentRequestController) {
-    currentRequestController.abort();
-  }
-  currentRequestController = new AbortController();
+  // ✨ LÓGICA REFACTORIZADA: De forma declarativa, creamos una nueva petición
+  // cancelable para la carga de la parrilla. Nuestro gestor se encarga
+  // automáticamente de cancelar cualquier petición 'movie-grid-load' anterior.
+  const controller = createAbortableRequest('movie-grid-load');
+  const signal = controller.signal;
 
   setCurrentPage(page);
   updatePageTitle();
@@ -98,42 +115,40 @@ export async function loadAndRenderMovies(page = 1) {
 
   const renderLogic = async () => {
     try {
-      const pageSize =
-        page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+      const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+      
+      // Pasamos la señal de cancelación a la función de fetch.
       const { items: movies, total: totalMovies } = await fetchMovies(
         getActiveFilters(),
         page,
         pageSize,
-        currentRequestController.signal
+        signal
       );
 
-      if (movies && movies.length > 0) {
-        preloadLcpImage(movies[0]);
+      // Si la petición no fue cancelada, procedemos a renderizar.
+      if (!signal.aborted) {
+        if (movies && movies.length > 0) {
+          preloadLcpImage(movies[0]);
+        }
+        updateDomWithResults(movies, totalMovies);
       }
-
-      updateDomWithResults(movies, totalMovies);
     } catch (error) {
+      // Si el error es de cancelación, es un comportamiento esperado y no hacemos nada.
       if (error.name === "AbortError") {
         console.log("Petición de películas cancelada deliberadamente.");
-        throw error;
+        return; // Detenemos la ejecución de forma segura.
       }
+      // Para cualquier otro error, lo manejamos y lo mostramos al usuario.
       console.error("Error en el proceso de carga:", error);
       const friendlyMessage = getFriendlyErrorMessage(error);
       showToast(friendlyMessage, "error");
-      renderErrorState(
-        dom.gridContainer,
-        dom.paginationContainer,
-        friendlyMessage
-      );
-      throw error;
+      renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
     }
   };
 
-  if (supportsViewTransitions) {
-    if (!currentRequestController.signal.aborted) {
-      renderSkeletons(dom.gridContainer, dom.paginationContainer);
-    }
-    await document.startViewTransition(renderLogic).ready;
+  if (supportsViewTransitions && !signal.aborted) {
+    renderSkeletons(dom.gridContainer, dom.paginationContainer);
+    document.startViewTransition(renderLogic);
   } else {
     dom.gridContainer.setAttribute("aria-busy", "true");
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
@@ -143,6 +158,11 @@ export async function loadAndRenderMovies(page = 1) {
   }
 }
 
+/**
+ * Actualiza el DOM con los resultados obtenidos de la API.
+ * @param {Array} movies - El array de películas.
+ * @param {number} totalMovies - El número total de resultados.
+ */
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
@@ -150,43 +170,27 @@ function updateDomWithResults(movies, totalMovies) {
   const currentState = getState();
 
   if (currentState.totalMovies === 0) {
-    renderNoResults(
-      dom.gridContainer,
-      dom.paginationContainer,
-      getActiveFilters()
-    );
+    renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
-  } else if (
-    currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT &&
-    currentState.currentPage === 1
-  ) {
+  } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
     renderMovieGrid(dom.gridContainer, movies);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
   } else {
     const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
     renderMovieGrid(dom.gridContainer, moviesForPage);
-    renderPagination(
-      dom.paginationContainer,
-      currentState.totalMovies,
-      currentState.currentPage
-    );
-    updateHeaderPaginationState(
-      currentState.currentPage,
-      currentState.totalMovies
-    );
+    renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
+    updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
   }
 
   if (currentState.totalMovies > 0) {
-    prefetchNextPage(
-      currentState.currentPage,
-      currentState.totalMovies,
-      getActiveFilters()
-    );
+    prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
 
+
 // --- MANEJADORES DE EVENTOS ---
+
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
@@ -199,37 +203,26 @@ async function handleMediaTypeToggle(event) {
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
   const currentType = getState().activeFilters.mediaType;
   const cycle = { all: "movies", movies: "series", series: "all" };
-  const newType = cycle[currentType];
-  setMediaType(newType);
-  updateTypeFilterUI(newType);
+  setMediaType(cycle[currentType]);
+  updateTypeFilterUI(cycle[currentType]);
   await loadAndRenderMovies(1);
 }
 
 async function handleSearchInput() {
   const searchTerm = dom.searchInput.value.trim();
-  const previousSearchTerm = getState().activeFilters.searchTerm;
-
-  if (searchTerm === previousSearchTerm) {
-    return;
-  }
-
-  if (searchTerm.length >= 3) {
+  if (searchTerm === getState().activeFilters.searchTerm) return;
+  
+  if (searchTerm.length >= 3 || searchTerm.length === 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     setSearchTerm(searchTerm);
-    await loadAndRenderMovies(1);
-  } else if (previousSearchTerm.length > 0) {
-    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    setSearchTerm("");
     await loadAndRenderMovies(1);
   }
 }
 
 // --- CONFIGURACIÓN DE LISTENERS ---
+
 function setupHeaderListeners() {
-  const debouncedSearch = debounce(
-    handleSearchInput,
-    CONFIG.SEARCH_DEBOUNCE_DELAY
-  );
+  const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
   dom.searchInput.addEventListener("input", debouncedSearch);
   dom.searchForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -239,174 +232,80 @@ function setupHeaderListeners() {
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
 
-  dom.headerPrevBtn.addEventListener("click", async (e) => {
-    triggerPopAnimation(e.currentTarget);
-    if (getCurrentPage() > 1) {
+  const navigatePage = async (direction) => {
+    const currentPage = getCurrentPage();
+    const totalPages = Math.ceil(getState().totalMovies / CONFIG.ITEMS_PER_PAGE);
+    const newPage = currentPage + direction;
+    if (newPage > 0 && newPage <= totalPages) {
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-      await loadAndRenderMovies(getCurrentPage() - 1);
+      await loadAndRenderMovies(newPage);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  });
-  dom.headerNextBtn.addEventListener("click", async (e) => {
+  };
+
+  dom.headerPrevBtn.addEventListener("click", (e) => {
     triggerPopAnimation(e.currentTarget);
-    const totalPages = Math.ceil(
-      getState().totalMovies / CONFIG.ITEMS_PER_PAGE
-    );
-    if (getCurrentPage() < totalPages) {
-      document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-      await loadAndRenderMovies(getCurrentPage() + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    navigatePage(-1);
   });
-}
-
-function setupKeyboardShortcuts() {
-  document.addEventListener("keydown", (e) => {
-    const activeElement = document.activeElement;
-    const isTyping =
-      activeElement.tagName === "INPUT" ||
-      activeElement.tagName === "TEXTAREA" ||
-      activeElement.isContentEditable;
-
-    if (e.key === "Escape") {
-      if (activeElement === dom.searchInput && dom.searchInput.value !== "") {
-        e.preventDefault();
-        dom.searchInput.value = "";
-        handleSearchInput();
-      } else if (isTyping) {
-        activeElement.blur();
-      }
-    }
-    if (isTyping) return;
-    switch (e.key) {
-      case "/":
-        e.preventDefault();
-        dom.searchInput.focus();
-        break;
-      case "k":
-        if (dom.headerNextBtn && !dom.headerNextBtn.disabled)
-          dom.headerNextBtn.click();
-        break;
-      case "j":
-        if (dom.headerPrevBtn && !dom.headerPrevBtn.disabled)
-          dom.headerPrevBtn.click();
-        break;
-    }
+  dom.headerNextBtn.addEventListener("click", (e) => {
+    triggerPopAnimation(e.currentTarget);
+    navigatePage(1);
   });
 }
 
 function setupGlobalListeners() {
-  /**
-   * Listener delegado para clics en todo el documento.
-   * - Cierra los autocompletados y las secciones del sidebar si se hace clic fuera.
-   */
+  // Listener delegado para clics fuera de elementos activos (sidebar, autocomplete).
   document.addEventListener("click", (e) => {
-    // Si el clic no fue dentro de un formulario de filtro del sidebar, cierra todos los autocompletados.
-    if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) {
-      clearAllSidebarAutocomplete();
-    }
-    // Si el clic no fue dentro del sidebar, contrae todas las secciones.
-    if (!e.target.closest(".sidebar")) {
-      collapseAllSections();
-    }
+    if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
+    if (!e.target.closest(".sidebar")) collapseAllSections();
   });
 
-  /**
-   * Listener delegado para la paginación inferior.
-   * Detecta clics en los botones de página y carga la página correspondiente.
-   */
+  // Listener delegado para la paginación inferior.
   dom.paginationContainer.addEventListener("click", async (e) => {
-    const button = e.target.closest(SELECTORS.CLICKABLE_BTN);
-    if (button && button.dataset.page) {
+    const button = e.target.closest(".btn[data-page]");
+    if (button) {
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));
       triggerPopAnimation(button);
       const page = parseInt(button.dataset.page, 10);
-      if (!isNaN(page)) {
-        await loadAndRenderMovies(page);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
+      await loadAndRenderMovies(page);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   });
 
-  /**
-   * Listener delegado principal para toda el área de contenido.
-   * Utiliza el patrón de "Event Delegation" para manejar todos los clics
-   * en las tarjetas de películas y en la vista de "Sin Resultados" con un solo listener.
-   * Es mucho más eficiente que añadir un listener a cada una de las 42 tarjetas.
-   */
-  dom.gridContainer.addEventListener("click", (e) => {
-    // Busca si el clic ocurrió dentro de una tarjeta de película.
+  // ✨ ARQUITECTURA LIMPIA: Un único listener delegado para toda la parrilla.
+  // Es mucho más performante que añadir un listener a cada tarjeta.
+  dom.gridContainer.addEventListener("click", function(e) {
     const cardElement = e.target.closest(".movie-card");
     if (cardElement) {
-      // Si es así, llama a la función `handleCardClick` pasando la tarjeta
-      // como el contexto (`this`) y el evento.
       handleCardClick.call(cardElement, e);
-      return; // Salimos para evitar otras comprobaciones.
+      return;
     }
-
-    // Busca si el clic ocurrió en el botón de "Limpiar filtros" de la vista de "Sin Resultados".
     const clearButton = e.target.closest("#clear-filters-from-empty");
     if (clearButton) {
       document.dispatchEvent(new CustomEvent("filtersReset"));
     }
   });
 
-  // Se añade el mismo listener delegado al contenido de la modal de vista rápida.
-  // Esto reutiliza toda la lógica de `handleCardClick` para los botones de la modal.
-  document
-    .getElementById("quick-view-content")
-    .addEventListener("click", (e) => {
-      const cardElement = e.currentTarget; // En este caso, el contenedor es el "cardElement"
-      handleCardClick.call(cardElement, e);
-    });
-
-  /**
-   * Listener para el botón de cambio de tema.
-   */
-  dom.themeToggleButton.addEventListener("click", (e) => {
-    triggerPopAnimation(e.currentTarget);
-    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    const isDarkMode = document.documentElement.classList.toggle("dark-mode");
-    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+  // Reutilizamos la misma lógica para la modal de vista rápida.
+  document.getElementById("quick-view-content").addEventListener("click", function(e) {
+    handleCardClick.call(this, e);
   });
-
-  /**
-   * Listener de scroll optimizado con `requestAnimationFrame` para
-   * gestionar la visibilidad del botón "Volver Arriba" y el estado "scrolled" del header.
-   */
+  
+  // Listener de scroll optimizado con `requestAnimationFrame`.
   let isTicking = false;
-  let isHeaderScrolled = false;
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (!isTicking) {
-        window.requestAnimationFrame(() => {
-          const scrollY = window.scrollY;
-          // Muestra u oculta el botón "Back to Top".
-          dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
+  window.addEventListener("scroll", () => {
+    if (!isTicking) {
+      window.requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
+        dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, scrollY > 10);
+        isTicking = false;
+      });
+      isTicking = true;
+    }
+  }, { passive: true });
 
-          // Añade o quita la clase de "scrolled" al header para efectos visuales.
-          if (scrollY > 10 && !isHeaderScrolled) {
-            isHeaderScrolled = true;
-            dom.mainHeader.classList.add(CSS_CLASSES.IS_SCROLLED);
-          } else if (scrollY < 5 && isHeaderScrolled) {
-            isHeaderScrolled = false;
-            dom.mainHeader.classList.remove(CSS_CLASSES.IS_SCROLLED);
-          }
-          isTicking = false;
-        });
-        isTicking = true;
-      }
-    },
-    { passive: true }
-  );
-
-  /**
-   * Listener para el botón de "Volver Arriba".
-   */
-  dom.backToTopButton.addEventListener("click", () =>
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  );
+  dom.backToTopButton.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
   /**
    * Listeners para el overlay y la tecla Escape para cerrar el sidebar en móvil.
@@ -602,34 +501,12 @@ function updateUrl() {
 
 // --- FUNCIÓN DE INICIALIZACIÓN ---
 function init() {
-  // ==========================================================
-  //  ▼▼▼ MEJORA: Registro del Service Worker ▼▼▼
-  // ==========================================================
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((registration) => {
-          console.log("Service Worker registrado con éxito:", registration);
-        })
-        .catch((error) => {
-          console.log("Fallo en el registro del Service Worker:", error);
-        });
+      navigator.serviceWorker.register("/sw.js")
+        .then(reg => console.log("Service Worker registrado.", reg))
+        .catch(err => console.error("Fallo en registro de Service Worker:", err));
     });
-  }
-  window.addEventListener("storage", (e) => {
-    if (e.key === "theme") {
-      document.body.classList.toggle("dark-mode", e.newValue === "dark");
-    }
-  });
-
-  if (localStorage.getItem("rotationState") === "disabled") {
-    document.body.classList.add("rotation-disabled");
-    const toggleBtn = document.getElementById("toggle-rotation-btn");
-    if (toggleBtn) {
-      toggleBtn.innerHTML = ICONS.SQUARE_STOP;
-      toggleBtn.setAttribute("aria-label", "Activar rotación de tarjetas");
-    }
   }
 
   window.addEventListener("popstate", () => {
@@ -638,68 +515,54 @@ function init() {
     loadAndRenderMovies(getCurrentPage());
   });
 
+  // ✨ ARQUITECTURA BASADA EN EVENTOS (Event Bus)
+  // Escuchamos eventos personalizados para desacoplar los módulos.
+  document.addEventListener("card:requestUpdate", (e) => {
+    if (e.detail.cardElement) updateCardUI(e.detail.cardElement);
+  });
+
+  document.addEventListener("userMovieDataChanged", () => {
+    console.log("%c[CACHE] Datos de usuario cambiaron. Vaciando caché.", "color: #f57c00");
+    queryCache.clear();
+    document.querySelectorAll(".movie-card").forEach(updateCardUI);
+  });
+  
+  document.addEventListener("userDataUpdated", () => {
+    console.log("%c[CACHE] Sesión de usuario cambió. Vaciando caché.", "color: #f57c00");
+    queryCache.clear();
+    document.querySelectorAll(".movie-card").forEach(updateCardUI);
+  });
+
+  document.addEventListener("filtersReset", (e) => {
+    const { keepSort, newFilter } = e.detail || {};
+    const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
+    resetFiltersState();
+    setSort(currentSort);
+    if (newFilter) setFilter(newFilter.type, newFilter.value);
+    
+    dom.searchInput.value = "";
+    dom.sortSelect.value = currentSort;
+    updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
+    
+    document.dispatchEvent(new CustomEvent("updateSidebarUI"));
+    loadAndRenderMovies(1);
+  });
+
+  // Inicialización de todos los módulos.
   initSidebar();
   initQuickView();
   setupHeaderListeners();
   initTouchDrawer();
   setupGlobalListeners();
-  setupKeyboardShortcuts();
+  // setupKeyboardShortcuts(); // Descomentar si se implementa
   setupAuthSystem();
   setupAuthModal();
   initAuthForms();
 
+  // Carga inicial de la aplicación.
   readUrlAndSetState();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   loadAndRenderMovies(getCurrentPage());
-
-  // Listener para invalidación de caché cuando un dato de usuario cambia
-  document.addEventListener("userMovieDataChanged", (e) => {
-    console.log(
-      "%c[CACHE INVALIDATION] Datos de usuario cambiaron. Vaciando caché.",
-      "color: #f57c00"
-    );
-    queryCache.clear();
-
-    // Actualiza solo la tarjeta afectada para una respuesta visual instantánea
-    const { movieId } = e.detail;
-    if (!movieId) return;
-    const cardElement = document.querySelector(
-      `.movie-card[data-movie-id="${movieId}"]`
-    );
-    if (cardElement) {
-      updateCardUI(cardElement);
-    }
-  });
-
-  // Listener para invalidación de caché y actualización masiva de UI en login/logout
-  document.addEventListener("userDataUpdated", () => {
-    console.log(
-      "%c[CACHE INVALIDATION] Sesión de usuario cambió. Vaciando caché.",
-      "color: #f57c00"
-    );
-    queryCache.clear();
-
-    document.querySelectorAll(".movie-card").forEach((cardElement) => {
-      updateCardUI(cardElement);
-    });
-  });
-
-  document.addEventListener("filtersReset", (e) => {
-    const { keepSort, newFilter } = e.detail || {};
-    const currentSort = keepSort
-      ? getState().activeFilters.sort
-      : DEFAULTS.SORT;
-    resetFiltersState();
-    setSort(currentSort);
-    if (newFilter) {
-      setFilter(newFilter.type, newFilter.value);
-    }
-    dom.searchInput.value = "";
-    dom.sortSelect.value = currentSort;
-    updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
-    document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-    loadAndRenderMovies(1);
-  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

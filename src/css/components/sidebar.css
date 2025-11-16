@@ -221,23 +221,35 @@ body.dark-mode .filter-pill .remove-filter-btn {
   overflow: hidden;
   visibility: hidden;
 
-  /* ✨ MEJORA: Transición más rica para un efecto suave */
-  transition: max-height 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
-    opacity 0.3s ease-in-out, transform 0.4s cubic-bezier(0.25, 0.1, 0.25, 1),
-    visibility 0s linear 0.4s; /* Retrasa la ocultación hasta que la animación termine */
+  /*
+   * ▼▼▼ TRANSICIÓN DE CIERRE (MÁS RÁPIDA) ▼▼▼
+   * Al cerrar, el usuario ya ha terminado su interacción. Una animación rápida
+   * le permite pasar a la siguiente tarea sin esperas. 250ms es ideal.
+   */
+  transition:
+    max-height 0.25s cubic-bezier(0.4, 0.0, 0.2, 1),
+    opacity 0.2s ease-in-out,
+    transform 0.25s cubic-bezier(0.4, 0.0, 0.2, 1),
+    visibility 0s linear 0.25s;
 }
 
 .collapsible-section.active .section-content {
   /* Estado Expandido */
-  max-height: 40rem; /* Un valor suficientemente grande para el contenido */
+  max-height: 40rem;
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
 
-  /* ✨ MEJORA: Transición de apertura con un ligero retraso en la opacidad */
-  transition: max-height 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
-    opacity 0.4s ease-in-out 0.1s,
-    transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1), visibility 0s linear 0s;
+  /*
+   * ▼▼▼ TRANSICIÓN DE APERTURA (TU PROPUESTA) ▼▼▼
+   * 300ms es el punto dulce: suficientemente rápido para ser ágil,
+   * suficientemente lento para que el ojo perciba el movimiento.
+   */
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1),
+    opacity 0.25s ease-in-out 0.05s, /* Ligero retraso para que coincida con el movimiento */
+    transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1),
+    visibility 0s linear 0s;
 }
 
 /* ✨ LÓGICA RESTAURADA: Se eliminan las transiciones complejas. */

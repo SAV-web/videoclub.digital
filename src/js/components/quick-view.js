@@ -1,36 +1,30 @@
 // =================================================================
-//          COMPONENTE QUICK VIEW (VISTA RÁPIDA) - v2 (Accesible)
+//          COMPONENTE QUICK VIEW (VISTA RÁPIDA) - v3.1 (Corregido)
 // =================================================================
-// v2.0 - Se integra con el nuevo 'modal-manager.js' para delegar toda la
-//        lógica de accesibilidad, incluyendo la trampa de foco, la
-//        restauración del foco al cerrar y la gestión de atributos ARIA.
+//
+//  FICHERO:  src/js/components/quick-view.js
+//  VERSIÓN:  3.1
+//
+//  HISTORIAL:
+//    v3.1 - CORRECCIÓN CRÍTICA: Se usan los nombres de propiedad correctos
+//           (ej. `movieData.genres` en vez de `movieData.genres_list`) para
+//           coincidir con los alias de la API, solucionando el bug de "No disponible".
+//    v3.0 - REFACTORIZACIÓN COMPLETA de `populateModal`.
+//
 // =================================================================
 
 import { openAccessibleModal, closeAccessibleModal } from "./modal-manager.js";
-// ▼▼▼ IMPORTACIONES CLAVE ▼▼▼
-// Traemos las funciones de `card.js` para reutilizar la lógica de actualización
-// y configuración de listeners para los elementos interactivos (estrellas, watchlist).
-import { updateCardUI, initializeCard } from "./card.js";
-import { unflipAllCards } from "./card.js";
+import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
+import { formatRuntime } from "../utils.js"; 
 
-const isDesktop = window.matchMedia(
-  "(hover: hover) and (pointer: fine)"
-).matches;
 const dom = {
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
   content: document.getElementById("quick-view-content"),
-  template: document.getElementById("quick-view-template").content,
+  template: document.getElementById("quick-view-template")?.content,
 };
 
-/**
- * Maneja los clics fuera de la modal para cerrarla, asegurándose de que el clic
- * no sea en la propia tarjeta que la abrió.
- * @param {Event} event
- */
 function handleOutsideClick(event) {
-  // Si el clic es fuera de la modal Y no es en la tarjeta que la abrió (o cualquier otra)
-  // la cerramos. Esto evita que el clic de apertura la cierre inmediatamente.
   const isClickInsideCard = event.target.closest(".movie-card");
   if (
     dom.modal.classList.contains("is-visible") &&
@@ -41,222 +35,128 @@ function handleOutsideClick(event) {
   }
 }
 
-/**
- * Cierra la ventana de Vista Rápida de forma controlada.
- */
 export function closeModal() {
   if (!dom.modal.classList.contains("is-visible")) return;
-
-  // 1. Gestionar las clases para las animaciones CSS de salida.
   dom.modal.classList.remove("is-visible");
   dom.overlay.classList.remove("is-visible");
   document.body.classList.remove("modal-open");
-
-  // 2. Delegar la lógica de accesibilidad (liberar foco, ARIA, 'hidden') al gestor.
   closeAccessibleModal(dom.modal, dom.overlay);
-
-  // 3. Limpiar el listener de clic exterior para evitar ejecuciones innecesarias.
   document.removeEventListener("click", handleOutsideClick);
 }
 
-/**
- * Maneja el clic en el nombre de un director dentro de la modal.
- * Cierra la modal y aplica el filtro de director en la vista principal.
- * @param {Event} event - El evento de clic.
- */
 function handleDirectorClick(event) {
-  const directorLink = event.target.closest(
-    ".front-director-info a[data-director-name]"
-  );
+  const directorLink = event.target.closest(".front-director-info a[data-director-name]");
   if (!directorLink) return;
-
   event.preventDefault();
   const directorName = directorLink.dataset.directorName;
-
-  // 1. Cierra la modal.
   closeModal();
-  // 2. Dispara el evento para que el sistema de filtros actúe.
   document.dispatchEvent(
     new CustomEvent("filtersReset", {
-      detail: {
-        keepSort: true,
-        newFilter: { type: "director", value: directorName },
-      },
+      detail: { keepSort: true, newFilter: { type: "director", value: directorName } },
     })
   );
 }
 
-/**
- * Rellena la ventana de Vista Rápida con los datos de una tarjeta específica.
- * @param {HTMLElement} cardElement - El elemento de la tarjeta desde donde se leerán los datos.
- */
 function populateModal(cardElement) {
+  if (!dom.template) return;
   const clone = dom.template.cloneNode(true);
+  const movieData = cardElement.movieData;
+
+  dom.content.movieData = movieData;
+  dom.content.dataset.movieId = movieData.id;
+
   const front = clone.querySelector(".quick-view-front");
   const back = clone.querySelector(".quick-view-back");
 
-  // ▼▼▼ MEJORA: Asignamos los datos de la película y el ID al contenido de la modal.
-  // Esto es crucial para que las funciones de `updateCardUI` e `initializeCard` funcionen.
-  dom.content.movieData = cardElement.movieData;
-  dom.content.dataset.movieId = cardElement.dataset.movieId;
-
-  // --- Rellenar Cara Frontal ---
   const frontImg = front.querySelector("img");
   const cardImg = cardElement.querySelector(".flip-card-front img");
-  frontImg.src = cardImg.src;
-  frontImg.alt = cardImg.alt;
-
-  // Función segura para copiar texto sin romper el DOM.
-  const copyTextContent = (sourceSelector, targetSelector, parent) => {
-    const source = cardElement.querySelector(sourceSelector);
-    const target = parent.querySelector(targetSelector);
-    if (source && target) target.textContent = source.textContent;
-  };
-
-  // Función segura para copiar HTML interno.
-  const copyInnerHTML = (sourceSelector, targetSelector, parent) => {
-    const source = cardElement.querySelector(sourceSelector);
-    const target = parent.querySelector(targetSelector);
-    if (source && target) target.innerHTML = source.innerHTML;
-  };
-
-  // --- Rellenar Cara Frontal (de forma segura) ---
-  copyTextContent('[data-template="title"]', "#quick-view-title", front);
-  copyInnerHTML(
-    '[data-template="director"]',
-    '[data-template="director"]',
-    front
-  );
-  copyTextContent('[data-template="year"]', '[data-template="year"]', front);
-  copyInnerHTML(
-    '[data-template="country-container"]',
-    '[data-template="country-container"]',
-    front
-  );
-
-  // Copia de iconos de plataforma
-  [
-    '[data-template="netflix-icon"]',
-    '[data-template="hbo-icon"]',
-    '[data-template="disney-icon"]',
-    '[data-template="wb-icon"]',
-    '[data-template="universal-icon"]',
-    '[data-template="sony-icon"]',
-    '[data-template="paramount-icon"]',
-  ].forEach((selector) => {
-    const sourceIcon = cardElement.querySelector(selector);
-    const targetIcon = front.querySelector(selector);
-    if (sourceIcon && targetIcon) {
-      targetIcon.style.display = sourceIcon.style.display;
-    }
-  });
-
-  // --- Rellenar Cara Trasera (de forma segura) ---
+  if (frontImg && cardImg) {
+    frontImg.src = cardImg.src;
+    frontImg.alt = cardImg.alt;
+  }
   
-  copyInnerHTML('.ratings-container', '.ratings-container', back);
-
-  // ▼▼▼ MEJORA: Rellenar la lista de detalles manualmente para mostrar todos los actores ▼▼▼
-  const detailsListTarget = back.querySelector('.details-list');
-  if (detailsListTarget) {
-      const genreTarget = detailsListTarget.querySelector('[data-template="genre"]');
-      const actorsTarget = detailsListTarget.querySelector('[data-template="actors"]');
-      if (genreTarget) genreTarget.textContent = dom.content.movieData.genres || 'Género no disponible';
-      if (actorsTarget) actorsTarget.textContent = dom.content.movieData.actors || 'Reparto no disponible';
+  front.querySelector("#quick-view-title").textContent = movieData.title;
+  front.querySelector('[data-template="director"]').textContent = movieData.directors || "";
+  front.querySelector('[data-template="year"]').textContent = movieData.year || "";
+  if (movieData.country_code) {
+    front.querySelector('[data-template="country-flag"]').className = `fi fi-${movieData.country_code}`;
+  } else {
+    front.querySelector('[data-template="country-container"]').style.display = 'none';
+  }
+  
+  const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
+  if (movieData.original_title && movieData.original_title.trim() !== '') {
+    originalTitleWrapper.querySelector('span').textContent = movieData.original_title;
+    originalTitleWrapper.style.display = 'flex';
+  } else {
+    originalTitleWrapper.style.display = 'none';
   }
 
-  copyTextContent(
-    '[data-template="synopsis"]',
-    '[data-template="synopsis"]',
-    back
-  );
-
-  // Lógica específica y segura para Wikipedia
-  const wikipediaLinkTarget = back.querySelector(
-    '[data-template="wikipedia-link"]'
-  );
-  const wikipediaLinkSource = cardElement.querySelector(
-    '[data-template="wikipedia-link"]'
-  );
-  if (wikipediaLinkTarget && wikipediaLinkSource) {
-    wikipediaLinkTarget.href = wikipediaLinkSource.href;
-    wikipediaLinkTarget.style.display = wikipediaLinkSource.style.display;
+  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movieData.minutes);
+  const episodesEl = back.querySelector('[data-template="episodes"]');
+  if (movieData.type?.toUpperCase().startsWith("S.") && movieData.episodes) {
+    episodesEl.textContent = `${movieData.episodes} x`;
+    episodesEl.style.display = 'inline';
+  } else {
+    episodesEl.style.display = 'none';
   }
 
-  // Lógica específica y segura para duración y episodios
-  copyTextContent(
-    '[data-template="duration"]',
-    '[data-template="duration"]',
-    back
-  );
-  const episodesTarget = back.querySelector('[data-template="episodes"]');
-  const episodesSource = cardElement.querySelector(
-    '[data-template="episodes"]'
-  );
-  if (episodesTarget && episodesSource) {
-    episodesTarget.textContent = episodesSource.textContent;
-    episodesTarget.style.display = episodesSource.textContent
-      ? "inline"
-      : "none";
+  const wikipediaLink = back.querySelector('[data-template="wikipedia-link"]');
+  if (movieData.wikipedia) {
+    wikipediaLink.href = movieData.wikipedia;
+    wikipediaLink.style.display = 'flex';
+  } else {
+    wikipediaLink.style.display = 'none';
   }
 
-  copyInnerHTML(
-    '[data-template="critic-container"]',
-    '[data-template="critic-container"]',
-    back
-  );
+  const ratingsSource = cardElement.querySelector('.ratings-container');
+  const ratingsTarget = back.querySelector('.ratings-container');
+  if (ratingsSource && ratingsTarget) {
+      ratingsTarget.innerHTML = ratingsSource.innerHTML;
+  }
 
+  // ▼▼▼ CORRECCIÓN: Usar los alias correctos de la API (`.genres`, `.actors`) ▼▼▼
+  back.querySelector('[data-template="genre"]').textContent = movieData.genres || "No disponible";
+  back.querySelector('[data-template="actors"]').textContent = movieData.actors || "No disponible";
+  // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+
+  back.querySelector('[data-template="synopsis"]').textContent = movieData.synopsis || "No disponible";
+  
+  const criticContainer = back.querySelector('[data-template="critic-container"]');
+  if (movieData.critic && movieData.critic.trim() !== '') {
+    criticContainer.querySelector('[data-template="critic"]').textContent = movieData.critic;
+    criticContainer.style.display = 'block';
+  } else {
+    criticContainer.style.display = 'none';
+  }
+  
   dom.content.textContent = "";
   dom.content.appendChild(clone);
 
-  // ▼▼▼ PASO CLAVE: Reutilizamos la lógica de la tarjeta ▼▼▼
-  // 1. `updateCardUI` se encarga de mostrar el estado correcto de estrellas y watchlist.
   updateCardUI(dom.content);
-  // 2. `initializeCard` añade los event listeners para que los botones sean funcionales.
   initializeCard(dom.content);
-
-  // ▼▼▼ PASO ADICIONAL: Añadimos el listener para el clic en el director.
   dom.content.addEventListener("click", handleDirectorClick);
 }
 
-/**
- * Abre la ventana de Vista Rápida con los datos de una película.
- * @param {HTMLElement} cardElement - El elemento de la tarjeta que se ha clickeado.
- */
 export function openModal(cardElement) {
   if (!cardElement) return;
-
-  // Si hay alguna tarjeta volteada, la cerramos para evitar solapamientos visuales.
   unflipAllCards();
-
-  dom.content.scrollTop = 0; // Asegurar que la modal siempre empiece desde arriba
+  dom.content.scrollTop = 0;
   populateModal(cardElement);
   document.body.classList.add("modal-open");
-
-  // Se usa un timeout para asegurar que el navegador aplique la transición correctamente
   setTimeout(() => {
-    // 1. Añadir clases para la animación visual de entrada.
     dom.modal.classList.add("is-visible");
     dom.overlay.classList.add("is-visible");
-
-    // 2. Delegar la lógica de accesibilidad (foco, ARIA, 'hidden') al gestor.
     openAccessibleModal(dom.modal, dom.overlay);
-
-    // 3. Añadir el listener de clic exterior DESPUÉS de que la modal esté abierta
-    //    para evitar que el mismo clic que la abre la cierre inmediatamente.
     setTimeout(() => document.addEventListener("click", handleOutsideClick), 0);
   }, 10);
 }
 
-/**
- * Inicializa los listeners globales para la Vista Rápida.
- */
 export function initQuickView() {
   if (!dom.modal) {
     console.error("Quick View modal element not found. Initialization failed.");
     return;
   }
-
-  // Listener para la tecla 'Escape' para cerrar la modal
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && dom.modal.classList.contains("is-visible")) {
       closeModal();
