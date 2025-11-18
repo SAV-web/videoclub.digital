@@ -25,6 +25,7 @@
 // =================================================================
 
 import "../css/main.css"; // Importación de CSS manejada por Vite
+import "flag-icons/css/flag-icons.min.css";
 import { CONFIG } from "./config.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from "./utils.js";
 import { fetchMovies, queryCache } from "./api.js";

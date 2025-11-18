@@ -50,24 +50,35 @@ const isDesktop = window.matchMedia(
 
 /**
  * Observador de Intersección para cargar imágenes de forma diferida (lazy-loading).
- * Empieza a cargar imágenes cuando están a 800px de entrar en el viewport.
+ * Se utiliza img.decode() para evitar congelar la UI durante la descompresión.
  */
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
         const img = entry.target;
-        img.onload = () => {
-          img.classList.add(CSS_CLASSES.LOADED);
-          img.onload = null;
-        };
+        // 1. Asignamos el src para iniciar la descarga
         img.src = img.dataset.src;
+        
+        // 2. Decodificamos en paralelo
+        img.decode()
+          .then(() => {
+            // 3. Solo cuando está lista, aplicamos la clase para el fade-in
+            img.classList.add(CSS_CLASSES.LOADED);
+          })
+          .catch((err) => {
+            // Fallback por si decode falla (ej. imagen rota), mostramos igual
+            console.warn("Error decodificando imagen:", err);
+            img.classList.add(CSS_CLASSES.LOADED);
+          });
+
         observer.unobserve(img);
       }
     });
   },
   { rootMargin: "0px 0px 800px 0px" }
 );
+
 
 // =================================================================
 //          MANEJADORES DE ACCIONES (EXPORTADOS PARA DELEGACIÓN)
@@ -237,6 +248,7 @@ function setupCardImage(imgElement, movieData) {
   const highQualityPoster = `${basePosterUrl}?v=${version}`;
 
   imgElement.alt = `Póster de ${movieData.title}`;
+  imgElement.sizes = "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw";
 
   if (renderedCardCount < 6) {
     imgElement.src = highQualityPoster;
@@ -338,7 +350,7 @@ function populateCardText(elements, movieData) {
   if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
 
   const collections = movieData.collections_list || "";
-  const iconMap = { N: "netflixIcon", H: "hboIcon", D: "disneyIcon", W: "wbIcon", U: "universalIcon", S: "sonyIcon", P: "paramountIcon", L: "lionsgateIcon" };
+  const iconMap = { N: "netflixIcon", H: "hboIcon", D: "disneyIcon", W: "wbIcon", U: "universalIcon", S: "sonyIcon", P: "paramountIcon", L: "lionsgateIcon", Z: "amazonIcon" };
   Object.values(iconMap).forEach(iconKey => { if (elements[iconKey]) elements[iconKey].style.display = "none"; });
   collections.split(",").forEach(code => {
     const iconKey = iconMap[code];
@@ -418,58 +430,93 @@ function handleDocumentClick(e) {
 }
 
 /**
- * Manejador principal para todos los clics en una tarjeta (usado con delegación).
- * 'this' es el cardElement.
+ * Manejador principal para todos los clics en una tarjeta.
+ * OPTIMIZACIÓN (Propuesta 2.C): Evaluación secuencial para evitar consultas DOM innecesarias.
+ * 'this' es el cardElement (vinculado en el listener delegado de main.js).
  * @param {Event} event - El evento de clic.
  */
 export function handleCardClick(event) {
   const cardElement = this;
-  const e = event;
+  const target = event.target;
 
-  const directorLink = e.target.closest(".front-director-info a[data-director-name]");
-  const watchlistBtn = e.target.closest('[data-action="toggle-watchlist"]');
-  const ratingElement = e.target.closest('[data-action^="set-rating-"]');
-  const expandBtn = e.target.closest(".expand-content-btn");
-  const externalLink = e.target.closest("a");
-
-  if (directorLink) {
-    e.preventDefault();
-    document.dispatchEvent(new CustomEvent("filtersReset", { detail: { keepSort: true, newFilter: { type: "director", value: directorLink.dataset.directorName } } }));
-    return;
-  }
+  // 1. ACCIÓN: Botón de Watchlist (Prioridad alta)
+  // Comprobamos primero porque es una acción frecuente y específica.
+  const watchlistBtn = target.closest('[data-action="toggle-watchlist"]');
   if (watchlistBtn) {
-    handleWatchlistClick.call(cardElement, e);
-    return;
+    handleWatchlistClick.call(cardElement, event);
+    return; // Salimos inmediatamente
   }
+
+  // 2. ACCIÓN: Valoración (Estrellas/Suspenso)
+  const ratingElement = target.closest('[data-action^="set-rating-"]');
   if (ratingElement) {
-    handleRatingClick.call(cardElement, e);
+    handleRatingClick.call(cardElement, event);
     return;
   }
+
+  // 3. ACCIÓN: Expandir Sinopsis
+  const expandBtn = target.closest(".expand-content-btn");
   if (expandBtn) {
-    e.stopPropagation();
+    event.stopPropagation();
     const flipCardBack = cardElement.querySelector(".flip-card-back");
     const isExpanded = flipCardBack.classList.toggle("is-expanded");
+    
     expandBtn.textContent = isExpanded ? "−" : "+";
     expandBtn.setAttribute("aria-label", isExpanded ? "Contraer sinopsis" : "Expandir sinopsis");
-    if (!isExpanded) cardElement.querySelector(".scrollable-content").scrollTop = 0;
+    
+    if (!isExpanded) {
+      cardElement.querySelector(".scrollable-content").scrollTop = 0;
+    }
     return;
   }
+
+  // 4. NAVEGACIÓN: Link de Director
+  const directorLink = target.closest(".front-director-info a[data-director-name]");
+  if (directorLink) {
+    event.preventDefault();
+    document.dispatchEvent(new CustomEvent("filtersReset", { 
+      detail: { 
+        keepSort: true, 
+        newFilter: { type: "director", value: directorLink.dataset.directorName } 
+      } 
+    }));
+    return;
+  }
+
+  // 5. NAVEGACIÓN: Enlaces externos (IMDb, FA, Wikipedia, etc.)
+  // Si es un enlace real y no apunta a '#', dejamos que el navegador navegue.
+  const externalLink = target.closest("a");
   if (externalLink && externalLink.href && !externalLink.href.endsWith("#")) {
     return;
   }
+
+  // 6. INTERACCIÓN GENERAL: Voltear tarjeta (Flip)
+  
+  // Si estamos en la vista rápida (modal), no hacemos flip.
   if (cardElement.id === 'quick-view-content') {
     return;
   }
+
   const isRotationDisabled = document.body.classList.contains("rotation-disabled");
+  
+  // En Móvil/Tablet (o si no es desktop): Clic en el fondo voltea la tarjeta
   if (!isDesktop && !isRotationDisabled) {
-    e.preventDefault();
-    e.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
+    
     const inner = cardElement.querySelector(".flip-card-inner");
     const isThisCardFlipped = inner.classList.contains("is-flipped");
-    if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) unflipAllCards();
+    
+    // Si hay otra tarjeta girada, la cerramos
+    if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) {
+      unflipAllCards();
+    }
+    
     inner.classList.toggle("is-flipped");
+    
     if (!isThisCardFlipped) {
       currentlyFlippedCard = cardElement;
+      // Añadimos el listener global para cerrar al hacer clic fuera (delayed para no capturar este clic)
       setTimeout(() => document.addEventListener("click", handleDocumentClick), 0);
     } else {
       currentlyFlippedCard = null;
@@ -478,6 +525,7 @@ export function handleCardClick(event) {
     return;
   }
 
+  // Si la rotación está desactivada, abrimos la modal
   if (isRotationDisabled) {
     openModal(cardElement);
   }
@@ -489,8 +537,11 @@ export function handleCardClick(event) {
  */
 function setupIntentionalHover(cardElement) {
   let hoverTimeout;
-  const HOVER_DELAY = 300;
-  const ratingBlock = cardElement.querySelector(".card-rating-block");
+  const HOVER_DELAY = 1000;
+  const interactiveZones = [
+    cardElement.querySelector(".card-rating-block"),
+    cardElement.querySelector(".front-director-info")
+  ];
 
   const startFlipTimer = () => {
     if (document.body.classList.contains("rotation-disabled")) return;
@@ -502,6 +553,7 @@ function setupIntentionalHover(cardElement) {
 
   const cancelFlipTimer = () => clearTimeout(hoverTimeout);
 
+  // 1. Comportamiento general de la tarjeta
   cardElement.addEventListener("mouseenter", startFlipTimer);
   cardElement.addEventListener("mouseleave", () => {
     cancelFlipTimer();
@@ -509,10 +561,22 @@ function setupIntentionalHover(cardElement) {
     resetCardBackState(cardElement);
   });
 
-  if (ratingBlock) {
-    ratingBlock.addEventListener("mouseenter", cancelFlipTimer);
-    ratingBlock.addEventListener("mouseleave", startFlipTimer);
-  }
+  // 2. Comportamiento específico de las zonas interactivas
+  interactiveZones.forEach(zone => {
+    if (zone) {
+      // Al entrar en la zona (ej. director), cancelamos el temporizador de giro
+      zone.addEventListener("mouseenter", cancelFlipTimer);
+      
+      // Al salir de la zona (pero seguir en la tarjeta), reiniciamos el temporizador
+      // para que pueda girar si el usuario mueve el ratón a otra parte vacía
+      zone.addEventListener("mouseleave", (e) => {
+        // Verificamos que seguimos dentro de la tarjeta antes de reiniciar
+        if (cardElement.contains(e.relatedTarget)) {
+            startFlipTimer();
+        }
+      });
+    }
+  });
 }
 
 /**
@@ -564,8 +628,9 @@ function createMovieCard(movieData) {
     wbIcon: cardClone.querySelector('[data-template="wb-icon"]'),
     universalIcon: cardClone.querySelector('[data-template="universal-icon"]'),
     sonyIcon: cardClone.querySelector('[data-template="sony-icon"]'),
-    lionsgateIcon: cardClone.querySelector('[data-template="lionsgate-icon"]'),
     paramountIcon: cardClone.querySelector('[data-template="paramount-icon"]'),
+    lionsgateIcon: cardClone.querySelector('[data-template="lionsgate-icon"]'),
+    amazonIcon: cardClone.querySelector('[data-template="amazon-icon"]'),
     wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
     genre: cardClone.querySelector(SELECTORS.GENRE),
     actors: cardClone.querySelector(SELECTORS.ACTORS),
@@ -607,7 +672,12 @@ export function renderMovieGrid(gridContainer, movies) {
     if (cardNode) {
       const cardElement = cardNode.querySelector(".movie-card");
       if (cardElement) {
-        cardElement.style.setProperty("--card-index", index);
+        // Limitamos el índice de animación a 15. Así, las tarjetas a partir de la 16
+        // aparecerán con el mismo delay que la 15 (750ms), evitando que el usuario
+        // espere más de 2 segundos para ver el contenido final en pantallas grandes.
+        const staggerIndex = Math.min(index, 15);
+        
+        cardElement.style.setProperty("--card-index", staggerIndex);
         renderedCardCount++;
       }
       fragment.appendChild(cardNode);

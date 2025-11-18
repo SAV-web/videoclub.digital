@@ -123,7 +123,7 @@
   color: var(--color-text-hero);
   line-height: var(--line-height-tight);
   margin-bottom: var(--space-xxs);
-
+  letter-spacing: -0.02em;
   /* Asegura que no desborde con títulos largos */
   display: -webkit-box;
   -webkit-line-clamp: 2;

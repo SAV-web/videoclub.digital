@@ -33,7 +33,7 @@
   --color-text-hero: #1a1a1a; /* NUEVO: Casi negro para máxima atención */
   --color-text-primary: #333333; /* Mantenido: Para cuerpo de texto principal */
   --color-text-secondary: #666666; /* Mantenido: Para labels y descripciones */
-  --color-text-tertiary: #999999; /* NUEVO: Gris claro para metadatos no críticos */
+  --color-text-tertiary: #737373; /* NUEVO: Gris claro para metadatos no críticos */
 
   /* ---- Sistema de Movimiento (Avanzado) ---- */
   --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -98,7 +98,7 @@ body.dark-mode {
   --color-text-hero: #ffffff; /* El blanco más puro para el título */
   --color-text-primary: #e0e0e0; /* Blanco ligeramente apagado para el texto principal */
   --color-text-secondary: #a8a8a8; /* Gris medio para labels */
-  --color-text-tertiary: #757575; /* Gris más oscuro para metadatos */
+  --color-text-tertiary: #9ca3af; /* Gris más oscuro para metadatos */
   --color-border: #2f2f2f;
   --color-accent: #b0bec5;
   --color-accent-exclude: #546e7a;

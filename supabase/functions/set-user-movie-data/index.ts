@@ -1,110 +1,79 @@
-// =================================================================
-//          EDGE FUNCTION: set-user-movie-data
-// =================================================================
-// v1.0 - Endpoint único para crear o actualizar la entrada de un
-//        usuario para una película (watchlist y/o rating).
-//        Utiliza el método POST y la operación UPSERT para máxima
-//        eficiencia.
-// =================================================================
+// functions/set-user-movie-data/index.ts
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
-/**
- * Función principal que se ejecuta con cada petición.
- */
 Deno.serve(async (req) => {
-  // Manejo de la solicitud pre-vuelo (preflight) de CORS
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  // Solo permitimos el método POST para este endpoint
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: `Método ${req.method} no permitido.` }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 405, // 405 Method Not Allowed
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 
   try {
-    // 1. AUTENTICACIÓN Y CREACIÓN DE CLIENTE
-    // ----------------------------------------------------------------
     const authorization = req.headers.get('Authorization')
-    if (!authorization) {
-      throw new Error('Se requiere autenticación. Falta el token JWT.');
-    }
+    if (!authorization) throw new Error('Falta token de autorización.');
 
-    // Creamos un cliente de Supabase CON el contexto del usuario.
-    // Todas las operaciones respetarán las políticas de RLS.
+    // Cliente con contexto de usuario
     const supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_ANON_KEY')!,
         { global: { headers: { Authorization: authorization } } }
     );
-    
-    // Obtenemos el ID del usuario autenticado para usarlo en la consulta.
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error('Usuario no encontrado o token inválido.');
 
-    // 2. PROCESAMIENTO DE LA PETICIÓN
-    // ----------------------------------------------------------------
+    // 1. Obtener ID de usuario real desde el token (seguridad)
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) throw new Error('Token inválido o expirado.');
+
+    // 2. Parsear Body
     const { movieId, onWatchlist, rating } = await req.json();
 
-    // Validación básica de la entrada
-    if (!movieId) {
-      return new Response(JSON.stringify({ error: 'Falta el parámetro "movieId".' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    }
+    if (!movieId) throw new Error('Falta el parámetro movieId.');
 
-    // Construimos el objeto que vamos a insertar o actualizar.
-    const entryData: {
-        user_id: string;
-        movie_id: number;
-        on_watchlist?: boolean;
-        rating?: number | null;
-    } = {
+    // 3. Construir objeto UPSERT
+    const entryData: any = {
         user_id: user.id,
         movie_id: movieId,
+        updated_at: new Date().toISOString() // Forzamos update de timestamp
     };
-    
-    // Añadimos los campos solo si están definidos en la petición.
-    // Esto nos permite actualizaciones parciales (ej. solo cambiar el rating).
+
+    // Solo añadimos propiedades si están definidas (soporte a actualizaciones parciales)
     if (onWatchlist !== undefined) {
-      entryData.on_watchlist = onWatchlist;
+        entryData.on_watchlist = onWatchlist;
     }
+    
     if (rating !== undefined) {
-      // Si el rating es 0 o null, lo guardamos como NULL en la BD para "borrar" la valoración.
-      entryData.rating = rating || null;
+        // Lógica de negocio: Si rating es 0, null o false, lo guardamos como NULL (borrar voto)
+        // Si es número, validamos rango 1-10 (aunque la BD tiene constraint, ahorramos el viaje)
+        if (!rating) {
+             entryData.rating = null;
+        } else {
+             const numRating = Number(rating);
+             if (numRating < 1 || numRating > 10) throw new Error('Rating debe ser entre 1 y 10');
+             entryData.rating = numRating;
+        }
     }
 
-    // 3. OPERACIÓN UPSERT EN LA BASE DE DATOS
-    // ----------------------------------------------------------------
-    // `upsert()` intenta un INSERT. Si falla por la restricción UNIQUE (user_id, movie_id),
-    // entonces ejecuta un UPDATE en la fila conflictiva. Es atómico y muy eficiente.
-    const { error } = await supabaseClient
+    // 4. Ejecutar UPSERT
+    // On Conflict: si ya existe la pareja user_id + movie_id, actualiza.
+    const { error: dbError } = await supabaseClient
       .from('user_movie_entries')
-      .upsert(entryData, {
-        onConflict: 'user_id, movie_id', // Le decimos a Supabase cuál es la restricción que puede fallar
-      });
+      .upsert(entryData, { onConflict: 'user_id, movie_id' });
 
-    if (error) {
-        // Si hay un error de base de datos (ej. check de rating falla), lo lanzamos.
-        throw error;
-    }
+    if (dbError) throw dbError;
 
-    return new Response(JSON.stringify({ success: true, message: `Datos de la película ${movieId} actualizados.` }), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200, // 200 OK es apropiado para un UPSERT exitoso.
+      status: 200,
     });
 
   } catch (err) {
-    console.error('Error en la Edge Function "set-user-movie-data":', err);
-    return new Response(JSON.stringify({ error: err.message || 'Error interno del servidor' }), {
+    console.error('Error set-user-movie-data:', err);
+    return new Response(JSON.stringify({ error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
+      status: 400,
     });
   }
 })

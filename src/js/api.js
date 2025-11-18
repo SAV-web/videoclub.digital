@@ -157,9 +157,15 @@ export async function fetchMovies(
 
     const { data, error } = await rpcCall;
 
+    // ✨ FIX: Si la señal fue abortada mientras esperábamos, detenemos todo.
+    // Esto evita procesar errores provocados por la propia cancelación.
+    if (signal && signal.aborted) {
+      return new Promise(() => {});
+    }
+
     if (error) {
-      if (error.name === "AbortError") {
-        console.log("Petición de películas cancelada.");
+      // Validación extra por si el error interno es de aborto
+      if (error.name === "AbortError" || error.message?.includes("abort")) {
         return new Promise(() => {});
       }
       console.error("Error en la llamada RPC 'search_movies_offset':", error);
@@ -171,17 +177,19 @@ export async function fetchMovies(
         items: data?.items || [],
     };
     
-    queryCache.set(queryKey, result);
+    // Solo guardamos en caché si la petición terminó con éxito y no fue cancelada
+    if (!signal?.aborted) {
+        queryCache.set(queryKey, result);
+    }
+    
     return result;
 
   } catch (error) {
-    // Si el error no es de cancelación, lo relanzamos para que sea manejado por el llamador.
-    if (error.name !== "AbortError") {
-      throw error;
+    // Si el error es de cancelación, devolvemos promesa eterna para no pintar nada
+    if (error.name === "AbortError" || (signal && signal.aborted)) {
+      return new Promise(() => {});
     }
-    // Si es un AbortError, simplemente retornamos una promesa que nunca se resuelve
-    // para detener la cadena de ejecución de forma segura.
-    return new Promise(() => {});
+    throw error;
   }
 }
 

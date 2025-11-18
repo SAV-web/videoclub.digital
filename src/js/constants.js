@@ -137,6 +137,7 @@ export const FILTER_CONFIG = {
       U: "Universal",
       S: "Sony",
       N: "Netflix",
+      Z: "Amazon",
       L: "Lionsgate",
       F: "20th Century",
     },

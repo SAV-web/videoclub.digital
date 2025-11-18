@@ -42,7 +42,7 @@
   font-weight: var(
     --font-weight-bold
   ); /* Mantenemos bold (700), es suficiente */
-  letter-spacing: -0.02em; /* ← NUEVO: Aporta refinamiento y densidad */
+  letter-spacing: -0.025em; /* ← NUEVO: Aporta refinamiento y densidad */
   line-height: var(--line-height-tight); /* 1.25, para títulos */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -123,6 +123,8 @@ html.dark-mode .paramount-icon { color: #E0E0E0; }
 
 .lionsgate-icon { color: #CC7722; }
 html.dark-mode .lionsgate-icon { color: #f9d7b5; }
+
+.amazon-icon { color: #f6a61f; }
 
 /* Contenedor para año y bandera (se alinea a la derecha) */
 .year-country-line {
