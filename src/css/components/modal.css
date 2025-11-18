@@ -120,7 +120,7 @@
 .quick-view-modal .movie-summary h3[data-template="title"] {
   font-size: var(--font-size-lg); /* Reducido de xl a lg */
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-hero);
+  color: var(--color-text-primary);
   line-height: var(--line-height-tight);
   margin-bottom: var(--space-xxs);
   letter-spacing: -0.02em;

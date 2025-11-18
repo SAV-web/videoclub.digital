@@ -143,8 +143,9 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
   height: 36px;
 }
 .search-form input {
-  height: 36px;
-  width: 100px;
+  height: 44px; /* Antes 36px */
+  font-size: 16px; /* Evita que iOS haga zoom al enfocar */
+  width: 100%; /* Aprovechar espacio */
 }
 
 /* Caso especial para 1 resultado en móvil estrecho */
@@ -213,8 +214,8 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
 
   /* Los botones de control vuelven a ser transparentes y sin borde */
   .sidebar .sidebar-control-button {
-    width: auto;
-    height: auto;
+    width: 48px;
+    height: 48px;
     border: none;
     background: none;
     box-shadow: none;
@@ -283,6 +284,11 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
   .search-form input {
     height: 40px;
     width: 115px;
+  }
+  /* Ajuste para el botón de filtros (Todo/Cine/TV) */
+  .type-filter-toggle {
+    height: 44px;
+    padding: 0 var(--space-md);
   }
 }
 

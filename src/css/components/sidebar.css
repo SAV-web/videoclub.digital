@@ -575,3 +575,30 @@ body.user-logged-in #login-button {
 body.user-logged-in #user-session-group {
   display: flex;
 }
+/* --- Accesibilidad Táctil para Píldoras de Filtro --- */
+@media (hover: none) and (pointer: coarse) {
+  .filter-pill {
+    padding: var(--space-xs) var(--space-md); /* Más relleno general */
+  }
+
+  /* Hacemos que el botón de cerrar tenga un área de clic invisible gigante */
+  .filter-pill .remove-filter-btn {
+    position: relative;
+    padding: 0 8px; /* Un poco más de espacio visual lateral */
+    margin-left: 6px;
+    font-size: 1.2rem; /* La X más grande */
+  }
+
+  .filter-pill .remove-filter-btn::after {
+    content: "";
+    position: absolute;
+    /* Centrado sobre el botón */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* Tamaño mínimo recomendado por Apple/Google */
+    width: 44px;
+    height: 44px;
+    /* background: rgba(255, 0, 0, 0.2); /* Descomentar para depurar el área */
+  }
+}
