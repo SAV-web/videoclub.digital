@@ -102,12 +102,8 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
   color: #002be7;
 }
 
-.disney-icon {
-  color: #1a3c77; /* Color corporativo azul oscuro de Disney */
-}
-html.dark-mode .disney-icon {
-  color: #4da4f2; /* Un azul más claro y vibrante para el modo oscuro */
-}
+.disney-icon { color: #990000; }
+html.dark-mode .disney-icon { color: #D9534F; }
 
 .wb-icon {
   color: #000b6c;
@@ -116,23 +112,18 @@ html.dark-mode .wb-icon {
   color: #4da4f2;
 }
 
-.universal-icon {
-  /* Hacemos que herede el color del texto secundario para una integración sutil */
-  color: var(--color-text-secondary);
-}
-html.dark-mode .universal-icon {
-  /* En modo oscuro, también heredará el color secundario, que es más claro */
-  color: var(--color-text-secondary);
-}
-/* ▼▼▼ REGLA AÑADIDA PARA EL ICONO DE SONY ▼▼▼ */
-.sony-icon {
-  /* Un azul profesional que encaja con la marca Sony */
-  color: #004098;
-}
-html.dark-mode .sony-icon {
-  /* Una versión más clara y brillante para el modo oscuro */
-  color: #3182ce;
-}
+.universal-icon { color: #444444; }
+html.dark-mode .universal-icon { color: #BBBBBB; }
+
+.sony-icon { color: #004098; }
+html.dark-mode .sony-icon { color: #3182ce; }
+
+.paramount-icon { color: #0063ff; }
+html.dark-mode .paramount-icon { color: #E0E0E0; }
+
+.lionsgate-icon { color: #CC7722; }
+html.dark-mode .lionsgate-icon { color: #f9d7b5; }
+
 /* Contenedor para año y bandera (se alinea a la derecha) */
 .year-country-line {
   /* Ya no necesita propiedades flex propias, el padre (.movie-meta) lo gestiona */

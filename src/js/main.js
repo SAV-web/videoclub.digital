@@ -291,6 +291,16 @@ function setupGlobalListeners() {
     handleCardClick.call(this, e);
   });
   
+    // Este listener se encarga de la funcionalidad del botón de cambio de tema.
+  dom.themeToggleButton.addEventListener("click", (e) => {
+    triggerPopAnimation(e.currentTarget);
+    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+    // Alterna la clase en `documentElement` (la etiqueta <html>)
+    const isDarkMode = document.documentElement.classList.toggle("dark-mode");
+    // Guarda la preferencia en el almacenamiento local para persistencia.
+    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+  });
+  
   // Listener de scroll optimizado con `requestAnimationFrame`.
   let isTicking = false;
   window.addEventListener("scroll", () => {
