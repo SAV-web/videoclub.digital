@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
+<head>
     <!-- === 1. METADATOS Y CONFIGURACIÓN === -->
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    />
-    <title>
-      videoclub.digital - tu oráculo cinéfilo y seriéfilo inteligente
-    </title>
-    <meta
-      name="description"
-      content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra."
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>videoclub.digital - tu oráculo cinéfilo y seriéfilo inteligente</title>
     <meta name="theme-color" content="#37474F" />
 
-    <!-- === 2. MANIFEST Y SEO === -->
+    <!-- === 2. SEO Y SOCIAL (Unificados) === -->
+    <!-- Definimos el texto una sola vez mentalmente, pero lo aplicamos a ambos protocolos -->
+    <meta name="description" content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra." />
+    
+    <meta property="og:title" content="videoclub.digital" />
+    <meta property="og:description" content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra." />
+    <meta property="og:image" content="https://videoclub.digital/src/img/og-image.png" />
+    <meta property="og:url" content="https://videoclub.digital" />
+    <meta property="og:type" content="website" />
+
+    <!-- === 3. MANIFEST Y DATOS ESTRUCTURADOS === -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <script type="application/ld+json">
       {
@@ -24,7 +25,7 @@
         "@type": "WebSite",
         "url": "https://videoclub.digital/",
         "name": "videoclub.digital",
-        "description": "Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra.",
+        "description": "Explora, filtra y descubre miles de películas y series...",
         "potentialAction": {
           "@type": "SearchAction",
           "target": "https://videoclub.digital/?q={search_term_string}",
@@ -33,25 +34,10 @@
       }
     </script>
 
-    <!-- === 3. OPEN GRAPH (PARA REDES SOCIALES) === -->
-    <meta property="og:title" content="videoclub.digital" />
-    <meta
-      property="og:description"
-      content="Tu oráculo cinéfilo y seriéfilo inteligente."
-    />
-    <meta
-      property="og:image"
-      content="https://videoclub.digital/src/img/og-image.png"
-    />
-    <meta property="og:url" content="https://videoclub.digital" />
-    <meta property="og:type" content="website" />
-
     <!-- === 4. OPTIMIZACIÓN DE CARGA (RESOURCE HINTS) === -->
-    <link
-      rel="preconnect"
-      href="https://wibygecgfczcvaqewleq.supabase.co"
-      crossorigin
-    />
+    <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
+    
+    <!-- Preload de fuente crítica (Inter Variable) para evitar CLS/FOUT -->
     <link
       rel="preload"
       href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2"
@@ -60,34 +46,23 @@
       crossorigin
     />
 
-    <!-- === 5. CSS CRÍTICO (ESTILOS PARA LA PRIMERA PINTURA) === -->
-<style>:root{--color-bg:#f5f5f5;--color-surface:#fff;--color-text-primary:#333;--color-text-secondary:#666;--color-accent:#37474f;--color-accent-exclude:#90a4ae;--color-border:#e0e0e0;--radius-md:6px;--radius-round:50%;--shadow:0 5px 15px rgba(0,0,0,.08);--z-index-header:900;--z-index-sidebar:1000}html.dark-mode{--color-bg:#121212;--color-surface:#282828;--color-text-primary:#e0e0e0;--color-text-secondary:#aaa;--color-accent:#90a4ae;--color-accent-exclude:#546e7a;--color-border:#333;--shadow:0 5px 20px rgba(0,0,0,.25)}*{box-sizing:border-box;margin:0;padding:0}body{background-color:var(--color-bg);color:var(--color-text-primary);font-family:var(--font-body)}.main-layout{display:flex}.sidebar{width:200px;height:100vh;background-color:var(--color-surface);border-right:2px solid var(--color-border);position:sticky;top:0;z-index:var(--z-index-sidebar)}.main-content-wrapper{flex-grow:1;display:flex;flex-direction:column;min-width:0}.content{flex-grow:1;padding:var(--space-md) var(--space-xxl) var(--space-xs);max-width:1920px;margin:0 auto;width:100%}.main-header{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-md) var(--space-lg);position:sticky;top:0;z-index:var(--z-index-header);background-color:var(--color-bg);padding:var(--space-lg) var(--space-xxl) var(--space-md);margin-bottom:0}.grid-container{display:grid;gap:var(--space-md);grid-template-columns:repeat(auto-fit,minmax(165px,1fr));justify-content:start}.main-header-primary-controls,.search-and-theme-group{display:flex;align-items:center;gap:var(--space-md)}.sort-control{display:flex;align-items:center;gap:var(--space-xs)}#sort-select{width:100px;color:var(--color-text-primary);background-color:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-xs) var(--space-sm);padding-right:2em;-moz-appearance:none;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right .7em top 50%;background-size:.65em auto;background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E")}.type-filter-toggle{padding:0 var(--space-sm);height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center}.header-pagination-group{display:flex}.search-form{position:relative;display:flex;align-items:center}.search-form input{border:1px solid var(--color-border);padding:var(--space-xs) var(--space-xl) var(--space-xs) var(--space-md);border-radius:var(--radius-md);width:90px}.search-icon{position:absolute;right:var(--space-sm);top:50%;transform:translateY(-50%);color:var(--color-text-secondary);pointer-events:none}.theme-toggle{width:40px;height:40px;border-radius:var(--radius-round);cursor:pointer;display:flex;justify-content:center;align-items:center;padding:0;position:relative}.theme-icon{position:absolute;width:20px;height:20px;top:50%;left:50%;transform:translate(-50%,-50%)}.moon-icon{opacity:1;transform:translate(-50%,-50%) scale(1)}.sun-icon{opacity:0;transform:scale(.8)}html.dark-mode .moon-icon{opacity:0;transform:scale(.8)}html.dark-mode .sun-icon{opacity:1;transform:scale(1)}.skeleton-card{height:380px;background-color:var(--color-surface);border-radius:8px;position:relative;overflow:hidden;box-shadow:var(--shadow)}.skeleton-card::after{content:"";position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,0,0,.04),transparent);animation:skeleton-loading 1.5s infinite}html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}@keyframes skeleton-loading{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}html.dark-mode #sort-select{background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E0E0E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E")}.sidebar--loading>*{opacity:0;visibility:hidden}html.dark-mode .sidebar{background-color:var(--color-surface)}</style>
+    <!-- === 5. CSS CRÍTICO (INLINE) === -->
+    <style>:root{--color-bg:#f5f5f5;--color-surface:#fff;--color-text-primary:#333;--color-text-secondary:#666;--color-accent:#37474f;--color-accent-exclude:#90a4ae;--color-border:#e0e0e0;--radius-md:6px;--radius-round:50%;--shadow:0 5px 15px rgba(0,0,0,.08);--z-index-header:900;--z-index-sidebar:1000}html.dark-mode{--color-bg:#121212;--color-surface:#282828;--color-text-primary:#e0e0e0;--color-text-secondary:#aaa;--color-accent:#90a4ae;--color-accent-exclude:#546e7a;--color-border:#333;--shadow:0 5px 20px rgba(0,0,0,.25)}*{box-sizing:border-box;margin:0;padding:0}body{background-color:var(--color-bg);color:var(--color-text-primary);font-family:var(--font-body)}.main-layout{display:flex}.sidebar{width:200px;height:100vh;background-color:var(--color-surface);border-right:2px solid var(--color-border);position:sticky;top:0;z-index:var(--z-index-sidebar)}.main-content-wrapper{flex-grow:1;display:flex;flex-direction:column;min-width:0}.content{flex-grow:1;padding:var(--space-md) var(--space-xxl) var(--space-xs);max-width:1920px;margin:0 auto;width:100%}.main-header{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-md) var(--space-lg);position:sticky;top:0;z-index:var(--z-index-header);background-color:var(--color-bg);padding:var(--space-lg) var(--space-xxl) var(--space-md);margin-bottom:0}.grid-container{display:grid;gap:var(--space-md);grid-template-columns:repeat(auto-fit,minmax(165px,1fr));justify-content:start}.main-header-primary-controls,.search-and-theme-group{display:flex;align-items:center;gap:var(--space-md)}.sort-control{display:flex;align-items:center;gap:var(--space-xs)}#sort-select{width:100px;color:var(--color-text-primary);background-color:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-xs) var(--space-sm);padding-right:2em;-moz-appearance:none;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right .7em top 50%;background-size:.65em auto;background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E")}.type-filter-toggle{padding:0 var(--space-sm);height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center}.header-pagination-group{display:flex}.search-form{position:relative;display:flex;align-items:center}.search-form input{border:1px solid var(--color-border);padding:var(--space-xs) var(--space-xl) var(--space-xs) var(--space-md);border-radius:var(--radius-md);width:90px}.search-icon{position:absolute;right:var(--space-sm);top:50%;transform:translateY(-50%);color:var(--color-text-secondary);pointer-events:none}.theme-toggle{width:40px;height:40px;border-radius:var(--radius-round);cursor:pointer;display:flex;justify-content:center;align-items:center;padding:0;position:relative}.theme-icon{position:absolute;width:20px;height:20px;top:50%;left:50%;transform:translate(-50%,-50%)}.moon-icon{opacity:1;transform:translate(-50%,-50%) scale(1)}.sun-icon{opacity:0;transform:scale(.8)}html.dark-mode .moon-icon{opacity:0;transform:scale(.8)}html.dark-mode .sun-icon{opacity:1;transform:scale(1)}.skeleton-card{height:380px;background-color:var(--color-surface);border-radius:8px;position:relative;overflow:hidden;box-shadow:var(--shadow)}.skeleton-card::after{content:"";position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,0,0,.04),transparent);animation:skeleton-loading 1.5s infinite}html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}@keyframes skeleton-loading{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}html.dark-mode #sort-select{background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E0E0E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E")}.sidebar--loading>*{opacity:0;visibility:hidden}html.dark-mode .sidebar{background-color:var(--color-surface)}</style>
 
-    <!-- === 6. SCRIPT DE INICIALIZACIÓN SÍNCRONA DEL TEMA (ANTI-FLICKER) === -->
+    <!-- === 6. ANTI-FLICKER SCRIPT === -->
     <script>
       (function () {
         try {
-          const theme = localStorage.getItem("theme");
-          if (theme === "dark") {
+          if (localStorage.getItem("theme") === "dark") {
             document.documentElement.classList.add("dark-mode");
           }
-          // No es necesario un 'else' porque el tema claro es el predeterminado.
-        } catch (e) {
-          // Si localStorage falla, no hacemos nada para evitar errores.
-          console.error("Error applying initial theme:", e);
-        }
+        } catch (e) {}
       })();
     </script>
 
-    <!-- === 7. HOJAS DE ESTILO EXTERNAS === -->
-    <link
-      rel="stylesheet"
-      href="/src/css/main.css"
-      media="print"
-      onload="this.media='all'"
-    />
-
-  </head>
+    <!-- === 7. ESTILOS EXTERNOS === -->
+    <link rel="stylesheet" href="/src/css/main.css" media="print" onload="this.media='all'" />
+</head>
 
   <body>
     <!-- Contenedor principal del layout (Sidebar + Contenido) -->
