@@ -37,10 +37,14 @@ function handleOutsideClick(event) {
 
 export function closeModal() {
   if (!dom.modal.classList.contains("is-visible")) return;
+  
   dom.modal.classList.remove("is-visible");
   dom.overlay.classList.remove("is-visible");
   document.body.classList.remove("modal-open");
+  
   closeAccessibleModal(dom.modal, dom.overlay);
+  
+  // ✨ FIX: Eliminar el listener para evitar fugas de memoria
   document.removeEventListener("click", handleOutsideClick);
 }
 

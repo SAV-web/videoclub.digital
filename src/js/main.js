@@ -532,17 +532,16 @@ function init() {
     if (e.detail.cardElement) updateCardUI(e.detail.cardElement);
   });
 
-  document.addEventListener("userMovieDataChanged", () => {
-    console.log("%c[CACHE] Datos de usuario cambiaron. Vaciando caché.", "color: #f57c00");
-    queryCache.clear();
-    document.querySelectorAll(".movie-card").forEach(updateCardUI);
-  });
-  
-  document.addEventListener("userDataUpdated", () => {
-    console.log("%c[CACHE] Sesión de usuario cambió. Vaciando caché.", "color: #f57c00");
-    queryCache.clear();
-    document.querySelectorAll(".movie-card").forEach(updateCardUI);
-  });
+  // ✨ OPTIMIZACIÓN: Unificamos la lógica de refresco de UI por cambios de datos
+  const handleDataRefresh = () => {
+    console.log("%c[CACHE] Datos/Sesión cambiaron. Vaciando caché.", "color: #f57c00");
+    queryCache.clear(); // Invalida búsquedas previas porque el estado de 'visto/nota' ha cambiado
+    document.querySelectorAll(".movie-card").forEach(updateCardUI); // Actualiza visualmente lo que ya está en pantalla
+  };
+
+  document.addEventListener("userMovieDataChanged", handleDataRefresh);
+  document.addEventListener("userDataUpdated", handleDataRefresh);
+
 
   document.addEventListener("filtersReset", (e) => {
     const { keepSort, newFilter } = e.detail || {};

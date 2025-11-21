@@ -2,76 +2,91 @@
 /* Componentes de UI General (Skeletons, Paginación, Toasts, etc.)
 /* ================================================================= */
 
-/* --- Esqueleto de Carga (Skeleton) --- */
-.skeleton-card {
-  position: relative;
-  height: 380px;
-  border-radius: var(--radius-lg);
-  background-color: var(--color-surface);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
+/* --- Esqueleto de Carga (Shimmer Effect Real) --- */
 
+/* Base común para tarjetas y líneas de texto */
+.skeleton-card,
 .skeleton {
   position: relative;
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg);
-  overflow: hidden;
+  overflow: hidden; /* Crítico: evita que el brillo se vea fuera de la caja */
+  /* Usamos un gris neutro como base, más oscuro que el fondo de la web */
+  background-color: #e0e0e0; 
 }
 
-.skeleton::after,
-.skeleton-card::after {
+/* Ajustes específicos para la tarjeta */
+.skeleton-card {
+  height: auto;
+  aspect-ratio: 2 / 3.4; /* Coincide con la proporción de la tarjeta real en móvil */
+  border-radius: var(--radius-md);
+  /* Eliminamos la sombra para que parezca una estructura plana esperando datos */
+  box-shadow: none; 
+}
+
+/* El elemento pseudo que crea el efecto de brillo */
+.skeleton-card::after,
+.skeleton::after {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  transform: translateX(-100%); /* Empieza fuera a la izquierda */
+  
+  /* EL GRADIENTE (SHIMMER) */
+  /* Transparente -> Blanco translúcido -> Transparente */
   background: linear-gradient(
     90deg,
-    transparent,
-    rgba(0, 0, 0, 0.04),
-    transparent
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 50%, /* Brillo central fuerte */
+    transparent 100%
   );
-  animation: skeleton-loading 1.5s infinite;
+  
+  /* Animación infinita */
+  animation: shimmer 1.5s infinite;
 }
-body.dark-mode .skeleton::after,
-body.dark-mode .skeleton-card::after {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.08),
-    transparent
-  );
-}
-@keyframes skeleton-loading {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
+
+/* Definición de la animación */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%); /* Termina fuera a la derecha */
   }
 }
 
+/* --- MODO OSCURO --- */
+html.dark-mode .skeleton-card,
+html.dark-mode .skeleton {
+  /* Base gris oscura, ligeramente más clara que el fondo negro */
+  background-color: #2c2c2c; 
+}
+
+html.dark-mode .skeleton-card::after,
+html.dark-mode .skeleton::after {
+  /* El brillo en modo oscuro debe ser sutil para no deslumbrar */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%, /* Brillo muy suave */
+    transparent 100%
+  );
+}
+
+/* --- Estilos específicos del Sidebar (Mantenidos pero adaptados) --- */
 .skeleton-sidebar-header {
   width: 60%;
   height: 24px;
   margin: var(--space-sm) var(--space-xs);
+  border-radius: var(--radius-sm);
 }
 .skeleton-sidebar-line {
-  height: 20px;
+  height: 16px; /* Un poco más fino */
   margin-bottom: var(--space-xs);
   margin-left: var(--space-sm);
+  border-radius: var(--radius-sm);
 }
-.skeleton-sidebar-line:nth-of-type(1) {
-  width: 80%;
-}
-.skeleton-sidebar-line:nth-of-type(2) {
-  width: 90%;
-}
-.skeleton-sidebar-line:nth-of-type(3) {
-  width: 75%;
-}
+.skeleton-sidebar-line:nth-of-type(1) { width: 70%; }
+.skeleton-sidebar-line:nth-of-type(2) { width: 85%; }
+.skeleton-sidebar-line:nth-of-type(3) { width: 60%; }
 
 /* --- Paginación --- */
 .pagination-container {

@@ -155,14 +155,23 @@ function handleTouchMove(e) {
 
   window.addEventListener("resize", () => {
     if (window.innerWidth > 768) {
+      // Modo Escritorio: Limpiamos estilos inline
       document.body.classList.remove("sidebar-is-open");
-      sidebar.style.transform = "none";
+      sidebar.style.transform = ""; // Limpia el transform inline
       sidebar.style.transition = "";
+      // Reiniciamos la variable lógica para cuando vuelva a móvil
+      currentTranslate = -DRAWER_WIDTH; 
     } else {
-      // Reajusta la posición en móvil al rotar el dispositivo
-      document.body.classList.contains("sidebar-is-open")
-        ? openDrawer()
-        : closeDrawer();
+      // Modo Móvil: Restauramos el estado según la clase del body
+      if (document.body.classList.contains("sidebar-is-open")) {
+        // Si estaba abierto lógicamente, forzamos la posición abierta
+        openDrawer(); 
+        // openDrawer ya se encarga de poner currentTranslate = 0
+      } else {
+        // Si estaba cerrado, forzamos la posición cerrada
+        closeDrawer();
+        // closeDrawer pone currentTranslate = -DRAWER_WIDTH
+      }
     }
   });
 }

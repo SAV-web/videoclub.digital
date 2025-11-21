@@ -17,173 +17,26 @@ html {
   --mobile-header-height: 57px;
 }
 
-/* --- VERSIÓN MÓVIL EQUILIBRADA: GRID 3 COLUMNAS --- */
+/* En móvil, el sidebar es un panel flotante, fijo en la pantalla */
 @media (max-width: 768px) {
-
-  /* 1. MÁRGENES DE PANTALLA (Aumentados ligeramente) */
-  .content {
-    /* Aumentamos de 2px a 6px para dar aire a los lados */
-    padding-left: 120px;
-    padding-right: 12px;
-    padding-top: var(--space-md);
-    padding-bottom: calc(var(--mobile-header-height) + var(--space-md));
-  }
-
-  /* 2. GRID CON SEPARACIÓN */
-  .grid-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    /* ✨ CAMBIO: Aumentado de 2px a 6px para separar las fichas */
-    gap: 12px; 
-    padding: 0; 
-    align-items: start;
-  }
-
-  /* 3. TARJETA (Ajuste automático) */
-  .movie-card {
-    height: auto;
-    aspect-ratio: auto; 
-    perspective: 1000px; 
-    background: transparent;
-    overflow: visible; 
-  }
-
-  .flip-card-inner {
-    position: relative;
-    width: 100%;
-    height: auto;
-    text-align: center;
-    transform-style: preserve-3d; 
-    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
-    box-shadow: none; 
-  }
-
-  /* 4. CARA FRONTAL */
-  .flip-card-front {
-    position: relative;
-    height: auto;
-    border-radius: 4px; /* Radio un poco más suave */
-    box-shadow: var(--shadow);
-    background-color: var(--color-surface);
-    -webkit-backface-visibility: hidden; 
-    backface-visibility: hidden;
-    z-index: 2;
-  }
-
-  /* 5. IMAGEN */
-  .poster-container {
-    width: 100%;
-    height: auto;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .poster-container img {
-    order: 1;
-    width: 100%;
-    height: auto;       
-    aspect-ratio: unset;
-    object-fit: contain;
-    border-radius: 4px 4px 0 0;
-    border: none;
-    display: block;
-  }
-
-  /* 6. FOOTER (Iconos) */
-  .card-rating-block {
-    order: 2;
-    position: relative;
-    transform: none;
-    bottom: auto; left: auto; right: auto;
-    width: 100%;
-    height: 30px; 
-    padding: 0 4px;
-    background-color: var(--color-surface);
-    border-top: 1px solid var(--color-border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  /* Iconos */
-  .card-action-btn { width: 24px; height: 24px; background: transparent; padding: 0; color: var(--color-text-secondary); }
-  .card-action-btn svg { width: 16px; height: 16px; }
-  .card-action-btn.is-active svg { color: #ffc107; }
-  
-  .star-rating-container { gap: 0px; }
-  .star-icon { width: 12px; height: 12px; }
-  .low-rating-circle { width: 14px; height: 14px; border-width: 2px; }
-
-  /* 7. CARA TRASERA */
-  .flip-card-back {
-    display: flex; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    border-radius: 4px; background-color: var(--color-surface); transform: rotateY(180deg); 
-    -webkit-backface-visibility: hidden; backface-visibility: hidden; z-index: 1;
-    padding: 4px; overflow-y: auto; font-size: 10px;
-  }
-  .flip-card-back .back-original-title-wrapper { min-height: auto; margin-bottom: 4px; }
-  .flip-card-back .ratings-container { gap: 4px; }
-  .flip-card-back .details-list { margin: 4px 0; padding-top: 4px; }
-
-  /* 8. SIDEBAR Y CONTROLES MÓVIL */
   .sidebar {
-    position: fixed; left: 0; top: 0; width: 280px; height: 100dvh;
-    transform: translateX(-280px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1001; background-color: var(--color-surface); border-right: 2px solid var(--color-border);
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 280px; /* Ancho del drawer */
+    transform: translateX(-280px); /* Fuera de pantalla por defecto */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Transición para abrir/cerrar */
+    z-index: 1001; /* Asegura que esté por encima del contenido */
+    background-color: var(--color-surface); /* Fondo del drawer */
+    border-right: 2px solid var(--color-border); /* Borde del drawer */
+    height: 100vh; /* Fallback para navegadores antiguos */
+    height: 100dvh; /* ✨ LA SOLUCIÓN MODERNA */
   }
-  body.sidebar-is-open .sidebar { transform: translateX(0); }
-  
-  .sidebar .sidebar-inner-wrapper { padding: var(--space-xs); align-items: flex-start; }
-  
-  .sidebar .logo-area, .sidebar .sidebar-static-filters, .sidebar .sidebar-scrollable-filters {
-    opacity: 0; visibility: hidden; transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
-  }
-  body.sidebar-is-open .logo-area, body.sidebar-is-open .sidebar-static-filters, body.sidebar-is-open .sidebar-scrollable-filters {
-    opacity: 1; visibility: visible; transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s;
-  }
-  
-  .sidebar .play-button-container { display: none; flex-direction: column; gap: var(--space-md); margin-top: var(--space-xs); }
-  body.sidebar-is-open .play-button-container { display: flex; flex-direction: row; margin-top: 0; }
-  
-  .sidebar .sidebar-control-button { width: 44px; height: 44px; border: 1px solid var(--color-border); border-radius: var(--radius-round); background-color: var(--color-surface); box-shadow: var(--shadow); }
-  body.sidebar-is-open .sidebar-control-button { border: none; background: none; box-shadow: none; }
 
-  /* 9. INPUTS Y PAGINACIÓN */
-  .search-form input { height: 44px; font-size: 16px; width: 100%; }
-  .type-filter-toggle { width: 44px; height: 44px; padding: 0 var(--space-md); }
-  .header-pagination-group { display: none; }
-  .pagination-container > .btn, .pagination-container > .pagination-current { --btn-height: 36px; }
-  
-  /* Limpieza */
-  .movie-summary { display: none; }
+  body.sidebar-is-open .sidebar {
+    transform: translateX(0); /* Desliza hacia dentro */
+  }
 }
-
-  /* Iconos ajustados al espacio reducido */
-  .card-action-btn { width: 24px; height: 24px; background: transparent; padding: 0; color: var(--color-text-secondary); }
-  .card-action-btn svg { width: 16px; height: 16px; }
-  .card-action-btn.is-active svg { color: #ffc107; }
-  
-  .star-rating-container { gap: 0px; }
-  .star-icon { width: 12px; height: 12px; }
-  .low-rating-circle { width: 14px; height: 14px; border-width: 2px; }
-
-  /* 7. CARA TRASERA */
-  .flip-card-back {
-    display: flex; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    border-radius: 2px; background-color: var(--color-surface); transform: rotateY(180deg); 
-    -webkit-backface-visibility: hidden; backface-visibility: hidden; z-index: 1;
-    padding: 4px; overflow-y: auto; font-size: 10px; /* Texto más pequeño */
-  }
-  .flip-card-back .back-original-title-wrapper { min-height: auto; margin-bottom: 4px; }
-  .flip-card-back .ratings-container { gap: 4px; }
-  .flip-card-back .details-list { margin: 4px 0; padding-top: 4px; }
-
-  /* Limpieza y controles */
-  .movie-summary { display: none; }
-  .search-form input { height: 44px; font-size: 16px; width: 100%; }
-  .sidebar .sidebar-control-button, .type-filter-toggle { width: 44px; height: 44px; }
-  .header-pagination-group { display: none; }
-
 
 .sidebar .sidebar-inner-wrapper {
   padding: var(--space-xs);
@@ -281,7 +134,10 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
 .pagination-container > .pagination-current {
   --btn-height: 36px; /* Nuevo tamaño para móvil */
 }
-
+.grid-container {
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+}
 #sort-select {
   padding: 0.4rem;
   height: 36px;

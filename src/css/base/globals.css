@@ -71,3 +71,11 @@ body,
     scroll-behavior: auto !important;
   }
 }
+/* BLOQUEO DE SCROLL (Scroll Locking) */
+/* Evita que el fondo se mueva cuando la modal o el sidebar están abiertos */
+body.modal-open,
+body.sidebar-is-open {
+  overflow: hidden;
+  /* Opcional: Evita rebote elástico en iOS en el body */
+  overscroll-behavior: none; 
+}
