@@ -16,8 +16,8 @@
 /* Ajustes específicos para la tarjeta */
 .skeleton-card {
   height: auto;
-  aspect-ratio: 2 / 3.4; /* Coincide con la proporción de la tarjeta real en móvil */
-  border-radius: var(--radius-md);
+  aspect-ratio: 500 / 950;
+  border-radius: var(--radius-lg);
   /* Eliminamos la sombra para que parezca una estructura plana esperando datos */
   box-shadow: none; 
 }

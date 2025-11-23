@@ -167,52 +167,37 @@ export function getFriendlyErrorMessage(error) {
 }
 
 /**
- * Inyecta dinámicamente un <link rel="preload"> responsivo para la imagen LCP.
- * Utiliza imagesrcset y imagesizes para que el navegador descargue el tamaño óptimo.
- * @param {object} movieData - El objeto de datos de la primera película de la lista.
+ * Inyecta un <link rel="preload"> para la imagen LCP (Largest Contentful Paint).
+ * OPTIMIZADO: Al ser imágenes WebP fijas de 400x496, hacemos una precarga directa simple.
+ * @param {object} movieData - El objeto de datos de la primera película.
  */
 export function preloadLcpImage(movieData) {
   if (!movieData || !movieData.image || movieData.image === ".") {
     return;
   }
 
-  // Nota: Esta implementación asume que tu backend/CDN puede servir imágenes
-  // redimensionadas añadiendo un parámetro de consulta '?w=...'.
-  // Si no es el caso, el `href` de fallback seguirá funcionando.
-  const baseImageUrl = `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp`;
+  // Construimos la URL exacta. Añadimos versión para control de caché si existe.
+  const version = movieData.last_synced_at ? new Date(movieData.last_synced_at).getTime() : "1";
+  const imageUrl = `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp?v=${version}`;
 
-  const existingLink = document.querySelector(
-    `link[rel="preload"][href="${baseImageUrl}"]`
-  );
-  if (existingLink) {
+  // Evitamos duplicar el link si ya existe
+  if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) {
     return;
   }
 
   const link = document.createElement("link");
   link.rel = "preload";
   link.as = "image";
-  link.href = baseImageUrl; // href de fallback
-  link.setAttribute("fetchpriority", "high");
+  link.href = imageUrl;
+  link.setAttribute("fetchpriority", "high"); // Prioridad máxima al navegador
 
-  // Se construye el srcset para diferentes anchos de dispositivo.
-  link.imageSrcset = `
-        ${baseImageUrl}?w=250 250w,
-        ${baseImageUrl}?w=400 400w,
-        ${baseImageUrl}?w=500 500w
-    `;
-
-  // Se le indica al navegador el tamaño que la imagen ocupará en la pantalla.
-  link.imageSizes = "(max-width: 62em) 50vw, (max-width: 80em) 25vw, 20vw";
-
+  // Eliminamos el link una vez cargado para limpiar el DOM (opcional pero limpio)
   link.onload = () => link.remove();
   link.onerror = () => link.remove();
 
   document.head.appendChild(link);
-  console.log(
-    `%c[LCP PRELOAD] Iniciando precarga responsiva para: ${baseImageUrl}`,
-    "color: #9c27b0"
-  );
 }
+
 // =================================================================
 //                      FEEDBACK HÁPTICO (TÁCTIL)
 // =================================================================

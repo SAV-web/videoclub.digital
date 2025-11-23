@@ -119,8 +119,8 @@ BEGIN
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
                 AND ($5 IS NULL OR m.country_id = $5)
-                AND ($6 IS NULL OR m.directors_tsv @@ plainto_tsquery(''spanish'', $6))
-                AND ($7 IS NULL OR m.actors_tsv @@ plainto_tsquery(''spanish'', $7))
+                AND ($6 IS NULL OR m.directors_tsv @@ phraseto_tsquery(''simple'', $6))
+                AND ($7 IS NULL OR m.actors_tsv @@ phraseto_tsquery(''simple'', $7))
                 AND ($8 IS NULL OR $8 = ''all''
                      OR ($8 = ''movies'' AND (m.type IS NULL OR m.type IN (''D'', ''A'')))
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))
@@ -256,6 +256,13 @@ CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genr
 CREATE INDEX IF NOT EXISTS movies_directors_tsv_idx ON public.movies USING GIN(directors_tsv);
 CREATE INDEX IF NOT EXISTS movies_actors_tsv_idx ON public.movies USING GIN(actors_tsv);
 CREATE INDEX IF NOT EXISTS movies_collections_tsv_idx ON public.movies USING GIN(collections_tsv);
+-- El índice de relevancia es vital porque es el orden por defecto.
+CREATE INDEX IF NOT EXISTS movies_relevance_idx ON public.movies(relevance ASC);
+-- Índices para ordenación por votos (que también usas en el selector)
+CREATE INDEX IF NOT EXISTS movies_fa_votes_idx ON public.movies(fa_votes DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS movies_imdb_votes_idx ON public.movies(imdb_votes DESC NULLS LAST);
+-- Índice compuesto para optimizar el filtrado por tipo + ordenación (muy común)
+CREATE INDEX IF NOT EXISTS movies_type_relevance_idx ON public.movies(type, relevance ASC);
 -- Índices compuesto para combinaciones de filtros común: País + Año, sólo Series, sólo Películas
 CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx 
 ON public.movies(country_id, year DESC);

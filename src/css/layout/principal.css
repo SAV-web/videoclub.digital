@@ -57,3 +57,16 @@
     opacity: 0;
   }
 }
+
+/* Estado de carga: Opacidad + Blanco y Negro + Ligero desenfoque */
+.grid-container.is-fetching {
+  opacity: 0.5;
+  filter: grayscale(1) blur(2px); /* Efecto visual mucho más evidente */
+  transform: scale(0.99); /* Un "respiro" visual sutil */
+  pointer-events: none; /* Bloquea clics en las tarjetas */
+  cursor: wait;
+  
+  /* Transición rápida para entrar (feedback inmediato) y suave para salir */
+  transition: all 0.2s ease-out; 
+  will-change: opacity, filter, transform; /* Avisa al navegador para optimizar */
+}

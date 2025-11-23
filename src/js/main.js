@@ -1,30 +1,11 @@
 // =================================================================
-//
-//              SCRIPT PRINCIPAL Y ORQUESTADOR (v4.0)
-//
+//          SCRIPT PRINCIPAL (Estable y Optimizado)
 // =================================================================
-//
-//  FICHERO:  src/js/main.js
-//  AUTOR:    Tu Mentor Experto
-//  VERSIÓN:  4.0
-//
-//  RESPONSABILIDADES:
-//    - Orquestar la inicialización de todos los módulos de la aplicación.
-//    - Gestionar el flujo principal de carga y renderizado de películas.
-//    - Centralizar y delegar los eventos de UI más importantes.
-//    - Sincronizar el estado de la aplicación con la URL del navegador.
-//    - Manejar el ciclo de vida de la autenticación de usuario y sus datos.
-//
-//  HISTORIAL DE CAMBIOS:
-//    v4.0 - REFACTOR ARQUITECTÓNICO: Se adopta el nuevo `requestManager` para una
-//           gestión de peticiones cancelables declarativa, centralizada y robusta,
-//           eliminando la gestión de estado manual del AbortController.
-//    v3.3 - Integrada la invalidación de caché al cambiar datos de usuario.
-//    v3.2 - Implementada la delegación de eventos para clics en tarjetas.
-//
+// FICHERO: src/js/main.js
+// VERSIÓN: 4.2 (Sin cancelación de peticiones para evitar congelación)
 // =================================================================
 
-import "../css/main.css"; // Importación de CSS manejada por Vite
+import "../css/main.css";
 import "flag-icons/css/flag-icons.min.css";
 import { CONFIG } from "./config.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from "./utils.js";
@@ -68,45 +49,23 @@ import { initTouchDrawer } from "./components/touch-drawer.js";
 import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
 import { fetchUserMovieData } from "./api-user.js";
-// ✨ NUEVA IMPORTACIÓN: El gestor de peticiones cancelables.
-import { createAbortableRequest } from './utils/requestManager.js';
 
-// --- GESTIÓN DE PETICIONES ---
-// ❌ ELIMINADO: La variable global `currentRequestController` ya no es necesaria.
+// IMPORTACIÓN CLAVE: Sistema de hover optimizado
+import { initGridHoverSystem } from "./components/card.js";
 
-// --- MAPAS DE URL ---
 const URL_PARAM_MAP = {
-  q: "searchTerm",
-  genre: "genre",
-  year: "year",
-  country: "country",
-  dir: "director",
-  actor: "actor",
-  sel: "selection",
-  stu: "studio",
-  sort: "sort",
-  type: "mediaType",
-  p: "page",
-  exg: "excludedGenres",
-  exc: "excludedCountries",
+  q: "searchTerm", genre: "genre", year: "year", country: "country",
+  dir: "director", actor: "actor", sel: "selection", stu: "studio",
+  sort: "sort", type: "mediaType", p: "page",
+  exg: "excludedGenres", exc: "excludedCountries",
 };
 const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
-// --- LÓGICA PRINCIPAL DE CARGA Y RENDERIZADO ---
-
-/**
- * Orquesta todo el proceso de carga y renderizado de la parrilla de películas.
- * Es la función más importante de la aplicación.
- * @param {number} [page=1] - La página de resultados a cargar.
- */
 export async function loadAndRenderMovies(page = 1) {
-  // ✨ LÓGICA REFACTORIZADA: De forma declarativa, creamos una nueva petición
-  // cancelable para la carga de la parrilla. Nuestro gestor se encarga
-  // automáticamente de cancelar cualquier petición 'movie-grid-load' anterior.
-  const controller = createAbortableRequest('movie-grid-load');
-  const signal = controller.signal;
+  // ❌ ELIMINADO: createAbortableRequest para evitar congelaciones.
+  // Usamos fetch estándar.
 
   setCurrentPage(page);
   updatePageTitle();
@@ -118,28 +77,18 @@ export async function loadAndRenderMovies(page = 1) {
     try {
       const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
       
-      // Pasamos la señal de cancelación a la función de fetch.
+      // Llamada estándar sin señal de aborto
       const { items: movies, total: totalMovies } = await fetchMovies(
         getActiveFilters(),
         page,
-        pageSize,
-        signal
+        pageSize
       );
 
-      // Si la petición no fue cancelada, procedemos a renderizar.
-      if (!signal.aborted) {
-        if (movies && movies.length > 0) {
-          preloadLcpImage(movies[0]);
-        }
-        updateDomWithResults(movies, totalMovies);
+      if (movies && movies.length > 0) {
+        preloadLcpImage(movies[0]);
       }
+      updateDomWithResults(movies, totalMovies);
     } catch (error) {
-      // Si el error es de cancelación, es un comportamiento esperado y no hacemos nada.
-      if (error.name === "AbortError") {
-        console.log("Petición de películas cancelada deliberadamente.");
-        return; // Detenemos la ejecución de forma segura.
-      }
-      // Para cualquier otro error, lo manejamos y lo mostramos al usuario.
       console.error("Error en el proceso de carga:", error);
       const friendlyMessage = getFriendlyErrorMessage(error);
       showToast(friendlyMessage, "error");
@@ -147,7 +96,7 @@ export async function loadAndRenderMovies(page = 1) {
     }
   };
 
-  if (supportsViewTransitions && !signal.aborted) {
+  if (supportsViewTransitions) {
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
     document.startViewTransition(renderLogic);
   } else {
@@ -159,11 +108,6 @@ export async function loadAndRenderMovies(page = 1) {
   }
 }
 
-/**
- * Actualiza el DOM con los resultados obtenidos de la API.
- * @param {Array} movies - El array de películas.
- * @param {number} totalMovies - El número total de resultados.
- */
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
@@ -188,9 +132,6 @@ function updateDomWithResults(movies, totalMovies) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
-
-
-// --- MANEJADORES DE EVENTOS ---
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
@@ -219,8 +160,6 @@ async function handleSearchInput() {
     await loadAndRenderMovies(1);
   }
 }
-
-// --- CONFIGURACIÓN DE LISTENERS ---
 
 function setupHeaderListeners() {
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
@@ -255,13 +194,11 @@ function setupHeaderListeners() {
 }
 
 function setupGlobalListeners() {
-  // Listener delegado para clics fuera de elementos activos (sidebar, autocomplete).
   document.addEventListener("click", (e) => {
     if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
     if (!e.target.closest(".sidebar")) collapseAllSections();
   });
 
-  // Listener delegado para la paginación inferior.
   dom.paginationContainer.addEventListener("click", async (e) => {
     const button = e.target.closest(".btn[data-page]");
     if (button) {
@@ -273,8 +210,6 @@ function setupGlobalListeners() {
     }
   });
 
-  // ✨ ARQUITECTURA LIMPIA: Un único listener delegado para toda la parrilla.
-  // Es mucho más performante que añadir un listener a cada tarjeta.
   dom.gridContainer.addEventListener("click", function(e) {
     const cardElement = e.target.closest(".movie-card");
     if (cardElement) {
@@ -287,22 +222,20 @@ function setupGlobalListeners() {
     }
   });
 
-  // Reutilizamos la misma lógica para la modal de vista rápida.
+  // ACTIVACIÓN DEL SISTEMA DELEGADO
+  initGridHoverSystem(dom.gridContainer);
+
   document.getElementById("quick-view-content").addEventListener("click", function(e) {
     handleCardClick.call(this, e);
   });
   
-    // Este listener se encarga de la funcionalidad del botón de cambio de tema.
   dom.themeToggleButton.addEventListener("click", (e) => {
     triggerPopAnimation(e.currentTarget);
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    // Alterna la clase en `documentElement` (la etiqueta <html>)
     const isDarkMode = document.documentElement.classList.toggle("dark-mode");
-    // Guarda la preferencia en el almacenamiento local para persistencia.
     localStorage.setItem("theme", isDarkMode ? "dark" : "light");
   });
   
-  // Listener de scroll optimizado con `requestAnimationFrame`.
   let isTicking = false;
   window.addEventListener("scroll", () => {
     if (!isTicking) {
@@ -318,9 +251,6 @@ function setupGlobalListeners() {
 
   dom.backToTopButton.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
-  /**
-   * Listeners para el overlay y la tecla Escape para cerrar el sidebar en móvil.
-   */
   const rewindButton = document.querySelector("#rewind-button");
   if (dom.sidebarOverlay && rewindButton) {
     dom.sidebarOverlay.addEventListener("click", () => rewindButton.click());
@@ -335,25 +265,14 @@ function setupGlobalListeners() {
     }
   });
 
-  // =================================================================
-  //  ▼▼▼ NUEVO LISTENER (PATRÓN EVENT BUS) ▼▼▼
-  // =================================================================
-  /**
-   * Listener global para el evento personalizado 'card:requestUpdate'.
-   * Desacopla el módulo `rating-stars` de `card`, permitiendo que cualquier
-   * componente solicite una actualización de UI para una tarjeta específica.
-   */
   document.addEventListener("card:requestUpdate", (e) => {
-    // El elemento de la tarjeta que necesita ser actualizado viene en la propiedad 'detail' del evento.
     const { cardElement } = e.detail;
     if (cardElement) {
-      // Llamamos a la función de actualización correspondiente.
       updateCardUI(cardElement);
     }
   });
 }
 
-// --- SISTEMA DE AUTENTICACIÓN Y DATOS DE USUARIO ---
 function setupAuthSystem() {
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
@@ -401,7 +320,6 @@ function setupAuthSystem() {
   });
 }
 
-// --- GESTIÓN DE URL Y TÍTULO DE PÁGINA ---
 function updatePageTitle() {
   const { searchTerm, genre, year, country, director, actor, selection } =
     getActiveFilters();
@@ -510,7 +428,6 @@ function updateUrl() {
   }
 }
 
-// --- FUNCIÓN DE INICIALIZACIÓN ---
 function init() {
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
@@ -526,22 +443,14 @@ function init() {
     loadAndRenderMovies(getCurrentPage());
   });
 
-  // ✨ ARQUITECTURA BASADA EN EVENTOS (Event Bus)
-  // Escuchamos eventos personalizados para desacoplar los módulos.
-  document.addEventListener("card:requestUpdate", (e) => {
-    if (e.detail.cardElement) updateCardUI(e.detail.cardElement);
-  });
-
-  // ✨ OPTIMIZACIÓN: Unificamos la lógica de refresco de UI por cambios de datos
   const handleDataRefresh = () => {
     console.log("%c[CACHE] Datos/Sesión cambiaron. Vaciando caché.", "color: #f57c00");
-    queryCache.clear(); // Invalida búsquedas previas porque el estado de 'visto/nota' ha cambiado
-    document.querySelectorAll(".movie-card").forEach(updateCardUI); // Actualiza visualmente lo que ya está en pantalla
+    queryCache.clear();
+    document.querySelectorAll(".movie-card").forEach(updateCardUI);
   };
 
   document.addEventListener("userMovieDataChanged", handleDataRefresh);
   document.addEventListener("userDataUpdated", handleDataRefresh);
-
 
   document.addEventListener("filtersReset", (e) => {
     const { keepSort, newFilter } = e.detail || {};
@@ -558,18 +467,15 @@ function init() {
     loadAndRenderMovies(1);
   });
 
-  // Inicialización de todos los módulos.
   initSidebar();
   initQuickView();
   setupHeaderListeners();
   initTouchDrawer();
   setupGlobalListeners();
-  // setupKeyboardShortcuts(); // Descomentar si se implementa
   setupAuthSystem();
   setupAuthModal();
   initAuthForms();
 
-  // Carga inicial de la aplicación.
   readUrlAndSetState();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   loadAndRenderMovies(getCurrentPage());
