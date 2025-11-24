@@ -1,22 +1,24 @@
-/*
+/* =================================================================
+ *          COMPONENTE: Resumen de Película (Frontal)
  * =================================================================
- *              Componente: Resumen de Película (Movie Summary)
- * =================================================================
- * Contiene los estilos para la sección inferior de la cara frontal
- * de la tarjeta, mostrando la información esencial de la película.
- *
- * Versión 3.0:
- * - Aplica la nueva escala tipográfica modular para una jerarquía clara.
- * - Utiliza variables semánticas de peso y altura de línea.
- * - Estructura el layout de meta-información con Flexbox para una
- *   alineación robusta de iconos y texto.
- */
+ *  FICHERO: src/css/components/movie-summary.css
+ *  RESPONSABILIDAD: Estilar la sección de texto, título, director
+ *  y metadatos (iconos de plataforma, año, país) de la tarjeta.
+ * ================================================================= */
 
+/* --- 1. Contenedor Principal --- */
 .movie-summary {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  padding: var(--space-md) var(--space-sm) var(--space-xs);
+  
+  /* 
+     OPTIMIZACIÓN DE ESPACIADO:
+     Usamos 'space-md' (base) + 3px extra para separar visualmente
+     el texto de los iconos de valoración que "cuelgan" del póster.
+  */
+  padding: calc(var(--space-md) + 3px) var(--space-sm) var(--space-xs);
+  
   overflow: hidden;
 }
 
@@ -25,37 +27,46 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  text-align: left; /* Desplaza el bloque hacia abajo */
+  text-align: left;
   margin-top: 0;
 }
 
-/* Título de la tarjeta: usa el nivel 'sm' para mantener la legibilidad en un espacio reducido */
+/* --- 2. Tipografía y Jerarquía --- */
+
+/* Título de la Película */
 .movie-summary h3 {
-  margin-bottom: var(--space-xxs);
+  /* Compactación vertical solicitada */
+  margin-bottom: 0; /* Elimina espacio con el director */
+  line-height: 1.1; /* Junta las líneas si el título es largo */
+  
+  /* Truncado de texto (2 líneas máximo) */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  
+  /* Estilos de fuente */
   font-family: var(--font-title);
-  font-size: var(--font-size-base); /* 1.25rem (20px) */
-  font-weight: var(
-    --font-weight-bold
-  ); /* Mantenemos bold (700), es suficiente */
-  letter-spacing: -0.025em; /* ← NUEVO: Aporta refinamiento y densidad */
-  line-height: var(--line-height-tight); /* 1.25, para títulos */
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.025em;
+  
+  /* Renderizado nítido */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Director: usa el nivel 'sm' para información secundaria */
+/* Nombre del Director */
 .movie-summary .front-director-info {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-light);
+  color: var(--color-text-tertiary);
+  
+  /* Truncado de una sola línea */
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--color-text-tertiary); /* ← CAMBIO CLAVE */
-  font-weight: var(--font-weight-light); /* ← CAMBIO CLAVE */
-  font-size: var(--font-size-sm); /* 0.8rem (12.8px) */
 }
 
 .movie-summary .front-director-info a {
@@ -64,26 +75,24 @@
   transition: color var(--duration-fast);
 }
 
+/* Hover en el director (solo si la rotación está desactivada) */
 body.rotation-disabled .movie-summary .front-director-info a:hover {
   color: var(--color-text-primary);
   text-decoration: underline;
 }
 
-/*
- * Contenedor principal para la fila de meta-información
- * (iconos, año, bandera).
- */
+/* --- 3. Línea de Metadatos (Iconos + Año) --- */
 .movie-summary .movie-meta {
   padding-top: var(--space-xs);
   display: flex;
-  justify-content: space-between; /* Alinea iconos a la izq, año/bandera a la der */
+  justify-content: space-between; /* Iconos a la izq, Año a la der */
   align-items: center;
-  min-height: 24px;
+  min-height: 24px; /* Altura mínima para consistencia */
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
 }
 
-/* Contenedor para iconos de plataforma (se alinea a la izquierda) */
+/* Grupo Izquierdo: Iconos de Plataforma */
 .card-icons-line {
   display: flex;
   align-items: center;
@@ -94,53 +103,13 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
   vertical-align: middle;
 }
 
-.netflix-icon {
-  color: #e50914;
-}
-
-[data-template="hbo-icon"] {
-  color: #002be7;
-}
-
-.disney-icon { color: #990000; }
-html.dark-mode .disney-icon { color: #D9534F; }
-
-.wb-icon {
-  color: #000b6c;
-}
-html.dark-mode .wb-icon {
-  color: #4da4f2;
-}
-
-.universal-icon { color: #444444; }
-html.dark-mode .universal-icon { color: #BBBBBB; }
-
-.sony-icon { color: #004098; }
-html.dark-mode .sony-icon { color: #3182ce; }
-
-.paramount-icon { color: #0063ff; }
-html.dark-mode .paramount-icon { color: #E0E0E0; }
-
-.lionsgate-icon { color: #CC7722; }
-html.dark-mode .lionsgate-icon { color: #f9d7b5; }
-
-.amazon-icon { color: #f6a61f; }
-
-/* Contenedor para año y bandera (se alinea a la derecha) */
-.year-country-line {
-  /* Ya no necesita propiedades flex propias, el padre (.movie-meta) lo gestiona */
-}
-
+/* Grupo Derecho: Año y Bandera */
 .year-flag-group {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-weight: var(
-    --font-weight-semibold
-  ); /* Mantenemos semibold, es un buen punto medio */
-  color: var(
-    --color-text-secondary
-  ); /* Usamos el secundario, no el terciario */
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
 }
 
 .country-info {
@@ -149,9 +118,45 @@ html.dark-mode .lionsgate-icon { color: #f9d7b5; }
   gap: var(--space-xxs);
 }
 
-/* Contenedor de estrellas de valoración (sin cambios de tipografía) */
+/* --- 4. Colores de Plataformas (Modo Claro / Oscuro) --- */
+
+/* Netflix */
+.netflix-icon { color: #e50914; }
+
+/* HBO */
+[data-template="hbo-icon"] { color: #002be7; }
+
+/* Disney */
+.disney-icon { color: #990000; }
+html.dark-mode .disney-icon { color: #D9534F; }
+
+/* Warner Bros */
+.wb-icon { color: #000b6c; }
+html.dark-mode .wb-icon { color: #4da4f2; }
+
+/* Universal */
+.universal-icon { color: #444444; }
+html.dark-mode .universal-icon { color: #BBBBBB; }
+
+/* Sony */
+.sony-icon { color: #004098; }
+html.dark-mode .sony-icon { color: #3182ce; }
+
+/* Paramount */
+.paramount-icon { color: #0063ff; }
+html.dark-mode .paramount-icon { color: #E0E0E0; }
+
+/* Lionsgate */
+.lionsgate-icon { color: #CC7722; }
+html.dark-mode .lionsgate-icon { color: #f9d7b5; }
+
+/* Amazon */
+.amazon-icon { color: #f6a61f; }
+
+/* --- 5. Contenedor de Estrellas --- */
+/* Define el espaciado entre estrellas dentro del resumen */
 .star-rating-container {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 4px; /* Separación fina entre estrellas */
 }

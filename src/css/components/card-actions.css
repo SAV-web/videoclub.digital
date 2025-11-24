@@ -1,31 +1,49 @@
-/* src/css/components/card-actions.css */
-
-/*
+/* =================================================================
+ *          COMPONENTE: Acciones de Tarjeta (Overlay)
  * =================================================================
- *          Componente: Acciones de Tarjeta
- * =================================================================
- */
+ *  FICHERO: src/css/components/card-actions.css
+ *  RESPONSABILIDAD: Gestionar el bloque flotante de acciones sobre
+ *  el póster, incluyendo efectos visuales (aura) y estados activos.
+ * ================================================================= */
 
-/* --- Contenedor Principal de Acciones --- */
+/* --- 1. Layout y Posicionamiento --- */
 .card-rating-block {
   position: absolute;
-  bottom: 0;
+  bottom: 1px; /* Separación del borde inferior del póster */
   left: 0;
   right: 0;
-  transform: translateY(66.66%);
+  transform: translateY(66.66%); /* Efecto de solapamiento con el texto inferior */
   z-index: 5;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 var(--space-sm);
-  pointer-events: none;
+  pointer-events: none; /* Permite clic a través del contenedor */
 }
 
+/* --- 2. Efecto "Aura" (Contraste visual sobre el póster) --- */
 .card-rating-block > * {
-  pointer-events: auto;
+  pointer-events: auto; /* Reactivar clics en los iconos */
+  /* 
+     Aura Modo Claro: Usamos el color de la superficie (blanco/gris claro).
+     Doble capa para mayor solidez.
+  */
+  filter: drop-shadow(0 0 2px var(--color-surface)) drop-shadow(0 0 4px var(--color-surface));
+  transition: filter 0.3s ease, transform var(--duration-quick) var(--ease-spring);
 }
 
-/* --- Botón de Watchlist (con Personalidad) --- */
+html.dark-mode .card-rating-block > * {
+  /* 
+     Aura Modo Oscuro: Usamos NEGRO PURO (#000) para crear contraste real.
+     Tres capas para simular un contorno sólido y denso.
+  */
+  filter: 
+    drop-shadow(0 0 1px #000) 
+    drop-shadow(0 0 2px #000) 
+    drop-shadow(0 0 4px #000);
+}
+
+/* --- 3. Botón de Watchlist (Marcapáginas) --- */
 .card-action-btn {
   width: 28px;
   height: 28px;
@@ -46,57 +64,37 @@
 }
 
 .card-action-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 20px; height: 20px;
   transition: all var(--duration-normal) var(--ease-smooth-out);
 }
 
-/* --- ESTADO ACTIVO del botón de Watchlist --- */
+/* Estado Activo (Watchlist) */
 .card-action-btn.is-active {
   animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in);
 }
 
 .card-action-btn.is-active svg {
-  color: #ffc107;
-  animation: eye-blink 4s ease-in-out infinite 1s;
+  color: #ffbd07; /* Amarillo */
+  fill: #ffbd07;  /* Relleno sólido */
+  animation: none;
 }
 
 .card-action-btn.is-active svg path {
-  fill: #ffc107;
+  stroke: #ffbd07;
 }
 
-.card-action-btn.is-active svg circle {
-  fill: var(--color-bg);
-  stroke: var(--color-bg);
+/* El signo "+" se vuelve del color de fondo para parecer un hueco */
+.card-action-btn.is-active svg line {
+  stroke: var(--color-surface);
 }
 
-/* --- Keyframes para las Animaciones --- */
 @keyframes watchlist-pop {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-  50% {
-    transform: scale(1.3) rotate(-5deg);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.3) rotate(-5deg); }
+  100% { transform: scale(1); }
 }
 
-@keyframes eye-blink {
-  0%,
-  90%,
-  100% {
-    opacity: 1;
-    transform: scaleY(1);
-  }
-  95% {
-    opacity: 0.8;
-    transform: scaleY(0.1);
-  }
-}
-
-/* --- Estrellas y Círculo de Valoración Interactivas --- */
+/* --- 4. Interactividad de Ratings (Estrellas y Suspenso) --- */
 .star-rating-container.is-interactive,
 .low-rating-circle.is-interactive {
   cursor: pointer;
@@ -112,68 +110,54 @@
   transform: scale(1.2);
 }
 
+/* --- 5. Estados Activos de Ratings --- */
+
+/* Estrellas Activas */
 .star-rating-container.has-user-rating .star-icon-path {
-  stroke: #ffc107;
+  stroke: #ffbd07;
 }
-
 .star-rating-container.has-user-rating .star-icon-path--filled {
-  fill: #ffc107;
+  fill: #ffbd07;
 }
 
+/* Suspenso Activo (Estrella Hueca Amarilla) */
 .low-rating-circle.has-user-rating {
-  border-color: #ffc107;
+  stroke: #ffbd07; 
+  color: #ffbd07; 
+  fill: none; /* CRÍTICO: Se mantiene hueca */
   background-color: transparent;
+  
+  /* Filtro combinado: Aura Blanca + Brillo Amarillo */
+  filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.6)) drop-shadow(0 0 4px var(--color-surface));
 }
 
-/* ========================================================== */
-/*  ▼▼▼ OCULTAR BARRAS DE SCROLL EN PANELES ESPECÍFICOS ▼▼▼
-/* ========================================================== */
-
-/* Oculta la barra de scroll en navegadores WebKit (Chrome, Safari, etc.) */
-.flip-card-back .scrollable-content.full-view::-webkit-scrollbar {
-  display: none;
+html.dark-mode .low-rating-circle.has-user-rating {
+  fill: none; 
+  /* Filtro combinado Dark: Brillo Amarillo + Sombra Negra */
+  filter: 
+    drop-shadow(0 0 2px rgba(255, 193, 7, 0.8)) 
+    drop-shadow(0 0 4px #000);
 }
 
-/* Oculta la barra de scroll en Firefox */
-.flip-card-back .scrollable-content.full-view {
-  /* La propiedad estándar para Firefox */
-  scrollbar-width: none;
-  /* Para navegadores muy antiguos de IE */
-  -ms-overflow-style: none;
-}
+/* --- 6. Utilidades de Scroll --- */
+/* Ocultar barras en paneles específicos */
+.flip-card-back .scrollable-content.full-view::-webkit-scrollbar { display: none; }
+.flip-card-back .scrollable-content.full-view { scrollbar-width: none; -ms-overflow-style: none; }
 
-/* =================================================================
-   MEJORAS DE ACCESIBILIDAD TÁCTIL (Mínimo 48x48px)
-   Se aplica a dispositivos sin hover y con puntero grueso.
-   ================================================================= */
+/* --- 7. Accesibilidad Táctil --- */
 @media (hover: none) and (pointer: coarse) {
-  /* --- Botón de Watchlist --- */
   .card-action-btn {
-    width: 48px; /* Área táctil mínima de 48x48px */
-    height: 48px;
+    width: 48px; height: 48px; /* Área táctil mínima */
   }
-
   .card-action-btn svg {
-    width: 24px; /* Tamaño visual del icono */
-    height: 24px;
+    width: 24px; height: 24px;
   }
-
-  /* --- Círculo de Suspenso --- */
+  
+  /* Ajuste para el icono de suspenso */
   .low-rating-circle {
-    /* Aumentamos ligeramente el tamaño visual para mejor presencia */
-    width: 24px;
-    height: 24px;
-    border-width: 4px;
-    position: relative; /* Necesario para el pseudo-elemento */
+    width: 24px; height: 24px;
+    padding: 0;
   }
-
-  .low-rating-circle::before {
-    content: "";
-    position: absolute;
-    /* Creamos un cuadrado de 48x48px centrado en el círculo total de 36px */
-    top: -6px; /* (48 - 36) / 2 */
-    left: -6px;
-    right: -6px;
-    bottom: -6px;
-  }
+  /* Eliminamos pseudo-elementos complejos previos */
+  .low-rating-circle::before { display: none; }
 }

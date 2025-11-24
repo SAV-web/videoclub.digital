@@ -1,14 +1,12 @@
 /* =================================================================
- *
- *                COMPONENTE: Movie Card (Tarjeta de Película)
- *                --------------------------------------------
- *
- *  FICHERO:  src/css/components/card.css
- *  VERSIÓN:  3.2 (Corrección de Flexbox en Modal)
- *
+ *                COMPONENTE: Movie Card (Estructura y Base)
+ * =================================================================
+ *  FICHERO: src/css/components/card.css
+ *  RESPONSABILIDAD: Definir el layout, la animación 3D, tipografía
+ *  y dimensiones base de los elementos.
  * ================================================================= */
 
-/* --- 1. Contenedor Principal y Contexto 3D --- */
+/* --- 1. Contenedor y Contexto 3D --- */
 @keyframes card-appear {
   from { opacity: 0; transform: translateY(30px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -16,7 +14,7 @@
 
 .movie-card {
   perspective: 1000px;
-  aspect-ratio: 500 / 950;
+  aspect-ratio: 500 / 950; /* Coincide con el skeleton para evitar CLS */
   animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 50ms);
   position: relative;
@@ -33,7 +31,7 @@
   transition: transform var(--duration-leisurely) var(--ease-smooth-out);
 }
 
-/* --- 2. Estados de Interacción (Hover y Flipped) --- */
+/* --- 2. Lógica de Volteo (Flip) --- */
 .flip-card-inner.is-flipped {
   transform: rotateY(180deg);
 }
@@ -41,10 +39,12 @@ html.dark-mode .flip-card-inner.is-flipped {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
+/* Hover intencional (solo escritorio) */
 @media (hover: hover) and (pointer: fine) {
   body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
+  /* Efecto de elevación al pasar el mouse (sin girar aún) */
   .movie-card:not(.is-flipped):hover {
     transform: translateY(-8px) translateZ(0) scale(1.02);
     filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
@@ -54,7 +54,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   }
 }
 
-/* --- 3. Estructura de las Caras (Frontal y Trasera) --- */
+/* --- 3. Caras de la Tarjeta --- */
 .flip-card-front,
 .flip-card-back {
   position: absolute;
@@ -67,19 +67,28 @@ html.dark-mode .flip-card-inner.is-flipped {
   backface-visibility: hidden;
 }
 
-.flip-card-back {
-  transform: rotateY(180deg);
-}
-
-/* Solución de Interacción Fantasma (Click-Through Prevention) */
 .flip-card-front {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
   pointer-events: auto;
   z-index: 2;
 }
+
 .flip-card-back {
-  pointer-events: none;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-normal);
+  padding: var(--space-xs) var(--space-sm);
+  pointer-events: none; /* Evita clicks fantasmas cuando está detrás */
   z-index: 1;
 }
+
+/* Gestión de punteros al girar */
 .flip-card-inner.is-flipped .flip-card-back,
 body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-back {
   pointer-events: auto;
@@ -91,13 +100,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   z-index: 1;
 }
 
-/* --- 4. Componentes de la Cara Frontal --- */
-.flip-card-front {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-}
+/* --- 4. Elementos Visuales (Imagen) --- */
 .poster-container {
   position: relative;
   width: 100%;
@@ -111,6 +114,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   border-radius: var(--radius-lg);
   object-fit: cover;
 }
+/* Efecto de carga progresiva (Blurhash) */
 .flip-card-front img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.1);
@@ -121,16 +125,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   transform: scale(1);
 }
 
-/* --- 5. Componentes de la Cara Trasera --- */
-.flip-card-back {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-  line-height: var(--line-height-normal);
-  padding: var(--space-xs) var(--space-sm);
-}
-
+/* --- 5. Contenido Trasero (Detalles) --- */
 @keyframes fade-in-subtle {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -159,6 +154,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .back-meta-header {
   display: flex;
   justify-content: space-between;
@@ -167,11 +163,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   margin-bottom: var(--space-sm);
   font-size: var(--font-size-sm);
 }
-.episode-duration-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
+
 .ratings-container {
   display: flex;
   flex-direction: column;
@@ -183,20 +175,18 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   gap: var(--space-sm);
   text-decoration: none;
 }
-.rating-line.disabled {
-  pointer-events: none;
-  opacity: 0.7;
-}
+.rating-line.disabled { pointer-events: none; opacity: 0.7; }
+
 .rating-left {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
   flex-shrink: 0;
   color: var(--color-text-primary);
-  text-decoration: none;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
 }
+
 .rating-bar-container {
   flex-grow: 1;
   width: 100%;
@@ -212,6 +202,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   background-color: var(--color-accent);
   transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
 }
+
 .details-list {
   display: flex;
   flex-direction: column;
@@ -230,6 +221,8 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
 }
+
+/* Scroll y Expansión de Sinopsis */
 .scrollable-content {
   position: relative;
   transition: all var(--duration-normal) var(--ease-smooth-out);
@@ -245,6 +238,8 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   background: linear-gradient(to bottom, transparent, var(--color-surface));
   pointer-events: none;
 }
+.flip-card-back.is-expanded .scrollable-content::after { opacity: 0; }
+
 .plot-summary-final, .critic-review {
   padding-top: var(--space-sm);
   border-top: 1px solid var(--color-border);
@@ -254,9 +249,8 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   font-weight: var(--font-weight-normal);
   line-height: var(--line-height-relaxed);
 }
-.critic-review {
-  margin-top: var(--space-sm);
-}
+.critic-review { margin-top: var(--space-sm); }
+
 .flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn) {
   opacity: 0;
   transform: translateY(-100%);
@@ -268,26 +262,22 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   padding: var(--space-md);
   background-color: var(--color-surface);
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE */
 }
 .flip-card-back.is-expanded .scrollable-content::-webkit-scrollbar { display: none; }
-.flip-card-back.is-expanded .scrollable-content::after { opacity: 0; }
+
 .expand-content-btn {
   position: absolute;
-  bottom: 2px;
-  right: 2px;
-  width: 26px;
-  height: 26px;
+  bottom: 2px; right: 2px;
+  width: 26px; height: 26px;
   border-radius: 50%;
   border: none;
   background-color: var(--color-accent);
   color: var(--color-surface);
   font-size: 1.2rem;
   line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   transition: all var(--duration-quick) ease-out;
@@ -295,54 +285,47 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 }
 .expand-content-btn:hover { transform: scale(1.1); }
 
-/* --- 6. Elementos de UI Reutilizables (Iconos, Ratings) --- */
+/* --- 6. Elementos Base de Valoración (Sin posición) --- */
 .star-icon {
   position: relative;
   width: 20px;
   height: 20px;
 }
-.star-icon::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 48px;
-  height: 48px;
-  transform: translate(-50%, -50%);
-}
 .star-icon-path {
   stroke: var(--color-accent);
-  stroke-width: 1.5;
+  stroke-width: 2; /* Grosor Lucide Standard */
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 .star-icon-path--empty { fill: transparent; }
 .star-icon-path--filled {
   fill: var(--color-accent);
   clip-path: inset(0 100% 0 0);
 }
+
+/* Círculo de Suspenso (Estrella Hueca) Base */
 .low-rating-circle {
-  display: none;
-  width: 16px;
-  height: 16px;
-  border: 4px solid var(--color-accent);
-  border-radius: 50%;
+  display: none; /* Controlado por JS */
+  width: 20px; 
+  height: 20px;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  fill: none; /* Siempre hueca */
+  border: none;
   background-color: transparent;
+  transition: stroke 0.3s ease, transform var(--duration-quick) var(--ease-spring);
 }
+
+/* --- 7. Utilerías --- */
 .fi { font-size: var(--font-size-sm); }
 .rating-icon {
-  width: 1.5em;
-  height: 1.5em;
+  width: 1.5em; height: 1.5em;
   border-radius: var(--radius-sm);
   object-fit: contain;
 }
-[data-template="wikipedia-link"] > .rating-icon {
-  width: 1.7em;
-  height: 1.7em;
-  transform: translateY(-1px);
-  color: var(--color-text-tertiary);
-}
 .star-rating-container { cursor: default; }
 
-/* --- 7. Overrides para Contextos Específicos (Modal) --- */
+/* --- 8. Modal Overrides --- */
 .quick-view-modal .flip-card-back > *:not(.scrollable-content) { display: none; }
 .quick-view-modal .scrollable-content {
   position: static;
@@ -355,16 +338,6 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   overflow: visible;
   display: block;
 }
-.quick-view-modal .back-original-title-wrapper {
-    min-height: calc(var(--font-size-base) * var(--line-height-tight) * 2);
-}
-.quick-view-modal .back-original-title-wrapper span {
-    font-size: var(--font-size-base);
-}
-
-/* ▼▼▼ CORRECCIÓN PARA FLEXBOX EN MODAL DE ESCRITORIO ▼▼▼ */
 @media (min-width: 769px) {
-  .quick-view-back {
-    min-width: 0;
-  }
+  .quick-view-back { min-width: 0; }
 }
