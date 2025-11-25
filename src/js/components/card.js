@@ -322,8 +322,12 @@ function populateCardText(elements, movieData) {
   } else {
     directorContainer.textContent = directorsString;
   }
-  elements.duration.textContent = formatRuntime(movieData.minutes);
-  const episodesText = movieData.type?.toUpperCase().startsWith("S.") && movieData.episodes ? `${movieData.episodes} x` : "";
+  
+  // CAMBIO: Detectamos si es serie para cambiar el formato de tiempo
+  const isSeries = movieData.type?.toUpperCase().startsWith("S.");
+  elements.duration.textContent = formatRuntime(movieData.minutes, isSeries);
+
+  const episodesText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
   if (elements.episodes) {
     elements.episodes.textContent = episodesText;
     elements.episodes.style.display = episodesText ? "inline" : "none";

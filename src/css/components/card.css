@@ -135,7 +135,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: var(--space-sm);
+  margin-bottom: var(--space-xxs);
   padding: 0 var(--space-xs);
   min-height: calc(var(--font-size-sm) * var(--line-height-tight) * 2);
   width: 100%;
@@ -155,19 +155,48 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   text-overflow: ellipsis;
 }
 
+/* Contenedor de la cabecera trasera */
 .back-meta-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start; /* Alineado a la izquierda */
   align-items: center;
   width: 100%;
-  margin-bottom: var(--space-sm);
+  margin-bottom: var(--space-xs);
   font-size: var(--font-size-sm);
 }
 
+/* Grupo de Wikipedia + Duración */
+.episode-duration-group {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Espacio reducido entre textos (279 x 22') */
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+/* Ajuste específico para el icono de Wikipedia */
+[data-template="wikipedia-link"] {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: transform var(--duration-fast);
+  margin-right: var(--space-xs); /* Separa el icono del grupo de texto */
+}
+[data-template="wikipedia-link"]:hover { transform: scale(1.1); }
+
+[data-template="wikipedia-link"] > .rating-icon {
+  width: 1.8em; /* Igualado a iconos FA/IMDb */
+  height: 1.8em;
+  transform: none;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+/* Ratings (FA / IMDb) */
 .ratings-container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 .rating-line {
   display: flex;
@@ -203,12 +232,13 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
+/* Lista de detalles (Género, Reparto) */
 .details-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-xxs);
   margin: var(--space-sm) 0 var(--space-xs);
-  padding-top: var(--space-sm);
+  padding-top: var(--space-xs);
   border-top: 1px solid var(--color-border);
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
@@ -241,7 +271,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 .flip-card-back.is-expanded .scrollable-content::after { opacity: 0; }
 
 .plot-summary-final, .critic-review {
-  padding-top: var(--space-sm);
+  padding-top: var(--space-xs);
   border-top: 1px solid var(--color-border);
   opacity: 0.8;
   font-size: var(--font-size-xs);
@@ -306,7 +336,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 /* Círculo de Suspenso (Estrella Hueca) Base */
 .low-rating-circle {
   display: none; /* Controlado por JS */
-  width: 20px; 
+  width: 20px; /* Igualado a las otras estrellas */
   height: 20px;
   stroke: var(--color-accent);
   stroke-width: 2;

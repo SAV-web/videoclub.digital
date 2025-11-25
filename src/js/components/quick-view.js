@@ -1,15 +1,14 @@
 // =================================================================
-//          COMPONENTE QUICK VIEW (VISTA RÁPIDA) - v3.1 (Corregido)
+//          COMPONENTE: Quick View (Vista Rápida / Modal)
 // =================================================================
 //
 //  FICHERO:  src/js/components/quick-view.js
-//  VERSIÓN:  3.1
+//  VERSIÓN:  3.3 (Soporte para formato de duración de series)
 //
-//  HISTORIAL:
-//    v3.1 - CORRECCIÓN CRÍTICA: Se usan los nombres de propiedad correctos
-//           (ej. `movieData.genres` en vez de `movieData.genres_list`) para
-//           coincidir con los alias de la API, solucionando el bug de "No disponible".
-//    v3.0 - REFACTORIZACIÓN COMPLETA de `populateModal`.
+//  RESPONSABILIDADES:
+//    - Gestionar el ciclo de vida de la modal (abrir, cerrar, poblar).
+//    - Reutilizar la lógica visual de las tarjetas (ratings, watchlist).
+//    - Adaptar la presentación de datos para el formato expandido.
 //
 // =================================================================
 
@@ -17,6 +16,7 @@ import { openAccessibleModal, closeAccessibleModal } from "./modal-manager.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { formatRuntime } from "../utils.js"; 
 
+// Cache de elementos DOM (Se llenan al inicializar o al usar)
 const dom = {
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
@@ -24,8 +24,17 @@ const dom = {
   template: document.getElementById("quick-view-template")?.content,
 };
 
+// =================================================================
+//          MANEJADORES DE EVENTOS INTERNOS
+// =================================================================
+
+/**
+ * Cierra la modal si se hace clic fuera del contenido (en el overlay).
+ * Ignora clics originados dentro de una tarjeta para evitar conflictos de apertura.
+ */
 function handleOutsideClick(event) {
   const isClickInsideCard = event.target.closest(".movie-card");
+  // Si la modal está visible Y el clic NO fue en la modal Y NO fue en una tarjeta (apertura)
   if (
     dom.modal.classList.contains("is-visible") &&
     !dom.modal.contains(event.target) &&
@@ -35,25 +44,20 @@ function handleOutsideClick(event) {
   }
 }
 
-export function closeModal() {
-  if (!dom.modal.classList.contains("is-visible")) return;
-  
-  dom.modal.classList.remove("is-visible");
-  dom.overlay.classList.remove("is-visible");
-  document.body.classList.remove("modal-open");
-  
-  closeAccessibleModal(dom.modal, dom.overlay);
-  
-  // ✨ FIX: Eliminar el listener para evitar fugas de memoria
-  document.removeEventListener("click", handleOutsideClick);
-}
-
+/**
+ * Gestiona el clic en el nombre del director dentro de la modal.
+ * Cierra la modal y lanza un filtro por ese director.
+ */
 function handleDirectorClick(event) {
   const directorLink = event.target.closest(".front-director-info a[data-director-name]");
   if (!directorLink) return;
+  
   event.preventDefault();
   const directorName = directorLink.dataset.directorName;
+  
   closeModal();
+  
+  // Disparamos el evento global para filtrar
   document.dispatchEvent(
     new CustomEvent("filtersReset", {
       detail: { keepSort: true, newFilter: { type: "director", value: directorName } },
@@ -61,17 +65,28 @@ function handleDirectorClick(event) {
   );
 }
 
+// =================================================================
+//          LÓGICA PRINCIPAL
+// =================================================================
+
+/**
+ * Rellena la modal con los datos de la tarjeta seleccionada.
+ * @param {HTMLElement} cardElement - El elemento .movie-card origen.
+ */
 function populateModal(cardElement) {
   if (!dom.template) return;
-  const clone = dom.template.cloneNode(true);
+  
   const movieData = cardElement.movieData;
+  const clone = dom.template.cloneNode(true);
 
+  // Asignamos datos al contenedor para que updateCardUI funcione
   dom.content.movieData = movieData;
   dom.content.dataset.movieId = movieData.id;
 
   const front = clone.querySelector(".quick-view-front");
   const back = clone.querySelector(".quick-view-back");
 
+  // 1. IMAGEN (Reutilizamos la URL ya cargada en la tarjeta para cache hit)
   const frontImg = front.querySelector("img");
   const cardImg = cardElement.querySelector(".flip-card-front img");
   if (frontImg && cardImg) {
@@ -79,15 +94,18 @@ function populateModal(cardElement) {
     frontImg.alt = cardImg.alt;
   }
   
+  // 2. DATOS FRONTALES (Título, Director, Año, País)
   front.querySelector("#quick-view-title").textContent = movieData.title;
   front.querySelector('[data-template="director"]').textContent = movieData.directors || "";
   front.querySelector('[data-template="year"]').textContent = movieData.year || "";
+  
   if (movieData.country_code) {
     front.querySelector('[data-template="country-flag"]').className = `fi fi-${movieData.country_code}`;
   } else {
     front.querySelector('[data-template="country-container"]').style.display = 'none';
   }
   
+  // 3. TÍTULO ORIGINAL
   const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
   if (movieData.original_title && movieData.original_title.trim() !== '') {
     originalTitleWrapper.querySelector('span').textContent = movieData.original_title;
@@ -96,15 +114,20 @@ function populateModal(cardElement) {
     originalTitleWrapper.style.display = 'none';
   }
 
-  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movieData.minutes);
+  // 4. METADATOS TÉCNICOS (Duración y Episodios)
+  // Detectamos si es serie para cambiar el formato de tiempo (min vs ')
+  const isSeries = movieData.type?.toUpperCase().startsWith("S.");
+  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movieData.minutes, isSeries);
+
   const episodesEl = back.querySelector('[data-template="episodes"]');
-  if (movieData.type?.toUpperCase().startsWith("S.") && movieData.episodes) {
+  if (isSeries && movieData.episodes) {
     episodesEl.textContent = `${movieData.episodes} x`;
     episodesEl.style.display = 'inline';
   } else {
     episodesEl.style.display = 'none';
   }
 
+  // 5. WIKIPEDIA
   const wikipediaLink = back.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {
     wikipediaLink.href = movieData.wikipedia;
@@ -113,17 +136,17 @@ function populateModal(cardElement) {
     wikipediaLink.style.display = 'none';
   }
 
+  // 6. RATINGS (Clonación directa para eficiencia)
+  // Copiamos el bloque de ratings ya renderizado en la tarjeta origen
   const ratingsSource = cardElement.querySelector('.ratings-container');
   const ratingsTarget = back.querySelector('.ratings-container');
   if (ratingsSource && ratingsTarget) {
       ratingsTarget.innerHTML = ratingsSource.innerHTML;
   }
 
-  // ▼▼▼ CORRECCIÓN: Usar los alias correctos de la API (`.genres`, `.actors`) ▼▼▼
+  // 7. DETALLES DE TEXTO (Género, Actores, Sinopsis, Crítica)
   back.querySelector('[data-template="genre"]').textContent = movieData.genres || "No disponible";
   back.querySelector('[data-template="actors"]').textContent = movieData.actors || "No disponible";
-  // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
-
   back.querySelector('[data-template="synopsis"]').textContent = movieData.synopsis || "No disponible";
   
   const criticContainer = back.querySelector('[data-template="critic-container"]');
@@ -134,24 +157,59 @@ function populateModal(cardElement) {
     criticContainer.style.display = 'none';
   }
   
+  // Limpiamos e inyectamos el nuevo contenido
   dom.content.textContent = "";
   dom.content.appendChild(clone);
 
+  // Inicializamos interactividad (Botón Watchlist, Estrellas)
   updateCardUI(dom.content);
   initializeCard(dom.content);
+  
+  // Listener para filtro de director dentro de la modal
   dom.content.addEventListener("click", handleDirectorClick);
+}
+
+// =================================================================
+//          API PÚBLICA
+// =================================================================
+
+export function closeModal() {
+  if (!dom.modal.classList.contains("is-visible")) return;
+  
+  // Animación de salida
+  dom.modal.classList.remove("is-visible");
+  dom.overlay.classList.remove("is-visible");
+  document.body.classList.remove("modal-open");
+  
+  // Gestión de accesibilidad (Focus Trap)
+  closeAccessibleModal(dom.modal, dom.overlay);
+  
+  // Limpieza de listener global para evitar memory leaks
+  document.removeEventListener("click", handleOutsideClick);
 }
 
 export function openModal(cardElement) {
   if (!cardElement) return;
+  
+  // Aseguramos estado limpio
   unflipAllCards();
   dom.content.scrollTop = 0;
+  
+  // Rellenamos datos
   populateModal(cardElement);
+  
+  // Bloqueo de scroll del body
   document.body.classList.add("modal-open");
+  
+  // Secuencia de apertura con delay mínimo para permitir renderizado
   setTimeout(() => {
     dom.modal.classList.add("is-visible");
     dom.overlay.classList.add("is-visible");
+    
+    // Activamos trampas de foco accesibles
     openAccessibleModal(dom.modal, dom.overlay);
+    
+    // Activamos cierre por clic fuera (con delay para no capturar el clic de apertura)
     setTimeout(() => document.addEventListener("click", handleOutsideClick), 0);
   }, 10);
 }
@@ -161,6 +219,7 @@ export function initQuickView() {
     console.error("Quick View modal element not found. Initialization failed.");
     return;
   }
+  // Listener para cierre con tecla ESC
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && dom.modal.classList.contains("is-visible")) {
       closeModal();
