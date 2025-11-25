@@ -245,11 +245,14 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   color: var(--color-text-secondary);
 }
 .detail-item[data-template="actors-container"] {
+  position: relative; /* Necesario para posicionar el botón absoluto dentro */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
+  /* Un poco de padding derecho para que el texto no se coma el espacio del botón si llega al final */
+  padding-right: 10px; 
 }
 
 /* Scroll y Expansión de Sinopsis */
@@ -299,21 +302,37 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 
 .expand-content-btn {
   position: absolute;
-  bottom: 2px; right: 2px;
-  width: 26px; height: 26px;
+  
+  /* CAMBIO: Lo subimos y lo metemos hacia la izquierda para coincidir con tu marca */
+  bottom: 14px; /* Antes 2px */
+  right: 14px;  /* Antes 2px */
+  
+  width: 22px; 
+  height: 22px;
+  
   border-radius: 50%;
   border: none;
   background-color: var(--color-accent);
   color: var(--color-surface);
-  font-size: 1.2rem;
+  
+  font-size: 1.1rem;
   line-height: 1;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  padding-bottom: 0;
+  
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
   transition: all var(--duration-quick) ease-out;
-  z-index: 10;
+  z-index: 20;
 }
-.expand-content-btn:hover { transform: scale(1.1); }
+
+.expand-content-btn:hover { 
+  transform: scale(1.15); 
+  /* Añadimos el mismo feedback de color que pusimos en actores */
+  background-color: var(--color-text-primary);
+}
 
 /* --- 6. Elementos Base de Valoración (Sin posición) --- */
 .star-icon {
@@ -370,4 +389,99 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 }
 @media (min-width: 769px) {
   .quick-view-back { min-width: 0; }
+}
+
+/* --- 9. Expansión de Actores (ESTILO BOTÓN FLOTANTE) --- */
+
+/* Botón [+] circular flotante */
+.actors-expand-btn {
+  position: absolute;
+  
+  /* CAMBIO: Los separamos del borde para que el 'overflow: hidden' no los corte */
+  bottom: 2px; /* Antes 0 */
+  right: 2px;  /* Antes 0 */
+  
+  width: 22px; 
+  height: 22px;
+  
+  border-radius: 50%;
+  border: none;
+  background-color: var(--color-accent);
+  color: var(--color-surface);
+  
+  font-size: 1.1rem;
+  line-height: 1;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  padding-bottom: 2px;
+  
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: all var(--duration-quick) ease-out;
+  z-index: 5;
+}
+
+
+.actors-expand-btn:hover { 
+  transform: scale(1.15); 
+  background-color: var(--color-text-primary); /* Feedback visual al hover */
+}
+
+/* Contenedor oculto con la lista completa de actores */
+.actors-scrollable-content {
+  position: absolute;
+  inset: 0; /* Ocupa toda la trasera */
+  padding: var(--space-md);
+  padding-top: var(--space-xl); /* Espacio extra arriba para no chocar con nada */
+  background-color: var(--color-surface);
+  overflow-y: auto;
+  scrollbar-width: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(100%); /* Entra desde abajo */
+  transition: all var(--duration-normal) var(--ease-smooth-out);
+  z-index: 5; /* Por encima de la sinopsis */
+  
+  /* Tipografía para la lista completa */
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+
+/* Título dentro del overlay de actores */
+.actors-scrollable-content h4 {
+  margin-top: 0;
+  margin-bottom: var(--space-sm); /* Reducido de md a sm */
+  
+  font-family: var(--font-title);
+  
+  /* CAMBIO: Reducimos drásticamente el tamaño */
+  font-size: var(--font-size-base); /* Antes var(--font-size-lg) */
+  
+  font-weight: var(--font-weight-bold);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-xxs); /* Reducido de xs a xxs */
+  color: var(--color-text-primary);
+}
+
+/* --- Lógica de Estados de Expansión --- */
+
+/* CASO A: Expansión de ACTORES Activa */
+/* 1. Mostramos el panel de actores */
+.flip-card-back.is-expanded.show-actors .actors-scrollable-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+/* 2. Ocultamos la sinopsis (que se muestra por defecto al expandir) */
+.flip-card-back.is-expanded.show-actors .scrollable-content {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* CASO B: Ajustes Generales al Expandir (Cualquier modo) */
+/* Aseguramos que el botón grande de abajo siempre esté visible y encima */
+.flip-card-back.is-expanded .expand-content-btn {
+  z-index: 20;
 }
