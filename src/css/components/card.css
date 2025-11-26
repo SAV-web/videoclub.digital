@@ -302,26 +302,21 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 
 .expand-content-btn {
   position: absolute;
-  
-  /* CAMBIO: Lo subimos y lo metemos hacia la izquierda para coincidir con tu marca */
   bottom: 14px; /* Antes 2px */
   right: 14px;  /* Antes 2px */
-  
   width: 22px; 
   height: 22px;
-  
   border-radius: 50%;
   border: none;
   background-color: var(--color-accent);
   color: var(--color-surface);
-  
-  font-size: 1.1rem;
+  font-size: 1.25rem;
+  font-weight: 400;
   line-height: 1;
   display: flex; 
   align-items: center; 
   justify-content: center;
-  padding-bottom: 0;
-  
+  padding-bottom: 2px;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
   transition: all var(--duration-quick) ease-out;
@@ -396,26 +391,20 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 /* Botón [+] circular flotante */
 .actors-expand-btn {
   position: absolute;
-  
-  /* CAMBIO: Los separamos del borde para que el 'overflow: hidden' no los corte */
   bottom: 2px; /* Antes 0 */
   right: 2px;  /* Antes 0 */
-  
   width: 22px; 
   height: 22px;
-  
   border-radius: 50%;
   border: none;
   background-color: var(--color-accent);
   color: var(--color-surface);
-  
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   line-height: 1;
   display: flex; 
   align-items: center; 
   justify-content: center;
   padding-bottom: 2px;
-  
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
   transition: all var(--duration-quick) ease-out;
@@ -463,6 +452,43 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   border-bottom: 1px solid var(--color-border);
   padding-bottom: var(--space-xxs); /* Reducido de xs a xxs */
   color: var(--color-text-primary);
+}
+
+/* Contenedor de la lista */
+.actors-list-text {
+  margin: 0;
+  text-align: left; 
+  color: var(--color-text-primary);
+  padding-bottom: var(--space-xl); 
+}
+
+/* Estilo para cada actor individual (Ahora es un botón) */
+.actor-list-item {
+  /* Reset de estilos de botón */
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  
+  display: block;           /* Para que ocupe la línea entera */
+  width: 100%;
+  line-height: 1.6;
+  
+  /* La "Trinidad" de los puntos suspensivos: */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  transition: color var(--duration-fast);
+}
+
+.actor-list-item:hover {
+  color: var(--color-accent);
+  text-decoration: underline; /* Feedback visual claro de link */
 }
 
 /* --- Lógica de Estados de Expansión --- */

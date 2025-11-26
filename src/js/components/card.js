@@ -336,12 +336,21 @@ function populateCardText(elements, movieData, cardElement) {
     actorsContainer.appendChild(expandBtn);
 
     // 2. Contenido del overlay (Nombre + Lista completa)
-    // ... (esto sigue igual) ...
     const actorsOverlay = cardElement.querySelector('.actors-scrollable-content');
     if (actorsOverlay) {
+      // TRANSFORMACIÓN A LISTA DE BOTONES
+      const actorsListHtml = movieData.actors
+        .split(',')
+        .map(actor => {
+          const name = actor.trim();
+          // CAMBIO: Usamos <button> y guardamos el nombre en dataset
+          return `<button type="button" class="actor-list-item" data-actor-name="${name}">${name}</button>`;
+        })
+        .join(''); 
+
       actorsOverlay.innerHTML = `
         <h4>Reparto Completo</h4>
-        <p>${movieData.actors}</p>
+        <div class="actors-list-text">${actorsListHtml}</div>
       `;
     }
   } else {
@@ -510,7 +519,19 @@ export function handleCardClick(event) {
     }));
     return;
   }
-
+  // X. ACTOR FILTER (NUEVO)
+  const actorBtn = target.closest(".actor-list-item");
+  if (actorBtn) {
+    event.preventDefault(); // Buena práctica, aunque es un button type="button"
+    // Lanzamos el evento global para filtrar por actor
+    document.dispatchEvent(new CustomEvent("filtersReset", { 
+      detail: { 
+        keepSort: true, 
+        newFilter: { type: "actor", value: actorBtn.dataset.actorName } 
+      } 
+    }));
+    return;
+  }
   // 6. External Links
   const externalLink = target.closest("a");
   if (externalLink && externalLink.href && !externalLink.href.endsWith("#")) return;
