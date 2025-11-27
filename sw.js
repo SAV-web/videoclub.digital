@@ -1,68 +1,71 @@
 // =================================================================
-//
-//              SERVICE WORKER para videoclub.digital (v1.1)
-//
+//              SERVICE WORKER OPTIMIZADO (v2.0)
 // =================================================================
 //
-//  FICHERO:  sw.js
-//  AUTOR:    Tu Mentor Experto
-//  VERSIÓN:  1.1
-//
-//  ESTRATEGIAS DE CACHÉ IMPLEMENTADAS:
-//    1.  API (`/functions/...`): Network First, falling back to Cache.
-//        Prioriza datos frescos. Si hay red, obtiene los últimos datos y
-//        actualiza la caché. Si no hay red, sirve los últimos datos cacheados.
-//        Ideal para contenido dinámico.
-//
-//    2.  Imágenes y Fuentes: Stale-While-Revalidate.
-//        Sirve el asset desde la caché inmediatamente para una carga ultra-rápida.
-//        En segundo plano, solicita una versión actualizada y la guarda para
-//        la próxima visita. El equilibrio perfecto entre velocidad y frescura.
-//
-//    3.  App Shell (HTML, CSS, JS): Cache First, falling back to Network.
-//        Sirve la "cáscara" de la aplicación directamente desde la caché.
-//        Si un recurso no está en la caché (por ejemplo, un nuevo script),
-//        lo busca en la red y lo añade a la caché dinámica para futuras visitas.
+//  ESTRATEGIAS:
+//    1. App Shell Crítica: Cache First (Instalación bloqueante).
+//    2. Recursos Secundarios: Cache Lazy (Instalación no bloqueante).
+//    3. API: Stale-While-Revalidate con ventana de frescura (30s).
+//    4. Assets (Img/Fonts): Stale-While-Revalidate.
 //
 // =================================================================
 
-const CACHE_STATIC_NAME = "videoclub-static-v1";
-const CACHE_DYNAMIC_NAME = "videoclub-dynamic-v1";
-const CACHE_API_NAME = "videoclub-api-v1";
+const CACHE_STATIC_NAME = "videoclub-static-v2";
+const CACHE_DYNAMIC_NAME = "videoclub-dynamic-v2";
+const CACHE_API_NAME = "videoclub-api-v2";
 
-// Recursos de la "cáscara" de la aplicación que se cachean en la instalación.
-// Son los archivos mínimos necesarios para que la aplicación "arranque".
-const STATIC_ASSETS = [
+// --- 1. ACTIVOS CRÍTICOS (Blocking) ---
+// Sin esto, la app no arranca o se ve rota.
+const CRITICAL_ASSETS = [
   "/",
   "/index.html",
   "/src/css/main.css",
-  "/src/js/main.js",
-  "/src/js/ui.js",
-  "/src/js/api.js",
-  "/src/js/state.js",
-  "/src/js/utils.js",
-  "/manifest.webmanifest",
-  // Se podría añadir aquí el logo principal o un icono SVG sprite.
-  // '/src/img/icons/sprite.svg'
+  "/src/js/main.js",    // IMPRESCINDIBLE para el arranque
+  "/src/js/config.js",  // Configuración base
+  "/src/js/utils.js",   // Utilidades base
+  "/src/js/state.js",   // Estado global
+  "/src/js/ui.js",      // Manejo del DOM crítico
+  "/src/js/api.js"      // Lógica de red
 ];
 
-// Evento 'install': Se dispara una sola vez cuando el Service Worker se instala.
-// Ideal para pre-cachear los assets estáticos.
+// --- 2. ACTIVOS SECUNDARIOS (Lazy) ---
+// Se descargan en segundo plano. Si fallan, la app sigue funcionando.
+const LAZY_ASSETS = [
+  "/manifest.webmanifest",
+  "/src/js/components/card.js",
+  "/src/js/components/sidebar.js",
+  "/src/js/components/quick-view.js",
+  "/src/js/components/touch-drawer.js",
+  "/src/js/auth.js",
+  // Iconos y recursos gráficos no vitales para el primer paint
+  "/src/img/icons/sprite.svg" 
+];
+
+// --- INSTALACIÓN (Estrategia Híbrida) ---
 self.addEventListener("install", (event) => {
   console.log("[Service Worker] Instalando...");
+  
   event.waitUntil(
-    caches.open(CACHE_STATIC_NAME).then((cache) => {
-      console.log("[Service Worker] Pre-cacheando la App Shell...");
-      return cache.addAll(STATIC_ASSETS);
+    caches.open(CACHE_STATIC_NAME).then(async (cache) => {
+      console.log("[Service Worker] Cacheando App Shell Crítica...");
+      
+      // 1. Forzamos la carga de lo crítico. Si esto falla, el SW no se instala.
+      await cache.addAll(CRITICAL_ASSETS);
+      
+      // 2. Intentamos cargar lo secundario sin bloquear.
+      // Si falla, no pasa nada, se cacheará dinámicamente al usarse.
+      console.log("[Service Worker] Iniciando caché background...");
+      LAZY_ASSETS.forEach(url => {
+        cache.add(url).catch(err => console.warn(`[SW] Fallo lazy asset ${url}`, err));
+      });
     })
   );
-  self.skipWaiting(); // Fuerza al nuevo SW a activarse inmediatamente.
+  self.skipWaiting();
 });
 
-// Evento 'activate': Se dispara cuando el Service Worker se activa.
-// Perfecto para limpiar cachés antiguas de versiones anteriores.
+// --- ACTIVACIÓN (Limpieza) ---
 self.addEventListener("activate", (event) => {
-  console.log("[Service Worker] Activando...");
+  console.log("[Service Worker] Activando y limpiando...");
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(
@@ -72,83 +75,105 @@ self.addEventListener("activate", (event) => {
             key !== CACHE_DYNAMIC_NAME &&
             key !== CACHE_API_NAME
           ) {
-            console.log("[Service Worker] Eliminando caché antigua:", key);
+            console.log("[Service Worker] Borrando caché antigua:", key);
             return caches.delete(key);
           }
         })
       );
     })
   );
-  return self.clients.claim(); // Toma el control de todas las pestañas abiertas.
+  return self.clients.claim();
 });
 
-// Evento 'fetch': Se dispara para cada petición de red que hace la página.
-// Aquí es donde interceptamos las peticiones y aplicamos nuestras estrategias.
+// --- INTERCEPTACIÓN DE RED (FETCH) ---
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-
-  // ▼▼▼ LÍNEA AÑADIDA ▼▼▼
-  // Si la petición no es GET, no la interceptes. Deja que el navegador la maneje.
-  if (request.method !== 'GET') {
-    return;
-  }
   
+  // Ignorar peticiones que no sean GET (POST, PUT, etc. no se cachean)
+  if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
 
-  // === ESTRATEGIA 1: API (Network First, falling back to Cache) ===
+  // === ESTRATEGIA API: Stale-While-Revalidate con Ventana de Frescura ===
   if (url.pathname.includes("/functions/v1/")) {
     event.respondWith(
       caches.open(CACHE_API_NAME).then(async (cache) => {
+        const cachedResponse = await cache.match(request);
+        
+        // Promesa de red (se ejecuta siempre para actualizar la caché)
+        const networkFetch = fetch(request).then(response => {
+          // Clonar y guardar solo si la respuesta es válida
+          if (response.ok) {
+            cache.put(request, response.clone());
+          }
+          return response;
+        });
+
+        // Lógica de Frescura
+        if (cachedResponse) {
+          const cacheDateHeader = cachedResponse.headers.get('date');
+          
+          if (cacheDateHeader) {
+            const cacheDate = new Date(cacheDateHeader);
+            const now = new Date();
+            const ageInSeconds = (now - cacheDate) / 1000;
+
+            // Si la caché tiene menos de 30 segundos, la consideramos "fresca"
+            // y la devolvemos INMEDIATAMENTE sin esperar a la red.
+            if (ageInSeconds < 30) {
+              // Dejamos que la red actualice en background (sin 'await')
+              // para que la próxima vez esté aún más fresca.
+              networkFetch.catch(() => {}); 
+              return cachedResponse;
+            }
+          }
+          
+          // Si es vieja (>30s) o no tiene fecha, usamos estrategia "Fastest/Hybrid":
+          // Devolvemos la caché vieja para renderizar YA, pero la UI se actualizará
+          // si implementas lógica reactiva, o simplemente la próxima vez.
+          // Para ser conservadores y priorizar la velocidad:
+          networkFetch.catch(() => {}); // Asegurar actualización background
+          return cachedResponse; 
+        }
+
+        // Si no hay caché, esperamos a la red
         try {
-          const networkResponse = await fetch(request);
-          // Clonamos la respuesta porque un stream solo puede ser leído una vez.
-          cache.put(request, networkResponse.clone());
-          return networkResponse;
+          return await networkFetch;
         } catch (error) {
-          console.log(
-            `[Service Worker] Red falló para API. Sirviendo desde caché para: ${request.url}`
-          );
-          const cachedResponse = await cache.match(request);
-          return cachedResponse; // Puede ser 'undefined' si nunca se cacheó, lo cual es correcto.
+          // Fallback offline para API si fuera necesario
+          return new Response(JSON.stringify({ error: "Offline" }), { 
+            status: 503, 
+            headers: { 'Content-Type': 'application/json' } 
+          });
         }
       })
     );
   }
-  // === ESTRATEGIA 2: Imágenes y Fuentes (Stale-While-Revalidate) ===
+  
+  // === ESTRATEGIA ASSETS: Stale-While-Revalidate (Imágenes y Fuentes) ===
   else if (request.destination === "image" || request.destination === "font") {
     event.respondWith(
       caches.open(CACHE_DYNAMIC_NAME).then(async (cache) => {
         const cachedResponse = await cache.match(request);
-        const networkFetch = fetch(request)
-          .then((networkResponse) => {
-            cache.put(request, networkResponse.clone());
-            return networkResponse;
-          })
-          .catch((err) =>
-            console.warn(
-              `[Service Worker] Fallo al buscar en red para ${request.url}:`,
-              err
-            )
-          );
-
-        // Devuelve la respuesta del caché inmediatamente si existe, si no, espera a la red.
+        const networkFetch = fetch(request).then((networkResponse) => {
+          if(networkResponse.ok) cache.put(request, networkResponse.clone());
+          return networkResponse;
+        });
         return cachedResponse || networkFetch;
       })
     );
   }
-  // === ESTRATEGIA 3: App Shell y otros (Cache First, falling back to Network) ===
+  
+  // === ESTRATEGIA APP SHELL: Cache First (Falling back to Network) ===
   else {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) {
-          return cachedResponse; // Sirve desde la caché estática.
+          return cachedResponse;
         }
-
-        // ✨ MEJORA: Si no está en la caché estática, búscalo en la red
-        // Y AÑÁDELO a la caché dinámica para futuras visitas.
         return fetch(request).then((networkResponse) => {
           return caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
-            // No cacheamos peticiones de extensiones de Chrome, etc.
+            // Cacheamos dinámicamente nuevos archivos JS/CSS visitados
             if (request.url.startsWith("http")) {
               cache.put(request, networkResponse.clone());
             }
