@@ -1,7 +1,24 @@
 /* Contiene estilos globales para el body, animaciones reutilizables y scrollbars. */
+
 body {
   font-family: var(--font-body);
   overflow-x: hidden;
+  
+  /* --- MEJORA TIPOGRÁFICA (Micro-tipografía) --- */
+  
+  /* 1. Rendering optimizado */
+  -webkit-font-smoothing: antialiased; /* Texto más nítido en MacOS/iOS */
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility; /* Activa kerning y ligaduras avanzadas */
+  
+  /* 2. Características OpenType de Inter */
+  /* 'cv05': 'l' con cola (diferencia l de I y 1) */
+  /* 'calt': Alternativas contextuales (siempre activo por defecto, pero aseguramos) */
+  /* 'case': Puntuación alineada para mayúsculas (ideal para fichas técnicas) */
+  font-feature-settings: "cv05", "calt", "case";
+  
+  /* --- Fin Mejora Tipográfica --- */
+
   transition: background-color var(--transition-duration-normal)
       var(--transition-timing-function),
     color var(--transition-duration-normal) var(--transition-timing-function);
@@ -14,6 +31,8 @@ body {
 /* ========================================================== */
 body.modal-open {
   overflow: hidden;
+  /* Opcional: Evita rebote elástico en iOS en el body */
+  overscroll-behavior: none; 
 }
 
 @keyframes pop-effect {
@@ -71,11 +90,10 @@ body,
     scroll-behavior: auto !important;
   }
 }
+
 /* BLOQUEO DE SCROLL (Scroll Locking) */
 /* Evita que el fondo se mueva cuando la modal o el sidebar están abiertos */
-body.modal-open,
 body.sidebar-is-open {
   overflow: hidden;
-  /* Opcional: Evita rebote elástico en iOS en el body */
   overscroll-behavior: none; 
 }

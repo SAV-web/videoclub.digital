@@ -235,11 +235,18 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
 };
 
 // Wrappers específicos para cada tipo de sugerencia. Su interfaz no cambia.
-export const fetchGenreSuggestions = (term) =>
-  fetchSuggestions("get_genre_suggestions", term);
-export const fetchDirectorSuggestions = (term) =>
-  fetchSuggestions("get_director_suggestions", term);
-export const fetchActorSuggestions = (term) =>
-  fetchSuggestions("get_actor_suggestions", term);
-export const fetchCountrySuggestions = (term) =>
-  fetchSuggestions("get_country_suggestions", term);
+export const fetchGenreSuggestions = (term) => fetchSuggestions("get_genre_suggestions", term);
+export const fetchDirectorSuggestions = (term) => fetchSuggestions("get_director_suggestions", term);
+export const fetchCountrySuggestions = (term) => fetchSuggestions("get_country_suggestions", term);
+
+// CAMBIO: Filtramos los resultados para eliminar términos que no son personas
+export const fetchActorSuggestions = async (term) => {
+  // 1. Obtenemos las sugerencias "crudas" de la base de datos
+  const suggestions = await fetchSuggestions("get_actor_suggestions", term);
+  
+  // 2. Definimos la lista negra (coherente con card.js)
+  const ignoredTerms = ["(a)", "animación", "animacion", "documental"];
+  
+  // 3. Devolvemos solo los que NO estén en la lista negra
+  return suggestions.filter(name => !ignoredTerms.includes(name.toLowerCase()));
+};

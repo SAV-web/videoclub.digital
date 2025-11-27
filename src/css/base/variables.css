@@ -94,11 +94,10 @@
 body.dark-mode {
   --color-bg: #121212;
   --color-surface: #242424;
-  /* ▼▼▼ ACTUALIZACIÓN PARA MODO OSCURO ▼▼▼ */
   --color-text-hero: #ffffff; /* El blanco más puro para el título */
   --color-text-primary: #e0e0e0; /* Blanco ligeramente apagado para el texto principal */
-  --color-text-secondary: #a8a8a8; /* Gris medio para labels */
-  --color-text-tertiary: #9ca3af; /* Gris más oscuro para metadatos */
+  --color-text-secondary: #b8b8b8; /* Gris medio para labels. Más luminosidad para mejor contraste (WCAG) */
+  --color-text-tertiary: #a0a0a0; /* Gris más oscuro para metadatos */
   --color-border: #2f2f2f;
   --color-accent: #b0bec5;
   --color-accent-exclude: #546e7a;

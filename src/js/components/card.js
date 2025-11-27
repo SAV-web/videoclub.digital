@@ -35,8 +35,12 @@ const SQRT_MAX_VOTES = {
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
 let renderedCardCount = 0;
 let currentlyFlippedCard = null;
-const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+// Detección de capacidades robusta (Evita falsos positivos en híbridos)
+const isPointerDevice = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
+// Redefinimos isDesktop para que el resto del archivo (clics) también se beneficie
+const isDesktop = isPointerDevice && !isTouchDevice;
 // =================================================================
 //          SISTEMA DE HOVER DELEGADO
 // =================================================================
@@ -72,8 +76,15 @@ function clearCardHoverState(cardElement) {
 }
 
 export function initGridHoverSystem(gridContainer) {
-  if (!isDesktop) return;
-
+  /* 
+     MEJORA DE RENDIMIENTO:
+     Si el dispositivo es táctil (móvil/tablet/híbrido), desactivamos 
+     los listeners de hover. Esto evita que el 'mouseover' sintético 
+     que generan los móviles dispare cálculos innecesarios al hacer scroll.
+  */
+  if (isTouchDevice || !isPointerDevice) {
+    return;
+  }
   gridContainer.addEventListener("mouseover", (e) => {
     const target = e.target;
     const card = target.closest(".movie-card");
@@ -304,11 +315,20 @@ function populateCardText(elements, movieData, cardElement) {
   // --- LÓGICA DE ACTORES MEJORADA ---
   const actorsData = formatActorsWithEllipsis(movieData.actors);
   
-  // Limpiamos contenido previo (texto y botón viejo si lo hubiera)
+  // Limpiamos contenido previo
   elements.actors.textContent = actorsData.truncated;
   
-  // Si hay actores ocultos...
-  if (actorsData.isTruncated) {
+  // CAMBIO: Lógica de filtrado para evitar botón en Documentales/Animación
+  const rawActors = movieData.actors ? movieData.actors.trim() : "";
+  const lowerActors = rawActors.toLowerCase();
+  
+  // Lista de valores que NO se consideran actores reales
+  const nonActorValues = ["(a)", "animación", "animacion", "documental"];
+  
+  // Solo mostramos el botón si hay texto Y no está en la lista de ignorados
+  const hasInteractiveActors = rawActors.length > 0 && !nonActorValues.includes(lowerActors);
+
+  if (hasInteractiveActors) {
     // 1. Creamos el botón
     const expandBtn = createElement("button", {
       className: "actors-expand-btn",
@@ -316,45 +336,32 @@ function populateCardText(elements, movieData, cardElement) {
       attributes: { "aria-label": "Ver reparto completo" }
     });
 
-    /* 
-       CAMBIO IMPORTANTE: 
-       Antes hacíamos: elements.actors.appendChild(expandBtn);
-       El problema es que elements.actors es un <span>. Si metemos el botón dentro,
-       hereda el comportamiento del texto y no podemos posicionarlo "absolute" 
-       respecto a la esquina del bloque de 4 líneas.
-       
-       SOLUCIÓN:
-       Añadimos el botón al PADRE (el .detail-item), que es el que tiene
-       position: relative y el tamaño fijo de 4 líneas.
-    */
     const actorsContainer = elements.actors.parentElement;
     
-    // Evitamos duplicados si la tarjeta se recicla
+    // Evitamos duplicados
     const existingBtn = actorsContainer.querySelector(".actors-expand-btn");
     if (existingBtn) existingBtn.remove();
 
     actorsContainer.appendChild(expandBtn);
 
-    // 2. Contenido del overlay (Nombre + Lista completa)
+    // 2. Contenido del overlay
     const actorsOverlay = cardElement.querySelector('.actors-scrollable-content');
     if (actorsOverlay) {
-      // TRANSFORMACIÓN A LISTA DE BOTONES
       const actorsListHtml = movieData.actors
         .split(',')
         .map(actor => {
           const name = actor.trim();
-          // CAMBIO: Usamos <button> y guardamos el nombre en dataset
           return `<button type="button" class="actor-list-item" data-actor-name="${name}">${name}</button>`;
         })
         .join(''); 
 
       actorsOverlay.innerHTML = `
-        <h4>Reparto Completo</h4>
+        <h4>Reparto</h4>
         <div class="actors-list-text">${actorsListHtml}</div>
       `;
     }
   } else {
-    // Limpieza por si la tarjeta se reutiliza y antes tenía botón
+    // Limpieza si no hay actores interactivos
     const actorsContainer = elements.actors.parentElement;
     const existingBtn = actorsContainer.querySelector(".actors-expand-btn");
     if (existingBtn) existingBtn.remove();

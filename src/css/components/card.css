@@ -345,6 +345,9 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 .star-icon-path--filled {
   fill: var(--color-accent);
   clip-path: inset(0 100% 0 0);
+  /* NUEVO: Transición fluida para el llenado */
+  /* Usamos una curva ease-out suave para que se sienta natural */
+  transition: clip-path 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* Círculo de Suspenso (Estrella Hueca) Base */
@@ -400,6 +403,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   background-color: var(--color-accent);
   color: var(--color-surface);
   font-size: 1.25rem;
+  font-weight: 400;
   line-height: 1;
   display: flex; 
   align-items: center; 

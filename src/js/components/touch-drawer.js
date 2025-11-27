@@ -1,11 +1,9 @@
 // =================================================================
-//          COMPONENTE: Touch Drawer (v2 - Nativo y Fluido)
+//          COMPONENTE: Touch Drawer (v2.1 - Física Elástica)
 // =================================================================
-// v2.0 - Implementa una lógica de gestos avanzada:
-//      - Diferencia entre scroll vertical y swipe horizontal para evitar conflictos.
-//      - Añade detección de velocidad de swipe para una respuesta más rápida e intutiva.
-//      - Utiliza 'passive: false' para una cancelación de eventos eficiente.
-//      - (Futuro) Añadirá feedback háptico en los umbrales.
+// v2.1 - Añadido efecto "Rubber Banding" (Resistencia elástica).
+//        Ahora el usuario siente tensión al arrastrar más allá de los
+//        límites, mejorando la percepción de app nativa.
 // =================================================================
 
 export function initTouchDrawer() {
@@ -21,15 +19,18 @@ export function initTouchDrawer() {
   let touchStartY = 0;
   let touchStartTime = 0;
   let currentTranslate = 0;
-  let isHorizontalDrag = false; // Flag para saber si hemos confirmado un swipe horizontal
+  let startTranslate = 0; // Cacheamos la posición inicial
+  let isHorizontalDrag = false; 
 
-  // --- Lógica de Apertura/Cierre Centralizada ---
+  // --- Lógica de Apertura/Cierre ---
   const openDrawer = () => {
     document.body.classList.add("sidebar-is-open");
     sidebar.style.transform = `translateX(0px)`;
-    sidebar.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+    // Curva bezier para el "snap" de vuelta
+    sidebar.style.transition = "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)";
     currentTranslate = 0;
   };
+  
   const closeDrawer = () => {
     document.body.classList.remove("sidebar-is-open");
     sidebar.style.transform = `translateX(-${DRAWER_WIDTH}px)`;
@@ -37,20 +38,15 @@ export function initTouchDrawer() {
     currentTranslate = -DRAWER_WIDTH;
   };
 
-  // Inicializa el estado visual correcto al cargar la página
-  const sidebarIsOpenOnLoad =
-    document.body.classList.contains("sidebar-is-open");
+  // Estado inicial
+  const sidebarIsOpenOnLoad = document.body.classList.contains("sidebar-is-open");
   currentTranslate = sidebarIsOpenOnLoad ? 0 : -DRAWER_WIDTH;
 
   function handleTouchStart(e) {
     if (window.innerWidth > 768) return;
 
     const sidebarIsOpen = document.body.classList.contains("sidebar-is-open");
-
-    // Lógica para determinar si el gesto debe iniciar el seguimiento
-    const canStartDrag =
-      (sidebarIsOpen && e.target.closest("#sidebar")) || // Si está abierto, solo se arrastra desde el sidebar
-      (!sidebarIsOpen && e.touches[0].clientX < 80); // Si está cerrado, solo desde el borde izquierdo (80px)
+    const canStartDrag = (sidebarIsOpen && e.target.closest("#sidebar")) || (!sidebarIsOpen && e.touches[0].clientX < 80);
 
     if (!canStartDrag) {
       isDragging = false;
@@ -62,45 +58,52 @@ export function initTouchDrawer() {
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
     touchStartTime = Date.now();
-    sidebar.style.transition = "none"; // Desactivamos la animación durante el arrastre
+    
+    // CACHEAMOS EL ESTADO INICIAL AQUÍ (Optimización)
+    startTranslate = sidebarIsOpen ? 0 : -DRAWER_WIDTH;
+    
+    sidebar.style.transition = "none"; // Sin transición para respuesta 1:1 al dedo
   }
 
-function handleTouchMove(e) {
-  if (!isDragging) return;
+  function handleTouchMove(e) {
+    if (!isDragging) return;
 
-  const currentX = e.touches[0].clientX;
-  const currentY = e.touches[0].clientY;
-  const diffX = currentX - touchStartX; // <- ÚNICA DECLARACIÓN
-  const diffY = currentY - touchStartY; // <- Movemos esta declaración aquí también para agrupar
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = currentX - touchStartX;
+    const diffY = currentY - touchStartY;
 
-  // MEJORA: Detección de dirección de gesto con umbral
-  if (!isHorizontalDrag) {
-    // Solo tomamos una decisión si el movimiento es significativo
-    if (Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
-      // Si el movimiento vertical es significativamente mayor, es scroll.
-      if (Math.abs(diffY) > Math.abs(diffX) * 1.5) {
-        isDragging = false; // Liberamos el gesto
-        return;
+    // Detección de dirección
+    if (!isHorizontalDrag) {
+      if (Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
+        if (Math.abs(diffY) > Math.abs(diffX) * 1.5) {
+          isDragging = false; // Es scroll vertical, cancelamos
+          return;
+        }
+        isHorizontalDrag = true; // Es swipe horizontal, procedemos
+      } else {
+        return; // Umbral no superado
       }
-      // Si no es scroll, confirmamos que es un arrastre horizontal.
-      isHorizontalDrag = true;
-    } else {
-      // El movimiento es demasiado pequeño, no hacemos nada todavía.
-      return;
     }
-  }
 
-    // Una vez confirmado el arrastre horizontal, prevenimos el scroll de la página.
-    e.preventDefault();
+    e.preventDefault(); // Bloqueamos scroll nativo
 
-    // Calculamos la nueva posición del drawer
-    const startTranslate = document.body.classList.contains("sidebar-is-open")
-      ? 0
-      : -DRAWER_WIDTH;
-    const newTranslate = startTranslate + diffX;
+    // Cálculo "raw" del movimiento
+    let newTranslate = startTranslate + diffX;
 
-    // Restringimos el movimiento para que no se pase de los límites
-    currentTranslate = Math.max(-DRAWER_WIDTH, Math.min(0, newTranslate));
+    // --- FÍSICA ELÁSTICA (RUBBER BANDING) ---
+    if (newTranslate > 0) {
+      // Caso 1: Arrastrando más allá de la apertura (Hacia la derecha cuando está abierto)
+      // Aplicamos resistencia del 30%
+      newTranslate = newTranslate * 0.3; 
+    } else if (newTranslate < -DRAWER_WIDTH) {
+      // Caso 2: Arrastrando más allá del cierre (Hacia la izquierda cuando está cerrado)
+      const overflow = Math.abs(newTranslate + DRAWER_WIDTH);
+      newTranslate = -DRAWER_WIDTH - (overflow * 0.3);
+    }
+    // Nota: Si está entre -280 y 0, el movimiento es 1:1 (sin resistencia)
+
+    currentTranslate = newTranslate;
     sidebar.style.transform = `translateX(${currentTranslate}px)`;
   }
 
@@ -112,38 +115,31 @@ function handleTouchMove(e) {
     isDragging = false;
     isHorizontalDrag = false;
 
-    // MEJORA: Detección de velocidad de swipe
     const touchDuration = Date.now() - touchStartTime;
     const finalX = e.changedTouches[0].clientX;
     const swipeDistance = finalX - touchStartX;
     const swipeVelocity = touchDuration > 0 ? swipeDistance / touchDuration : 0;
 
-    // --- Lógica de Decisión Refactorizada ---
-    // 1. Prioridad 1: Gesto de swipe rápido
+    // Lógica de decisión (Inercia vs Posición)
     if (Math.abs(swipeVelocity) > SWIPE_VELOCITY_THRESHOLD) {
-      // Swipe hacia la derecha (abrir) o izquierda (cerrar)
       swipeVelocity > 0 ? openDrawer() : closeDrawer();
-    }
-    // 2. Prioridad 2: Arrastre lento basado en la posición final
-    else {
+    } else {
+      // Si soltamos en la "zona elástica" (ej. > 0), openDrawer() lo devolverá a 0 suavemente
       currentTranslate > -DRAWER_WIDTH / 2 ? openDrawer() : closeDrawer();
     }
   }
 
-  // --- Añadir Listeners ---
+  // Listeners
   document.addEventListener("touchstart", handleTouchStart, { passive: true });
-  // El listener de 'touchmove' es explícitamente no-pasivo para poder llamar a preventDefault().
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
   document.addEventListener("touchend", handleTouchEnd, { passive: true });
 
-  // --- Lógica complementaria para botones y overlay (sin cambios) ---
+  // --- Utils ---
   const rewindButton = document.querySelector("#rewind-button");
   if (rewindButton) {
     rewindButton.addEventListener("click", () => {
       if (window.innerWidth <= 768) {
-        document.body.classList.contains("sidebar-is-open")
-          ? closeDrawer()
-          : openDrawer();
+        document.body.classList.contains("sidebar-is-open") ? closeDrawer() : openDrawer();
       }
     });
   }
@@ -155,23 +151,13 @@ function handleTouchMove(e) {
 
   window.addEventListener("resize", () => {
     if (window.innerWidth > 768) {
-      // Modo Escritorio: Limpiamos estilos inline
       document.body.classList.remove("sidebar-is-open");
-      sidebar.style.transform = ""; // Limpia el transform inline
+      sidebar.style.transform = "";
       sidebar.style.transition = "";
-      // Reiniciamos la variable lógica para cuando vuelva a móvil
       currentTranslate = -DRAWER_WIDTH; 
     } else {
-      // Modo Móvil: Restauramos el estado según la clase del body
-      if (document.body.classList.contains("sidebar-is-open")) {
-        // Si estaba abierto lógicamente, forzamos la posición abierta
-        openDrawer(); 
-        // openDrawer ya se encarga de poner currentTranslate = 0
-      } else {
-        // Si estaba cerrado, forzamos la posición cerrada
-        closeDrawer();
-        // closeDrawer pone currentTranslate = -DRAWER_WIDTH
-      }
+      if (document.body.classList.contains("sidebar-is-open")) openDrawer(); 
+      else closeDrawer();
     }
   });
 }

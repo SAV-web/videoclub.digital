@@ -59,10 +59,9 @@
 
 /* Nombre del Director */
 .movie-summary .front-director-info {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-light);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
   color: var(--color-text-tertiary);
-  
   /* Truncado de una sola línea */
   overflow: hidden;
   white-space: nowrap;
