@@ -63,47 +63,77 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
+/**
+ * Orquesta la carga de la parrilla de películas.
+ * Gestiona feedback visual, petición de datos, optimización LCP y renderizado.
+ * @param {number} [page=1] - La página a cargar.
+ */
 export async function loadAndRenderMovies(page = 1) {
-  // ❌ ELIMINADO: createAbortableRequest para evitar congelaciones.
-  // Usamos fetch estándar.
-
+  // 1. Actualización del Estado Global y URL
   setCurrentPage(page);
   updatePageTitle();
   updateUrl();
 
+  // 2. Feedback Visual Inmediato (UX)
+  // Añadimos clase al BODY para activar la barra de progreso en el Sidebar.
+  document.body.classList.add('is-fetching');
+  // Añadimos clase al GRID para bajar opacidad y bloquear clics.
+  dom.gridContainer.classList.add('is-fetching');
+
   const supportsViewTransitions = !!document.startViewTransition;
 
+  // 3. Lógica encapsulada de carga y actualización del DOM
   const renderLogic = async () => {
     try {
+      // ESTRATEGIA DE OVER-FETCHING:
+      // Pág 1: Pedimos 56 items (DYNAMIC_PAGE_SIZE_LIMIT) para la lógica híbrida.
+      // Pág 2+: Pedimos 42 items (ITEMS_PER_PAGE) estándar.
       const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
       
-      // Llamada estándar sin señal de aborto
+      // Petición a la API (Estándar, sin cancelación para estabilidad)
       const { items: movies, total: totalMovies } = await fetchMovies(
         getActiveFilters(),
         page,
         pageSize
       );
 
+      // Optimización LCP: Precarga la imagen de la primera película
       if (movies && movies.length > 0) {
         preloadLcpImage(movies[0]);
       }
+      
+      // Actualiza el DOM (aquí dentro se aplica el recorte de 56 a 42 si es necesario)
       updateDomWithResults(movies, totalMovies);
+
+      // Limpieza de estado de carga (ÉXITO)
+      document.body.classList.remove('is-fetching');
+      dom.gridContainer.classList.remove('is-fetching');
+
     } catch (error) {
-      console.error("Error en el proceso de carga:", error);
-      const friendlyMessage = getFriendlyErrorMessage(error);
-      showToast(friendlyMessage, "error");
-      renderErrorState(dom.gridContainer, dom.paginationContainer, friendlyMessage);
+      // Limpieza de estado de carga (ERROR)
+      document.body.classList.remove('is-fetching');
+      dom.gridContainer.classList.remove('is-fetching');
+
+      console.error("Error crítico en carga:", error);
+      const msg = getFriendlyErrorMessage(error);
+      showToast(msg, "error");
+      renderErrorState(dom.gridContainer, dom.paginationContainer, msg);
     }
   };
 
+  // 4. Ejecución con o sin View Transitions
   if (supportsViewTransitions) {
-    renderSkeletons(dom.gridContainer, dom.paginationContainer);
+    // CON Transiciones: Esperamos a tener los datos y el navegador hace un cross-fade suave.
+    // No borramos el contenido previo para evitar el "pantallazo blanco".
     document.startViewTransition(renderLogic);
   } else {
-    dom.gridContainer.setAttribute("aria-busy", "true");
+    // SIN Transiciones (Fallback):
+    // Mostramos esqueletos inmediatamente para dar sensación de respuesta rápida
+    // en navegadores antiguos o si el usuario prefiere movimiento reducido.
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
     updateHeaderPaginationState(getCurrentPage(), 0);
     await renderLogic();
+    // Aseguramos que se quita el aria-busy al final
     dom.gridContainer.setAttribute("aria-busy", "false");
   }
 }

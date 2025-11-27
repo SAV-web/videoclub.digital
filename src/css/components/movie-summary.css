@@ -107,8 +107,9 @@ body.rotation-disabled .movie-summary .front-director-info a:hover {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
+  letter-spacing: 0.02em; 
 }
 
 .country-info {

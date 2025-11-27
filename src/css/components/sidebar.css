@@ -438,3 +438,46 @@ body.user-logged-in #user-session-group { display: flex; }
     width: 44px; height: 44px;
   }
 }
+
+/* --- 11. Indicador de Progreso (Loading State) --- */
+
+.sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  /* Fondo base transparente */
+  background-color: transparent;
+  /* El "viajero": un gradiente que se moverá */
+  background-image: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    var(--color-accent) 50%, 
+    transparent 100%
+  );
+  background-size: 50% 100%; /* El viajero ocupa la mitad del ancho */
+  background-repeat: no-repeat;
+  background-position: -50% 0; /* Posición inicial: fuera a la izquierda */
+  
+  opacity: 0;
+  z-index: 1001;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* Estado activo: Animación infinita */
+body.is-fetching .sidebar::before {
+  opacity: 1;
+  animation: indeterminate-loading 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes indeterminate-loading {
+  0% {
+    background-position: -50% 0; /* Entra por la izquierda */
+  }
+  100% {
+    background-position: 150% 0; /* Sale por la derecha */
+  }
+}

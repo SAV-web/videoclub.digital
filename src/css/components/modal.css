@@ -30,14 +30,31 @@
 /* --- Overlay de Fondo --- */
 .quick-view-overlay {
   position: fixed;
-  inset: 0; /* Atajo moderno para top, right, bottom, left = 0 */
+  inset: 0;
   z-index: 1999;
-  background-color: rgba(0, 0, 0, 0.6);
-  /* Efecto de desenfoque en el fondo para centrar la atención en la modal */
-  backdrop-filter: blur(var(--space-xxs));
-  -webkit-backdrop-filter: blur(
-    var(--space-xxs)
-  ); /* Para compatibilidad con Safari */
+  background-color: rgba(0, 0, 0, 0.6); /* Capa oscura */
+  
+  /* 
+     EFECTO CINEMÁTICO:
+     1. Blur fuerte (10px) para ocultar detalles del fondo.
+     2. Saturación baja (50%) para "apagar" los colores del fondo 
+        y que la modal destaque por contraste de color.
+  */
+  backdrop-filter: blur(10px) saturate(50%);
+  -webkit-backdrop-filter: blur(10px) saturate(50%);
+  
+  /* 
+     OPTIMIZACIÓN DE RENDIMIENTO:
+     No animamos 'backdrop-filter'. Animar la opacidad (opacity)
+     crea el mismo efecto visual de "aparición progresiva" del desenfoque
+     pero es mucho más ligero para la GPU del móvil.
+  */
+  transition: opacity 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
+  
+  /* Estado inicial oculto */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* --- Contenedor Principal de la Modal --- */
@@ -85,7 +102,7 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.3s var(--ease-snap), visibility 0s linear 0s;
+  transition: opacity 0.4s var(--ease-snap), visibility 0s linear 0s;
 }
 
 /* =================================================================

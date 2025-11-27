@@ -114,14 +114,26 @@ html.dark-mode .card-rating-block > * {
   cursor: pointer;
 }
 
-.star-rating-container.is-interactive .star-icon,
-.low-rating-circle.is-interactive {
-  transition: transform var(--duration-quick) var(--ease-spring);
+/* Transición base con "rebote" para las estrellas */
+.star-rating-container.is-interactive .star-icon {
+  /* Curva de Bézier para efecto elástico (pop) */
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center center;
 }
 
-.star-rating-container.is-interactive:hover .star-icon,
+/* Efecto Hover Individual (Magnetismo) */
+.star-rating-container.is-interactive .star-icon:hover {
+  /* Aumentamos escala y aseguramos que esté por encima de sus vecinas */
+  transform: scale(1.35); 
+  z-index: 10; 
+  /* Añadimos un pequeño brillo amarillo al hacer hover */
+  filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
+}
+
+/* Efecto para el círculo de suspenso */
 .low-rating-circle.is-interactive:hover {
   transform: scale(1.2);
+  filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
 }
 
 /* --- 5. Estados Activos de Ratings --- */

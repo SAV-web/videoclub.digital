@@ -30,8 +30,10 @@ import { createAbortableRequest } from "./utils/requestManager.js";
  * desde otros módulos (ej. al cambiar los datos de usuario en main.js).
  */
 export const queryCache = new LRUCache({
-  max: 200, // Almacena hasta 200 resultados de consultas diferentes.
-  ttl: 1000 * 60 * 5, // Las entradas de caché expiran después de 5 minutos.
+  max: 300, 
+  ttl: 1000 * 60 * 30, // 30 minutos
+  updateAgeOnGet: true,
+  ttlAutopurge: true, // Limpieza proactiva para evitar fugas en sesiones muy largas
 });
 
 // ❌ ELIMINADO: El objeto `suggestionControllers` ya no es necesario.

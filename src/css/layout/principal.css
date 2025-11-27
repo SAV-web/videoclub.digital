@@ -6,6 +6,8 @@
   flex-direction: column;
   min-width: 0;
   touch-action: pan-y;
+  min-height: 100vh;  /* Fallback */
+  min-height: 100dvh; /* Adaptación a barras de navegación móviles */
 }
 
 @keyframes card-enter-animation {
