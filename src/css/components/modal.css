@@ -1,57 +1,38 @@
 /* =================================================================
- *
  *                      SISTEMA DE DISEÑO: MODALES
- *                      --------------------------
- *
- * Componente: Quick View (Vista Rápida)
- * Versión: 3.0 (Accesible, Responsiva, Refinada)
- *
- * ESTRUCTURA DE ESTE FICHERO (ITCSS):
- * 1. LAYOUT Y ESTRUCTURA BASE: Reglas que definen la estructura principal
- *    de la modal y el overlay (posición, z-index, comportamiento flex).
- *
- * 2. ESTADO Y ANIMACIONES: Clases que controlan la visibilidad y las
- *    transiciones de entrada/salida (.is-visible).
- *
- * 3. COMPONENTES INTERNOS: Estilos específicos para las partes que componen
- *    la modal (header, contenido, botones, tipografía, etc.).
- *
- * 4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES): Ajustes para diferentes
- *    tamaños de pantalla, implementando el patrón "Bottom Sheet" en móvil.
- *
+ * =================================================================
+ *  FICHERO: src/css/components/modal.css
+ *  RESPONSABILIDAD: Definir la estructura, animaciones y adaptación
+ *  responsiva (Bottom Sheet vs Modal Flotante) de la vista rápida.
  * ================================================================= */
 
 /* =================================================================
-   1. LAYOUT Y ESTRUCTURA BASE
-   - Define el esqueleto y posicionamiento de la modal y su fondo.
-   - Usa Flexbox para controlar la alineación interna.
+   1. LAYOUT Y ESTRUCTURA BASE (Overlay y Contenedor)
    ================================================================= */
 
-/* --- Overlay de Fondo --- */
+/* --- Overlay de Fondo (Efecto Cinemático) --- */
 .quick-view-overlay {
   position: fixed;
-  inset: 0;
+  inset: 0; /* Top, Right, Bottom, Left = 0 */
   z-index: 1999;
-  background-color: rgba(0, 0, 0, 0.6); /* Capa oscura */
+  background-color: rgba(0, 0, 0, 0.6);
   
   /* 
-     EFECTO CINEMÁTICO:
-     1. Blur fuerte (10px) para ocultar detalles del fondo.
-     2. Saturación baja (50%) para "apagar" los colores del fondo 
-        y que la modal destaque por contraste de color.
+     EFECTO VISUAL:
+     Blur fuerte + Desaturación para dar protagonismo total a la modal.
+     Se definen estáticos para evitar repintados costosos durante la animación.
   */
   backdrop-filter: blur(10px) saturate(50%);
   -webkit-backdrop-filter: blur(10px) saturate(50%);
   
   /* 
-     OPTIMIZACIÓN DE RENDIMIENTO:
-     No animamos 'backdrop-filter'. Animar la opacidad (opacity)
-     crea el mismo efecto visual de "aparición progresiva" del desenfoque
-     pero es mucho más ligero para la GPU del móvil.
+     OPTIMIZACIÓN RENDIMIENTO:
+     Animamos solo opacidad y visibilidad. Es mucho más ligero para la GPU
+     que animar el radio del blur pixel a pixel.
   */
   transition: opacity 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
   
-  /* Estado inicial oculto */
+  /* Estado Inicial: Oculto */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -61,87 +42,90 @@
 .quick-view-modal {
   position: fixed;
   z-index: 2000;
-  display: flex; /* Permite que el contenido interno se expanda correctamente */
+  display: flex;
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
-  overflow: hidden; /* Clave para que los bordes redondeados afecten al contenido */
-}
-
-/* --- Contenedor del Contenido Interno --- */
-.quick-view-content {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto; /* Permite el scroll vertical si el contenido excede la altura */
-  -webkit-overflow-scrolling: touch; /* Habilita el scroll "nativo" en iOS */
-
-  /* Ocultamos las barras de scroll para una apariencia más limpia */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE */
-}
-.quick-view-content::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, etc. */
-}
-
-/* =================================================================
-   2. ESTADO Y ANIMACIONES
-   - Gestiona la transición entre los estados oculto y visible.
-   ================================================================= */
-
-/* --- Estado Oculto (Por Defecto) --- */
-.quick-view-overlay,
-.quick-view-modal {
+  overflow: hidden; /* Recorta el contenido a los bordes redondeados */
+  
+  /* Transición base para entrada/salida (transform y opacidad) */
+  transition: opacity 0.3s var(--ease-snap), transform 0.3s var(--ease-snap), visibility 0s linear 0.3s;
+  
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s var(--ease-snap), visibility 0s linear 0.3s; /* La visibilidad cambia al final de la animación */
 }
 
-/* --- Estado Visible (Clase .is-visible añadida por JS) --- */
+/* --- Estados Visibles (Activados por JS) --- */
 .quick-view-overlay.is-visible,
 .quick-view-modal.is-visible {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.4s var(--ease-snap), visibility 0s linear 0s;
+  transition: opacity 0.4s var(--ease-snap), transform 0.4s var(--ease-snap), visibility 0s linear 0s;
 }
 
 /* =================================================================
-   3. COMPONENTES INTERNOS
-   - Estilos para el contenido específico de la modal: póster,
-     texto, metadatos, etc.
+   2. ESTRUCTURA INTERNA Y SCROLL
    ================================================================= */
 
-/* --- Layout de las secciones "Frontal" y "Trasera" --- */
+.quick-view-content {
+  width: 100%;
+  height: 100%;
+  
+  /* Gestión de Scroll */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Scroll nativo inercial en iOS */
+  
+  /* Ocultar Barras de Scroll (Diseño limpio) */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE */
+}
+.quick-view-content::-webkit-scrollbar { display: none; }
+
+/* Secciones: Frontal (Póster/Info) y Trasera (Detalles) */
 .quick-view-front {
   padding: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0; /* Evita que esta sección se encoja */
+  flex-shrink: 0;
 }
 
 .quick-view-back {
   padding: var(--space-lg);
-  flex-grow: 1; /* Permite que esta sección ocupe el espacio restante */
-  min-width: 0; /* Solución clásica para problemas de overflow en contenedores flex */
+  flex-grow: 1;
+  min-width: 0; /* Previene desbordamientos flexbox */
 }
 
-/* --- Póster --- */
+/* =================================================================
+   3. ESTILOS DE COMPONENTES INTERNOS
+   ================================================================= */
+
+/* --- Imagen del Póster --- */
 .quick-view-front img {
   width: 100%;
   height: auto;
   display: block;
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-xs); /* Reducido de --space-md a --space-sm */
+  margin-bottom: var(--space-xs);
 }
 
-/* --- Jerarquía Tipográfica (Refinada para la Modal) --- */
+/* --- Tipografía (Títulos y Director) --- */
+/* NUEVA REGLA: Sobrescribimos el padding del contenedor de texto */
+.quick-view-modal .movie-summary {
+  /* Eliminamos el padding superior grande (~19px) que tiene la tarjeta */
+  padding-top: 0;
+  
+  /* Ajustamos laterales si es necesario, o heredamos */
+  padding-left: var(--space-xs);
+  padding-right: var(--space-xs);
+}
 .quick-view-modal .movie-summary h3[data-template="title"] {
-  font-size: var(--font-size-lg); /* Reducido de xl a lg */
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   line-height: var(--line-height-tight);
   margin-bottom: var(--space-xxs);
   letter-spacing: -0.02em;
-  /* Asegura que no desborde con títulos largos */
+  /* Truncado a 2 líneas */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -153,75 +137,64 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-light);
   color: var(--color-text-tertiary);
-  margin-bottom: var(--space-sm); /* Reducido de --space-lg a --space-sm */
+  margin-bottom: var(--space-sm);
 }
 
-/* --- Bloque de Calificación y Acciones (Estrellas y Watchlist) --- */
+/* --- Acciones y Valoración (Aumentados para Modal) --- */
 .quick-view-modal .card-rating-block {
-  /* Reseteamos el posicionamiento absoluto de la tarjeta */
   position: static;
   transform: none;
-
-  /* Lo convertimos en un bloque normal con padding y margen */
+  
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 var(--space-xs); /* Eliminamos el padding vertical */
-  margin-top: 0; /* Eliminamos el margen superior */
-  margin-bottom: 0; /* Eliminamos el margen inferior */
-  pointer-events: auto; /* Aseguramos que los elementos internos sean clickables */
-}
-
-.quick-view-modal .card-rating-block > * {
+  
+  /* CAMBIO: Reducimos el padding vertical a 4px (antes space-sm/12px)
+     para "apretar" el bloque tanto por arriba (imagen) como por abajo (título) */
+  padding: 4px var(--space-xs);
+  
+  margin: 0;
   pointer-events: auto;
 }
 
-/* Aumentamos el tamaño de los iconos de acción en la modal */
+/* Iconos Grandes (Mejora Táctil y Visual) */
 .quick-view-modal .star-icon {
-  width: 28px;
-  height: 28px;
+  width: 32px; height: 32px;
+  margin-right: 4px; /* Separación para precisión */
 }
 
 .quick-view-modal .low-rating-circle {
-  width: 26px;
-  height: 26px;
+  width: 30px; height: 30px;
 }
 
+/* Botón Watchlist (Aumentado para destacar más) */
 .quick-view-modal .card-action-btn {
-  width: 36px;
-  height: 36px;
+  /* CAMBIO: De 48px a 56px (Tamaño FAB) */
+  width: 56px; 
+  height: 56px;
+  
+  /* Opcional: un poco de margen izquierdo si quieres separarlo de las estrellas */
+  margin-left: auto; 
 }
 
-/* --- Estilos para la parte trasera (back) de la modal --- */
-.quick-view-modal .back-meta-header {
-  display: flex;
-  justify-content: center; /* Centra el contenido horizontalmente */
-}
-.quick-view-modal .episode-duration-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg); /* Aumentamos el gap para mejor separación visual */
+.quick-view-modal .card-action-btn svg {
+  /* CAMBIO: De 28px a 32px */
+  width: 32px; 
+  height: 32px;
 }
 
-/* --- Línea de Metadatos (Iconos + Año/Bandera) --- */
+/* --- Metadatos (Año, País, Iconos Plataforma) --- */
 .quick-view-modal .movie-meta {
   display: flex;
-  justify-content: space-between; /* Alinea los iconos a la izquierda y el año/bandera a la derecha */
+  justify-content: space-between;
   align-items: center;
-  min-height: 28px; /* Altura mínima para consistencia visual */
+  min-height: 28px;
 }
 
 .quick-view-modal .card-icons-line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
+  display: flex; align-items: center; gap: var(--space-md);
 }
-
-.quick-view-modal .platform-icon svg {
-  /* Iconos ligeramente más grandes para mejor legibilidad en la modal */
-  width: 28px;
-  height: 28px;
-}
+.quick-view-modal .platform-icon svg { width: 28px; height: 28px; }
 
 .quick-view-modal .year-flag-group {
   font-size: var(--font-size-base);
@@ -229,92 +202,106 @@
   color: var(--color-text-secondary);
 }
 
-/* =================================================================
-   4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES)
-   - Define el comportamiento de la modal en diferentes breakpoints.
-   ================================================================= */
-
-/* --- A) Móvil y Tablet Vertical (< 769px): Patrón "Bottom Sheet" --- */
-@media (max-width: 768px) {
-  .quick-view-modal {
-    /* Posicionamiento en la parte inferior */
-    top: auto;
-    left: 50%; /* Centrado horizontal */
-    bottom: 0;
-
-    /* ========================================================== */
-    /*  ▼▼▼ CORRECCIÓN: Ancho reducido y altura definida ▼▼▼
-    /*      - Se establece un ancho del 95% para dejar márgenes.
-    /*      - Se define una altura explícita para habilitar el scroll.
-    /* ========================================================== */
-    width: 75%;
-    height: 85dvh; /* Altura fija para que el overflow funcione */
-
-    /* Altura máxima usando unidades de viewport dinámicas para evitar la barra del navegador */
-    max-height: 85dvh;
-
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-
-    /* Animación de entrada/salida desde abajo */
-    transform: translate(-50%, 100%); /* Ajuste para centrado y posición inicial */
-    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-  }
-
-  .quick-view-modal.is-visible {
-    transform: translate(-50%, 0); /* Ajuste para centrado y posición final */
-  }
-
-  /* ========================================================== */
-  /*  ▼▼▼ CORRECCIÓN: Habilitar scroll en móvil ▼▼▼
-  /*      Forzamos un layout de columna para que el contenido
-  /*      se apile verticalmente y el `overflow-y: auto` del
-  /*      contenedor principal funcione correctamente.
-  /* ========================================================== */
-  .quick-view-content {
-    flex-direction: column;
-  }
+/* --- Detalles Traseros --- */
+.quick-view-modal .back-meta-header {
+  display: flex; justify-content: flex-start;
+}
+.quick-view-modal .episode-duration-group {
+  display: flex; align-items: center; gap: 4px;
 }
 
-/* --- B) Escritorio y Tablet Horizontal (>= 769px): Modal Flotante --- */
+/* --- Detalles Traseros (Overrides para Modal) --- */
+
+/* 1. Separar Título Original de la línea de Wikipedia/Duración */
+.quick-view-modal .back-original-title-wrapper {
+  /* Aumentamos de 10px (tarjeta) a space-md (16px) o space-lg (24px) */
+  margin-bottom: var(--space-md); 
+}
+
+/* 2. Separar línea de Wikipedia/Duración de Filmaffinity */
+.quick-view-modal .back-meta-header {
+  display: flex; 
+  justify-content: flex-start;
+  /* Aumentamos separación vertical */
+  margin-bottom: var(--space-md); 
+}
+
+.quick-view-modal .episode-duration-group {
+  display: flex; 
+  align-items: center; 
+  gap: 4px; 
+}
+
+/* 3. Separar Filmaffinity de IMDb */
+.quick-view-modal .ratings-container {
+  display: flex;
+  flex-direction: column;
+  /* Aumentamos el hueco entre los bloques de notas */
+  gap: var(--space-md); 
+}
+
+/* =================================================================
+   4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES)
+   ================================================================= */
+
+/* --- A) MÓVIL (< 769px): BOTTOM SHEET --- */
+@media (max-width: 768px) {
+  .quick-view-modal {
+    top: auto; bottom: 0; left: 50%;
+    
+    /* Dimensiones Panel Móvil */
+    width: 96%; /* Casi ancho completo con margen */
+    height: 85dvh; /* Dynamic Viewport Height */
+    max-height: 85dvh;
+    
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    
+    /* Animación desde abajo */
+    transform: translate(-50%, 100%);
+  }
+  
+  .quick-view-modal.is-visible {
+    transform: translate(-50%, 0);
+  }
+  
+  /* Layout Vertical (Scroll único) */
+  .quick-view-content { flex-direction: column; }
+}
+
+/* --- B) ESCRITORIO (>= 769px): MODAL FLOTANTE --- */
 @media (min-width: 769px) {
   .quick-view-modal {
-    /* Posicionamiento centrado */
-    top: 50%;
-    left: 50%;
-
-    /* Dimensiones y límites */
+    top: 50%; left: 50%;
+    
+    /* Dimensiones Modal Escritorio */
     width: 90%;
     max-width: 630px;
     max-height: 92vh;
-
+    
     border-radius: var(--radius-lg);
-
-    /* Animación de entrada/salida con escalado */
+    
+    /* Animación de escala */
     transform: translate(-50%, -50%) scale(0.95);
-    transition: transform 0.3s var(--ease-snap), opacity 0.3s var(--ease-snap),
-      visibility 0s linear 0.3s;
   }
-
+  
   .quick-view-modal.is-visible {
     transform: translate(-50%, -50%) scale(1);
-    transition: transform 0.3s var(--ease-snap), opacity 0.3s var(--ease-snap),
-      visibility 0s linear 0s;
   }
-
-  /* Layout de contenido horizontal en escritorio */
+  
+  /* Layout Horizontal (2 Columnas) */
   .quick-view-content {
     display: flex;
-    flex-direction: row; /* Cambia a layout de columnas lado a lado */
-    overflow: hidden; /* El scroll se gestionará en las columnas internas */
+    flex-direction: row;
+    overflow: hidden; /* Scroll delegado a columnas internas */
   }
-
+  
   .quick-view-front {
-    width: 57%; /* ~360px: Prioriza un buen tamaño para el póster */
-    border-right: 1px solid var(--color-border); /* Separador visual */
+    width: 57%;
+    border-right: 1px solid var(--color-border);
     border-bottom: none;
-    overflow-y: auto; /* Permite scroll si la info del póster es muy larga */
+    overflow-y: auto;
   }
-
+  
   .quick-view-back {
     width: 43%;
     overflow-y: auto;

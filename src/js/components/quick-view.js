@@ -104,6 +104,31 @@ function populateModal(cardElement) {
   } else {
     front.querySelector('[data-template="country-container"]').style.display = 'none';
   }
+
+  // ▼▼▼ NUEVO: Lógica de Iconos de Estudio/Plataforma ▼▼▼
+  // Reseteamos todos los iconos primero
+  const iconElements = {
+    N: front.querySelector('.netflix-icon'),
+    H: front.querySelector('[data-template="hbo-icon"]'),
+    D: front.querySelector('.disney-icon'),
+    W: front.querySelector('.wb-icon'),
+    U: front.querySelector('.universal-icon'),
+    S: front.querySelector('.sony-icon'),
+    P: front.querySelector('.paramount-icon'),
+    L: front.querySelector('.lionsgate-icon'),
+    Z: front.querySelector('.amazon-icon')
+  };
+
+  // Ocultamos todos por defecto
+  Object.values(iconElements).forEach(el => { if(el) el.style.display = 'none'; });
+
+  // Mostramos los que correspondan
+  const collections = movieData.collections_list || "";
+  collections.split(",").forEach(code => {
+    const el = iconElements[code];
+    if (el) el.style.display = 'block'; // Usamos block o inline-block según el CSS base
+  });
+
   
   // 3. TÍTULO ORIGINAL
   const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
