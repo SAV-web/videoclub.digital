@@ -448,26 +448,29 @@ body.user-logged-in #user-session-group { display: flex; }
   left: 0;
   width: 100%;
   height: 3px;
+  
   /* Fondo base transparente */
   background-color: transparent;
-  /* El "viajero": un gradiente que se moverá */
+  
+  /* El "viajero": un gradiente del color de acento que se desvanece en los bordes */
   background-image: linear-gradient(
     90deg, 
     transparent 0%, 
     var(--color-accent) 50%, 
     transparent 100%
   );
+  
   background-size: 50% 100%; /* El viajero ocupa la mitad del ancho */
   background-repeat: no-repeat;
   background-position: -50% 0; /* Posición inicial: fuera a la izquierda */
   
   opacity: 0;
-  z-index: 1001;
+  z-index: 1001; /* Por encima del contenido del sidebar */
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
-/* Estado activo: Animación infinita */
+/* Estado activo: Animación infinita cuando el body tiene la clase .is-fetching */
 body.is-fetching .sidebar::before {
   opacity: 1;
   animation: indeterminate-loading 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);

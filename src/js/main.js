@@ -1,8 +1,11 @@
 // =================================================================
-//          SCRIPT PRINCIPAL (Estable y Optimizado)
+//          SCRIPT PRINCIPAL (v4.3 - Feedback Visual Sidebar)
 // =================================================================
 // FICHERO: src/js/main.js
-// VERSIÓN: 4.2 (Sin cancelación de peticiones para evitar congelación)
+// CAMBIOS: 
+// - Implementa indicador de carga en Sidebar (clase .is-fetching en body).
+// - Elimina reducción de opacidad en grid (mejor UX móvil).
+// - Lógica estable sin cancelación de peticiones.
 // =================================================================
 
 import "../css/main.css";
@@ -49,8 +52,6 @@ import { initTouchDrawer } from "./components/touch-drawer.js";
 import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
 import { fetchUserMovieData } from "./api-user.js";
-
-// IMPORTACIÓN CLAVE: Sistema de hover optimizado
 import { initGridHoverSystem } from "./components/card.js";
 
 const URL_PARAM_MAP = {
@@ -63,56 +64,42 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
-/**
- * Orquesta la carga de la parrilla de películas.
- * Gestiona feedback visual, petición de datos, optimización LCP y renderizado.
- * @param {number} [page=1] - La página a cargar.
- */
 export async function loadAndRenderMovies(page = 1) {
-  // 1. Actualización del Estado Global y URL
+  // 1. Configuración Inicial
   setCurrentPage(page);
   updatePageTitle();
   updateUrl();
 
-  // 2. Feedback Visual Inmediato (UX)
-  // Añadimos clase al BODY para activar la barra de progreso en el Sidebar.
+  // 2. FEEDBACK VISUAL: Activamos la barra del Sidebar
   document.body.classList.add('is-fetching');
-  // Añadimos clase al GRID para bajar opacidad y bloquear clics.
-  dom.gridContainer.classList.add('is-fetching');
 
   const supportsViewTransitions = !!document.startViewTransition;
 
-  // 3. Lógica encapsulada de carga y actualización del DOM
   const renderLogic = async () => {
     try {
-      // ESTRATEGIA DE OVER-FETCHING:
-      // Pág 1: Pedimos 56 items (DYNAMIC_PAGE_SIZE_LIMIT) para la lógica híbrida.
-      // Pág 2+: Pedimos 42 items (ITEMS_PER_PAGE) estándar.
+      // 3. Petición de Datos
       const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
       
-      // Petición a la API (Estándar, sin cancelación para estabilidad)
       const { items: movies, total: totalMovies } = await fetchMovies(
         getActiveFilters(),
         page,
         pageSize
       );
 
-      // Optimización LCP: Precarga la imagen de la primera película
+      // Optimización LCP
       if (movies && movies.length > 0) {
         preloadLcpImage(movies[0]);
       }
       
-      // Actualiza el DOM (aquí dentro se aplica el recorte de 56 a 42 si es necesario)
+      // 4. Renderizado
       updateDomWithResults(movies, totalMovies);
 
-      // Limpieza de estado de carga (ÉXITO)
+      // 5. Limpieza (Éxito)
       document.body.classList.remove('is-fetching');
-      dom.gridContainer.classList.remove('is-fetching');
 
     } catch (error) {
-      // Limpieza de estado de carga (ERROR)
+      // 5. Limpieza (Error)
       document.body.classList.remove('is-fetching');
-      dom.gridContainer.classList.remove('is-fetching');
 
       console.error("Error crítico en carga:", error);
       const msg = getFriendlyErrorMessage(error);
@@ -121,19 +108,17 @@ export async function loadAndRenderMovies(page = 1) {
     }
   };
 
-  // 4. Ejecución con o sin View Transitions
+  // 6. Ejecución (Con transición suave si es posible)
   if (supportsViewTransitions) {
-    // CON Transiciones: Esperamos a tener los datos y el navegador hace un cross-fade suave.
-    // No borramos el contenido previo para evitar el "pantallazo blanco".
     document.startViewTransition(renderLogic);
   } else {
-    // SIN Transiciones (Fallback):
-    // Mostramos esqueletos inmediatamente para dar sensación de respuesta rápida
-    // en navegadores antiguos o si el usuario prefiere movimiento reducido.
+    // Sin transición: Mostramos esqueletos en el grid para feedback local
+    dom.gridContainer.setAttribute("aria-busy", "true");
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
     updateHeaderPaginationState(getCurrentPage(), 0);
+    
     await renderLogic();
-    // Aseguramos que se quita el aria-busy al final
+    
     dom.gridContainer.setAttribute("aria-busy", "false");
   }
 }
@@ -162,6 +147,8 @@ function updateDomWithResults(movies, totalMovies) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
+
+// ... (Resto de manejadores de eventos y setup listeners se mantienen igual) ...
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
@@ -252,7 +239,6 @@ function setupGlobalListeners() {
     }
   });
 
-  // ACTIVACIÓN DEL SISTEMA DELEGADO
   initGridHoverSystem(dom.gridContainer);
 
   document.getElementById("quick-view-content").addEventListener("click", function(e) {
