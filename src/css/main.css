@@ -19,14 +19,11 @@
 @import "base/globals.css";
 
 /* --- 2. COMPONENTES DE UI --- */
-@import "components/auth.css";
+@import "components/user.css";
 @import "components/button.css";
-@import "components/card.css";
-@import "components/card-actions.css";
+@import "components/movie-card.css"; 
 @import "components/header.css";
 @import "components/modal.css";
-@import "components/movie-summary.css";
-@import "components/profile.css";
 @import "components/sidebar.css";
 @import "components/ui-general.css";
 

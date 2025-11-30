@@ -1,0 +1,225 @@
+/* =================================================================
+ *          COMPONENTE: Usuario (Perfil + Autenticación)
+ * =================================================================
+ *  FICHERO: src/css/components/user.css
+ *  RESPONSABILIDAD: Gestionar la visualización del avatar en el sidebar
+ *  y los estilos de la modal de Login/Registro.
+ *  (Fusión de profile.css y auth.css)
+ * ================================================================= */
+
+/* =================================================================
+   1. PERFIL DE USUARIO (Sidebar)
+   ================================================================= */
+
+.profile-container {
+  margin-top: auto; /* Mantiene la sección en la parte inferior */
+  padding-top: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Centra el contenido */
+  height: 52px; /* Altura fija para evitar saltos de layout */
+}
+
+/* Grupo que contiene el avatar y el botón de logout */
+.user-session-group {
+  display: none; /* Oculto por defecto (usuario anónimo) */
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* Estilos para el círculo con la inicial del usuario */
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-round);
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: var(--font-size-base);
+  font-weight: bold;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+}
+
+/* --- Lógica de Estados (Logueado vs Anónimo) --- */
+
+/* Cuando el usuario está logueado: */
+body.user-logged-in #login-button {
+  display: none; /* Ocultamos el botón de login */
+}
+
+body.user-logged-in #user-session-group {
+  display: inline-flex; /* Mostramos avatar y logout */
+}
+
+/* --- Adaptación al Sidebar Colapsado (Desktop) --- */
+@media (min-width: 769px) {
+  body.sidebar-collapsed .user-avatar {
+    display: none; /* Ocultamos el avatar, solo dejamos el icono de logout */
+  }
+  body.sidebar-collapsed .user-session-group {
+    gap: 0;
+  }
+}
+
+/* =================================================================
+   2. MODAL DE AUTENTICACIÓN (Login / Registro)
+   ================================================================= */
+
+/* --- Overlay de Fondo --- */
+.auth-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1999; /* Justo debajo de la modal */
+  backdrop-filter: blur(var(--space-xxs));
+}
+
+/* --- Contenedor Modal --- */
+.auth-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2000;
+  width: 90%; /* Ancho fluido en móvil */
+  max-width: 420px;
+}
+
+/* Caja Interna */
+.auth-box {
+  width: 100%;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+/* Cabecera y Logo */
+.auth-header {
+  margin-bottom: var(--space-lg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-logo-modal {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  font-family: var(--font-title);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.auth-logo-modal span:first-child { color: var(--color-accent); } /* "videoclub" */
+
+.auth-box h3 {
+  margin-bottom: var(--space-lg);
+  font-family: var(--font-title);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+/* --- Elementos del Formulario --- */
+.form-group {
+  margin-bottom: var(--space-md);
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--space-xs);
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  color: var(--color-text-secondary);
+}
+
+.form-group input {
+  width: 100%;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1); /* Sombra foco sutil */
+}
+
+.form-group small {
+  display: block;
+  margin-top: var(--space-xxs);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+/* Botón de Acción Principal */
+.auth-button {
+  width: 100%;
+  padding: var(--space-sm);
+  margin-top: var(--space-xs);
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: bold;
+  transition: background-color 0.2s, transform 0.1s;
+}
+.auth-button:hover {
+  background-color: var(--color-accent-darker);
+}
+.auth-button:active {
+  transform: scale(0.98);
+}
+
+/* Texto de cambio (Login <-> Registro) */
+.auth-toggle-text {
+  margin-top: var(--space-lg);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.auth-toggle-text button {
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* Mensajes de Feedback (Error/Éxito) */
+.auth-message {
+  display: none; /* Controlado por JS */
+  margin-top: var(--space-md);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+}
+.auth-message--error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+}
+.auth-message--success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
