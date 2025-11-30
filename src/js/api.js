@@ -1,17 +1,17 @@
 // =================================================================
-//          MÓDULO DE SERVICIO API (v5.0 - Return Pattern)
+//          MÓDULO DE SERVICIO API (v5.1 - Ruta Actualizada)
 // =================================================================
 // FICHERO: src/js/api.js
-// CAMBIO: Implementación del patrón "Explicit Return" para cancelaciones.
-// En lugar de lanzar errores o promesas eternas, devolvemos un objeto
-// con flag { aborted: true } para un manejo limpio en el consumidor.
+// CAMBIO: Actualizada la importación de requestManager a ./components/
 // =================================================================
 
 import { CONFIG } from "./config.js";
 import { supabase } from "./supabaseClient.js";
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest } from "./utils/requestManager.js";
+// CAMBIO: Ruta actualizada
+import { createAbortableRequest } from "./components/requestManager.js";
 
+// Configuración de caché optimizada
 export const queryCache = new LRUCache({
   max: 300,
   ttl: 1000 * 60 * 30,
@@ -19,7 +19,6 @@ export const queryCache = new LRUCache({
   ttlAutopurge: true,
 });
 
-// ... (createCanonicalCacheKey y buildRpcParams SE MANTIENEN IGUAL) ...
 function createCanonicalCacheKey(filters, page, pageSize) {
   const normalizedFilters = {};
   Object.keys(filters).sort().forEach((key) => {
@@ -81,20 +80,17 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
     const rpcCall = supabase.rpc("search_movies_offset", rpcParams);
 
     if (signal) {
-      // Si ya viene abortada, salimos rápido devolviendo el objeto de estado
       if (signal.aborted) return { aborted: true, items: [], total: 0 };
       rpcCall.abortSignal(signal);
     }
 
     const { data, error } = await rpcCall;
 
-    // Verificación post-await (por si se canceló mientras esperábamos)
     if (signal && signal.aborted) {
         return { aborted: true, items: [], total: 0 };
     }
 
     if (error) {
-      // Si el error interno es de aborto, lo tratamos como flujo normal
       if (error.name === "AbortError" || error.message?.includes("abort")) {
          return { aborted: true, items: [], total: 0 };
       }
@@ -104,7 +100,6 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
 
     const result = { total: data?.total || 0, items: data?.items || [] };
     
-    // Solo guardamos en caché si NO fue abortado
     if (!signal?.aborted) {
         queryCache.set(queryKey, result);
     }
@@ -112,15 +107,13 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
     return result;
 
   } catch (error) {
-    // Captura final de seguridad
     if (error.name === "AbortError" || (signal && signal.aborted)) {
         return { aborted: true, items: [], total: 0 };
     }
-    throw error; // Los errores reales (500, red) sí se lanzan
+    throw error;
   }
 }
 
-// ... (Resto del archivo: fetchSuggestions y sus exportaciones igual que antes) ...
 const fetchSuggestions = async (rpcName, searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) return [];
   const requestKey = `suggestion-${rpcName}`;
