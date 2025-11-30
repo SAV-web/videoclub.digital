@@ -1,8 +1,10 @@
 // =================================================================
-//          SCRIPT PRINCIPAL (v6.1 - Ruta Actualizada)
+//          SCRIPT PRINCIPAL (v6.1 - Fix Paginación Estricta)
 // =================================================================
 // FICHERO: src/js/main.js
-// CAMBIO: Actualizada la importación de requestManager a ./components/
+// CAMBIO: Corregida la lógica de recorte en 'updateDomWithResults'.
+// Ahora, si hay paginación (total > 56), la página 1 se fuerza a 42 items
+// para evitar duplicados con la página 2.
 // =================================================================
 
 import "../css/main.css";
@@ -50,7 +52,6 @@ import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
 import { fetchUserMovieData } from "./api-user.js";
 import { initGridHoverSystem } from "./components/card.js";
-// CAMBIO: Ruta actualizada
 import { createAbortableRequest } from './components/requestManager.js';
 
 const URL_PARAM_MAP = {
@@ -63,62 +64,88 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
+/**
+ * Orquesta la carga de la parrilla de películas.
+ * VERSIÓN 6.2: Recuperados los Esqueletos de carga (Feedback Inmediato).
+ */
 export async function loadAndRenderMovies(page = 1) {
+  // 1. Gestión de tráfico
   const controller = createAbortableRequest('movie-grid-load');
   const signal = controller.signal;
 
+  // 2. Actualizar estado
   setCurrentPage(page);
   updatePageTitle();
   updateUrl();
 
+  // 3. FEEDBACK VISUAL INMEDIATO (Skeletons)
+  // Activamos barra de progreso
   document.body.classList.add('is-fetching');
-  
   dom.gridContainer.classList.add('is-fetching');
+  
+  // ¡RECUPERADO!: Pintamos los esqueletos inmediatamente al hacer clic.
+  // Esto borra el contenido anterior y muestra que estamos "pensando".
+  dom.gridContainer.setAttribute("aria-busy", "true");
+  renderSkeletons(dom.gridContainer, dom.paginationContainer);
+  updateHeaderPaginationState(getCurrentPage(), 0);
+  
+  // Si hay scroll abajo, subimos para ver los esqueletos cargando
+  window.scrollTo({ top: 0, behavior: "instant" });
 
-  try {
-    const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+  const supportsViewTransitions = !!document.startViewTransition;
 
-    const result = await fetchMovies(
-      getActiveFilters(),
-      page,
-      pageSize,
-      signal
-    );
-
-    if (result.aborted) return;
-
-    const { items: movies, total: totalMovies } = result;
-
-    if (movies && movies.length > 0) {
-      preloadLcpImage(movies[0]);
-    }
-
-    const performRender = () => {
-      updateDomWithResults(movies, totalMovies);
+  const renderLogic = async () => {
+    try {
+      const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
       
-      window.scrollTo({ top: 0, behavior: "instant" });
+      const result = await fetchMovies(
+        getActiveFilters(),
+        page,
+        pageSize,
+        signal
+      );
+
+      if (result.aborted) return;
+
+      const { items: movies, total: totalMovies } = result;
+
+      if (movies && movies.length > 0) {
+        preloadLcpImage(movies[0]);
+      }
       
+      // Definimos la actualización final del DOM
+      const performRender = () => {
+        updateDomWithResults(movies, totalMovies);
+        
+        // Limpieza final
+        document.body.classList.remove('is-fetching');
+        dom.gridContainer.classList.remove('is-fetching');
+        dom.gridContainer.setAttribute("aria-busy", "false");
+      };
+
+      // Ejecutamos la transición (Esqueletos -> Contenido Real)
+      if (supportsViewTransitions) {
+        document.startViewTransition(performRender);
+      } else {
+        performRender();
+      }
+
+    } catch (error) {
+      if (error.name === "AbortError") return;
+
       document.body.classList.remove('is-fetching');
       dom.gridContainer.classList.remove('is-fetching');
-    };
-
-    if (document.startViewTransition) {
-      document.startViewTransition(performRender);
-    } else {
-      performRender();
+      dom.gridContainer.setAttribute("aria-busy", "false");
+      
+      console.error("Error en carga:", error);
+      const msg = getFriendlyErrorMessage(error);
+      showToast(msg, "error");
+      renderErrorState(dom.gridContainer, dom.paginationContainer, msg);
     }
+  };
 
-  } catch (error) {
-    if (error.name === "AbortError") return;
-
-    console.error("Error en carga:", error);
-    document.body.classList.remove('is-fetching');
-    dom.gridContainer.classList.remove('is-fetching');
-    
-    const msg = getFriendlyErrorMessage(error);
-    showToast(msg, "error");
-    renderErrorState(dom.gridContainer, dom.paginationContainer, msg);
-  }
+  // Iniciamos la lógica (los esqueletos ya están visibles)
+  await renderLogic();
 }
 
 function updateDomWithResults(movies, totalMovies) {
@@ -130,12 +157,21 @@ function updateDomWithResults(movies, totalMovies) {
   if (currentState.totalMovies === 0) {
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
+  
+  // CASO A: Pocos resultados (<= 56) Y estamos en página 1.
+  // Aquí mostramos TODO lo que llegó (hasta 56) para evitar paginación innecesaria.
   } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
     renderMovieGrid(dom.gridContainer, movies);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
+    
+  // CASO B: Muchos resultados (Pagianción activa).
   } else {
-    const limit = (currentState.currentPage === 1) ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+    // CORRECCIÓN AQUÍ:
+    // Si estamos paginando, la página 1 DEBE tener estrictamente 42 items (ITEMS_PER_PAGE).
+    // Si ponemos 56 aquí, se solaparían con la página 2 que empieza en el 43.
+    const limit = CONFIG.ITEMS_PER_PAGE; 
+    
     const moviesToRender = movies.slice(0, limit);
 
     renderMovieGrid(dom.gridContainer, moviesToRender);
@@ -153,6 +189,8 @@ function updateDomWithResults(movies, totalMovies) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
+
+// ... (Resto de handlers IDÉNTICOS) ...
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
