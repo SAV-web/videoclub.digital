@@ -2,110 +2,127 @@
 
 :root {
   /* ========================================================== */
-  /*  ▼▼▼ SISTEMA TIPOGRÁFICO v2.1 (CON RANGO DINÁMICO) ▼▼▼ */
+  /*  ▼▼▼ SISTEMA DE DISEÑO (DESIGN TOKENS) ▼▼▼ */
   /* ========================================================== */
 
-  /* ---- Sistema Tipográfico (Escala Responsiva) ---- */
-  /* Escala base para móvil (hasta 768px) */
-  --font-size-xs: 0.75rem; /* 12px */
-  --font-size-sm: 0.875rem; /* 14px */
-  --font-size-base: 1rem; /* 16px (base) */
-  --font-size-md: 1.125rem; /* 18px */
-  --font-size-lg: 1.25rem; /* 20px */
-  --font-size-xl: 1.5rem; /* 24px */
-  --font-size-xxl: 2rem; /* 32px */
-  --font-title: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  --font-body: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  --font-weight-light: 300; /* NUEVO: Para detalles sutiles */
+  /* ---- 1. Escala Tipográfica (Modular Scale) ---- */
+  /* Definimos la escala completa para mantener consistencia futura */
+  --font-size-xs: 0.75rem;   /* 12px - Metadatos, etiquetas */
+  --font-size-sm: 0.875rem;  /* 14px - Cuerpo pequeño */
+  --font-size-base: 1rem;    /* 16px - Cuerpo estándar */
+  --font-size-md: 1.125rem;  /* 18px - Subtítulos */
+  --font-size-lg: 1.25rem;   /* 20px - Títulos tarjeta */
+  --font-size-xl: 1.5rem;    /* 24px - Títulos sección */
+  --font-size-xxl: 2rem;     /* 32px - Títulos página */
+
+  --font-title: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Pesos (Variable Font) */
+  --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --font-weight-black: 900; /* NUEVO: Para títulos impactantes (opcional, usar con moderación) */
-  --font-weight-extrabold: 800;
-  --line-height-tight: 1.25;
+  --font-weight-extrabold: 800; 
+
+  /* Altura de línea */
+  --line-height-tight: 1.1;  /* Ajustado para títulos compactos */
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
 
-  /* ---- Paleta de Colores de Texto con Mayor Rango ---- */
-  --color-text-hero: #1a1a1a; /* NUEVO: Casi negro para máxima atención */
-  --color-text-primary: #333333; /* Mantenido: Para cuerpo de texto principal */
-  --color-text-secondary: #666666; /* Mantenido: Para labels y descripciones */
-  --color-text-tertiary: #737373; /* NUEVO: Gris claro para metadatos no críticos */
+  /* ---- 2. Paleta de Colores (Semántica) ---- */
+  /* Texto */
+  --color-text-primary: #333333;   /* Títulos y cuerpo principal */
+  --color-text-secondary: #666666; /* Metadatos, etiquetas */
+  --color-text-tertiary: #737373;  /* Detalles de bajo contraste (ej. director) */
 
-  /* ---- Sistema de Movimiento (Avanzado) ---- */
-  --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  --ease-smooth-out: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --ease-snap: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --duration-instant: 100ms;
-  --duration-quick: 200ms;
-  --duration-normal: 400ms;
-  --duration-leisurely: 600ms;
-  --duration-reveal: 3s;
-
-  /* ---- Sistema de Color (Modo Claro) ---- */
+  /* Interfaz (Modo Claro) */
   --color-bg: #f5f5f5;
   --color-surface: #ffffff;
-  --color-text-primary: #333333;
-  --color-text-secondary: #666666;
-  --color-accent: #37474f;
-  --color-accent-exclude: #90a4ae;
   --color-border: #e0e0e0;
-  --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-  --color-accent-darker: #263238;
-  --color-accent-exclude-darker: #78909c;
   --color-border-soft: rgba(0, 0, 0, 0.07);
+  
+  /* Marca y Acentos */
+  --color-accent: #37474f;
+  --color-accent-darker: #263238;
+  --color-accent-exclude: #90a4ae;
+  --color-accent-exclude-darker: #78909c;
+
+  /* Estados */
   --color-error: #dc3545;
   --color-error-bg: #dc354520;
   --color-success: #28a745;
   --color-success-bg: #28a74520;
 
-  /* ---- Radios y Tamaños ---- */
+  /* Efectos */
+  --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+
+  /* ---- 3. Movimiento y Animación ---- */
+  --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-smooth-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-snap: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1); /* Estándar */
+
+  --duration-instant: 100ms;
+  --duration-quick: 200ms;   /* Micro-interacciones */
+  --duration-fast: 300ms;    /* Transiciones UI estándar */
+  --duration-normal: 400ms;  /* Cambios de estado grandes */
+  --duration-leisurely: 600ms; /* Animaciones complejas */
+
+  /* ---- 4. Dimensiones y Espaciado ---- */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-round: 50%;
   --radius-pill: 1rem;
 
-  /* ---- Escala de Espaciado ---- */
   --space-xxs: 0.25rem; /* 4px */
-  --space-xs: 0.5rem; /* 8px */
-  --space-sm: 0.75rem; /* 12px */
-  --space-md: 1rem; /* 16px */
-  --space-lg: 1.5rem; /* 24px */
-  --space-xl: 2rem; /* 32px */
-  --space-xxl: 3rem; /* 48px */
-  --space-xxxl: 4rem; /* 64px */
+  --space-xs: 0.5rem;   /* 8px */
+  --space-sm: 0.75rem;  /* 12px */
+  --space-md: 1rem;     /* 16px */
+  --space-lg: 1.5rem;   /* 24px */
+  --space-xl: 2rem;     /* 32px */
+  --space-xxl: 3rem;    /* 48px */
+  --space-xxxl: 4rem;   /* 64px - Reservado para layout grandes */
 
-  /* ---- Stacking Context (Capas) ---- */
+  /* ---- 5. Capas (Z-Index) ---- */
+  --z-index-card-content: 20;   /* Elementos flotantes dentro de cards */
+  --z-index-autocomplete: 850;
   --z-index-header: 900;
   --z-index-sidebar: 1000;
-  --z-index-card-content: 20;
-  --z-index-autocomplete: 850;
-  --z-index-overlay: 999;
-  --z-index-sidebar-toggle: 1001;
+  --z-index-overlay: 1999;      /* Backdrops de modales */
   --z-index-toast: 2000;
 }
 
-/* Paleta Modo Oscuro (Accesible y con Profundidad) */
+/* ---- Paleta Modo Oscuro ---- */
 body.dark-mode {
   --color-bg: #121212;
   --color-surface: #242424;
-  --color-text-hero: #ffffff; /* El blanco más puro para el título */
-  --color-text-primary: #e0e0e0; /* Blanco ligeramente apagado para el texto principal */
-  --color-text-secondary: #b8b8b8; /* Gris medio para labels. Más luminosidad para mejor contraste (WCAG) */
-  --color-text-tertiary: #a0a0a0; /* Gris más oscuro para metadatos */
+  
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #b8b8b8; /* Contraste mejorado (WCAG) */
+  --color-text-tertiary: #a0a0a0;
+  
   --color-border: #2f2f2f;
+  
   --color-accent: #b0bec5;
+  --color-accent-darker: #b0bec5; /* En dark mode el acento suele brillar más */
   --color-accent-exclude: #546e7a;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --color-accent-darker: #b0bec5;
   --color-accent-exclude-darker: #607d8b;
-  --color-error: #28a745;
-  --color-error-bg: #28a74520;
+  
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  
+  /* Inversión de semántica de estado para legibilidad oscura */
+  --color-error: #28a745; 
   --color-success: #dc3545;
-  --color-success-bg: #dc354520;
 }
+
+/* 
+   NOTAS DE LIMPIEZA:
+   - Eliminado: --color-text-hero (Redundante con primary)
+   - Eliminado: --z-index-sidebar-toggle (No usado)
+   - Eliminado: --duration-reveal (No usado)
+   - Eliminado: --font-weight-black (No usado, máximo es extrabold)
+*/

@@ -385,9 +385,6 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   overflow: visible;
   display: block;
 }
-@media (min-width: 769px) {
-  .quick-view-back { min-width: 0; }
-}
 
 /* --- 9. Expansión de Actores (ESTILO BOTÓN FLOTANTE) --- */
 

@@ -350,3 +350,28 @@ body.sidebar-is-open .sidebar .sidebar-control-button.theme-toggle {
     --font-size-xxl: 3rem; /* 48px */
   }
 }
+
+/* =================================================================
+   MEJORAS DE ACCESIBILIDAD TÁCTIL (Touch Targets)
+   ================================================================= */
+
+/* Detecta dispositivos donde el mecanismo principal es "grueso" (dedo) */
+@media (hover: none) and (pointer: coarse) {
+  
+  /* Select de ordenación más grande */
+  #sort-select {
+    height: 44px;      /* Área táctil mínima estándar */
+    font-size: 1rem;   /* Evita el zoom automático en iOS al enfocar */
+    padding-left: 12px;
+    padding-right: 32px; /* Espacio para la flecha nativa */
+  }
+
+  /* Input de búsqueda también debe crecer para ser consistente */
+  .search-form input {
+    height: 44px;
+    font-size: 1rem;
+  }
+  
+  /* El botón de filtro de tipo (Todo/Cine/TV) ya estaba ajustado en button.css, 
+     pero aseguramos consistencia aquí si fuera necesario */
+}

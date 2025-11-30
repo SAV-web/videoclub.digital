@@ -416,9 +416,6 @@ body.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2)
 body.sidebar-is-open .profile-button-text,
 body:not(.sidebar-collapsed) .sidebar .profile-button-text { display: inline; }
 
-body.user-logged-in #login-button { display: none; }
-body.user-logged-in #user-session-group { display: flex; }
-
 /* --- 10. Accesibilidad Táctil --- */
 @media (hover: none) and (pointer: coarse) {
   .filter-pill { padding: var(--space-xs) var(--space-md); }

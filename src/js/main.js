@@ -1,9 +1,11 @@
 // =================================================================
-//          SCRIPT PRINCIPAL (v5.0 - Flujo Limpio)
+//          SCRIPT PRINCIPAL (v6.0 - Zero Freeze)
 // =================================================================
 // FICHERO: src/js/main.js
-// CAMBIOS: Uso del patrón { aborted: true } para salir limpiamente
-// de la función sin generar excepciones ni promesas colgadas.
+// CAMBIOS CRÍTICOS:
+// 1. Patrón "Fetch-Then-Transition": La red ocurre ANTES de congelar la pantalla.
+// 2. Eliminada la congelación de UI al paginar rápido.
+// 3. Mantiene la barra de progreso superior como feedback principal.
 // =================================================================
 
 import "../css/main.css";
@@ -23,7 +25,6 @@ import {
   prefetchNextPage,
   initQuickView,
   setupAuthModal,
-  initThemeToggle, // <--- ASEGURAR ESTA IMPORTACIÓN
   updateTypeFilterUI,
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
@@ -64,77 +65,85 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
+/**
+ * Función principal de carga.
+ * ESTRATEGIA: Carga asíncrona no bloqueante -> Transición síncrona rápida.
+ */
 export async function loadAndRenderMovies(page = 1) {
+  // 1. Gestión de tráfico (Cancelar anteriores)
   const controller = createAbortableRequest('movie-grid-load');
   const signal = controller.signal;
 
+  // 2. Actualizar estado (URL, Título)
   setCurrentPage(page);
   updatePageTitle();
   updateUrl();
 
+  // 3. Feedback Visual: Barra de progreso en Sidebar
   document.body.classList.add('is-fetching');
+  
+  // Opcional: Bajar opacidad sutilmente para indicar actividad, pero SIN bloquear
+  dom.gridContainer.classList.add('is-fetching');
 
-  const supportsViewTransitions = !!document.startViewTransition;
+  try {
+    const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
 
-  const renderLogic = async () => {
-    try {
-      const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
-      
-      // Llamada a la API (ahora devuelve objeto, no lanza error por aborto)
-      const result = await fetchMovies(
-        getActiveFilters(),
-        page,
-        pageSize,
-        signal
-      );
+    // 4. FASE DE RED (La UI sigue viva, el usuario puede scrollear o cancelar)
+    // No envolvemos esto en startViewTransition para evitar la congelación.
+    const result = await fetchMovies(
+      getActiveFilters(),
+      page,
+      pageSize,
+      signal
+    );
 
-      // VERIFICACIÓN EXPLÍCITA DE ABORTO
-      // Si fue abortada, salimos limpiamente. La promesa resuelve,
-      // la ViewTransition termina (si existía) y la UI queda lista para la siguiente.
-      if (result.aborted) return;
+    // 5. Verificación de Aborto
+    // Si el usuario clicó rápido en otra cosa, 'result.aborted' será true.
+    // Simplemente salimos. No quitamos 'is-fetching' porque la nueva petición está en curso.
+    if (result.aborted) return;
 
-      // Extracción de datos seguros
-      const { items: movies, total: totalMovies } = result;
+    // Extracción segura de datos
+    const { items: movies, total: totalMovies } = result;
 
-      if (movies && movies.length > 0) {
-        preloadLcpImage(movies[0]);
-      }
-      
+    // Optimización de imagen LCP
+    if (movies && movies.length > 0) {
+      preloadLcpImage(movies[0]);
+    }
+
+    // 6. FASE DE RENDERIZADO (Transición Visual)
+    // Ahora que tenemos los datos, hacemos el cambio. Esto es instantáneo (ms).
+    const performRender = () => {
       updateDomWithResults(movies, totalMovies);
-
-      // Éxito: limpiamos estado de carga
+      
+      // Restaurar scroll arriba
+      window.scrollTo({ top: 0, behavior: "instant" }); // Instantáneo dentro de la transición queda mejor
+      
+      // Limpieza final de estados
       document.body.classList.remove('is-fetching');
+      dom.gridContainer.classList.remove('is-fetching');
+    };
 
-    } catch (error) {
-      // Aquí solo llegan errores REALES (Red, 500, Parseo)
-      document.body.classList.remove('is-fetching');
-      console.error("Error crítico en carga:", error);
-      const msg = getFriendlyErrorMessage(error);
-      showToast(msg, "error");
-      renderErrorState(dom.gridContainer, dom.paginationContainer, msg);
+    if (document.startViewTransition) {
+      // El navegador congela aquí, pero como performRender es síncrono y rápido,
+      // la congelación dura milisegundos, creando el efecto "cross-fade" perfecto.
+      document.startViewTransition(performRender);
+    } else {
+      performRender();
     }
-  };
 
-  if (supportsViewTransitions && !signal.aborted) {
-    document.startViewTransition(renderLogic);
-  } else {
-    // Fallback sin transiciones
-    if (!signal.aborted) {
-        dom.gridContainer.setAttribute("aria-busy", "true");
-        renderSkeletons(dom.gridContainer, dom.paginationContainer);
-        updateHeaderPaginationState(getCurrentPage(), 0);
-    }
+  } catch (error) {
+    // Gestión de Errores
+    if (error.name === "AbortError") return; // Ignorar cancelaciones reales
+
+    console.error("Error en carga:", error);
+    document.body.classList.remove('is-fetching');
+    dom.gridContainer.classList.remove('is-fetching');
     
-    await renderLogic();
-    
-    if (!signal.aborted) {
-        dom.gridContainer.setAttribute("aria-busy", "false");
-    }
+    const msg = getFriendlyErrorMessage(error);
+    showToast(msg, "error");
+    renderErrorState(dom.gridContainer, dom.paginationContainer, msg);
   }
 }
-
-// ... (Resto del código IDÉNTICO: updateDomWithResults, handlers, etc.) ...
-// (Copia el resto del archivo anterior)
 
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
@@ -150,9 +159,18 @@ function updateDomWithResults(movies, totalMovies) {
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
   } else {
-    const moviesForPage = movies.slice(0, CONFIG.ITEMS_PER_PAGE);
-    renderMovieGrid(dom.gridContainer, moviesForPage);
-    renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
+    // Recorte visual seguro
+    const limit = (currentState.currentPage === 1) ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+    const moviesToRender = movies.slice(0, limit);
+
+    renderMovieGrid(dom.gridContainer, moviesToRender);
+    
+    if (currentState.totalMovies > limit) {
+      renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
+    } else {
+      dom.paginationContainer.textContent = "";
+    }
+    
     updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
   }
 
@@ -160,6 +178,8 @@ function updateDomWithResults(movies, totalMovies) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
+
+// ... (Resto de handlers se mantienen igual) ...
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
@@ -207,7 +227,7 @@ function setupHeaderListeners() {
     if (newPage > 0 && newPage <= totalPages) {
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));
       await loadAndRenderMovies(newPage);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Eliminado window.scrollTo de aquí, se hace dentro de loadAndRenderMovies
     }
   };
 
@@ -234,7 +254,7 @@ function setupGlobalListeners() {
       triggerPopAnimation(button);
       const page = parseInt(button.dataset.page, 10);
       await loadAndRenderMovies(page);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Eliminado window.scrollTo de aquí, se hace dentro de loadAndRenderMovies
     }
   });
 
@@ -254,6 +274,13 @@ function setupGlobalListeners() {
 
   document.getElementById("quick-view-content").addEventListener("click", function(e) {
     handleCardClick.call(this, e);
+  });
+  
+  dom.themeToggleButton.addEventListener("click", (e) => {
+    triggerPopAnimation(e.currentTarget);
+    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+    const isDarkMode = document.documentElement.classList.toggle("dark-mode");
+    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
   });
   
   let isTicking = false;
@@ -489,7 +516,6 @@ function init() {
 
   initSidebar();
   initQuickView();
-  initThemeToggle(); // <--- AÑADIR LLAMADA AQUÍ
   setupHeaderListeners();
   initTouchDrawer();
   setupGlobalListeners();

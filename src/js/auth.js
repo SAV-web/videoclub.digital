@@ -1,12 +1,8 @@
-// =================================================================
-//                  LÓGICA DE AUTENTICACIÓN
-// =================================================================
-// Este script gestiona los formularios de login y registro en la modal de autenticación.
+/* src/js/auth.js */
 
 import { supabase } from "./supabaseClient.js";
-import { closeAuthModal } from "./ui.js"; // Importamos la función para cerrar la modal
-
-// No es necesario un DOMContentLoaded porque este módulo será llamado por main.js
+import { closeAuthModal } from "./ui.js";
+import { showToast } from "./toast.js"; // ✨ IMPORTACIÓN NUEVA
 
 const dom = {
   loginView: document.getElementById("login-view"),
@@ -18,29 +14,17 @@ const dom = {
   authMessage: document.getElementById("auth-message"),
 };
 
-/**
- * Muestra un mensaje en la interfaz de autenticación.
- * @param {string} text - El mensaje a mostrar.
- * @param {'error' | 'success'} type - El tipo de mensaje.
- */
 function showMessage(text, type = "error") {
   dom.authMessage.textContent = text;
   dom.authMessage.className = `auth-message auth-message--${type}`;
   dom.authMessage.style.display = "block";
 }
 
-/**
- * Limpia cualquier mensaje previo.
- */
 function clearMessage() {
   dom.authMessage.style.display = "none";
   dom.authMessage.textContent = "";
 }
 
-/**
- * Gestiona el envío del formulario de registro.
- * @param {Event} e - El evento de submit.
- */
 async function handleRegister(e) {
   e.preventDefault();
   clearMessage();
@@ -58,6 +42,7 @@ async function handleRegister(e) {
   ) {
     showMessage("Error: Este usuario ya existe.", "error");
   } else if (data.user) {
+    // Mantenemos el mensaje inline para asegurar que leen "confirmar cuenta"
     showMessage(
       "¡Registro exitoso! Revisa tu email para confirmar tu cuenta.",
       "success"
@@ -66,10 +51,6 @@ async function handleRegister(e) {
   }
 }
 
-/**
- * Gestiona el envío del formulario de inicio de sesión.
- * @param {Event} e - El evento de submit.
- */
 async function handleLogin(e) {
   e.preventDefault();
   clearMessage();
@@ -79,11 +60,6 @@ async function handleLogin(e) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    // ✨ MEJORA: Usar los códigos de error o el nombre de la clase de error en lugar de
-    // buscar texto en el mensaje. Es más robusto ante cambios en la librería de Supabase.
-    // Aunque Supabase JS v2 no expone códigos de error numéricos fácilmente, podemos
-    // comprobar el tipo de error si la librería lo especificara. Por ahora, mantenemos
-    // la lógica pero con conciencia de su fragilidad.
     if (error.message === "Invalid login credentials") {
       showMessage("Email o contraseña incorrectos.");
     } else if (error.message === "Email not confirmed") {
@@ -92,16 +68,14 @@ async function handleLogin(e) {
       showMessage(`Error: ${error.message}`);
     }
   } else {
-    // En lugar de redirigir, cerramos la modal.
-    // El listener onAuthStateChange en main.js se encargará de actualizar la UI.
+    // ✨ MEJORA UX: Feedback explícito de éxito
+    showToast("¡Hola de nuevo! Sesión iniciada.", "success");
+    
     closeAuthModal();
     dom.loginForm.reset();
   }
 }
 
-/**
- * Inicializa los listeners para los formularios de autenticación.
- */
 export function initAuthForms() {
   if (!dom.loginForm) return;
 
@@ -112,9 +86,6 @@ export function initAuthForms() {
     clearMessage();
     dom.loginView.style.display = "none";
     dom.registerView.style.display = "block";
-
-    // ▼▼▼ MEJORA DE ACCESIBILIDAD AÑADIDA ▼▼▼
-    // Mover el foco al primer campo del formulario de registro.
     dom.registerForm.elements["register-email"].focus();
   });
 
@@ -122,9 +93,6 @@ export function initAuthForms() {
     clearMessage();
     dom.registerView.style.display = "none";
     dom.loginView.style.display = "block";
-
-    // ▼▼▼ MEJORA DE ACCESIBILIDAD AÑADIDA ▼▼▼
-    // Mover el foco al primer campo del formulario de login.
     dom.loginForm.elements["login-email"].focus();
   });
 }
