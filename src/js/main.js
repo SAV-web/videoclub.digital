@@ -1,11 +1,9 @@
 // =================================================================
-//          SCRIPT PRINCIPAL (v4.3 - Feedback Visual Sidebar)
+//          SCRIPT PRINCIPAL (v5.0 - Flujo Limpio)
 // =================================================================
 // FICHERO: src/js/main.js
-// CAMBIOS: 
-// - Implementa indicador de carga en Sidebar (clase .is-fetching en body).
-// - Elimina reducción de opacidad en grid (mejor UX móvil).
-// - Lógica estable sin cancelación de peticiones.
+// CAMBIOS: Uso del patrón { aborted: true } para salir limpiamente
+// de la función sin generar excepciones ni promesas colgadas.
 // =================================================================
 
 import "../css/main.css";
@@ -25,6 +23,7 @@ import {
   prefetchNextPage,
   initQuickView,
   setupAuthModal,
+  initThemeToggle, // <--- ASEGURAR ESTA IMPORTACIÓN
   updateTypeFilterUI,
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
@@ -53,6 +52,7 @@ import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
 import { fetchUserMovieData } from "./api-user.js";
 import { initGridHoverSystem } from "./components/card.js";
+import { createAbortableRequest } from './utils/requestManager.js';
 
 const URL_PARAM_MAP = {
   q: "searchTerm", genre: "genre", year: "year", country: "country",
@@ -65,42 +65,49 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
 );
 
 export async function loadAndRenderMovies(page = 1) {
-  // 1. Configuración Inicial
+  const controller = createAbortableRequest('movie-grid-load');
+  const signal = controller.signal;
+
   setCurrentPage(page);
   updatePageTitle();
   updateUrl();
 
-  // 2. FEEDBACK VISUAL: Activamos la barra del Sidebar
   document.body.classList.add('is-fetching');
 
   const supportsViewTransitions = !!document.startViewTransition;
 
   const renderLogic = async () => {
     try {
-      // 3. Petición de Datos
       const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
       
-      const { items: movies, total: totalMovies } = await fetchMovies(
+      // Llamada a la API (ahora devuelve objeto, no lanza error por aborto)
+      const result = await fetchMovies(
         getActiveFilters(),
         page,
-        pageSize
+        pageSize,
+        signal
       );
 
-      // Optimización LCP
+      // VERIFICACIÓN EXPLÍCITA DE ABORTO
+      // Si fue abortada, salimos limpiamente. La promesa resuelve,
+      // la ViewTransition termina (si existía) y la UI queda lista para la siguiente.
+      if (result.aborted) return;
+
+      // Extracción de datos seguros
+      const { items: movies, total: totalMovies } = result;
+
       if (movies && movies.length > 0) {
         preloadLcpImage(movies[0]);
       }
       
-      // 4. Renderizado
       updateDomWithResults(movies, totalMovies);
 
-      // 5. Limpieza (Éxito)
+      // Éxito: limpiamos estado de carga
       document.body.classList.remove('is-fetching');
 
     } catch (error) {
-      // 5. Limpieza (Error)
+      // Aquí solo llegan errores REALES (Red, 500, Parseo)
       document.body.classList.remove('is-fetching');
-
       console.error("Error crítico en carga:", error);
       const msg = getFriendlyErrorMessage(error);
       showToast(msg, "error");
@@ -108,20 +115,26 @@ export async function loadAndRenderMovies(page = 1) {
     }
   };
 
-  // 6. Ejecución (Con transición suave si es posible)
-  if (supportsViewTransitions) {
+  if (supportsViewTransitions && !signal.aborted) {
     document.startViewTransition(renderLogic);
   } else {
-    // Sin transición: Mostramos esqueletos en el grid para feedback local
-    dom.gridContainer.setAttribute("aria-busy", "true");
-    renderSkeletons(dom.gridContainer, dom.paginationContainer);
-    updateHeaderPaginationState(getCurrentPage(), 0);
+    // Fallback sin transiciones
+    if (!signal.aborted) {
+        dom.gridContainer.setAttribute("aria-busy", "true");
+        renderSkeletons(dom.gridContainer, dom.paginationContainer);
+        updateHeaderPaginationState(getCurrentPage(), 0);
+    }
     
     await renderLogic();
     
-    dom.gridContainer.setAttribute("aria-busy", "false");
+    if (!signal.aborted) {
+        dom.gridContainer.setAttribute("aria-busy", "false");
+    }
   }
 }
+
+// ... (Resto del código IDÉNTICO: updateDomWithResults, handlers, etc.) ...
+// (Copia el resto del archivo anterior)
 
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
@@ -147,8 +160,6 @@ function updateDomWithResults(movies, totalMovies) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
-
-// ... (Resto de manejadores de eventos y setup listeners se mantienen igual) ...
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
@@ -243,13 +254,6 @@ function setupGlobalListeners() {
 
   document.getElementById("quick-view-content").addEventListener("click", function(e) {
     handleCardClick.call(this, e);
-  });
-  
-  dom.themeToggleButton.addEventListener("click", (e) => {
-    triggerPopAnimation(e.currentTarget);
-    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    const isDarkMode = document.documentElement.classList.toggle("dark-mode");
-    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
   });
   
   let isTicking = false;
@@ -485,6 +489,7 @@ function init() {
 
   initSidebar();
   initQuickView();
+  initThemeToggle(); // <--- AÑADIR LLAMADA AQUÍ
   setupHeaderListeners();
   initTouchDrawer();
   setupGlobalListeners();

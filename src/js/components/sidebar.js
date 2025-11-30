@@ -72,33 +72,73 @@ function updateFilterLinksUI() {
 
 function renderFilterPills() {
   const activeFilters = getActiveFilters();
+  
+  // Limpieza inicial de contenedores
   document.querySelectorAll(".active-filters-list").forEach((container) => (container.textContent = ""));
+  
   let pillIndex = 0;
+
+  // Helper interno para crear la píldora DOM
   const createPill = (type, value, isExcluded = false, index = 0) => {
-    const pill = createElement("div", { className: `filter-pill ${isExcluded ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: value } });
+    const pill = createElement("div", { 
+      className: `filter-pill ${isExcluded ? "filter-pill--exclude" : ""}`, 
+      dataset: { filterType: type, filterValue: value } 
+    });
+    // Índice para animaciones escalonadas (stagger)
     pill.style.setProperty("--pill-index", index);
+    
     const text = FILTER_CONFIG[type]?.items[value] || value;
+    
     pill.appendChild(createElement("span", { textContent: text }));
-    pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: isExcluded ? ICONS.PAUSE_SMALL : "×", attributes: { "aria-hidden": "true" } }));
+    pill.appendChild(createElement("span", { 
+      className: "remove-filter-btn", 
+      innerHTML: isExcluded ? ICONS.PAUSE_SMALL : "×", 
+      attributes: { "aria-hidden": "true" } 
+    }));
+    
     return pill;
   };
+
+  // Helper interno para inyectar en la sección correcta
   const renderPillsForSection = (filterType, values, isExcluded = false, currentIndex) => {
-    const section = document.querySelector(`.sidebar-filter-form[data-filter-type="${filterType}"]`)?.closest(".collapsible-section") || document.querySelector(`.filter-link[data-filter-type="${filterType}"]`)?.closest(".collapsible-section");
+    // Buscamos la sección correspondiente (ya sea por el form o por el link)
+    const section = document.querySelector(`.sidebar-filter-form[data-filter-type="${filterType}"]`)?.closest(".collapsible-section") 
+                 || document.querySelector(`.filter-link[data-filter-type="${filterType}"]`)?.closest(".collapsible-section");
+    
     if (!section) return currentIndex;
+    
     const container = section.querySelector(".active-filters-list");
     if (!container) return currentIndex;
+    
     const valuesArray = Array.isArray(values) ? values : [values].filter(Boolean);
-    valuesArray.forEach((value) => { container.appendChild(createPill(filterType, value, isExcluded, currentIndex++)); });
+    
+    valuesArray.forEach((value) => { 
+      container.appendChild(createPill(filterType, value, isExcluded, currentIndex++)); 
+    });
+    
     return currentIndex;
   };
-  pillIndex = renderPillsForSection("selection", activeFilters.selection, false, pillIndex);
-  pillIndex = renderPillsForSection("studio", activeFilters.studio, false, pillIndex);
-  pillIndex = renderPillsForSection("genre", activeFilters.genre, false, pillIndex);
-  pillIndex = renderPillsForSection("country", activeFilters.country, false, pillIndex);
-  pillIndex = renderPillsForSection("director", activeFilters.director, false, pillIndex);
-  pillIndex = renderPillsForSection("actor", activeFilters.actor, false, pillIndex);
-  pillIndex = renderPillsForSection("genre", activeFilters.excludedGenres, true, pillIndex);
-  pillIndex = renderPillsForSection("country", activeFilters.excludedCountries, true, pillIndex);
+
+  // --- CONFIGURACIÓN DECLARATIVA (REFACTORIZACIÓN) ---
+  // Definimos el orden y mapeo de los filtros en un solo lugar.
+  const SECTION_CONFIG = [
+    { type: 'selection', prop: 'selection' },
+    { type: 'studio',    prop: 'studio' },
+    { type: 'genre',     prop: 'genre' },
+    { type: 'country',   prop: 'country' },
+    { type: 'director',  prop: 'director' },
+    { type: 'actor',     prop: 'actor' },
+    // Filtros de exclusión (reutilizan tipo pero apuntan a otra propiedad)
+    { type: 'genre',     prop: 'excludedGenres',    isExcluded: true },
+    { type: 'country',   prop: 'excludedCountries', isExcluded: true },
+  ];
+
+  // Ejecución del renderizado basado en la configuración
+  SECTION_CONFIG.forEach(({ type, prop, isExcluded }) => {
+    pillIndex = renderPillsForSection(type, activeFilters[prop], isExcluded || false, pillIndex);
+  });
+
+  // Actualizaciones finales de estado UI
   updateFilterLinksUI();
   updateFilterAvailabilityUI();
 }

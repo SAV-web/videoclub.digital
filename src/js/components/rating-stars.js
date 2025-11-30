@@ -1,10 +1,10 @@
 // =================================================================
-//          COMPONENTE: Rating Stars (v2.8 - Renderizado Optimizado)
+//          COMPONENTE: Rating Stars (v3.0 - Fix Delegación)
 // =================================================================
-// v2.8 - Refactorizada la lógica de renderizado para mejorar el rendimiento.
-//        - Se reemplaza 'display: none' por 'visibility: hidden' para evitar
-//          reflows costosos al ocultar estrellas.
-//        - Se mantiene la precisión del clip-path para valoraciones fraccionarias.
+// v3.0 - Corrección Crítica: Eliminados listeners de clic individuales.
+//        Se confía 100% en la delegación de eventos de main.js para evitar
+//        dobles escrituras que corrompían los datos al guardar.
+//        Refactorizado handleRatingClick para usar .closest() robusto.
 // =================================================================
 
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
@@ -13,7 +13,7 @@ import { showToast } from "../toast.js";
 
 const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
 
-// --- LÓGICA DE CÁLCULO (sin cambios) ---
+// --- LÓGICA DE CÁLCULO ---
 export function calculateUserStars(rating) {
   if (rating === null || rating === undefined) return 0;
   if (rating >= 9) return 4;
@@ -30,89 +30,49 @@ export function calculateAverageStars(averageRating) {
 }
 
 // =================================================================
-//          ▼▼▼ LÓGICA DE RENDERIZADO (REFACTORIZADA) ▼▼▼
+//          LÓGICA DE RENDERIZADO
 // =================================================================
 
-/**
- * Función interna y genérica que renderiza las estrellas de forma optimizada.
- * Es el único punto de verdad para la manipulación del DOM de las estrellas.
- * @param {HTMLElement} starContainer El contenedor de los elementos SVG de las estrellas.
- * @param {number} filledStars El número de estrellas a rellenar (puede ser fraccionario).
- * @param {object} [options] Opciones de configuración.
- * @param {boolean} [options.hideUnfilled=false] Si es true, oculta las estrellas que no están rellenas.
- * @param {boolean} [options.snapToInteger=false] Si es true, redondea el relleno al entero más cercano.
- */
-function renderStars(
-  starContainer,
-  filledStars,
-  { hideUnfilled = false, snapToInteger = false } = {}
-) {
+function renderStars(starContainer, filledStars, { hideUnfilled = false, snapToInteger = false } = {}) {
   const stars = starContainer.querySelectorAll(".star-icon");
-  const effectiveFilledStars = snapToInteger
-    ? Math.round(filledStars)
-    : filledStars;
+  const effectiveFilledStars = snapToInteger ? Math.round(filledStars) : filledStars;
 
   stars.forEach((star, index) => {
     const fillValue = Math.max(0, Math.min(1, effectiveFilledStars - index));
     const filledPath = star.querySelector(".star-icon-path--filled");
 
-    // ✅ MEJORA IMPLEMENTADA: Usamos 'visibility' en lugar de 'display'.
-    // 'visibility: hidden' hace el elemento invisible pero sigue ocupando su espacio,
-    // evitando que el layout de los elementos hermanos (las otras estrellas) se recalcule.
     if (hideUnfilled && fillValue === 0) {
       star.style.visibility = "hidden";
     } else {
       star.style.visibility = "visible";
-
-      // Calculamos el porcentaje para el clip-path.
       const clipPercentage = 100 - fillValue * 100;
-
-      // Aplicamos el estilo. Cambiar clip-path es una operación mucho más barata
-      // que cambiar el layout, y a menudo está acelerada por hardware.
       filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
     }
   });
 }
 
-/**
- * Renderiza las estrellas para la nota media (relleno fraccionario).
- * @param {HTMLElement} starContainer Contenedor de las estrellas.
- * @param {number} filledStars Número fraccionario de estrellas a rellenar.
- */
 export function renderAverageStars(starContainer, filledStars) {
-  // Ahora, la nota media solo mostrará las estrellas relevantes, ocultando
-  // las vacías sin coste de rendimiento.
-  renderStars(starContainer, filledStars, {
-    hideUnfilled: true,
-    snapToInteger: false,
-  });
+  renderStars(starContainer, filledStars, { hideUnfilled: true, snapToInteger: false });
 }
 
-/**
- * Renderiza las estrellas para la valoración del usuario (relleno entero).
- * @param {HTMLElement} starContainer Contenedor de las estrellas.
- * @param {number} filledLevel Número de estrellas completas a mostrar.
- * @param {boolean} [hideHollowStars=false] Si es true, oculta las estrellas vacías.
- */
-export function renderUserStars(
-  starContainer,
-  filledLevel,
-  hideHollowStars = false
-) {
-  // Esta función se beneficia de la misma lógica optimizada.
-  renderStars(starContainer, filledLevel, {
-    hideUnfilled: hideHollowStars,
-    snapToInteger: true,
-  });
+export function renderUserStars(starContainer, filledLevel, hideHollowStars = false) {
+  renderStars(starContainer, filledLevel, { hideUnfilled: hideHollowStars, snapToInteger: true });
 }
+
+// =================================================================
+//          MANEJADORES DE EVENTOS
+// =================================================================
 
 async function handleRatingClick(event) {
   event.preventDefault();
   event.stopPropagation();
 
-  const clickedElement = event.currentTarget;
-  const interactiveContainer = clickedElement.closest("[data-movie-id]");
-  if (!interactiveContainer) return;
+  // FIX: Usamos target.closest para soportar delegación correctamente.
+  // event.currentTarget fallaba cuando el listener estaba en el grid container.
+  const clickedElement = event.target.closest(".star-icon[data-rating-level]");
+  const interactiveContainer = event.target.closest("[data-movie-id]");
+  
+  if (!interactiveContainer || !clickedElement) return;
 
   const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
   const starIndex = parseInt(clickedElement.dataset.ratingLevel, 10) - 1;
@@ -121,14 +81,15 @@ async function handleRatingClick(event) {
   const currentStars = calculateUserStars(currentUserData.rating);
   const numStarsClicked = starIndex + 1;
 
-  let newRating =
-    numStarsClicked === currentStars ? null : LEVEL_TO_RATING_MAP[starIndex];
+  // Lógica de toggle: si pulsas la que ya tienes, se borra (salvo nivel 1 que va a suspenso en lógica de card.js)
+  // Nota: La lógica de alternancia con "Suspenso" se gestiona parcialmente aquí al devolver null,
+  // y card.js decide qué mostrar.
+  let newRating = numStarsClicked === currentStars ? null : LEVEL_TO_RATING_MAP[starIndex];
 
   const newUserData = { rating: newRating };
-  const previousUserData = JSON.parse(
-    interactiveContainer.dataset.previousUserData || "{}"
-  );
+  const previousUserData = JSON.parse(interactiveContainer.dataset.previousUserData || "{}");
 
+  // UI Optimista
   updateUserDataForMovie(movieId, newUserData);
   updateCardUI(interactiveContainer);
 
@@ -136,6 +97,7 @@ async function handleRatingClick(event) {
     await setUserMovieDataAPI(movieId, newUserData);
   } catch (error) {
     showToast(error.message, "error");
+    // Rollback
     updateUserDataForMovie(movieId, previousUserData);
     updateCardUI(interactiveContainer);
   }
@@ -143,6 +105,7 @@ async function handleRatingClick(event) {
 
 function handleRatingMouseMove(event) {
   const starContainer = event.currentTarget.closest(".star-rating-container");
+  // Aquí sí usamos currentTarget porque el listener está directo en la estrella (mousemove)
   const hoverLevel = parseInt(event.currentTarget.dataset.ratingLevel, 10);
   renderUserStars(starContainer, hoverLevel);
 }
@@ -150,11 +113,9 @@ function handleRatingMouseMove(event) {
 function handleRatingMouseLeave(event) {
   const interactiveContainer = event.currentTarget.closest("[data-movie-id]");
   if (interactiveContainer) {
-    // ✨ CAMBIO: Emitimos un evento en lugar de llamar a una función.
-    // El evento "burbujea" y puede ser capturado por un listener en un elemento padre (o en document).
     const updateEvent = new CustomEvent("card:requestUpdate", {
       bubbles: true,
-      composed: true, // Permite que el evento cruce los límites del Shadow DOM si lo usaras en el futuro.
+      composed: true,
       detail: { cardElement: interactiveContainer },
     });
     interactiveContainer.dispatchEvent(updateEvent);
@@ -163,14 +124,18 @@ function handleRatingMouseLeave(event) {
 
 export function setupRatingListeners(starContainer, isInteractive) {
   const stars = starContainer.querySelectorAll(".star-icon[data-rating-level]");
+  
   if (isInteractive) {
     stars.forEach((star) => {
-      const level = parseInt(star.dataset.ratingLevel, 10);
-      if (level > 1) {
-        star.addEventListener("click", handleRatingClick);
-      }
+      // FIX CRÍTICO: Eliminado star.addEventListener("click", handleRatingClick);
+      // El clic ya se gestiona globalmente en main.js -> handleCardClick.
+      // Mantenerlo aquí causaba dobles peticiones y corrupción de datos.
+      
+      // Mantenemos mousemove para el efecto visual de "hover" sobre las estrellas
       star.addEventListener("mousemove", handleRatingMouseMove);
     });
+    
+    // Mantenemos mouseleave para restaurar el estado al salir
     starContainer.addEventListener("mouseleave", handleRatingMouseLeave);
   }
 }

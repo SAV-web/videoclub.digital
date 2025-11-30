@@ -158,13 +158,17 @@ export function setFilter(filterType, value) {
   if (filterType in state.activeFilters) {
     const isAddingNewFilter =
       value !== null && state.activeFilters[filterType] !== value;
+      
     if (
       isAddingNewFilter &&
       getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS
     ) {
-      console.warn(
-        `Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado. La acción de añadir '${filterType}' fue bloqueada.`
-      );
+      // MEJORA: Log solo en desarrollo. En producción esto se elimina.
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[State] Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado. Bloqueado: '${filterType}'.`
+        );
+      }
       return false;
     }
     state.activeFilters[filterType] = value;
@@ -200,15 +204,21 @@ export function toggleExcludedFilter(filterType, value) {
     return true;
   } else {
     if (list.length >= limit) {
-      console.warn(
-        `Límite de ${limit} filtros excluidos para ${filterType} alcanzado.`
-      );
+      // MEJORA: Log solo en desarrollo
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[State] Límite de ${limit} exclusiones para ${filterType} alcanzado.`
+        );
+      }
       return false;
     }
     if (getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) {
-      console.warn(
-        `Límite global de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado. La exclusión fue bloqueada.`
-      );
+      // MEJORA: Log solo en desarrollo
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[State] Límite global de filtros alcanzado. Exclusión bloqueada.`
+        );
+      }
       return false;
     }
     list.push(value);

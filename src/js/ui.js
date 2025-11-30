@@ -18,6 +18,7 @@ export * from "./components/autocomplete.js";
 export * from "./components/quick-view.js";
 
 // --- Imports necesarios para la lógica de este fichero ---
+import { createElement, highlightAccentInsensitive, triggerPopAnimation } from "./utils.js";
 import { CSS_CLASSES, SELECTORS } from "./constants.js";
 // ▼▼▼ IMPORTACIÓN CLAVE: Traemos el nuevo gestor de modales ▼▼▼
 import {
@@ -130,11 +131,18 @@ export function updateTotalResultsUI(total, hasFilters) {
 }
 
 /**
- * Inicializa el botón de cambio de tema y guarda la preferencia en localStorage.
+ * Inicializa el botón de cambio de tema con animación y persistencia.
  */
 export function initThemeToggle() {
   if (dom.themeToggleButton) {
-    dom.themeToggleButton.addEventListener("click", () => {
+    dom.themeToggleButton.addEventListener("click", (e) => {
+      // 1. Animación visual (Pop)
+      triggerPopAnimation(e.currentTarget);
+      
+      // 2. Notificar al sistema (para cerrar sidebars, etc.)
+      document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+      
+      // 3. Lógica de cambio de tema
       const isDarkMode = document.documentElement.classList.toggle("dark-mode");
       localStorage.setItem("theme", isDarkMode ? "dark" : "light");
     });

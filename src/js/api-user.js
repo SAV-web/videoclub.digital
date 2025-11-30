@@ -1,65 +1,92 @@
 // =================================================================
-//          MÓDULO DE API DE USUARIO (v2 - Consolidado)
+//          MÓDULO DE API DE USUARIO (v3.1 - Fix Persistencia)
 // =================================================================
-// v2.0 - Adaptado a la nueva arquitectura de backend.
-//        - 'fetchUserMovieData' llama a 'get-user-movie-data' para leer.
-//        - 'setUserMovieDataAPI' llama a 'set-user-movie-data' para escribir.
-//        - Se elimina la lógica antigua de 'add' y 'remove'.
+// v3.1 - Eliminada la comprobación manual de usuario en lectura.
+//        Se confía plenamente en RLS (Row Level Security) para evitar
+//        condiciones de carrera al recargar la página (F5).
 // =================================================================
 
 import { supabase } from "./supabaseClient.js";
+import { getUserDataForMovie } from "./state.js";
 
 /**
- * Obtiene todos los datos de películas del usuario (watchlist y ratings).
- * Llama a la Edge Function 'get-user-movie-data'.
- * @returns {Promise<object>} Un objeto que mapea movieId -> { onWatchlist, rating }
+ * Obtiene los datos del usuario directamente de la tabla.
+ * No comprueba sesión explícitamente; si no hay sesión, RLS devuelve [].
+ * @returns {Promise<object>} Mapeo movieId -> { onWatchlist, rating }
  */
 export async function fetchUserMovieData() {
-  const { data, error } = await supabase.functions.invoke(
-    "get-user-movie-data",
-    {
-      method: "GET",
-    }
-  );
+  // CAMBIO CRÍTICO: Eliminado await supabase.auth.getUser().
+  // Esto causaba fallos al recargar página porque la sesión no estaba lista.
+  // Lanzamos la petición directa. Si no hay auth header, RLS devuelve vacío.
+  const { data, error } = await supabase
+    .from('user_movie_entries')
+    .select('movie_id, rating, on_watchlist');
 
   if (error) {
-    console.error(
-      "Error al obtener los datos de películas del usuario:",
-      error
-    );
-    throw new Error("No se pudieron cargar tus datos personales.");
+    // Si el error es de conexión o timeout, lo lanzamos.
+    // Ignoramos errores de "sesión no encontrada" si ocurrieran (raro con RLS).
+    console.error("Error fetching user data:", error);
+    throw new Error("No se pudieron cargar tus datos.");
   }
-  return data;
+
+  // Transformamos el array de la DB al formato de objeto (Hash Map)
+  // De: [{movie_id: 1, rating: 5, on_watchlist: true}, ...]
+  // A:  { 1: { rating: 5, onWatchlist: true }, ... }
+  const userMap = {};
+  
+  if (data) {
+    data.forEach(item => {
+      userMap[item.movie_id] = {
+        rating: item.rating,
+        onWatchlist: item.on_watchlist // Mapeo snake_case -> camelCase
+      };
+    });
+  }
+
+  return userMap;
 }
 
 /**
- * Actualiza los datos de una película para un usuario (watchlist y/o rating).
- * Llama a la Edge Function 'set-user-movie-data'.
- * @param {number} movieId - El ID de la película.
- * @param {object} data - Objeto con los campos a actualizar. Ej: { onWatchlist: true }, { rating: 8 }
+ * Guarda los datos directamente en la tabla usando UPSERT.
+ * @param {number} movieId
+ * @param {object} partialData - Ej: { onWatchlist: true } o { rating: 8 }
  */
-export async function setUserMovieDataAPI(movieId, data) {
-  const { onWatchlist, rating } = data;
-
-  // Construimos el cuerpo de la petición solo con los datos definidos.
-  const body = { movieId };
-  if (onWatchlist !== undefined) {
-    body.onWatchlist = onWatchlist;
-  }
-  if (rating !== undefined) {
-    body.rating = rating;
+export async function setUserMovieDataAPI(movieId, partialData) {
+  // Aquí sí necesitamos el ID de usuario explícito para el INSERT.
+  // Usamos getSession() que es más rápido y síncrono si ya está cargado.
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session || !session.user) {
+    throw new Error("Debes iniciar sesión para guardar datos.");
   }
 
-  const { error } = await supabase.functions.invoke("set-user-movie-data", {
-    method: "POST",
-    body: body,
-  });
+  const userId = session.user.id;
+
+  // 1. Obtenemos el estado actual COMPLETO de la memoria local
+  // Esto es crucial para no borrar el dato que NO estamos tocando (ej. borrar nota al cambiar watchlist)
+  const currentState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
+  
+  const mergedData = { 
+    ...currentState, 
+    ...partialData 
+  };
+
+  // 2. Preparamos el payload (snake_case para la DB)
+  const payload = {
+    user_id: userId,
+    movie_id: movieId,
+    rating: mergedData.rating,
+    on_watchlist: mergedData.onWatchlist,
+    updated_at: new Date().toISOString()
+  };
+
+  // 3. Ejecutamos UPSERT
+  const { error } = await supabase
+    .from('user_movie_entries')
+    .upsert(payload, { onConflict: 'user_id, movie_id' });
 
   if (error) {
-    console.error(
-      `Error al actualizar datos para la película ${movieId}:`,
-      error
-    );
-    throw new Error("No se pudo guardar tu acción. Inténtalo de nuevo.");
+    console.error(`Error saving movie ${movieId}:`, error);
+    throw new Error("No se pudo guardar tu acción.");
   }
 }

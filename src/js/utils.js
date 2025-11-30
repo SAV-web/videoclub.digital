@@ -116,9 +116,10 @@ export const capitalizeWords = (str) => {
  */
 export const debounce = (func, delay) => {
   let timeout;
-  return (...args) => {
+  return function (...args) {
+    const context = this; // Capturamos el contexto de invocación real
     clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), delay);
+    timeout = setTimeout(() => func.apply(context, args), delay);
   };
 };
 
