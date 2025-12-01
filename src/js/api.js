@@ -1,30 +1,36 @@
 // =================================================================
-//          MÓDULO DE SERVICIO API (Maestro)
+//          MÓDULO DE SERVICIO API (Maestro de Datos)
 // =================================================================
 // FICHERO: src/js/api.js
-// RESPONSABILIDAD: Centralizar TODAS las llamadas a Supabase:
-// 1. Búsqueda pública de películas (RPC con caché).
-// 2. Datos privados de usuario (Lectura/Escritura directa con RLS).
-// 3. Sugerencias de autocompletado.
+// RESPONSABILIDAD:
+// 1. Inicializar conexión con Supabase.
+// 2. Gestionar caché (LRU) para consultas públicas.
+// 3. Proveer métodos para buscar películas (RPC) y datos de usuario (RLS).
 // =================================================================
 
 import { CONFIG } from "./config.js";
-import { supabase } from "./supabaseClient.js";
+import { createClient } from "@supabase/supabase-js"; // Importación directa
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest } from "./components/requestManager.js";
-import { getUserDataForMovie } from "./state.js"; // Necesario para merge de datos de usuario
+import { createAbortableRequest } from "./utils.js"; // Ahora desde utils
+import { getUserDataForMovie } from "./state.js";
 
-// --- CACHÉ (Solo para búsquedas públicas) ---
+// =================================================================
+//          1. INICIALIZACIÓN CLIENTE SUPABASE
+// =================================================================
+// (Antes en supabaseClient.js)
+export const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+// =================================================================
+//          2. CACHÉ Y BÚSQUEDA PÚBLICA
+// =================================================================
+
+// Caché LRU para evitar llamadas repetitivas
 export const queryCache = new LRUCache({
   max: 300,
   ttl: 1000 * 60 * 30, // 30 minutos
   updateAgeOnGet: true,
   ttlAutopurge: true,
 });
-
-// =================================================================
-//          SECCIÓN A: BÚSQUEDA DE PELÍCULAS (Pública)
-// =================================================================
 
 function createCanonicalCacheKey(filters, page, pageSize) {
   const normalizedFilters = {};
@@ -50,17 +56,13 @@ function buildRpcParams(activeFilters, currentPage, pageSize) {
     }
   }
 
-  const [sortField = "relevance", sortDirection = "asc"] = (
-    activeFilters.sort || "relevance,asc"
-  ).split(",");
-
+  const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
   const offset = (currentPage - 1) * CONFIG.ITEMS_PER_PAGE;
 
   return {
     search_term: activeFilters.searchTerm || null,
     genre_name: activeFilters.genre || null,
-    p_year_start: yearStart,
-    p_year_end: yearEnd,
+    p_year_start: yearStart, p_year_end: yearEnd,
     country_name: activeFilters.country || null,
     director_name: activeFilters.director || null,
     actor_name: activeFilters.actor || null,
@@ -68,13 +70,15 @@ function buildRpcParams(activeFilters, currentPage, pageSize) {
     selection_code: activeFilters.studio || activeFilters.selection || null,
     excluded_genres: activeFilters.excludedGenres?.length > 0 ? activeFilters.excludedGenres : null,
     excluded_countries: activeFilters.excludedCountries?.length > 0 ? activeFilters.excludedCountries : null,
-    sort_field: sortField,
-    sort_direction: sortDirection,
-    page_limit: pageSize,
-    page_offset: offset,
+    sort_field: sortField, sort_direction: sortDirection,
+    page_limit: pageSize, page_offset: offset,
   };
 }
 
+/**
+ * Busca películas en la base de datos usando RPC.
+ * Soporta caché y señal de aborto.
+ */
 export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal) {
   const queryKey = createCanonicalCacheKey(activeFilters, currentPage, pageSize);
 
@@ -93,9 +97,7 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
 
     const { data, error } = await rpcCall;
 
-    if (signal && signal.aborted) {
-        return { aborted: true, items: [], total: 0 };
-    }
+    if (signal && signal.aborted) return { aborted: true, items: [], total: 0 };
 
     if (error) {
       if (error.name === "AbortError" || error.message?.includes("abort")) {
@@ -107,9 +109,7 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
 
     const result = { total: data?.total || 0, items: data?.items || [] };
     
-    if (!signal?.aborted) {
-        queryCache.set(queryKey, result);
-    }
+    if (!signal?.aborted) queryCache.set(queryKey, result);
     
     return result;
 
@@ -122,12 +122,9 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
 }
 
 // =================================================================
-//          SECCIÓN B: DATOS DE USUARIO (Privada - RLS)
+//          3. DATOS DE USUARIO (Privada - RLS)
 // =================================================================
 
-/**
- * Obtiene los datos del usuario (ratings/watchlist).
- */
 export async function fetchUserMovieData() {
   const { data, error } = await supabase
     .from('user_movie_entries')
@@ -150,9 +147,6 @@ export async function fetchUserMovieData() {
   return userMap;
 }
 
-/**
- * Guarda datos del usuario (Upsert).
- */
 export async function setUserMovieDataAPI(movieId, partialData) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session || !session.user) throw new Error("Debes iniciar sesión para guardar datos.");
@@ -162,10 +156,8 @@ export async function setUserMovieDataAPI(movieId, partialData) {
   const mergedData = { ...currentState, ...partialData };
 
   const payload = {
-    user_id: userId,
-    movie_id: movieId,
-    rating: mergedData.rating,
-    on_watchlist: mergedData.onWatchlist,
+    user_id: userId, movie_id: movieId,
+    rating: mergedData.rating, on_watchlist: mergedData.onWatchlist,
     updated_at: new Date().toISOString()
   };
 
@@ -180,7 +172,7 @@ export async function setUserMovieDataAPI(movieId, partialData) {
 }
 
 // =================================================================
-//          SECCIÓN C: SUGERENCIAS (Autocompletado)
+//          4. SUGERENCIAS (Autocompletado)
 // =================================================================
 
 const fetchSuggestions = async (rpcName, searchTerm) => {

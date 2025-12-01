@@ -1,35 +1,25 @@
 // =================================================================
-//          COMPONENTE SIDEBAR (Con Feedback Háptico)
+//          COMPONENTE: Sidebar (Filtros y Navegación)
 // =================================================================
 // FICHERO: src/js/components/sidebar.js
-// VERSIÓN: 2.1
+// RESPONSABILIDAD: Gestionar lógica de filtros laterales, slider de año
+// y sugerencias de autocompletado (ahora integradas).
 // =================================================================
 
 import noUiSlider from 'nouislider';
 import 'nouislider/dist/nouislider.css'; 
 import { CONFIG } from "../config.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback } from "../utils.js"; // ✨ IMPORTADO
+// IMPORTANTE: Añadido highlightAccentInsensitive para el autocompletado
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive } from "../utils.js";
 import {
-  fetchDirectorSuggestions,
-  fetchActorSuggestions,
-  fetchCountrySuggestions,
-  fetchGenreSuggestions,
+  fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
 } from "../api.js";
-import {
-  renderSidebarAutocomplete,
-  clearAllSidebarAutocomplete,
-} from "./autocomplete.js";
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./quick-view.js";
-import {
-  getActiveFilters,
-  setFilter,
-  toggleExcludedFilter,
-  getActiveFilterCount,
-} from "../state.js";
+import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG } from "../constants.js";
 import { loadAndRenderMovies } from "../main.js";
-import { showToast } from "../ui.js";
+import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; // Importamos la utilidad de limpieza global
 
 const dom = {
   sidebarInnerWrapper: document.querySelector(".sidebar-inner-wrapper"),
@@ -42,7 +32,54 @@ const dom = {
   yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
 };
 
-// ... (updateFilterAvailabilityUI, updateFilterLinksUI, renderFilterPills, createPill, renderPillsForSection se mantienen igual) ...
+// =================================================================
+//          LÓGICA DE AUTOCOMPLETADO (Integrada)
+// =================================================================
+// Antes estaba en autocomplete.js
+
+function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
+  const input = formElement.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
+  let resultsContainer = formElement.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+
+  if (!resultsContainer) {
+    resultsContainer = createElement("div", { className: "sidebar-autocomplete-results" });
+    formElement.appendChild(resultsContainer);
+  }
+
+  resultsContainer.textContent = "";
+
+  if (suggestions.length === 0) {
+    input.removeAttribute("aria-expanded");
+    resultsContainer.remove();
+    return;
+  }
+
+  resultsContainer.id = `autocomplete-results-${formElement.dataset.filterType}`;
+  resultsContainer.setAttribute("role", "listbox");
+  input.setAttribute("aria-expanded", "true");
+  input.setAttribute("aria-controls", resultsContainer.id);
+
+  const fragment = document.createDocumentFragment();
+  suggestions.forEach((suggestion, index) => {
+    const item = createElement("div", {
+      className: CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM,
+      dataset: { value: suggestion },
+      innerHTML: highlightAccentInsensitive(suggestion, searchTerm),
+      id: `suggestion-item-${formElement.dataset.filterType}-${index}`,
+      attributes: { role: "option" },
+    });
+    fragment.appendChild(item);
+  });
+
+  resultsContainer.appendChild(fragment);
+}
+
+// =================================================================
+//          GESTIÓN DE PILLS Y UI (Resto del fichero)
+// =================================================================
+
+// ... (Aquí va el resto de tu código de sidebar.js: updateFilterAvailabilityUI, renderFilterPills, handlers, initSidebar)
+// ... (El contenido es idéntico al que ya tenías, solo asegúrate de que las funciones de autocompletado usen renderSidebarAutocomplete definida arriba)
 
 function updateFilterAvailabilityUI() {
   const activeCount = getActiveFilterCount();
@@ -72,55 +109,28 @@ function updateFilterLinksUI() {
 
 function renderFilterPills() {
   const activeFilters = getActiveFilters();
-  
-  // Limpieza inicial de contenedores
   document.querySelectorAll(".active-filters-list").forEach((container) => (container.textContent = ""));
-  
   let pillIndex = 0;
 
-  // Helper interno para crear la píldora DOM
   const createPill = (type, value, isExcluded = false, index = 0) => {
-    const pill = createElement("div", { 
-      className: `filter-pill ${isExcluded ? "filter-pill--exclude" : ""}`, 
-      dataset: { filterType: type, filterValue: value } 
-    });
-    // Índice para animaciones escalonadas (stagger)
+    const pill = createElement("div", { className: `filter-pill ${isExcluded ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: value } });
     pill.style.setProperty("--pill-index", index);
-    
     const text = FILTER_CONFIG[type]?.items[value] || value;
-    
     pill.appendChild(createElement("span", { textContent: text }));
-    pill.appendChild(createElement("span", { 
-      className: "remove-filter-btn", 
-      innerHTML: isExcluded ? ICONS.PAUSE_SMALL : "×", 
-      attributes: { "aria-hidden": "true" } 
-    }));
-    
+    pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: isExcluded ? ICONS.PAUSE_SMALL : "×", attributes: { "aria-hidden": "true" } }));
     return pill;
   };
 
-  // Helper interno para inyectar en la sección correcta
   const renderPillsForSection = (filterType, values, isExcluded = false, currentIndex) => {
-    // Buscamos la sección correspondiente (ya sea por el form o por el link)
-    const section = document.querySelector(`.sidebar-filter-form[data-filter-type="${filterType}"]`)?.closest(".collapsible-section") 
-                 || document.querySelector(`.filter-link[data-filter-type="${filterType}"]`)?.closest(".collapsible-section");
-    
+    const section = document.querySelector(`.sidebar-filter-form[data-filter-type="${filterType}"]`)?.closest(".collapsible-section") || document.querySelector(`.filter-link[data-filter-type="${filterType}"]`)?.closest(".collapsible-section");
     if (!section) return currentIndex;
-    
     const container = section.querySelector(".active-filters-list");
     if (!container) return currentIndex;
-    
     const valuesArray = Array.isArray(values) ? values : [values].filter(Boolean);
-    
-    valuesArray.forEach((value) => { 
-      container.appendChild(createPill(filterType, value, isExcluded, currentIndex++)); 
-    });
-    
+    valuesArray.forEach((value) => { container.appendChild(createPill(filterType, value, isExcluded, currentIndex++)); });
     return currentIndex;
   };
 
-  // --- CONFIGURACIÓN DECLARATIVA (REFACTORIZACIÓN) ---
-  // Definimos el orden y mapeo de los filtros en un solo lugar.
   const SECTION_CONFIG = [
     { type: 'selection', prop: 'selection' },
     { type: 'studio',    prop: 'studio' },
@@ -128,17 +138,14 @@ function renderFilterPills() {
     { type: 'country',   prop: 'country' },
     { type: 'director',  prop: 'director' },
     { type: 'actor',     prop: 'actor' },
-    // Filtros de exclusión (reutilizan tipo pero apuntan a otra propiedad)
     { type: 'genre',     prop: 'excludedGenres',    isExcluded: true },
     { type: 'country',   prop: 'excludedCountries', isExcluded: true },
   ];
 
-  // Ejecución del renderizado basado en la configuración
   SECTION_CONFIG.forEach(({ type, prop, isExcluded }) => {
     pillIndex = renderPillsForSection(type, activeFilters[prop], isExcluded || false, pillIndex);
   });
 
-  // Actualizaciones finales de estado UI
   updateFilterLinksUI();
   updateFilterAvailabilityUI();
 }
@@ -190,7 +197,6 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
 function resetFilters() {
   const playButton = document.querySelector("#play-button");
   if (playButton) triggerPopAnimation(playButton);
-  // ✨ HÁPTICO: Acción de limpieza (Media)
   triggerHapticFeedback('medium');
   document.dispatchEvent(new CustomEvent("filtersReset"));
 }
@@ -205,9 +211,7 @@ function initYearSlider() {
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
   const sliderInstance = noUiSlider.create(dom.yearSlider, {
     start: [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX],
-    connect: true,
-    step: 1,
-    range: { min: CONFIG.YEAR_MIN, max: CONFIG.YEAR_MAX },
+    connect: true, step: 1, range: { min: CONFIG.YEAR_MIN, max: CONFIG.YEAR_MAX },
     format: { to: (value) => Math.round(value), from: (value) => Number(value) },
   });
   sliderInstance.on("update", (values, handle) => { yearInputs[handle].value = values[handle]; });
@@ -232,7 +236,6 @@ function setupYearInputSteppers() {
     const stepperDown = wrapper.querySelector(".stepper-btn.stepper-down");
     if (!input || !stepperUp || !stepperDown) return;
     const updateYearValue = (increment) => {
-      // ✨ HÁPTICO: Clic en stepper (Ligero)
       triggerHapticFeedback('light');
       let currentValue = parseInt(input.value, 10);
       if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
@@ -256,37 +259,44 @@ function setupAutocompleteHandlers() {
     input.setAttribute("role", "combobox");
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
-    let activeIndex = -1;
+    
     const debouncedFetch = debounce(async () => {
       const searchTerm = input.value;
-      activeIndex = -1;
       if (searchTerm.length < 3) { clearAllSidebarAutocomplete(form); return; }
       const suggestions = await fetcher(searchTerm);
+      // USAMOS LA FUNCIÓN LOCAL:
       renderSidebarAutocomplete(form, suggestions, searchTerm);
     }, CONFIG.SEARCH_DEBOUNCE_DELAY);
+    
     input.addEventListener("input", debouncedFetch);
+    
+    // Listener keydown (lógica de flechas y enter)
     input.addEventListener("keydown", (e) => {
-      const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
-      if (!resultsContainer || resultsContainer.children.length === 0) return;
-      const items = Array.from(resultsContainer.children);
-      const updateActiveSuggestion = (index) => {
-        items.forEach((item) => item.classList.remove("is-active"));
-        if (index >= 0 && items[index]) {
-          items[index].classList.add("is-active");
-          input.setAttribute("aria-activedescendant", items[index].id);
-        } else { input.removeAttribute("aria-activedescendant"); }
-      };
-      switch (e.key) {
+       // ... (Lógica idéntica a antes, solo que items está en el DOM local)
+       const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+       if (!resultsContainer || resultsContainer.children.length === 0) return;
+       const items = Array.from(resultsContainer.children);
+       let activeIndex = items.findIndex(i => i.classList.contains('is-active'));
+       
+       const updateActiveSuggestion = (index) => {
+         items.forEach(item => item.classList.remove("is-active"));
+         if (index >= 0 && items[index]) {
+           items[index].classList.add("is-active");
+           input.setAttribute("aria-activedescendant", items[index].id);
+         } else { input.removeAttribute("aria-activedescendant"); }
+       };
+
+       switch (e.key) {
         case "ArrowDown": e.preventDefault(); activeIndex = Math.min(activeIndex + 1, items.length - 1); updateActiveSuggestion(activeIndex); break;
         case "ArrowUp": e.preventDefault(); activeIndex = Math.max(activeIndex - 1, -1); updateActiveSuggestion(activeIndex); break;
         case "Enter": e.preventDefault(); if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].click(); break;
         case "Escape": e.preventDefault(); clearAllSidebarAutocomplete(); break;
       }
     });
+    
     form.addEventListener("click", (e) => {
       const suggestionItem = e.target.closest(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
       if (suggestionItem) {
-        // ✨ HÁPTICO: Selección de autocompletado (Ligero)
         triggerHapticFeedback('light');
         handleFilterChangeOptimistic(filterType, suggestionItem.dataset.value);
         input.value = "";
@@ -299,7 +309,6 @@ function setupAutocompleteHandlers() {
 function handlePillClick(e) {
   const pill = e.target.closest(".filter-pill");
   if (!pill) return;
-  // ✨ HÁPTICO: Eliminar filtro (Medio - Acción negativa)
   triggerHapticFeedback('medium');
   const { filterType, filterValue } = pill.dataset;
   pill.classList.add("is-removing");
@@ -318,7 +327,6 @@ function setupEventListeners() {
 
   if (dom.rewindButton) {
     dom.rewindButton.addEventListener("click", (e) => {
-      // ✨ HÁPTICO: Abrir/Cerrar Sidebar (Ligero)
       triggerHapticFeedback('light');
       const isMobile = window.innerWidth <= 768;
       let isOpening;
@@ -335,7 +343,6 @@ function setupEventListeners() {
   }
   if (dom.toggleRotationBtn) {
     dom.toggleRotationBtn.addEventListener("click", (e) => {
-      // ✨ HÁPTICO: Toggle rotación (Ligero)
       triggerHapticFeedback('light');
       unflipAllCards();
       closeModal();
@@ -356,7 +363,6 @@ function setupEventListeners() {
       const excludeBtn = e.target.closest(".exclude-filter-btn");
       if (excludeBtn) {
         e.stopPropagation();
-        // ✨ HÁPTICO: Exclusión (Medio - Acción negativa)
         triggerHapticFeedback('medium');
         triggerPopAnimation(excludeBtn);
         handleToggleExcludedFilterOptimistic(excludeBtn.dataset.type, excludeBtn.dataset.value);
@@ -364,7 +370,6 @@ function setupEventListeners() {
       }
       const link = e.target.closest(".filter-link");
       if (link && !link.hasAttribute("disabled")) {
-        // ✨ HÁPTICO: Selección normal (Ligero)
         triggerHapticFeedback('light');
         triggerPopAnimation(link);
         handleFilterChangeOptimistic(link.dataset.filterType, link.dataset.filterValue);
@@ -377,7 +382,6 @@ function setupEventListeners() {
   dom.collapsibleSections.forEach((clickedSection) => {
     const header = clickedSection.querySelector(".section-header");
     header?.addEventListener("click", () => {
-      // ✨ HÁPTICO: Abrir/Cerrar sección (Ligero)
       triggerHapticFeedback('light');
       const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
       const isNowActive = !wasActive;

@@ -1,34 +1,44 @@
 // =================================================================
-//          SCRIPT PRINCIPAL (v6.1 - Fix Paginación Estricta)
+//          SCRIPT PRINCIPAL (v6.2 - Fix Imports)
 // =================================================================
 // FICHERO: src/js/main.js
-// CAMBIO: Corregida la lógica de recorte en 'updateDomWithResults'.
-// Ahora, si hay paginación (total > 56), la página 1 se fuerza a 42 items
-// para evitar duplicados con la página 2.
+// CORRECCIÓN: Eliminada referencia a archivo borrado (requestManager).
 // =================================================================
 
 import "../css/main.css";
 import "flag-icons/css/flag-icons.min.css";
 import { CONFIG } from "./config.js";
-import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage } from "./utils.js";
-import { fetchMovies, queryCache } from "./api.js";
+
+// 1. Imports de Utilidades (Incluye createAbortableRequest)
+import { 
+  debounce, 
+  triggerPopAnimation, 
+  getFriendlyErrorMessage, 
+  preloadLcpImage, 
+  createAbortableRequest // ✅ Viene de utils.js
+} from "./utils.js";
+
+// 2. Imports de API (Incluye supabase y fetchUserMovieData unificados)
+import { 
+  fetchMovies, 
+  queryCache, 
+  supabase, 
+  fetchUserMovieData 
+} from "./api.js";
+
+// 3. Imports de UI (Incluye showToast unificado)
 import {
   dom,
-  renderMovieGrid,
-  renderSkeletons,
-  renderNoResults,
-  renderErrorState,
-  updateCardUI,
-  renderPagination,
-  updateHeaderPaginationState,
-  prefetchNextPage,
-  initQuickView,
-  setupAuthModal,
-  updateTypeFilterUI,
-  updateTotalResultsUI,
-  clearAllSidebarAutocomplete,
-  handleCardClick,
+  renderPagination,     // Viene de ui.js
+  updateHeaderPaginationState, // Viene de ui.js
+  prefetchNextPage,     // Viene de ui.js
+  setupAuthModal,       // Viene de ui.js
+  updateTypeFilterUI,   // Viene de ui.js
+  updateTotalResultsUI, // Viene de ui.js
+  clearAllSidebarAutocomplete, // Viene de ui.js
+  // handleCardClick,   <-- ESTE YA NO ESTÁ EN UI.JS, SE IMPORTA DE CARD.JS
 } from "./ui.js";
+
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from "./constants.js";
 import {
   getState,
@@ -45,14 +55,24 @@ import {
   setUserMovieData,
   clearUserMovieData,
 } from "./state.js";
-import { showToast } from "./ui.js";
+
 import { initSidebar, collapseAllSections } from "./components/sidebar.js";
 import { initTouchDrawer } from "./components/touch-drawer.js";
-import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
-import { fetchUserMovieData } from "./api.js";
-import { initGridHoverSystem } from "./components/card.js";
-import { createAbortableRequest } from './components/requestManager.js';
+import { 
+  renderMovieGrid, 
+  updateCardUI, 
+  handleCardClick, 
+  initGridHoverSystem,
+  renderSkeletons,
+  renderNoResults,
+  renderErrorState,
+} from "./components/card.js";
+
+import { 
+  initQuickView 
+} from "./components/quick-view.js";
+// ❌ ELIMINADO: import { createAbortableRequest } from './components/requestManager.js'; 
 
 const URL_PARAM_MAP = {
   q: "searchTerm", genre: "genre", year: "year", country: "country",
@@ -64,32 +84,21 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 );
 
-/**
- * Orquesta la carga de la parrilla de películas.
- * VERSIÓN 6.2: Recuperados los Esqueletos de carga (Feedback Inmediato).
- */
 export async function loadAndRenderMovies(page = 1) {
-  // 1. Gestión de tráfico
   const controller = createAbortableRequest('movie-grid-load');
   const signal = controller.signal;
 
-  // 2. Actualizar estado
   setCurrentPage(page);
   updatePageTitle();
   updateUrl();
 
-  // 3. FEEDBACK VISUAL INMEDIATO (Skeletons)
-  // Activamos barra de progreso
   document.body.classList.add('is-fetching');
   dom.gridContainer.classList.add('is-fetching');
   
-  // ¡RECUPERADO!: Pintamos los esqueletos inmediatamente al hacer clic.
-  // Esto borra el contenido anterior y muestra que estamos "pensando".
   dom.gridContainer.setAttribute("aria-busy", "true");
   renderSkeletons(dom.gridContainer, dom.paginationContainer);
   updateHeaderPaginationState(getCurrentPage(), 0);
   
-  // Si hay scroll abajo, subimos para ver los esqueletos cargando
   window.scrollTo({ top: 0, behavior: "instant" });
 
   const supportsViewTransitions = !!document.startViewTransition;
@@ -113,17 +122,13 @@ export async function loadAndRenderMovies(page = 1) {
         preloadLcpImage(movies[0]);
       }
       
-      // Definimos la actualización final del DOM
       const performRender = () => {
         updateDomWithResults(movies, totalMovies);
-        
-        // Limpieza final
         document.body.classList.remove('is-fetching');
         dom.gridContainer.classList.remove('is-fetching');
         dom.gridContainer.setAttribute("aria-busy", "false");
       };
 
-      // Ejecutamos la transición (Esqueletos -> Contenido Real)
       if (supportsViewTransitions) {
         document.startViewTransition(performRender);
       } else {
@@ -144,7 +149,6 @@ export async function loadAndRenderMovies(page = 1) {
     }
   };
 
-  // Iniciamos la lógica (los esqueletos ya están visibles)
   await renderLogic();
 }
 
@@ -158,20 +162,13 @@ function updateDomWithResults(movies, totalMovies) {
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
   
-  // CASO A: Pocos resultados (<= 56) Y estamos en página 1.
-  // Aquí mostramos TODO lo que llegó (hasta 56) para evitar paginación innecesaria.
   } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
     renderMovieGrid(dom.gridContainer, movies);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
     
-  // CASO B: Muchos resultados (Pagianción activa).
   } else {
-    // CORRECCIÓN AQUÍ:
-    // Si estamos paginando, la página 1 DEBE tener estrictamente 42 items (ITEMS_PER_PAGE).
-    // Si ponemos 56 aquí, se solaparían con la página 2 que empieza en el 43.
     const limit = CONFIG.ITEMS_PER_PAGE; 
-    
     const moviesToRender = movies.slice(0, limit);
 
     renderMovieGrid(dom.gridContainer, moviesToRender);
@@ -189,8 +186,6 @@ function updateDomWithResults(movies, totalMovies) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
-
-// ... (Resto de handlers IDÉNTICOS) ...
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);

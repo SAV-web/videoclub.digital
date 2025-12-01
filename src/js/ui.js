@@ -3,20 +3,16 @@
 // =================================================================
 // FICHERO: src/js/ui.js
 // RESPONSABILIDAD:
-// - Caché de referencias DOM (objeto 'dom').
-// - Gestión de componentes UI globales (Modales, Toast, Tema).
-// - Re-exportación de componentes específicos (Card, Pagination, etc.)
+// - Caché de referencias DOM.
+// - Gestión de componentes UI globales (Toasts, Modales, Paginación).
+// - Utilidades de Accesibilidad (Focus Trap).
+// - Re-exportación de componentes complejos (Card, QuickView).
 // =================================================================
 
-// --- Re-exportación de componentes de UI ---
-export * from "./components/card.js";
-export * from "./components/pagination.js";
-export * from "./components/autocomplete.js";
-export * from "./components/quick-view.js";
-
+import { CONFIG } from "./config.js";
 import { CSS_CLASSES, SELECTORS } from "./constants.js";
-import { openAccessibleModal, closeAccessibleModal } from "./components/modal-manager.js";
-import { triggerPopAnimation, createElement } from "./utils.js"; // Import añadido para Toast
+import { fetchMovies } from "./api.js"; // Necesario para prefetch
+import { triggerPopAnimation, createElement } from "./utils.js";
 
 // --- Referencias DOM Cacheadas ---
 export const dom = {
@@ -43,15 +39,10 @@ export const dom = {
 };
 
 // =================================================================
-//          SISTEMA DE NOTIFICACIONES (TOAST) - (Antes toast.js)
+//          1. SISTEMA DE NOTIFICACIONES (TOAST)
 // =================================================================
 const TOAST_DURATION = 5000;
 
-/**
- * Muestra una notificación flotante.
- * @param {string} message - Mensaje a mostrar.
- * @param {'error'|'success'} [type='error'] - Tipo de alerta.
- */
 export function showToast(message, type = "error") {
   const container = document.querySelector(SELECTORS.TOAST_CONTAINER);
   if (!container) return;
@@ -63,23 +54,157 @@ export function showToast(message, type = "error") {
   });
 
   container.appendChild(toastElement);
-
-  setTimeout(() => {
-    toastElement.remove();
-  }, TOAST_DURATION);
+  setTimeout(() => toastElement.remove(), TOAST_DURATION);
 }
 
 // =================================================================
-//          GESTIÓN GLOBAL DE MODALES
+//          2. GESTIÓN DE PAGINACIÓN (UI)
 // =================================================================
-export function closeAuthModal() {
-  closeAccessibleModal(dom.authModal, dom.authOverlay);
+// (Antes en pagination.js)
+
+/**
+ * Renderiza los botones de paginación numerada.
+ */
+export function renderPagination(paginationContainer, totalMovies, currentPage) {
+  if (!paginationContainer) return;
+
+  paginationContainer.textContent = "";
+  const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);
+  if (totalPages <= 1) return;
+
+  const createButton = (page, text = page, isActive = false, ariaLabel = `Ir a página ${page}`) => {
+    return createElement("button", {
+      className: `btn${isActive ? " active" : ""}`,
+      dataset: { page },
+      textContent: text,
+      attributes: { "aria-label": ariaLabel, type: "button" },
+    });
+  };
+
+  const createSeparator = () => createElement("span", { 
+    textContent: "...", className: "pagination-separator", attributes: { "aria-hidden": "true" } 
+  });
+
+  // Botón Anterior
+  if (currentPage > 1) {
+    paginationContainer.appendChild(createButton(currentPage - 1, "<", false, "Página anterior"));
+  }
+
+  // Algoritmo de visualización de páginas (1, ..., actual-1, actual, actual+1, ..., final)
+  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  const sortedPages = Array.from(pages).filter((p) => p > 0 && p <= totalPages).sort((a, b) => a - b);
+
+  let lastPage = 0;
+  for (const page of sortedPages) {
+    if (lastPage > 0 && page - lastPage > 1) {
+      paginationContainer.appendChild(createSeparator());
+    }
+
+    if (page === currentPage) {
+      paginationContainer.appendChild(createElement("span", {
+        className: "pagination-current",
+        textContent: page,
+        attributes: { "aria-current": "page", "aria-label": `Página actual ${page}` },
+      }));
+    } else {
+      paginationContainer.appendChild(createButton(page, page, false));
+    }
+    lastPage = page;
+  }
+
+  // Botón Siguiente
+  if (currentPage < totalPages) {
+    paginationContainer.appendChild(createButton(currentPage + 1, ">", false, "Página siguiente"));
+  }
 }
 
-export function openAuthModal() {
-  openAccessibleModal(dom.authModal, dom.authOverlay);
+export function updateHeaderPaginationState(currentPage, totalMovies) {
+  const { headerPrevBtn, headerNextBtn } = dom;
+  if (!headerPrevBtn || !headerNextBtn) return;
+
+  const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);
+  headerPrevBtn.disabled = currentPage <= 1;
+  headerNextBtn.disabled = currentPage >= totalPages || totalPages === 0;
 }
 
+export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
+  const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);
+  if (currentPage >= totalPages) return;
+  const nextPage = currentPage + 1;
+
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(async () => {
+      try { await fetchMovies(activeFilters, nextPage, CONFIG.ITEMS_PER_PAGE); } 
+      catch (e) { /* Ignorar errores de prefetch */ }
+    });
+  }
+}
+
+// =================================================================
+//          3. ACCESIBILIDAD Y MODALES (Focus Trap)
+// =================================================================
+// (Antes en modal-manager.js)
+
+let focusTrapCleanup = null;
+let previouslyFocusedElement = null;
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), [tabindex]:not([tabindex^="-"])';
+
+function isVisible(element) { return element.offsetParent !== null; }
+
+function handleTrapKeyDown(e) {
+  if (e.key !== "Tab") return;
+
+  const allPotentials = Array.from(e.currentTarget.querySelectorAll(FOCUSABLE_SELECTOR));
+  const focusableElements = allPotentials.filter(isVisible);
+
+  if (focusableElements.length === 0) {
+    e.preventDefault(); return;
+  }
+
+  const first = focusableElements[0];
+  const last = focusableElements[focusableElements.length - 1];
+
+  if (e.shiftKey) {
+    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+  } else {
+    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+}
+
+function activateTrap(element) {
+  previouslyFocusedElement = document.activeElement;
+  element.addEventListener("keydown", handleTrapKeyDown);
+  
+  const firstFocusable = Array.from(element.querySelectorAll(FOCUSABLE_SELECTOR)).find(isVisible);
+  setTimeout(() => { if (firstFocusable) firstFocusable.focus(); }, 0);
+
+  focusTrapCleanup = () => {
+    element.removeEventListener("keydown", handleTrapKeyDown);
+    if (previouslyFocusedElement) setTimeout(() => previouslyFocusedElement.focus(), 0);
+    focusTrapCleanup = null;
+    previouslyFocusedElement = null;
+  };
+}
+
+export function openAccessibleModal(modalElement, overlayElement) {
+  if (!modalElement) return;
+  modalElement.hidden = false;
+  if (overlayElement) overlayElement.hidden = false;
+  modalElement.setAttribute("aria-hidden", "false");
+  activateTrap(modalElement);
+}
+
+export function closeAccessibleModal(modalElement, overlayElement) {
+  if (!modalElement) return;
+  modalElement.hidden = true;
+  if (overlayElement) overlayElement.hidden = true;
+  modalElement.setAttribute("aria-hidden", "true");
+  if (typeof focusTrapCleanup === "function") focusTrapCleanup();
+}
+
+// --- Wrappers Específicos para Auth ---
+export function closeAuthModal() { closeAccessibleModal(dom.authModal, dom.authOverlay); }
+export function openAuthModal() { openAccessibleModal(dom.authModal, dom.authOverlay); }
 export function setupAuthModal() {
   if (!dom.loginButton || !dom.authModal || !dom.authOverlay) return;
   dom.loginButton.addEventListener("click", openAuthModal);
@@ -90,7 +215,7 @@ export function setupAuthModal() {
 }
 
 // =================================================================
-//          HELPERS DE INTERFAZ
+//          4. HELPERS DE INTERFAZ GENERAL
 // =================================================================
 
 export function updateTypeFilterUI(mediaType) {
@@ -124,4 +249,15 @@ export function initThemeToggle() {
       localStorage.setItem("theme", isDarkMode ? "dark" : "light");
     });
   }
+}
+
+// --- Helper para Autocomplete (Usado en sidebar.js y main.js) ---
+export function clearAllSidebarAutocomplete(exceptForm = null) {
+  document.querySelectorAll(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS).forEach((container) => {
+    if (!exceptForm || container.closest(SELECTORS.SIDEBAR_FILTER_FORM) !== exceptForm) {
+      const input = container.parentElement.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
+      if (input) input.removeAttribute("aria-expanded");
+      container.remove();
+    }
+  });
 }

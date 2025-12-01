@@ -1,8 +1,7 @@
 /* src/js/auth.js */
 
-import { supabase } from "./supabaseClient.js";
-import { closeAuthModal } from "./ui.js";
-import { showToast } from "./ui.js"; // ✨ IMPORTACIÓN NUEVA
+import { supabase } from "./api.js";
+import { closeAuthModal, showToast } from "./ui.js";
 
 const dom = {
   loginView: document.getElementById("login-view"),

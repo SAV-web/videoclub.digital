@@ -12,7 +12,7 @@
 //
 // =================================================================
 
-import { openAccessibleModal, closeAccessibleModal } from "./modal-manager.js";
+import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { formatRuntime } from "../utils.js"; 
 
