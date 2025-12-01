@@ -29,7 +29,7 @@ import {
 } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG } from "../constants.js";
 import { loadAndRenderMovies } from "../main.js";
-import { showToast } from "../toast.js";
+import { showToast } from "../ui.js";
 
 const dom = {
   sidebarInnerWrapper: document.querySelector(".sidebar-inner-wrapper"),

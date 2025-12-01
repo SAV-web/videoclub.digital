@@ -8,8 +8,8 @@
 // =================================================================
 
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
-import { setUserMovieDataAPI } from "../api-user.js";
-import { showToast } from "../toast.js";
+import { setUserMovieDataAPI } from "../api.js";
+import { showToast } from "../ui.js";
 
 const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
 

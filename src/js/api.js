@@ -1,23 +1,30 @@
 // =================================================================
-//          MÓDULO DE SERVICIO API (v5.1 - Ruta Actualizada)
+//          MÓDULO DE SERVICIO API (Maestro)
 // =================================================================
 // FICHERO: src/js/api.js
-// CAMBIO: Actualizada la importación de requestManager a ./components/
+// RESPONSABILIDAD: Centralizar TODAS las llamadas a Supabase:
+// 1. Búsqueda pública de películas (RPC con caché).
+// 2. Datos privados de usuario (Lectura/Escritura directa con RLS).
+// 3. Sugerencias de autocompletado.
 // =================================================================
 
 import { CONFIG } from "./config.js";
 import { supabase } from "./supabaseClient.js";
 import { LRUCache } from "lru-cache";
-// CAMBIO: Ruta actualizada
 import { createAbortableRequest } from "./components/requestManager.js";
+import { getUserDataForMovie } from "./state.js"; // Necesario para merge de datos de usuario
 
-// Configuración de caché optimizada
+// --- CACHÉ (Solo para búsquedas públicas) ---
 export const queryCache = new LRUCache({
   max: 300,
-  ttl: 1000 * 60 * 30,
+  ttl: 1000 * 60 * 30, // 30 minutos
   updateAgeOnGet: true,
   ttlAutopurge: true,
 });
+
+// =================================================================
+//          SECCIÓN A: BÚSQUEDA DE PELÍCULAS (Pública)
+// =================================================================
 
 function createCanonicalCacheKey(filters, page, pageSize) {
   const normalizedFilters = {};
@@ -113,6 +120,68 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
     throw error;
   }
 }
+
+// =================================================================
+//          SECCIÓN B: DATOS DE USUARIO (Privada - RLS)
+// =================================================================
+
+/**
+ * Obtiene los datos del usuario (ratings/watchlist).
+ */
+export async function fetchUserMovieData() {
+  const { data, error } = await supabase
+    .from('user_movie_entries')
+    .select('movie_id, rating, on_watchlist');
+
+  if (error) {
+    console.error("Error fetching user data:", error);
+    throw new Error("No se pudieron cargar tus datos.");
+  }
+
+  const userMap = {};
+  if (data) {
+    data.forEach(item => {
+      userMap[item.movie_id] = {
+        rating: item.rating,
+        onWatchlist: item.on_watchlist
+      };
+    });
+  }
+  return userMap;
+}
+
+/**
+ * Guarda datos del usuario (Upsert).
+ */
+export async function setUserMovieDataAPI(movieId, partialData) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session || !session.user) throw new Error("Debes iniciar sesión para guardar datos.");
+
+  const userId = session.user.id;
+  const currentState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
+  const mergedData = { ...currentState, ...partialData };
+
+  const payload = {
+    user_id: userId,
+    movie_id: movieId,
+    rating: mergedData.rating,
+    on_watchlist: mergedData.onWatchlist,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await supabase
+    .from('user_movie_entries')
+    .upsert(payload, { onConflict: 'user_id, movie_id' });
+
+  if (error) {
+    console.error(`Error saving movie ${movieId}:`, error);
+    throw new Error("No se pudo guardar tu acción.");
+  }
+}
+
+// =================================================================
+//          SECCIÓN C: SUGERENCIAS (Autocompletado)
+// =================================================================
 
 const fetchSuggestions = async (rpcName, searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) return [];

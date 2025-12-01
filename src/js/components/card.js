@@ -15,8 +15,8 @@ import {
 import { CSS_CLASSES, SELECTORS } from "../constants.js";
 import { openModal } from "./quick-view.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
-import { setUserMovieDataAPI } from "../api-user.js";
-import { showToast } from "../toast.js";
+import { setUserMovieDataAPI } from "../api.js";
+import { showToast } from "../ui.js";
 import {
   calculateAverageStars,
   renderAverageStars,

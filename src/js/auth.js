@@ -2,7 +2,7 @@
 
 import { supabase } from "./supabaseClient.js";
 import { closeAuthModal } from "./ui.js";
-import { showToast } from "./toast.js"; // ✨ IMPORTACIÓN NUEVA
+import { showToast } from "./ui.js"; // ✨ IMPORTACIÓN NUEVA
 
 const dom = {
   loginView: document.getElementById("login-view"),

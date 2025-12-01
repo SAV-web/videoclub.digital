@@ -45,12 +45,12 @@ import {
   setUserMovieData,
   clearUserMovieData,
 } from "./state.js";
-import { showToast } from "./toast.js";
+import { showToast } from "./ui.js";
 import { initSidebar, collapseAllSections } from "./components/sidebar.js";
 import { initTouchDrawer } from "./components/touch-drawer.js";
 import { supabase } from "./supabaseClient.js";
 import { initAuthForms } from "./auth.js";
-import { fetchUserMovieData } from "./api-user.js";
+import { fetchUserMovieData } from "./api.js";
 import { initGridHoverSystem } from "./components/card.js";
 import { createAbortableRequest } from './components/requestManager.js';
 

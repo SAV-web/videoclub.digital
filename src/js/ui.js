@@ -1,35 +1,24 @@
-// =
-//                  MÓDULO DE MANIPULACIÓN DE UI (DOM)
 // =================================================================
-// Este archivo actúa como un punto central para la gestión de la interfaz de usuario.
-// Agrupa y re-exporta las funciones de todos los componentes de UI,
-// mantiene referencias cacheadas a los elementos del DOM y contiene
-// funciones de UI globales como la gestión de la modal de autenticación.
-//
-// v2.0 - Integra el nuevo gestor de modales accesibles para manejar la
-//        apertura y cierre de la modal de autenticación, asegurando el
-//        cumplimiento de las mejores prácticas de accesibilidad (a11y).
+//                  MÓDULO DE UI (Centralizado)
+// =================================================================
+// FICHERO: src/js/ui.js
+// RESPONSABILIDAD:
+// - Caché de referencias DOM (objeto 'dom').
+// - Gestión de componentes UI globales (Modales, Toast, Tema).
+// - Re-exportación de componentes específicos (Card, Pagination, etc.)
 // =================================================================
 
-// --- Re-exportación de componentes de UI para un acceso centralizado ---
+// --- Re-exportación de componentes de UI ---
 export * from "./components/card.js";
 export * from "./components/pagination.js";
 export * from "./components/autocomplete.js";
 export * from "./components/quick-view.js";
 
-// --- Imports necesarios para la lógica de este fichero ---
-import { createElement, highlightAccentInsensitive, triggerPopAnimation } from "./utils.js";
 import { CSS_CLASSES, SELECTORS } from "./constants.js";
-// ▼▼▼ IMPORTACIÓN CLAVE: Traemos el nuevo gestor de modales ▼▼▼
-import {
-  openAccessibleModal,
-  closeAccessibleModal,
-} from "./components/modal-manager.js";
+import { openAccessibleModal, closeAccessibleModal } from "./components/modal-manager.js";
+import { triggerPopAnimation, createElement } from "./utils.js"; // Import añadido para Toast
 
-/**
- * Objeto que contiene referencias cacheadas a los elementos del DOM más utilizados
- * para evitar consultas repetitivas y mejorar el rendimiento.
- */
+// --- Referencias DOM Cacheadas ---
 export const dom = {
   gridContainer: document.querySelector(SELECTORS.GRID_CONTAINER),
   paginationContainer: document.querySelector(SELECTORS.PAGINATION_CONTAINER),
@@ -48,80 +37,76 @@ export const dom = {
   clearFiltersBtn: document.querySelector(SELECTORS.CLEAR_FILTERS_BTN),
   totalResultsContainer: document.getElementById("total-results-container"),
   totalResultsCount: document.getElementById("total-results-count"),
-  // Elementos de la Modal de Autenticación
   authModal: document.getElementById("auth-modal"),
   authOverlay: document.getElementById("auth-overlay"),
   loginButton: document.getElementById("login-button"),
 };
 
+// =================================================================
+//          SISTEMA DE NOTIFICACIONES (TOAST) - (Antes toast.js)
+// =================================================================
+const TOAST_DURATION = 5000;
+
 /**
- * Cierra la modal de autenticación delegando la lógica al gestor accesible.
+ * Muestra una notificación flotante.
+ * @param {string} message - Mensaje a mostrar.
+ * @param {'error'|'success'} [type='error'] - Tipo de alerta.
  */
+export function showToast(message, type = "error") {
+  const container = document.querySelector(SELECTORS.TOAST_CONTAINER);
+  if (!container) return;
+
+  const toastElement = createElement("div", {
+    className: `toast toast--${type}`,
+    textContent: message,
+    attributes: { role: "alert" }
+  });
+
+  container.appendChild(toastElement);
+
+  setTimeout(() => {
+    toastElement.remove();
+  }, TOAST_DURATION);
+}
+
+// =================================================================
+//          GESTIÓN GLOBAL DE MODALES
+// =================================================================
 export function closeAuthModal() {
   closeAccessibleModal(dom.authModal, dom.authOverlay);
 }
 
-/**
- * Abre la modal de autenticación delegando la lógica al gestor accesible.
- */
 export function openAuthModal() {
   openAccessibleModal(dom.authModal, dom.authOverlay);
 }
 
-/**
- * Configura los listeners para la modal de autenticación (abrir, cerrar, escape).
- * Esta función no cambia, ya que solo establece los disparadores.
- */
 export function setupAuthModal() {
   if (!dom.loginButton || !dom.authModal || !dom.authOverlay) return;
-
   dom.loginButton.addEventListener("click", openAuthModal);
   dom.authOverlay.addEventListener("click", closeAuthModal);
-
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !dom.authModal.hidden) {
-      closeAuthModal();
-    }
+    if (e.key === "Escape" && !dom.authModal.hidden) closeAuthModal();
   });
 }
 
-/**
- * Actualiza la apariencia y el texto del botón de filtro por tipo de medio (Todo/Cine/TV).
- * @param {string} mediaType - El tipo de medio actual ('all', 'movies', 'series').
- */
+// =================================================================
+//          HELPERS DE INTERFAZ
+// =================================================================
+
 export function updateTypeFilterUI(mediaType) {
   const button = dom.typeFilterToggle;
   if (!button) return;
-
-  button.classList.remove(
-    CSS_CLASSES.TYPE_FILTER_MOVIES,
-    CSS_CLASSES.TYPE_FILTER_SERIES
-  );
-
+  button.classList.remove(CSS_CLASSES.TYPE_FILTER_MOVIES, CSS_CLASSES.TYPE_FILTER_SERIES);
   switch (mediaType) {
-    case "movies":
-      button.textContent = "Cine";
-      button.classList.add(CSS_CLASSES.TYPE_FILTER_MOVIES);
-      break;
-    case "series":
-      button.textContent = "TV";
-      button.classList.add(CSS_CLASSES.TYPE_FILTER_SERIES);
-      break;
-    default:
-      button.textContent = "Todo";
-      break;
+    case "movies": button.textContent = "Cine"; button.classList.add(CSS_CLASSES.TYPE_FILTER_MOVIES); break;
+    case "series": button.textContent = "TV"; button.classList.add(CSS_CLASSES.TYPE_FILTER_SERIES); break;
+    default: button.textContent = "Todo"; break;
   }
 }
 
-/**
- * Actualiza el contador de resultados totales en el sidebar.
- * @param {number} total - El número total de resultados.
- * @param {boolean} hasFilters - Indica si hay filtros significativos activos.
- */
 export function updateTotalResultsUI(total, hasFilters) {
   const { totalResultsContainer, totalResultsCount } = dom;
   if (!totalResultsContainer || !totalResultsCount) return;
-
   if (hasFilters && total > 0) {
     totalResultsCount.textContent = total.toLocaleString("es-ES");
     totalResultsContainer.hidden = false;
@@ -130,19 +115,11 @@ export function updateTotalResultsUI(total, hasFilters) {
   }
 }
 
-/**
- * Inicializa el botón de cambio de tema con animación y persistencia.
- */
 export function initThemeToggle() {
   if (dom.themeToggleButton) {
     dom.themeToggleButton.addEventListener("click", (e) => {
-      // 1. Animación visual (Pop)
       triggerPopAnimation(e.currentTarget);
-      
-      // 2. Notificar al sistema (para cerrar sidebars, etc.)
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-      
-      // 3. Lógica de cambio de tema
       const isDarkMode = document.documentElement.classList.toggle("dark-mode");
       localStorage.setItem("theme", isDarkMode ? "dark" : "light");
     });
