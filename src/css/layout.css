@@ -1,0 +1,291 @@
+/* =================================================================
+ *          LAYOUT MAESTRO (Estructura y Adaptabilidad)
+ * =================================================================
+ *  FICHERO: src/css/layout.css
+ *  RESPONSABILIDAD: Definir el esqueleto de la aplicación, el sistema
+ *  de rejilla (Grid), el comportamiento responsive (Móvil vs Desktop)
+ *  y las animaciones de transición entre páginas.
+ * ================================================================= */
+
+:root {
+  --mobile-header-height: 57px;
+}
+
+/* =================================================================
+   1. ESTRUCTURA MACRO (Wrappers)
+   ================================================================= */
+
+/* Contenedor Flex Principal (Sidebar + Contenido) */
+.main-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh; /* Soporte para móviles modernos */
+}
+
+/* Columna Derecha (Header + Grid) */
+.main-content-wrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Evita desbordamientos de flexbox */
+  
+  /* Asegura que el fondo cubra todo el viewport siempre */
+  min-height: 100vh;
+  min-height: 100dvh;
+  
+  touch-action: pan-y; /* Optimización de scroll táctil */
+}
+
+/* Contenedor interno con padding */
+.content {
+  flex-grow: 1;
+  width: 100%;
+  margin: 0 auto;
+  max-width: 1920px;
+  
+  /* Padding Base (Móvil) */
+  padding: var(--space-md) var(--space-md) calc(var(--mobile-header-height) + var(--space-md));
+  
+  /* Transición suave al cambiar de tamaño */
+  transition: padding 0.3s ease;
+}
+
+/* =================================================================
+   2. SIDEBAR (Cajón de Navegación)
+   ================================================================= */
+
+/* --- Estilos Base y Móvil (Drawer Flotante) --- */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0;
+  width: 280px;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 1001;
+  
+  background-color: var(--color-surface);
+  border-right: 2px solid var(--color-border);
+  
+  /* Por defecto oculto en móvil (fuera de pantalla) */
+  transform: translateX(-280px);
+  transition: 
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    width var(--transition-duration-normal),
+    background-color var(--transition-duration-normal),
+    border-color var(--transition-duration-normal);
+}
+
+/* Estado Abierto en Móvil */
+body.sidebar-is-open .sidebar {
+  transform: translateX(0);
+}
+
+/* --- Elementos internos del Sidebar (Visibilidad Responsiva) --- */
+.sidebar .logo-area,
+.sidebar .sidebar-static-filters,
+.sidebar .sidebar-scrollable-filters {
+  /* En móvil, ocultamos el contenido mientras está cerrado para rendimiento */
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
+}
+
+.sidebar .play-button-container {
+  display: none; /* Oculto en móvil cerrado */
+  flex-direction: column; gap: var(--space-md); margin-top: var(--space-xs);
+}
+
+/* Cuando se abre el sidebar móvil: */
+body.sidebar-is-open .sidebar .logo-area,
+body.sidebar-is-open .sidebar .sidebar-static-filters,
+body.sidebar-is-open .sidebar .sidebar-scrollable-filters {
+  opacity: 1; visibility: visible;
+  transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s;
+}
+body.sidebar-is-open .sidebar .play-button-container {
+  display: flex; flex-direction: row; margin-top: 0;
+}
+
+/* --- Estilos Desktop (Sticky Sidebar) --- */
+@media (min-width: 769px) {
+  .sidebar {
+    position: sticky;
+    transform: none; /* Reseteamos posición */
+    flex-basis: 200px;
+    width: 200px;
+    z-index: var(--z-index-sidebar);
+  }
+
+  /* Restaurar visibilidad permanente en escritorio */
+  .sidebar .logo-area,
+  .sidebar .sidebar-static-filters,
+  .sidebar .sidebar-scrollable-filters {
+    display: block; opacity: 1; visibility: visible; transition: none;
+  }
+  
+  .sidebar .play-button-container {
+    display: flex; flex-direction: row; gap: var(--space-md);
+    margin-top: 0; margin-bottom: var(--space-lg);
+  }
+
+  /* Sidebar Colapsado (Solo Desktop) */
+  body.sidebar-collapsed .sidebar { flex-basis: 65px; }
+  body.sidebar-collapsed .logo-area,
+  body.sidebar-collapsed .sidebar-static-filters,
+  body.sidebar-collapsed .sidebar-scrollable-filters { display: none; }
+  body.sidebar-collapsed .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
+}
+
+/* =================================================================
+   3. HEADER PRINCIPAL
+   ================================================================= */
+
+.main-header {
+  display: flex; align-items: center; gap: var(--space-xs);
+  background-color: var(--color-bg);
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.3s, padding 0.3s, box-shadow 0.3s, border-color 0.3s;
+  z-index: var(--z-index-header);
+  view-transition-name: main-header;
+  
+  /* Móvil: Fijo abajo (Bottom Bar style) */
+  position: fixed; bottom: 0; left: 0; right: 0; top: auto;
+  padding: var(--space-xs) var(--space-md);
+  flex-wrap: nowrap;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Desktop: Sticky arriba */
+@media (min-width: 769px) {
+  .main-header {
+    position: sticky; top: 0; bottom: auto;
+    padding: var(--space-lg) var(--space-xxl) var(--space-md);
+    gap: var(--space-md) var(--space-lg);
+    flex-wrap: wrap;
+    border-top: none;
+    justify-content: center;
+  }
+  
+  /* Estado Scrolled (Sombra y reducción de espacio) */
+  .main-header.is-scrolled {
+    padding-top: var(--space-sm); padding-bottom: var(--space-sm);
+    border-bottom-color: var(--color-border);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow);
+  }
+}
+
+/* Visibilidad de Paginación en Header */
+.header-pagination-group { display: none; } /* Móvil: Oculto */
+@media (min-width: 769px) {
+  .header-pagination-group { display: flex; } /* Desktop: Visible */
+}
+
+/* =================================================================
+   4. SISTEMA DE REJILLA (GRID)
+   ================================================================= */
+
+.grid-container {
+  display: grid;
+  justify-content: start;
+  
+  /* Configuración Móvil Base (2 Columnas) */
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
+}
+
+/* Estado de Carga (Feedback Visual) */
+.grid-container.is-fetching {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: wait;
+  transition: opacity 0.2s ease-out;
+}
+
+/* Breakpoints Responsivos (Desktop) */
+@media (min-width: 769px) {
+  .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
+  
+  .grid-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg) var(--space-md);
+  }
+}
+
+@media (min-width: 62em) { /* ~992px */
+  .grid-container { grid-template-columns: repeat(4, 1fr); }
+  body.sidebar-collapsed .grid-container { grid-template-columns: repeat(5, 1fr); }
+}
+
+@media (min-width: 73em) { /* ~1168px */
+  .grid-container { grid-template-columns: repeat(5, 1fr); }
+  body.sidebar-collapsed .grid-container { grid-template-columns: repeat(6, 1fr); }
+}
+
+@media (min-width: 85em) { /* ~1360px */
+  .grid-container { grid-template-columns: repeat(6, 1fr); }
+  body.sidebar-collapsed .grid-container { grid-template-columns: repeat(7, 1fr); }
+}
+
+/* Ajustes específicos para casos raros en móvil */
+@media (max-width: 400px) and (orientation: portrait) {
+  /* Centrar tarjeta única en móviles muy estrechos */
+  .grid-container:has(> .movie-card:only-child) {
+    grid-template-columns: 1fr; max-width: 70%; margin: 0 auto;
+  }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Móvil apaisado */
+  .grid-container { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* =================================================================
+   5. TIPOGRAFÍA FLUIDA Y ACCESIBILIDAD TÁCTIL
+   ================================================================= */
+
+/* Escalado de fuentes según viewport */
+@media (min-width: 48em) { /* Tablet */
+  :root { --font-size-md: 1.25rem; --font-size-lg: 1.5rem; --font-size-xl: 1.75rem; --font-size-xxl: 2.25rem; }
+}
+@media (min-width: 62em) { /* Desktop */
+  :root { --font-size-md: 1.5rem; --font-size-lg: 1.75rem; --font-size-xl: 2.25rem; --font-size-xxl: 3rem; }
+}
+
+/* Mejoras para Punteros Gruesos (Dedos) */
+@media (hover: none) and (pointer: coarse) {
+  #sort-select, .search-form input {
+    height: 44px;
+    font-size: 1rem; /* Evita zoom en iOS */
+  }
+  #sort-select { padding-left: 12px; padding-right: 32px; }
+  
+  /* Botones de paginación más grandes en móvil */
+  .pagination-container > .btn,
+  .pagination-container > .pagination-current {
+    --btn-height: 36px;
+  }
+}
+
+/* =================================================================
+   6. ANIMACIONES DE TRANSICIÓN (View Transitions API)
+   ================================================================= */
+
+@keyframes card-enter-animation {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+::view-transition-old(root) { animation-name: fade-out; }
+::view-transition-new(root) { animation-name: fade-in; }
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.25s; animation-timing-function: ease-in-out;
+}
+::view-transition-group(main-header) { z-index: 1; }
+
+/* Transiciones específicas para tarjetas */
+::view-transition-group(movie-*) { animation-duration: 0.5s; animation-timing-function: ease; }
+::view-transition-new(movie-*) { animation-name: card-enter-animation; }
+::view-transition-old(movie-*) { animation-name: fade-out; }

@@ -28,8 +28,7 @@
 @import "components/ui-general.css";
 
 /* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
-@import "layout/principal.css";
-@import "layout/responsive.css";
+@import "layout.css";
 
 /* REVELADO ANTI-FOUC - Esta es la última regla que el navegador procesará */
 .sidebar--loading > *, 
