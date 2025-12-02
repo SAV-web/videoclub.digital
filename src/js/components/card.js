@@ -384,7 +384,7 @@ function populateCardText(elements, movieData, cardElement) {
   elements.countryContainer.style.display = movieData.country_code ? "flex" : "none";
   if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
   const collections = movieData.collections_list || "";
-  const iconMap = { N: "netflixIcon", H: "hboIcon", D: "disneyIcon", W: "wbIcon", U: "universalIcon", S: "sonyIcon", P: "paramountIcon", L: "lionsgateIcon", Z: "amazonIcon" };
+  const iconMap = { N: "netflixIcon", H: "hboIcon", D: "disneyIcon", W: "wbIcon", U: "universalIcon", S: "sonyIcon", P: "paramountIcon", L: "lionsgateIcon", Z: "amazonIcon", F: "twentyIcon" };
   Object.values(iconMap).forEach(iconKey => { if (elements[iconKey]) elements[iconKey].style.display = "none"; });
   collections.split(",").forEach(code => {
     const iconKey = iconMap[code];
@@ -614,6 +614,7 @@ function createMovieCard(movieData) {
     paramountIcon: cardClone.querySelector('[data-template="paramount-icon"]'),
     lionsgateIcon: cardClone.querySelector('[data-template="lionsgate-icon"]'),
     amazonIcon: cardClone.querySelector('[data-template="amazon-icon"]'),
+    twentyIcon: cardClone.querySelector('[data-template="twenty-icon"]'),
     wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
     genre: cardClone.querySelector(SELECTORS.GENRE),
     actors: cardClone.querySelector(SELECTORS.ACTORS),

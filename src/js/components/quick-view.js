@@ -116,7 +116,8 @@ function populateModal(cardElement) {
     S: front.querySelector('.sony-icon'),
     P: front.querySelector('.paramount-icon'),
     L: front.querySelector('.lionsgate-icon'),
-    Z: front.querySelector('.amazon-icon')
+    Z: front.querySelector('.amazon-icon'),
+    F: front.querySelector('.twenty-icon')
   };
 
   // Ocultamos todos por defecto
