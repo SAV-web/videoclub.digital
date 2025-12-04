@@ -2,7 +2,7 @@
 //          COMPONENTE: Movie Card (Tarjeta de Película)
 // =================================================================
 //  FICHERO:  src/js/components/card.js
-//  VERSIÓN:  3.4 (Soporte para expansión de Actores)
+//  VERSIÓN:  3.6 (Fix: Ruta de iconos con Base Path)
 // =================================================================
 
 import { CONFIG } from "../config.js";
@@ -25,6 +25,9 @@ import {
   setupRatingListeners,
 } from "./rating-stars.js";
 
+// ✨ FIX: Importamos el sprite para que Vite resuelva la URL correcta con la base
+import spriteUrl from "../../img/icons/sprite.svg";
+
 // --- Constantes y Estado del Módulo ---
 
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
@@ -35,12 +38,25 @@ const SQRT_MAX_VOTES = {
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
 let renderedCardCount = 0;
 let currentlyFlippedCard = null;
-// Detección de capacidades robusta (Evita falsos positivos en híbridos)
+
 const isPointerDevice = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-// Redefinimos isDesktop para que el resto del archivo (clics) también se beneficie
 const isDesktop = isPointerDevice && !isTouchDevice;
+
+// --- Configuración de Iconos de Plataforma (SVG Data) ---
+const PLATFORM_DATA = {
+  N: { id: "icon-netflix", class: "netflix-icon", title: "Original de Netflix", w: 16, h: 16, vb: "0 0 16 16" },
+  H: { id: "icon-hbo", class: "", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24", color: true },
+  D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 28, h: 22, vb: "0 0 22 18" },
+  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 18 20" },
+  U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 24, h: 26, vb: "0 0 24 26" },
+  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 16, h: 25, vb: "0 0 16 25" },
+  P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 22, h: 22, vb: "0 0 22 22" },
+  L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate", w: 20, h: 20, vb: "0 0 20 20" },
+  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon", w: 22, h: 22, vb: "0 0 22 22" },
+  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Fox", w: 28, h: 28, vb: "0 0 24 24" }
+};
+
 // =================================================================
 //          SISTEMA DE HOVER DELEGADO
 // =================================================================
@@ -48,7 +64,7 @@ const isDesktop = isPointerDevice && !isTouchDevice;
 let hoverTimeout;
 let currentHoveredCard = null;
 const HOVER_DELAY = 1000;
-const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn"; // Añadido botón actores
+const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn"; 
 
 function startFlipTimer(cardElement) {
   if (document.body.classList.contains("rotation-disabled")) return;
@@ -76,12 +92,6 @@ function clearCardHoverState(cardElement) {
 }
 
 export function initGridHoverSystem(gridContainer) {
-  /* 
-     MEJORA DE RENDIMIENTO:
-     Si el dispositivo es táctil (móvil/tablet/híbrido), desactivamos 
-     los listeners de hover. Esto evita que el 'mouseover' sintético 
-     que generan los móviles dispare cálculos innecesarios al hacer scroll.
-  */
   if (isTouchDevice || !isPointerDevice) {
     return;
   }
@@ -112,10 +122,6 @@ export function initGridHoverSystem(gridContainer) {
     }
   });
 }
-
-// ... (lazyLoadObserver, handleWatchlistClick, handleRatingClick, updateCardUI, setupCardImage se mantienen igual) ...
-// Pega aquí el código de esas funciones si no vas a copiar el archivo entero, 
-// o usa el bloque de abajo que incluye todo.
 
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
@@ -279,15 +285,16 @@ function formatActorsWithEllipsis(actorsString, maxLength = 85) {
 }
 
 function populateCardText(elements, movieData, cardElement) {
-  // ... (código previo igual) ...
   elements.title.textContent = movieData.title || "Título no disponible";
   elements.title.title = movieData.title || "Título no disponible";
+  
   if (elements.originalTitleWrapper && movieData.original_title && movieData.original_title.trim() !== "") {
     elements.originalTitle.textContent = movieData.original_title;
     elements.originalTitleWrapper.style.display = 'flex';
   } else if (elements.originalTitleWrapper) {
     elements.originalTitleWrapper.style.display = 'none';
   }
+  
   const directorContainer = elements.director;
   directorContainer.textContent = "";
   const directorsString = movieData.directors || "Director no disponible";
@@ -312,39 +319,26 @@ function populateCardText(elements, movieData, cardElement) {
   
   elements.genre.textContent = movieData.genres || "Género no disponible";
 
-  // --- LÓGICA DE ACTORES MEJORADA ---
+  // --- ACTORES ---
   const actorsData = formatActorsWithEllipsis(movieData.actors);
-  
-  // Limpiamos contenido previo
   elements.actors.textContent = actorsData.truncated;
   
-  // CAMBIO: Lógica de filtrado para evitar botón en Documentales/Animación
   const rawActors = movieData.actors ? movieData.actors.trim() : "";
   const lowerActors = rawActors.toLowerCase();
-  
-  // Lista de valores que NO se consideran actores reales
   const nonActorValues = ["(a)", "animación", "animacion", "documental"];
-  
-  // Solo mostramos el botón si hay texto Y no está en la lista de ignorados
   const hasInteractiveActors = rawActors.length > 0 && !nonActorValues.includes(lowerActors);
 
   if (hasInteractiveActors) {
-    // 1. Creamos el botón
     const expandBtn = createElement("button", {
       className: "actors-expand-btn",
       textContent: "+",
       attributes: { "aria-label": "Ver reparto completo" }
     });
-
     const actorsContainer = elements.actors.parentElement;
-    
-    // Evitamos duplicados
     const existingBtn = actorsContainer.querySelector(".actors-expand-btn");
     if (existingBtn) existingBtn.remove();
-
     actorsContainer.appendChild(expandBtn);
 
-    // 2. Contenido del overlay
     const actorsOverlay = cardElement.querySelector('.actors-scrollable-content');
     if (actorsOverlay) {
       const actorsListHtml = movieData.actors
@@ -354,14 +348,9 @@ function populateCardText(elements, movieData, cardElement) {
           return `<button type="button" class="actor-list-item" data-actor-name="${name}">${name}</button>`;
         })
         .join(''); 
-
-      actorsOverlay.innerHTML = `
-        <h4>Reparto</h4>
-        <div class="actors-list-text">${actorsListHtml}</div>
-      `;
+      actorsOverlay.innerHTML = `<h4>Reparto</h4><div class="actors-list-text">${actorsListHtml}</div>`;
     }
   } else {
-    // Limpieza si no hay actores interactivos
     const actorsContainer = elements.actors.parentElement;
     const existingBtn = actorsContainer.querySelector(".actors-expand-btn");
     if (existingBtn) existingBtn.remove();
@@ -371,7 +360,6 @@ function populateCardText(elements, movieData, cardElement) {
   elements.criticContainer.style.display = movieData.critic && movieData.critic.trim() !== "" ? "block" : "none";
   if (elements.criticContainer.style.display === "block") elements.critic.textContent = movieData.critic;
   
-  // ... (resto igual: año, pais, iconos, wiki) ...
   let displayYear = movieData.year || "N/A";
   if (movieData.type?.toUpperCase().startsWith("S.") && movieData.year_end) {
     const yearEnd = String(movieData.year_end).trim();
@@ -383,13 +371,35 @@ function populateCardText(elements, movieData, cardElement) {
   elements.year.textContent = displayYear;
   elements.countryContainer.style.display = movieData.country_code ? "flex" : "none";
   if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
-  const collections = movieData.collections_list || "";
-  const iconMap = { N: "netflixIcon", H: "hboIcon", D: "disneyIcon", W: "wbIcon", U: "universalIcon", S: "sonyIcon", P: "paramountIcon", L: "lionsgateIcon", Z: "amazonIcon", F: "twentyIcon" };
-  Object.values(iconMap).forEach(iconKey => { if (elements[iconKey]) elements[iconKey].style.display = "none"; });
-  collections.split(",").forEach(code => {
-    const iconKey = iconMap[code];
-    if (iconKey && elements[iconKey]) elements[iconKey].style.display = "block";
-  });
+  
+  // --- INYECCIÓN DE ICONOS DE PLATAFORMA (DOM OPTIMIZADO) ---
+  const iconsContainer = cardElement.querySelector('.card-icons-line');
+  if (iconsContainer) {
+    iconsContainer.innerHTML = ""; // Limpieza: Solo hay nodos si es necesario
+    const collections = movieData.collections_list || "";
+    
+    if (collections) {
+      collections.split(",").forEach(code => {
+        const config = PLATFORM_DATA[code];
+        if (config) {
+          const span = document.createElement('span');
+          // Si tiene clase específica la usa, sino usa la base y asume color en CSS
+          span.className = config.class ? `platform-icon ${config.class}` : `platform-icon`;
+          if (config.id === 'icon-hbo') span.setAttribute('data-template', 'hbo-icon'); 
+          span.title = config.title;
+          
+          // ✨ FIX: Usamos spriteUrl importado para que Vite resuelva la ruta completa
+          span.innerHTML = `
+            <svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}">
+              <use href="${spriteUrl}#${config.id}"></use>
+            </svg>
+          `;
+          iconsContainer.appendChild(span);
+        }
+      });
+    }
+  }
+
   if (elements.wikipediaLink && movieData.wikipedia) {
     elements.wikipediaLink.href = movieData.wikipedia;
     elements.wikipediaLink.style.display = 'flex';
@@ -428,17 +438,12 @@ function setupCardRatings(elements, movieData) {
 function resetCardBackState(cardElement) {
   const flipCardBack = cardElement.querySelector(".flip-card-back");
   if (flipCardBack?.classList.contains("is-expanded")) {
-    // Resetear clases de estado
     flipCardBack.classList.remove("is-expanded", "show-actors");
-    
-    // Resetear botón principal
     const expandBtn = flipCardBack.querySelector(".expand-content-btn");
     if (expandBtn) {
       expandBtn.textContent = "+";
       expandBtn.setAttribute("aria-label", "Expandir sinopsis");
     }
-    
-    // Resetear scrolls
     const scrolls = flipCardBack.querySelectorAll(".scrollable-content, .actors-scrollable-content");
     scrolls.forEach(el => el.scrollTop = 0);
   }
@@ -466,13 +471,11 @@ export function handleCardClick(event) {
   const cardElement = this;
   const target = event.target;
 
-  // 1. Watchlist
   if (target.closest('[data-action="toggle-watchlist"]')) {
     handleWatchlistClick.call(cardElement, event);
     return;
   }
 
-  // 2. Ratings
   if (target.closest('[data-action^="set-rating-"]')) {
     handleRatingClick.call(cardElement, event);
     return;
@@ -481,14 +484,10 @@ export function handleCardClick(event) {
   const flipCardBack = cardElement.querySelector(".flip-card-back");
   const mainExpandBtn = target.closest(".expand-content-btn");
   
-  // 3. EXPANDIR ACTORES (NUEVO)
   const actorsExpandBtn = target.closest(".actors-expand-btn");
   if (actorsExpandBtn) {
     event.stopPropagation();
-    // Activamos modo expansión + modo actores
     flipCardBack.classList.add("is-expanded", "show-actors");
-    
-    // Cambiamos el botón de abajo para que sirva de "Cerrar"
     const bottomBtn = flipCardBack.querySelector(".expand-content-btn");
     if (bottomBtn) {
       bottomBtn.textContent = "−";
@@ -497,27 +496,20 @@ export function handleCardClick(event) {
     return;
   }
 
-  // 4. EXPANDIR SINOPSIS (Botón grande inferior)
   if (mainExpandBtn) {
     event.stopPropagation();
     const isExpanded = flipCardBack.classList.contains("is-expanded");
-    
     if (isExpanded) {
-      // Si ya estaba expandido (sea actores o sinopsis), cerramos todo
       resetCardBackState(cardElement);
     } else {
-      // Si estaba cerrado, abrimos Sinopsis (modo por defecto)
       flipCardBack.classList.add("is-expanded");
-      // Aseguramos que NO esté en modo actores
       flipCardBack.classList.remove("show-actors");
-      
       mainExpandBtn.textContent = "−";
       mainExpandBtn.setAttribute("aria-label", "Contraer sinopsis");
     }
     return;
   }
 
-  // 5. Director Filter
   const directorLink = target.closest(".front-director-info a[data-director-name]");
   if (directorLink) {
     event.preventDefault();
@@ -526,11 +518,10 @@ export function handleCardClick(event) {
     }));
     return;
   }
-  // X. ACTOR FILTER (NUEVO)
+
   const actorBtn = target.closest(".actor-list-item");
   if (actorBtn) {
-    event.preventDefault(); // Buena práctica, aunque es un button type="button"
-    // Lanzamos el evento global para filtrar por actor
+    event.preventDefault();
     document.dispatchEvent(new CustomEvent("filtersReset", { 
       detail: { 
         keepSort: true, 
@@ -539,11 +530,10 @@ export function handleCardClick(event) {
     }));
     return;
   }
-  // 6. External Links
+
   const externalLink = target.closest("a");
   if (externalLink && externalLink.href && !externalLink.href.endsWith("#")) return;
 
-  // 7. Flip
   if (cardElement.id === 'quick-view-content') return;
   const isRotationDisabled = document.body.classList.contains("rotation-disabled");
   if (!isDesktop && !isRotationDisabled) {
@@ -579,11 +569,9 @@ function createMovieCard(movieData) {
   cardElement.movieData = movieData;
   if (movieData.id) cardElement.style.viewTransitionName = `movie-${movieData.id}`;
   
-  // INYECCIÓN DEL CONTENEDOR DE ACTORES (NUEVO)
   const backFace = cardClone.querySelector(".flip-card-back");
   if (backFace) {
     const actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
-    // Lo insertamos antes del botón de expandir para que el botón quede encima (z-index)
     const expandBtn = backFace.querySelector(".expand-content-btn");
     backFace.insertBefore(actorsOverlay, expandBtn);
   }
@@ -605,16 +593,6 @@ function createMovieCard(movieData) {
     imdbVotesBar: cardClone.querySelector('[data-template="imdb-votes-bar"]'),
     duration: cardClone.querySelector(SELECTORS.DURATION),
     episodes: cardClone.querySelector('[data-template="episodes"]'),
-    netflixIcon: cardClone.querySelector('[data-template="netflix-icon"]'),
-    hboIcon: cardClone.querySelector('[data-template="hbo-icon"]'),
-    disneyIcon: cardClone.querySelector('[data-template="disney-icon"]'),
-    wbIcon: cardClone.querySelector('[data-template="wb-icon"]'),
-    universalIcon: cardClone.querySelector('[data-template="universal-icon"]'),
-    sonyIcon: cardClone.querySelector('[data-template="sony-icon"]'),
-    paramountIcon: cardClone.querySelector('[data-template="paramount-icon"]'),
-    lionsgateIcon: cardClone.querySelector('[data-template="lionsgate-icon"]'),
-    amazonIcon: cardClone.querySelector('[data-template="amazon-icon"]'),
-    twentyIcon: cardClone.querySelector('[data-template="twenty-icon"]'),
     wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
     genre: cardClone.querySelector(SELECTORS.GENRE),
     actors: cardClone.querySelector(SELECTORS.ACTORS),
@@ -624,7 +602,7 @@ function createMovieCard(movieData) {
     originalTitle: cardClone.querySelector('[data-template="original-title"]'),
     originalTitleWrapper: cardClone.querySelector('.back-original-title-wrapper'),
   };
-  populateCardText(elements, movieData, cardElement); // Pasamos cardElement para buscar el overlay
+  populateCardText(elements, movieData, cardElement);
   setupCardImage(elements.img, movieData);
   setupCardRatings(elements, movieData);
   updateCardUI(cardElement);
@@ -633,24 +611,48 @@ function createMovieCard(movieData) {
 }
 
 export function renderMovieGrid(gridContainer, movies) {
-  renderedCardCount = 0;
+  renderedCardCount = 0; 
   unflipAllCards();
+  
   if (!gridContainer) return;
+
   gridContainer.textContent = "";
-  const fragment = document.createDocumentFragment();
-  movies.forEach((movie, index) => {
-    const cardNode = createMovieCard(movie);
-    if (cardNode) {
-      const cardElement = cardNode.querySelector(".movie-card");
-      if (cardElement) {
-        const staggerIndex = Math.min(index, 15);
-        cardElement.style.setProperty("--card-index", staggerIndex);
-        renderedCardCount++;
-      }
-      fragment.appendChild(cardNode);
+  
+  const BATCH_SIZE = 12;
+  let currentIndex = 0;
+
+  function renderBatch() {
+    if (currentIndex >= movies.length || !document.body.contains(gridContainer)) {
+      return;
     }
-  });
-  gridContainer.appendChild(fragment);
+
+    const fragment = document.createDocumentFragment();
+    const limit = Math.min(currentIndex + BATCH_SIZE, movies.length);
+
+    for (let i = currentIndex; i < limit; i++) {
+      const movie = movies[i];
+      const cardNode = createMovieCard(movie);
+      
+      if (cardNode) {
+        const cardElement = cardNode.querySelector(".movie-card");
+        if (cardElement) {
+          const staggerIndex = i % BATCH_SIZE;
+          cardElement.style.setProperty("--card-index", staggerIndex);
+          renderedCardCount++;
+        }
+        fragment.appendChild(cardNode);
+      }
+    }
+
+    gridContainer.appendChild(fragment);
+    currentIndex = limit;
+
+    if (currentIndex < movies.length) {
+      requestAnimationFrame(renderBatch);
+    }
+  }
+
+  renderBatch();
 }
 
 export function renderSkeletons(gridContainer, paginationContainer) {

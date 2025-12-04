@@ -264,14 +264,19 @@ CREATE INDEX IF NOT EXISTS movies_imdb_votes_idx ON public.movies(imdb_votes DES
 -- Índice compuesto para optimizar el filtrado por tipo + ordenación (muy común)
 CREATE INDEX IF NOT EXISTS movies_type_relevance_idx ON public.movies(type, relevance ASC);
 -- Índices compuesto para combinaciones de filtros común: País + Año, sólo Series, sólo Películas
-CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx 
-ON public.movies(country_id, year DESC);
-CREATE INDEX IF NOT EXISTS movies_only_movies_year_desc_idx 
-ON public.movies(year DESC) 
+CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx ON public.movies(country_id, year DESC);
+CREATE INDEX IF NOT EXISTS movies_only_movies_year_desc_idx ON public.movies(year DESC) 
 WHERE type IS NULL OR type IN ('D', 'A');
 CREATE INDEX IF NOT EXISTS movies_only_series_year_desc_idx 
 ON public.movies(year DESC) 
 WHERE lower(type::text) LIKE 's%';
+-- ▼▼▼ NUEVOS ÍNDICES DE RENDIMIENTO (Fix "Tirones en Países") ▼▼▼
+CREATE INDEX IF NOT EXISTS movies_country_relevance_idx ON public.movies(country_id, relevance ASC);
+CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_id, fa_votes DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS movies_country_imdb_votes_idx ON public.movies(country_id, imdb_votes DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS movies_country_fa_rating_idx ON public.movies(country_id, fa_rating DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS movies_country_imdb_rating_idx ON public.movies(country_id, imdb_rating DESC NULLS LAST);
+ANALYZE public.movies;
 -- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$

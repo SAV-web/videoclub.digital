@@ -195,6 +195,7 @@ body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(
 .paramount-icon { color: #0063ff; } html.dark-mode .paramount-icon { color: #E0E0E0; }
 .lionsgate-icon { color: #CC7722; } html.dark-mode .lionsgate-icon { color: #f9d7b5; }
 .amazon-icon { color: #f6a61f; }
+.twenty-icon { color: #000b6c; } html.dark-mode .twenty-icon { color: #4da4f2; }
 
 
 /* =================================================================
@@ -406,13 +407,32 @@ html.dark-mode .card-rating-block > * {
   transition: all var(--duration-normal) var(--ease-smooth-out);
 }
 .card-action-btn:hover { transform: scale(1.15) rotate(10deg); }
-.card-action-btn svg { width: 20px; height: 20px; transition: all var(--duration-normal) var(--ease-smooth-out); }
+/* --- Watchlist (Estado Normal) --- */
+.card-action-btn svg {
+  width: 20px; height: 20px; 
+  
+  fill: transparent;     /* Fondo transparente */
+  stroke: currentColor;  /* Borde color texto */
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  
+  /* Variable por defecto: El + es del mismo color que el borde */
+  --icon-plus-color: currentColor;
+  
+  transition: all var(--duration-normal) var(--ease-smooth-out);
+}
 
-/* Watchlist Activo */
-.card-action-btn.is-active { animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in); }
-.card-action-btn.is-active svg { color: #ffbd07; fill: #ffbd07; animation: watchlist-glow 0.6s ease-out; }
-.card-action-btn.is-active svg path { stroke: #ffbd07; }
-.card-action-btn.is-active svg line { stroke: var(--color-surface); }
+/* --- Watchlist (Estado Activo) --- */
+.card-action-btn.is-active svg {
+  color: #ffbd07;    /* Todo se vuelve amarillo (borde y relleno) */
+  fill: #ffbd07;
+  
+  /* CAMBIO CLAVE: El + se vuelve del color del fondo de la tarjeta (recorte visual) */
+  --icon-plus-color: var(--color-surface);
+  
+  animation: watchlist-glow 0.6s ease-out;
+}
 
 @keyframes watchlist-pop {
   0% { transform: scale(1) rotate(0deg); }

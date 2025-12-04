@@ -1,1143 +1,492 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- === 1. METADATOS Y CONFIGURACIÓN === -->
+<!-- === 1. METADATOS Y CONFIGURACIÓN === -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>videoclub.digital - tu oráculo cinéfilo y seriéfilo inteligente</title>
     <meta name="theme-color" content="#37474F" />
-
-    <!-- === 2. SEO Y SOCIAL (Unificados) === -->
-    <!-- Definimos el texto una sola vez mentalmente, pero lo aplicamos a ambos protocolos -->
+<!-- === 2. SEO Y SOCIAL (Unificados) === -->
     <meta name="description" content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra." />
-    
     <meta property="og:title" content="videoclub.digital" />
     <meta property="og:description" content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra." />
     <meta property="og:image" content="https://videoclub.digital/src/img/og-image.png" />
     <meta property="og:url" content="https://videoclub.digital" />
     <meta property="og:type" content="website" />
-
-    <!-- === 3. MANIFEST Y DATOS ESTRUCTURADOS === -->
+<!-- === 3. MANIFEST Y DATOS ESTRUCTURADOS === -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "url": "https://videoclub.digital/",
-        "name": "videoclub.digital",
-        "description": "Explora, filtra y descubre miles de películas y series...",
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": "https://videoclub.digital/?q={search_term_string}",
-          "query-input": "required name=search_term_string"
-        }
-      }
-    </script>
-
-    <!-- === 4. OPTIMIZACIÓN DE CARGA (RESOURCE HINTS) === -->
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","url":"https://videoclub.digital/","name":"videoclub.digital","description":"Explora, filtra y descubre miles de películas y series...","potentialAction":{"@type":"SearchAction","target":"https://videoclub.digital/?q={search_term_string}","query-input":"required name=search_term_string"}}</script>
+<!-- === 4. OPTIMIZACIÓN DE CARGA (RESOURCE HINTS) === -->
     <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
-    
-    <!-- Preload de fuente crítica (Inter Variable) para evitar CLS/FOUT -->
-    <link
-      rel="preload"
-      href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
-
-    <!-- === 5. CSS CRÍTICO (INLINE) === -->
-    <style>:root{--color-bg:#f5f5f5;--color-surface:#fff;--color-text-primary:#333;--color-text-secondary:#666;--color-accent:#37474f;--color-accent-exclude:#90a4ae;--color-border:#e0e0e0;--radius-md:6px;--radius-round:50%;--shadow:0 5px 15px rgba(0,0,0,.08);--z-index-header:900;--z-index-sidebar:1000}html.dark-mode{--color-bg:#121212;--color-surface:#282828;--color-text-primary:#e0e0e0;--color-text-secondary:#aaa;--color-accent:#90a4ae;--color-accent-exclude:#546e7a;--color-border:#333;--shadow:0 5px 20px rgba(0,0,0,.25)}*{box-sizing:border-box;margin:0;padding:0}body{background-color:var(--color-bg);color:var(--color-text-primary);font-family:var(--font-body)}.main-layout{display:flex}.sidebar{width:200px;height:100vh;background-color:var(--color-surface);border-right:2px solid var(--color-border);position:sticky;top:0;z-index:var(--z-index-sidebar)}.main-content-wrapper{flex-grow:1;display:flex;flex-direction:column;min-width:0}.content{flex-grow:1;padding:var(--space-md) var(--space-xxl) var(--space-xs);max-width:1920px;margin:0 auto;width:100%}.main-header{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-md) var(--space-lg);position:sticky;top:0;z-index:var(--z-index-header);background-color:var(--color-bg);padding:var(--space-lg) var(--space-xxl) var(--space-md);margin-bottom:0}.grid-container{display:grid;gap:var(--space-md);grid-template-columns:repeat(auto-fit,minmax(165px,1fr));justify-content:start}.main-header-primary-controls,.search-and-theme-group{display:flex;align-items:center;gap:var(--space-md)}.sort-control{display:flex;align-items:center;gap:var(--space-xs)}#sort-select{width:100px;color:var(--color-text-primary);background-color:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-xs) var(--space-sm);padding-right:2em;-moz-appearance:none;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right .7em top 50%;background-size:.65em auto;background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E")}.type-filter-toggle{padding:0 var(--space-sm);height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center}.header-pagination-group{display:flex}.search-form{position:relative;display:flex;align-items:center}.search-form input{border:1px solid var(--color-border);padding:var(--space-xs) var(--space-xl) var(--space-xs) var(--space-md);border-radius:var(--radius-md);width:90px}.search-icon{position:absolute;right:var(--space-sm);top:50%;transform:translateY(-50%);color:var(--color-text-secondary);pointer-events:none}.theme-toggle{width:40px;height:40px;border-radius:var(--radius-round);cursor:pointer;display:flex;justify-content:center;align-items:center;padding:0;position:relative}.theme-icon{position:absolute;width:20px;height:20px;top:50%;left:50%;transform:translate(-50%,-50%)}.moon-icon{opacity:1;transform:translate(-50%,-50%) scale(1)}.sun-icon{opacity:0;transform:scale(.8)}html.dark-mode .moon-icon{opacity:0;transform:scale(.8)}html.dark-mode .sun-icon{opacity:1;transform:scale(1)}.skeleton-card{height:380px;background-color:var(--color-surface);border-radius:8px;position:relative;overflow:hidden;box-shadow:var(--shadow)}.skeleton-card::after{content:"";position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,0,0,.04),transparent);animation:skeleton-loading 1.5s infinite}html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}@keyframes skeleton-loading{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}html.dark-mode #sort-select{background-image:url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E0E0E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.4-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E")}.sidebar--loading>*,.header--loading>*{opacity:0;visibility:hidden}html.dark-mode .sidebar{background-color:var(--color-surface)}</style>
-
-    <!-- === 6. ANTI-FLICKER SCRIPT === -->
-    <script>
-      (function () {
-        try {
-          if (localStorage.getItem("theme") === "dark") {
-            document.documentElement.classList.add("dark-mode");
-          }
-        } catch (e) {}
-      })();
-    </script>
-
-    <!-- === 7. ESTILOS EXTERNOS === -->
+<!-- === 5. Preload de fuente crítica (Inter Variable) para evitar CLS/FOUT === -->
+    <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
+<!-- === 6. CSS CRÍTICO (INLINE) === -->
+<style>
+:root{--color-bg:#f5f5f5;--color-surface:#fff;--color-text-primary:#333;--color-text-secondary:#666;--color-accent:#37474f;--color-accent-exclude:#90a4ae;--color-border:#e0e0e0;--radius-md:6px;--radius-round:50%;--shadow:0 5px 15px rgba(0,0,0,.08);--z-index-header:900;--z-index-sidebar:1000}
+html.dark-mode{--color-bg:#121212;--color-surface:#282828;--color-text-primary:#e0e0e0;--color-text-secondary:#aaa;--color-accent:#90a4ae;--color-accent-exclude:#546e7a;--color-border:#333;--shadow:0 5px 20px rgba(0,0,0,.25)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background-color:var(--color-bg);color:var(--color-text-primary);font-family:var(--font-body)}
+.main-layout{display:flex}
+.sidebar{width:200px;height:100vh;background-color:var(--color-surface);border-right:2px solid var(--color-border);position:sticky;top:0;z-index:var(--z-index-sidebar)}
+.main-content-wrapper{flex-grow:1;display:flex;flex-direction:column;min-width:0}
+.content{flex-grow:1;padding:var(--space-md) var(--space-xxl) var(--space-xs);max-width:1920px;margin:0 auto;width:100%}
+.main-header{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-md) var(--space-lg);position:sticky;top:0;z-index:var(--z-index-header);background-color:var(--color-bg);padding:var(--space-lg) var(--space-xxl) var(--space-md);margin-bottom:0}
+.grid-container{display:grid;gap:var(--space-md);grid-template-columns:repeat(auto-fit,minmax(165px,1fr));justify-content:start}
+.main-header-primary-controls,.search-and-theme-group{display:flex;align-items:center;gap:var(--space-md)}
+.sort-control{display:flex;align-items:center;gap:var(--space-xs);position:relative}
+#sort-select{width:100px;color:var(--color-text-primary);background-color:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-xs) var(--space-sm);padding-right:1.8em;-moz-appearance:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+.sort-control::after{content:"";position:absolute;right:12px;top:50%;width:0.6em;height:0.4em;background-color:var(--color-text-primary);clip-path:polygon(100% 0%,0 0%,50% 100%);transform:translateY(-50%);pointer-events:none}
+.type-filter-toggle{padding:0 var(--space-sm);height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center}
+.header-pagination-group{display:flex}
+.search-form{position:relative;display:flex;align-items:center}
+.search-form input{border:1px solid var(--color-border);padding:var(--space-xs) var(--space-xl) var(--space-xs) var(--space-md);border-radius:var(--radius-md);width:90px}
+.search-icon{position:absolute;right:var(--space-sm);top:50%;transform:translateY(-50%);color:var(--color-text-secondary);pointer-events:none}
+.theme-toggle{width:40px;height:40px;border-radius:var(--radius-round);cursor:pointer;display:flex;justify-content:center;align-items:center;padding:0;position:relative}
+.theme-icon{position:absolute;width:20px;height:20px;top:50%;left:50%;transform:translate(-50%,-50%)}
+.moon-icon{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.sun-icon{opacity:0;transform:scale(.8)}
+html.dark-mode .moon-icon{opacity:0;transform:scale(.8)}
+html.dark-mode .sun-icon{opacity:1;transform:scale(1)}
+.skeleton-card{height:380px;background-color:var(--color-surface);border-radius:8px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.skeleton-card::after{content:"";position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,0,0,.04),transparent);animation:skeleton-loading 1.5s infinite}
+html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)}
+@keyframes skeleton-loading{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.sidebar--loading>*,.header--loading>*{opacity:0;visibility:hidden}
+</style>
+<!-- === 7. ANTI-FLICKER SCRIPT === -->
+    <script>(function () { try { if (localStorage.getItem("theme") === "dark") { document.documentElement.classList.add("dark-mode"); } } catch (e) {} })(); </script>
+<!-- === 8. ESTILOS EXTERNOS === -->
     <link rel="stylesheet" href="/src/css/main.css" media="print" onload="this.media='all'" />
 </head>
 
-  <body>
-    <!-- Contenedor principal del layout (Sidebar + Contenido) -->
-    <div class="main-layout">
-      <!-- Sidebar de Navegación y Filtros -->
-      <aside id="sidebar" class="sidebar sidebar--loading">
-        <div class="sidebar-inner-wrapper">
-          <header class="logo-area">
-            <h2 class="logo-title">
-              <span class="logo-line-1">videoclub</span>
-              <span class="logo-line-2">.digital</span>
-            </h2>
-          </header>
-
-          <nav class="play-button-container" aria-label="Controles principales">
-            <button
-              id="play-button"
-              class="sidebar-control-button"
-              title="Limpiar filtros"
-              aria-label="Limpiar filtros y reiniciar búsqueda"
-            >
-              <svg
-                class="sidebar-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-              </svg>
-            </button>
-            <button
-              id="toggle-rotation-btn"
-              class="sidebar-control-button"
-              aria-label="Pausar rotación de tarjetas"
-            >
-              <svg
-                class="sidebar-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="6" y="4" width="4" height="16"></rect>
-                <rect x="14" y="4" width="4" height="16"></rect>
-              </svg>
-            </button>
-            <button
-              id="theme-toggle"
-              id="sidebar-theme-toggle"
-              class="sidebar-control-button theme-toggle"
-              title="Cambiar tema"
-              aria-label="Cambiar entre tema claro y oscuro"
-            >
-              <svg
-                class="theme-icon moon-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-                ></path>
-              </svg>
-              <svg
-                class="theme-icon sun-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-              </svg>
-            </button>
-            <button
-              id="rewind-button"
-              class="sidebar-control-button"
-              title="Cerrar sidebar"
-              aria-label="Contraer sidebar"
-            >
-              <svg
-                class="sidebar-icon"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polygon points="11 19 2 12 11 5 11 19"></polygon>
-                <polygon points="22 19 13 12 22 5 22 19"></polygon>
-              </svg>
-            </button>
-          </nav>
-
-          <div class="sidebar-static-filters">
-            <div id="active-filters-container"></div>
-            <div id="year-slider-container">
-              <div id="year-slider-wrapper">
-                <div id="year-slider"></div>
-              </div>
+<body>
+  <!-- Contenedor principal del layout (Sidebar + Contenido) -->
+  <div class="main-layout">
+    <!-- Sidebar de Navegación y Filtros -->
+    <aside id="sidebar" class="sidebar sidebar--loading">
+      <div class="sidebar-inner-wrapper">
+        <header class="logo-area">
+            <h2 class="logo-title"><span class="logo-line-1">videoclub</span><span class="logo-line-2">.digital</span></h2>
+        </header>
+        <nav class="play-button-container" aria-label="Controles principales">
+          <button id="play-button" class="sidebar-control-button" title="Limpiar filtros" aria-label="Limpiar filtros">
+            <svg class="sidebar-icon"><use href="/src/img/icons/sprite.svg#icon-play-filter"></use></svg>
+          </button>
+          <button id="toggle-rotation-btn" class="sidebar-control-button" title="Rotación" aria-label="Pausar rotación">
+            <svg class="sidebar-icon"><use href="/src/img/icons/sprite.svg#icon-pause"></use></svg>
+          </button>
+          <button id="theme-toggle" class="sidebar-control-button theme-toggle" title="Tema" aria-label="Cambiar tema">
+            <svg class="theme-icon moon-icon"><use href="/src/img/icons/sprite.svg#icon-moon"></use></svg>
+            <svg class="theme-icon sun-icon"><use href="/src/img/icons/sprite.svg#icon-sun"></use></svg>
+          </button>
+          <button id="rewind-button" class="sidebar-control-button" title="Cerrar sidebar" aria-label="Contraer sidebar">
+            <svg class="sidebar-icon"><use href="/src/img/icons/sprite.svg#icon-rewind"></use></svg>
+          </button>
+        </nav>
+          <!-- Filtros Estáticos -->
+        <div class="sidebar-static-filters">
+          <div id="active-filters-container"></div>
+            <div id="year-slider-container"><div id="year-slider-wrapper"><div id="year-slider"></div></div>
               <div id="year-input-container">
-                <div class="year-input-wrapper">
-                  <input
-                    type="number"
-                    id="year-start-input"
-                    class="year-input"
-                    aria-label="Año de inicio"
-                  />
-                  <div class="year-input-stepper">
-                    <button
-                      type="button"
-                      class="stepper-btn stepper-up"
-                      aria-label="Incrementar año de inicio"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      class="stepper-btn stepper-down"
-                      aria-label="Decrementar año de inicio"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
+                <div class="year-input-wrapper"><input type="number" id="year-start-input" class="year-input"/><div class="year-input-stepper"><button class="stepper-btn stepper-up">▲</button><button class="stepper-btn stepper-down">▼</button></div></div>
                 <span class="year-range-separator">·</span>
-                <div class="year-input-wrapper">
-                  <input
-                    type="number"
-                    id="year-end-input"
-                    class="year-input"
-                    aria-label="Año de fin"
-                  />
-                  <div class="year-input-stepper">
-                    <button
-                      type="button"
-                      class="stepper-btn stepper-up"
-                      aria-label="Incrementar año de fin"
-                    >
-                      ▲
-                    </button>
-                    <button
-                      type="button"
-                      class="stepper-btn stepper-down"
-                      aria-label="Decrementar año de fin"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                </div>
+                <div class="year-input-wrapper"><input type="number" id="year-end-input" class="year-input"/><div class="year-input-stepper"><button class="stepper-btn stepper-up">▲</button><button class="stepper-btn stepper-down">▼</button></div></div>
               </div>
+            </div>
+            <div id="total-results-container" class="total-results-container" hidden>
+              <span class="total-results-label">Total: </span><span id="total-results-count" class="total-results-count">0</span>
+          </div>
+        </div>
+        <!-- Filtros Dinámicos (Vacíos, se llenan por JS) -->
+        <nav class="sidebar-scrollable-filters">
+          <section class="collapsible-section"><button class="section-header" aria-controls="selections-content"><span>Selección</span></button><div class="active-filters-list"></div><div id="selections-content" class="section-content"><div id="selections-list-container"></div></div></section>
+          <section class="collapsible-section"><button class="section-header" aria-controls="studios-content"><span>Estudios</span></button><div class="active-filters-list"></div><div id="studios-content" class="section-content"><div id="studios-list-container"></div></div></section>
+          <section class="collapsible-section"><button class="section-header" aria-controls="genres-content"><span>Géneros</span></button><div class="active-filters-list"></div><div id="genres-content" class="section-content"><div id="genres-list-container"></div><form class="sidebar-filter-form" data-filter-type="genre"><input type="text" placeholder="Otro género..." class="sidebar-filter-input"/></form></div></section>
+          <section class="collapsible-section"><button class="section-header" aria-controls="countries-content"><span>Países</span></button><div class="active-filters-list"></div><div id="countries-content" class="section-content"><div id="countries-list-container"></div><form class="sidebar-filter-form" data-filter-type="country"><input type="text" placeholder="Otro país..." class="sidebar-filter-input"/></form></div></section>
+          <section class="collapsible-section"><button class="section-header" aria-controls="directors-content"><span>Directores</span></button><div class="active-filters-list"></div><div id="directors-content" class="section-content"><div id="directors-list-container"></div><form class="sidebar-filter-form" data-filter-type="director"><input type="text" placeholder="Otro director..." class="sidebar-filter-input"/></form></div></section>
+          <section class="collapsible-section"><button class="section-header" aria-controls="actors-content"><span>Actores</span></button><div class="active-filters-list"></div><div id="actors-content" class="section-content"><div id="actors-list-container"></div><form class="sidebar-filter-form" data-filter-type="actor"><input type="text" placeholder="Otro actor..." class="sidebar-filter-input"/></form></div></section>
+        </nav>
+        <!-- Perfil -->
+        <div id="user-profile-container" class="profile-container">
+          <button id="login-button" class="sidebar-control-button profile-button" title="Acceder"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></button>
+          <div id="user-session-group" class="user-session-group" hidden>
+            <span id="user-avatar-initials" class="user-avatar"></span>
+            <button id="logout-button" class="sidebar-control-button logout-button" title="Salir"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Contenido Principal (Header + Galería) -->
+    <main class="main-content-wrapper">
+      <header class="main-header header--loading">
+        <div class="main-header-primary-controls">
+          <div class="sort-control">
+            <select id="sort-select" aria-label="Criterio de ordenación">
+              <option value="relevance,asc">⮃ Orden</option>
+              <option value="year,desc">Recientes</option>
+              <option value="year,asc">Antiguas</option>
+              <option value="fa_rating,desc">Nota FA</option>
+              <option value="imdb_rating,desc">Nota IMDb</option>
+              <option value="fa_votes,desc">Votos FA</option>
+              <option value="imdb_votes,desc">Votos IMDb</option>
+            </select>
+          </div>
+          <button id="type-filter-toggle" class="type-filter-toggle" type="button">Todo</button>
+          <div class="header-pagination-group">
+            <button id="header-prev-btn" class="btn btn--icon">&lt;</button>
+            <button id="header-next-btn" class="btn btn--icon">&gt;</button>
+          </div>
+        </div>
+        <div class="search-and-theme-group">
+          <form id="search-form" class="search-form" role="search">
+            <input id="search-input" type="search" placeholder="Título" autocomplete="off"/>
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </form>
+        </div>
+      </header>
+
+      <section class="content" aria-label="Galería de películas y series">
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        <div id="grid-container" class="grid-container" aria-live="polite"></div>
+        <nav id="pagination-container" class="pagination-container"></nav>
+      </section>
+    </main>
+  </div>
+
+  <button id="back-to-top" class="back-to-top" title="Volver al inicio" aria-label="Volver al inicio de la página">↑</button>
+  <div id="toast-container" class="toast-container" aria-live="assertive"></div>
+
+    <!-- Auth Modal -->
+    <div id="auth-overlay" class="auth-overlay" hidden></div>
+    <div id="auth-modal" class="auth-modal" role="dialog" aria-modal="true" hidden>
+      <div class="auth-box">
+        <header class="auth-header"><h2 id="auth-title" class="auth-logo-modal"><span>videoclub</span>.<span>digital</span></h2></header>
+        <section id="login-view">
+          <h3>Iniciar Sesión</h3>
+          <form id="login-form"><div class="form-group"><label>Email</label><input type="email" id="login-email" required/></div><div class="form-group"><label>Contraseña</label><input type="password" id="login-password" required/></div><button type="submit" class="auth-button">Acceder</button></form>
+          <div class="auth-toggle-text">¿No tienes cuenta? <button type="button" id="show-register-view">Regístrate</button></div>
+        </section>
+        <section id="register-view" style="display: none">
+          <h3>Crear Cuenta</h3>
+          <form id="register-form"><div class="form-group"><label>Email</label><input type="email" id="register-email" required/><small>Te enviaremos confirmación.</small></div><div class="form-group"><label>Contraseña</label><input type="password" id="register-password" required minlength="6"/><small>Mínimo 6 caracteres.</small></div><button type="submit" class="auth-button">Crear Cuenta</button></form>
+          <div class="auth-toggle-text">¿Ya tienes cuenta? <button type="button" id="show-login-view">Inicia sesión</button></div>
+        </section>
+        <div id="auth-message" class="auth-message" style="display: none" role="alert"></div>
+      </div>
+    </div>
+
+    <!-- Quick View Modal Wrapper -->
+    <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>
+    <div id="quick-view-modal" class="quick-view-modal" role="dialog" hidden><div id="quick-view-content" class="quick-view-content"></div></div>
+
+  <!-- ================================================================= -->
+  <!-- PLANTILLAS PARA GENERACIÓN DINÁMICA DE CONTENIDO -->
+  <!-- ================================================================= -->
+  <template id="movie-card-template">
+    <div class="movie-card">
+      <div class="flip-card-inner">
+        <div class="flip-card-front">
+          <div class="poster-container">
+            <img
+              src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+              alt=""
+              class="lazy-image"
+              width="500"
+              height="750"
+              decoding="async"
+            />
+            <div class="card-rating-block">
+              <!-- Icono Suspenso (Estrella hueca) -->
+              <svg class="low-rating-circle" data-action="set-rating-suspenso">
+                 <use href="/src/img/icons/sprite.svg#icon-star"></use>
+              </svg>
+              <div
+                class="star-rating-container"
+                data-template="average-rating-stars"
+                data-action="set-rating-estrellas"
+              >
+                <!-- Estrella 1 -->
+                <svg class="star-icon" data-rating-level="1">
+                    <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+                </svg>
+                <!-- Estrella 2 -->
+                <svg class="star-icon" data-rating-level="2">
+                    <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+                </svg>
+                <!-- Estrella 3 -->
+                <svg class="star-icon" data-rating-level="3">
+                    <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+                </svg>
+                  <!-- Estrella 4 -->
+                <svg class="star-icon" data-rating-level="4">
+                    <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+                </svg>
+              </div>
+            <button class="card-action-btn" data-action="toggle-watchlist"><svg class="icon-watchlist"><use href="/src/img/icons/sprite.svg#icon-bookmark-plus"></use></svg></button>
+            </div>
+          </div>
+
+          <div class="movie-info movie-summary">
+            <div class="title-director-block">
+              <h3 data-template="title"></h3>
+              <div class="front-director-info" data-template="director"></div>
+            </div>
+            <div class="movie-meta">
+  <div class="card-icons-line"></div> 
+              <div class="year-country-line"><div class="year-flag-group"><span data-template="year"></span><span class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flip-card-back">
+          <div class="back-original-title-wrapper">
+            <span data-template="original-title"></span>
+          </div>
+          <div class="back-meta-header">
+            <div class="episode-duration-group">
+    <a
+      href="#"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="rating-line"
+      data-template="wikipedia-link"
+      style="display: none"
+      title="Ver en Wikipedia"
+    >
+      <svg class="rating-icon" data-template="wikipedia-icon" fill="#B3404A">
+        <use href="/src/img/icons/sprite.svg#icon-wikipedia"></use>
+      </svg>
+    </a>
+    <!-- 2. LUEGO LOS CAPÍTULOS Y DURACIÓN -->
+    <span data-template="episodes"></span>
+    <span data-template="duration"></span>
+            </div>
+          </div>
+          <div class="ratings-container">
+            <a
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="rating-line"
+              data-template="fa-link"
+            >
+              <span class="rating-left">
+                <svg class="rating-icon" data-template="fa-icon">
+                  <use
+                    href="/src/img/icons/sprite.svg#icon-filmaffinity"
+                  ></use>
+                </svg>
+                <span data-template="fa-rating"></span>
+              </span>
+              <div
+                class="rating-bar-container"
+                data-template="fa-votes-bar-container"
+              >
+                <div class="rating-bar" data-template="fa-votes-bar"></div>
+              </div>
+            </a>
+            <a
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="rating-line"
+              data-template="imdb-link"
+            >
+              <span class="rating-left">
+                <svg
+                  class="rating-icon"
+                  data-template="imdb-icon"
+                  fill="#F5C618"
+                >
+                  <use href="/src/img/icons/sprite.svg#icon-imdb"></use>
+                </svg>
+                <span data-template="imdb-rating"></span>
+              </span>
+              <div
+                class="rating-bar-container"
+                data-template="imdb-votes-bar-container"
+              >
+                <div class="rating-bar" data-template="imdb-votes-bar"></div>
+              </div>
+            </a>
+          </div>
+          <div class="details-list">
+            <div class="detail-item">
+              <span class="detail-label">🎬</span
+              ><span class="detail-data" data-template="genre"></span>
+            </div>
+            <div class="detail-item" data-template="actors-container">
+              <span class="detail-label">✨</span
+              ><span class="detail-data" data-template="actors"></span>
+            </div>
+          </div>
+          <div class="scrollable-content">
+            <div class="plot-summary-final" title="Sinopsis">
+              <span class="detail-label">🔹</span
+              ><span data-template="synopsis"></span>
             </div>
             <div
-              id="total-results-container"
-              class="total-results-container"
-              hidden
+              class="critic-review"
+              title="Crítica"
+              data-template="critic-container"
             >
-              <span class="total-results-label">Total: </span>
-              <span id="total-results-count" class="total-results-count"
-                >0</span
-              >
+              <span class="detail-label">🔸</span
+              ><span data-template="critic"></span>
             </div>
           </div>
-
-          <nav
-            class="sidebar-scrollable-filters"
-            aria-label="Filtros de contenido"
-          >
-            <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="selections-content"
-              >
-                <span>Selección</span>
-              </button>
-              <div class="active-filters-list"></div>
-              <div id="selections-content" class="section-content">
-                <div id="selections-list-container"></div>
-                <form
-                  class="sidebar-filter-form"
-                  data-filter-type="selection"
-                ></form>
-              </div>
-            </section>
-            <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="studios-content"
-              >
-                <span>Estudios</span>
-              </button>
-              <div class="active-filters-list"></div>
-              <div id="studios-content" class="section-content">
-                <div id="studios-list-container"></div>
-                <form
-                  class="sidebar-filter-form"
-                  data-filter-type="studio"
-                ></form>
-              </div>
-            </section>
-            <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="genres-content"
-              >
-                <span>Géneros</span>
-              </button>
-              <div class="active-filters-list"></div>
-              <div id="genres-content" class="section-content">
-                <div id="genres-list-container"></div>
-                <form class="sidebar-filter-form" data-filter-type="genre">
-                  <input
-                    type="text"
-                    placeholder="Otro género..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
-            </section>
-            <section class="collapsible-section" id="countries-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="countries-content"
-              >
-                <span>Países</span>
-              </button>
-              <div class="active-filters-list"></div>
-              <div id="countries-content" class="section-content">
-                <div id="countries-list-container"></div>
-                <form class="sidebar-filter-form" data-filter-type="country">
-                  <input
-                    type="text"
-                    placeholder="Otro país..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
-            </section>
-            <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="directors-content"
-              >
-                <span>Directores</span>
-              </button>
-              <div class="active-filters-list"></div>
-              <div id="directors-content" class="section-content">
-                <div id="directors-list-container"></div>
-                <form class="sidebar-filter-form" data-filter-type="director">
-                  <input
-                    type="text"
-                    placeholder="Otro director..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
-            </section>
-            <section class="collapsible-section">
-              <button
-                type="button"
-                class="section-header"
-                aria-expanded="false"
-                aria-controls="actors-content"
-              >
-                <span>Actores</span>
-              </button>
-              <div class="active-filters-list"></div>
-              <div id="actors-content" class="section-content">
-                <div id="actors-list-container"></div>
-                <form class="sidebar-filter-form" data-filter-type="actor">
-                  <input
-                    type="text"
-                    placeholder="Otro actor..."
-                    class="sidebar-filter-input"
-                  />
-                </form>
-              </div>
-            </section>
-          </nav>
-          <div id="user-profile-container" class="profile-container">
-            <!-- BOTÓN DE LOGIN (Icono de "carita") -->
-            <!-- Se muestra solo cuando el usuario NO está logueado. -->
-            <button
-              id="login-button"
-              class="sidebar-control-button profile-button"
-              title="Acceder a tu cuenta"
-              aria-label="Acceder a tu cuenta de usuario"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </button>
-
-            <!-- GRUPO DE SESIÓN DE USUARIO (Avatar + Logout) -->
-            <!-- Se muestra solo cuando el usuario SÍ está logueado. -->
-            <div id="user-session-group" class="user-session-group" hidden>
-              <!-- El círculo con la inicial, que se ocultará cuando el sidebar esté recogido -->
-              <span id="user-avatar-initials" class="user-avatar"></span>
-
-              <!-- El icono de salida, siempre visible cuando se está logueado -->
-              <button
-                id="logout-button"
-                class="sidebar-control-button logout-button"
-                title="Cerrar sesión"
-                aria-label="Cerrar sesión"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Contenido Principal (Header + Galería) -->
-      <main class="main-content-wrapper">
-        <header class="main-header header--loading">
-          <div class="main-header-primary-controls">
-            <div class="sort-control">
-              <select id="sort-select" aria-label="Criterio de ordenación">
-                <option value="relevance,asc">⮃ Orden</option>
-                <option value="year,desc">Recientes</option>
-                <option value="year,asc">Antiguas</option>
-                <option value="fa_rating,desc">Nota FA</option>
-                <option value="imdb_rating,desc">Nota IMDb</option>
-                <option value="fa_votes,desc">Votos FA</option>
-                <option value="imdb_votes,desc">Votos IMDb</option>
-              </select>
-            </div>
-
-            <button
-              id="type-filter-toggle"
-              class="type-filter-toggle"
-              type="button"
-              title="Filtrar por Cine o TV"
-            >
-              Todo
-            </button>
-
-            <div class="header-pagination-group">
-              <button
-                id="header-prev-btn"
-                class="btn btn--icon"
-                title="Página anterior"
-                aria-label="Ir a la página anterior"
-              >
-                &lt;
-              </button>
-              <button
-                id="header-next-btn"
-                class="btn btn--icon"
-                title="Página siguiente"
-                aria-label="Ir a la página siguiente"
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
-
-          <div class="search-and-theme-group">
-            <form id="search-form" class="search-form" role="search">
-              <input
-                id="search-input"
-                type="search"
-                placeholder="Título"
-                maxlength="50"
-                aria-label="Buscar películas o series por título"
-                autocomplete="off"
-              />
-              <svg
-                class="search-icon"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </form>
-          </div>
-        </header>
-
-        <section class="content" aria-label="Galería de películas y series">
-          <div id="sidebar-overlay" class="sidebar-overlay"></div>
-          <div
-            id="grid-container"
-            class="grid-container"
-            aria-live="polite"
-          ></div>
-          <nav
-            id="pagination-container"
-            class="pagination-container"
-            aria-label="Navegación de páginas"
-          ></nav>
-        </section>
-      </main>
-    </div>
-
-    <button
-      id="back-to-top"
-      class="back-to-top"
-      title="Volver al inicio"
-      aria-label="Volver al inicio de la página"
-    >
-      ↑
-    </button>
-
-    <div
-      id="toast-container"
-      class="toast-container"
-      aria-live="assertive"
-    ></div>
-
-    <!-- ================================================================= -->
-    <!-- MODAL DE AUTENTICACIÓN -->
-    <!-- ================================================================= -->
-    <div id="auth-overlay" class="auth-overlay" hidden></div>
-    <div
-      id="auth-modal"
-      class="auth-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="auth-title"
-      hidden
-      aria-hidden="true"
-    >
-      <div class="auth-box">
-        <header class="auth-header">
-          <h2 id="auth-title" class="auth-logo-modal">
-            <span>videoclub</span>.<span>digital</span>
-          </h2>
-        </header>
-
-        <section id="login-view" aria-labelledby="login-title">
-          <h3 id="login-title">Iniciar Sesión</h3>
-          <form id="login-form" action="#" method="post">
-            <div class="form-group">
-              <label for="login-email">Email</label>
-              <input
-                type="email"
-                id="login-email"
-                name="email"
-                required
-                autocomplete="email"
-              />
-            </div>
-            <div class="form-group">
-              <label for="login-password">Contraseña</label>
-              <input
-                type="password"
-                id="login-password"
-                name="password"
-                required
-                autocomplete="current-password"
-              />
-            </div>
-            <button type="submit" class="auth-button">Acceder</button>
-          </form>
-          <div class="auth-toggle-text">
-            ¿No tienes cuenta?
-            <button type="button" id="show-register-view">Regístrate</button>
-          </div>
-        </section>
-
-        <section
-          id="register-view"
-          style="display: none"
-          aria-labelledby="register-title"
-        >
-          <h3 id="register-title">Crear Cuenta</h3>
-          <form id="register-form" action="#" method="post">
-            <div class="form-group">
-              <label for="register-email">Email</label>
-              <input
-                type="email"
-                id="register-email"
-                name="email"
-                required
-                autocomplete="email"
-                aria-describedby="email-hint"
-              />
-              <small id="email-hint"
-                >Te enviaremos un email de confirmación.</small
-              >
-            </div>
-            <div class="form-group">
-              <label for="register-password">Contraseña</label>
-              <input
-                type="password"
-                id="register-password"
-                name="password"
-                required
-                minlength="6"
-                autocomplete="new-password"
-                aria-describedby="password-hint"
-              />
-              <small id="password-hint">Mínimo 6 caracteres.</small>
-            </div>
-            <button type="submit" class="auth-button">Crear Cuenta</button>
-          </form>
-          <div class="auth-toggle-text">
-            ¿Ya tienes una cuenta?
-            <button type="button" id="show-login-view">Inicia sesión</button>
-          </div>
-        </section>
-
-        <div
-          id="auth-message"
-          class="auth-message"
-          style="display: none"
-          role="alert"
-          aria-live="assertive"
-        ></div>
-      </div>
-    </div>
-
-    <!-- ================================================================= -->
-    <!-- PLANTILLAS PARA GENERACIÓN DINÁMICA DE CONTENIDO -->
-    <!-- ================================================================= -->
-    <template id="movie-card-template">
-      <div class="movie-card">
-        <div class="flip-card-inner">
-          <div class="flip-card-front">
-            <div class="poster-container">
-              <img
-                src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-                alt=""
-                class="lazy-image"
-                width="500"
-                height="750"
-                decoding="async"
-                loading="lazy"
-              />
-              <div class="card-rating-block">
-    <svg
-      class="low-rating-circle"
-      data-template="low-rating-circle"
-      data-action="set-rating-suspenso"
-      xmlns="http://www.w3.org/2000/svg"
-      width="24" height="24" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round"
-    >
-      <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
-    </svg>
-                <div
-                  class="star-rating-container"
-                  data-template="average-rating-stars"
-                  data-action="set-rating-estrellas"
-                >
-                  <!-- Estrella 1 -->
-                  <svg class="star-icon" data-rating-level="1" viewBox="0 0 24 24">
-                    <path
-                      class="star-icon-path star-icon-path--empty"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                    <path
-                      class="star-icon-path star-icon-path--filled"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                  </svg>
-                  <!-- Estrella 2 -->
-                  <svg class="star-icon" data-rating-level="2" viewBox="0 0 24 24">
-                    <path
-                      class="star-icon-path star-icon-path--empty"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                    <path
-                      class="star-icon-path star-icon-path--filled"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                  </svg>
-                  <!-- Estrella 3 -->
-                  <svg class="star-icon" data-rating-level="3" viewBox="0 0 24 24">
-                    <path
-                      class="star-icon-path star-icon-path--empty"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                    <path
-                      class="star-icon-path star-icon-path--filled"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                  </svg>
-                  <!-- Estrella 4 -->
-                  <svg class="star-icon" data-rating-level="4" viewBox="0 0 24 24">
-                    <path
-                      class="star-icon-path star-icon-path--empty"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                    <path
-                      class="star-icon-path star-icon-path--filled"
-                      d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-                    />
-                  </svg>
-                </div>
-                <button
-                  class="card-action-btn"
-                  data-action="toggle-watchlist"
-                  aria-label="Añadir a mi lista"
-                >
-        <svg
-          class="icon-watchlist"
-          xmlns="http://www.w3.org/2000/svg"
-          width="24" height="24" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round"
-        >
-          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
-          <line x1="12" x2="12" y1="7" y2="13"/>
-          <line x1="15" x2="9" y1="10" y2="10"/>
-        </svg>
-                </button>
-              </div>
-            </div>
-
-            <div class="movie-info movie-summary">
-              <div class="title-director-block">
-                <h3 data-template="title"></h3>
-                <div class="front-director-info" data-template="director"></div>
-              </div>
-              <div class="movie-meta">
-            <!-- Contenedor para los iconos de Estudio (WB, Sony, Disney, Netflix...) -->
-            <div class="card-icons-line">
-    <span class="platform-icon netflix-icon" data-template="netflix-icon" style="display: none" title="Original de Netflix">
-      <svg width="16" height="16" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-netflix"></use></svg>
-    </span>
-    <span class="platform-icon" data-template="hbo-icon" style="display: none" title="Original de HBO">
-      <svg width="24" height="24" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-hbo"></use></svg>
-    </span>
-    <span class="platform-icon disney-icon" data-template="disney-icon" style="display: none" title="Disney">
-      <svg width="28" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-disney"></use></svg>
-    </span>
-    <span class="platform-icon wb-icon" data-template="wb-icon" style="display: none" title="Warner Bros.">
-      <svg width="20" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-wb"></use></svg>
-    </span>
-    <span class="platform-icon universal-icon" data-template="universal-icon" style="display: none" title="Universal">
-      <svg width="24" height="26" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-universal"></use></svg>
-    </span>
-    <span class="platform-icon sony-icon" data-template="sony-icon" style="display: none" title="Sony-Columbia">
-      <svg width="16" height="25" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-sony"></use></svg>
-    </span>
-    <span class="platform-icon paramount-icon" data-template="paramount-icon" style="display: none" title="Paramount">
-      <svg width="22" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-paramount"></use></svg>
-    </span>
-    <span class="platform-icon lionsgate-icon" data-template="lionsgate-icon" style="display: none" title="Lionsgate">
-      <svg width="20" height="20" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-lionsgate"></use></svg>
-    </span>
-    <span class="platform-icon amazon-icon" data-template="amazon-icon" style="display: none" title="Amazon">
-      <svg width="22" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-amazon"></use></svg>
-    </span>
-    <span class="platform-icon twenty-icon" data-template="twenty-icon" style="display: none" title="20th Fox">
-      <svg width="28" height="28" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-twenty"></use></svg>
-    </span>
-            </div>
-                <div class="year-country-line">
-                  <div class="year-flag-group">
-                    <span data-template="year"></span>
-                    <span
-                      class="country-info"
-                      data-template="country-container"
-                    >
-                      <span class="fi" data-template="country-flag"></span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flip-card-back">
-            <div class="back-original-title-wrapper">
-              <span data-template="original-title"></span>
-            </div>
-            <div class="back-meta-header">
-              <div class="episode-duration-group">
-      <!-- 1. MOVEMOS WIKIPEDIA AQUÍ (AL PRINCIPIO) -->
-      <a
-        href="#"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="rating-line"
-        data-template="wikipedia-link"
-        style="display: none"
-        title="Ver en Wikipedia"
-      >
-        <svg class="rating-icon" data-template="wikipedia-icon" fill="#B3404A">
-          <use href="/src/img/icons/sprite.svg#icon-wikipedia"></use>
-        </svg>
-      </a>
-      <!-- 2. LUEGO LOS CAPÍTULOS Y DURACIÓN -->
-      <span data-template="episodes"></span>
-      <span data-template="duration"></span>
-              </div>
-            </div>
-            <div class="ratings-container">
-              <a
-                href="#"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="rating-line"
-                data-template="fa-link"
-              >
-                <span class="rating-left">
-                  <svg class="rating-icon" data-template="fa-icon">
-                    <use
-                      href="/src/img/icons/sprite.svg#icon-filmaffinity"
-                    ></use>
-                  </svg>
-                  <span data-template="fa-rating"></span>
-                </span>
-                <div
-                  class="rating-bar-container"
-                  data-template="fa-votes-bar-container"
-                >
-                  <div class="rating-bar" data-template="fa-votes-bar"></div>
-                </div>
-              </a>
-              <a
-                href="#"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="rating-line"
-                data-template="imdb-link"
-              >
-                <span class="rating-left">
-                  <svg
-                    class="rating-icon"
-                    data-template="imdb-icon"
-                    fill="#F5C618"
-                  >
-                    <use href="/src/img/icons/sprite.svg#icon-imdb"></use>
-                  </svg>
-                  <span data-template="imdb-rating"></span>
-                </span>
-                <div
-                  class="rating-bar-container"
-                  data-template="imdb-votes-bar-container"
-                >
-                  <div class="rating-bar" data-template="imdb-votes-bar"></div>
-                </div>
-              </a>
-            </div>
-            <div class="details-list">
-              <div class="detail-item">
-                <span class="detail-label">🎬</span
-                ><span class="detail-data" data-template="genre"></span>
-              </div>
-              <div class="detail-item" data-template="actors-container">
-                <span class="detail-label">✨</span
-                ><span class="detail-data" data-template="actors"></span>
-              </div>
-            </div>
-            <div class="scrollable-content">
-              <div class="plot-summary-final" title="Sinopsis">
-                <span class="detail-label">🔹</span
-                ><span data-template="synopsis"></span>
-              </div>
-              <div
-                class="critic-review"
-                title="Crítica"
-                data-template="critic-container"
-              >
-                <span class="detail-label">🔸</span
-                ><span data-template="critic"></span>
-              </div>
-            </div>
-            <button class="expand-content-btn" aria-label="Expandir sinopsis">
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <template id="sidebar-skeleton-template">
-      <div class="collapsible-section">
-        <div class="skeleton skeleton-sidebar-header"></div>
-        <div class="section-content">
-          <div class="skeleton skeleton-sidebar-line"></div>
-          <div class="skeleton skeleton-sidebar-line"></div>
-          <div class="skeleton skeleton-sidebar-line"></div>
-        </div>
-      </div>
-    </template>
-    
-    <script type="module" src="/src/js/main.js"></script>
-
-    <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>
-    <div
-      id="quick-view-modal"
-      class="quick-view-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="quick-view-title"
-      hidden
-      aria-hidden="true"
-    >
-      <div id="quick-view-content" class="quick-view-content"></div>
-    </div>
-
-    <template id="quick-view-template">
-      <div class="quick-view-front">
-        <img
-          src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-          alt=""
-          class="lazy-image"
-          width="500"
-          height="750"
-          decoding="async"
-          loading="lazy"
-        />
-        <!-- ========================================================== -->
-        <!--  ▼▼▼ BLOQUE DE CALIFICACIÓN Y ACCIONES (NUEVO) ▼▼▼ -->
-        <!--      Reutilizamos la misma estructura que en la movie-card -->
-        <!--      para mantener la consistencia y facilitar la lógica JS. -->
-        <!-- ========================================================== -->
-        <div class="card-rating-block">
-    <svg
-      class="low-rating-circle"
-      data-template="low-rating-circle"
-      data-action="set-rating-suspenso"
-      xmlns="http://www.w3.org/2000/svg"
-      width="24" height="24" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round"
-    >
-      <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
-    </svg>
-          <div
-            class="star-rating-container"
-            data-template="average-rating-stars"
-            data-action="set-rating-estrellas"
-          >
-            <!-- Estrella 1 -->
-            <svg class="star-icon" data-rating-level="1" viewBox="0 0 24 24">
-              <path
-                class="star-icon-path star-icon-path--empty"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-              <path
-                class="star-icon-path star-icon-path--filled"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-            </svg>
-            <!-- Estrella 2 -->
-            <svg class="star-icon" data-rating-level="2" viewBox="0 0 24 24">
-              <path
-                class="star-icon-path star-icon-path--empty"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-              <path
-                class="star-icon-path star-icon-path--filled"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-            </svg>
-            <!-- Estrella 3 -->
-            <svg class="star-icon" data-rating-level="3" viewBox="0 0 24 24">
-              <path
-                class="star-icon-path star-icon-path--empty"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-              <path
-                class="star-icon-path star-icon-path--filled"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-            </svg>
-            <!-- Estrella 4 -->
-            <svg class="star-icon" data-rating-level="4" viewBox="0 0 24 24">
-              <path
-                class="star-icon-path star-icon-path--empty"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-              <path
-                class="star-icon-path star-icon-path--filled"
-                d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"
-              />
-            </svg>
-          </div>
-          <button
-            class="card-action-btn"
-            data-action="toggle-watchlist"
-            aria-label="Añadir a mi lista"
-          >
-        <svg
-          class="icon-watchlist"
-          xmlns="http://www.w3.org/2000/svg"
-          width="24" height="24" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round"
-        >
-          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
-          <line x1="12" x2="12" y1="7" y2="13"/>
-          <line x1="15" x2="9" y1="10" y2="10"/>
-        </svg>
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
+          <button class="expand-content-btn" aria-label="Expandir sinopsis">
+            +
           </button>
         </div>
-        <div class="movie-info movie-summary">
-          <div class="title-director-block">
-            <h3 data-template="title" id="quick-view-title"></h3>
-            <div class="front-director-info" data-template="director"></div>
-          </div>
-          <div class="movie-meta">
-            <!-- Contenedor para los iconos de Estudio (WB, Sony, Disney, Netflix...) -->
-            <div class="card-icons-line">
-    <span class="platform-icon netflix-icon" data-template="netflix-icon" style="display: none" title="Original de Netflix">
-      <svg width="16" height="16" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-netflix"></use></svg>
-    </span>
-    <span class="platform-icon" data-template="hbo-icon" style="display: none" title="Original de HBO">
-      <svg width="24" height="24" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-hbo"></use></svg>
-    </span>
-    <span class="platform-icon disney-icon" data-template="disney-icon" style="display: none" title="Disney">
-      <svg width="28" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-disney"></use></svg>
-    </span>
-    <span class="platform-icon wb-icon" data-template="wb-icon" style="display: none" title="Warner Bros.">
-      <svg width="20" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-wb"></use></svg>
-    </span>
-    <span class="platform-icon universal-icon" data-template="universal-icon" style="display: none" title="Universal">
-      <svg width="24" height="26" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-universal"></use></svg>
-    </span>
-    <span class="platform-icon sony-icon" data-template="sony-icon" style="display: none" title="Sony-Columbia">
-      <svg width="16" height="25" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-sony"></use></svg>
-    </span>
-    <span class="platform-icon paramount-icon" data-template="paramount-icon" style="display: none" title="Paramount">
-      <svg width="22" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-paramount"></use></svg>
-    </span>
-    <span class="platform-icon lionsgate-icon" data-template="lionsgate-icon" style="display: none" title="Lionsgate">
-      <svg width="20" height="20" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-lionsgate"></use></svg>
-    </span>
-    <span class="platform-icon amazon-icon" data-template="amazon-icon" style="display: none" title="Amazon">
-      <svg width="22" height="22" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-amazon"></use></svg>
-    </span>
-    <span class="platform-icon twenty-icon" data-template="twenty-icon" style="display: none" title="20th Fox">
-      <svg width="28" height="28" fill="currentColor"><use href="/src/img/icons/sprite.svg#icon-twenty"></use></svg>
-    </span>
-            </div>
-            <!-- Contenedor para el año y la bandera -->
-            <div class="year-country-line">
-              <div class="year-flag-group">
-                <span data-template="year"></span>
-                <span class="country-info" data-template="country-container">
-                  <span class="fi" data-template="country-flag"></span>
-                </span>
-              </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="sidebar-skeleton-template">
+    <div class="collapsible-section">
+      <div class="skeleton skeleton-sidebar-header"></div>
+      <div class="section-content">
+        <div class="skeleton skeleton-sidebar-line"></div>
+        <div class="skeleton skeleton-sidebar-line"></div>
+        <div class="skeleton skeleton-sidebar-line"></div>
+      </div>
+    </div>
+  </template>
+  
+  <script type="module" src="/src/js/main.js"></script>
+
+  <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>
+  <div
+    id="quick-view-modal"
+    class="quick-view-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="quick-view-title"
+    hidden
+    aria-hidden="true"
+  >
+    <div id="quick-view-content" class="quick-view-content"></div>
+  </div>
+
+  <template id="quick-view-template">
+    <div class="quick-view-front">
+      <img
+        src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+        alt=""
+        class="lazy-image"
+        width="500"
+        height="750"
+        decoding="async"
+      />
+      <!--  ▼▼▼ BLOQUE DE CALIFICACIÓN Y ACCIONES (NUEVO) ▼▼▼ -->
+      <div class="card-rating-block">
+              <!-- Icono Suspenso (Estrella hueca) -->
+              <svg class="low-rating-circle" data-action="set-rating-suspenso">
+                 <use href="/src/img/icons/sprite.svg#icon-star"></use>
+              </svg>
+        <div
+          class="star-rating-container"
+          data-template="average-rating-stars"
+          data-action="set-rating-estrellas"
+        >
+            <!-- Estrella 1 -->
+            <svg class="star-icon" data-rating-level="1">
+                <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+            </svg>
+            <!-- Estrella 2 -->
+            <svg class="star-icon" data-rating-level="2">
+                <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+            </svg>
+            <!-- Estrella 3 -->
+            <svg class="star-icon" data-rating-level="3">
+                <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+            </svg>
+              <!-- Estrella 4 -->
+            <svg class="star-icon" data-rating-level="4">
+                <use class="star-icon-path star-icon-path--empty" href="/src/img/icons/sprite.svg#icon-star"></use>
+                <use class="star-icon-path star-icon-path--filled" href="/src/img/icons/sprite.svg#icon-star"></use>
+            </svg>
+        </div>
+            <button class="card-action-btn" data-action="toggle-watchlist"><svg class="icon-watchlist"><use href="/src/img/icons/sprite.svg#icon-bookmark-plus"></use></svg></button>
+      </div>
+      <div class="movie-info movie-summary">
+        <div class="title-director-block">
+          <h3 data-template="title" id="quick-view-title"></h3>
+          <div class="front-director-info" data-template="director"></div>
+        </div>
+        <div class="movie-meta">
+  <div class="card-icons-line"></div>
+          <!-- Contenedor para el año y la bandera -->
+          <div class="year-country-line">
+            <div class="year-flag-group">
+              <span data-template="year"></span>
+              <span class="country-info" data-template="country-container">
+                <span class="fi" data-template="country-flag"></span>
+              </span>
             </div>
           </div>
         </div>
       </div>
-      <div class="quick-view-back">
-        <div class="back-original-title-wrapper">
-          <span data-template="original-title"></span>
-        </div>
-        <div class="back-meta-header">
-          <div class="episode-duration-group">
-      <!-- 1. MOVEMOS WIKIPEDIA AQUÍ (AL PRINCIPIO) -->
-      <a
-        href="#"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="rating-line"
-        data-template="wikipedia-link"
-        style="display: none"
-        title="Ver en Wikipedia"
-      >
-        <svg class="rating-icon" data-template="wikipedia-icon" fill="#B3404A">
-          <use href="/src/img/icons/sprite.svg#icon-wikipedia"></use>
-        </svg>
-      </a>
-      <!-- 2. LUEGO LOS CAPÍTULOS Y DURACIÓN -->
-      <span data-template="episodes"></span>
-      <span data-template="duration"></span>
-          </div>
-        </div>
-        <div class="ratings-container"></div>
-        <div class="details-list">
-          <div class="detail-item">
-            <span class="detail-label">🎬</span
-            ><span class="detail-data" data-template="genre"></span>
-          </div>
-          <div class="detail-item" data-template="actors-container">
-            <span class="detail-label">✨</span
-            ><span class="detail-data" data-template="actors"></span>
-          </div>
-        </div>
-        <div class="scrollable-content">
-          <div class="plot-summary-final" title="Sinopsis">
-            <span class="detail-label">🔹</span
-            ><span data-template="synopsis"></span>
-          </div>
-          <div
-            class="critic-review"
-            title="Crítica"
-            data-template="critic-container"
-          >
-            <span class="detail-label">🔸</span
-            ><span data-template="critic"></span>
-          </div>
+    </div>
+    <div class="quick-view-back">
+      <div class="back-original-title-wrapper">
+        <span data-template="original-title"></span>
+      </div>
+      <div class="back-meta-header">
+        <div class="episode-duration-group">
+    <!-- 1. MOVEMOS WIKIPEDIA AQUÍ (AL PRINCIPIO) -->
+    <a
+      href="#"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="rating-line"
+      data-template="wikipedia-link"
+      style="display: none"
+      title="Ver en Wikipedia"
+    >
+      <svg class="rating-icon" data-template="wikipedia-icon" fill="#B3404A">
+        <use href="/src/img/icons/sprite.svg#icon-wikipedia"></use>
+      </svg>
+    </a>
+    <!-- 2. LUEGO LOS CAPÍTULOS Y DURACIÓN -->
+    <span data-template="episodes"></span>
+    <span data-template="duration"></span>
         </div>
       </div>
-    </template>
-  </body>
+      <div class="ratings-container"></div>
+      <div class="details-list">
+        <div class="detail-item">
+          <span class="detail-label">🎬</span
+          ><span class="detail-data" data-template="genre"></span>
+        </div>
+        <div class="detail-item" data-template="actors-container">
+          <span class="detail-label">✨</span
+          ><span class="detail-data" data-template="actors"></span>
+        </div>
+      </div>
+      <div class="scrollable-content">
+        <div class="plot-summary-final" title="Sinopsis">
+          <span class="detail-label">🔹</span
+          ><span data-template="synopsis"></span>
+        </div>
+        <div
+          class="critic-review"
+          title="Crítica"
+          data-template="critic-container"
+        >
+          <span class="detail-label">🔸</span
+          ><span data-template="critic"></span>
+        </div>
+      </div>
+    </div>
+  </template>
+</body>
 </html>

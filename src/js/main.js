@@ -1,24 +1,25 @@
 // =================================================================
-//          SCRIPT PRINCIPAL (v6.2 - Fix Imports)
+//          SCRIPT PRINCIPAL (v6.3 - Títulos Dinámicos)
 // =================================================================
 // FICHERO: src/js/main.js
-// CORRECCIÓN: Eliminada referencia a archivo borrado (requestManager).
+// CAMBIO: Actualizada updatePageTitle para incluir Estudios.
+// OPTIMIZACIÓN: Uso de FILTER_CONFIG para evitar hardcodear nombres.
 // =================================================================
 
 import "../css/main.css";
 import "flag-icons/css/flag-icons.min.css";
 import { CONFIG } from "./config.js";
 
-// 1. Imports de Utilidades (Incluye createAbortableRequest)
+// 1. Imports de Utilidades
 import { 
   debounce, 
   triggerPopAnimation, 
   getFriendlyErrorMessage, 
   preloadLcpImage, 
-  createAbortableRequest // ✅ Viene de utils.js
+  createAbortableRequest 
 } from "./utils.js";
 
-// 2. Imports de API (Incluye supabase y fetchUserMovieData unificados)
+// 2. Imports de API
 import { 
   fetchMovies, 
   queryCache, 
@@ -26,20 +27,21 @@ import {
   fetchUserMovieData 
 } from "./api.js";
 
-// 3. Imports de UI (Incluye showToast unificado)
+// 3. Imports de UI
 import {
   dom,
-  renderPagination,     // Viene de ui.js
-  updateHeaderPaginationState, // Viene de ui.js
-  prefetchNextPage,     // Viene de ui.js
-  setupAuthModal,       // Viene de ui.js
-  updateTypeFilterUI,   // Viene de ui.js
-  updateTotalResultsUI, // Viene de ui.js
-  clearAllSidebarAutocomplete, // Viene de ui.js
-  // handleCardClick,   <-- ESTE YA NO ESTÁ EN UI.JS, SE IMPORTA DE CARD.JS
+  renderPagination,
+  updateHeaderPaginationState,
+  prefetchNextPage,
+  setupAuthModal,
+  updateTypeFilterUI,
+  updateTotalResultsUI,
+  clearAllSidebarAutocomplete,
 } from "./ui.js";
 
-import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from "./constants.js";
+// ✨ OPTIMIZACIÓN: Importamos FILTER_CONFIG para reutilizar nombres de estudios/selecciones
+import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS, FILTER_CONFIG } from "./constants.js";
+
 import {
   getState,
   getActiveFilters,
@@ -69,10 +71,7 @@ import {
   renderErrorState,
 } from "./components/card.js";
 
-import { 
-  initQuickView 
-} from "./components/quick-view.js";
-// ❌ ELIMINADO: import { createAbortableRequest } from './components/requestManager.js'; 
+import { initQuickView } from "./components/quick-view.js";
 
 const URL_PARAM_MAP = {
   q: "searchTerm", genre: "genre", year: "year", country: "country",
@@ -92,9 +91,11 @@ export async function loadAndRenderMovies(page = 1) {
   updatePageTitle();
   updateUrl();
 
+  // Feedback Visual Inmediato
   document.body.classList.add('is-fetching');
   dom.gridContainer.classList.add('is-fetching');
   
+  // Mostramos Skeletons inmediatamente para sensación de velocidad
   dom.gridContainer.setAttribute("aria-busy", "true");
   renderSkeletons(dom.gridContainer, dom.paginationContainer);
   updateHeaderPaginationState(getCurrentPage(), 0);
@@ -122,8 +123,10 @@ export async function loadAndRenderMovies(page = 1) {
         preloadLcpImage(movies[0]);
       }
       
+      // Renderizado final
       const performRender = () => {
         updateDomWithResults(movies, totalMovies);
+        // Limpieza de estados de carga
         document.body.classList.remove('is-fetching');
         dom.gridContainer.classList.remove('is-fetching');
         dom.gridContainer.setAttribute("aria-busy", "false");
@@ -371,34 +374,37 @@ function setupAuthSystem() {
   });
 }
 
+// =================================================================
+//          LÓGICA DE TÍTULOS DINÁMICOS (OPTIMIZADA)
+// =================================================================
 function updatePageTitle() {
-  const { searchTerm, genre, year, country, director, actor, selection } =
-    getActiveFilters();
+  // Obtenemos todos los filtros activos, incluido 'studio'
+  const { searchTerm, genre, year, country, director, actor, selection, studio } = getActiveFilters();
+
   let title = "Tu brújula cinéfila y seriéfila inteligente";
+
+  // Sistema de prioridades para el título de la pestaña
   if (searchTerm) {
     title = `Resultados para "${searchTerm}"`;
-  } else if (genre) {
-    title = `Películas de ${genre}`;
+  } else if (studio) {
+    // Usamos FILTER_CONFIG para obtener el nombre legible ("Disney") en lugar del código ("D")
+    const studioName = FILTER_CONFIG.studio.items[studio] || studio;
+    title = `Producciones de ${studioName}`;
+  } else if (selection) {
+    const selectionName = FILTER_CONFIG.selection.items[selection] || selection;
+    title = `${selectionName}`;
   } else if (director) {
     title = `Películas de ${director}`;
   } else if (actor) {
     title = `Películas con ${actor}`;
+  } else if (genre) {
+    title = `Cine de ${genre}`;
+  } else if (country) {
+    title = `Cine de ${country}`;
   } else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
     title = `Películas de ${year.replace("-", " a ")}`;
-  } else if (country) {
-    title = `Películas de ${country}`;
-  } else if (selection) {
-    const names = {
-      C: "Colección Criterion",
-      M: "1001 Películas que ver",
-      A: "Arrow Video",
-      K: "Kino Lorber",
-      E: "Eureka",
-      H: "Series de HBO",
-      N: "Originales de Netflix",
-    };
-    title = names[selection] || title;
   }
+
   document.title = `${title} | videoclub.digital`;
 }
 

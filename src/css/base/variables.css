@@ -97,7 +97,7 @@
 }
 
 /* ---- Paleta Modo Oscuro ---- */
-body.dark-mode {
+html.dark-mode {
   --color-bg: #121212;
   --color-surface: #242424;
   

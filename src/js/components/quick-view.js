@@ -3,12 +3,7 @@
 // =================================================================
 //
 //  FICHERO:  src/js/components/quick-view.js
-//  VERSIÓN:  3.3 (Soporte para formato de duración de series)
-//
-//  RESPONSABILIDADES:
-//    - Gestionar el ciclo de vida de la modal (abrir, cerrar, poblar).
-//    - Reutilizar la lógica visual de las tarjetas (ratings, watchlist).
-//    - Adaptar la presentación de datos para el formato expandido.
+//  VERSIÓN:  3.4 (Optimización DOM: Inyección dinámica de iconos)
 //
 // =================================================================
 
@@ -16,12 +11,29 @@ import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { formatRuntime } from "../utils.js"; 
 
+// ✨ FIX: Importamos el sprite para las rutas de iconos dinámicos
+import spriteUrl from "../../img/icons/sprite.svg";
+
 // Cache de elementos DOM (Se llenan al inicializar o al usar)
 const dom = {
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
   content: document.getElementById("quick-view-content"),
   template: document.getElementById("quick-view-template")?.content,
+};
+
+// --- Configuración de Iconos de Plataforma (Igual que en card.js) ---
+const PLATFORM_DATA = {
+  N: { id: "icon-netflix", class: "netflix-icon", title: "Original de Netflix", w: 16, h: 16, vb: "0 0 16 16" },
+  H: { id: "icon-hbo", class: "", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24", color: true },
+  D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 28, h: 22, vb: "0 0 22 18" },
+  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 18 20" },
+  U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 24, h: 26, vb: "0 0 24 26" },
+  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 16, h: 25, vb: "0 0 16 25" },
+  P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 22, h: 22, vb: "0 0 22 22" },
+  L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate", w: 20, h: 20, vb: "0 0 20 20" },
+  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon", w: 22, h: 22, vb: "0 0 22 22" },
+  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Fox", w: 28, h: 28, vb: "0 0 24 24" }
 };
 
 // =================================================================
@@ -105,31 +117,32 @@ function populateModal(cardElement) {
     front.querySelector('[data-template="country-container"]').style.display = 'none';
   }
 
-  // ▼▼▼ NUEVO: Lógica de Iconos de Estudio/Plataforma ▼▼▼
-  // Reseteamos todos los iconos primero
-  const iconElements = {
-    N: front.querySelector('.netflix-icon'),
-    H: front.querySelector('[data-template="hbo-icon"]'),
-    D: front.querySelector('.disney-icon'),
-    W: front.querySelector('.wb-icon'),
-    U: front.querySelector('.universal-icon'),
-    S: front.querySelector('.sony-icon'),
-    P: front.querySelector('.paramount-icon'),
-    L: front.querySelector('.lionsgate-icon'),
-    Z: front.querySelector('.amazon-icon'),
-    F: front.querySelector('.twenty-icon')
-  };
-
-  // Ocultamos todos por defecto
-  Object.values(iconElements).forEach(el => { if(el) el.style.display = 'none'; });
-
-  // Mostramos los que correspondan
-  const collections = movieData.collections_list || "";
-  collections.split(",").forEach(code => {
-    const el = iconElements[code];
-    if (el) el.style.display = 'block'; // Usamos block o inline-block según el CSS base
-  });
-
+  // --- INYECCIÓN DE ICONOS DE PLATAFORMA (OPTIMIZADO) ---
+  const iconsContainer = front.querySelector('.card-icons-line');
+  if (iconsContainer) {
+    iconsContainer.innerHTML = ""; // Limpieza: Solo hay nodos si es necesario
+    const collections = movieData.collections_list || "";
+    
+    if (collections) {
+      collections.split(",").forEach(code => {
+        const config = PLATFORM_DATA[code];
+        if (config) {
+          const span = document.createElement('span');
+          span.className = config.class ? `platform-icon ${config.class}` : `platform-icon`;
+          // Atributo data-template para compatibilidad CSS si fuera necesario (ej. HBO)
+          if (config.id === 'icon-hbo') span.setAttribute('data-template', 'hbo-icon');
+          span.title = config.title;
+          
+          span.innerHTML = `
+            <svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}">
+              <use href="${spriteUrl}#${config.id}"></use>
+            </svg>
+          `;
+          iconsContainer.appendChild(span);
+        }
+      });
+    }
+  }
   
   // 3. TÍTULO ORIGINAL
   const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
@@ -141,7 +154,6 @@ function populateModal(cardElement) {
   }
 
   // 4. METADATOS TÉCNICOS (Duración y Episodios)
-  // Detectamos si es serie para cambiar el formato de tiempo (min vs ')
   const isSeries = movieData.type?.toUpperCase().startsWith("S.");
   back.querySelector('[data-template="duration"]').textContent = formatRuntime(movieData.minutes, isSeries);
 
@@ -163,7 +175,6 @@ function populateModal(cardElement) {
   }
 
   // 6. RATINGS (Clonación directa para eficiencia)
-  // Copiamos el bloque de ratings ya renderizado en la tarjeta origen
   const ratingsSource = cardElement.querySelector('.ratings-container');
   const ratingsTarget = back.querySelector('.ratings-container');
   if (ratingsSource && ratingsTarget) {
