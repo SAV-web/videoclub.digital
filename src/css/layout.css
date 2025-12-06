@@ -189,12 +189,13 @@ body.sidebar-is-open .sidebar .play-button-container {
   display: grid;
   justify-content: start;
   
-  /* Configuración Móvil Base (2 Columnas) */
+  /* --- MÓVIL PEQUEÑO (< 400px) --- */
+  /* Solo forzamos 2 columnas estrictas por debajo de 400px. */
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-sm);
 }
 
-/* Estado de Carga (Feedback Visual) */
+/* Estado de Carga */
 .grid-container.is-fetching {
   opacity: 0.6;
   pointer-events: none;
@@ -202,41 +203,36 @@ body.sidebar-is-open .sidebar .play-button-container {
   transition: opacity 0.2s ease-out;
 }
 
-/* Breakpoints Responsivos (Desktop) */
+/* --- ADAPTATIVO UNIVERSAL (>= 400px) --- */
+/* A partir de 400px, soltamos la restricción y dejamos que el navegador
+   meta tantas fichas de 165px como quepan.
+   
+   Ejemplos:
+   - Móvil ancho (430px): 2 columnas cómodas.
+   - Tablet pequeña (600px): 3 columnas.
+   - iPad (768px): 4 columnas.
+*/
+@media (min-width: 400px) {
+  .grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: var(--space-md);
+  }
+}
+
+/* --- DESKTOP (>= 769px) --- */
+/* Mantenemos este bloque solo para ajustar el espaciado (gap) a medidas
+   de escritorio, pero el grid ya viene arreglado desde los 400px. */
 @media (min-width: 769px) {
   .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
   
   .grid-container {
-    grid-template-columns: repeat(3, 1fr);
     gap: var(--space-lg) var(--space-md);
   }
 }
 
+/* Breakpoints para pantallas muy anchas (HD/4K) - Opcional pero recomendado */
 @media (min-width: 62em) { /* ~992px */
-  .grid-container { grid-template-columns: repeat(4, 1fr); }
-  body.sidebar-collapsed .grid-container { grid-template-columns: repeat(5, 1fr); }
-}
-
-@media (min-width: 73em) { /* ~1168px */
-  .grid-container { grid-template-columns: repeat(5, 1fr); }
-  body.sidebar-collapsed .grid-container { grid-template-columns: repeat(6, 1fr); }
-}
-
-@media (min-width: 85em) { /* ~1360px */
-  .grid-container { grid-template-columns: repeat(6, 1fr); }
-  body.sidebar-collapsed .grid-container { grid-template-columns: repeat(7, 1fr); }
-}
-
-/* Ajustes específicos para casos raros en móvil */
-@media (max-width: 400px) and (orientation: portrait) {
-  /* Centrar tarjeta única en móviles muy estrechos */
-  .grid-container:has(> .movie-card:only-child) {
-    grid-template-columns: 1fr; max-width: 70%; margin: 0 auto;
-  }
-}
-@media (max-height: 500px) and (orientation: landscape) {
-  /* Móvil apaisado */
-  .grid-container { grid-template-columns: repeat(3, 1fr); }
+  .grid-container { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
 }
 
 /* =================================================================
