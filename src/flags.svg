@@ -1,0 +1,643 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+
+<!-- BANDERAS SIMPLIFICADAS (Estilo Twemoji) -->
+
+<!-- EEUU (US) -->
+<symbol id="flag-us" viewBox="0 0 36 36">
+  <path fill="#B3404A" d="M0 0h36v36H0z"/>
+  <path fill="#EEE" d="M0 4h36v3H0zm0 7h36v3H0zm0 7h36v3H0zm0 7h36v3H0zm0 7h36v3H0z"/>
+  <path fill="#2A4280" d="M0 0h18v19H0z"/>
+  <path fill="#EEE" d="M2 2h2v2H2zm4 0h2v2H6zm4 0h2v2h-2zm4 0h2v2h-2zm-10 4h2v2H4zm4 0h2v2H8zm4 0h2v2h-2zm-10 4h2v2H2zm4 0h2v2H6zm4 0h2v2h-2zm4 0h2v2h-2zm-10 4h2v2H4zm4 0h2v2H8zm4 0h2v2h-2z"/>
+</symbol>
+
+<!-- España (ES) -->
+<symbol id="flag-es" viewBox="0 0 36 36">
+  <path fill="#C60B1E" d="M0 0h36v36H0z"/>
+  <path fill="#FFC400" d="M0 9h36v18H0z"/>
+  <!-- Escudo simplificado -->
+  <path fill="#C60B1E" d="M9 13h5v8H9z"/> 
+  <path fill="#2A4280" d="M9 14h2v5H9z"/>
+</symbol>
+
+<!-- Reino Unido (GB) -->
+<symbol id="flag-gb" viewBox="0 0 36 36">
+  <path fill="#00247D" d="M0 0h36v36H0z"/>
+  <path fill="#EEE" d="M0 0l36 36m0-36L0 36" stroke="#EEE" stroke-width="4"/>
+  <path fill="none" stroke="#CF142B" stroke-width="2" d="M0 0l36 36m0-36L0 36"/>
+  <path fill="#EEE" d="M18 0v36M0 18h36" stroke="#EEE" stroke-width="6"/>
+  <path fill="none" stroke="#CF142B" stroke-width="4" d="M18 0v36M0 18h36"/>
+</symbol>
+
+<!-- Francia (FR) -->
+<symbol id="flag-fr" viewBox="0 0 36 36">
+  <path fill="#ED2939" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 0h24v36H0z"/>
+  <path fill="#002395" d="M0 0h12v36H0z"/>
+</symbol>
+
+<!-- Japón (JP) -->
+<symbol id="flag-jp" viewBox="0 0 36 36">
+  <path fill="#EEE" d="M0 0h36v36H0z"/>
+  <circle fill="#BC002D" cx="18" cy="18" r="9"/>
+</symbol>
+
+<!-- Italia (IT) -->
+<symbol id="flag-it" viewBox="0 0 36 36">
+  <path fill="#CE2B37" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 0h24v36H0z"/>
+  <path fill="#009246" d="M0 0h12v36H0z"/>
+</symbol>
+
+<!-- Alemania (DE) -->
+<symbol id="flag-de" viewBox="0 0 36 36">
+  <path fill="#FFCE00" d="M0 0h36v36H0z"/>
+  <path fill="#DD0000" d="M0 0h36v24H0z"/>
+  <path fill="#000" d="M0 0h36v12H0z"/>
+</symbol>
+
+<!-- Argentina (AR) -->
+<symbol id="flag-ar" viewBox="0 0 36 36">
+  <path fill="#75AADB" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <circle fill="#F4B32E" cx="18" cy="18" r="3"/>
+</symbol>
+
+<!-- Canadá (CA) -->
+<symbol id="flag-ca" viewBox="0 0 36 36">
+  <path fill="#FF0000" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M9 0h18v36H9z"/>
+  <path fill="#FF0000" d="M18 7l2 6 5-1-2 5 4 2-6 2v6h-2v-6l-6-2 4-2-2-5 5 1z"/>
+</symbol>
+
+<!-- China (CN) -->
+<symbol id="flag-cn" viewBox="0 0 36 36">
+  <path fill="#DE2910" d="M0 0h36v36H0z"/>
+  <path fill="#FFDE00" d="M6 6l1 3h3l-2 2 1 3-3-2-3 2 1-3-2-2h3z"/>
+  <path fill="#FFDE00" d="M12 2l1 1h-1l-1 1v-1h-1l1-1zM14 5l1 1h-1l-1 1v-1h-1l1-1z"/>
+</symbol>
+
+<!-- Australia (AU) -->
+<symbol id="flag-au" viewBox="0 0 36 36">
+  <path fill="#00247D" d="M0 0h36v36H0z"/>
+  <!-- Union Jack simplificada canton -->
+  <path stroke="#EEE" stroke-width="2" d="M0 0l18 18m0-18L0 18M9 0v18M0 9h18"/>
+  <path stroke="#CC142B" d="M9 0v18M0 9h18"/>
+  <!-- Estrellas (puntos) -->
+  <circle fill="#FFF" cx="9" cy="27" r="3"/>
+  <circle fill="#FFF" cx="26" cy="10" r="1.5"/>
+  <circle fill="#FFF" cx="22" cy="16" r="1"/>
+</symbol>
+
+<!-- Corea del Sur (KR) -->
+<symbol id="flag-kr" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v36H0z"/>
+  <circle fill="#CD2E3A" cx="18" cy="18" r="7"/>
+  <path fill="#0047A0" d="M18 18a7 7 0 0 1 0 14 7 7 0 0 1 0-14z" transform="rotate(-45 18 18)"/>
+  <!-- Trigramas simplificados (barras negras) -->
+  <path fill="#000" d="M4 4h6v1H4zm0 2h6v1H4zm24 0h6v1h-6zm0-2h6v1h-6zM4 29h6v1H4zm0 2h6v1H4z"/>
+</symbol>
+
+<!-- Brasil (BR) -->
+<symbol id="flag-br" viewBox="0 0 36 36">
+  <path fill="#009B3A" d="M0 0h36v36H0z"/>
+  <path fill="#FEDF00" d="M18 4L32 18 18 32 4 18z"/>
+  <circle fill="#002776" cx="18" cy="18" r="8"/>
+  <path fill="none" stroke="#FFF" stroke-width="1" d="M12 20q6-4 12 0"/>
+</symbol>
+
+<!-- Rusia (RU) -->
+<symbol id="flag-ru" viewBox="0 0 36 36">
+  <path fill="#D52B1E" d="M0 0h36v36H0z"/>
+  <path fill="#0039A6" d="M0 0h36v24H0z"/>
+  <path fill="#FFF" d="M0 0h36v12H0z"/>
+</symbol>
+
+<!-- México (MX) -->
+<symbol id="flag-mx" viewBox="0 0 36 36">
+  <path fill="#CE1126" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 0h24v36H0z"/>
+  <path fill="#006847" d="M0 0h12v36H0z"/>
+  <!-- Escudo simplificado (círculo marrón) -->
+  <circle fill="#8B4513" cx="18" cy="18" r="4"/>
+</symbol>
+
+<!-- Suecia (SE) -->
+<symbol id="flag-se" viewBox="0 0 36 36">
+  <path fill="#005293" d="M0 0h36v36H0z"/>
+  <path fill="#FECB00" d="M10 0v36M0 18h36" stroke="#FECB00" stroke-width="6"/>
+</symbol>
+
+<!-- Nueva Zelanda (NZ) -->
+<symbol id="flag-nz" viewBox="0 0 36 36">
+  <path fill="#00247D" d="M0 0h36v36H0z"/>
+  <!-- Union Jack simplificada canton -->
+  <path stroke="#EEE" stroke-width="2" d="M0 0l18 18m0-18L0 18M9 0v18M0 9h18"/>
+  <path stroke="#CC142B" d="M9 0v18M0 9h18"/>
+  <!-- Estrellas rojas -->
+  <circle fill="#CC142B" stroke="#FFF" cx="27" cy="10" r="1.5"/>
+  <circle fill="#CC142B" stroke="#FFF" cx="22" cy="20" r="1.5"/>
+  <circle fill="#CC142B" stroke="#FFF" cx="32" cy="20" r="1.5"/>
+  <circle fill="#CC142B" stroke="#FFF" cx="27" cy="28" r="1.5"/>
+</symbol>
+
+<!-- Holanda (NL) -->
+<symbol id="flag-nl" viewBox="0 0 36 36">
+  <path fill="#21468B" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 0h36v24H0z"/>
+  <path fill="#AE1C28" d="M0 0h36v12H0z"/>
+</symbol>
+
+<!-- Noruega (NO) -->
+<symbol id="flag-no" viewBox="0 0 36 36">
+  <path fill="#BA0C2F" d="M0 0h36v36H0z"/>
+  <path fill="none" stroke="#FFF" stroke-width="8" d="M12 0v36M0 18h36"/>
+  <path fill="none" stroke="#00205B" stroke-width="4" d="M12 0v36M0 18h36"/>
+</symbol>
+
+<!-- Dinamarca (DK) -->
+<symbol id="flag-dk" viewBox="0 0 36 36">
+  <path fill="#C60C30" d="M0 0h36v36H0z"/>
+  <path fill="none" stroke="#FFF" stroke-width="5" d="M12 0v36M0 18h36"/>
+</symbol>
+
+<!-- India (IN) - Bollywood -->
+<symbol id="flag-in" viewBox="0 0 36 36">
+  <path fill="#FF9933" d="M0 0h36v12H0z"/>
+  <path fill="#138808" d="M0 24h36v12H0z"/>
+  <path fill="#EEE" d="M0 12h36v12H0z"/>
+  <circle fill="#000080" cx="18" cy="18" r="4"/>
+</symbol>
+
+<!-- Hong Kong (HK) - Cine de acción -->
+<symbol id="flag-hk" viewBox="0 0 36 36">
+  <path fill="#DE2910" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M18 6.5l2.5 7.8 7.2-2.3-4.5 6.2 6.5 4.7-7.8.2.2 7.9-6.3-4.8-6.3 4.8.2-7.9-7.8-.2 6.5-4.7-4.5-6.2 7.2 2.3z"/>
+</symbol>
+
+<!-- Polonia (PL) -->
+<symbol id="flag-pl" viewBox="0 0 36 36">
+  <path fill="#EEE" d="M0 0h36v18H0z"/>
+  <path fill="#DC143C" d="M0 18h36v18H0z"/>
+</symbol>
+
+<!-- Bélgica (BE) -->
+<symbol id="flag-be" viewBox="0 0 36 36">
+  <path fill="#000" d="M0 0h12v36H0z"/>
+  <path fill="#FDDA24" d="M12 0h12v36H12z"/>
+  <path fill="#EF3340" d="M24 0h12v36H24z"/>
+</symbol>
+
+<!-- Austria (AT) -->
+<symbol id="flag-at" viewBox="0 0 36 36">
+  <path fill="#ED2939" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+</symbol>
+
+<!-- Turquía (TR) - Telenovelas -->
+<symbol id="flag-tr" viewBox="0 0 36 36">
+  <path fill="#E30A17" d="M0 0h36v36H0z"/>
+  <circle fill="#FFF" cx="15" cy="18" r="8"/>
+  <circle fill="#E30A17" cx="17" cy="18" r="6.5"/>
+  <path fill="#FFF" d="M21 18l5-2-3 5 4 1-5 1 1 5-4-3-3 4V23l-5-1 5-2-2-5 5 2z" transform="scale(0.4) translate(55, 30)"/>
+</symbol>
+
+<!-- Irlanda (IE) -->
+<symbol id="flag-ie" viewBox="0 0 36 36">
+  <path fill="#169B62" d="M0 0h12v36H0z"/>
+  <path fill="#FFF" d="M12 0h12v36H12z"/>
+  <path fill="#FF883E" d="M24 0h12v36H24z"/>
+</symbol>
+
+<!-- Finlandia (FI) -->
+<symbol id="flag-fi" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v36H0z"/>
+  <path fill="#003580" d="M0 13h36v10H0z"/>
+  <path fill="#003580" d="M11 0h10v36H11z"/>
+</symbol>
+
+<!-- Suiza (CH) -->
+<symbol id="flag-ch" viewBox="0 0 36 36">
+  <path fill="#D52B1E" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M13 6h10v24H13z"/>
+  <path fill="#FFF" d="M6 13h24v10H6z"/>
+</symbol>
+
+<!-- Portugal (PT) -->
+<symbol id="flag-pt" viewBox="0 0 36 36">
+  <path fill="#006600" d="M0 0h14v36H0z"/>
+  <path fill="#FF0000" d="M14 0h22v36H14z"/>
+  <circle fill="#FFC400" cx="14" cy="18" r="6"/>
+</symbol>
+
+<!-- Chile (CL) -->
+<symbol id="flag-cl" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v18H0z"/>
+  <path fill="#DA291C" d="M0 18h36v18H0z"/>
+  <path fill="#0033A0" d="M0 0h18v18H0z"/>
+  <path fill="#FFF" d="M9 5l1.5 4h4.5l-3.5 2.5 1.5 4-4-3-4 3 1.5-4-3.5-2.5h4.5z"/>
+</symbol>
+
+<!-- Colombia (CO) -->
+<symbol id="flag-co" viewBox="0 0 36 36">
+  <path fill="#FCD116" d="M0 0h36v18H0z"/>
+  <path fill="#003893" d="M0 18h36v9H0z"/>
+  <path fill="#CE1126" d="M0 27h36v9H0z"/>
+</symbol>
+
+<!-- Irán (IR) - Cine de autor -->
+<symbol id="flag-ir" viewBox="0 0 36 36">
+  <path fill="#239F40" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#DA0000" d="M0 24h36v12H0z"/>
+  <path fill="#DA0000" d="M18 14c-2 0-3 2-3 4s1 4 3 4 3-2 3-4-1-4-3-4z"/>
+</symbol>
+
+<!-- Israel (IL) -->
+<symbol id="flag-il" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v36H0z"/>
+  <path fill="#0038B8" d="M0 4h36v5H0zm0 23h36v5H0z"/>
+  <path fill="none" stroke="#0038B8" stroke-width="2" d="M18 11l-5 8 5 9 5-9z"/>
+  <path fill="none" stroke="#0038B8" stroke-width="2" d="M18 28l-5-9 5-8 5 8z"/>
+</symbol>
+
+<!-- Ucrania (UA) -->
+<symbol id="flag-ua" viewBox="0 0 36 36">
+  <path fill="#0057B8" d="M0 0h36v18H0z"/>
+  <path fill="#FFD700" d="M0 18h36v18H0z"/>
+</symbol>
+
+<!-- === PACK RESTO DEL MUNDO (A-Z) === -->
+
+<!-- Afganistán (AF) -->
+<symbol id="flag-af" viewBox="0 0 36 36">
+  <path fill="#000" d="M0 0h12v36H0z"/>
+  <path fill="#BE0000" d="M12 0h12v36H12z"/>
+  <path fill="#007A36" d="M24 0h12v36H24z"/>
+  <!-- Escudo simplificado (blanco) -->
+  <circle fill="#FFF" cx="18" cy="18" r="5"/>
+</symbol>
+
+<!-- Arabia Saudí (SA) -->
+<symbol id="flag-sa" viewBox="0 0 36 36">
+  <path fill="#165D31" d="M0 0h36v36H0z"/>
+  <!-- Texto y espada simplificados -->
+  <path fill="#FFF" d="M8 24h20v2H8zm4-8h12v3H12z"/>
+</symbol>
+
+<!-- Argelia (DZ) -->
+<symbol id="flag-dz" viewBox="0 0 36 36">
+  <path fill="#006233" d="M0 0h18v36H0z"/>
+  <path fill="#FFF" d="M18 0h18v36H18z"/>
+  <circle fill="#D21034" cx="18" cy="18" r="6"/>
+  <circle fill="#FFF" cx="20" cy="18" r="5"/> <!-- Corte luna -->
+  <path fill="#D21034" d="M21 16l1 3h-2z" transform="rotate(25 21 18)"/> <!-- Estrella -->
+</symbol>
+
+<!-- Bosnia (BA) -->
+<symbol id="flag-ba" viewBox="0 0 36 36">
+  <path fill="#002395" d="M0 0h36v36H0z"/>
+  <path fill="#FECB00" d="M26 0L6 36h20V0z"/>
+  <!-- Estrellas (Línea blanca) -->
+  <path stroke="#FFF" stroke-width="2" stroke-dasharray="3 3" d="M8 34L24 2"/>
+</symbol>
+
+<!-- Botswana (BW) -->
+<symbol id="flag-bw" viewBox="0 0 36 36">
+  <path fill="#6DA9D2" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 13h36v10H0z"/>
+  <path fill="#000" d="M0 15h36v6H0z"/>
+</symbol>
+
+<!-- Bulgaria (BG) -->
+<symbol id="flag-bg" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v12H0z"/>
+  <path fill="#00966E" d="M0 12h36v12H0z"/>
+  <path fill="#D62612" d="M0 24h36v12H0z"/>
+</symbol>
+
+<!-- Bután (BT) -->
+<symbol id="flag-bt" viewBox="0 0 36 36">
+  <path fill="#FF4E12" d="M0 36L36 0H0z"/>
+  <path fill="#FFCF00" d="M0 36h36V0z"/>
+  <!-- Dragón simplificado (blanco) -->
+  <path fill="#FFF" d="M10 26l16-16" stroke="#FFF" stroke-width="4"/>
+</symbol>
+
+<!-- Camboya (KH) -->
+<symbol id="flag-kh" viewBox="0 0 36 36">
+  <path fill="#032EA4" d="M0 0h36v36H0z"/>
+  <path fill="#E00025" d="M0 9h36v18H0z"/>
+  <!-- Angkor Wat simplificado -->
+  <path fill="#FFF" d="M10 18h16v5H10zm3-3h2v3h-2zm8 0h2v3h-2zm-4-2h2v5h-2z"/>
+</symbol>
+
+<!-- Croacia (HR) -->
+<symbol id="flag-hr" viewBox="0 0 36 36">
+  <path fill="#FF0000" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#171796" d="M0 24h36v12H0z"/>
+  <!-- Escudo simplificado -->
+  <path fill="#E30A17" d="M13 10h10v10H13z"/>
+  <path fill="#FFF" d="M15 12h2v2h-2zm4 0h2v2h-2z"/>
+</symbol>
+
+<!-- Cuba (CU) -->
+<symbol id="flag-cu" viewBox="0 0 36 36">
+  <path fill="#002A8F" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 7h36v7H0zm0 14h36v7H0z"/>
+  <path fill="#CF142B" d="M0 0l18 18L0 36z"/>
+  <circle fill="#FFF" cx="6" cy="18" r="3"/>
+</symbol>
+
+<!-- Ecuador (EC) -->
+<symbol id="flag-ec" viewBox="0 0 36 36">
+  <path fill="#FFDD00" d="M0 0h36v18H0z"/>
+  <path fill="#034EA2" d="M0 18h36v9H0z"/>
+  <path fill="#ED1C24" d="M0 27h36v9H0z"/>
+  <!-- Escudo simplificado -->
+  <circle fill="#034EA2" cx="18" cy="18" r="4"/>
+</symbol>
+
+<!-- Egipto (EG) -->
+<symbol id="flag-eg" viewBox="0 0 36 36">
+  <path fill="#CE1126" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#000" d="M0 24h36v12H0z"/>
+  <!-- Águila dorada -->
+  <circle fill="#C09300" cx="18" cy="18" r="3"/>
+</symbol>
+
+<!-- Eslovaquia (SK) -->
+<symbol id="flag-sk" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v12H0z"/>
+  <path fill="#0B4EA2" d="M0 12h36v12H0z"/>
+  <path fill="#EE1C25" d="M0 24h36v12H0z"/>
+  <!-- Escudo -->
+  <path fill="#EE1C25" d="M4 10h10v12H4z"/>
+  <path fill="#FFF" d="M9 12v8M6 15h6" stroke="#FFF" stroke-width="2"/>
+</symbol>
+
+<!-- Estonia (EE) -->
+<symbol id="flag-ee" viewBox="0 0 36 36">
+  <path fill="#4891D9" d="M0 0h36v12H0z"/>
+  <path fill="#000" d="M0 12h36v12H0z"/>
+  <path fill="#FFF" d="M0 24h36v12H0z"/>
+</symbol>
+
+<!-- Georgia (GE) -->
+<symbol id="flag-ge" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v36H0z"/>
+  <path fill="#FF0000" d="M16 0h4v36h-4zM0 16h36v4H0z"/>
+  <!-- Cruces pequeñas -->
+  <path fill="#FF0000" d="M6 6h4v4H6zm20 0h4v4h-4zm0 20h4v4h-4zM6 26h4v4H6z"/>
+</symbol>
+
+<!-- Grecia (GR) -->
+<symbol id="flag-gr" viewBox="0 0 36 36">
+  <path fill="#005BAE" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 4h36v4H0zm0 8h36v4H0zm0 8h36v4H0zm0 8h36v4H0z"/>
+  <path fill="#005BAE" d="M0 0h18v18H0z"/>
+  <path fill="#FFF" d="M8 0h2v18H8zM0 8h18v2H0z"/>
+</symbol>
+
+<!-- Guatemala (GT) -->
+<symbol id="flag-gt" viewBox="0 0 36 36">
+  <path fill="#4997D0" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M12 0h12v36H12z"/>
+  <!-- Quetzal/Escudo (Verde/Amarillo) -->
+  <circle fill="#5F9038" cx="18" cy="18" r="3"/>
+</symbol>
+
+<!-- Hungría (HU) -->
+<symbol id="flag-hu" viewBox="0 0 36 36">
+  <path fill="#CE2939" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#477050" d="M0 24h36v12H0z"/>
+</symbol>
+
+<!-- Indonesia (ID) -->
+<symbol id="flag-id" viewBox="0 0 36 36">
+  <path fill="#CE1126" d="M0 0h36v18H0z"/>
+  <path fill="#FFF" d="M0 18h36v18H0z"/>
+</symbol>
+
+<!-- Islandia (IS) -->
+<symbol id="flag-is" viewBox="0 0 36 36">
+  <path fill="#02529C" d="M0 0h36v36H0z"/>
+  <path fill="none" stroke="#FFF" stroke-width="6" d="M12 0v36M0 18h36"/>
+  <path fill="none" stroke="#DC1E35" stroke-width="3" d="M12 0v36M0 18h36"/>
+</symbol>
+
+<!-- Jordania (JO) -->
+<symbol id="flag-jo" viewBox="0 0 36 36">
+  <path fill="#000" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#007A3D" d="M0 24h36v12H0z"/>
+  <path fill="#CE1126" d="M0 0l18 18L0 36z"/>
+  <circle fill="#FFF" cx="6" cy="18" r="2"/>
+</symbol>
+
+<!-- Kazajstán (KZ) -->
+<symbol id="flag-kz" viewBox="0 0 36 36">
+  <path fill="#00AFCA" d="M0 0h36v36H0z"/>
+  <circle fill="#FEC50C" cx="18" cy="18" r="6"/>
+  <path fill="#FEC50C" d="M16 18l4 8-2-4 6-2-6-2 2-4-4 4z" transform="scale(0.5) translate(18,18)"/>
+</symbol>
+
+<!-- Kosovo (XK) -->
+<symbol id="flag-xk" viewBox="0 0 36 36">
+  <path fill="#244AA5" d="M0 0h36v36H0z"/>
+  <path fill="#D0A650" d="M18 10l4 8H14z"/> <!-- Mapa aprox -->
+  <path fill="#FFF" d="M12 6h2v2h-2zm4-1h2v2h-2zm4 1h2v2h-2z"/> <!-- Estrellas -->
+</symbol>
+
+<!-- Letonia (LV) -->
+<symbol id="flag-lv" viewBox="0 0 36 36">
+  <path fill="#9E3039" d="M0 0h36v14H0zm0 22h36v14H0z"/>
+  <path fill="#FFF" d="M0 14h36v8H0z"/>
+</symbol>
+
+<!-- Líbano (LB) -->
+<symbol id="flag-lb" viewBox="0 0 36 36">
+  <path fill="#EE161F" d="M0 0h36v9H0zm0 27h36v9H0z"/>
+  <path fill="#FFF" d="M0 9h36v18H0z"/>
+  <path fill="#00A651" d="M18 11l5 14H13z"/> <!-- Cedro -->
+</symbol>
+
+<!-- Liberia (LR) -->
+<symbol id="flag-lr" viewBox="0 0 36 36">
+  <path fill="#BF0A30" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 4h36v3H0zm0 7h36v3H0zm0 7h36v3H0zm0 7h36v3H0zm0 7h36v3H0z"/>
+  <path fill="#002868" d="M0 0h12v12H0z"/>
+  <circle fill="#FFF" cx="6" cy="6" r="2.5"/>
+</symbol>
+
+<!-- Libia (LY) -->
+<symbol id="flag-ly" viewBox="0 0 36 36">
+  <path fill="#E70013" d="M0 0h36v12H0z"/>
+  <path fill="#000" d="M0 12h36v12H0z"/>
+  <path fill="#239E46" d="M0 24h36v12H0z"/>
+  <path fill="#FFF" d="M18 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/> <!-- Luna/Estrella simplificada -->
+</symbol>
+
+<!-- Macedonia del Norte (MK) -->
+<symbol id="flag-mk" viewBox="0 0 36 36">
+  <path fill="#D20000" d="M0 0h36v36H0z"/>
+  <circle fill="#F8D30D" cx="18" cy="18" r="5"/>
+  <path fill="#F8D30D" d="M18 0l2 18-2 18-2-18zM0 18l18 2 18-2-18-2zM0 0l18 18L0 36zM36 0L18 18 36 36z"/>
+</symbol>
+
+<!-- Marruecos (MA) -->
+<symbol id="flag-ma" viewBox="0 0 36 36">
+  <path fill="#C1272D" d="M0 0h36v36H0z"/>
+  <path fill="none" stroke="#006233" stroke-width="2" d="M18 10l2.5 8h8l-6.5 4.5 2.5 8-6.5-5-6.5 5 2.5-8-6.5-4.5h8z"/>
+</symbol>
+
+<!-- Mauritania (MR) -->
+<symbol id="flag-mr" viewBox="0 0 36 36">
+  <path fill="#00A95C" d="M0 0h36v36H0z"/>
+  <path fill="#D01C1F" d="M0 0h36v4H0zm0 32h36v4H0z"/>
+  <path fill="#FFD700" d="M18 26a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/> <!-- Luna simplificada -->
+</symbol>
+
+<!-- Mongolia (MN) -->
+<symbol id="flag-mn" viewBox="0 0 36 36">
+  <path fill="#DA2032" d="M0 0h36v36H0z"/>
+  <path fill="#0066B3" d="M12 0h12v36H12z"/>
+  <path fill="#FFD900" d="M3 10h6v2H3zm3 3v6M4 12h4" stroke="#FFD900" stroke-width="2"/> <!-- Soyombo -->
+</symbol>
+
+<!-- Nepal (NP) -->
+<symbol id="flag-np" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v36H0z"/> <!-- Fondo para forma irregular -->
+  <path fill="#DC143C" stroke="#003893" stroke-width="2" d="M4 34V2L24 18H10l12 16H4z"/>
+  <circle fill="#FFF" cx="10" cy="24" r="2"/>
+  <circle fill="#FFF" cx="10" cy="12" r="2"/>
+</symbol>
+
+<!-- Palestina (PS) -->
+<symbol id="flag-ps" viewBox="0 0 36 36">
+  <path fill="#000" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#007A3D" d="M0 24h36v12H0z"/>
+  <path fill="#CE1126" d="M0 0l18 18L0 36z"/>
+</symbol>
+
+<!-- Panamá (PA) -->
+<symbol id="flag-pa" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v36H0z"/>
+  <path fill="#DA121A" d="M18 0h18v18H18z"/>
+  <path fill="#072357" d="M0 18h18v18H0z"/>
+  <circle fill="#072357" cx="9" cy="9" r="3"/>
+  <circle fill="#DA121A" cx="27" cy="27" r="3"/>
+</symbol>
+
+<!-- Paquistán (PK) -->
+<symbol id="flag-pk" viewBox="0 0 36 36">
+  <path fill="#115740" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 0h9v36H0z"/>
+  <circle fill="#FFF" cx="22" cy="18" r="6"/>
+  <circle fill="#115740" cx="24" cy="16" r="5"/>
+  <circle fill="#FFF" cx="24" cy="14" r="1.5"/>
+</symbol>
+
+<!-- Paraguay (PY) -->
+<symbol id="flag-py" viewBox="0 0 36 36">
+  <path fill="#D52B1E" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#0038A8" d="M0 24h36v12H0z"/>
+  <circle fill="#FFF" stroke="#000" stroke-width="1" cx="18" cy="18" r="4"/>
+</symbol>
+
+<!-- Perú (PE) -->
+<symbol id="flag-pe" viewBox="0 0 36 36">
+  <path fill="#D91023" d="M0 0h12v36H0zm24 0h12v36H24z"/>
+  <path fill="#FFF" d="M12 0h12v36H12z"/>
+</symbol>
+
+<!-- República Checa (CZ) -->
+<symbol id="flag-cz" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v18H0z"/>
+  <path fill="#D7141A" d="M0 18h36v18H0z"/>
+  <path fill="#11457E" d="M0 0l18 18L0 36z"/>
+</symbol>
+
+<!-- Rumanía (RO) -->
+<symbol id="flag-ro" viewBox="0 0 36 36">
+  <path fill="#002B7F" d="M0 0h12v36H0z"/>
+  <path fill="#FCD116" d="M12 0h12v36H12z"/>
+  <path fill="#CE1126" d="M24 0h12v36H24z"/>
+</symbol>
+
+<!-- Senegal (SN) -->
+<symbol id="flag-sn" viewBox="0 0 36 36">
+  <path fill="#00853F" d="M0 0h12v36H0z"/>
+  <path fill="#FDEF42" d="M12 0h12v36H12z"/>
+  <path fill="#E31B23" d="M24 0h12v36H24z"/>
+  <circle fill="#00853F" cx="18" cy="18" r="4"/>
+</symbol>
+
+<!-- Serbia (RS) -->
+<symbol id="flag-rs" viewBox="0 0 36 36">
+  <path fill="#C6363C" d="M0 0h36v12H0z"/>
+  <path fill="#0C4076" d="M0 12h36v12H0z"/>
+  <path fill="#FFF" d="M0 24h36v12H0z"/>
+  <path fill="#C6363C" d="M8 12h8v10H8z"/> <!-- Escudo simplificado -->
+</symbol>
+
+<!-- Singapur (SG) -->
+<symbol id="flag-sg" viewBox="0 0 36 36">
+  <path fill="#EF3340" d="M0 0h36v18H0z"/>
+  <path fill="#FFF" d="M0 18h36v18H0z"/>
+  <circle fill="#FFF" cx="9" cy="9" r="5"/>
+  <circle fill="#EF3340" cx="11" cy="9" r="4"/>
+  <circle fill="#FFF" cx="13" cy="9" r="1.5"/>
+</symbol>
+
+<!-- Sudáfrica (ZA) -->
+<symbol id="flag-za" viewBox="0 0 36 36">
+  <path fill="#007749" d="M0 0h36v36H0z"/>
+  <path fill="#DE3831" d="M36 0v12H18L6 0h30z"/>
+  <path fill="#001489" d="M36 36V24H18L6 36h30z"/>
+  <path fill="#FFF" d="M6 0l14 14v8L6 36h6l12-10V10L12 0H6z"/>
+  <path fill="#FFB81C" d="M0 6l8 12-8 12V6z"/>
+  <path fill="#000" d="M0 8v20l6-10L0 8z"/>
+</symbol>
+
+<!-- Tailandia (TH) -->
+<symbol id="flag-th" viewBox="0 0 36 36">
+  <path fill="#ED1C24" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 6h36v24H0z"/>
+  <path fill="#241D4F" d="M0 12h36v12H0z"/>
+</symbol>
+
+<!-- Taiwán (TW) -->
+<symbol id="flag-tw" viewBox="0 0 36 36">
+  <path fill="#FE0000" d="M0 0h36v36H0z"/>
+  <path fill="#000095" d="M0 0h18v18H0z"/>
+  <circle fill="#FFF" cx="9" cy="9" r="4"/>
+</symbol>
+
+<!-- Uruguay (UY) -->
+<symbol id="flag-uy" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v36H0z"/>
+  <path fill="#0038A8" d="M0 4h36v4H0zm0 8h36v4H0zm0 8h36v4H0zm0 8h36v4H0z"/>
+  <path fill="#FFF" d="M0 0h18v18H0z"/>
+  <circle fill="#FCD116" cx="9" cy="9" r="4"/>
+</symbol>
+
+<!-- Venezuela (VE) -->
+<symbol id="flag-ve" viewBox="0 0 36 36">
+  <path fill="#FFCC00" d="M0 0h36v12H0z"/>
+  <path fill="#00247D" d="M0 12h36v12H0z"/>
+  <path fill="#CF142B" d="M0 24h36v12H0z"/>
+  <path fill="none" stroke="#FFF" stroke-width="2" stroke-dasharray="1 3" d="M12 16q6 4 12 0"/>
+</symbol>
+
+<!-- Vietnam (VN) -->
+<symbol id="flag-vn" viewBox="0 0 36 36">
+  <path fill="#DA251D" d="M0 0h36v36H0z"/>
+  <path fill="#FFCD00" d="M18 8l2.5 8h8l-6.5 4.5 2.5 8-6.5-5-6.5 5 2.5-8-6.5-4.5h8z"/>
+</symbol>
+
+</svg>

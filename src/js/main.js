@@ -7,7 +7,7 @@
 // =================================================================
 
 import "../css/main.css";
-import "flag-icons/css/flag-icons.min.css";
+// import "flag-icons/css/flag-icons.min.css";
 import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS, FILTER_CONFIG, CONFIG } from "./constants.js";
 
 // 1. Imports de Utilidades

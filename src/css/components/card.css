@@ -484,7 +484,25 @@ html.dark-mode .low-rating-circle.has-user-rating {
    ================================================================= */
 
 /* Iconos Bandera */
-.fi { font-size: var(--font-size-sm); }
+.country-flag-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.country-flag-icon svg {
+  width: 16px;
+  height: 16px;
+  border-radius: 20%; /* ¡Círculo perfecto! */
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1); /* Borde sutil para banderas blancas */
+}
+
+/* En modo oscuro, el borde sutil ayuda a banderas oscuras */
+html.dark-mode .country-flag-icon svg {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.2);
+}
+
 /* Iconos pequeños (Wikipedia, Filmaffinity) */
 .rating-icon { width: 1.5em; height: 1.5em; border-radius: var(--radius-sm); object-fit: contain; }
 

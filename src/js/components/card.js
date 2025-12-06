@@ -25,7 +25,8 @@ import {
 } from "./rating-stars.js";
 
 // ✨ FIX: Importamos el sprite para que Vite resuelva la URL correcta con la base
-import spriteUrl from "../../img/icons/sprite.svg";
+import spriteUrl from "../../sprite.svg";
+import flagSpriteUrl from "../../flags.svg";
 
 // --- Constantes y Estado del Módulo ---
 
@@ -368,8 +369,19 @@ function populateCardText(elements, movieData, cardElement) {
     else displayYear = `${movieData.year} - ${yearEnd}`;
   }
   elements.year.textContent = displayYear;
+
+// --- BANDERA (SVG Simplificado) ---
   elements.countryContainer.style.display = movieData.country_code ? "flex" : "none";
-  if (movieData.country_code) elements.countryFlag.className = `fi fi-${movieData.country_code}`;
+  if (movieData.country_code) {
+    const countryCode = movieData.country_code.toLowerCase();
+    elements.countryFlag.className = "country-flag-icon"; 
+    elements.countryFlag.title = movieData.country || "";
+    elements.countryFlag.innerHTML = `
+      <svg width="16" height="16">
+        <use href="${flagSpriteUrl}#flag-${countryCode}"></use>
+      </svg>
+    `;
+  }
   
   // --- INYECCIÓN DE ICONOS DE PLATAFORMA (DOM OPTIMIZADO) ---
   const iconsContainer = cardElement.querySelector('.card-icons-line');
