@@ -8,8 +8,7 @@
 // v3.3 - Optimizados los getters con copias superficiales.
 // =================================================================
 
-import { DEFAULTS } from "./constants.js";
-import { CONFIG } from "./config.js";
+import { DEFAULTS, CONFIG } from "./constants.js";
 
 // ... (typedefs sin cambios)
 const initialState = {

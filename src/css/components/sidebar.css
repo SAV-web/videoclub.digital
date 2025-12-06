@@ -481,3 +481,55 @@ body.is-fetching .sidebar::before {
     background-position: 150% 0; /* Sale por la derecha */
   }
 }
+
+/* 12. PERFIL DE USUARIO (Avatar y Login) */
+
+.profile-container {
+  margin-top: auto; /* Push to bottom (Flexbox magic) */
+  padding-top: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px; /* Altura fija para evitar saltos */
+  transition: opacity var(--transition-duration-normal);
+}
+
+/* Grupo de Sesión (Avatar + Logout) */
+.user-session-group {
+  display: none; /* Oculto por defecto (usuario anónimo) */
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* Avatar (Círculo con inicial) */
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-round);
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: var(--font-size-base);
+  font-weight: bold;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.user-avatar:hover { transform: scale(1.1); }
+
+/* --- Lógica de Estados (Logueado vs Anónimo) --- */
+
+/* Cuando el usuario está logueado: */
+body.user-logged-in #login-button { display: none; }
+body.user-logged-in #user-session-group { display: inline-flex; }
+
+/* --- Adaptación Sidebar Colapsado (Desktop) --- */
+@media (min-width: 769px) {
+  /* En modo mini, ocultamos el avatar y pegamos el logout */
+  body.sidebar-collapsed .user-avatar { display: none; }
+  body.sidebar-collapsed .user-session-group { gap: 0; }
+  
+  /* Ajuste fino para centrar el icono de logout/login */
+  body.sidebar-collapsed .profile-container { justify-content: center; }
+}

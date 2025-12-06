@@ -1,52 +1,57 @@
 /* =================================================================
  *          COMPONENTE: Tarjeta de Película (Maestro)
- * =================================================================
- *  FICHERO: src/css/components/movie-card.css
- *  RESPONSABILIDAD: Consolida toda la lógica visual de la tarjeta:
- *  1. Estructura 3D y Layout (antes card.css)
- *  2. Contenido y Tipografía (antes movie-summary.css)
- *  3. Acciones e Interactividad (antes card-actions.css)
  * ================================================================= */
 
 /* =================================================================
-   SECCIÓN 1: ESTRUCTURA Y ANIMACIÓN 3D
+   1. ANIMACIONES Y ESTRUCTURA BASE
    ================================================================= */
 
+/* Animación de entrada estilo "pop" */
 @keyframes card-appear {
   from { opacity: 0; transform: translateY(30px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Contenedor principal (El marco de la foto) */
 .movie-card {
-  perspective: 1000px;
+  perspective: 1000px; /* Profundidad 3D */
   aspect-ratio: 500 / 950;
+  position: relative;
+  /* Animación de entrada escalonada por índice */
   animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 50ms);
-  position: relative;
   transition: transform var(--duration-quick) var(--ease-spring);
+  /* Renderizado optimizado */
+  content-visibility: auto;
+  contain-intrinsic-size: 165px 314px;
 }
 
+/* El "papel" que gira (Contiene las dos caras) */
 .flip-card-inner {
   position: relative;
   width: 100%;
   height: 100%;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  transform-style: preserve-3d;
+  transform-style: preserve-3d; /* Permite el 3D real */
   transition: transform var(--duration-leisurely) var(--ease-smooth-out);
 }
 
-/* Lógica de Volteo */
+/* Lógica de Giro */
 .flip-card-inner.is-flipped { transform: rotateY(180deg); }
+
+/* Sombra más profunda al girar en modo oscuro */
 html.dark-mode .flip-card-inner.is-flipped {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
 }
 
-/* Hover (Solo escritorio) */
+/* Efecto de levitación al pasar el ratón (Solo Desktop) */
 @media (hover: hover) and (pointer: fine) {
+  /* Si hay hover en la tarjeta, giramos */
   body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
+  /* Si no está girada, levita un poco */
   .movie-card:not(.is-flipped):hover {
     transform: translateY(-8px) translateZ(0) scale(1.02);
     filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
@@ -56,39 +61,43 @@ html.dark-mode .flip-card-inner.is-flipped {
   }
 }
 
-/* Caras */
+/* =================================================================
+   2. CARAS DE LA TARJETA (Frontal y Trasera)
+   ================================================================= */
+
+/* Estilos COMUNES para ambas caras (Evitamos duplicar código) */
 .flip-card-front, .flip-card-back {
   position: absolute;
-  inset: 0;
+  inset: 0; /* top:0, right:0, bottom:0, left:0 */
   width: 100%;
   height: 100%;
   border-radius: var(--radius-lg);
-  overflow: hidden;
-  -webkit-backface-visibility: hidden;
+  overflow: hidden; /* Recorta lo que sobresalga */
+  -webkit-backface-visibility: hidden; /* Oculta la espalda */
   backface-visibility: hidden;
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
 }
 
+/* --- Cara Frontal (Póster) --- */
 .flip-card-front {
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-  pointer-events: auto;
   z-index: 2;
+  pointer-events: auto; /* Clickable por defecto */
 }
 
+/* --- Cara Trasera (Detalles) --- */
 .flip-card-back {
-  transform: rotateY(180deg);
-  display: flex;
-  flex-direction: column;
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-  line-height: var(--line-height-normal);
+  transform: rotateY(180deg); /* Ya está girada esperando */
   padding: var(--space-xs) var(--space-sm);
-  pointer-events: none;
+  line-height: var(--line-height-normal);
   z-index: 1;
+  pointer-events: none; /* No clickable si está oculta */
 }
 
+/* Gestión de Clics según estado */
+/* Cuando está girada, la trasera manda y la frontal se apaga */
 .flip-card-inner.is-flipped .flip-card-back,
 body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-back {
   pointer-events: auto; z-index: 2;
@@ -98,7 +107,7 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   pointer-events: none; z-index: 1;
 }
 
-/* Imagen */
+/* --- Imagen del Póster --- */
 .poster-container {
   position: relative;
   width: 100%;
@@ -112,6 +121,8 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
   border-radius: var(--radius-lg);
   object-fit: cover;
 }
+
+/* Efecto de carga LQIP (Blur) */
 .flip-card-front img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.1);
@@ -121,63 +132,52 @@ body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner .flip-card-
 
 
 /* =================================================================
-   SECCIÓN 2: CONTENIDO Y TIPOGRAFÍA (FRONTAL)
+   3. CONTENIDO FRONTAL (Títulos y Metadatos)
    ================================================================= */
 
 .movie-summary {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  /* Padding optimizado para separar texto de iconos flotantes */
+  /* Padding ajustado para dejar sitio a los iconos flotantes */
   padding: calc(var(--space-md) + 3px) var(--space-sm) var(--space-xs);
   overflow: hidden;
 }
 
-.movie-summary .title-director-block {
+.title-director-block {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  text-align: left;
-  margin-top: 0;
 }
 
 .movie-summary h3 {
   margin-bottom: 0;
   line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   font-family: var(--font-title);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.025em;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Truncado a 2 líneas */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis;
 }
 
-.movie-summary .front-director-info {
+.front-director-info {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-light);
   color: var(--color-text-tertiary);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.movie-summary .front-director-info a { color: inherit; text-decoration: none; transition: color var(--duration-fast); }
-body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(--color-text-primary); text-decoration: underline; }
+.front-director-info a { color: inherit; text-decoration: none; transition: color var(--duration-fast); }
+body.rotation-disabled .front-director-info a:hover { color: var(--color-text-primary); text-decoration: underline; }
 
-/* Metadatos Frontales */
-.movie-summary .movie-meta {
+/* Metadatos (Iconos plataforma, año, bandera) */
+.movie-meta {
   padding-top: var(--space-xs);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: flex; justify-content: space-between; align-items: center;
   min-height: 24px;
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
 }
 
 .card-icons-line { display: flex; align-items: center; gap: var(--space-xs); }
@@ -185,9 +185,9 @@ body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(
 .year-flag-group { display: flex; align-items: center; gap: var(--space-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); }
 .country-info { display: flex; align-items: center; gap: var(--space-xxs); }
 
-/* Colores Estudios */
+/* --- Colores de Marca (Plataformas) --- */
 .netflix-icon { color: #e50914; }
-[data-template="hbo-icon"] { color: #002be7; }
+.hbo-icon { color: #002be7; }
 .disney-icon { color: #990000; } html.dark-mode .disney-icon { color: #D9534F; }
 .wb-icon { color: #000b6c; } html.dark-mode .wb-icon { color: #4da4f2; }
 .universal-icon { color: #444444; } html.dark-mode .universal-icon { color: #BBBBBB; }
@@ -195,11 +195,11 @@ body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(
 .paramount-icon { color: #0063ff; } html.dark-mode .paramount-icon { color: #E0E0E0; }
 .lionsgate-icon { color: #CC7722; } html.dark-mode .lionsgate-icon { color: #f9d7b5; }
 .amazon-icon { color: #f6a61f; }
-.twenty-icon { color: #000b6c; } html.dark-mode .twenty-icon { color: #4da4f2; }
+.twenty-icon { color: #000b6c; } html.dark-mode .twenty-icon { color: #E0E0E0; }
 
 
 /* =================================================================
-   SECCIÓN 3: CONTENIDO TRASERO (DETALLES)
+   4. CONTENIDO TRASERO (Detalles y Textos)
    ================================================================= */
 
 @keyframes fade-in-subtle {
@@ -208,35 +208,23 @@ body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(
 }
 
 .back-original-title-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 10px;
-  padding: 0 var(--space-xs);
+  display: flex; justify-content: center; align-items: center;
+  margin-bottom: 10px; padding: 0 var(--space-xs);
   min-height: calc(var(--font-size-sm) * var(--line-height-tight) * 2);
   width: 100%;
   animation: fade-in-subtle 0.5s var(--ease-smooth-out) 0.2s backwards;
 }
 .back-original-title-wrapper span {
-  font-family: var(--font-title);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  line-height: var(--line-height-tight);
+  font-family: var(--font-title); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary); line-height: var(--line-height-tight);
   text-align: center;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis;
 }
 
 .back-meta-header {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  width: 100%;
-  margin-bottom: 10px;
+  display: flex; justify-content: flex-start; align-items: center;
+  width: 100%; margin-bottom: 10px;
   font-size: var(--font-size-sm);
 }
 
@@ -252,20 +240,29 @@ body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(
 }
 [data-template="wikipedia-link"]:hover { transform: scale(1.1); }
 [data-template="wikipedia-link"] > .rating-icon {
-  width: 1.5em; height: 1.5em;
-  transform: none; object-fit: contain; border-radius: var(--radius-sm);
+  width: 1.5em; height: 1.5em; object-fit: contain; border-radius: var(--radius-sm);
 }
 
+/* --- Notas (FA / IMDb) --- */
 .ratings-container { display: flex; flex-direction: column; gap: 10px; }
 .rating-line { display: flex; align-items: center; gap: var(--space-sm); text-decoration: none; }
 .rating-line.disabled { pointer-events: none; opacity: 0.7; }
+
 .rating-left {
   display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0;
   color: var(--color-text-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
 }
-.rating-bar-container { flex-grow: 1; width: 100%; height: var(--space-xs); border-radius: var(--space-xxs); background-color: var(--color-bg); overflow: hidden; }
-.rating-bar { width: 0; height: 100%; border-radius: var(--space-xxs); background-color: var(--color-accent); transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1); }
+.rating-bar-container {
+  flex-grow: 1; width: 100%; height: var(--space-xs);
+  border-radius: var(--space-xxs); background-color: var(--color-bg); overflow: hidden;
+}
+.rating-bar {
+  width: 0; height: 100%;
+  border-radius: var(--space-xxs); background-color: var(--color-accent);
+  transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}
 
+/* --- Detalles (Género, Reparto) --- */
 .details-list {
   display: flex; flex-direction: column; gap: var(--space-xxs);
   margin: var(--space-sm) 0 var(--space-xs); padding-top: var(--space-xs);
@@ -278,60 +275,27 @@ body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(
   padding-right: 10px;
 }
 
-/* Sinopsis y Expansión */
-.scrollable-content { position: relative; transition: all var(--duration-normal) var(--ease-smooth-out); overflow: hidden; }
+/* --- Scrollable (Sinopsis y Crítica) --- */
+.scrollable-content {
+  position: relative; overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-smooth-out);
+}
+/* Gradiente inferior para indicar "hay más texto" */
 .scrollable-content::after {
   content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 20px;
   background: linear-gradient(to bottom, transparent, var(--color-surface)); pointer-events: none;
 }
+/* Al expandir, quitamos el gradiente */
 .flip-card-back.is-expanded .scrollable-content::after { opacity: 0; }
+
 .plot-summary-final, .critic-review {
   padding-top: var(--space-xs); border-top: 1px solid var(--color-border);
-  opacity: 0.8; font-size: var(--font-size-xs); color: var(--color-text-secondary); font-weight: var(--font-weight-normal); line-height: var(--line-height-relaxed);
+  opacity: 0.8; font-size: var(--font-size-xs); color: var(--color-text-secondary);
+  font-weight: var(--font-weight-normal); line-height: var(--line-height-relaxed);
 }
 .critic-review { margin-top: var(--space-sm); }
 
-.flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn) {
-  opacity: 0; transform: translateY(-100%); transition: opacity var(--duration-quick), transform var(--duration-normal) var(--ease-smooth-out);
-}
-.flip-card-back.is-expanded .scrollable-content {
-  position: absolute; inset: 0; padding: var(--space-md);
-  background-color: var(--color-surface);
-  overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;
-}
-.flip-card-back.is-expanded .scrollable-content::-webkit-scrollbar { display: none; }
-
-/* Botón Expandir Sinopsis */
-.expand-content-btn {
-  position: absolute; bottom: 14px; right: 14px;
-  width: 22px; height: 22px;
-  border-radius: 50%; border: none;
-  background-color: var(--color-accent); color: var(--color-surface);
-  font-size: 1.25rem; font-weight: 400; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  padding-bottom: 2px;
-  cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-  transition: all var(--duration-quick) ease-out;
-  z-index: 20;
-}
-.expand-content-btn:hover { transform: scale(1.15); background-color: var(--color-text-primary); }
-
-/* Botón Expandir Actores */
-.actors-expand-btn {
-  position: absolute; bottom: 2px; right: 2px;
-  width: 22px; height: 22px;
-  border-radius: 50%; border: none;
-  background-color: var(--color-accent); color: var(--color-surface);
-  font-size: 1.25rem; font-weight: 400; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  padding-bottom: 2px;
-  cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-  transition: all var(--duration-quick) ease-out;
-  z-index: 5;
-}
-.actors-expand-btn:hover { transform: scale(1.15); background-color: var(--color-text-primary); }
-
-/* Panel de Actores Expandido */
+/* --- Panel de Actores (Overlay) --- */
 .actors-scrollable-content {
   position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-xl);
   background-color: var(--color-surface);
@@ -358,27 +322,72 @@ body.rotation-disabled .movie-summary .front-director-info a:hover { color: var(
 }
 .actor-list-item:hover { color: var(--color-accent); text-decoration: underline; }
 
-/* Lógica de Estados */
-.flip-card-back.is-expanded.show-actors .actors-scrollable-content { opacity: 1; visibility: visible; transform: translateY(0); }
-.flip-card-back.is-expanded.show-actors .scrollable-content { opacity: 0 !important; visibility: hidden !important; }
-.flip-card-back.is-expanded .expand-content-btn { z-index: 20; }
+/* =================================================================
+   5. LOGICA DE EXPANSIÓN (Botones Redondos)
+   ================================================================= */
+
+/* Estilos compartidos para botones circulares de expansión */
+.expand-content-btn,
+.actors-expand-btn {
+  position: absolute;
+  width: 22px; height: 22px;
+  border-radius: 50%; border: none;
+  background-color: var(--color-accent); color: var(--color-surface);
+  font-size: 1.25rem; font-weight: 400; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding-bottom: 2px;
+  cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: all var(--duration-quick) ease-out;
+}
+.expand-content-btn:hover, .actors-expand-btn:hover {
+  transform: scale(1.15); background-color: var(--color-text-primary);
+}
+
+/* Posiciones específicas */
+.expand-content-btn { bottom: 14px; right: 14px; z-index: 20; }
+.actors-expand-btn { bottom: 2px; right: 2px; z-index: 5; }
+
+/* --- Estados de Expansión (Gestión de visibilidad) --- */
+
+/* Cuando está expandido (sinopsis o actores), ocultamos lo demás */
+.flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn):not(.actors-scrollable-content) {
+  opacity: 0; transform: translateY(-100%);
+  transition: opacity var(--duration-quick), transform var(--duration-normal) var(--ease-smooth-out);
+}
+
+/* Estado: Mostrando Sinopsis (Por defecto al expandir) */
+.flip-card-back.is-expanded .scrollable-content {
+  position: absolute; inset: 0; padding: var(--space-md);
+  background-color: var(--color-surface);
+  overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none;
+}
+.flip-card-back.is-expanded .scrollable-content::-webkit-scrollbar { display: none; }
+
+/* Estado: Mostrando Actores (Override) */
+.flip-card-back.is-expanded.show-actors .actors-scrollable-content {
+  opacity: 1; visibility: visible; transform: translateY(0);
+}
+.flip-card-back.is-expanded.show-actors .scrollable-content {
+  opacity: 0 !important; visibility: hidden !important;
+}
 
 
 /* =================================================================
-   SECCIÓN 4: ACCIONES E INTERACTIVIDAD (ICONOS FLOTANTES)
+   6. ACCIONES E INTERACTIVIDAD (Iconos Flotantes)
    ================================================================= */
 
+/* Contenedor flotante sobre el póster */
 .card-rating-block {
   position: absolute; bottom: 1px; left: 0; right: 0;
   transform: translateY(66.66%); z-index: 5;
   display: flex; justify-content: space-between; align-items: center;
   padding: 0 var(--space-sm);
-  pointer-events: none;
+  pointer-events: none; /* Dejamos pasar clics a través del hueco */
 }
 
-/* Efecto Aura (Sombra de recorte) */
+/* Efecto Aura (Sombra de recorte alrededor de los iconos) */
 .card-rating-block > * {
-  pointer-events: auto;
+  pointer-events: auto; /* Reactivamos clics en los botones */
   filter: drop-shadow(0 0 6px var(--color-surface)) drop-shadow(0 0 8px var(--color-surface));
   transition: filter 0.3s ease, transform var(--duration-quick) var(--ease-spring);
 }
@@ -386,8 +395,9 @@ html.dark-mode .card-rating-block > * {
   filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #000);
 }
 
-/* Interactividad */
+/* --- Interactividad (Hover) --- */
 .star-rating-container.is-interactive, .low-rating-circle.is-interactive { cursor: pointer; }
+
 .star-rating-container.is-interactive .star-icon {
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center;
 }
@@ -399,7 +409,7 @@ html.dark-mode .card-rating-block > * {
   transform: scale(1.2); filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
 }
 
-/* Watchlist */
+/* --- Botón Watchlist --- */
 .card-action-btn {
   width: 28px; height: 28px; padding: 0; border: none; border-radius: var(--radius-round);
   background-color: transparent; color: var(--color-accent); cursor: pointer;
@@ -407,30 +417,20 @@ html.dark-mode .card-rating-block > * {
   transition: all var(--duration-normal) var(--ease-smooth-out);
 }
 .card-action-btn:hover { transform: scale(1.15) rotate(10deg); }
-/* --- Watchlist (Estado Normal) --- */
+
+/* SVG Watchlist: Normal */
 .card-action-btn svg {
-  width: 20px; height: 20px; 
-  
-  fill: transparent;     /* Fondo transparente */
-  stroke: currentColor;  /* Borde color texto */
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  
-  /* Variable por defecto: El + es del mismo color que el borde */
-  --icon-plus-color: currentColor;
-  
+  width: 20px; height: 20px;
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
   transition: all var(--duration-normal) var(--ease-smooth-out);
 }
 
-/* --- Watchlist (Estado Activo) --- */
+/* SVG Watchlist: Activo (Añadido) */
 .card-action-btn.is-active svg {
-  color: #ffbd07;    /* Todo se vuelve amarillo (borde y relleno) */
+  color: #ffbd07; /* Amarillo */
   fill: #ffbd07;
-  
-  /* CAMBIO CLAVE: El + se vuelve del color del fondo de la tarjeta (recorte visual) */
-  --icon-plus-color: var(--color-surface);
-  
   animation: watchlist-glow 0.6s ease-out;
 }
 
@@ -444,20 +444,27 @@ html.dark-mode .card-rating-block > * {
   50% { filter: drop-shadow(0 0 10px rgba(255, 189, 7, 0.8)); }
   100% { filter: drop-shadow(0 0 0 rgba(255, 189, 7, 0)); }
 }
+.card-action-btn.is-active { animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in); }
 
-/* Estrellas */
+/* --- Estrellas (Rating System) --- */
 .star-rating-container { display: flex; align-items: center; gap: 4px; }
 .star-icon { position: relative; width: 20px; height: 20px; }
-.star-icon-path { stroke: var(--color-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+
+.star-icon-path {
+  stroke: var(--color-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round;
+}
 .star-icon-path--empty { fill: transparent; }
 .star-icon-path--filled {
-  fill: var(--color-accent); clip-path: inset(0 100% 0 0);
+  fill: var(--color-accent);
+  clip-path: inset(0 100% 0 0); /* Truco visual para llenado parcial */
   transition: clip-path 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
+
+/* Estado: Tiene nota de usuario (Amarillo) */
 .star-rating-container.has-user-rating .star-icon-path { stroke: #ffbd07; }
 .star-rating-container.has-user-rating .star-icon-path--filled { fill: #ffbd07; }
 
-/* Círculo Suspenso */
+/* --- Círculo Suspenso (< 5.5) --- */
 .low-rating-circle {
   display: none; width: 20px; height: 20px;
   stroke: var(--color-accent); stroke-width: 2; fill: none;
@@ -472,11 +479,19 @@ html.dark-mode .low-rating-circle.has-user-rating {
   fill: none; filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.8)) drop-shadow(0 0 4px #000);
 }
 
-/* Utils */
+/* =================================================================
+   7. UTILIDADES Y MODAL OVERRIDES
+   ================================================================= */
+
+/* Iconos Bandera */
 .fi { font-size: var(--font-size-sm); }
+/* Iconos pequeños (Wikipedia, Filmaffinity) */
 .rating-icon { width: 1.5em; height: 1.5em; border-radius: var(--radius-sm); object-fit: contain; }
 
-/* Modal Overrides */
+/* Ajustes específicos cuando la tarjeta está en la MODAL (Quick View) */
 .quick-view-modal .flip-card-back > *:not(.scrollable-content) { display: none; }
 .quick-view-modal .scrollable-content { position: static; height: 100%; overflow-y: auto; }
-.quick-view-modal .detail-item[data-template="actors-container"] { -webkit-line-clamp: initial; white-space: normal; overflow: visible; display: block; }
+/* En modal, la lista de actores se muestra entera, sin truncar */
+.quick-view-modal .detail-item[data-template="actors-container"] {
+  -webkit-line-clamp: initial; white-space: normal; overflow: visible; display: block;
+}

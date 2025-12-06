@@ -1,11 +1,49 @@
 // =================================================================
-//                      CONSTANTES GLOBALES
+//                      CONSTANTES GLOBALES (UNIFICADO)
 // =================================================================
-// Centralizar constantes ayuda a prevenir errores de tipeo y facilita
-// el mantenimiento, ya que los valores solo necesitan ser actualizados en un lugar.
+// Este archivo es la única fuente de verdad para configuraciones,
+// selectores DOM, clases CSS y datos estáticos.
+// =================================================================
 
+/**
+ * CONFIGURACIÓN TÉCNICA Y DE COMPORTAMIENTO
+ * Nota: Soporta variables de entorno (.env) para mayor seguridad.
+ */
+export const CONFIG = {
+  // Credenciales de Supabase (Busca en .env primero, usa fallback si no existe)
+  SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || "https://wibygecgfczcvaqewleq.supabase.co",
+  SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc",
+  
+  // URLs de Assets
+  POSTER_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/",
+  
+  // Paginación y Límites
+  ITEMS_PER_PAGE: 42,
+  DYNAMIC_PAGE_SIZE_LIMIT: 56, // Límite para mostrar resultados en una sola página
+  
+  // Filtros y Búsqueda
+  MAX_ACTIVE_FILTERS: 3,
+  MAX_FILTER_PILLS: 3,
+  SEARCH_DEBOUNCE_DELAY: 400, // ms
+  
+  // Rangos
+  YEAR_MIN: 1926,
+  YEAR_MAX: 2025,
+};
+
+/**
+ * VALORES POR DEFECTO PARA EL ESTADO
+ */
+export const DEFAULTS = {
+  SORT: "relevance,asc",
+  MEDIA_TYPE: "all",
+};
+
+/**
+ * CLASES CSS DE ESTADO Y UTILIDAD
+ */
 export const CSS_CLASSES = {
-  // Clases de estado
+  // Estados
   ACTIVE: "active",
   DISABLED: "disabled",
   IS_FLIPPED: "is-flipped",
@@ -13,42 +51,41 @@ export const CSS_CLASSES = {
   SHOW: "show",
   SIDEBAR_OPEN: "sidebar-is-open",
 
-  // Clases de componentes y elementos
+  // Componentes
   MOVIE_CARD: "movie-card",
-  // ✨ CORRECCIÓN: 'pagination-button' eliminado, ya que ahora se usa '.btn'
   FILTER_PILL_REMOVE_BTN: "remove-filter-btn",
   SIDEBAR_AUTOCOMPLETE_ITEM: "sidebar-autocomplete-item",
   AUTOCOMPLETE_ITEM: "autocomplete-item",
   TYPE_FILTER_MOVIES: "type-filter--movies",
   TYPE_FILTER_SERIES: "type-filter--series",
 
-  // Clases de lazy-loading de imágenes
+  // Carga de imágenes
   LAZY_LQIP: "lazy-lqip",
   LOADED: "loaded",
 };
 
+/**
+ * SELECTORES DEL DOM (IDs, Clases y Atributos)
+ */
 export const SELECTORS = {
-  // Selectores de Data Attributes
+  // Elementos de la Tarjeta (Data Attributes)
   TITLE: '[data-template="title"]',
   DIRECTOR: '[data-template="director"]',
   YEAR: '[data-template="year"]',
   COUNTRY_CONTAINER: '[data-template="country-container"]',
   COUNTRY_FLAG: '[data-template="country-flag"]',
-  COUNTRY_NAME: '[data-template="country-name"]',
   DURATION: '[data-template="duration"]',
   FA_LINK: '[data-template="fa-link"]',
-  FA_ICON: '[data-template="fa-link"] img',
   FA_RATING: '[data-template="fa-rating"]',
   FA_VOTES: '[data-template="fa-votes"]',
   IMDB_LINK: '[data-template="imdb-link"]',
-  IMDB_ICON: '[data-template="imdb-link"] img',
   IMDB_RATING: '[data-template="imdb-rating"]',
   IMDB_VOTES: '[data-template="imdb-votes"]',
   GENRE: '[data-template="genre"]',
   ACTORS: '[data-template="actors"]',
   SYNOPSIS: '[data-template="synopsis"]',
 
-  // Selectores de ID para acceso centralizado
+  // Elementos Globales (IDs)
   GRID_CONTAINER: "#grid-container",
   PAGINATION_CONTAINER: "#pagination-container",
   SEARCH_FORM: "#search-form",
@@ -70,52 +107,33 @@ export const SELECTORS = {
   TOAST_CONTAINER: "#toast-container",
   MOVIE_CARD_TEMPLATE: "#movie-card-template",
 
-  // Otros selectores
+  // Elementos Dinámicos (Clases)
   SIDEBAR_FILTER_FORM: ".sidebar-filter-form",
   SIDEBAR_AUTOCOMPLETE_RESULTS: ".sidebar-autocomplete-results",
   SIDEBAR_FILTER_INPUT: ".sidebar-filter-input",
-
-  // ✨ CORRECCIÓN: Selector actualizado para usar la nueva clase '.btn'.
-  // Ahora es un selector más genérico para cualquier botón clickable que no esté activo.
   CLICKABLE_BTN: ".btn:not(.active)",
-
   FLIP_CARD_INNER: ".flip-card-inner",
   SCROLLABLE_CONTENT: ".scrollable-content",
   PLOT_SUMMARY: ".plot-summary-final",
 };
 
-export const DEFAULTS = {
-  // Valores por defecto para el estado
-  SORT: "relevance,asc",
-  MEDIA_TYPE: "all",
-};
-// ✨ MEJORA: Centralizamos TODOS los iconos SVG reutilizables.
+/**
+ * ICONOS SVG INLINE (Para inyección dinámica en Sidebar)
+ */
 export const ICONS = {
-  // Para el botón de toggle de rotación
   PAUSE: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,
   SQUARE_STOP: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`,
-
-  // Para el botón de colapsar/expandir sidebar
   REWIND: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`,
   FORWARD: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>`,
-
-  // Para el botón de "Limpiar filtros"
   PLAY: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>`,
   PAUSE_SMALL: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
-  THEME_MOON: `<svg class="theme-icon moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
-  THEME_SUN: `<svg class="theme-icon sun-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`,  
-  LOGIN: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
-  LOGOUT: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`,
   CHEVRON_RIGHT: `<svg class="chevron-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
 };
 
 /**
- * @typedef {object} FilterItem
- * @property {string} label - El texto que se muestra en la UI.
- * @property {string[]|undefined} excludable - Opcional. Lista de valores que pueden ser excluidos.
+ * CONFIGURACIÓN DE FILTROS LATERALES
+ * Define etiquetas, ítems y si son excluibles.
  */
-
-/** @type {Object.<string, FilterItem>} */
 export const FILTER_CONFIG = {
   selection: {
     label: "Selección",
@@ -152,7 +170,6 @@ export const FILTER_CONFIG = {
       Animación: "Animación",
       Documental: "Documental",
     },
-    // Propiedad especial para indicar qué géneros pueden tener un botón de exclusión.
     excludable: ["Animación", "Documental"],
   },
   country: {

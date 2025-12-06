@@ -8,7 +8,7 @@
 // 3. Proveer métodos para buscar películas (RPC) y datos de usuario (RLS).
 // =================================================================
 
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./constants.js";
 import { createClient } from "@supabase/supabase-js"; // Importación directa
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest } from "./utils.js"; // Ahora desde utils

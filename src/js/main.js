@@ -8,7 +8,7 @@
 
 import "../css/main.css";
 import "flag-icons/css/flag-icons.min.css";
-import { CONFIG } from "./config.js";
+import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS, FILTER_CONFIG, CONFIG } from "./constants.js";
 
 // 1. Imports de Utilidades
 import { 
@@ -39,9 +39,6 @@ import {
   clearAllSidebarAutocomplete,
 } from "./ui.js";
 
-// ✨ OPTIMIZACIÓN: Importamos FILTER_CONFIG para reutilizar nombres de estudios/selecciones
-import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS, FILTER_CONFIG } from "./constants.js";
-
 import {
   getState,
   getActiveFilters,
@@ -59,7 +56,6 @@ import {
 } from "./state.js";
 
 import { initSidebar, collapseAllSections } from "./components/sidebar.js";
-import { initTouchDrawer } from "./components/touch-drawer.js";
 import { initAuthForms } from "./auth.js";
 import { 
   renderMovieGrid, 
@@ -527,7 +523,6 @@ function init() {
   initSidebar();
   initQuickView();
   setupHeaderListeners();
-  initTouchDrawer();
   setupGlobalListeners();
   setupAuthSystem();
   setupAuthModal();

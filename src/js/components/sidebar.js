@@ -1,15 +1,13 @@
 // =================================================================
-//          COMPONENTE: Sidebar (Filtros y Navegación)
+//          COMPONENTE: Sidebar (Filtros + Gestos Táctiles)
 // =================================================================
 // FICHERO: src/js/components/sidebar.js
-// RESPONSABILIDAD: Gestionar lógica de filtros laterales, slider de año
-// y sugerencias de autocompletado (ahora integradas).
+// ESTADO: Fusionado (Incluye lógica de filtros y Touch Drawer)
 // =================================================================
 
 import noUiSlider from 'nouislider';
 import 'nouislider/dist/nouislider.css'; 
-import { CONFIG } from "../config.js";
-// IMPORTANTE: Añadido highlightAccentInsensitive para el autocompletado
+import { CONFIG } from "../constants.js"; // ✨ Actualizado a constants.js
 import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
@@ -19,23 +17,168 @@ import { closeModal } from "./quick-view.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG } from "../constants.js";
 import { loadAndRenderMovies } from "../main.js";
-import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; // Importamos la utilidad de limpieza global
+import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
 
+// --- Referencias DOM Centralizadas ---
 const dom = {
+  sidebar: document.getElementById("sidebar"),
   sidebarInnerWrapper: document.querySelector(".sidebar-inner-wrapper"),
   rewindButton: document.querySelector("#rewind-button"),
   toggleRotationBtn: document.querySelector("#toggle-rotation-btn"),
+  playButton: document.querySelector("#play-button"),
   collapsibleSections: document.querySelectorAll(".collapsible-section"),
   sidebarFilterForms: document.querySelectorAll(SELECTORS.SIDEBAR_FILTER_FORM),
+  sidebarScrollable: document.querySelector(".sidebar-scrollable-filters"),
   yearSlider: document.querySelector(SELECTORS.YEAR_SLIDER),
   yearStartInput: document.querySelector(SELECTORS.YEAR_START_INPUT),
   yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
+  sidebarOverlay: document.getElementById("sidebar-overlay"),
 };
 
 // =================================================================
-//          LÓGICA DE AUTOCOMPLETADO (Integrada)
+//          1. LÓGICA DE GESTOS TÁCTILES (Touch Drawer)
 // =================================================================
-// Antes estaba en autocomplete.js
+
+const DRAWER_WIDTH = 280;
+const SWIPE_VELOCITY_THRESHOLD = 0.4;
+
+let touchState = {
+  isDragging: false,
+  isHorizontalDrag: false,
+  startX: 0,
+  startY: 0,
+  startTime: 0,
+  currentTranslate: 0,
+  startTranslate: 0
+};
+
+const openMobileDrawer = () => {
+  document.body.classList.add("sidebar-is-open");
+  dom.sidebar.style.transform = `translateX(0px)`;
+  dom.sidebar.style.transition = "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)";
+  touchState.currentTranslate = 0;
+  updateRewindButtonIcon(true);
+};
+
+const closeMobileDrawer = () => {
+  document.body.classList.remove("sidebar-is-open");
+  dom.sidebar.style.transform = `translateX(-${DRAWER_WIDTH}px)`;
+  dom.sidebar.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+  touchState.currentTranslate = -DRAWER_WIDTH;
+  updateRewindButtonIcon(false);
+};
+
+function handleTouchStart(e) {
+  if (window.innerWidth > 768) return;
+
+  const isOpen = document.body.classList.contains("sidebar-is-open");
+  // Permitir arrastre si está abierto (desde el sidebar) o cerrado (desde el borde izq)
+  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 80);
+
+  if (!canStartDrag) {
+    touchState.isDragging = false;
+    return;
+  }
+
+  touchState.isDragging = true;
+  touchState.isHorizontalDrag = false;
+  touchState.startX = e.touches[0].clientX;
+  touchState.startY = e.touches[0].clientY;
+  touchState.startTime = Date.now();
+  touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
+  
+  dom.sidebar.style.transition = "none"; // Respuesta inmediata al dedo
+}
+
+function handleTouchMove(e) {
+  if (!touchState.isDragging) return;
+
+  const currentX = e.touches[0].clientX;
+  const currentY = e.touches[0].clientY;
+  const diffX = currentX - touchState.startX;
+  const diffY = currentY - touchState.startY;
+
+  // Detectar intención del usuario (Scroll vs Swipe)
+  if (!touchState.isHorizontalDrag) {
+    if (Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
+      if (Math.abs(diffY) > Math.abs(diffX) * 1.5) {
+        touchState.isDragging = false; // Es scroll vertical
+        return;
+      }
+      touchState.isHorizontalDrag = true; // Es swipe
+    } else {
+      return; // Umbral no superado
+    }
+  }
+
+  e.preventDefault(); // Bloquear scroll nativo
+
+  let newTranslate = touchState.startTranslate + diffX;
+
+  // Física Elástica (Rubber Banding)
+  if (newTranslate > 0) {
+    newTranslate *= 0.3; // Resistencia al tirar a la derecha
+  } else if (newTranslate < -DRAWER_WIDTH) {
+    const overflow = Math.abs(newTranslate + DRAWER_WIDTH);
+    newTranslate = -DRAWER_WIDTH - (overflow * 0.3); // Resistencia al tirar a la izquierda
+  }
+
+  touchState.currentTranslate = newTranslate;
+  dom.sidebar.style.transform = `translateX(${touchState.currentTranslate}px)`;
+}
+
+function handleTouchEnd(e) {
+  if (!touchState.isDragging || !touchState.isHorizontalDrag) {
+    touchState.isDragging = false;
+    return;
+  }
+  touchState.isDragging = false;
+  touchState.isHorizontalDrag = false;
+
+  const duration = Date.now() - touchState.startTime;
+  const finalX = e.changedTouches[0].clientX;
+  const distance = finalX - touchState.startX;
+  const velocity = duration > 0 ? distance / duration : 0;
+
+  // Decisión basada en inercia o posición
+  if (Math.abs(velocity) > SWIPE_VELOCITY_THRESHOLD) {
+    velocity > 0 ? openMobileDrawer() : closeMobileDrawer();
+  } else {
+    // Punto medio (-140px)
+    touchState.currentTranslate > -DRAWER_WIDTH / 2 ? openMobileDrawer() : closeMobileDrawer();
+  }
+}
+
+function updateRewindButtonIcon(isOpen) {
+  if (!dom.rewindButton) return;
+  dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
+  dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
+}
+
+function initTouchGestures() {
+  if (!dom.sidebar) return;
+  document.addEventListener("touchstart", handleTouchStart, { passive: true });
+  document.addEventListener("touchmove", handleTouchMove, { passive: false });
+  document.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+  // Reset en resize
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 768) {
+      document.body.classList.remove("sidebar-is-open");
+      dom.sidebar.style.transform = "";
+      dom.sidebar.style.transition = "";
+      touchState.currentTranslate = -DRAWER_WIDTH;
+    } else {
+      // Sincronizar estado visual si cambiamos de orientación en tablet/móvil
+      if (document.body.classList.contains("sidebar-is-open")) openMobileDrawer();
+      else closeMobileDrawer();
+    }
+  });
+}
+
+// =================================================================
+//          2. LÓGICA DE AUTOCOMPLETADO (Filtros)
+// =================================================================
 
 function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
   const input = formElement.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -75,11 +218,8 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
 }
 
 // =================================================================
-//          GESTIÓN DE PILLS Y UI (Resto del fichero)
+//          3. GESTIÓN DE UI FILTROS
 // =================================================================
-
-// ... (Aquí va el resto de tu código de sidebar.js: updateFilterAvailabilityUI, renderFilterPills, handlers, initSidebar)
-// ... (El contenido es idéntico al que ya tenías, solo asegúrate de que las funciones de autocompletado usen renderSidebarAutocomplete definida arriba)
 
 function updateFilterAvailabilityUI() {
   const activeCount = getActiveFilterCount();
@@ -195,8 +335,7 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
 }
 
 function resetFilters() {
-  const playButton = document.querySelector("#play-button");
-  if (playButton) triggerPopAnimation(playButton);
+  if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
   document.dispatchEvent(new CustomEvent("filtersReset"));
 }
@@ -205,6 +344,10 @@ export function collapseAllSections() {
   dom.collapsibleSections.forEach((section) => section.classList.remove(CSS_CLASSES.ACTIVE));
   if (dom.sidebarInnerWrapper) dom.sidebarInnerWrapper.classList.remove("is-compact");
 }
+
+// =================================================================
+//          4. SLIDERS, INPUTS Y LISTENERS
+// =================================================================
 
 function initYearSlider() {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
@@ -264,15 +407,12 @@ function setupAutocompleteHandlers() {
       const searchTerm = input.value;
       if (searchTerm.length < 3) { clearAllSidebarAutocomplete(form); return; }
       const suggestions = await fetcher(searchTerm);
-      // USAMOS LA FUNCIÓN LOCAL:
       renderSidebarAutocomplete(form, suggestions, searchTerm);
     }, CONFIG.SEARCH_DEBOUNCE_DELAY);
     
     input.addEventListener("input", debouncedFetch);
     
-    // Listener keydown (lógica de flechas y enter)
     input.addEventListener("keydown", (e) => {
-       // ... (Lógica idéntica a antes, solo que items está en el DOM local)
        const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
        if (!resultsContainer || resultsContainer.children.length === 0) return;
        const items = Array.from(resultsContainer.children);
@@ -325,22 +465,28 @@ function setupEventListeners() {
     if (iconWrapper.firstChild) header.appendChild(iconWrapper.firstChild);
   });
 
+  // Manejo Unificado del Botón Rewind (Click en Desktop/Tablet/Móvil)
   if (dom.rewindButton) {
     dom.rewindButton.addEventListener("click", (e) => {
       triggerHapticFeedback('light');
       const isMobile = window.innerWidth <= 768;
-      let isOpening;
+      
       if (isMobile) {
-        document.body.classList.toggle("sidebar-is-open");
-        isOpening = document.body.classList.contains("sidebar-is-open");
+        const isOpen = document.body.classList.contains("sidebar-is-open");
+        isOpen ? closeMobileDrawer() : openMobileDrawer();
       } else {
         document.body.classList.toggle("sidebar-collapsed");
-        isOpening = !document.body.classList.contains("sidebar-collapsed");
+        const isNowCollapsed = document.body.classList.contains("sidebar-collapsed");
+        updateRewindButtonIcon(!isNowCollapsed);
       }
-      e.currentTarget.innerHTML = isOpening ? ICONS.REWIND : ICONS.FORWARD;
-      e.currentTarget.setAttribute("aria-label", isOpening ? "Contraer sidebar" : "Expandir sidebar");
     });
   }
+
+  // Cierre por Overlay (Móvil)
+  if (dom.sidebarOverlay) {
+    dom.sidebarOverlay.addEventListener("click", closeMobileDrawer);
+  }
+
   if (dom.toggleRotationBtn) {
     dom.toggleRotationBtn.addEventListener("click", (e) => {
       triggerHapticFeedback('light');
@@ -356,9 +502,9 @@ function setupEventListeners() {
       triggerPopAnimation(button);
     });
   }
-  const sidebarScrollable = document.querySelector(".sidebar-scrollable-filters");
-  if (sidebarScrollable) {
-    sidebarScrollable.addEventListener("click", (e) => {
+
+  if (dom.sidebarScrollable) {
+    dom.sidebarScrollable.addEventListener("click", (e) => {
       handlePillClick(e);
       const excludeBtn = e.target.closest(".exclude-filter-btn");
       if (excludeBtn) {
@@ -376,8 +522,8 @@ function setupEventListeners() {
       }
     });
   }
-  const playButton = document.querySelector("#play-button");
-  if (playButton) playButton.addEventListener("click", resetFilters);
+  
+  if (dom.playButton) dom.playButton.addEventListener("click", resetFilters);
 
   dom.collapsibleSections.forEach((clickedSection) => {
     const header = clickedSection.querySelector(".section-header");
@@ -398,13 +544,15 @@ function setupEventListeners() {
   });
 }
 
+// =================================================================
+//          INICIALIZACIÓN PRINCIPAL
+// =================================================================
+
 export function initSidebar() {
   if (window.innerWidth <= 768) {
-    if (dom.rewindButton) {
-      dom.rewindButton.innerHTML = ICONS.FORWARD;
-      dom.rewindButton.setAttribute("aria-label", "Expandir sidebar");
-    }
+    updateRewindButtonIcon(false); // Móvil empieza cerrado
   }
+  
   const populateFilterSection = (filterType) => {
     const config = FILTER_CONFIG[filterType];
     if (!config) return;
@@ -430,18 +578,22 @@ export function initSidebar() {
     });
     listContainer.appendChild(fragment);
   };
+
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);
-  const toggleBtn = dom.toggleRotationBtn;
-  if (toggleBtn) {
+  
+  if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains("rotation-disabled");
-    toggleBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
-    toggleBtn.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
-    toggleBtn.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
+    dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
+    dom.toggleRotationBtn.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
+    dom.toggleRotationBtn.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
   }
+
   initYearSlider();
+  initTouchGestures(); // ACTIVACIÓN DE GESTOS
   setupEventListeners();
   setupAutocompleteHandlers();
   setupYearInputSteppers();
+
   document.addEventListener("updateSidebarUI", () => {
     dom.sidebarFilterForms.forEach((form) => {
       const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -452,6 +604,7 @@ export function initSidebar() {
     if (dom.yearSlider?.noUiSlider) dom.yearSlider.noUiSlider.set(years, false);
     renderFilterPills();
   });
+  
   document.addEventListener("filtersReset", collapseAllSections);
   document.addEventListener("uiActionTriggered", collapseAllSections);
 }

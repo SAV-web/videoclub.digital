@@ -9,8 +9,7 @@
 // - Re-exportación de componentes complejos (Card, QuickView).
 // =================================================================
 
-import { CONFIG } from "./config.js";
-import { CSS_CLASSES, SELECTORS } from "./constants.js";
+import { CSS_CLASSES, SELECTORS, CONFIG } from "./constants.js";
 import { fetchMovies } from "./api.js"; // Necesario para prefetch
 import { triggerPopAnimation, createElement } from "./utils.js";
 

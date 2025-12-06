@@ -1,20 +1,44 @@
 /* src/css/base/variables.css */
 
+/* ========================================================== */
+/*  ▼▼▼ 1. DEFINICIÓN DE FUENTES (FONT-FACE) ▼▼▼             */
+/* ========================================================== */
+
+/* Estrategia de carga de alto rendimiento: Fallback con metric overrides */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  ascent-override: 92.77%;
+  descent-override: 24.41%;
+  line-gap-override: 0%;
+  size-adjust: 107.8%;
+}
+
+/* Fuente Web principal */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2")
+    format("woff2-variations");
+}
+
+/* ========================================================== */
+/*  ▼▼▼ 2. VARIABLES CSS (DESIGN TOKENS) ▼▼▼                 */
+/* ========================================================== */
+
 :root {
-  /* ========================================================== */
-  /*  ▼▼▼ SISTEMA DE DISEÑO (DESIGN TOKENS) ▼▼▼ */
-  /* ========================================================== */
+  /* ---- Escala Tipográfica ---- */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.125rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-xxl: 2rem;
 
-  /* ---- 1. Escala Tipográfica (Modular Scale) ---- */
-  /* Definimos la escala completa para mantener consistencia futura */
-  --font-size-xs: 0.75rem;   /* 12px - Metadatos, etiquetas */
-  --font-size-sm: 0.875rem;  /* 14px - Cuerpo pequeño */
-  --font-size-base: 1rem;    /* 16px - Cuerpo estándar */
-  --font-size-md: 1.125rem;  /* 18px - Subtítulos */
-  --font-size-lg: 1.25rem;   /* 20px - Títulos tarjeta */
-  --font-size-xl: 1.5rem;    /* 24px - Títulos sección */
-  --font-size-xxl: 2rem;     /* 32px - Títulos página */
-
+  /* Definición de pilas de fuentes usando las definidas arriba */
   --font-title: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-body: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
@@ -27,15 +51,14 @@
   --font-weight-extrabold: 800; 
 
   /* Altura de línea */
-  --line-height-tight: 1.1;  /* Ajustado para títulos compactos */
+  --line-height-tight: 1.1;
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
 
-  /* ---- 2. Paleta de Colores (Semántica) ---- */
-  /* Texto */
-  --color-text-primary: #333333;   /* Títulos y cuerpo principal */
-  --color-text-secondary: #666666; /* Metadatos, etiquetas */
-  --color-text-tertiary: #737373;  /* Detalles de bajo contraste (ej. director) */
+  /* ---- Paleta de Colores (Semántica) ---- */
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #737373;
 
   /* Interfaz (Modo Claro) */
   --color-bg: #f5f5f5;
@@ -58,71 +81,62 @@
   /* Efectos */
   --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 
-  /* ---- 3. Movimiento y Animación ---- */
+  /* ---- Movimiento y Animación ---- */
   --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --ease-smooth-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-snap: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1); /* Estándar */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 
   --duration-instant: 100ms;
-  --duration-quick: 200ms;   /* Micro-interacciones */
-  --duration-fast: 300ms;    /* Transiciones UI estándar */
-  --duration-normal: 400ms;  /* Cambios de estado grandes */
-  --duration-leisurely: 600ms; /* Animaciones complejas */
+  --duration-quick: 200ms;
+  --duration-fast: 300ms;
+  --duration-normal: 400ms;
+  --duration-leisurely: 600ms;
 
-  /* ---- 4. Dimensiones y Espaciado ---- */
+  /* ---- Dimensiones y Espaciado ---- */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-round: 50%;
   --radius-pill: 1rem;
 
-  --space-xxs: 0.25rem; /* 4px */
-  --space-xs: 0.5rem;   /* 8px */
-  --space-sm: 0.75rem;  /* 12px */
-  --space-md: 1rem;     /* 16px */
-  --space-lg: 1.5rem;   /* 24px */
-  --space-xl: 2rem;     /* 32px */
-  --space-xxl: 3rem;    /* 48px */
-  --space-xxxl: 4rem;   /* 64px - Reservado para layout grandes */
+  --space-xxs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-xxl: 3rem;
+  --space-xxxl: 4rem;
 
-  /* ---- 5. Capas (Z-Index) ---- */
-  --z-index-card-content: 20;   /* Elementos flotantes dentro de cards */
+  /* ---- Capas (Z-Index) ---- */
+  --z-index-card-content: 20;
   --z-index-autocomplete: 850;
   --z-index-header: 900;
   --z-index-sidebar: 1000;
-  --z-index-overlay: 1999;      /* Backdrops de modales */
+  --z-index-overlay: 1999;
   --z-index-toast: 2000;
 }
 
 /* ---- Paleta Modo Oscuro ---- */
-html.dark-mode {
+body.dark-mode {
   --color-bg: #121212;
   --color-surface: #242424;
   
   --color-text-primary: #e0e0e0;
-  --color-text-secondary: #b8b8b8; /* Contraste mejorado (WCAG) */
+  --color-text-secondary: #b8b8b8;
   --color-text-tertiary: #a0a0a0;
   
   --color-border: #2f2f2f;
   
   --color-accent: #b0bec5;
-  --color-accent-darker: #b0bec5; /* En dark mode el acento suele brillar más */
+  --color-accent-darker: #b0bec5;
   --color-accent-exclude: #546e7a;
   --color-accent-exclude-darker: #607d8b;
   
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   
-  /* Inversión de semántica de estado para legibilidad oscura */
   --color-error: #28a745; 
   --color-success: #dc3545;
 }
-
-/* 
-   NOTAS DE LIMPIEZA:
-   - Eliminado: --color-text-hero (Redundante con primary)
-   - Eliminado: --z-index-sidebar-toggle (No usado)
-   - Eliminado: --duration-reveal (No usado)
-   - Eliminado: --font-weight-black (No usado, máximo es extrabold)
-*/

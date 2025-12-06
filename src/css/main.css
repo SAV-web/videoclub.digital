@@ -14,14 +14,12 @@
  */
 
 /* --- 1. ESTILOS BASE Y GLOBALES --- */
-@import "base/fonts.css";
 @import "base/variables.css";
 @import "base/globals.css";
 
 /* --- 2. COMPONENTES DE UI --- */
-@import "components/user.css";
 @import "components/button.css";
-@import "components/movie-card.css"; 
+@import "components/card.css"; 
 @import "components/header.css";
 @import "components/modal.css";
 @import "components/sidebar.css";

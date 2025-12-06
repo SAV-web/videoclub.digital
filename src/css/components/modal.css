@@ -307,3 +307,132 @@
     overflow-y: auto;
   }
 }
+
+/* =================================================================
+   5. MODAL DE AUTENTICACIÓN (Login / Registro)
+   ================================================================= */
+
+/* --- Overlay de Fondo --- */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: var(--z-index-overlay); /* Uso de variable */
+  backdrop-filter: blur(var(--space-xxs));
+  transition: opacity 0.3s ease;
+}
+
+/* --- Contenedor Modal --- */
+.auth-modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2000; /* Siempre encima del overlay */
+  width: 90%;
+  max-width: 420px;
+}
+
+/* Caja Interna */
+.auth-box {
+  width: 100%;
+  padding: var(--space-xl);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow);
+  text-align: center;
+  /* Animación de entrada sutil */
+  animation: auth-pop-in 0.3s var(--ease-snap);
+}
+
+@keyframes auth-pop-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Cabecera y Logo */
+.auth-header {
+  margin-bottom: var(--space-lg);
+  display: flex; justify-content: center; align-items: center;
+}
+
+.auth-logo-modal {
+  color: var(--color-text-primary);
+  font-family: var(--font-title);
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.auth-logo-modal span:first-child { color: var(--color-accent); }
+
+.auth-box h3 {
+  margin-bottom: var(--space-lg);
+  font-family: var(--font-title);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+/* --- Formularios --- */
+.form-group {
+  margin-bottom: var(--space-md);
+  text-align: left;
+}
+
+.form-group label {
+  display: block; margin-bottom: var(--space-xs);
+  font-size: var(--font-size-sm); font-weight: bold;
+  color: var(--color-text-secondary);
+}
+
+.form-group input {
+  width: 100%; padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.form-group small {
+  display: block; margin-top: var(--space-xxs);
+  color: var(--color-text-tertiary); font-size: var(--font-size-xs);
+}
+
+/* Botón Principal */
+.auth-button {
+  width: 100%; padding: var(--space-sm); margin-top: var(--space-xs);
+  border: none; border-radius: var(--radius-md);
+  background-color: var(--color-accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--font-size-base); font-weight: bold;
+  transition: background-color 0.2s, transform 0.1s;
+}
+.auth-button:hover { background-color: var(--color-accent-darker); }
+.auth-button:active { transform: scale(0.98); }
+
+/* Toggle Texto (Login <-> Registro) */
+.auth-toggle-text {
+  margin-top: var(--space-lg);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+.auth-toggle-text button {
+  border: none; background: none; padding: 0;
+  color: var(--color-accent);
+  cursor: pointer; font-weight: bold; text-decoration: underline;
+}
+
+/* Mensajes de Estado */
+.auth-message {
+  display: none; margin-top: var(--space-md); padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm); font-weight: bold;
+}
+.auth-message--error { background-color: var(--color-error-bg); color: var(--color-error); }
+.auth-message--success { background-color: var(--color-success-bg); color: var(--color-success); }

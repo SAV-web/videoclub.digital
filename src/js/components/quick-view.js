@@ -25,7 +25,7 @@ const dom = {
 // --- Configuración de Iconos de Plataforma (Igual que en card.js) ---
 const PLATFORM_DATA = {
   N: { id: "icon-netflix", class: "netflix-icon", title: "Original de Netflix", w: 16, h: 16, vb: "0 0 16 16" },
-  H: { id: "icon-hbo", class: "", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24", color: true },
+  H: { id: "icon-hbo", class: "hbo-icon", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24", color: true },
   D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 28, h: 22, vb: "0 0 22 18" },
   W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 18 20" },
   U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 24, h: 26, vb: "0 0 24 26" },
@@ -129,8 +129,6 @@ function populateModal(cardElement) {
         if (config) {
           const span = document.createElement('span');
           span.className = config.class ? `platform-icon ${config.class}` : `platform-icon`;
-          // Atributo data-template para compatibilidad CSS si fuera necesario (ej. HBO)
-          if (config.id === 'icon-hbo') span.setAttribute('data-template', 'hbo-icon');
           span.title = config.title;
           
           span.innerHTML = `

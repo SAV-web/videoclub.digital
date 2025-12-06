@@ -5,14 +5,13 @@
 //  VERSIÓN:  3.6 (Fix: Ruta de iconos con Base Path)
 // =================================================================
 
-import { CONFIG } from "../config.js";
 import {
   formatRuntime,
   formatVotesUnified,
   createElement,
   triggerHapticFeedback,
 } from "../utils.js";
-import { CSS_CLASSES, SELECTORS } from "../constants.js";
+import { CSS_CLASSES, SELECTORS, CONFIG } from "../constants.js";
 import { openModal } from "./quick-view.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
@@ -45,16 +44,16 @@ const isDesktop = isPointerDevice && !isTouchDevice;
 
 // --- Configuración de Iconos de Plataforma (SVG Data) ---
 const PLATFORM_DATA = {
-  N: { id: "icon-netflix", class: "netflix-icon", title: "Original de Netflix", w: 16, h: 16, vb: "0 0 16 16" },
-  H: { id: "icon-hbo", class: "", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24", color: true },
-  D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 28, h: 22, vb: "0 0 22 18" },
+  N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix", w: 16, h: 16, vb: "0 0 16 16" },
+  H: { id: "icon-hbo", class: "hbo-icon", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24" },
+  D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 25, h: 18, vb: "0 0 22 18" },
   W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 18 20" },
   U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 24, h: 26, vb: "0 0 24 26" },
-  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 16, h: 25, vb: "0 0 16 25" },
+  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 18, h: 25, vb: "0 0 16 25" },
   P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 22, h: 22, vb: "0 0 22 22" },
   L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate", w: 20, h: 20, vb: "0 0 20 20" },
   Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon", w: 22, h: 22, vb: "0 0 22 22" },
-  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Fox", w: 28, h: 28, vb: "0 0 24 24" }
+  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Century Fox", w: 23, h: 23, vb: "0 0 24 24" }
 };
 
 // =================================================================
@@ -385,7 +384,6 @@ function populateCardText(elements, movieData, cardElement) {
           const span = document.createElement('span');
           // Si tiene clase específica la usa, sino usa la base y asume color en CSS
           span.className = config.class ? `platform-icon ${config.class}` : `platform-icon`;
-          if (config.id === 'icon-hbo') span.setAttribute('data-template', 'hbo-icon'); 
           span.title = config.title;
           
           // ✨ FIX: Usamos spriteUrl importado para que Vite resuelva la ruta completa

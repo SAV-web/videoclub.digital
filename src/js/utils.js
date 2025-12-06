@@ -9,7 +9,7 @@
 // - Feedback (Vibración).
 // =================================================================
 
-import { CONFIG } from "./config.js";
+import { CONFIG } from "./constants.js";
 
 // =================================================================
 //          1. FORMATO DE DATOS (Texto y Números)
