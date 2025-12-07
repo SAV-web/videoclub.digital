@@ -187,17 +187,27 @@ function activateTrap(element) {
 
 export function openAccessibleModal(modalElement, overlayElement) {
   if (!modalElement) return;
+  
+  // 1. Quitar atributo hidden (el navegador aplica display: block/flex y lo expone a la accesibilidad)
   modalElement.hidden = false;
   if (overlayElement) overlayElement.hidden = false;
-  modalElement.setAttribute("aria-hidden", "false");
+  
+  // 2. Foco programático al contenedor (gracias a tabindex="-1")
+  // Esto ayuda a que el lector de pantalla sepa que el contexto ha cambiado inmediatamente
+  modalElement.focus();
+  
+  // 3. Activar la trampa de foco
   activateTrap(modalElement);
 }
 
 export function closeAccessibleModal(modalElement, overlayElement) {
   if (!modalElement) return;
+  
+  // 1. Restaurar atributo hidden
   modalElement.hidden = true;
   if (overlayElement) overlayElement.hidden = true;
-  modalElement.setAttribute("aria-hidden", "true");
+  
+  // 2. Limpieza de listeners
   if (typeof focusTrapCleanup === "function") focusTrapCleanup();
 }
 
@@ -241,6 +251,8 @@ export function updateTotalResultsUI(total, hasFilters) {
 
 export function initThemeToggle() {
   if (dom.themeToggleButton) {
+    const isDarkInitial = document.documentElement.classList.contains("dark-mode");
+    dom.themeToggleButton.setAttribute("aria-pressed", isDarkInitial);
     dom.themeToggleButton.addEventListener("click", (e) => {
       triggerPopAnimation(e.currentTarget);
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));

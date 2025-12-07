@@ -284,7 +284,8 @@ function setupGlobalListeners() {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     const isDarkMode = document.documentElement.classList.toggle("dark-mode");
     localStorage.setItem("theme", isDarkMode ? "dark" : "light");
-  });
+    e.currentTarget.setAttribute("aria-pressed", isDarkMode);
+});
   
   let isTicking = false;
   window.addEventListener("scroll", () => {

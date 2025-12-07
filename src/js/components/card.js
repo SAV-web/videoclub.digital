@@ -48,7 +48,7 @@ const PLATFORM_DATA = {
   N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix", w: 16, h: 16, vb: "0 0 16 16" },
   H: { id: "icon-hbo", class: "hbo-icon", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24" },
   D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 25, h: 18, vb: "0 0 22 18" },
-  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 18 20" },
+  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 15 18" },
   U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 24, h: 26, vb: "0 0 24 26" },
   S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 18, h: 25, vb: "0 0 16 25" },
   P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 22, h: 22, vb: "0 0 22 22" },

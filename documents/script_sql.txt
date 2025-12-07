@@ -223,15 +223,15 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 -- =================================================================
 -- PASO 5: OPTIMIZACIÓN DE RENDIMIENTO (ÍNDICES)
 -- =================================================================
--- Creamos un índice GIN (Generalized Inverted Index) sobre la columna normalizada.
+-- Índice GIN (Generalized Inverted Index) sobre la columna normalizada.
 -- Es el tipo de índice más eficiente para búsquedas con `ILIKE '%...%'` cuando se usa la extensión pg_trgm.
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm gin_trgm_ops);
--- Índices para claves foráneas y campos de ordenación comunes.
+-- Para claves foráneas y campos de ordenación comunes.
 CREATE INDEX IF NOT EXISTS movies_country_id_idx ON public.movies(country_id);
 CREATE INDEX IF NOT EXISTS movies_year_idx ON public.movies(year DESC);
 CREATE INDEX IF NOT EXISTS movies_fa_rating_idx ON public.movies(fa_rating DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_imdb_rating_idx ON public.movies(imdb_rating DESC NULLS LAST);
--- Índices para las tablas de relación.
+-- Para las tablas de relación.
 CREATE INDEX IF NOT EXISTS movie_genres_movie_id_idx ON public.movie_genres(movie_id);
 CREATE INDEX IF NOT EXISTS movie_genres_genre_id_idx ON public.movie_genres(genre_id);
 CREATE INDEX IF NOT EXISTS movie_directors_movie_id_idx ON public.movie_directors(movie_id);
@@ -240,16 +240,12 @@ CREATE INDEX IF NOT EXISTS movie_actors_movie_id_idx ON public.movie_actors(movi
 CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(actor_id);
 CREATE INDEX IF NOT EXISTS movie_collections_movie_id_idx ON public.movie_collections(movie_id);
 CREATE INDEX IF NOT EXISTS movie_collections_collection_id_idx ON public.movie_collections(collection_id);
--- Índice para guardar el orden de los actores y su índice.
+-- Para guardar el orden de los actores y su índice.
 CREATE INDEX IF NOT EXISTS movie_actors_ordinality_idx ON public.movie_actors(ordinality);
--- Índices híbridos para las tablas de entidad (sugerencias).
-CREATE INDEX IF NOT EXISTS directors_name_norm_prefix_idx ON public.directors (name_norm text_pattern_ops);
+-- Para tablas de entidad (sugerencias). Solo índices GIN (pg_trgm) pq las búsquedas son substring ('%texto%'), donde los índices B-Tree (prefix) no tienen efecto.
 CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS actors_name_norm_prefix_idx ON public.actors (name_norm text_pattern_ops);
 CREATE INDEX IF NOT EXISTS actors_name_norm_trgm_idx ON public.actors USING gin (name_norm gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS countries_name_norm_prefix_idx ON public.countries (name_norm text_pattern_ops);
 CREATE INDEX IF NOT EXISTS countries_name_norm_trgm_idx ON public.countries USING gin (name_norm gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS genres_name_norm_prefix_idx ON public.genres (name_norm text_pattern_ops);
 CREATE INDEX IF NOT EXISTS genres_name_norm_trgm_idx ON public.genres USING gin (name_norm gin_trgm_ops);
 -- Índices GIN sobre las nuevas columnas
 CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
@@ -258,7 +254,7 @@ CREATE INDEX IF NOT EXISTS movies_actors_tsv_idx ON public.movies USING GIN(acto
 CREATE INDEX IF NOT EXISTS movies_collections_tsv_idx ON public.movies USING GIN(collections_tsv);
 -- El índice de relevancia es vital porque es el orden por defecto.
 CREATE INDEX IF NOT EXISTS movies_relevance_idx ON public.movies(relevance ASC);
--- Índices para ordenación por votos (que también usas en el selector)
+-- Para ordenación por votos (que también usas en el selector)
 CREATE INDEX IF NOT EXISTS movies_fa_votes_idx ON public.movies(fa_votes DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_imdb_votes_idx ON public.movies(imdb_votes DESC NULLS LAST);
 -- Índice compuesto para optimizar el filtrado por tipo + ordenación (muy común)
@@ -277,11 +273,15 @@ CREATE INDEX IF NOT EXISTS movies_country_imdb_votes_idx ON public.movies(countr
 CREATE INDEX IF NOT EXISTS movies_country_fa_rating_idx ON public.movies(country_id, fa_rating DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_country_imdb_rating_idx ON public.movies(country_id, imdb_rating DESC NULLS LAST);
 ANALYZE public.movies;
+
 -- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.
+-- OPTIMIZACIÓN: Pasamos a LANGUAGE SQL para permitir inlining y reducir overhead.
+
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
-RETURNS TABLE(suggestion text) LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$
-BEGIN
-    RETURN QUERY
+RETURNS TABLE(suggestion text) 
+LANGUAGE sql 
+STABLE 
+PARALLEL SAFE AS $$
     SELECT a.name
     FROM public.actors a
     JOIN public.movie_actors ma ON a.id = ma.actor_id
@@ -289,12 +289,13 @@ BEGIN
     GROUP BY a.name
     ORDER BY COUNT(ma.movie_id) DESC
     LIMIT 10;
-END;
 $$;
+
 CREATE OR REPLACE FUNCTION public.get_director_suggestions(search_term text)
-RETURNS TABLE(suggestion text) LANGUAGE plpgsql STABLE PARALLEL SAFE AS $$
-BEGIN
-    RETURN QUERY
+RETURNS TABLE(suggestion text) 
+LANGUAGE sql 
+STABLE 
+PARALLEL SAFE AS $$
     SELECT d.name
     FROM public.directors d
     JOIN public.movie_directors md ON d.id = md.director_id
@@ -302,8 +303,8 @@ BEGIN
     GROUP BY d.name
     ORDER BY COUNT(md.movie_id) DESC
     LIMIT 10;
-END;
 $$;
+
 CREATE OR REPLACE FUNCTION public.get_genre_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     SELECT name FROM public.genres
@@ -311,6 +312,7 @@ RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     ORDER BY similarity(name_norm, public.unaccent_immutable(lower(search_term))) DESC
     LIMIT 5;
 $$;
+
 CREATE OR REPLACE FUNCTION public.get_country_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     SELECT name FROM public.countries

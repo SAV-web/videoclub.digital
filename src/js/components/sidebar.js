@@ -153,6 +153,7 @@ function updateRewindButtonIcon(isOpen) {
   if (!dom.rewindButton) return;
   dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
   dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
+  dom.rewindButton.setAttribute("aria-expanded", isOpen);
 }
 
 function initTouchGestures() {
@@ -487,17 +488,24 @@ function setupEventListeners() {
     dom.sidebarOverlay.addEventListener("click", closeMobileDrawer);
   }
 
-  if (dom.toggleRotationBtn) {
+if (dom.toggleRotationBtn) {
     dom.toggleRotationBtn.addEventListener("click", (e) => {
       triggerHapticFeedback('light');
       unflipAllCards();
       closeModal();
+      
       document.body.classList.toggle("rotation-disabled");
       const isRotationDisabled = document.body.classList.contains("rotation-disabled");
       const button = e.currentTarget;
+      
+      // Actualización visual (Iconos y Tooltips)
       button.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
       button.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
       button.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
+      
+      // ✨ ACCESIBILIDAD: Comunicar estado al lector de pantalla
+      button.setAttribute("aria-pressed", isRotationDisabled);
+      
       localStorage.setItem("rotationState", isRotationDisabled ? "disabled" : "enabled");
       triggerPopAnimation(button);
     });

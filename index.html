@@ -6,21 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>videoclub.digital - tu oráculo cinéfilo y seriéfilo inteligente</title>
     <meta name="theme-color" content="#37474F" />
-<!-- === 2. SEO Y SOCIAL (Unificados) === -->
-    <meta name="description" content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra." />
+<!-- === 2. SEO Y SOCIAL === -->
+    <meta name="description" content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente." />
     <meta property="og:title" content="videoclub.digital" />
-    <meta property="og:description" content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra." />
+    <meta property="og:description" content="Explora, filtra y descubre miles de películas y series." />
     <meta property="og:image" content="https://videoclub.digital/src/img/og-image.png" />
     <meta property="og:url" content="https://videoclub.digital" />
     <meta property="og:type" content="website" />
-<!-- === 3. MANIFEST Y DATOS ESTRUCTURADOS === -->
+<!-- === 3. MANIFEST === -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","url":"https://videoclub.digital/","name":"videoclub.digital","description":"Explora, filtra y descubre miles de películas y series...","potentialAction":{"@type":"SearchAction","target":"https://videoclub.digital/?q={search_term_string}","query-input":"required name=search_term_string"}}</script>
-<!-- === 4. OPTIMIZACIÓN DE CARGA (RESOURCE HINTS) === -->
+<!-- === 4. OPTIMIZACIÓN (RESOURCE HINTS) === -->
     <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
-<!-- === 5. Preload de fuente crítica (Inter Variable) para evitar CLS/FOUT === -->
     <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
-<!-- === 6. CSS CRÍTICO (INLINE) === -->
+<!-- === 5. CSS CRÍTICO === -->
 <style>
 :root{--color-bg:#f5f5f5;--color-surface:#fff;--color-text-primary:#333;--color-text-secondary:#666;--color-accent:#37474f;--color-accent-exclude:#90a4ae;--color-border:#e0e0e0;--radius-md:6px;--radius-round:50%;--shadow:0 5px 15px rgba(0,0,0,.08);--z-index-header:900;--z-index-sidebar:1000}
 html.dark-mode{--color-bg:#121212;--color-surface:#282828;--color-text-primary:#e0e0e0;--color-text-secondary:#aaa;--color-accent:#90a4ae;--color-accent-exclude:#546e7a;--color-border:#333;--shadow:0 5px 20px rgba(0,0,0,.25)}
@@ -53,71 +52,82 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
 @keyframes skeleton-loading{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 .sidebar--loading>*,.header--loading>*{opacity:0;visibility:hidden}
 </style>
-<!-- === 7. ANTI-FLICKER SCRIPT === -->
+<!-- === 6. ANTI-FLICKER === -->
     <script>(function () { try { if (localStorage.getItem("theme") === "dark") { document.documentElement.classList.add("dark-mode"); } } catch (e) {} })(); </script>
-<!-- === 8. ESTILOS EXTERNOS === -->
+<!-- === 7. ESTILOS EXTERNOS === -->
     <link rel="stylesheet" href="/src/css/main.css" media="print" onload="this.media='all'" />
 </head>
 
 <body>
-  <!-- Contenedor principal del layout (Sidebar + Contenido) -->
+  <!-- Contenedor principal -->
   <div class="main-layout">
-    <!-- Sidebar de Navegación y Filtros -->
+    <!-- Sidebar -->
     <aside id="sidebar" class="sidebar sidebar--loading">
       <div class="sidebar-inner-wrapper">
         <header class="logo-area">
             <h2 class="logo-title"><span class="logo-line-1">videoclub</span><span class="logo-line-2">.digital</span></h2>
         </header>
         <nav class="play-button-container" aria-label="Controles principales">
-          <button id="play-button" class="sidebar-control-button" title="Limpiar filtros" aria-label="Limpiar filtros">
+          <button id="play-button" type="button" class="sidebar-control-button" title="Limpiar filtros" aria-label="Limpiar filtros">
             <svg class="sidebar-icon"><use href="/src/sprite.svg#icon-play-filter"></use></svg>
           </button>
-          <button id="toggle-rotation-btn" class="sidebar-control-button" title="Rotación" aria-label="Pausar rotación">
+          
+          <button id="toggle-rotation-btn" type="button" class="sidebar-control-button" title="Rotación" aria-label="Pausar rotación" aria-pressed="false">
             <svg class="sidebar-icon"><use href="/src/sprite.svg#icon-pause"></use></svg>
           </button>
-          <button id="theme-toggle" class="sidebar-control-button theme-toggle" title="Tema" aria-label="Cambiar tema">
+          
+          <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Tema" aria-label="Cambiar tema" aria-pressed="false">
             <svg class="theme-icon moon-icon"><use href="/src/sprite.svg#icon-moon"></use></svg>
             <svg class="theme-icon sun-icon"><use href="/src/sprite.svg#icon-sun"></use></svg>
           </button>
-          <button id="rewind-button" class="sidebar-control-button" title="Cerrar sidebar" aria-label="Contraer sidebar">
+          
+          <button id="rewind-button" type="button" class="sidebar-control-button" title="Cerrar sidebar" aria-label="Contraer sidebar" aria-controls="sidebar" aria-expanded="true">
             <svg class="sidebar-icon"><use href="/src/sprite.svg#icon-rewind"></use></svg>
           </button>
         </nav>
-          <!-- Filtros Estáticos -->
+        
         <div class="sidebar-static-filters">
           <div id="active-filters-container"></div>
             <div id="year-slider-container"><div id="year-slider-wrapper"><div id="year-slider"></div></div>
               <div id="year-input-container">
-                <div class="year-input-wrapper"><input type="number" id="year-start-input" class="year-input"/><div class="year-input-stepper"><button class="stepper-btn stepper-up">▲</button><button class="stepper-btn stepper-down">▼</button></div></div>
+                <!-- Inputs de año optimizados para móvil con inputmode="numeric" -->
+                <div class="year-input-wrapper">
+                  <input type="number" inputmode="numeric" id="year-start-input" class="year-input" aria-label="Año de inicio"/>
+                  <div class="year-input-stepper"><button type="button" class="stepper-btn stepper-up" aria-label="Aumentar">▲</button><button type="button" class="stepper-btn stepper-down" aria-label="Disminuir">▼</button></div>
+                </div>
                 <span class="year-range-separator">·</span>
-                <div class="year-input-wrapper"><input type="number" id="year-end-input" class="year-input"/><div class="year-input-stepper"><button class="stepper-btn stepper-up">▲</button><button class="stepper-btn stepper-down">▼</button></div></div>
+                <div class="year-input-wrapper">
+                  <input type="number" inputmode="numeric" id="year-end-input" class="year-input" aria-label="Año de fin"/>
+                  <div class="year-input-stepper"><button type="button" class="stepper-btn stepper-up" aria-label="Aumentar">▲</button><button type="button" class="stepper-btn stepper-down" aria-label="Disminuir">▼</button></div>
+                </div>
               </div>
             </div>
-            <div id="total-results-container" class="total-results-container" hidden>
+            
+            <div id="total-results-container" class="total-results-container" hidden role="status" aria-live="polite">
               <span class="total-results-label">Total: </span><span id="total-results-count" class="total-results-count">0</span>
           </div>
         </div>
-        <!-- Filtros Dinámicos (Vacíos, se llenan por JS) -->
+        
         <nav class="sidebar-scrollable-filters">
-          <section class="collapsible-section"><button class="section-header" aria-controls="selections-content"><span>Selección</span></button><div class="active-filters-list"></div><div id="selections-content" class="section-content"><div id="selections-list-container"></div></div></section>
-          <section class="collapsible-section"><button class="section-header" aria-controls="studios-content"><span>Estudios</span></button><div class="active-filters-list"></div><div id="studios-content" class="section-content"><div id="studios-list-container"></div></div></section>
-          <section class="collapsible-section"><button class="section-header" aria-controls="genres-content"><span>Géneros</span></button><div class="active-filters-list"></div><div id="genres-content" class="section-content"><div id="genres-list-container"></div><form class="sidebar-filter-form" data-filter-type="genre"><input type="text" placeholder="Otro género..." class="sidebar-filter-input"/></form></div></section>
-          <section class="collapsible-section"><button class="section-header" aria-controls="countries-content"><span>Países</span></button><div class="active-filters-list"></div><div id="countries-content" class="section-content"><div id="countries-list-container"></div><form class="sidebar-filter-form" data-filter-type="country"><input type="text" placeholder="Otro país..." class="sidebar-filter-input"/></form></div></section>
-          <section class="collapsible-section"><button class="section-header" aria-controls="directors-content"><span>Directores</span></button><div class="active-filters-list"></div><div id="directors-content" class="section-content"><div id="directors-list-container"></div><form class="sidebar-filter-form" data-filter-type="director"><input type="text" placeholder="Otro director..." class="sidebar-filter-input"/></form></div></section>
-          <section class="collapsible-section"><button class="section-header" aria-controls="actors-content"><span>Actores</span></button><div class="active-filters-list"></div><div id="actors-content" class="section-content"><div id="actors-list-container"></div><form class="sidebar-filter-form" data-filter-type="actor"><input type="text" placeholder="Otro actor..." class="sidebar-filter-input"/></form></div></section>
+          <section class="collapsible-section"><button type="button" class="section-header" aria-controls="selections-content" aria-expanded="false"><span>Selección</span></button><div class="active-filters-list"></div><div id="selections-content" class="section-content"><div id="selections-list-container"></div></div></section>
+          <section class="collapsible-section"><button type="button" class="section-header" aria-controls="studios-content" aria-expanded="false"><span>Estudios</span></button><div class="active-filters-list"></div><div id="studios-content" class="section-content"><div id="studios-list-container"></div></div></section>
+          <section class="collapsible-section"><button type="button" class="section-header" aria-controls="genres-content" aria-expanded="false"><span>Géneros</span></button><div class="active-filters-list"></div><div id="genres-content" class="section-content"><div id="genres-list-container"></div><form class="sidebar-filter-form" data-filter-type="genre"><input type="text" placeholder="Otro género..." class="sidebar-filter-input" aria-label="Filtrar por género"/></form></div></section>
+          <section class="collapsible-section"><button type="button" class="section-header" aria-controls="countries-content" aria-expanded="false"><span>Países</span></button><div class="active-filters-list"></div><div id="countries-content" class="section-content"><div id="countries-list-container"></div><form class="sidebar-filter-form" data-filter-type="country"><input type="text" placeholder="Otro país..." class="sidebar-filter-input" aria-label="Filtrar por país"/></form></div></section>
+          <section class="collapsible-section"><button type="button" class="section-header" aria-controls="directors-content" aria-expanded="false"><span>Directores</span></button><div class="active-filters-list"></div><div id="directors-content" class="section-content"><div id="directors-list-container"></div><form class="sidebar-filter-form" data-filter-type="director"><input type="text" placeholder="Otro director..." class="sidebar-filter-input" aria-label="Filtrar por director"/></form></div></section>
+          <section class="collapsible-section"><button type="button" class="section-header" aria-controls="actors-content" aria-expanded="false"><span>Actores</span></button><div class="active-filters-list"></div><div id="actors-content" class="section-content"><div id="actors-list-container"></div><form class="sidebar-filter-form" data-filter-type="actor"><input type="text" placeholder="Otro actor..." class="sidebar-filter-input" aria-label="Filtrar por actor"/></form></div></section>
         </nav>
-        <!-- Perfil -->
+        
         <div id="user-profile-container" class="profile-container">
-          <button id="login-button" class="sidebar-control-button profile-button" title="Acceder"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></button>
+          <button id="login-button" type="button" class="sidebar-control-button profile-button" title="Acceder" aria-label="Iniciar sesión"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></button>
           <div id="user-session-group" class="user-session-group" hidden>
-            <span id="user-avatar-initials" class="user-avatar"></span>
-            <button id="logout-button" class="sidebar-control-button logout-button" title="Salir"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
+            <span id="user-avatar-initials" class="user-avatar" aria-hidden="true"></span>
+            <button id="logout-button" type="button" class="sidebar-control-button logout-button" title="Salir" aria-label="Cerrar sesión"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></button>
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- Contenido Principal (Header + Galería) -->
+    <!-- Contenido -->
     <main class="main-content-wrapper">
       <header class="main-header header--loading">
         <div class="main-header-primary-controls">
@@ -132,57 +142,68 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
               <option value="imdb_votes,desc">Votos IMDb</option>
             </select>
           </div>
-          <button id="type-filter-toggle" class="type-filter-toggle" type="button">Todo</button>
+          <button id="type-filter-toggle" type="button" class="type-filter-toggle" aria-label="Filtrar por tipo: Todo">Todo</button>
           <div class="header-pagination-group">
-            <button id="header-prev-btn" class="btn btn--icon">&lt;</button>
-            <button id="header-next-btn" class="btn btn--icon">&gt;</button>
+            <button id="header-prev-btn" type="button" class="btn btn--icon" aria-label="Página anterior">&lt;</button>
+            <button id="header-next-btn" type="button" class="btn btn--icon" aria-label="Página siguiente">&gt;</button>
           </div>
         </div>
         <div class="search-and-theme-group">
           <form id="search-form" class="search-form" role="search">
-            <input id="search-input" type="search" placeholder="Título" autocomplete="off"/>
+            <input id="search-input" type="search" placeholder="Título" autocomplete="off" aria-label="Buscar películas"/>
             <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           </form>
         </div>
       </header>
 
       <section class="content" aria-label="Galería de películas y series">
-        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
         <div id="grid-container" class="grid-container" aria-live="polite"></div>
-        <nav id="pagination-container" class="pagination-container"></nav>
+        <nav id="pagination-container" class="pagination-container" aria-label="Navegación de páginas"></nav>
       </section>
     </main>
   </div>
 
-  <button id="back-to-top" class="back-to-top" title="Volver al inicio" aria-label="Volver al inicio de la página">↑</button>
+  <button id="back-to-top" type="button" class="back-to-top" title="Volver al inicio" aria-label="Volver al inicio de la página">↑</button>
   <div id="toast-container" class="toast-container" aria-live="assertive"></div>
 
     <!-- Auth Modal -->
-    <div id="auth-overlay" class="auth-overlay" hidden></div>
-    <div id="auth-modal" class="auth-modal" role="dialog" aria-modal="true" hidden>
+    <div id="auth-overlay" class="auth-overlay" hidden aria-hidden="true"></div>
+    <div id="auth-modal" class="auth-modal" role="dialog" aria-modal="true" hidden aria-labelledby="auth-title">
       <div class="auth-box">
         <header class="auth-header"><h2 id="auth-title" class="auth-logo-modal"><span>videoclub</span>.<span>digital</span></h2></header>
         <section id="login-view">
           <h3>Iniciar Sesión</h3>
-          <form id="login-form"><div class="form-group"><label>Email</label><input type="email" id="login-email" required/></div><div class="form-group"><label>Contraseña</label><input type="password" id="login-password" required/></div><button type="submit" class="auth-button">Acceder</button></form>
+          <form id="login-form"><div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" required/></div><div class="form-group"><label for="login-password">Contraseña</label><input type="password" id="login-password" required/></div><button type="submit" class="auth-button">Acceder</button></form>
           <div class="auth-toggle-text">¿No tienes cuenta? <button type="button" id="show-register-view">Regístrate</button></div>
         </section>
         <section id="register-view" style="display: none">
           <h3>Crear Cuenta</h3>
-          <form id="register-form"><div class="form-group"><label>Email</label><input type="email" id="register-email" required/><small>Te enviaremos confirmación.</small></div><div class="form-group"><label>Contraseña</label><input type="password" id="register-password" required minlength="6"/><small>Mínimo 6 caracteres.</small></div><button type="submit" class="auth-button">Crear Cuenta</button></form>
+          <form id="register-form"><div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" required/><small>Te enviaremos confirmación.</small></div><div class="form-group"><label for="register-password">Contraseña</label><input type="password" id="register-password" required minlength="6"/><small>Mínimo 6 caracteres.</small></div><button type="submit" class="auth-button">Crear Cuenta</button></form>
           <div class="auth-toggle-text">¿Ya tienes cuenta? <button type="button" id="show-login-view">Inicia sesión</button></div>
         </section>
         <div id="auth-message" class="auth-message" style="display: none" role="alert"></div>
       </div>
     </div>
 
-    <!-- Quick View Modal Wrapper -->
+    <!-- Quick View Modal Wrapper (UNIFICADO Y LIMPIO) -->
     <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>
-    <div id="quick-view-modal" class="quick-view-modal" role="dialog" hidden><div id="quick-view-content" class="quick-view-content"></div></div>
+    <div
+      id="quick-view-modal"
+      class="quick-view-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="quick-view-title"
+      tabindex="-1"
+      hidden
+    >
+      <div id="quick-view-content" class="quick-view-content"></div>
+    </div>
 
-  <!-- ================================================================= -->
-  <!-- PLANTILLAS PARA GENERACIÓN DINÁMICA DE CONTENIDO -->
-  <!-- ================================================================= -->
+    <!-- Script Principal -->
+    <script type="module" src="/src/js/main.js"></script>
+
+  <!-- Templates -->
   <template id="movie-card-template">
     <div class="movie-card">
       <div class="flip-card-inner">
@@ -197,7 +218,6 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
               decoding="async"
             />
             <div class="card-rating-block">
-              <!-- Icono Suspenso (Estrella hueca) -->
               <svg class="low-rating-circle" data-action="set-rating-suspenso">
                  <use href="/src/sprite.svg#icon-star"></use>
               </svg>
@@ -206,28 +226,24 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
                 data-template="average-rating-stars"
                 data-action="set-rating-estrellas"
               >
-                <!-- Estrella 1 -->
                 <svg class="star-icon" data-rating-level="1">
                     <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
                 </svg>
-                <!-- Estrella 2 -->
                 <svg class="star-icon" data-rating-level="2">
                     <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
                 </svg>
-                <!-- Estrella 3 -->
                 <svg class="star-icon" data-rating-level="3">
                     <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
                 </svg>
-                  <!-- Estrella 4 -->
                 <svg class="star-icon" data-rating-level="4">
                     <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
                 </svg>
               </div>
-            <button class="card-action-btn" data-action="toggle-watchlist"><svg class="icon-watchlist"><use href="/src/sprite.svg#icon-bookmark-plus"></use></svg></button>
+            <button type="button" class="card-action-btn" data-action="toggle-watchlist" aria-label="Añadir a mi lista"><svg class="icon-watchlist"><use href="/src/sprite.svg#icon-bookmark-plus"></use></svg></button>
             </div>
           </div>
 
@@ -237,7 +253,7 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
               <div class="front-director-info" data-template="director"></div>
             </div>
             <div class="movie-meta">
-  <div class="card-icons-line"></div> 
+              <div class="card-icons-line"></div> 
               <div class="year-country-line"><div class="year-flag-group"><span data-template="year"></span><span class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></span></div>
               </div>
             </div>
@@ -262,7 +278,6 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
         <use href="/src/sprite.svg#icon-wikipedia"></use>
       </svg>
     </a>
-    <!-- 2. LUEGO LOS CAPÍTULOS Y DURACIÓN -->
     <span data-template="episodes"></span>
     <span data-template="duration"></span>
             </div>
@@ -339,7 +354,7 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
               ><span data-template="critic"></span>
             </div>
           </div>
-          <button class="expand-content-btn" aria-label="Expandir sinopsis">
+          <button type="button" class="expand-content-btn" aria-label="Expandir sinopsis">
             +
           </button>
         </div>
@@ -357,21 +372,6 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
       </div>
     </div>
   </template>
-  
-  <script type="module" src="/src/js/main.js"></script>
-
-  <div id="quick-view-overlay" class="quick-view-overlay" hidden></div>
-  <div
-    id="quick-view-modal"
-    class="quick-view-modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="quick-view-title"
-    hidden
-    aria-hidden="true"
-  >
-    <div id="quick-view-content" class="quick-view-content"></div>
-  </div>
 
   <template id="quick-view-template">
     <div class="quick-view-front">
@@ -383,9 +383,7 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
         height="750"
         decoding="async"
       />
-      <!--  ▼▼▼ BLOQUE DE CALIFICACIÓN Y ACCIONES (NUEVO) ▼▼▼ -->
       <div class="card-rating-block">
-              <!-- Icono Suspenso (Estrella hueca) -->
               <svg class="low-rating-circle" data-action="set-rating-suspenso">
                  <use href="/src/sprite.svg#icon-star"></use>
               </svg>
@@ -394,28 +392,24 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
           data-template="average-rating-stars"
           data-action="set-rating-estrellas"
         >
-            <!-- Estrella 1 -->
             <svg class="star-icon" data-rating-level="1">
                 <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                 <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
             </svg>
-            <!-- Estrella 2 -->
             <svg class="star-icon" data-rating-level="2">
                 <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                 <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
             </svg>
-            <!-- Estrella 3 -->
             <svg class="star-icon" data-rating-level="3">
                 <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                 <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
             </svg>
-              <!-- Estrella 4 -->
             <svg class="star-icon" data-rating-level="4">
                 <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
                 <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
             </svg>
         </div>
-            <button class="card-action-btn" data-action="toggle-watchlist"><svg class="icon-watchlist"><use href="/src/sprite.svg#icon-bookmark-plus"></use></svg></button>
+            <button type="button" class="card-action-btn" data-action="toggle-watchlist" aria-label="Añadir a mi lista"><svg class="icon-watchlist"><use href="/src/sprite.svg#icon-bookmark-plus"></use></svg></button>
       </div>
       <div class="movie-info movie-summary">
         <div class="title-director-block">
@@ -423,8 +417,7 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
           <div class="front-director-info" data-template="director"></div>
         </div>
         <div class="movie-meta">
-  <div class="card-icons-line"></div>
-          <!-- Contenedor para el año y la bandera -->
+          <div class="card-icons-line"></div>
           <div class="year-country-line">
             <div class="year-flag-group">
               <span data-template="year"></span>
@@ -442,7 +435,6 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
       </div>
       <div class="back-meta-header">
         <div class="episode-duration-group">
-    <!-- 1. MOVEMOS WIKIPEDIA AQUÍ (AL PRINCIPIO) -->
     <a
       href="#"
       target="_blank"
@@ -456,7 +448,6 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
         <use href="/src/sprite.svg#icon-wikipedia"></use>
       </svg>
     </a>
-    <!-- 2. LUEGO LOS CAPÍTULOS Y DURACIÓN -->
     <span data-template="episodes"></span>
     <span data-template="duration"></span>
         </div>
