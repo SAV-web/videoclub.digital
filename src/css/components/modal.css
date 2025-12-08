@@ -76,10 +76,8 @@
 /* =================================================================
    3. OVERRIDES DE COMPONENTES (Adaptación de Card a Modal)
    =================================================================
-   NOTA DE ARQUITECTURA:
-   Las siguientes reglas sobrescriben estilos definidos en 'card.css'.
-   Reutilizamos el marcado HTML de la tarjeta, pero adaptamos la
-   visualización para el contexto expandido de la modal.
+   NOTA DE ARQUITECTURA: estas reglas sobrescriben lo definido en 'card.css'.
+   Reutilizamos el HTML de la tarjeta,adaptando la visualización a la modal.
    ================================================================= */
 
 /* --- Imagen del Póster --- */
@@ -88,108 +86,110 @@
   height: auto;
   display: block;
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-xs);
+  /* CAMBIO: Eliminamos el margen para pegar los iconos a la foto */
+  margin-bottom: 0;
+  box-shadow: var(--shadow);
 }
 
 /* --- Tipografía (Títulos y Director) --- */
 .quick-view-modal .movie-summary {
-  padding-top: 0; /* Override: Eliminamos padding superior de la tarjeta */
+  /* Separamos el bloque de texto de los iconos de valoración */
+  padding-top: 0;
   padding-left: var(--space-xs);
   padding-right: var(--space-xs);
 }
 
 .quick-view-modal .movie-summary h3[data-template="title"] {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg); /* Título mucho más grande */
+  font-weight: var(--font-weight-extrabold);
   color: var(--color-text-primary);
-  line-height: var(--line-height-tight);
-  margin-bottom: var(--space-xxs);
-  letter-spacing: -0.02em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.1;
+  margin-bottom: var(--space-xs);
+  letter-spacing: -0.03em;
+  display: block; /* Quitamos límites de líneas en modal */
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .quick-view-modal .movie-summary .front-director-info {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-light);
-  color: var(--color-text-tertiary);
-  margin-bottom: var(--space-sm);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xxs);
 }
 
-/* --- Acciones y Valoración (Aumentados) --- */
+/* --- Acciones y Valoración (GIGANTES) --- */
 .quick-view-modal .card-rating-block {
   position: static;
   transform: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px var(--space-xs); /* Padding ajustado */
+  padding: 2px var(--space-xs) var(--space-sm);
   margin: 0;
   pointer-events: auto;
+  /* Línea divisoria sutil para separar de los textos */
+  border-bottom: 1px solid var(--color-border);
 }
 
-/* Iconos Grandes (Mejora Táctil) */
+/* Iconos de estrellas y suspenso muy grandes */
 .quick-view-modal .star-icon {
-  width: 32px; height: 32px;
-  margin-right: 4px;
+  width: 42px; height: 42px; /* De 32px a 42px */
+  margin-right: 2px;
 }
 
 .quick-view-modal .low-rating-circle {
-  width: 30px; height: 30px;
+  width: 40px; height: 40px;
+  stroke-width: 2.5px; /* Trazo más grueso acorde al tamaño */
 }
 
-/* Botón Watchlist (Tamaño FAB) */
+/* Botón Watchlist (Tamaño XL) */
 .quick-view-modal .card-action-btn {
-  width: 56px; 
-  height: 56px;
+  width: 60px; 
+  height: 60px;
   margin-left: auto; 
 }
 .quick-view-modal .card-action-btn svg {
-  width: 32px; 
-  height: 32px;
+  width: 38px; /* Icono interno más grande */
+  height: 38px;
+  stroke-width: 2.5px;
 }
 
 /* --- Metadatos (Año, País, Iconos Plataforma) --- */
 .quick-view-modal .movie-meta {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  min-height: 28px;
+  align-items: flex-end; /* Alineamos a la base para que el texto del año cuadre con los iconos */
+  margin-top: auto; /* Empuja esto al final del contenedor si sobra espacio */
+  padding-top: var(--space-xs);
 }
 
+/* Iconos de Estudio/Plataforma */
 .quick-view-modal .card-icons-line {
   display: flex; align-items: center; gap: var(--space-md);
 }
-.quick-view-modal .platform-icon svg { width: 28px; height: 28px; }
+.quick-view-modal .platform-icon svg { 
+  width: 40px; height: 40px; /* Aumentado de 28px a 40px */
+}
 
+/* Grupo Año + Bandera */
 .quick-view-modal .year-flag-group {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-}
-
-/* --- Detalles Traseros (Espaciado mejorado) --- */
-.quick-view-modal .back-original-title-wrapper {
-  margin-bottom: var(--space-md); 
-}
-
-.quick-view-modal .back-meta-header {
-  display: flex; 
-  justify-content: flex-start;
-  margin-bottom: var(--space-md); 
-}
-
-.quick-view-modal .episode-duration-group {
-  display: flex; align-items: center; gap: 4px; 
-}
-
-.quick-view-modal .ratings-container {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-md); 
+  align-items: center;
+  gap: var(--space-sm);
+  
+  /* Año gigante y negrita */
+  font-size: 2rem; 
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  line-height: 1;
+}
+
+/* Bandera más grande */
+.quick-view-modal .country-flag-icon svg {
+  width: 28px; height: 28px; /* Aumentado de 16px a 28px */
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.05); /* Borde sutil */
 }
 
 /* =================================================================
