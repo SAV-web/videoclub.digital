@@ -7,7 +7,7 @@
 
 import noUiSlider from 'nouislider';
 import 'nouislider/dist/nouislider.css'; 
-import { CONFIG } from "../constants.js"; // ✨ Actualizado a constants.js
+import { CONFIG } from "../constants.js";
 import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
@@ -18,6 +18,11 @@ import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG } from "../constants.js";
 import { loadAndRenderMovies } from "../main.js";
 import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
+
+// --- Constantes Locales ---
+const MOBILE_BREAKPOINT = 768;
+const SWIPE_VELOCITY_THRESHOLD = 0.4;
+let DRAWER_WIDTH = 280; // Valor por defecto, se sobrescribe dinámicamente
 
 // --- Referencias DOM Centralizadas ---
 const dom = {
@@ -38,9 +43,6 @@ const dom = {
 // =================================================================
 //          1. LÓGICA DE GESTOS TÁCTILES (Touch Drawer)
 // =================================================================
-
-const DRAWER_WIDTH = 280;
-const SWIPE_VELOCITY_THRESHOLD = 0.4;
 
 let touchState = {
   isDragging: false,
@@ -68,9 +70,18 @@ const closeMobileDrawer = () => {
   updateRewindButtonIcon(false);
 };
 
-function handleTouchStart(e) {
-  if (window.innerWidth > 768) return;
+// Leer el ancho real desde el CSS
+function updateDrawerWidth() {
+  if (dom.sidebar) {
+    const width = dom.sidebar.offsetWidth;
+    // Solo actualizamos si tiene sentido (es visible y tiene ancho)
+    if (width > 0) DRAWER_WIDTH = width;
+  }
+}
 
+function handleTouchStart(e) {
+  if (window.innerWidth > MOBILE_BREAKPOINT) return;
+  updateDrawerWidth(); 
   const isOpen = document.body.classList.contains("sidebar-is-open");
   // Permitir arrastre si está abierto (desde el sidebar) o cerrado (desde el borde izq)
   const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 80);
@@ -154,23 +165,30 @@ function updateRewindButtonIcon(isOpen) {
   dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
   dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
   dom.rewindButton.setAttribute("aria-expanded", isOpen);
+  // Mejora de Accesibilidad: Vinculación explícita
+  dom.rewindButton.setAttribute("aria-controls", "sidebar");
 }
 
 function initTouchGestures() {
   if (!dom.sidebar) return;
+  
+  // Leemos el ancho al arrancar
+  updateDrawerWidth();
+  
   document.addEventListener("touchstart", handleTouchStart, { passive: true });
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
   document.addEventListener("touchend", handleTouchEnd, { passive: true });
 
-  // Reset en resize
   window.addEventListener("resize", () => {
-    if (window.innerWidth > 768) {
+    // Actualizamos también al redimensionar por si acaso
+    if (window.innerWidth <= MOBILE_BREAKPOINT) updateDrawerWidth();
+    
+    if (window.innerWidth > MOBILE_BREAKPOINT) {
       document.body.classList.remove("sidebar-is-open");
       dom.sidebar.style.transform = "";
       dom.sidebar.style.transition = "";
       touchState.currentTranslate = -DRAWER_WIDTH;
     } else {
-      // Sincronizar estado visual si cambiamos de orientación en tablet/móvil
       if (document.body.classList.contains("sidebar-is-open")) openMobileDrawer();
       else closeMobileDrawer();
     }
@@ -291,6 +309,10 @@ function renderFilterPills() {
   updateFilterAvailabilityUI();
 }
 
+// Patrón Optimistic Update:
+// 1. Actualiza estado y UI inmediatamente.
+// 2. Lanza la carga de datos.
+// 3. Si falla, revierte al estado anterior.
 async function handleFilterChangeOptimistic(type, value) {
   const previousFilters = getActiveFilters();
   if (value) {
@@ -342,7 +364,10 @@ function resetFilters() {
 }
 
 export function collapseAllSections() {
-  dom.collapsibleSections.forEach((section) => section.classList.remove(CSS_CLASSES.ACTIVE));
+  dom.collapsibleSections.forEach((section) => {
+    section.classList.remove(CSS_CLASSES.ACTIVE);
+    section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
+  });
   if (dom.sidebarInnerWrapper) dom.sidebarInnerWrapper.classList.remove("is-compact");
 }
 
@@ -449,14 +474,18 @@ function setupAutocompleteHandlers() {
 
 function handlePillClick(e) {
   const pill = e.target.closest(".filter-pill");
-  if (!pill) return;
+  if (!pill) return false;
+  
   triggerHapticFeedback('medium');
   const { filterType, filterValue } = pill.dataset;
   pill.classList.add("is-removing");
+  
   pill.addEventListener("animationend", () => {
     if (pill.classList.contains("filter-pill--exclude")) handleToggleExcludedFilterOptimistic(filterType, filterValue);
     else handleFilterChangeOptimistic(filterType, null);
   }, { once: true });
+  
+  return true; // Pill click handled
 }
 
 function setupEventListeners() {
@@ -466,11 +495,10 @@ function setupEventListeners() {
     if (iconWrapper.firstChild) header.appendChild(iconWrapper.firstChild);
   });
 
-  // Manejo Unificado del Botón Rewind (Click en Desktop/Tablet/Móvil)
   if (dom.rewindButton) {
     dom.rewindButton.addEventListener("click", (e) => {
       triggerHapticFeedback('light');
-      const isMobile = window.innerWidth <= 768;
+      const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
       
       if (isMobile) {
         const isOpen = document.body.classList.contains("sidebar-is-open");
@@ -483,12 +511,11 @@ function setupEventListeners() {
     });
   }
 
-  // Cierre por Overlay (Móvil)
   if (dom.sidebarOverlay) {
     dom.sidebarOverlay.addEventListener("click", closeMobileDrawer);
   }
 
-if (dom.toggleRotationBtn) {
+  if (dom.toggleRotationBtn) {
     dom.toggleRotationBtn.addEventListener("click", (e) => {
       triggerHapticFeedback('light');
       unflipAllCards();
@@ -498,12 +525,10 @@ if (dom.toggleRotationBtn) {
       const isRotationDisabled = document.body.classList.contains("rotation-disabled");
       const button = e.currentTarget;
       
-      // Actualización visual (Iconos y Tooltips)
       button.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
       button.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
       button.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
       
-      // ✨ ACCESIBILIDAD: Comunicar estado al lector de pantalla
       button.setAttribute("aria-pressed", isRotationDisabled);
       
       localStorage.setItem("rotationState", isRotationDisabled ? "disabled" : "enabled");
@@ -513,7 +538,6 @@ if (dom.toggleRotationBtn) {
 
   if (dom.sidebarScrollable) {
     dom.sidebarScrollable.addEventListener("click", (e) => {
-      handlePillClick(e);
       const excludeBtn = e.target.closest(".exclude-filter-btn");
       if (excludeBtn) {
         e.stopPropagation();
@@ -522,6 +546,10 @@ if (dom.toggleRotationBtn) {
         handleToggleExcludedFilterOptimistic(excludeBtn.dataset.type, excludeBtn.dataset.value);
         return;
       }
+      
+      // Delegación ordenada: Si es una pill, paramos aquí.
+      if (handlePillClick(e)) return;
+
       const link = e.target.closest(".filter-link");
       if (link && !link.hasAttribute("disabled")) {
         triggerHapticFeedback('light');
@@ -539,12 +567,14 @@ if (dom.toggleRotationBtn) {
       triggerHapticFeedback('light');
       const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
       const isNowActive = !wasActive;
+      
       dom.collapsibleSections.forEach((section) => {
         if (section !== clickedSection) {
           section.classList.remove(CSS_CLASSES.ACTIVE);
           section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
         }
       });
+      
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
       header.setAttribute('aria-expanded', isNowActive);
       dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive);
@@ -557,8 +587,8 @@ if (dom.toggleRotationBtn) {
 // =================================================================
 
 export function initSidebar() {
-  if (window.innerWidth <= 768) {
-    updateRewindButtonIcon(false); // Móvil empieza cerrado
+  if (window.innerWidth <= MOBILE_BREAKPOINT) {
+    updateRewindButtonIcon(false);
   }
   
   const populateFilterSection = (filterType) => {
@@ -594,14 +624,19 @@ export function initSidebar() {
     dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
     dom.toggleRotationBtn.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
     dom.toggleRotationBtn.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
+    dom.toggleRotationBtn.setAttribute("aria-pressed", isRotationDisabled);
   }
 
   initYearSlider();
-  initTouchGestures(); // ACTIVACIÓN DE GESTOS
+  initTouchGestures();
   setupEventListeners();
   setupAutocompleteHandlers();
   setupYearInputSteppers();
 
+  // Convención de eventos globales:
+  // - "updateSidebarUI": estado cambiado (URL/popstate/reset), sincronizar sidebar.
+  // - "filtersReset": usuario pide reseteo total.
+  // - "uiActionTriggered": acción de UI que debe colapsar secciones.
   document.addEventListener("updateSidebarUI", () => {
     dom.sidebarFilterForms.forEach((form) => {
       const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);

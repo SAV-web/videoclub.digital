@@ -1,18 +1,13 @@
+/* src/css/components/sidebar.css */
+
 /* =================================================================
- *          COMPONENTE: Sidebar (Barra Lateral de Filtros)
+ *          COMPONENTE: Sidebar (Filtros y Contenido Interno)
  * =================================================================
- *  FICHERO: src/css/components/sidebar.css
- *  RESPONSABILIDAD: Estilar el contenedor lateral, los menús
- *  colapsables, las píldoras de filtro y el slider de año.
+ *  NOTA: La estructura y transiciones del contenedor .sidebar 
+ *  están definidas en layout.css para evitar conflictos.
  * ================================================================= */
 
-/* --- 1. Contenedor Principal y Animaciones --- */
-.sidebar {
-  transition: width var(--transition-duration-normal),
-    background-color var(--transition-duration-normal),
-    border-color var(--transition-duration-normal);
-}
-
+/* --- 1. Contenedor Interno --- */
 .sidebar-inner-wrapper {
   display: flex;
   flex-direction: column;
@@ -83,7 +78,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  /* Reduce espacio superior para acercar las píldoras a su título (Gestalt) */
   padding: var(--space-xxs) var(--space-xs) 0; 
   min-height: 1px;
 }
@@ -96,7 +90,7 @@
 .filter-pill {
   display: flex;
   align-items: center;
-  height: 30px; /* Altura fija para igualar texto e iconos */
+  height: 30px;
   padding: 0 var(--space-sm);
   border-radius: var(--radius-pill);
   background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
@@ -122,7 +116,6 @@
   line-height: 1;
   opacity: 0.7;
   transition: opacity var(--transition-duration-fast), transform var(--transition-duration-fast);
-  /* Flex para centrar verticalmente el contenido (X o Icono) */
   display: flex;
   align-items: center;
   height: 100%; 
@@ -130,13 +123,11 @@
 .filter-pill .remove-filter-btn:hover { opacity: 1; }
 .filter-pill .remove-filter-btn:active { transform: scale(0.9); }
 
-/* Animación de salida */
 @keyframes fadeOutPill {
   to { opacity: 0; transform: scale(0.8); }
 }
 .filter-pill.is-removing { animation: fadeOutPill 0.2s ease-out forwards; }
 
-/* Estilos Dark Mode para Píldoras */
 body.dark-mode .filter-pill {
   color: var(--color-bg);
   background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
@@ -157,11 +148,10 @@ body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 }
 .sidebar-scrollable-filters::-webkit-scrollbar { display: none; }
 
-/* Contenedor de Sección Colapsable */
 .collapsible-section {
   display: flex;
   flex-direction: column;
-  margin-bottom: var(--space-md); /* Separa visualmente los bloques */
+  margin-bottom: var(--space-md);
 }
 
 .collapsible-section .section-header {
@@ -184,13 +174,18 @@ body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 .collapsible-section .section-header:hover { background-color: var(--color-bg); }
 .collapsible-section .section-header:active { transform: scale(0.99); }
 
+/* Foco accesible para cabeceras de sección */
+.collapsible-section .section-header:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .chevron-icon {
   stroke: var(--color-text-secondary);
   transition: transform var(--transition-duration-normal);
 }
 .collapsible-section.active .chevron-icon { transform: rotate(90deg); }
 
-/* Contenido de la Sección (Lista de Filtros) */
 .section-content {
   display: flex;
   flex-direction: column;
@@ -219,7 +214,7 @@ body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
     visibility 0s linear 0s;
 }
 
-/* --- 6. Enlaces de Filtro (Items de la lista) --- */
+/* --- 6. Enlaces de Filtro --- */
 .filter-link {
   display: flex;
   justify-content: space-between;
@@ -240,6 +235,13 @@ body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 .filter-link:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
 .filter-link:active { transform: scale(0.98); transition-duration: 0.1s; }
 
+/* ✨ MEJORA: Accesibilidad teclado */
+.filter-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px; /* Interior para no romper layout */
+  background-color: var(--color-bg);
+}
+
 .filter-link.active {
   position: relative;
   padding-left: var(--space-sm);
@@ -258,13 +260,12 @@ body.dark-mode .filter-link.active { color: var(--color-bg); }
   transform: translateY(-50%);
 }
 
-/* Botón de Exclusión (Icono lateral) */
 .exclude-filter-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 18px; height: 18px;
-  margin-left: var(--space-md); /* Separación generosa con el texto */
+  margin-left: var(--space-md);
   border: 1px solid transparent;
   border-radius: 50%;
   background-color: transparent;
@@ -273,16 +274,22 @@ body.dark-mode .filter-link.active { color: var(--color-bg); }
   transition: all var(--transition-duration-fast);
 }
 .collapsible-section.active .exclude-filter-btn,
-.filter-link:hover .exclude-filter-btn { opacity: 1; }
+.filter-link:hover .exclude-filter-btn,
+.filter-link:focus-visible .exclude-filter-btn { opacity: 1; }
+
 .exclude-filter-btn:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); }
+
+/* ✨ MEJORA: Accesibilidad teclado para botón excluir */
+.exclude-filter-btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--color-accent-exclude);
+  outline-offset: 2px;
+}
+
 .filter-link.active .exclude-filter-btn,
 .filter-link.is-excluded .exclude-filter-btn { color: #fff; }
 
-/* Ajuste de tamaño para el icono SVG de exclusión */
-.exclude-filter-btn svg {
-  width: 15px; height: 15px;
-  stroke-width: 3;
-}
+.exclude-filter-btn svg { width: 15px; height: 15px; stroke-width: 3; }
 
 /* --- 7. Inputs y Autocompletado --- */
 .sidebar-filter-form { position: relative; margin-top: var(--space-xxs); }
@@ -335,7 +342,6 @@ body.dark-mode .filter-link.active { color: var(--color-bg); }
 #year-input-container { display: flex; justify-content: center; align-items: center; gap: var(--space-xxs); width: 100%; }
 .year-range-separator { color: var(--color-text-secondary); font-weight: bold; transform: translateY(-1px); flex-shrink: 0; }
 
-/* Estilos NoUiSlider */
 #year-slider.noUi-target {
   height: 6px;
   border: 1px solid var(--color-border);
@@ -387,7 +393,8 @@ body.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2)
   opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity var(--transition-duration-fast), visibility var(--transition-duration-fast);
 }
-.year-input-wrapper:hover .year-input-stepper { opacity: 1; visibility: visible; pointer-events: auto; }
+.year-input-wrapper:hover .year-input-stepper,
+.year-input:focus + .year-input-stepper { opacity: 1; visibility: visible; pointer-events: auto; }
 
 .stepper-btn {
   flex: 1; width: 100%;
@@ -402,7 +409,7 @@ body.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2)
 .stepper-btn:active { background-color: var(--color-border); }
 .stepper-btn.stepper-up { border-bottom: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) 0 0; }
 
-/* --- 9. Resultados y Perfil --- */
+/* --- 9. Resultados --- */
 .total-results-container {
   padding: var(--space-md) 0 var(--space-xs);
   color: var(--color-text-secondary);
@@ -412,9 +419,6 @@ body.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2)
   transition: opacity 0.3s ease;
 }
 .total-results-count { color: var(--color-text-primary); font-family: var(--font-title); }
-
-body.sidebar-is-open .profile-button-text,
-body:not(.sidebar-collapsed) .sidebar .profile-button-text { display: inline; }
 
 /* --- 10. Accesibilidad Táctil --- */
 @media (hover: none) and (pointer: coarse) {
@@ -426,7 +430,6 @@ body:not(.sidebar-collapsed) .sidebar .profile-button-text { display: inline; }
     margin-left: 6px;
     font-size: 1.2rem;
   }
-  /* Área de clic expandida */
   .filter-pill .remove-filter-btn::after {
     content: "";
     position: absolute;
@@ -436,72 +439,52 @@ body:not(.sidebar-collapsed) .sidebar .profile-button-text { display: inline; }
   }
 }
 
-/* --- 11. Indicador de Progreso (Loading State) --- */
-
+/* --- 11. Indicador de Progreso --- */
 .sidebar::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  
-  /* Fondo base transparente */
+  top: 0; left: 0; width: 100%; height: 3px;
   background-color: transparent;
-  
-  /* El "viajero": un gradiente del color de acento que se desvanece en los bordes */
-  background-image: linear-gradient(
-    90deg, 
-    transparent 0%, 
-    var(--color-accent) 50%, 
-    transparent 100%
-  );
-  
-  background-size: 50% 100%; /* El viajero ocupa la mitad del ancho */
+  background-image: linear-gradient(90deg, transparent 0%, var(--color-accent) 50%, transparent 100%);
+  background-size: 50% 100%;
   background-repeat: no-repeat;
-  background-position: -50% 0; /* Posición inicial: fuera a la izquierda */
-  
+  background-position: -50% 0;
   opacity: 0;
-  z-index: 1001; /* Por encima del contenido del sidebar */
+  z-index: 1001;
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
 
-/* Estado activo: Animación infinita cuando el body tiene la clase .is-fetching */
 body.is-fetching .sidebar::before {
   opacity: 1;
   animation: indeterminate-loading 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes indeterminate-loading {
-  0% {
-    background-position: -50% 0; /* Entra por la izquierda */
-  }
-  100% {
-    background-position: 150% 0; /* Sale por la derecha */
-  }
+  0% { background-position: -50% 0; }
+  100% { background-position: 150% 0; }
 }
 
-/* 12. PERFIL DE USUARIO (Avatar y Login) */
+/* =================================================================
+   12. PERFIL DE USUARIO (Avatar y Login)
+   ================================================================= */
 
 .profile-container {
-  margin-top: auto; /* Push to bottom (Flexbox magic) */
+  margin-top: auto;
   padding-top: var(--space-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 52px; /* Altura fija para evitar saltos */
+  height: 52px;
   transition: opacity var(--transition-duration-normal);
 }
 
-/* Grupo de Sesión (Avatar + Logout) */
 .user-session-group {
-  display: none; /* Oculto por defecto (usuario anónimo) */
+  display: none;
   align-items: center;
   gap: var(--space-md);
 }
 
-/* Avatar (Círculo con inicial) */
 .user-avatar {
   display: flex;
   align-items: center;
@@ -518,18 +501,11 @@ body.is-fetching .sidebar::before {
 }
 .user-avatar:hover { transform: scale(1.1); }
 
-/* --- Lógica de Estados (Logueado vs Anónimo) --- */
-
-/* Cuando el usuario está logueado: */
 body.user-logged-in #login-button { display: none; }
 body.user-logged-in #user-session-group { display: inline-flex; }
 
-/* --- Adaptación Sidebar Colapsado (Desktop) --- */
 @media (min-width: 769px) {
-  /* En modo mini, ocultamos el avatar y pegamos el logout */
   body.sidebar-collapsed .user-avatar { display: none; }
   body.sidebar-collapsed .user-session-group { gap: 0; }
-  
-  /* Ajuste fino para centrar el icono de logout/login */
   body.sidebar-collapsed .profile-container { justify-content: center; }
 }

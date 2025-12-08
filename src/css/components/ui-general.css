@@ -3,87 +3,45 @@
 /* ================================================================= */
 
 /* --- Esqueleto de Carga (Shimmer Effect Real) --- */
-
-/* Base común para tarjetas y líneas de texto */
 .skeleton-card,
 .skeleton {
   position: relative;
-  overflow: hidden; /* Crítico: evita que el brillo se vea fuera de la caja */
-  /* Usamos un gris neutro como base, más oscuro que el fondo de la web */
+  overflow: hidden;
   background-color: #e0e0e0; 
 }
 
-/* Ajustes específicos para la tarjeta */
 .skeleton-card {
   height: auto;
   aspect-ratio: 500 / 950;
   border-radius: var(--radius-lg);
-  /* Eliminamos la sombra para que parezca una estructura plana esperando datos */
   box-shadow: none; 
 }
 
-/* El elemento pseudo que crea el efecto de brillo */
 .skeleton-card::after,
 .skeleton::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  transform: translateX(-100%); /* Empieza fuera a la izquierda */
-  
-  /* EL GRADIENTE (SHIMMER) */
-  /* Transparente -> Blanco translúcido -> Transparente */
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.6) 50%, /* Brillo central fuerte */
-    transparent 100%
-  );
-  
-  /* Animación infinita */
+  top: 0; left: 0; width: 100%; height: 100%;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
   animation: shimmer 1.5s infinite;
 }
 
-/* Definición de la animación */
 @keyframes shimmer {
-  100% {
-    transform: translateX(100%); /* Termina fuera a la derecha */
-  }
+  100% { transform: translateX(100%); }
 }
 
-/* --- MODO OSCURO --- */
 html.dark-mode .skeleton-card,
-html.dark-mode .skeleton {
-  /* Base gris oscura, ligeramente más clara que el fondo negro */
-  background-color: #2c2c2c; 
-}
+html.dark-mode .skeleton { background-color: #2c2c2c; }
 
 html.dark-mode .skeleton-card::after,
 html.dark-mode .skeleton::after {
-  /* El brillo en modo oscuro debe ser sutil para no deslumbrar */
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.08) 50%, /* Brillo muy suave */
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
 }
 
-/* --- Estilos específicos del Sidebar (Mantenidos pero adaptados) --- */
-.skeleton-sidebar-header {
-  width: 60%;
-  height: 24px;
-  margin: var(--space-sm) var(--space-xs);
-  border-radius: var(--radius-sm);
-}
-.skeleton-sidebar-line {
-  height: 16px; /* Un poco más fino */
-  margin-bottom: var(--space-xs);
-  margin-left: var(--space-sm);
-  border-radius: var(--radius-sm);
-}
+/* --- Skeletons Sidebar --- */
+.skeleton-sidebar-header { width: 60%; height: 24px; margin: var(--space-sm) var(--space-xs); border-radius: var(--radius-sm); }
+.skeleton-sidebar-line { height: 16px; margin-bottom: var(--space-xs); margin-left: var(--space-sm); border-radius: var(--radius-sm); }
 .skeleton-sidebar-line:nth-of-type(1) { width: 70%; }
 .skeleton-sidebar-line:nth-of-type(2) { width: 85%; }
 .skeleton-sidebar-line:nth-of-type(3) { width: 60%; }
@@ -99,32 +57,29 @@ html.dark-mode .skeleton::after {
   padding: var(--space-xs);
 }
 
-/* Estilo para el indicador de la página actual (que es un <span>, no un botón) */
+/* 
+   ✨ MEJORA 10: Botón de Paginación Específico 
+   Sobrescribe el padding lateral del .btn estándar para hacerlo cuadrado.
+*/
+.btn--pagination {
+  width: var(--btn-height, 40px);
+  padding: 0; /* Centrado geométrico del número/flecha */
+}
+
+/* Indicador de página actual (no es botón, es span) */
 .pagination-current {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   height: var(--btn-height, 40px);
-  min-width: var(--btn-height, 40px); /* Asegura que sea al menos cuadrado */
-  padding: 0 0.8rem;
+  width: var(--btn-height, 40px); /* Cuadrado perfecto */
+  padding: 0;
   border-radius: var(--radius-md);
   font-size: 0.9rem;
   font-weight: 700;
   background-color: var(--color-accent);
   color: var(--color-bg);
-  cursor: default; /* Cursor normal, ya que no es clickable */
-}
-
-/* ========================================================== */
-/*  ▼▼▼ CORRECCIÓN: BOTONES DE PAGINACIÓN UNIFORMES ▼▼▼       */
-/*      Forzamos un ancho fijo igual a la altura para que todos */
-/*      los botones sean perfectamente cuadrados, sin importar  */
-/*      el contenido (ej. '8' vs '12').                     */
-/* ========================================================== */
-.pagination-container > .btn,
-.pagination-container > .pagination-current {
-  width: var(--btn-height, 40px);
-  padding: 0; /* Eliminamos el padding para que el texto se centre en el cuadrado */
+  cursor: default;
 }
 
 /* --- Botón de "Volver Arriba" --- */
@@ -133,8 +88,7 @@ html.dark-mode .skeleton::after {
   bottom: var(--space-md);
   right: var(--space-xl);
   z-index: var(--z-index-sidebar);
-  width: 44px;
-  height: 44px;
+  width: 44px; height: 44px;
   border: none;
   border-radius: var(--radius-round);
   background-color: var(--color-accent);
@@ -142,44 +96,28 @@ html.dark-mode .skeleton::after {
   color: #fff;
   cursor: pointer;
   font-size: var(--font-size-xl);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(20px);
-  transition: opacity var(--transition-duration-normal),
-    visibility var(--transition-duration-normal),
-    transform var(--transition-duration-normal);
+  opacity: 0; visibility: hidden; transform: translateY(20px);
+  transition: opacity var(--transition-duration-normal), visibility var(--transition-duration-normal), transform var(--transition-duration-normal);
 }
-.back-to-top:hover {
-  transform: scale(1.05);
-}
-.back-to-top:active {
-  transform: scale(0.95);
-  transition-duration: 0.1s;
-}
-.back-to-top.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
+.back-to-top:hover { transform: scale(1.05); }
+.back-to-top:active { transform: scale(0.95); transition-duration: 0.1s; }
+.back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
 
-/* --- Overlay del Sidebar en móvil --- */
+/* --- Overlay del Sidebar (Móvil) --- */
+/* 
+   NOTA ARQUITECTURA: 
+   Este overlay (.sidebar-overlay) es exclusivo para el Drawer de navegación.
+   NO confundir con .quick-view-overlay (modales) ni .auth-overlay (login).
+   Tienen z-index y contextos diferentes.
+*/
 .sidebar-overlay {
   display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0; width: 100%; height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  
-  /* CAMBIO CRÍTICO: */
-  /* Antes: z-index: var(--z-index-overlay); (1999) -> Tapaba el sidebar */
-  /* Ahora: 999. Tapa el Header (900) pero queda debajo del Sidebar Móvil (1001) */
-  z-index: 999;
-  
+  z-index: 999; /* Debajo del Sidebar (1001), encima del Header (900) */
   opacity: 0;
   transition: opacity var(--transition-duration-normal);
-  /* Aseguramos que el overlay use backdrop-filter para consistencia visual (opcional) */
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
 }
@@ -196,10 +134,7 @@ body.sidebar-is-open .sidebar-overlay {
   color: var(--color-text-secondary);
   text-align: center;
 }
-.no-results p {
-  margin-top: var(--space-xs);
-  margin-bottom: var(--space-lg);
-}
+.no-results p { margin-top: var(--space-xs); margin-bottom: var(--space-lg); }
 
 /* --- Notificaciones Toast --- */
 .toast-container {
@@ -207,9 +142,7 @@ body.sidebar-is-open .sidebar-overlay {
   bottom: var(--space-md);
   right: var(--space-lg);
   z-index: var(--z-index-toast);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+  display: flex; flex-direction: column; gap: var(--space-xs);
 }
 
 .toast {
@@ -221,59 +154,27 @@ body.sidebar-is-open .sidebar-overlay {
   font-weight: bold;
   animation: toast-in 0.5s ease, toast-out 0.5s ease 4.5s forwards;
 }
-.toast--error {
-  background-color: #dc3545;
-}
-.toast--success {
-  background-color: #28a745;
-}
+.toast--error { background-color: var(--color-error); }
+.toast--success { background-color: var(--color-success); }
+
 @keyframes toast-in {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 @keyframes toast-out {
-  to {
-    transform: translateY(100%);
-    opacity: 0;
-  }
+  to { transform: translateY(100%); opacity: 0; }
 }
 
-/* ================================================================= */
-/* Animaciones para View Transitions
-/* ================================================================= */
-
-/*
-  Define la animación de entrada para los nuevos elementos.
-  Empiezan transparentes y ligeramente desplazados hacia abajo.
-*/
+/* --- Animaciones View Transitions --- */
 @keyframes card-enter-animation {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
+  from { opacity: 0; transform: translateY(15px); }
 }
+::view-transition-new(root) { animation: card-enter-animation 0.4s ease-out; }
 
-/*
-  Aplica la animación a la "vista nueva" durante una transición de vista.
-  Esto crea un efecto de entrada suave para el contenido que aparece.
-*/
-::view-transition-new(root) {
-  animation: card-enter-animation 0.4s ease-out;
-}
-
-/* --- Accesibilidad Táctil para Paginación --- */
+/* --- Accesibilidad Táctil --- */
 @media (hover: none) and (pointer: coarse) {
-  .pagination-container > .btn,
-  .pagination-container > .pagination-current {
-    /* Forzamos un tamaño mínimo de 48px para dedos */
-    min-width: 48px;
-    height: 48px; 
-    font-size: 1rem; /* Texto ligeramente más grande */
+  .btn--pagination,
+  .pagination-current {
+    min-width: 48px; height: 48px; font-size: 1rem;
   }
 }

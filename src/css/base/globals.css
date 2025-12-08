@@ -1,73 +1,67 @@
-/* Contiene estilos globales para el body, animaciones reutilizables y scrollbars. */
+/* src/css/base/globals.css */
 
+/* =================================================================
+   ESTILOS GLOBALES Y RESET
+   ================================================================= */
+
+/* --- 1. Reset Básico --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* --- 2. Configuración del Body --- */
 body {
   font-family: var(--font-body);
+  background-color: var(--color-bg); /* Consume token */
+  color: var(--color-text-primary);  /* Consume token */
+  
   overflow-x: hidden;
+  line-height: var(--line-height-normal);
   
-  /* --- MEJORA TIPOGRÁFICA (Micro-tipografía) --- */
-  
-  /* 1. Rendering optimizado */
-  -webkit-font-smoothing: antialiased; /* Texto más nítido en MacOS/iOS */
+  /* Rendering de texto optimizado */
+  -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility; /* Activa kerning y ligaduras avanzadas */
-  
-  /* 2. Características OpenType de Inter */
-  /* 'cv05': 'l' con cola (diferencia l de I y 1) */
-  /* 'calt': Alternativas contextuales (siempre activo por defecto, pero aseguramos) */
-  /* 'case': Puntuación alineada para mayúsculas (ideal para fichas técnicas) */
+  text-rendering: optimizeLegibility;
   font-feature-settings: "cv05", "calt", "case";
-  
-  /* --- Fin Mejora Tipográfica --- */
 
-  transition: background-color var(--transition-duration-normal)
-      var(--transition-timing-function),
-    color var(--transition-duration-normal) var(--transition-timing-function);
+  /* Transición suave de tema global */
+  transition: background-color var(--transition-duration-normal) var(--transition-timing-function),
+              color var(--transition-duration-normal) var(--transition-timing-function);
 }
 
-/* ========================================================== */
-/*  ▼▼▼ BLOQUEO DE SCROLL PARA MODALES ▼▼▼
-/*      Cuando una modal está activa, se añade esta clase al body
-/*      para evitar que el contenido de fondo se desplace.
-/* ========================================================== */
-body.modal-open {
-  overflow: hidden;
-  /* Opcional: Evita rebote elástico en iOS en el body */
-  overscroll-behavior: none; 
-}
-
-@keyframes pop-effect {
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-.pop-animation {
-  animation: pop-effect 0.3s var(--transition-timing-function);
-}
-
-/* --- Barra de Scroll Personalizada --- */
+/* --- 3. Scrollbar Personalizada --- */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-bg);
-  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb {
   background-color: var(--color-border);
-  border-radius: 10px;
-  border: 1px solid var(--color-bg);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--color-bg); /* Espacio visual */
 }
-html,
-body,
-.sidebar-autocomplete-results,
-#autocomplete-results {
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-secondary);
+}
+
+/* Soporte Firefox */
+html {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) var(--color-bg);
 }
 
-/* --- Accesibilidad --- */
+/* --- 4. Estados de Body (Bloqueo de Scroll) --- */
+body.modal-open,
+body.sidebar-is-open {
+  overflow: hidden;
+  overscroll-behavior: none; /* Evita rebote elástico en móviles */
+}
+
+/* --- 5. Utilidades de Accesibilidad --- */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -81,9 +75,7 @@ body,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -91,9 +83,10 @@ body,
   }
 }
 
-/* BLOQUEO DE SCROLL (Scroll Locking) */
-/* Evita que el fondo se mueva cuando la modal o el sidebar están abiertos */
-body.sidebar-is-open {
-  overflow: hidden;
-  overscroll-behavior: none; 
+/* --- 6. Animaciones Globales --- */
+@keyframes pop-effect {
+  50% { transform: scale(1.1); }
+}
+.pop-animation {
+  animation: pop-effect 0.3s var(--transition-timing-function);
 }

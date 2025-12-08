@@ -1,14 +1,11 @@
 // =================================================================
-//          SCRIPT PRINCIPAL (v6.3 - Títulos Dinámicos)
+//          SCRIPT PRINCIPAL
 // =================================================================
 // FICHERO: src/js/main.js
-// CAMBIO: Actualizada updatePageTitle para incluir Estudios.
-// OPTIMIZACIÓN: Uso de FILTER_CONFIG para evitar hardcodear nombres.
 // =================================================================
 
 import "../css/main.css";
-// import "flag-icons/css/flag-icons.min.css";
-import { CSS_CLASSES, SELECTORS, DEFAULTS, ICONS, FILTER_CONFIG, CONFIG } from "./constants.js";
+import { CONFIG } from "./constants.js";
 
 // 1. Imports de Utilidades
 import { 
@@ -37,8 +34,11 @@ import {
   updateTypeFilterUI,
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
+  showToast,        // ✨ MEJORA 3.1: Import recuperado
+  initThemeToggle 
 } from "./ui.js";
 
+import { CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
 import {
   getState,
   getActiveFilters,
@@ -67,7 +67,9 @@ import {
   renderErrorState,
 } from "./components/card.js";
 
-import { initQuickView } from "./components/quick-view.js";
+import { 
+  initQuickView 
+} from "./components/quick-view.js";
 
 const URL_PARAM_MAP = {
   q: "searchTerm", genre: "genre", year: "year", country: "country",
@@ -87,12 +89,11 @@ export async function loadAndRenderMovies(page = 1) {
   updatePageTitle();
   updateUrl();
 
-  // Feedback Visual Inmediato
+  // Estado de carga inicial
   document.body.classList.add('is-fetching');
   dom.gridContainer.classList.add('is-fetching');
-  
-  // Mostramos Skeletons inmediatamente para sensación de velocidad
   dom.gridContainer.setAttribute("aria-busy", "true");
+  
   renderSkeletons(dom.gridContainer, dom.paginationContainer);
   updateHeaderPaginationState(getCurrentPage(), 0);
   
@@ -119,13 +120,8 @@ export async function loadAndRenderMovies(page = 1) {
         preloadLcpImage(movies[0]);
       }
       
-      // Renderizado final
       const performRender = () => {
         updateDomWithResults(movies, totalMovies);
-        // Limpieza de estados de carga
-        document.body.classList.remove('is-fetching');
-        dom.gridContainer.classList.remove('is-fetching');
-        dom.gridContainer.setAttribute("aria-busy", "false");
       };
 
       if (supportsViewTransitions) {
@@ -137,14 +133,24 @@ export async function loadAndRenderMovies(page = 1) {
     } catch (error) {
       if (error.name === "AbortError") return;
 
-      document.body.classList.remove('is-fetching');
-      dom.gridContainer.classList.remove('is-fetching');
-      dom.gridContainer.setAttribute("aria-busy", "false");
-      
       console.error("Error en carga:", error);
+      
       const msg = getFriendlyErrorMessage(error);
-      showToast(msg, "error");
-      renderErrorState(dom.gridContainer, dom.paginationContainer, msg);
+      if (msg) { // ✨ MEJORA 3.3: Chequeo de seguridad
+        showToast(msg, "error");
+      }
+      
+      renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
+      
+    } finally {
+      // ✨ MEJORA 3.3: Limpieza centralizada en finally
+      // CRÍTICO: Solo limpiamos si NO fue abortada. Si fue abortada, 
+      // significa que hay otra petición en curso que necesita el spinner activo.
+      if (!signal.aborted) {
+        document.body.classList.remove('is-fetching');
+        dom.gridContainer.classList.remove('is-fetching');
+        dom.gridContainer.setAttribute("aria-busy", "false");
+      }
     }
   };
 
@@ -246,11 +252,13 @@ function setupHeaderListeners() {
 }
 
 function setupGlobalListeners() {
+  // Cierre de autocompletado y sidebar al hacer clic fuera
   document.addEventListener("click", (e) => {
     if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
     if (!e.target.closest(".sidebar")) collapseAllSections();
   });
 
+  // Delegación de eventos para paginación
   dom.paginationContainer.addEventListener("click", async (e) => {
     const button = e.target.closest(".btn[data-page]");
     if (button) {
@@ -261,6 +269,7 @@ function setupGlobalListeners() {
     }
   });
 
+  // Delegación de eventos para la grid (Tarjetas y botón de limpiar)
   dom.gridContainer.addEventListener("click", function(e) {
     const cardElement = e.target.closest(".movie-card");
     if (cardElement) {
@@ -275,18 +284,15 @@ function setupGlobalListeners() {
 
   initGridHoverSystem(dom.gridContainer);
 
+  // Delegación para Quick View
   document.getElementById("quick-view-content").addEventListener("click", function(e) {
     handleCardClick.call(this, e);
   });
   
-  dom.themeToggleButton.addEventListener("click", (e) => {
-    triggerPopAnimation(e.currentTarget);
-    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    const isDarkMode = document.documentElement.classList.toggle("dark-mode");
-    localStorage.setItem("theme", isDarkMode ? "dark" : "light");
-    e.currentTarget.setAttribute("aria-pressed", isDarkMode);
-});
+  // ✨ MEJORA 3.2: Eliminado listener duplicado de themeToggleButton. 
+  // Ahora se gestiona 100% en ui.js/initThemeToggle.
   
+  // Scroll Listener (Back to top & Header shadow)
   let isTicking = false;
   window.addEventListener("scroll", () => {
     if (!isTicking) {
@@ -302,11 +308,13 @@ function setupGlobalListeners() {
 
   dom.backToTopButton.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
+  // Botón de cerrar sidebar (Rewind) en overlay
   const rewindButton = document.querySelector("#rewind-button");
   if (dom.sidebarOverlay && rewindButton) {
     dom.sidebarOverlay.addEventListener("click", () => rewindButton.click());
   }
 
+  // Tecla Escape para sidebar
   document.addEventListener("keydown", (e) => {
     if (
       e.key === "Escape" &&
@@ -316,6 +324,7 @@ function setupGlobalListeners() {
     }
   });
 
+  // Evento personalizado para actualizar tarjetas
   document.addEventListener("card:requestUpdate", (e) => {
     const { cardElement } = e.detail;
     if (cardElement) {
@@ -371,37 +380,34 @@ function setupAuthSystem() {
   });
 }
 
-// =================================================================
-//          LÓGICA DE TÍTULOS DINÁMICOS (OPTIMIZADA)
-// =================================================================
 function updatePageTitle() {
-  // Obtenemos todos los filtros activos, incluido 'studio'
-  const { searchTerm, genre, year, country, director, actor, selection, studio } = getActiveFilters();
-
+  const { searchTerm, genre, year, country, director, actor, selection } =
+    getActiveFilters();
   let title = "Tu brújula cinéfila y seriéfila inteligente";
-
-  // Sistema de prioridades para el título de la pestaña
   if (searchTerm) {
     title = `Resultados para "${searchTerm}"`;
-  } else if (studio) {
-    // Usamos FILTER_CONFIG para obtener el nombre legible ("Disney") en lugar del código ("D")
-    const studioName = FILTER_CONFIG.studio.items[studio] || studio;
-    title = `Producciones de ${studioName}`;
-  } else if (selection) {
-    const selectionName = FILTER_CONFIG.selection.items[selection] || selection;
-    title = `${selectionName}`;
+  } else if (genre) {
+    title = `Películas de ${genre}`;
   } else if (director) {
     title = `Películas de ${director}`;
   } else if (actor) {
     title = `Películas con ${actor}`;
-  } else if (genre) {
-    title = `Cine de ${genre}`;
-  } else if (country) {
-    title = `Cine de ${country}`;
   } else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
     title = `Películas de ${year.replace("-", " a ")}`;
+  } else if (country) {
+    title = `Películas de ${country}`;
+  } else if (selection) {
+    const names = {
+      C: "Colección Criterion",
+      M: "1001 Películas que ver",
+      A: "Arrow Video",
+      K: "Kino Lorber",
+      E: "Eureka",
+      H: "Series de HBO",
+      N: "Originales de Netflix",
+    };
+    title = names[selection] || title;
   }
-
   document.title = `${title} | videoclub.digital`;
 }
 
@@ -506,6 +512,9 @@ function init() {
   document.addEventListener("userMovieDataChanged", handleDataRefresh);
   document.addEventListener("userDataUpdated", handleDataRefresh);
 
+  // Evento global "filtersReset":
+  //  - detail.keepSort: si true, mantiene el orden actual; si false/undefined, usa el default.
+  //  - detail.newFilter: { type, value } para aplicar un único filtro después del reset.
   document.addEventListener("filtersReset", (e) => {
     const { keepSort, newFilter } = e.detail || {};
     const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
@@ -523,6 +532,7 @@ function init() {
 
   initSidebar();
   initQuickView();
+  initThemeToggle(); // Llamada centralizada
   setupHeaderListeners();
   setupGlobalListeners();
   setupAuthSystem();

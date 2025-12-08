@@ -9,8 +9,9 @@
 // - Re-exportación de componentes complejos (Card, QuickView).
 // =================================================================
 
-import { CSS_CLASSES, SELECTORS, CONFIG } from "./constants.js";
-import { fetchMovies } from "./api.js"; // Necesario para prefetch
+import { CONFIG } from "./constants.js"; // Corrección de import anterior
+import { CSS_CLASSES, SELECTORS } from "./constants.js";
+import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement } from "./utils.js";
 
 // --- Referencias DOM Cacheadas ---
@@ -35,6 +36,8 @@ export const dom = {
   authModal: document.getElementById("auth-modal"),
   authOverlay: document.getElementById("auth-overlay"),
   loginButton: document.getElementById("login-button"),
+  // ✨ MEJORA 1: Referencia cacheada para Toasts
+  toastContainer: document.querySelector(SELECTORS.TOAST_CONTAINER),
 };
 
 // =================================================================
@@ -43,7 +46,8 @@ export const dom = {
 const TOAST_DURATION = 5000;
 
 export function showToast(message, type = "error") {
-  const container = document.querySelector(SELECTORS.TOAST_CONTAINER);
+  // ✨ MEJORA 1: Uso de referencia cacheada
+  const container = dom.toastContainer;
   if (!container) return;
 
   const toastElement = createElement("div", {
@@ -59,11 +63,7 @@ export function showToast(message, type = "error") {
 // =================================================================
 //          2. GESTIÓN DE PAGINACIÓN (UI)
 // =================================================================
-// (Antes en pagination.js)
 
-/**
- * Renderiza los botones de paginación numerada.
- */
 export function renderPagination(paginationContainer, totalMovies, currentPage) {
   if (!paginationContainer) return;
 
@@ -73,7 +73,8 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
 
   const createButton = (page, text = page, isActive = false, ariaLabel = `Ir a página ${page}`) => {
     return createElement("button", {
-      className: `btn${isActive ? " active" : ""}`,
+      // ✨ MEJORA 10: Añadimos la clase modificadora explícita
+      className: `btn btn--pagination${isActive ? " active" : ""}`,
       dataset: { page },
       textContent: text,
       attributes: { "aria-label": ariaLabel, type: "button" },
@@ -84,12 +85,10 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
     textContent: "...", className: "pagination-separator", attributes: { "aria-hidden": "true" } 
   });
 
-  // Botón Anterior
   if (currentPage > 1) {
     paginationContainer.appendChild(createButton(currentPage - 1, "<", false, "Página anterior"));
   }
 
-  // Algoritmo de visualización de páginas (1, ..., actual-1, actual, actual+1, ..., final)
   const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
   const sortedPages = Array.from(pages).filter((p) => p > 0 && p <= totalPages).sort((a, b) => a - b);
 
@@ -111,7 +110,6 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
     lastPage = page;
   }
 
-  // Botón Siguiente
   if (currentPage < totalPages) {
     paginationContainer.appendChild(createButton(currentPage + 1, ">", false, "Página siguiente"));
   }
@@ -134,7 +132,7 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
   if ("requestIdleCallback" in window) {
     requestIdleCallback(async () => {
       try { await fetchMovies(activeFilters, nextPage, CONFIG.ITEMS_PER_PAGE); } 
-      catch (e) { /* Ignorar errores de prefetch */ }
+      catch (e) { }
     });
   }
 }
@@ -142,13 +140,15 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
 // =================================================================
 //          3. ACCESIBILIDAD Y MODALES (Focus Trap)
 // =================================================================
-// (Antes en modal-manager.js)
 
 let focusTrapCleanup = null;
 let previouslyFocusedElement = null;
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), [tabindex]:not([tabindex^="-"])';
 
-function isVisible(element) { return element.offsetParent !== null; }
+// ✨ MEJORA 3: Chequeo de visibilidad robusto
+function isVisible(element) {
+  return element.offsetParent !== null && getComputedStyle(element).visibility !== "hidden";
+}
 
 function handleTrapKeyDown(e) {
   if (e.key !== "Tab") return;
@@ -187,31 +187,19 @@ function activateTrap(element) {
 
 export function openAccessibleModal(modalElement, overlayElement) {
   if (!modalElement) return;
-  
-  // 1. Quitar atributo hidden (el navegador aplica display: block/flex y lo expone a la accesibilidad)
   modalElement.hidden = false;
   if (overlayElement) overlayElement.hidden = false;
-  
-  // 2. Foco programático al contenedor (gracias a tabindex="-1")
-  // Esto ayuda a que el lector de pantalla sepa que el contexto ha cambiado inmediatamente
   modalElement.focus();
-  
-  // 3. Activar la trampa de foco
   activateTrap(modalElement);
 }
 
 export function closeAccessibleModal(modalElement, overlayElement) {
   if (!modalElement) return;
-  
-  // 1. Restaurar atributo hidden
   modalElement.hidden = true;
   if (overlayElement) overlayElement.hidden = true;
-  
-  // 2. Limpieza de listeners
   if (typeof focusTrapCleanup === "function") focusTrapCleanup();
 }
 
-// --- Wrappers Específicos para Auth ---
 export function closeAuthModal() { closeAccessibleModal(dom.authModal, dom.authOverlay); }
 export function openAuthModal() { openAccessibleModal(dom.authModal, dom.authOverlay); }
 export function setupAuthModal() {
@@ -249,20 +237,26 @@ export function updateTotalResultsUI(total, hasFilters) {
   }
 }
 
+// ✨ MEJORA 2: Lógica de tema centralizada y completa
 export function initThemeToggle() {
   if (dom.themeToggleButton) {
+    // Sincronizar estado inicial
     const isDarkInitial = document.documentElement.classList.contains("dark-mode");
     dom.themeToggleButton.setAttribute("aria-pressed", isDarkInitial);
+
     dom.themeToggleButton.addEventListener("click", (e) => {
       triggerPopAnimation(e.currentTarget);
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+      
       const isDarkMode = document.documentElement.classList.toggle("dark-mode");
       localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+      
+      // Actualizar estado ARIA
+      e.currentTarget.setAttribute("aria-pressed", isDarkMode);
     });
   }
 }
 
-// --- Helper para Autocomplete (Usado en sidebar.js y main.js) ---
 export function clearAllSidebarAutocomplete(exceptForm = null) {
   document.querySelectorAll(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS).forEach((container) => {
     if (!exceptForm || container.closest(SELECTORS.SIDEBAR_FILTER_FORM) !== exceptForm) {

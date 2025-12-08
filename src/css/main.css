@@ -1,25 +1,23 @@
 /**
  * =================================================================
  * FICHERO CSS PRINCIPAL (ORQUESTADOR)
- * -----------------------------------------------------------------
- * Este fichero no contiene estilos. Su única función es importar
- * todos los demás parciales en un orden lógico y predecible.
- * Este es el único fichero que se debe enlazar en el HTML.
- *
- * ESTRUCTURA DE IMPORTACIÓN (ITCSS - Inverted Triangle CSS):
- * 1. Base: Variables, estilos globales, keyframes.
- * 2. Componentes: Piezas de UI encapsuladas y reutilizables.
- * 3. Layout: Estilos de maquetación principal y responsive grids.
+ * =================================================================
+ * NOTA DE ARQUITECTURA:
+ * Este archivo actúa como índice y utiliza @import para modularidad.
+ * ESTÁ DISEÑADO PARA UN BUNDLER (Vite).
+ * Vite resolverá estos imports en tiempo de compilación (build) generando
+ * un único archivo CSS optimizado. No usar como CSS plano en producción
+ * sin procesar, ya que causaría problemas de rendimiento (waterfall).
  * =================================================================
  */
 
 /* --- 1. ESTILOS BASE Y GLOBALES --- */
-@import "base/variables.css";
+@import "base/variables.css"; /* Incluye fuentes y tokens */
 @import "base/globals.css";
 
 /* --- 2. COMPONENTES DE UI --- */
 @import "components/button.css";
-@import "components/card.css"; 
+@import "components/card.css";
 @import "components/header.css";
 @import "components/modal.css";
 @import "components/sidebar.css";
@@ -28,7 +26,17 @@
 /* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
 @import "layout.css";
 
-/* REVELADO ANTI-FOUC - Esta es la última regla que el navegador procesará */
+/* =================================================================
+   ANTI-FOUC (Flash of Unstyled Content)
+   =================================================================
+   Esta regla sobrescribe los estilos inline críticos definidos en index.html
+   (que establecen opacity: 0).
+   
+   MECANISMO:
+   1. HTML carga: Sidebar/Header ocultos (opacity: 0 en <style> inline).
+   2. Main.css carga: Se aplica esta regla.
+   3. Resultado: El contenido aparece suavemente (fade-in).
+*/
 .sidebar--loading > *, 
 .header--loading > * {
   transition: opacity 0.2s ease-in, visibility 0s linear;

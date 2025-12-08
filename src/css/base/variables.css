@@ -4,7 +4,6 @@
 /*  ▼▼▼ 1. DEFINICIÓN DE FUENTES (FONT-FACE) ▼▼▼             */
 /* ========================================================== */
 
-/* Estrategia de carga de alto rendimiento: Fallback con metric overrides */
 @font-face {
   font-family: "Inter Fallback";
   src: local("Arial");
@@ -14,7 +13,6 @@
   size-adjust: 107.8%;
 }
 
-/* Fuente Web principal */
 @font-face {
   font-family: "Inter";
   font-style: normal;
@@ -38,11 +36,11 @@
   --font-size-xl: 1.5rem;
   --font-size-xxl: 2rem;
 
-  /* Definición de pilas de fuentes usando las definidas arriba */
+  /* Pilas de fuentes */
   --font-title: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-body: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  /* Pesos (Variable Font) */
+  /* Pesos */
   --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
@@ -55,7 +53,7 @@
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.75;
 
-  /* ---- Paleta de Colores (Semántica) ---- */
+  /* ---- Paleta de Colores ---- */
   --color-text-primary: #333333;
   --color-text-secondary: #666666;
   --color-text-tertiary: #737373;
@@ -81,7 +79,7 @@
   /* Efectos */
   --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 
-  /* ---- Movimiento y Animación ---- */
+  /* ---- Movimiento y Animación (TOKENS) ---- */
   --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --ease-smooth-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-snap: cubic-bezier(0.4, 0, 0.2, 1);
@@ -94,7 +92,13 @@
   --duration-normal: 400ms;
   --duration-leisurely: 600ms;
 
+  /* ---- ALIAS DE TRANSICIÓN ---- */
+  --transition-duration-fast: var(--duration-fast);
+  --transition-duration-normal: var(--duration-normal);
+  --transition-timing-function: var(--ease-smooth);
+
   /* ---- Dimensiones y Espaciado ---- */
+  --sidebar-width-mobile: 280px; /* Definido en un solo sitio */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
@@ -119,8 +123,9 @@
   --z-index-toast: 2000;
 }
 
-/* ---- Paleta Modo Oscuro ---- */
-body.dark-mode {
+/* ---- Paleta Modo Oscuro (Overrides Globales) ---- */
+/* ✨ CORRECCIÓN: Se aplica a html, no a body, para coincidir con el script JS */
+html.dark-mode {
   --color-bg: #121212;
   --color-surface: #242424;
   

@@ -10,6 +10,7 @@
 // =================================================================
 
 import { CONFIG } from "./constants.js";
+import flagSpriteUrl from "../flags.svg";
 
 // =================================================================
 //          1. FORMATO DE DATOS (Texto y Números)
@@ -119,6 +120,25 @@ export function createAbortableRequest(key) {
 // =================================================================
 //          3. MANIPULACIÓN DEL DOM
 // =================================================================
+
+// HELPER: Renderizado de Banderas unificado
+export function renderCountryFlag(container, flagSpan, countryCode, countryName = "") {
+  if (!container) return;
+  
+  if (countryCode && flagSpan) {
+    const code = countryCode.toLowerCase();
+    container.style.display = "flex";
+    flagSpan.className = "country-flag-icon";
+    flagSpan.title = countryName || "";
+    flagSpan.innerHTML = `
+      <svg width="16" height="16">
+        <use href="${flagSpriteUrl}#flag-${code}"></use>
+      </svg>
+    `;
+  } else {
+    container.style.display = "none";
+  }
+}
 
 export function createElement(tag, options = {}) {
   const element = document.createElement(tag);

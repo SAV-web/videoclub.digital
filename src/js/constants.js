@@ -131,6 +131,23 @@ export const ICONS = {
 };
 
 /**
+ * DATOS DE PLATAFORMAS (Streaming / Estudios)
+ * Define ID del icono, dimensiones y viewBox para consistencia visual.
+ */
+export const PLATFORM_DATA = {
+  N: { id: "icon-netflix", class: "netflix-icon", title: "Original de Netflix", w: 16, h: 16, vb: "0 0 16 16" },
+  H: { id: "icon-hbo", class: "hbo-icon", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24", color: true },
+  D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 28, h: 22, vb: "0 0 22 18" },
+  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 18 20" },
+  U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 24, h: 26, vb: "0 0 24 26" },
+  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 16, h: 25, vb: "0 0 16 25" },
+  P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 22, h: 22, vb: "0 0 22 22" },
+  L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate", w: 20, h: 20, vb: "0 0 20 20" },
+  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon", w: 22, h: 22, vb: "0 0 22 22" },
+  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Fox", w: 28, h: 28, vb: "0 0 24 24" }
+};
+
+/**
  * CONFIGURACIÓN DE FILTROS LATERALES
  * Define etiquetas, ítems y si son excluibles.
  */

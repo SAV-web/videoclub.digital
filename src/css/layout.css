@@ -59,18 +59,17 @@
 .sidebar {
   position: fixed;
   left: 0; top: 0;
-  width: 280px;
+  width: var(--sidebar-width-mobile); 
   height: 100vh;
   height: 100dvh;
   z-index: 1001;
-  
   background-color: var(--color-surface);
   border-right: 2px solid var(--color-border);
-  
-  /* Por defecto oculto en móvil (fuera de pantalla) */
-  transform: translateX(-280px);
+  /* Cálculo automático para esconderlo exactamente su ancho */
+  transform: translateX(calc(-1 * var(--sidebar-width-mobile)));
+  /* Definición ÚNICA y completa de transiciones */
   transition: 
-    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s var(--ease-snap),
     width var(--transition-duration-normal),
     background-color var(--transition-duration-normal),
     border-color var(--transition-duration-normal);
@@ -137,41 +136,40 @@ body.sidebar-is-open .sidebar .play-button-container {
 }
 
 /* =================================================================
-   3. HEADER PRINCIPAL
+   3. HEADER PRINCIPAL (Estructura y Posición)
    ================================================================= */
 
 .main-header {
-  display: flex; align-items: center; gap: var(--space-xs);
-  background-color: var(--color-bg);
-  border-bottom: 1px solid transparent;
-  transition: background-color 0.3s, padding 0.3s, box-shadow 0.3s, border-color 0.3s;
+  display: flex;
+  align-items: center;
+  /* El gap lo definimos aquí porque afecta al layout de los hijos */
+  gap: var(--space-xs);
   z-index: var(--z-index-header);
-  view-transition-name: main-header;
   
-  /* Móvil: Fijo abajo (Bottom Bar style) */
-  position: fixed; bottom: 0; left: 0; right: 0; top: auto;
-  padding: var(--space-xs) var(--space-md);
+  /* --- MÓVIL: Posición Inferior (Bottom Bar) --- */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: auto;
+  
+  /* Layout interno móvil */
   flex-wrap: nowrap;
-  border-top: 1px solid var(--color-border);
+  padding: var(--space-xs) var(--space-md);
 }
 
-/* Desktop: Sticky arriba */
+/* --- DESKTOP: Sticky Superior --- */
 @media (min-width: 769px) {
   .main-header {
-    position: sticky; top: 0; bottom: auto;
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    
+    /* Layout interno desktop */
+    flex-wrap: wrap;
+    justify-content: center;
     padding: var(--space-lg) var(--space-xxl) var(--space-md);
     gap: var(--space-md) var(--space-lg);
-    flex-wrap: wrap;
-    border-top: none;
-    justify-content: center;
-  }
-  
-  /* Estado Scrolled (Sombra y reducción de espacio) */
-  .main-header.is-scrolled {
-    padding-top: var(--space-sm); padding-bottom: var(--space-sm);
-    border-bottom-color: var(--color-border);
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow);
   }
 }
 

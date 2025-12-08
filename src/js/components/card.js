@@ -2,16 +2,18 @@
 //          COMPONENTE: Movie Card (Tarjeta de Película)
 // =================================================================
 //  FICHERO:  src/js/components/card.js
-//  VERSIÓN:  3.6 (Fix: Ruta de iconos con Base Path)
+//  VERSIÓN:  3.8 (Final: Lógica centralizada y compartida)
 // =================================================================
 
+import { CONFIG } from "../constants.js";
 import {
   formatRuntime,
   formatVotesUnified,
   createElement,
   triggerHapticFeedback,
+  renderCountryFlag
 } from "../utils.js";
-import { CSS_CLASSES, SELECTORS, CONFIG } from "../constants.js";
+import { CSS_CLASSES, SELECTORS, PLATFORM_DATA } from "../constants.js";
 import { openModal } from "./quick-view.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
@@ -24,12 +26,10 @@ import {
   setupRatingListeners,
 } from "./rating-stars.js";
 
-// ✨ FIX: Importamos el sprite para que Vite resuelva la URL correcta con la base
+// Importamos el sprite para inyección dinámica de iconos
 import spriteUrl from "../../sprite.svg";
-import flagSpriteUrl from "../../flags.svg";
 
 // --- Constantes y Estado del Módulo ---
-
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
 const SQRT_MAX_VOTES = {
   FA: Math.sqrt(MAX_VOTES.FA),
@@ -42,20 +42,6 @@ let currentlyFlippedCard = null;
 const isPointerDevice = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 const isDesktop = isPointerDevice && !isTouchDevice;
-
-// --- Configuración de Iconos de Plataforma (SVG Data) ---
-const PLATFORM_DATA = {
-  N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix", w: 16, h: 16, vb: "0 0 16 16" },
-  H: { id: "icon-hbo", class: "hbo-icon", title: "Original de HBO", w: 24, h: 24, vb: "0 0 24 24" },
-  D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 25, h: 18, vb: "0 0 22 18" },
-  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 22, vb: "0 0 15 18" },
-  U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 24, h: 26, vb: "0 0 24 26" },
-  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 18, h: 25, vb: "0 0 16 25" },
-  P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 22, h: 22, vb: "0 0 22 22" },
-  L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate", w: 20, h: 20, vb: "0 0 20 20" },
-  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon", w: 22, h: 22, vb: "0 0 22 22" },
-  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Century Fox", w: 23, h: 23, vb: "0 0 24 24" }
-};
 
 // =================================================================
 //          SISTEMA DE HOVER DELEGADO
@@ -288,52 +274,47 @@ function populateCardText(elements, movieData, cardElement) {
   elements.title.textContent = movieData.title || "Título no disponible";
   elements.title.title = movieData.title || "Título no disponible";
   
-  if (elements.originalTitleWrapper && movieData.original_title && movieData.original_title.trim() !== "") {
-    elements.originalTitle.textContent = movieData.original_title;
-    elements.originalTitleWrapper.style.display = 'flex';
-  } else if (elements.originalTitleWrapper) {
-    elements.originalTitleWrapper.style.display = 'none';
+  if (elements.originalTitleWrapper) {
+     if (movieData.original_title && movieData.original_title.trim() !== "") {
+        elements.originalTitle.textContent = movieData.original_title;
+        elements.originalTitleWrapper.style.display = 'flex';
+     } else {
+        elements.originalTitleWrapper.style.display = 'none';
+     }
   }
-  
+
   const directorContainer = elements.director;
   directorContainer.textContent = "";
-  const directorsString = movieData.directors || "Director no disponible";
-  if (directorsString && directorsString !== "Director no disponible") {
-    directorsString.split(", ").forEach((name, index, arr) => {
+  if (movieData.directors) {
+    movieData.directors.split(", ").forEach((name, index, arr) => {
       const link = createElement("a", { textContent: name.trim(), href: `#` });
       link.dataset.directorName = name.trim();
       directorContainer.appendChild(link);
       if (index < arr.length - 1) directorContainer.appendChild(document.createTextNode(", "));
     });
-  } else {
-    directorContainer.textContent = directorsString;
   }
-  
+
   const isSeries = movieData.type?.toUpperCase().startsWith("S.");
   elements.duration.textContent = formatRuntime(movieData.minutes, isSeries);
-  const episodesText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
-  if (elements.episodes) {
-    elements.episodes.textContent = episodesText;
-    elements.episodes.style.display = episodesText ? "inline" : "none";
-  }
   
-  elements.genre.textContent = movieData.genres || "Género no disponible";
+  if (elements.episodes) {
+      const epText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
+      elements.episodes.textContent = epText;
+      elements.episodes.style.display = epText ? "inline" : "none";
+  }
 
-  // --- ACTORES ---
+  elements.genre.textContent = movieData.genres || "Género no disponible";
+  
+  // Actores (Lógica truncada para tarjeta)
   const actorsData = formatActorsWithEllipsis(movieData.actors);
   elements.actors.textContent = actorsData.truncated;
   
+  // Botón actores
   const rawActors = movieData.actors ? movieData.actors.trim() : "";
-  const lowerActors = rawActors.toLowerCase();
-  const nonActorValues = ["(a)", "animación", "animacion", "documental"];
-  const hasInteractiveActors = rawActors.length > 0 && !nonActorValues.includes(lowerActors);
+  const hasInteractiveActors = rawActors.length > 0 && !["(a)", "animación", "animacion", "documental"].includes(rawActors.toLowerCase());
 
   if (hasInteractiveActors) {
-    const expandBtn = createElement("button", {
-      className: "actors-expand-btn",
-      textContent: "+",
-      attributes: { "aria-label": "Ver reparto completo" }
-    });
+    const expandBtn = createElement("button", { className: "actors-expand-btn", textContent: "+", attributes: { "aria-label": "Ver reparto completo" } });
     const actorsContainer = elements.actors.parentElement;
     const existingBtn = actorsContainer.querySelector(".actors-expand-btn");
     if (existingBtn) existingBtn.remove();
@@ -341,13 +322,7 @@ function populateCardText(elements, movieData, cardElement) {
 
     const actorsOverlay = cardElement.querySelector('.actors-scrollable-content');
     if (actorsOverlay) {
-      const actorsListHtml = movieData.actors
-        .split(',')
-        .map(actor => {
-          const name = actor.trim();
-          return `<button type="button" class="actor-list-item" data-actor-name="${name}">${name}</button>`;
-        })
-        .join(''); 
+      const actorsListHtml = movieData.actors.split(',').map(actor => `<button type="button" class="actor-list-item" data-actor-name="${actor.trim()}">${actor.trim()}</button>`).join(''); 
       actorsOverlay.innerHTML = `<h4>Reparto</h4><div class="actors-list-text">${actorsListHtml}</div>`;
     }
   } else {
@@ -357,79 +332,71 @@ function populateCardText(elements, movieData, cardElement) {
   }
 
   elements.synopsis.textContent = movieData.synopsis || "Argumento no disponible.";
-  elements.criticContainer.style.display = movieData.critic && movieData.critic.trim() !== "" ? "block" : "none";
+  elements.criticContainer.style.display = movieData.critic?.trim() ? "block" : "none";
   if (elements.criticContainer.style.display === "block") elements.critic.textContent = movieData.critic;
   
+  // Año
   let displayYear = movieData.year || "N/A";
-  if (movieData.type?.toUpperCase().startsWith("S.") && movieData.year_end) {
+  if (isSeries && movieData.year_end) {
     const yearEnd = String(movieData.year_end).trim();
-    if (yearEnd.toUpperCase() === "M") displayYear = `${movieData.year} (M)`;
-    else if (yearEnd === "-") displayYear = `${movieData.year}-`;
-    else if (!isNaN(yearEnd) && yearEnd.length === 4) displayYear = `${movieData.year}-${yearEnd.substring(2)}`;
-    else displayYear = `${movieData.year} - ${yearEnd}`;
+    displayYear = (yearEnd.toUpperCase() === "M") ? `${movieData.year} (M)` : 
+                  (yearEnd === "-") ? `${movieData.year}-` : 
+                  (!isNaN(yearEnd) && yearEnd.length === 4) ? `${movieData.year}-${yearEnd.substring(2)}` : `${movieData.year} - ${yearEnd}`;
   }
   elements.year.textContent = displayYear;
 
-// --- BANDERA (SVG Simplificado) ---
-  elements.countryContainer.style.display = movieData.country_code ? "flex" : "none";
-  if (movieData.country_code) {
-    const countryCode = movieData.country_code.toLowerCase();
-    elements.countryFlag.className = "country-flag-icon"; 
-    elements.countryFlag.title = movieData.country || "";
-    elements.countryFlag.innerHTML = `
-      <svg width="16" height="16">
-        <use href="${flagSpriteUrl}#flag-${countryCode}"></use>
-      </svg>
-    `;
-  }
+  // Banderas (Helper Centralizado)
+  renderCountryFlag(elements.countryContainer, elements.countryFlag, movieData.country_code, movieData.country);
   
-  // --- INYECCIÓN DE ICONOS DE PLATAFORMA (DOM OPTIMIZADO) ---
+  // Iconos de Plataforma (Datos Centralizados)
   const iconsContainer = cardElement.querySelector('.card-icons-line');
   if (iconsContainer) {
-    iconsContainer.innerHTML = ""; // Limpieza: Solo hay nodos si es necesario
+    iconsContainer.innerHTML = "";
     const collections = movieData.collections_list || "";
-    
     if (collections) {
       collections.split(",").forEach(code => {
         const config = PLATFORM_DATA[code];
         if (config) {
           const span = document.createElement('span');
-          // Si tiene clase específica la usa, sino usa la base y asume color en CSS
           span.className = config.class ? `platform-icon ${config.class}` : `platform-icon`;
           span.title = config.title;
-          
-          // ✨ FIX: Usamos spriteUrl importado para que Vite resuelva la ruta completa
-          span.innerHTML = `
-            <svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}">
-              <use href="${spriteUrl}#${config.id}"></use>
-            </svg>
-          `;
+          span.innerHTML = `<svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}"><use href="${spriteUrl}#${config.id}"></use></svg>`;
           iconsContainer.appendChild(span);
         }
       });
     }
   }
 
-  if (elements.wikipediaLink && movieData.wikipedia) {
-    elements.wikipediaLink.href = movieData.wikipedia;
-    elements.wikipediaLink.style.display = 'flex';
-  } else if (elements.wikipediaLink) {
-    elements.wikipediaLink.style.display = 'none';
+  if (elements.wikipediaLink) {
+      if (movieData.wikipedia) {
+        elements.wikipediaLink.href = movieData.wikipedia;
+        elements.wikipediaLink.style.display = 'flex';
+      } else {
+        elements.wikipediaLink.style.display = 'none';
+      }
   }
 }
 
-function setupCardRatings(elements, movieData) {
+// ✨ EXPORTADA: Para usar en quick-view.js
+export function setupCardRatings(elements, movieData) {
   const setupRating = (platform, maxVotesKey) => {
     const link = elements[`${platform}Link`];
     const ratingEl = elements[`${platform}Rating`];
     const votesBarContainer = elements[`${platform}VotesBarContainer`];
     const votesBar = elements[`${platform}VotesBar`];
+    
+    // Safety check para quick view
+    if (!link || !ratingEl || !votesBarContainer || !votesBar) return;
+
     const id = movieData[`${platform}_id`];
     const rating = movieData[`${platform}_rating`];
     const votes = movieData[`${platform}_votes`];
+    
     link.href = (id && (id.startsWith("http://") || id.startsWith("https://"))) ? id : "#";
     link.classList.toggle("disabled", !link.href.startsWith("http"));
+    
     ratingEl.textContent = rating ? (String(rating).includes(".") ? rating : `${rating}.0`) : "N/A";
+    
     const votesCount = parseInt(String(votes).replace(/\D/g, ""), 10) || 0;
     votesBarContainer.style.display = votesCount > 0 ? "block" : "none";
     if (votesCount > 0) {
@@ -440,10 +407,6 @@ function setupCardRatings(elements, movieData) {
   setupRating("fa", "FA");
   setupRating("imdb", "IMDB");
 }
-
-// =================================================================
-//          GESTIÓN DE ESTADO (EXPANSIÓN)
-// =================================================================
 
 function resetCardBackState(cardElement) {
   const flipCardBack = cardElement.querySelector(".flip-card-back");
@@ -474,9 +437,6 @@ function handleDocumentClick(e) {
   }
 }
 
-/**
- * Manejador centralizado de clics en la tarjeta
- */
 export function handleCardClick(event) {
   const cardElement = this;
   const target = event.target;

@@ -2,8 +2,7 @@
  *                      SISTEMA DE DISEÑO: MODALES
  * =================================================================
  *  FICHERO: src/css/components/modal.css
- *  RESPONSABILIDAD: Definir la estructura, animaciones y adaptación
- *  responsiva (Bottom Sheet vs Modal Flotante) de la vista rápida.
+ *  RESPONSABILIDAD: Estructura, animaciones y adaptación responsiva.
  * ================================================================= */
 
 /* =================================================================
@@ -13,26 +12,12 @@
 /* --- Overlay de Fondo (Efecto Cinemático) --- */
 .quick-view-overlay {
   position: fixed;
-  inset: 0; /* Top, Right, Bottom, Left = 0 */
+  inset: 0;
   z-index: 1999;
   background-color: rgba(0, 0, 0, 0.6);
-  
-  /* 
-     EFECTO VISUAL:
-     Blur fuerte + Desaturación para dar protagonismo total a la modal.
-     Se definen estáticos para evitar repintados costosos durante la animación.
-  */
   backdrop-filter: blur(10px) saturate(50%);
   -webkit-backdrop-filter: blur(10px) saturate(50%);
-  
-  /* 
-     OPTIMIZACIÓN RENDIMIENTO:
-     Animamos solo opacidad y visibilidad. Es mucho más ligero para la GPU
-     que animar el radio del blur pixel a pixel.
-  */
   transition: opacity 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
-  
-  /* Estado Inicial: Oculto */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -45,17 +30,14 @@
   display: flex;
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
-  overflow: hidden; /* Recorta el contenido a los bordes redondeados */
-  
-  /* Transición base para entrada/salida (transform y opacidad) */
+  overflow: hidden;
   transition: opacity 0.3s var(--ease-snap), transform 0.3s var(--ease-snap), visibility 0s linear 0.3s;
-  
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
 
-/* --- Estados Visibles (Activados por JS) --- */
+/* --- Estados Visibles --- */
 .quick-view-overlay.is-visible,
 .quick-view-modal.is-visible {
   opacity: 1;
@@ -71,14 +53,10 @@
 .quick-view-content {
   width: 100%;
   height: 100%;
-  
-  /* Gestión de Scroll */
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* Scroll nativo inercial en iOS */
-  
-  /* Ocultar Barras de Scroll (Diseño limpio) */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .quick-view-content::-webkit-scrollbar { display: none; }
 
@@ -92,11 +70,16 @@
 .quick-view-back {
   padding: var(--space-lg);
   flex-grow: 1;
-  min-width: 0; /* Previene desbordamientos flexbox */
+  min-width: 0;
 }
 
 /* =================================================================
-   3. ESTILOS DE COMPONENTES INTERNOS
+   3. OVERRIDES DE COMPONENTES (Adaptación de Card a Modal)
+   =================================================================
+   NOTA DE ARQUITECTURA:
+   Las siguientes reglas sobrescriben estilos definidos en 'card.css'.
+   Reutilizamos el marcado HTML de la tarjeta, pero adaptamos la
+   visualización para el contexto expandido de la modal.
    ================================================================= */
 
 /* --- Imagen del Póster --- */
@@ -109,15 +92,12 @@
 }
 
 /* --- Tipografía (Títulos y Director) --- */
-/* NUEVA REGLA: Sobrescribimos el padding del contenedor de texto */
 .quick-view-modal .movie-summary {
-  /* Eliminamos el padding superior grande (~19px) que tiene la tarjeta */
-  padding-top: 0;
-  
-  /* Ajustamos laterales si es necesario, o heredamos */
+  padding-top: 0; /* Override: Eliminamos padding superior de la tarjeta */
   padding-left: var(--space-xs);
   padding-right: var(--space-xs);
 }
+
 .quick-view-modal .movie-summary h3[data-template="title"] {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
@@ -125,7 +105,6 @@
   line-height: var(--line-height-tight);
   margin-bottom: var(--space-xxs);
   letter-spacing: -0.02em;
-  /* Truncado a 2 líneas */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -140,45 +119,35 @@
   margin-bottom: var(--space-sm);
 }
 
-/* --- Acciones y Valoración (Aumentados para Modal) --- */
+/* --- Acciones y Valoración (Aumentados) --- */
 .quick-view-modal .card-rating-block {
   position: static;
   transform: none;
-  
   display: flex;
   justify-content: space-between;
   align-items: center;
-  
-  /* CAMBIO: Reducimos el padding vertical a 4px (antes space-sm/12px)
-     para "apretar" el bloque tanto por arriba (imagen) como por abajo (título) */
-  padding: 4px var(--space-xs);
-  
+  padding: 4px var(--space-xs); /* Padding ajustado */
   margin: 0;
   pointer-events: auto;
 }
 
-/* Iconos Grandes (Mejora Táctil y Visual) */
+/* Iconos Grandes (Mejora Táctil) */
 .quick-view-modal .star-icon {
   width: 32px; height: 32px;
-  margin-right: 4px; /* Separación para precisión */
+  margin-right: 4px;
 }
 
 .quick-view-modal .low-rating-circle {
   width: 30px; height: 30px;
 }
 
-/* Botón Watchlist (Aumentado para destacar más) */
+/* Botón Watchlist (Tamaño FAB) */
 .quick-view-modal .card-action-btn {
-  /* CAMBIO: De 48px a 56px (Tamaño FAB) */
   width: 56px; 
   height: 56px;
-  
-  /* Opcional: un poco de margen izquierdo si quieres separarlo de las estrellas */
   margin-left: auto; 
 }
-
 .quick-view-modal .card-action-btn svg {
-  /* CAMBIO: De 28px a 32px */
   width: 32px; 
   height: 32px;
 }
@@ -202,41 +171,24 @@
   color: var(--color-text-secondary);
 }
 
-/* --- Detalles Traseros --- */
-.quick-view-modal .back-meta-header {
-  display: flex; justify-content: flex-start;
-}
-.quick-view-modal .episode-duration-group {
-  display: flex; align-items: center; gap: 4px;
-}
-
-/* --- Detalles Traseros (Overrides para Modal) --- */
-
-/* 1. Separar Título Original de la línea de Wikipedia/Duración */
+/* --- Detalles Traseros (Espaciado mejorado) --- */
 .quick-view-modal .back-original-title-wrapper {
-  /* Aumentamos de 10px (tarjeta) a space-md (16px) o space-lg (24px) */
   margin-bottom: var(--space-md); 
 }
 
-/* 2. Separar línea de Wikipedia/Duración de Filmaffinity */
 .quick-view-modal .back-meta-header {
   display: flex; 
   justify-content: flex-start;
-  /* Aumentamos separación vertical */
   margin-bottom: var(--space-md); 
 }
 
 .quick-view-modal .episode-duration-group {
-  display: flex; 
-  align-items: center; 
-  gap: 4px; 
+  display: flex; align-items: center; gap: 4px; 
 }
 
-/* 3. Separar Filmaffinity de IMDb */
 .quick-view-modal .ratings-container {
   display: flex;
   flex-direction: column;
-  /* Aumentamos el hueco entre los bloques de notas */
   gap: var(--space-md); 
 }
 
@@ -248,15 +200,10 @@
 @media (max-width: 768px) {
   .quick-view-modal {
     top: auto; bottom: 0; left: 50%;
-    
-    /* Dimensiones Panel Móvil */
-    width: 96%; /* Casi ancho completo con margen */
+    width: 96%;
     height: 85dvh; /* Dynamic Viewport Height */
     max-height: 85dvh;
-    
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    
-    /* Animación desde abajo */
     transform: translate(-50%, 100%);
   }
   
@@ -264,7 +211,6 @@
     transform: translate(-50%, 0);
   }
   
-  /* Layout Vertical (Scroll único) */
   .quick-view-content { flex-direction: column; }
 }
 
@@ -272,15 +218,10 @@
 @media (min-width: 769px) {
   .quick-view-modal {
     top: 50%; left: 50%;
-    
-    /* Dimensiones Modal Escritorio */
     width: 90%;
     max-width: 630px;
     max-height: 92vh;
-    
     border-radius: var(--radius-lg);
-    
-    /* Animación de escala */
     transform: translate(-50%, -50%) scale(0.95);
   }
   
@@ -288,11 +229,10 @@
     transform: translate(-50%, -50%) scale(1);
   }
   
-  /* Layout Horizontal (2 Columnas) */
   .quick-view-content {
     display: flex;
     flex-direction: row;
-    overflow: hidden; /* Scroll delegado a columnas internas */
+    overflow: hidden;
   }
   
   .quick-view-front {
@@ -317,7 +257,7 @@
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  z-index: var(--z-index-overlay); /* Uso de variable */
+  z-index: var(--z-index-overlay);
   backdrop-filter: blur(var(--space-xxs));
   transition: opacity 0.3s ease;
 }
@@ -327,7 +267,7 @@
   position: fixed;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 2000; /* Siempre encima del overlay */
+  z-index: 2000;
   width: 90%;
   max-width: 420px;
 }
@@ -340,7 +280,6 @@
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
   text-align: center;
-  /* Animación de entrada sutil */
   animation: auth-pop-in 0.3s var(--ease-snap);
 }
 
