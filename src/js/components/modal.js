@@ -1,7 +1,7 @@
 // =================================================================
 //          COMPONENTE: Quick View (Vista Rápida / Modal)
 // =================================================================
-//  FICHERO:  src/js/components/quick-view.js
+//  FICHERO:  src/js/components/modal.js
 //  VERSIÓN:  3.8 (Refactor Final)
 // =================================================================
 
@@ -67,8 +67,19 @@ function populateModal(cardElement) {
     frontImg.alt = cardImg.alt;
   }
   
-  // 2. Datos Principales
-  front.querySelector("#quick-view-title").textContent = movieData.title;
+// --- 2. DATOS FRONTALES BÁSICOS (Con ajuste de fuente inteligente) ---
+  const titleEl = front.querySelector("#quick-view-title");
+  titleEl.textContent = movieData.title;
+  
+  // Limpiamos clases de longitud previas
+  titleEl.classList.remove("title-long", "title-xl-long");
+  
+  // Aplicamos heurística de longitud
+  if (movieData.title.length > 40) {
+    titleEl.classList.add("title-xl-long");
+  } else if (movieData.title.length > 20) {
+    titleEl.classList.add("title-long");
+  }
   front.querySelector('[data-template="director"]').textContent = movieData.directors || "";
   front.querySelector('[data-template="year"]').textContent = movieData.year || "";
   
@@ -97,10 +108,24 @@ function populateModal(cardElement) {
     }
   }
   
-  // 5. Detalles Extra
+// --- 5. TÍTULO ORIGINAL Y TEXTOS ---
   const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
+  const originalTitleSpan = originalTitleWrapper.querySelector('span');
+
   if (movieData.original_title && movieData.original_title.trim() !== '') {
-    originalTitleWrapper.querySelector('span').textContent = movieData.original_title;
+    originalTitleSpan.textContent = movieData.original_title;
+    
+    // Reset de clases de tamaño
+    originalTitleSpan.classList.remove("title-long", "title-xl-long");
+
+    // Lógica heurística de tamaño basada en longitud
+    const len = movieData.original_title.length;
+    if (len > 40) {
+      originalTitleSpan.classList.add("title-xl-long");
+    } else if (len > 20) {
+      originalTitleSpan.classList.add("title-long");
+    }
+
     originalTitleWrapper.style.display = 'flex';
   } else {
     originalTitleWrapper.style.display = 'none';

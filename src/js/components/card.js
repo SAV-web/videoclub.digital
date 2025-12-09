@@ -14,7 +14,7 @@ import {
   renderCountryFlag
 } from "../utils.js";
 import { CSS_CLASSES, SELECTORS, PLATFORM_DATA } from "../constants.js";
-import { openModal } from "./quick-view.js";
+import { openModal } from "./modal.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";

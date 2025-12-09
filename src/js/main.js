@@ -69,7 +69,7 @@ import {
 
 import { 
   initQuickView 
-} from "./components/quick-view.js";
+} from "./components/modal.js";
 
 const URL_PARAM_MAP = {
   q: "searchTerm", genre: "genre", year: "year", country: "country",

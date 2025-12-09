@@ -13,7 +13,7 @@ import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
 } from "../api.js";
 import { unflipAllCards } from "./card.js";
-import { closeModal } from "./quick-view.js";
+import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG } from "../constants.js";
 import { loadAndRenderMovies } from "../main.js";

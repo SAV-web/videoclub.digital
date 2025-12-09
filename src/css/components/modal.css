@@ -3,6 +3,7 @@
  * =================================================================
  *  FICHERO: src/css/components/modal.css
  *  RESPONSABILIDAD: Estructura, animaciones y adaptación responsiva.
+ *  NOTA: Incluye Modal de Película (Quick View) y Modal de Auth.
  * ================================================================= */
 
 /* =================================================================
@@ -13,10 +14,14 @@
 .quick-view-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1999;
+  z-index: var(--z-index-overlay); /* 1999 */
   background-color: rgba(0, 0, 0, 0.6);
+  
+  /* Efecto Frost */
   backdrop-filter: blur(10px) saturate(50%);
   -webkit-backdrop-filter: blur(10px) saturate(50%);
+  
+  /* Transición de salida (fade-out con delay en visibility) */
   transition: opacity 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
   opacity: 0;
   visibility: hidden;
@@ -26,12 +31,18 @@
 /* --- Contenedor Principal de la Modal --- */
 .quick-view-modal {
   position: fixed;
-  z-index: 2000;
+  z-index: 2000; /* Encima del overlay */
   display: flex;
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
   overflow: hidden;
-  transition: opacity 0.3s var(--ease-snap), transform 0.3s var(--ease-snap), visibility 0s linear 0.3s;
+  
+  /* Transición unificada entrada/salida */
+  transition: 
+    opacity 0.4s var(--ease-snap), 
+    transform 0.4s var(--ease-snap), 
+    visibility 0s linear 0.4s;
+    
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -43,7 +54,8 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.4s var(--ease-snap), transform 0.4s var(--ease-snap), visibility 0s linear 0s;
+  /* Eliminamos el delay de visibility al entrar */
+  transition-delay: 0s;
 }
 
 /* =================================================================
@@ -76,101 +88,123 @@
 /* =================================================================
    3. OVERRIDES DE COMPONENTES (Adaptación de Card a Modal)
    =================================================================
-   NOTA DE ARQUITECTURA: estas reglas sobrescriben lo definido en 'card.css'.
-   Reutilizamos el HTML de la tarjeta,adaptando la visualización a la modal.
+   IMPORTANTE: Estas reglas sobrescriben los estilos de 'card.css'
+   para crear la estética "Gigante" y "Compacta" de la modal.
    ================================================================= */
 
 /* --- Imagen del Póster --- */
 .quick-view-front img {
   width: 100%;
+  margin: 0 auto; 
   height: auto;
   display: block;
   border-radius: var(--radius-md);
-  /* CAMBIO: Eliminamos el margen para pegar los iconos a la foto */
-  margin-bottom: 0;
+  margin-bottom: 0; /* Pegado a los iconos */
   box-shadow: var(--shadow);
 }
 
 /* --- Tipografía (Títulos y Director) --- */
 .quick-view-modal .movie-summary {
-  /* Separamos el bloque de texto de los iconos de valoración */
   padding-top: 0;
   padding-left: var(--space-xs);
   padding-right: var(--space-xs);
 }
 
+/* Caja rígida para estabilidad visual */
+.quick-view-modal .title-director-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center; 
+  min-height: 82px; 
+  margin-bottom: 0;
+}
+
+/* Título Principal */
 .quick-view-modal .movie-summary h3[data-template="title"] {
-  font-size: var(--font-size-lg); /* Título mucho más grande */
+  font-size: 1.8rem;
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-primary);
   line-height: 1.1;
-  margin-bottom: var(--space-xs);
+  margin-bottom: 4px;
   letter-spacing: -0.03em;
-  display: block; /* Quitamos límites de líneas en modal */
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
+  
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* Variaciones de Título */
+.quick-view-modal .movie-summary h3[data-template="title"].title-long {
+  font-size: 1.3rem; 
+}
+
+.quick-view-modal .movie-summary h3[data-template="title"].title-xl-long {
+  font-size: 1.2rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+/* Info Director */
 .quick-view-modal .movie-summary .front-director-info {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-xxs);
+  margin-bottom: 0;
 }
 
-/* --- Acciones y Valoración (GIGANTES) --- */
+/* --- Acciones y Valoración (ICONOS GIGANTES) --- */
 .quick-view-modal .card-rating-block {
   position: static;
   transform: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2px var(--space-xs) var(--space-sm);
+  padding: 1px var(--space-xs) 2px; /* Espaciado milimétrico */
   margin: 0;
   pointer-events: auto;
-  /* Línea divisoria sutil para separar de los textos */
-  border-bottom: 1px solid var(--color-border);
 }
 
-/* Iconos de estrellas y suspenso muy grandes */
+/* Estrellas */
 .quick-view-modal .star-icon {
-  width: 42px; height: 42px; /* De 32px a 42px */
-  margin-right: 2px;
+  width: 42px; height: 42px;
+  margin-right: 1px;
 }
 
+/* Círculo Suspenso */
 .quick-view-modal .low-rating-circle {
   width: 40px; height: 40px;
-  stroke-width: 2.5px; /* Trazo más grueso acorde al tamaño */
+  stroke-width: 2.5px;
 }
 
-/* Botón Watchlist (Tamaño XL) */
+/* Botón Watchlist */
 .quick-view-modal .card-action-btn {
   width: 60px; 
   height: 60px;
   margin-left: auto; 
 }
 .quick-view-modal .card-action-btn svg {
-  width: 38px; /* Icono interno más grande */
+  width: 38px; 
   height: 38px;
   stroke-width: 2.5px;
 }
 
-/* --- Metadatos (Año, País, Iconos Plataforma) --- */
+/* --- Metadatos Inferiores --- */
 .quick-view-modal .movie-meta {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end; /* Alineamos a la base para que el texto del año cuadre con los iconos */
-  margin-top: auto; /* Empuja esto al final del contenedor si sobra espacio */
+  align-items: flex-end;
+  margin-top: auto;
   padding-top: var(--space-xs);
 }
 
-/* Iconos de Estudio/Plataforma */
+/* Iconos Estudio */
 .quick-view-modal .card-icons-line {
   display: flex; align-items: center; gap: var(--space-md);
 }
 .quick-view-modal .platform-icon svg { 
-  width: 40px; height: 40px; /* Aumentado de 28px a 40px */
+  width: 40px; height: 40px;
 }
 
 /* Grupo Año + Bandera */
@@ -179,29 +213,52 @@
   align-items: center;
   gap: var(--space-sm);
   
-  /* Año gigante y negrita */
   font-size: 2rem; 
   font-weight: var(--font-weight-bold);
   color: var(--color-text-secondary);
   line-height: 1;
 }
 
-/* Bandera más grande */
 .quick-view-modal .country-flag-icon svg {
-  width: 28px; height: 28px; /* Aumentado de 16px a 28px */
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.05); /* Borde sutil */
+  width: 28px; height: 28px;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
 }
 
+/* --- Título Original (Reverso) --- */
+.quick-view-modal .back-original-title-wrapper span {
+  font-size: 1.5rem; 
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: 1.1;
+  text-align: center;
+  
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-view-modal .back-original-title-wrapper span.title-long {
+  font-size: 1.2rem;
+}
+
+.quick-view-modal .back-original-title-wrapper span.title-xl-long {
+  font-size: 1rem;
+  line-height: 1; /* Seguridad tipográfica */
+}
+
+
 /* =================================================================
-   4. ADAPTACIÓN RESPONSIVA (MEDIA QUERIES)
+   4. ADAPTACIÓN RESPONSIVA
    ================================================================= */
 
-/* --- A) MÓVIL (< 769px): BOTTOM SHEET --- */
+/* --- Móvil / Tablet (< 769px): Bottom Sheet --- */
 @media (max-width: 768px) {
   .quick-view-modal {
     top: auto; bottom: 0; left: 50%;
     width: 96%;
-    height: 85dvh; /* Dynamic Viewport Height */
+    height: 85dvh;
     max-height: 85dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translate(-50%, 100%);
@@ -220,7 +277,8 @@
     top: 50%; left: 50%;
     width: 90%;
     max-width: 630px;
-    max-height: 92vh;
+    max-height: 92vh; 
+    height: auto; /* Dejamos que la altura la decida el contenido (columna izq) */
     border-radius: var(--radius-lg);
     transform: translate(-50%, -50%) scale(0.95);
   }
@@ -230,29 +288,40 @@
   }
   
   .quick-view-content {
-    display: flex;
-    flex-direction: row;
-    overflow: hidden;
+    display: block; /* Cambiamos a block para manejar el flujo manual */
+    position: relative; /* Contexto para el absoluto */
+    overflow: visible; /* El overflow lo manejan los hijos */
   }
   
+  /* COLUMNA IZQUIERDA (ANCLA) */
+  /* Esta columna define la altura real de la modal */
   .quick-view-front {
     width: 57%;
+    height: auto; /* Altura natural basada en póster + datos */
     border-right: 1px solid var(--color-border);
     border-bottom: none;
-    overflow-y: auto;
+    overflow-y: hidden; /* Sin scroll, debe verse entera */
   }
   
+  /* COLUMNA DERECHA (ADAPTABLE) */
+  /* Se pega a los bordes de la izquierda, forzando su altura a ser idéntica */
   .quick-view-back {
+    position: absolute; /* Sacamos del flujo de altura */
+    top: 0;
+    right: 0;
+    bottom: 0; /* Se estira hasta abajo */
     width: 43%;
-    overflow-y: auto;
+    
+    /* Scroll interno solo si el texto supera la altura del póster */
+    overflow-y: auto; 
+    scrollbar-width: thin; /* Scrollbar fina y elegante */
   }
 }
 
 /* =================================================================
-   5. MODAL DE AUTENTICACIÓN (Login / Registro)
+   5. MODAL DE AUTENTICACIÓN
    ================================================================= */
 
-/* --- Overlay de Fondo --- */
 .auth-overlay {
   position: fixed;
   inset: 0;
@@ -262,7 +331,6 @@
   transition: opacity 0.3s ease;
 }
 
-/* --- Contenedor Modal --- */
 .auth-modal {
   position: fixed;
   top: 50%; left: 50%;
@@ -272,7 +340,6 @@
   max-width: 420px;
 }
 
-/* Caja Interna */
 .auth-box {
   width: 100%;
   padding: var(--space-xl);
@@ -288,7 +355,6 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Cabecera y Logo */
 .auth-header {
   margin-bottom: var(--space-lg);
   display: flex; justify-content: center; align-items: center;
@@ -310,7 +376,6 @@
   color: var(--color-text-primary);
 }
 
-/* --- Formularios --- */
 .form-group {
   margin-bottom: var(--space-md);
   text-align: left;
@@ -342,7 +407,6 @@
   color: var(--color-text-tertiary); font-size: var(--font-size-xs);
 }
 
-/* Botón Principal */
 .auth-button {
   width: 100%; padding: var(--space-sm); margin-top: var(--space-xs);
   border: none; border-radius: var(--radius-md);
@@ -355,7 +419,6 @@
 .auth-button:hover { background-color: var(--color-accent-darker); }
 .auth-button:active { transform: scale(0.98); }
 
-/* Toggle Texto (Login <-> Registro) */
 .auth-toggle-text {
   margin-top: var(--space-lg);
   font-size: var(--font-size-sm);
@@ -367,7 +430,6 @@
   cursor: pointer; font-weight: bold; text-decoration: underline;
 }
 
-/* Mensajes de Estado */
 .auth-message {
   display: none; margin-top: var(--space-md); padding: var(--space-sm);
   border-radius: var(--radius-md);
