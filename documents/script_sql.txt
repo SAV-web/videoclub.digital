@@ -35,11 +35,7 @@ RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
 BEGIN RETURN v_input::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 
 -- =================================================================
--- FUNCIÓN DE BÚSQUEDA OPTIMIZADA (v2.5 - Blindada y Robusta)
--- =================================================================
--- CORRECCIÓN 3: Se añaden múltiples capas de validación y seguridad
--- para prevenir errores de sintaxis y vulnerabilidades de inyección de SQL,
--- siguiendo las mejores prácticas de programación defensiva en plpgsql.
+-- FUNCIÓN DE BÚSQUEDA OPTIMIZADA (v3.0 - Smart Counting)
 -- =================================================================
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
     search_term text,
@@ -56,41 +52,34 @@ CREATE OR REPLACE FUNCTION public.search_movies_offset(
     sort_field text,
     sort_direction text,
     page_limit integer,
-    page_offset integer
+    page_offset integer,
+    get_count boolean DEFAULT true -- NUEVO PARÁMETRO
 )
 RETURNS json
 LANGUAGE plpgsql STABLE PARALLEL SAFE AS $function$
 DECLARE
     v_query TEXT;
     v_order_clause TEXT;
+    v_count_cte TEXT;
+    v_count_select TEXT;
     v_json_result JSON;
     v_country_id INT;
     v_excluded_country_ids INT[];
-    
-    -- ▼▼▼ VARIABLES LOCALES PARA VALORES SANEADOS ▼▼▼
     v_safe_sort_direction TEXT;
     v_safe_sort_field TEXT;
 BEGIN
-    -- ============================================================
-    -- FASE 1: VALIDACIÓN Y SANITIZACIÓN ROBUSTA (AHORA MÁS LIMPIA)
-    -- ============================================================
-    
-    -- 1.1: Normalizar y validar 'sort_direction'
+    -- FASE 1: VALIDACIÓN (Igual que antes)
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
         v_safe_sort_direction := 'ASC';
     ELSE
         v_safe_sort_direction := upper(sort_direction);
     END IF;
 
-    -- 1.2: Normalizar y validar 'sort_field'
-    v_safe_sort_field := lower(coalesce(sort_field, 'relevance')); -- Normaliza y asigna 'relevance' si es NULL
-    
+    v_safe_sort_field := lower(coalesce(sort_field, 'relevance'));
     IF v_safe_sort_field NOT IN ('relevance', 'year', 'fa_rating', 'imdb_rating', 'fa_votes', 'imdb_votes') THEN
-        RAISE WARNING 'Invalid sort_field: "%". Using "relevance" as default.', sort_field;
         v_safe_sort_field := 'relevance';
     END IF;
 
-    -- 1.3: Construir la cláusula ORDER BY usando la variable saneada
     v_order_clause := CASE v_safe_sort_field
         WHEN 'year' THEN format('ORDER BY m.year %s, m.relevance ASC', v_safe_sort_direction)
         WHEN 'fa_rating' THEN format('ORDER BY m.fa_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
@@ -100,7 +89,7 @@ BEGIN
         ELSE 'ORDER BY m.relevance ASC'
     END;
 
-    -- FASE 2: PRE-PROCESAMIENTO DE IDs (Sin cambios)
+    -- FASE 2: PRE-PROCESAMIENTO (Igual que antes)
     IF country_name IS NOT NULL AND country_name != '' THEN
         SELECT c.id INTO v_country_id FROM public.countries c WHERE c.name = country_name;
     END IF;
@@ -108,7 +97,17 @@ BEGIN
         SELECT array_agg(c.id) INTO v_excluded_country_ids FROM public.countries c WHERE c.name = ANY(excluded_countries);
     END IF;
 
-    -- FASE 3: CONSTRUCCIÓN DE LA CONSULTA DINÁMICA (Sin cambios en la estructura)
+    -- FASE 3: LÓGICA CONDICIONAL DE CONTEO (NUEVO)
+    -- Si get_count es true, calculamos el total. Si no, devolvemos -1.
+    IF get_count THEN
+        v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
+        v_count_select := '(SELECT value FROM total)';
+    ELSE
+        v_count_cte := '';
+        v_count_select := '-1';
+    END IF;
+
+    -- FASE 4: CONSTRUCCIÓN DE CONSULTA
     v_query := '
         WITH filtered_movies AS (
             SELECT m.id
@@ -127,12 +126,9 @@ BEGIN
                 AND ($9 IS NULL OR m.collections_tsv @@ plainto_tsquery(''simple'', $9))
                 AND ($10 IS NULL OR NOT m.genres_tsv @@ to_tsquery(''spanish'', array_to_string($10, '' | '')))
                 AND ($11 IS NULL OR NOT (m.country_id = ANY($11)))
-        ),
-        total AS (
-            SELECT count(*) AS value FROM filtered_movies
-        )
+        )' || v_count_cte || '
         SELECT json_build_object(
-            ''total'', (SELECT value FROM total),
+            ''total'', ' || v_count_select || ',
             ''items'', COALESCE(
                 (
                     SELECT json_agg(rows)
@@ -164,7 +160,7 @@ BEGIN
         );
     ';
     
-    -- FASE 4: EJECUCIÓN (Sin cambios)
+    -- FASE 5: EJECUCIÓN
     EXECUTE v_query
     INTO v_json_result
     USING

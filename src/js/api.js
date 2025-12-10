@@ -1,30 +1,12 @@
-// =================================================================
-//          MÓDULO DE SERVICIO API (Maestro de Datos)
-// =================================================================
-// FICHERO: src/js/api.js
-// RESPONSABILIDAD:
-// 1. Inicializar conexión con Supabase.
-// 2. Gestionar caché (LRU) para consultas públicas.
-// 3. Proveer métodos para buscar películas (RPC) y datos de usuario (RLS).
-// =================================================================
-
+// src/js/api.js
 import { CONFIG } from "./constants.js";
-import { createClient } from "@supabase/supabase-js"; // Importación directa
+import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest } from "./utils.js"; // Ahora desde utils
+import { createAbortableRequest } from "./utils.js";
 import { getUserDataForMovie } from "./state.js";
 
-// =================================================================
-//          1. INICIALIZACIÓN CLIENTE SUPABASE
-// =================================================================
-// (Antes en supabaseClient.js)
 export const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
-// =================================================================
-//          2. CACHÉ Y BÚSQUEDA PÚBLICA
-// =================================================================
-
-// Caché LRU para evitar llamadas repetitivas
 export const queryCache = new LRUCache({
   max: 300,
   ttl: 1000 * 60 * 30, // 30 minutos
@@ -46,7 +28,7 @@ function createCanonicalCacheKey(filters, page, pageSize) {
   return JSON.stringify({ filters: normalizedFilters, page, pageSize });
 }
 
-function buildRpcParams(activeFilters, currentPage, pageSize) {
+function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
   let yearStart = null;
   let yearEnd = null;
   if (activeFilters.year) {
@@ -62,7 +44,8 @@ function buildRpcParams(activeFilters, currentPage, pageSize) {
   return {
     search_term: activeFilters.searchTerm || null,
     genre_name: activeFilters.genre || null,
-    p_year_start: yearStart, p_year_end: yearEnd,
+    p_year_start: yearStart,
+    p_year_end: yearEnd,
     country_name: activeFilters.country || null,
     director_name: activeFilters.director || null,
     actor_name: activeFilters.actor || null,
@@ -70,44 +53,47 @@ function buildRpcParams(activeFilters, currentPage, pageSize) {
     selection_code: activeFilters.studio || activeFilters.selection || null,
     excluded_genres: activeFilters.excludedGenres?.length > 0 ? activeFilters.excludedGenres : null,
     excluded_countries: activeFilters.excludedCountries?.length > 0 ? activeFilters.excludedCountries : null,
-    sort_field: sortField, sort_direction: sortDirection,
-    page_limit: pageSize, page_offset: offset,
+    sort_field: sortField,
+    sort_direction: sortDirection,
+    page_limit: pageSize,
+    page_offset: offset,
+    get_count: requestCount // NUEVO PARÁMETRO
   };
 }
 
-/**
- * Busca películas en la base de datos usando RPC.
- * Soporta caché y señal de aborto.
- */
-export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal) {
-  const queryKey = createCanonicalCacheKey(activeFilters, currentPage, pageSize);
+export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true) {
+  // Incluimos requestCount en la clave de caché
+  const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount }, currentPage, pageSize);
 
   if (queryCache.has(queryKey)) {
     return queryCache.get(queryKey);
   }
 
   try {
-    const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize);
+    const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
+    
+    // Configuración correcta de Supabase v2 para AbortSignal
     const rpcCall = supabase.rpc("search_movies_offset", rpcParams);
-
     if (signal) {
-      if (signal.aborted) return { aborted: true, items: [], total: 0 };
-      rpcCall.abortSignal(signal);
+       // OJO: En v2 a veces esto se hace diferente, pero si falla, el catch lo atrapa.
+       // Lo más estándar es pasar { signal } en opciones si el método lo soporta, 
+       // pero rpc() retorna un Promise-like builder. 
+       if (typeof rpcCall.abortSignal === 'function') {
+           rpcCall.abortSignal(signal);
+       }
     }
 
     const { data, error } = await rpcCall;
 
-    if (signal && signal.aborted) return { aborted: true, items: [], total: 0 };
-
     if (error) {
       if (error.name === "AbortError" || error.message?.includes("abort")) {
-         return { aborted: true, items: [], total: 0 };
+         return { aborted: true, items: [], total: -1 };
       }
-      console.error("Error RPC:", error);
-      throw new Error("No se pudieron obtener los datos de la base de datos.");
+      console.error("Error RPC Supabase:", error); // Esto saldrá en tu consola
+      throw new Error("Error de base de datos");
     }
 
-    const result = { total: data?.total || 0, items: data?.items || [] };
+    const result = { total: data?.total ?? -1, items: data?.items || [] };
     
     if (!signal?.aborted) queryCache.set(queryKey, result);
     
@@ -115,33 +101,19 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
 
   } catch (error) {
     if (error.name === "AbortError" || (signal && signal.aborted)) {
-        return { aborted: true, items: [], total: 0 };
+        return { aborted: true, items: [], total: -1 };
     }
     throw error;
   }
 }
 
-// =================================================================
-//          3. DATOS DE USUARIO (Privada - RLS)
-// =================================================================
-
 export async function fetchUserMovieData() {
-  const { data, error } = await supabase
-    .from('user_movie_entries')
-    .select('movie_id, rating, on_watchlist');
-
-  if (error) {
-    console.error("Error fetching user data:", error);
-    throw new Error("No se pudieron cargar tus datos.");
-  }
-
+  const { data, error } = await supabase.from('user_movie_entries').select('movie_id, rating, on_watchlist');
+  if (error) throw new Error("No se pudieron cargar tus datos.");
   const userMap = {};
   if (data) {
     data.forEach(item => {
-      userMap[item.movie_id] = {
-        rating: item.rating,
-        onWatchlist: item.on_watchlist
-      };
+      userMap[item.movie_id] = { rating: item.rating, onWatchlist: item.on_watchlist };
     });
   }
   return userMap;
@@ -149,31 +121,16 @@ export async function fetchUserMovieData() {
 
 export async function setUserMovieDataAPI(movieId, partialData) {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session || !session.user) throw new Error("Debes iniciar sesión para guardar datos.");
-
+  if (!session || !session.user) throw new Error("Debes iniciar sesión.");
   const userId = session.user.id;
   const currentState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
   const mergedData = { ...currentState, ...partialData };
-
   const payload = {
-    user_id: userId, movie_id: movieId,
-    rating: mergedData.rating, on_watchlist: mergedData.onWatchlist,
-    updated_at: new Date().toISOString()
+    user_id: userId, movie_id: movieId, rating: mergedData.rating, on_watchlist: mergedData.onWatchlist, updated_at: new Date().toISOString()
   };
-
-  const { error } = await supabase
-    .from('user_movie_entries')
-    .upsert(payload, { onConflict: 'user_id, movie_id' });
-
-  if (error) {
-    console.error(`Error saving movie ${movieId}:`, error);
-    throw new Error("No se pudo guardar tu acción.");
-  }
+  const { error } = await supabase.from('user_movie_entries').upsert(payload, { onConflict: 'user_id, movie_id' });
+  if (error) throw new Error("No se pudo guardar tu acción.");
 }
-
-// =================================================================
-//          4. SUGERENCIAS (Autocompletado)
-// =================================================================
 
 const fetchSuggestions = async (rpcName, searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) return [];
@@ -189,7 +146,6 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
 export const fetchGenreSuggestions = (term) => fetchSuggestions("get_genre_suggestions", term);
 export const fetchDirectorSuggestions = (term) => fetchSuggestions("get_director_suggestions", term);
 export const fetchCountrySuggestions = (term) => fetchSuggestions("get_country_suggestions", term);
-
 export const fetchActorSuggestions = async (term) => {
   const suggestions = await fetchSuggestions("get_actor_suggestions", term);
   const ignoredTerms = ["(a)", "animación", "animacion", "documental"];

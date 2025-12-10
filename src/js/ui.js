@@ -131,7 +131,10 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
 
   if ("requestIdleCallback" in window) {
     requestIdleCallback(async () => {
-      try { await fetchMovies(activeFilters, nextPage, CONFIG.ITEMS_PER_PAGE); } 
+      try { 
+        // CAMBIO AQUÍ: Añadimos 'null' (signal) y 'false' (requestCount)
+        await fetchMovies(activeFilters, nextPage, CONFIG.ITEMS_PER_PAGE, null, false); 
+      } 
       catch (e) { }
     });
   }
