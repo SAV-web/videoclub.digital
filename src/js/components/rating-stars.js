@@ -67,84 +67,37 @@ async function handleRatingClick(event) {
   event.preventDefault();
   event.stopPropagation();
 
-  const clickedElement = event.target.closest(".star-icon[data-rating-level], .low-rating-circle");
+  // FIX: Usamos target.closest para soportar delegación correctamente.
+  // event.currentTarget fallaba cuando el listener estaba en el grid container.
+  const clickedElement = event.target.closest(".star-icon[data-rating-level]");
   const interactiveContainer = event.target.closest("[data-movie-id]");
   
   if (!interactiveContainer || !clickedElement) return;
 
   const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
-  
-  // Determinar nivel actual y calcular nuevo rating
+  const starIndex = parseInt(clickedElement.dataset.ratingLevel, 10) - 1;
+
   const currentUserData = getUserDataForMovie(movieId) || { rating: null };
   const currentStars = calculateUserStars(currentUserData.rating);
-  let starIndex = -1; // -1 indica que viene del círculo de suspenso
+  const numStarsClicked = starIndex + 1;
 
-  if (clickedElement.classList.contains("star-icon")) {
-    starIndex = parseInt(clickedElement.dataset.ratingLevel, 10) - 1;
-  } else {
-    // Si clicamos el círculo y no tenemos nota, asumimos que queremos subir a estrella 1
-    // Si ya tenemos nota (suspenso), asumimos que queremos subir a estrella 1 (Rating 3)
-    // La lógica de cálculo de abajo maneja los toggles.
-  }
+  // Lógica de toggle: si pulsas la que ya tienes, se borra (salvo nivel 1 que va a suspenso en lógica de card.js)
+  // Nota: La lógica de alternancia con "Suspenso" se gestiona parcialmente aquí al devolver null,
+  // y card.js decide qué mostrar.
+  let newRating = numStarsClicked === currentStars ? null : LEVEL_TO_RATING_MAP[starIndex];
 
-  // Lógica de Rating (Mapeo a tu sistema 1-10)
-  // Niveles visuales: 1, 2, 3, 4 -> Ratings: 3, 5, 7, 9
-  const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
-  let newRating;
-
-  if (starIndex === -1) { 
-    // Clic en Círculo Suspenso
-    if (currentUserData.rating === null) newRating = 2; // Nada -> Suspenso
-    else if (currentUserData.rating === 2) newRating = 3; // Suspenso -> Aprobado (Estrella 1)
-    else newRating = null; // Quitar
-  } else {
-    // Clic en Estrella
-    const numStarsClicked = starIndex + 1;
-    // Si pulsamos la estrella 1 y estaba vacía (venimos de suspenso) -> Rating 2
-    if (numStarsClicked === 1 && currentStars === 0) {
-        newRating = 2; 
-    } else {
-        // Toggle normal
-        newRating = numStarsClicked === currentStars ? null : LEVEL_TO_RATING_MAP[starIndex];
-    }
-  }
-
-  // --- UI OPTIMISTA (Actualizamos el DOM inmediatamente) ---
   const newUserData = { rating: newRating };
   const previousUserData = JSON.parse(interactiveContainer.dataset.previousUserData || "{}");
-  
+
+  // UI Optimista
   updateUserDataForMovie(movieId, newUserData);
-  updateCardUI(interactiveContainer); // <--- AQUÍ SE PRODUCE EL INTERCAMBIO DE DOM
-
-  // --- ANIMACIÓN POST-ACTUALIZACIÓN (EL FIX) ---
-  // Ahora que updateCardUI ha ejecutado, buscamos qué elemento está visible en la posición 1
-  let elementToAnimate = clickedElement;
-  const style = window.getComputedStyle(clickedElement);
-
-  // Si el elemento clicado ahora está oculto (display: none), buscamos su relevo
-  if (style.display === 'none') {
-      if (clickedElement.classList.contains('low-rating-circle')) {
-          // Si desapareció el círculo, es porque aparecieron las estrellas -> Animamos la 1ª
-          elementToAnimate = interactiveContainer.querySelector('.star-icon[data-rating-level="1"]');
-      } else {
-          // Si desapareció la estrella, es porque apareció el círculo -> Animamos el círculo
-          elementToAnimate = interactiveContainer.querySelector('.low-rating-circle');
-      }
-  }
-
-  if (elementToAnimate) {
-      elementToAnimate.classList.remove("animate-pop");
-      void elementToAnimate.offsetWidth; // Force Reflow
-      elementToAnimate.classList.add("animate-pop");
-      setTimeout(() => elementToAnimate.classList.remove("animate-pop"), 350);
-  }
-  // --------------------------------------------------------
+  updateCardUI(interactiveContainer);
 
   try {
     await setUserMovieDataAPI(movieId, newUserData);
-    triggerHapticFeedback("success"); // Feedback táctil sincronizado con el Pop
   } catch (error) {
     showToast(error.message, "error");
+    // Rollback
     updateUserDataForMovie(movieId, previousUserData);
     updateCardUI(interactiveContainer);
   }
