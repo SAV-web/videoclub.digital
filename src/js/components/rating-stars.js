@@ -67,12 +67,20 @@ async function handleRatingClick(event) {
   event.preventDefault();
   event.stopPropagation();
 
-  // FIX: Usamos target.closest para soportar delegación correctamente.
-  // event.currentTarget fallaba cuando el listener estaba en el grid container.
   const clickedElement = event.target.closest(".star-icon[data-rating-level]");
   const interactiveContainer = event.target.closest("[data-movie-id]");
   
   if (!interactiveContainer || !clickedElement) return;
+
+  // --- NUEVO: Disparar animación visual (Pop) ---
+  // Reiniciamos la animación por si el usuario pulsa muy rápido
+  clickedElement.classList.remove("animate-pop");
+  void clickedElement.offsetWidth; // Forzar reflow (reinicio mágico del CSS)
+  clickedElement.classList.add("animate-pop");
+  
+  // Limpieza automática tras la animación (opcional, pero limpio)
+  setTimeout(() => clickedElement.classList.remove("animate-pop"), 350);
+  // ----------------------------------------------
 
   const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
   const starIndex = parseInt(clickedElement.dataset.ratingLevel, 10) - 1;
@@ -81,9 +89,6 @@ async function handleRatingClick(event) {
   const currentStars = calculateUserStars(currentUserData.rating);
   const numStarsClicked = starIndex + 1;
 
-  // Lógica de toggle: si pulsas la que ya tienes, se borra (salvo nivel 1 que va a suspenso en lógica de card.js)
-  // Nota: La lógica de alternancia con "Suspenso" se gestiona parcialmente aquí al devolver null,
-  // y card.js decide qué mostrar.
   let newRating = numStarsClicked === currentStars ? null : LEVEL_TO_RATING_MAP[starIndex];
 
   const newUserData = { rating: newRating };
