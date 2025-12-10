@@ -518,3 +518,55 @@ html.dark-mode .country-flag-icon svg {
 .quick-view-modal .detail-item[data-template="actors-container"] {
   -webkit-line-clamp: initial; white-space: normal; overflow: visible; display: block;
 }
+
+/* =================================================================
+   ACCESIBILIDAD TÁCTIL (WCAG 2.5.5 Target Size)
+   ================================================================= */
+
+@media (hover: none) and (pointer: coarse) {
+  
+  /* 1. Círculo de Suspenso: Expansión total segura */
+  .low-rating-circle {
+    position: relative;
+  }
+  .low-rating-circle::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 48px;  /* Generoso */
+    height: 48px;
+    z-index: 10;
+  }
+
+  /* 2. Estrellas: Expansión vertical agresiva, horizontal controlada */
+  .star-icon {
+    position: relative;
+  }
+  .star-icon::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;  /* 25px base + hueco. Evita solapamiento con la estrella vecina */
+    height: 48px; /* Altura táctil completa */
+    z-index: 10;
+  }
+
+  /* 3. Botón Watchlist: Asegurar mínimo 44px */
+  .card-action-btn {
+    position: relative;
+  }
+  .card-action-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 48px;
+    min-height: 48px;
+    z-index: 10;
+  }
+  
+  /* Debugging: Descomentar para ver las áreas táctiles */
+  /* .low-rating-circle::after, .star-icon::after, .card-action-btn::after { background: rgba(255, 0, 0, 0.2); } */
+}

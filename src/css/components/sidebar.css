@@ -509,3 +509,35 @@ body.user-logged-in #user-session-group { display: inline-flex; }
   body.sidebar-collapsed .user-session-group { gap: 0; }
   body.sidebar-collapsed .profile-container { justify-content: center; }
 }
+
+/* =================================================================
+   13. OPTIMIZACIÓN DE GESTOS TÁCTILES (Mejora 3.B)
+   ================================================================= */
+
+/* Estado: Arrastrando (Cero latencia) */
+.sidebar.is-dragging {
+  /* Eliminamos transición para que el movimiento siga al dedo 1:1 */
+  transition: none !important;
+  /* Promocionamos a capa GPU para 60 FPS */
+  will-change: transform;
+  /* Cursor de agarre */
+  cursor: grabbing;
+}
+
+/* Estado: Cuerpo durante el arrastre */
+body.sidebar-is-dragging {
+  /* Bloqueamos el scroll vertical del body para evitar conflictos */
+  overflow: hidden; 
+  /* Evitamos selección de texto accidental */
+  user-select: none; 
+  -webkit-user-select: none;
+}
+
+/* Optimización del contenido de fondo */
+body.sidebar-is-dragging .main-content-wrapper {
+  /* CRÍTICO: Desactivamos interacción con el fondo.
+     Ahorra cálculos de hover/click en las tarjetas mientras deslizamos el menú */
+  pointer-events: none;
+  filter: grayscale(0.5); /* Feedback visual sutil opcional */
+  transition: filter 0.2s ease;
+}

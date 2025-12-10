@@ -1,8 +1,11 @@
 // =================================================================
-//          COMPONENTE: Quick View (Vista Rápida / Modal)
+//          COMPONENTE: Quick View (Modal & Bottom Sheet)
 // =================================================================
 //  FICHERO:  src/js/components/modal.js
-//  VERSIÓN:  3.8 (Refactor Final)
+//  RESPONSABILIDAD:
+//  - Gestionar apertura/cierre de la vista detallada.
+//  - Poblar datos dinámicamente (optimizando DOM).
+//  - Lógica "Bottom Sheet" con gestos táctiles para móvil.
 // =================================================================
 
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
@@ -11,6 +14,7 @@ import { formatRuntime, createElement, renderCountryFlag } from "../utils.js";
 import { PLATFORM_DATA } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 
+// --- Referencias DOM Cacheadas ---
 const dom = {
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
@@ -18,6 +22,19 @@ const dom = {
   template: document.getElementById("quick-view-template")?.content,
 };
 
+// --- Estado de Gestos Táctiles ---
+let touchStartY = 0;
+let currentModalY = 0;
+let isDraggingModal = false;
+
+// =================================================================
+//          1. MANEJADORES DE EVENTOS
+// =================================================================
+
+/**
+ * Cierra la modal si se hace clic fuera del contenido (en el overlay).
+ * Ignora clics que provengan de tarjetas para evitar conflictos de apertura.
+ */
 function handleOutsideClick(event) {
   const isClickInsideCard = event.target.closest(".movie-card");
   if (
@@ -29,6 +46,10 @@ function handleOutsideClick(event) {
   }
 }
 
+/**
+ * Permite filtrar por director al hacer clic en su nombre dentro de la modal.
+ * Dispara el evento global de reseteo de filtros.
+ */
 function handleDirectorClick(event) {
   const directorLink = event.target.closest(".front-director-info a[data-director-name]");
   if (!directorLink) return;
@@ -38,13 +59,62 @@ function handleDirectorClick(event) {
   
   document.dispatchEvent(
     new CustomEvent("filtersReset", {
-      detail: { keepSort: true, newFilter: { type: "director", value: directorLink.dataset.directorName } },
+      detail: { 
+        keepSort: true, 
+        newFilter: { type: "director", value: directorLink.dataset.directorName } 
+      },
     })
   );
 }
 
+// --- Lógica de Gestos (Swipe to Dismiss) ---
+
+function handleModalTouchStart(e) {
+  // UX CRÍTICA: Solo permitimos arrastrar si el usuario está al principio del contenido.
+  // Si ha hecho scroll para leer la sinopsis, el gesto no debe activarse.
+  if (dom.content.scrollTop > 0) return;
+
+  touchStartY = e.touches[0].clientY;
+  isDraggingModal = true;
+  // Añadimos clase para eliminar la transición CSS y que el movimiento sea instantáneo (1:1 con el dedo)
+  dom.modal.classList.add("is-dragging");
+}
+
+function handleModalTouchMove(e) {
+  if (!isDraggingModal) return;
+
+  const currentY = e.touches[0].clientY;
+  const deltaY = currentY - touchStartY;
+
+  // Solo permitimos arrastrar hacia ABAJO (delta positivo)
+  if (deltaY > 0) {
+    // Importante: Prevenir scroll del body o rebote elástico del navegador
+    if (e.cancelable) e.preventDefault();
+    
+    // Movemos la modal visualmente
+    dom.modal.style.transform = `translate(-50%, ${deltaY}px)`;
+    currentModalY = deltaY;
+  }
+}
+
+function handleModalTouchEnd(e) {
+  if (!isDraggingModal) return;
+  isDraggingModal = false;
+  dom.modal.classList.remove("is-dragging"); // Reactivamos transiciones CSS para el rebote o cierre suave
+
+  // UMBRAL DE CIERRE: 120px
+  if (currentModalY > 120) {
+    closeModal();
+  } else {
+    // Rebote elástico a la posición original.
+    // Al quitar el estilo inline, el CSS toma el control y anima el retorno.
+    dom.modal.style.transform = ""; 
+  }
+  currentModalY = 0;
+}
+
 // =================================================================
-//          LÓGICA PRINCIPAL
+//          2. LÓGICA DE RENDERIZADO (OPTIMIZADA)
 // =================================================================
 
 function populateModal(cardElement) {
@@ -53,13 +123,17 @@ function populateModal(cardElement) {
   const movieData = cardElement.movieData;
   const clone = dom.template.cloneNode(true);
 
+  // Vinculamos datos al contenedor para que las actualizaciones de UI funcionen
   dom.content.movieData = movieData;
   dom.content.dataset.movieId = movieData.id;
 
+  // Referencias locales para búsqueda acotada (Scoped Lookup - Mejora 2.A)
   const front = clone.querySelector(".quick-view-front");
   const back = clone.querySelector(".quick-view-back");
 
-  // 1. Imagen
+  // --- A. COLUMNA IZQUIERDA (FRONT) ---
+  
+  // 1. Imagen (Copia directa para evitar recarga de red)
   const frontImg = front.querySelector("img");
   const cardImg = cardElement.querySelector(".flip-card-front img");
   if (frontImg && cardImg) {
@@ -67,81 +141,74 @@ function populateModal(cardElement) {
     frontImg.alt = cardImg.alt;
   }
   
-// --- 2. DATOS FRONTALES BÁSICOS (Con ajuste de fuente inteligente) ---
+  // 2. Título (Con lógica de tamaño de fuente)
   const titleEl = front.querySelector("#quick-view-title");
   titleEl.textContent = movieData.title;
-  
-  // Limpiamos clases de longitud previas
   titleEl.classList.remove("title-long", "title-xl-long");
   
-  // Aplicamos heurística de longitud
-  if (movieData.title.length > 40) {
-    titleEl.classList.add("title-xl-long");
-  } else if (movieData.title.length > 20) {
-    titleEl.classList.add("title-long");
-  }
+  const titleLen = movieData.title.length;
+  if (titleLen > 40) titleEl.classList.add("title-xl-long");
+  else if (titleLen > 20) titleEl.classList.add("title-long");
+
+  // 3. Metadatos básicos
   front.querySelector('[data-template="director"]').textContent = movieData.directors || "";
   front.querySelector('[data-template="year"]').textContent = movieData.year || "";
   
-  // 3. Bandera (Helper compartido)
-  const countryContainer = front.querySelector('[data-template="country-container"]');
-  const flagSpan = front.querySelector('[data-template="country-flag"]');
-  renderCountryFlag(countryContainer, flagSpan, movieData.country_code, movieData.country);
+  renderCountryFlag(
+    front.querySelector('[data-template="country-container"]'),
+    front.querySelector('[data-template="country-flag"]'),
+    movieData.country_code,
+    movieData.country
+  );
 
-  // 4. Iconos Plataforma (Constante compartida)
+  // 4. Iconos de Plataforma
   const iconsContainer = front.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
-    const collections = movieData.collections_list || "";
-    if (collections) {
-      collections.split(",").forEach(code => {
+    if (movieData.collections_list) {
+      const fragment = document.createDocumentFragment();
+      movieData.collections_list.split(",").forEach(code => {
         const config = PLATFORM_DATA[code];
         if (config) {
-          const span = createElement('span', {
+          fragment.appendChild(createElement('span', {
             className: config.class ? `platform-icon ${config.class}` : `platform-icon`,
             title: config.title,
             innerHTML: `<svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}"><use href="${spriteUrl}#${config.id}"></use></svg>`
-          });
-          iconsContainer.appendChild(span);
+          }));
         }
       });
+      iconsContainer.appendChild(fragment);
     }
   }
   
-// --- 5. TÍTULO ORIGINAL Y TEXTOS ---
+  // --- B. COLUMNA DERECHA (BACK/DETALLES) ---
+
+  // 1. Título Original
   const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
-  const originalTitleSpan = originalTitleWrapper.querySelector('span');
-
   if (movieData.original_title && movieData.original_title.trim() !== '') {
-    originalTitleSpan.textContent = movieData.original_title;
+    const span = originalTitleWrapper.querySelector('span');
+    span.textContent = movieData.original_title;
     
-    // Reset de clases de tamaño
-    originalTitleSpan.classList.remove("title-long", "title-xl-long");
-
-    // Lógica heurística de tamaño basada en longitud
+    span.classList.remove("title-long", "title-xl-long");
     const len = movieData.original_title.length;
-    if (len > 40) {
-      originalTitleSpan.classList.add("title-xl-long");
-    } else if (len > 20) {
-      originalTitleSpan.classList.add("title-long");
-    }
-
+    if (len > 40) span.classList.add("title-xl-long");
+    else if (len > 20) span.classList.add("title-long");
+    
     originalTitleWrapper.style.display = 'flex';
   } else {
     originalTitleWrapper.style.display = 'none';
   }
 
+  // 2. Duración y Episodios
   const isSeries = movieData.type?.toUpperCase().startsWith("S.");
   back.querySelector('[data-template="duration"]').textContent = formatRuntime(movieData.minutes, isSeries);
 
   const episodesEl = back.querySelector('[data-template="episodes"]');
-  if (isSeries && movieData.episodes) {
-    episodesEl.textContent = `${movieData.episodes} x`;
-    episodesEl.style.display = 'inline';
-  } else {
-    episodesEl.style.display = 'none';
-  }
+  const epText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
+  episodesEl.textContent = epText;
+  episodesEl.style.display = epText ? "inline" : "none";
 
+  // 3. Wikipedia
   const wikipediaLink = back.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {
     wikipediaLink.href = movieData.wikipedia;
@@ -150,20 +217,10 @@ function populateModal(cardElement) {
     wikipediaLink.style.display = 'none';
   }
 
-  // 6. Ratings (Lógica compartida)
-  const ratingElements = {
-    faLink: back.querySelector('[data-template="fa-link"]'),
-    faRating: back.querySelector('[data-template="fa-rating"]'),
-    faVotesBarContainer: back.querySelector('[data-template="fa-votes-bar-container"]'),
-    faVotesBar: back.querySelector('[data-template="fa-votes-bar"]'),
-    imdbLink: back.querySelector('[data-template="imdb-link"]'),
-    imdbRating: back.querySelector('[data-template="imdb-rating"]'),
-    imdbVotesBarContainer: back.querySelector('[data-template="imdb-votes-bar-container"]'),
-    imdbVotesBar: back.querySelector('[data-template="imdb-votes-bar"]'),
-  };
-  setupCardRatings(ratingElements, movieData);
+  // 4. Ratings (Reutilización de lógica centralizada)
+  setupCardRatings(back, movieData);
 
-  // 7. Textos Largos
+  // 5. Textos Largos
   back.querySelector('[data-template="genre"]').textContent = movieData.genres || "No disponible";
   back.querySelector('[data-template="actors"]').textContent = movieData.actors || "No disponible";
   back.querySelector('[data-template="synopsis"]').textContent = movieData.synopsis || "No disponible";
@@ -176,27 +233,38 @@ function populateModal(cardElement) {
     criticContainer.style.display = 'none';
   }
   
-  // 8. Render y Eventos
+  // --- C. MONTAJE FINAL ---
   dom.content.textContent = "";
   dom.content.appendChild(clone);
 
+  // Inicializamos interactividad interna (estrellas, watchlist)
   updateCardUI(dom.content);
   initializeCard(dom.content);
   
+  // Listener para cerrar al navegar por director
   dom.content.addEventListener("click", handleDirectorClick);
 }
 
 // =================================================================
-//          API PÚBLICA
+//          3. API PÚBLICA (Control de Modal)
 // =================================================================
 
 export function closeModal() {
   if (!dom.modal.classList.contains("is-visible")) return;
   
+  // Animación de salida (CSS)
   dom.modal.classList.remove("is-visible");
   dom.overlay.classList.remove("is-visible");
   document.body.classList.remove("modal-open");
   
+  // LIMPIEZA POST-ANIMACIÓN:
+  // Es vital limpiar el transform inline por si el usuario cerró arrastrando a medias.
+  // Usamos setTimeout coincidiendo con la duración de la transición CSS (300ms).
+  setTimeout(() => {
+      dom.modal.style.transform = ""; 
+  }, 300);
+
+  // Accesibilidad y limpieza de listeners
   closeAccessibleModal(dom.modal, dom.overlay);
   document.removeEventListener("click", handleOutsideClick);
 }
@@ -204,27 +272,52 @@ export function closeModal() {
 export function openModal(cardElement) {
   if (!cardElement) return;
   
+  // 1. Preparar UI
   unflipAllCards();
-  dom.content.scrollTop = 0;
+  
+  // 2. Poblar datos
   populateModal(cardElement);
   document.body.classList.add("modal-open");
   
+  // 3. Mostrar con animación
   requestAnimationFrame(() => {
     dom.modal.classList.add("is-visible");
     dom.overlay.classList.add("is-visible");
+    
+    // 4. Activar trampas de foco (Esto es lo que causa el scroll indeseado)
     openAccessibleModal(dom.modal, dom.overlay);
+    
+    // 🔥 FIX CRÍTICO: Forzar scroll al inicio (Top)
+    // Usamos un setTimeout para ejecutar esto DESPUÉS de que el navegador 
+    // haya intentado hacer scroll hacia el botón enfocado (Watchlist).
+    // Esto "gana" la pelea contra el comportamiento nativo del navegador.
+    setTimeout(() => {
+      if (dom.content) dom.content.scrollTop = 0;
+    }, 10); // 10ms es suficiente para ocurrir en el siguiente ciclo de pintado
+
     setTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
   });
 }
 
 export function initQuickView() {
   if (!dom.modal) {
-    console.error("Quick View modal element not found.");
+    console.error("Elemento modal no encontrado en el DOM.");
     return;
   }
+
+  // Listener Teclado (Esc)
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && dom.modal.classList.contains("is-visible")) {
       closeModal();
     }
   });
+
+  // Listeners Táctiles (Optimización: Solo en pantallas pequeñas)
+  // Aunque CSS media query maneja el estilo, JS necesita saber si activar la lógica.
+  if (window.matchMedia("(max-width: 768px)").matches) {
+    // Usamos dom.modal como superficie táctil (incluye la barra de título/imagen)
+    dom.modal.addEventListener("touchstart", handleModalTouchStart, { passive: true });
+    dom.modal.addEventListener("touchmove", handleModalTouchMove, { passive: false }); // false para poder prevenir scroll
+    dom.modal.addEventListener("touchend", handleModalTouchEnd, { passive: true });
+  }
 }

@@ -1,8 +1,7 @@
 // =================================================================
-//          COMPONENTE: Sidebar (Filtros + Gestos Táctiles)
+//          COMPONENTE: Sidebar (Filtros + Gestos Táctiles Optimizado)
 // =================================================================
 // FICHERO: src/js/components/sidebar.js
-// ESTADO: Fusionado (Incluye lógica de filtros y Touch Drawer)
 // =================================================================
 
 import noUiSlider from 'nouislider';
@@ -22,7 +21,7 @@ import { showToast, clearAllSidebarAutocomplete } from "../ui.js";
 // --- Constantes Locales ---
 const MOBILE_BREAKPOINT = 768;
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
-let DRAWER_WIDTH = 280; // Valor por defecto, se sobrescribe dinámicamente
+let DRAWER_WIDTH = 280;
 
 // --- Referencias DOM Centralizadas ---
 const dom = {
@@ -38,10 +37,12 @@ const dom = {
   yearStartInput: document.querySelector(SELECTORS.YEAR_START_INPUT),
   yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
   sidebarOverlay: document.getElementById("sidebar-overlay"),
+  // ✨ OPTIMIZACIÓN 3.B: Referencia al contenido principal para bloquearlo
+  mainContent: document.querySelector(".main-content-wrapper"), 
 };
 
 // =================================================================
-//          1. LÓGICA DE GESTOS TÁCTILES (Touch Drawer)
+//          1. LÓGICA DE GESTOS TÁCTILES (GPU Accelerated)
 // =================================================================
 
 let touchState = {
@@ -56,25 +57,22 @@ let touchState = {
 
 const openMobileDrawer = () => {
   document.body.classList.add("sidebar-is-open");
-  dom.sidebar.style.transform = `translateX(0px)`;
-  dom.sidebar.style.transition = "transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)";
+  // Usamos clases CSS para la transición suave, no inline styles
+  dom.sidebar.style.transform = ''; 
   touchState.currentTranslate = 0;
   updateRewindButtonIcon(true);
 };
 
 const closeMobileDrawer = () => {
   document.body.classList.remove("sidebar-is-open");
-  dom.sidebar.style.transform = `translateX(-${DRAWER_WIDTH}px)`;
-  dom.sidebar.style.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+  dom.sidebar.style.transform = ''; 
   touchState.currentTranslate = -DRAWER_WIDTH;
   updateRewindButtonIcon(false);
 };
 
-// Leer el ancho real desde el CSS
 function updateDrawerWidth() {
   if (dom.sidebar) {
     const width = dom.sidebar.offsetWidth;
-    // Solo actualizamos si tiene sentido (es visible y tiene ancho)
     if (width > 0) DRAWER_WIDTH = width;
   }
 }
@@ -82,9 +80,10 @@ function updateDrawerWidth() {
 function handleTouchStart(e) {
   if (window.innerWidth > MOBILE_BREAKPOINT) return;
   updateDrawerWidth(); 
+  
   const isOpen = document.body.classList.contains("sidebar-is-open");
-  // Permitir arrastre si está abierto (desde el sidebar) o cerrado (desde el borde izq)
-  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 80);
+  // Zona de activación: Borde izquierdo (40px) o cualquier parte si ya está abierto
+  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 40);
 
   if (!canStartDrag) {
     touchState.isDragging = false;
@@ -96,9 +95,14 @@ function handleTouchStart(e) {
   touchState.startX = e.touches[0].clientX;
   touchState.startY = e.touches[0].clientY;
   touchState.startTime = Date.now();
+  // Si está abierto empieza en 0, si no en -280
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
   
-  dom.sidebar.style.transition = "none"; // Respuesta inmediata al dedo
+  // ✨ OPTIMIZACIÓN 3.B: 
+  // 1. Activar aceleración GPU (.is-dragging tiene will-change: transform)
+  // 2. Bloquear interacción en el resto de la página
+  dom.sidebar.classList.add("is-dragging");
+  document.body.classList.add("sidebar-is-dragging");
 }
 
 function handleTouchMove(e) {
@@ -109,54 +113,63 @@ function handleTouchMove(e) {
   const diffX = currentX - touchState.startX;
   const diffY = currentY - touchState.startY;
 
-  // Detectar intención del usuario (Scroll vs Swipe)
+  // Detección de intención (Scroll Vertical vs Swipe Horizontal)
   if (!touchState.isHorizontalDrag) {
-    if (Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
-      if (Math.abs(diffY) > Math.abs(diffX) * 1.5) {
-        touchState.isDragging = false; // Es scroll vertical
-        return;
-      }
-      touchState.isHorizontalDrag = true; // Es swipe
-    } else {
-      return; // Umbral no superado
+    // Si se mueve más en Y que en X, asumimos que es scroll y cancelamos el swipe
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      touchState.isDragging = false;
+      // Limpieza inmediata
+      dom.sidebar.classList.remove("is-dragging");
+      document.body.classList.remove("sidebar-is-dragging");
+      return;
     }
+    touchState.isHorizontalDrag = true;
   }
 
-  e.preventDefault(); // Bloquear scroll nativo
+  // Prevenir scroll nativo del navegador (pull-to-refresh, etc.)
+  if (e.cancelable) e.preventDefault();
 
   let newTranslate = touchState.startTranslate + diffX;
 
-  // Física Elástica (Rubber Banding)
+  // Física de límites (Rubber Banding)
   if (newTranslate > 0) {
-    newTranslate *= 0.3; // Resistencia al tirar a la derecha
+    // Resistencia al tirar más allá de la apertura (derecha)
+    newTranslate *= 0.2; 
   } else if (newTranslate < -DRAWER_WIDTH) {
+    // Resistencia al tirar más allá del cierre (izquierda)
     const overflow = Math.abs(newTranslate + DRAWER_WIDTH);
-    newTranslate = -DRAWER_WIDTH - (overflow * 0.3); // Resistencia al tirar a la izquierda
+    newTranslate = -DRAWER_WIDTH - (overflow * 0.2); 
   }
 
   touchState.currentTranslate = newTranslate;
+  // Aplicación directa sin requestAnimationFrame para respuesta 1:1 inmediata
+  // (La clase .is-dragging asegura que no haya lag de transition)
   dom.sidebar.style.transform = `translateX(${touchState.currentTranslate}px)`;
 }
 
 function handleTouchEnd(e) {
-  if (!touchState.isDragging || !touchState.isHorizontalDrag) {
-    touchState.isDragging = false;
-    return;
-  }
+  if (!touchState.isDragging) return;
+  
   touchState.isDragging = false;
   touchState.isHorizontalDrag = false;
+
+  // ✨ LIMPIEZA 3.B: Restaurar estado normal
+  dom.sidebar.classList.remove("is-dragging");
+  document.body.classList.remove("sidebar-is-dragging");
 
   const duration = Date.now() - touchState.startTime;
   const finalX = e.changedTouches[0].clientX;
   const distance = finalX - touchState.startX;
   const velocity = duration > 0 ? distance / duration : 0;
 
-  // Decisión basada en inercia o posición
-  if (Math.abs(velocity) > SWIPE_VELOCITY_THRESHOLD) {
-    velocity > 0 ? openMobileDrawer() : closeMobileDrawer();
+  // Lógica de decisión: Velocidad (flick) o Posición
+  const shouldOpen = velocity > SWIPE_VELOCITY_THRESHOLD || 
+                     (touchState.currentTranslate > -DRAWER_WIDTH * 0.6); // Umbral 40% visible
+
+  if (shouldOpen) {
+    openMobileDrawer();
   } else {
-    // Punto medio (-140px)
-    touchState.currentTranslate > -DRAWER_WIDTH / 2 ? openMobileDrawer() : closeMobileDrawer();
+    closeMobileDrawer();
   }
 }
 
@@ -165,38 +178,33 @@ function updateRewindButtonIcon(isOpen) {
   dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
   dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
   dom.rewindButton.setAttribute("aria-expanded", isOpen);
-  // Mejora de Accesibilidad: Vinculación explícita
-  dom.rewindButton.setAttribute("aria-controls", "sidebar");
 }
 
 function initTouchGestures() {
   if (!dom.sidebar) return;
   
-  // Leemos el ancho al arrancar
   updateDrawerWidth();
   
+  // Passive true para start/end mejora rendimiento de scroll
+  // Passive false para move es necesario para e.preventDefault()
   document.addEventListener("touchstart", handleTouchStart, { passive: true });
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
   document.addEventListener("touchend", handleTouchEnd, { passive: true });
 
   window.addEventListener("resize", () => {
-    // Actualizamos también al redimensionar por si acaso
     if (window.innerWidth <= MOBILE_BREAKPOINT) updateDrawerWidth();
     
+    // Reset en cambio de orientación/tamaño
     if (window.innerWidth > MOBILE_BREAKPOINT) {
       document.body.classList.remove("sidebar-is-open");
       dom.sidebar.style.transform = "";
-      dom.sidebar.style.transition = "";
       touchState.currentTranslate = -DRAWER_WIDTH;
-    } else {
-      if (document.body.classList.contains("sidebar-is-open")) openMobileDrawer();
-      else closeMobileDrawer();
     }
   });
 }
 
 // =================================================================
-//          2. LÓGICA DE AUTOCOMPLETADO (Filtros)
+//          2. RESTO DE FUNCIONES (Sin cambios lógicos mayores)
 // =================================================================
 
 function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
@@ -235,10 +243,6 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
 
   resultsContainer.appendChild(fragment);
 }
-
-// =================================================================
-//          3. GESTIÓN DE UI FILTROS
-// =================================================================
 
 function updateFilterAvailabilityUI() {
   const activeCount = getActiveFilterCount();
@@ -309,10 +313,6 @@ function renderFilterPills() {
   updateFilterAvailabilityUI();
 }
 
-// Patrón Optimistic Update:
-// 1. Actualiza estado y UI inmediatamente.
-// 2. Lanza la carga de datos.
-// 3. Si falla, revierte al estado anterior.
 async function handleFilterChangeOptimistic(type, value) {
   const previousFilters = getActiveFilters();
   if (value) {
@@ -370,10 +370,6 @@ export function collapseAllSections() {
   });
   if (dom.sidebarInnerWrapper) dom.sidebarInnerWrapper.classList.remove("is-compact");
 }
-
-// =================================================================
-//          4. SLIDERS, INPUTS Y LISTENERS
-// =================================================================
 
 function initYearSlider() {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
@@ -485,7 +481,7 @@ function handlePillClick(e) {
     else handleFilterChangeOptimistic(filterType, null);
   }, { once: true });
   
-  return true; // Pill click handled
+  return true;
 }
 
 function setupEventListeners() {
@@ -547,7 +543,6 @@ function setupEventListeners() {
         return;
       }
       
-      // Delegación ordenada: Si es una pill, paramos aquí.
       if (handlePillClick(e)) return;
 
       const link = e.target.closest(".filter-link");
@@ -633,10 +628,6 @@ export function initSidebar() {
   setupAutocompleteHandlers();
   setupYearInputSteppers();
 
-  // Convención de eventos globales:
-  // - "updateSidebarUI": estado cambiado (URL/popstate/reset), sincronizar sidebar.
-  // - "filtersReset": usuario pide reseteo total.
-  // - "uiActionTriggered": acción de UI que debe colapsar secciones.
   document.addEventListener("updateSidebarUI", () => {
     dom.sidebarFilterForms.forEach((form) => {
       const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);

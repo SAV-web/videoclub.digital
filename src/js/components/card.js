@@ -1,9 +1,4 @@
-// =================================================================
-//          COMPONENTE: Movie Card (Tarjeta de Película)
-// =================================================================
-//  FICHERO:  src/js/components/card.js
-//  VERSIÓN:  3.8 (Final: Lógica centralizada y compartida)
-// =================================================================
+// src/js/components/card.js
 
 import { CONFIG } from "../constants.js";
 import {
@@ -26,10 +21,9 @@ import {
   setupRatingListeners,
 } from "./rating-stars.js";
 
-// Importamos el sprite para inyección dinámica de iconos
 import spriteUrl from "../../sprite.svg";
 
-// --- Constantes y Estado del Módulo ---
+// --- Constantes y Estado ---
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
 const SQRT_MAX_VOTES = {
   FA: Math.sqrt(MAX_VOTES.FA),
@@ -44,7 +38,7 @@ const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 const isDesktop = isPointerDevice && !isTouchDevice;
 
 // =================================================================
-//          SISTEMA DE HOVER DELEGADO
+//          SISTEMA DE HOVER Y LOGICA UI
 // =================================================================
 
 let hoverTimeout;
@@ -57,7 +51,6 @@ function startFlipTimer(cardElement) {
   if (cardElement.querySelector(".flip-card-inner").classList.contains("is-flipped")) return;
 
   clearTimeout(hoverTimeout);
-  
   hoverTimeout = setTimeout(() => {
     if (currentHoveredCard === cardElement) {
       cardElement.classList.add("is-hovered");
@@ -78,13 +71,11 @@ function clearCardHoverState(cardElement) {
 }
 
 export function initGridHoverSystem(gridContainer) {
-  if (isTouchDevice || !isPointerDevice) {
-    return;
-  }
+  if (isTouchDevice || !isPointerDevice) return;
+  
   gridContainer.addEventListener("mouseover", (e) => {
     const target = e.target;
     const card = target.closest(".movie-card");
-
     if (!card) return;
 
     if (currentHoveredCard !== card) {
@@ -92,11 +83,8 @@ export function initGridHoverSystem(gridContainer) {
       currentHoveredCard = card;
       startFlipTimer(card);
     } else {
-      if (target.closest(INTERACTIVE_SELECTOR)) {
-        cancelFlipTimer();
-      } else {
-        startFlipTimer(card);
-      }
+      if (target.closest(INTERACTIVE_SELECTOR)) cancelFlipTimer();
+      else startFlipTimer(card);
     }
   });
 
@@ -125,6 +113,8 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 800px 0px" }
 );
 
+// ... (handleWatchlistClick y handleRatingClick se mantienen igual, omitidos por brevedad pero deben estar aquí)
+// COPIA AQUÍ handleWatchlistClick y handleRatingClick del archivo original si no se modifican
 async function handleWatchlistClick(event) {
   event.preventDefault(); event.stopPropagation();
   const interactiveContainer = this;
@@ -192,13 +182,18 @@ export function updateCardUI(cardElement) {
   const lowRatingCircle = cardElement.querySelector('[data-action="set-rating-suspenso"]');
   const watchlistButton = cardElement.querySelector('[data-action="toggle-watchlist"]');
   const isLoggedIn = document.body.classList.contains("user-logged-in");
+  
   if (!starContainer || !lowRatingCircle || !watchlistButton) return;
+  
   cardElement.dataset.previousUserData = JSON.stringify(userData || { onWatchlist: false, rating: null });
   const isOnWatchlist = userData?.onWatchlist ?? false;
+  
   watchlistButton.classList.toggle("is-active", isOnWatchlist);
   watchlistButton.setAttribute("aria-label", isOnWatchlist ? "Quitar de mi lista" : "Añadir a mi lista");
+  
   lowRatingCircle.style.display = "none";
   starContainer.style.display = "none";
+  
   if (isLoggedIn && userRating !== null && userRating !== undefined) {
     starContainer.classList.add("has-user-rating");
     lowRatingCircle.classList.add("has-user-rating");
@@ -224,14 +219,21 @@ export function updateCardUI(cardElement) {
   lowRatingCircle.classList.toggle("is-interactive", isLoggedIn);
 }
 
+// =================================================================
+//          LOGICA OPTIMIZADA (TRAVERSING & SCOPED LOOKUPS)
+// =================================================================
+
 function setupCardImage(imgElement, movieData) {
   const version = movieData.last_synced_at ? new Date(movieData.last_synced_at).getTime() : "1";
   const basePosterUrl = movieData.image && movieData.image !== "."
     ? `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp`
     : `https://via.placeholder.com/400x496.png?text=${encodeURIComponent(movieData.title)}`;
   const highQualityPoster = `${basePosterUrl}?v=${version}`;
+  
   imgElement.alt = `Póster de ${movieData.title}`;
-  if (renderedCardCount < 6) {
+  
+  // Lógica LCP optimizada: cargamos eager las primeras 4 (suficiente para móvil y desktop)
+  if (renderedCardCount < 4) {
     imgElement.src = highQualityPoster;
     imgElement.loading = "eager";
     imgElement.setAttribute("fetchpriority", "high");
@@ -248,10 +250,6 @@ function setupCardImage(imgElement, movieData) {
     }
   }
 }
-
-// =================================================================
-//          LOGICA DE TEXTOS Y EXPANSION
-// =================================================================
 
 function formatActorsWithEllipsis(actorsString, maxLength = 85) {
   if (!actorsString || actorsString.trim() === "") return { truncated: "Reparto no disponible", full: [] };
@@ -270,20 +268,19 @@ function formatActorsWithEllipsis(actorsString, maxLength = 85) {
   return { truncated: truncatedActors.join(", "), full: allActors, isTruncated: true };
 }
 
-function populateCardText(elements, movieData, cardElement) {
-  elements.title.textContent = movieData.title || "Título no disponible";
-  elements.title.title = movieData.title || "Título no disponible";
-  
-  if (elements.originalTitleWrapper) {
-     if (movieData.original_title && movieData.original_title.trim() !== "") {
-        elements.originalTitle.textContent = movieData.original_title;
-        elements.originalTitleWrapper.style.display = 'flex';
-     } else {
-        elements.originalTitleWrapper.style.display = 'none';
-     }
-  }
+// ✨ OPTIMIZACIÓN 2.A: Recibimos el elemento card y usamos lookups acotados
+// En lugar de buscar en todo el clon, buscamos en contenedores específicos (frontContext, backContext)
+function populateCardText(cardElement, movieData) {
+  // Contextos de búsqueda (reduce el árbol de búsqueda)
+  const frontContext = cardElement.querySelector('.movie-summary');
+  const backContext = cardElement.querySelector('.flip-card-back');
 
-  const directorContainer = elements.director;
+  // --- FRONT ---
+  const titleEl = frontContext.querySelector(SELECTORS.TITLE);
+  titleEl.textContent = movieData.title || "Título no disponible";
+  titleEl.title = movieData.title || "Título no disponible";
+
+  const directorContainer = frontContext.querySelector(SELECTORS.DIRECTOR);
   directorContainer.textContent = "";
   if (movieData.directors) {
     movieData.directors.split(", ").forEach((name, index, arr) => {
@@ -295,99 +292,110 @@ function populateCardText(elements, movieData, cardElement) {
   }
 
   const isSeries = movieData.type?.toUpperCase().startsWith("S.");
-  elements.duration.textContent = formatRuntime(movieData.minutes, isSeries);
-  
-  if (elements.episodes) {
-      const epText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
-      elements.episodes.textContent = epText;
-      elements.episodes.style.display = epText ? "inline" : "none";
+  frontContext.querySelector(SELECTORS.YEAR).textContent = isSeries && movieData.year_end 
+    ? (String(movieData.year_end).toUpperCase() === "M" ? `${movieData.year} (M)` : (String(movieData.year_end) === "-" ? `${movieData.year}-` : `${movieData.year}-${String(movieData.year_end).length === 4 ? String(movieData.year_end).substring(2) : movieData.year_end}`))
+    : (movieData.year || "N/A");
+
+  renderCountryFlag(
+    frontContext.querySelector(SELECTORS.COUNTRY_CONTAINER),
+    frontContext.querySelector(SELECTORS.COUNTRY_FLAG),
+    movieData.country_code,
+    movieData.country
+  );
+
+  // --- BACK ---
+  const originalTitleWrapper = backContext.querySelector('.back-original-title-wrapper');
+  if (movieData.original_title && movieData.original_title.trim() !== "") {
+     originalTitleWrapper.querySelector('[data-template="original-title"]').textContent = movieData.original_title;
+     originalTitleWrapper.style.display = 'flex';
+  } else {
+     originalTitleWrapper.style.display = 'none';
   }
 
-  elements.genre.textContent = movieData.genres || "Género no disponible";
+  backContext.querySelector(SELECTORS.DURATION).textContent = formatRuntime(movieData.minutes, isSeries);
   
-  // Actores (Lógica truncada para tarjeta)
+  const episodesEl = backContext.querySelector('[data-template="episodes"]');
+  const epText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
+  episodesEl.textContent = epText;
+  episodesEl.style.display = epText ? "inline" : "none";
+
+  const wikiLink = backContext.querySelector('[data-template="wikipedia-link"]');
+  if (movieData.wikipedia) {
+    wikiLink.href = movieData.wikipedia;
+    wikiLink.style.display = 'flex';
+  } else {
+    wikiLink.style.display = 'none';
+  }
+
+  backContext.querySelector(SELECTORS.GENRE).textContent = movieData.genres || "Género no disponible";
+  
+  // Actores
+  const actorsEl = backContext.querySelector(SELECTORS.ACTORS);
   const actorsData = formatActorsWithEllipsis(movieData.actors);
-  elements.actors.textContent = actorsData.truncated;
+  actorsEl.textContent = actorsData.truncated;
   
-  // Botón actores
   const rawActors = movieData.actors ? movieData.actors.trim() : "";
   const hasInteractiveActors = rawActors.length > 0 && !["(a)", "animación", "animacion", "documental"].includes(rawActors.toLowerCase());
 
   if (hasInteractiveActors) {
-    const expandBtn = createElement("button", { className: "actors-expand-btn", textContent: "+", attributes: { "aria-label": "Ver reparto completo" } });
-    const actorsContainer = elements.actors.parentElement;
-    const existingBtn = actorsContainer.querySelector(".actors-expand-btn");
-    if (existingBtn) existingBtn.remove();
-    actorsContainer.appendChild(expandBtn);
-
+    const actorsContainer = actorsEl.parentElement;
+    if (!actorsContainer.querySelector(".actors-expand-btn")) {
+        const expandBtn = createElement("button", { className: "actors-expand-btn", textContent: "+", attributes: { "aria-label": "Ver reparto completo" } });
+        actorsContainer.appendChild(expandBtn);
+    }
     const actorsOverlay = cardElement.querySelector('.actors-scrollable-content');
     if (actorsOverlay) {
-      const actorsListHtml = movieData.actors.split(',').map(actor => `<button type="button" class="actor-list-item" data-actor-name="${actor.trim()}">${actor.trim()}</button>`).join(''); 
-      actorsOverlay.innerHTML = `<h4>Reparto</h4><div class="actors-list-text">${actorsListHtml}</div>`;
+       const actorsListHtml = movieData.actors.split(',').map(actor => `<button type="button" class="actor-list-item" data-actor-name="${actor.trim()}">${actor.trim()}</button>`).join(''); 
+       actorsOverlay.innerHTML = `<h4>Reparto</h4><div class="actors-list-text">${actorsListHtml}</div>`;
     }
   } else {
-    const actorsContainer = elements.actors.parentElement;
-    const existingBtn = actorsContainer.querySelector(".actors-expand-btn");
-    if (existingBtn) existingBtn.remove();
+    // Limpieza si no hay actores (reutilización de nodos)
+    actorsEl.parentElement.querySelector(".actors-expand-btn")?.remove();
   }
 
-  elements.synopsis.textContent = movieData.synopsis || "Argumento no disponible.";
-  elements.criticContainer.style.display = movieData.critic?.trim() ? "block" : "none";
-  if (elements.criticContainer.style.display === "block") elements.critic.textContent = movieData.critic;
+  backContext.querySelector(SELECTORS.SYNOPSIS).textContent = movieData.synopsis || "Argumento no disponible.";
   
-  // Año
-  let displayYear = movieData.year || "N/A";
-  if (isSeries && movieData.year_end) {
-    const yearEnd = String(movieData.year_end).trim();
-    displayYear = (yearEnd.toUpperCase() === "M") ? `${movieData.year} (M)` : 
-                  (yearEnd === "-") ? `${movieData.year}-` : 
-                  (!isNaN(yearEnd) && yearEnd.length === 4) ? `${movieData.year}-${yearEnd.substring(2)}` : `${movieData.year} - ${yearEnd}`;
+  const criticContainer = backContext.querySelector('[data-template="critic-container"]');
+  if (movieData.critic?.trim()) {
+    criticContainer.querySelector('[data-template="critic"]').textContent = movieData.critic;
+    criticContainer.style.display = 'block';
+  } else {
+    criticContainer.style.display = 'none';
   }
-  elements.year.textContent = displayYear;
 
-  // Banderas (Helper Centralizado)
-  renderCountryFlag(elements.countryContainer, elements.countryFlag, movieData.country_code, movieData.country);
-  
-  // Iconos de Plataforma (Datos Centralizados)
-  const iconsContainer = cardElement.querySelector('.card-icons-line');
+  // Iconos Plataforma (Usa el contenedor del Front)
+  const iconsContainer = frontContext.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
-    const collections = movieData.collections_list || "";
-    if (collections) {
-      collections.split(",").forEach(code => {
+    if (movieData.collections_list) {
+      movieData.collections_list.split(",").forEach(code => {
         const config = PLATFORM_DATA[code];
         if (config) {
-          const span = document.createElement('span');
-          span.className = config.class ? `platform-icon ${config.class}` : `platform-icon`;
-          span.title = config.title;
-          span.innerHTML = `<svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}"><use href="${spriteUrl}#${config.id}"></use></svg>`;
-          iconsContainer.appendChild(span);
+          iconsContainer.appendChild(createElement('span', {
+            className: config.class ? `platform-icon ${config.class}` : `platform-icon`,
+            title: config.title,
+            innerHTML: `<svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}"><use href="${spriteUrl}#${config.id}"></use></svg>`
+          }));
         }
       });
     }
   }
-
-  if (elements.wikipediaLink) {
-      if (movieData.wikipedia) {
-        elements.wikipediaLink.href = movieData.wikipedia;
-        elements.wikipediaLink.style.display = 'flex';
-      } else {
-        elements.wikipediaLink.style.display = 'none';
-      }
-  }
 }
 
-// ✨ EXPORTADA: Para usar en quick-view.js
-export function setupCardRatings(elements, movieData) {
+// ✨ OPTIMIZACIÓN 2.A: Ahora acepta un CONTENEDOR, no un objeto de elementos
+// Esto permite que 'createMovieCard' no tenga que buscar estos elementos previamente.
+// La función busca solo lo que necesita DENTRO del contenedor pasado.
+export function setupCardRatings(containerElement, movieData) {
   const setupRating = (platform, maxVotesKey) => {
-    const link = elements[`${platform}Link`];
-    const ratingEl = elements[`${platform}Rating`];
-    const votesBarContainer = elements[`${platform}VotesBarContainer`];
-    const votesBar = elements[`${platform}VotesBar`];
-    
-    // Safety check para quick view
-    if (!link || !ratingEl || !votesBarContainer || !votesBar) return;
+    // Búsqueda eficiente (scoped)
+    const link = containerElement.querySelector(`[data-template="${platform}-link"]`);
+    // Si no existe el link, asumimos que el resto tampoco (fail fast)
+    if (!link) return;
 
+    const ratingEl = containerElement.querySelector(`[data-template="${platform}-rating"]`);
+    const votesBarContainer = containerElement.querySelector(`[data-template="${platform}-votes-bar-container"]`);
+    const votesBar = containerElement.querySelector(`[data-template="${platform}-votes-bar"]`);
+    
     const id = movieData[`${platform}_id`];
     const rating = movieData[`${platform}_rating`];
     const votes = movieData[`${platform}_votes`];
@@ -404,6 +412,7 @@ export function setupCardRatings(elements, movieData) {
       votesBarContainer.title = `${formatVotesUnified(votesCount)} votos`;
     }
   };
+
   setupRating("fa", "FA");
   setupRating("imdb", "IMDB");
 }
@@ -445,7 +454,6 @@ export function handleCardClick(event) {
     handleWatchlistClick.call(cardElement, event);
     return;
   }
-
   if (target.closest('[data-action^="set-rating-"]')) {
     handleRatingClick.call(cardElement, event);
     return;
@@ -453,8 +461,8 @@ export function handleCardClick(event) {
 
   const flipCardBack = cardElement.querySelector(".flip-card-back");
   const mainExpandBtn = target.closest(".expand-content-btn");
-  
   const actorsExpandBtn = target.closest(".actors-expand-btn");
+
   if (actorsExpandBtn) {
     event.stopPropagation();
     flipCardBack.classList.add("is-expanded", "show-actors");
@@ -493,10 +501,7 @@ export function handleCardClick(event) {
   if (actorBtn) {
     event.preventDefault();
     document.dispatchEvent(new CustomEvent("filtersReset", { 
-      detail: { 
-        keepSort: true, 
-        newFilter: { type: "actor", value: actorBtn.dataset.actorName } 
-      } 
+      detail: { keepSort: true, newFilter: { type: "actor", value: actorBtn.dataset.actorName } } 
     }));
     return;
   }
@@ -506,6 +511,7 @@ export function handleCardClick(event) {
 
   if (cardElement.id === 'quick-view-content') return;
   const isRotationDisabled = document.body.classList.contains("rotation-disabled");
+  
   if (!isDesktop && !isRotationDisabled) {
     event.preventDefault(); event.stopPropagation();
     const inner = cardElement.querySelector(".flip-card-inner");
@@ -546,63 +552,38 @@ function createMovieCard(movieData) {
     backFace.insertBefore(actorsOverlay, expandBtn);
   }
 
-  const elements = {
-    img: cardClone.querySelector("img"),
-    title: cardClone.querySelector(SELECTORS.TITLE),
-    director: cardClone.querySelector(SELECTORS.DIRECTOR),
-    year: cardClone.querySelector(SELECTORS.YEAR),
-    countryContainer: cardClone.querySelector(SELECTORS.COUNTRY_CONTAINER),
-    countryFlag: cardClone.querySelector(SELECTORS.COUNTRY_FLAG),
-    faLink: cardClone.querySelector(SELECTORS.FA_LINK),
-    faRating: cardClone.querySelector(SELECTORS.FA_RATING),
-    faVotesBarContainer: cardClone.querySelector('[data-template="fa-votes-bar-container"]'),
-    faVotesBar: cardClone.querySelector('[data-template="fa-votes-bar"]'),
-    imdbLink: cardClone.querySelector(SELECTORS.IMDB_LINK),
-    imdbRating: cardClone.querySelector(SELECTORS.IMDB_RATING),
-    imdbVotesBarContainer: cardClone.querySelector('[data-template="imdb-votes-bar-container"]'),
-    imdbVotesBar: cardClone.querySelector('[data-template="imdb-votes-bar"]'),
-    duration: cardClone.querySelector(SELECTORS.DURATION),
-    episodes: cardClone.querySelector('[data-template="episodes"]'),
-    wikipediaLink: cardClone.querySelector('[data-template="wikipedia-link"]'),
-    genre: cardClone.querySelector(SELECTORS.GENRE),
-    actors: cardClone.querySelector(SELECTORS.ACTORS),
-    synopsis: cardClone.querySelector(SELECTORS.SYNOPSIS),
-    criticContainer: cardClone.querySelector('[data-template="critic-container"]'),
-    critic: cardClone.querySelector('[data-template="critic"]'),
-    originalTitle: cardClone.querySelector('[data-template="original-title"]'),
-    originalTitleWrapper: cardClone.querySelector('.back-original-title-wrapper'),
-  };
-  populateCardText(elements, movieData, cardElement);
-  setupCardImage(elements.img, movieData);
-  setupCardRatings(elements, movieData);
+  // ✨ MEJORA 2.A: ELIMINADO EL OBJETO GIGANTE 'elements'.
+  // Pasamos directamente el cardElement para que las funciones busquen de forma 'scoped'.
+  
+  populateCardText(cardElement, movieData);
+  setupCardImage(cardElement.querySelector("img"), movieData);
+  
+  // setupCardRatings ahora busca dentro del backFace, mucho más eficiente
+  setupCardRatings(backFace, movieData);
+  
   updateCardUI(cardElement);
   initializeCard(cardElement);
+  
   return cardClone;
 }
 
 export function renderMovieGrid(gridContainer, movies) {
   renderedCardCount = 0; 
   unflipAllCards();
-  
   if (!gridContainer) return;
 
   gridContainer.textContent = "";
-  
   const BATCH_SIZE = 12;
   let currentIndex = 0;
 
   function renderBatch() {
-    if (currentIndex >= movies.length || !document.body.contains(gridContainer)) {
-      return;
-    }
-
+    if (currentIndex >= movies.length || !document.body.contains(gridContainer)) return;
     const fragment = document.createDocumentFragment();
     const limit = Math.min(currentIndex + BATCH_SIZE, movies.length);
 
     for (let i = currentIndex; i < limit; i++) {
       const movie = movies[i];
       const cardNode = createMovieCard(movie);
-      
       if (cardNode) {
         const cardElement = cardNode.querySelector(".movie-card");
         if (cardElement) {
@@ -613,18 +594,15 @@ export function renderMovieGrid(gridContainer, movies) {
         fragment.appendChild(cardNode);
       }
     }
-
     gridContainer.appendChild(fragment);
     currentIndex = limit;
-
-    if (currentIndex < movies.length) {
-      requestAnimationFrame(renderBatch);
-    }
+    if (currentIndex < movies.length) requestAnimationFrame(renderBatch);
   }
-
   renderBatch();
 }
 
+// ... (renderSkeletons, renderNoResults, renderErrorState iguales)
+// COPIA AQUÍ renderSkeletons, renderNoResults, renderErrorState del archivo original
 export function renderSkeletons(gridContainer, paginationContainer) {
   if (gridContainer) gridContainer.textContent = "";
   if (paginationContainer) paginationContainer.textContent = "";
