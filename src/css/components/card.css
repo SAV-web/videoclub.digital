@@ -572,23 +572,32 @@ html.dark-mode .country-flag-icon svg {
 }
 
 /* =================================================================
-   ANIMACIÓN DE INTERACCIÓN (Pop Effect para Estrellas)
+   ANIMACIÓN DE INTERACCIÓN (Pop Effect)
    ================================================================= */
 
 @keyframes star-click-pop {
   0% { transform: scale(1); }
-  50% { transform: scale(1.45); } /* Un poco más grande que el hover normal (1.35) */
+  50% { transform: scale(1.45); }
   100% { transform: scale(1); }
 }
 
-.star-icon.animate-pop {
+/* Aplicamos la animación tanto a estrellas como al círculo */
+.star-icon.animate-pop,
+.low-rating-circle.animate-pop {
   animation: star-click-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  /* Aseguramos que se pinte por encima de las otras mientras crece */
   z-index: 20; 
-  /* Forzamos color amarillo durante la animación para feedback instantáneo */
+  /* Filtro amarillo para feedback instantáneo */
   filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.8));
+  /* Aseguramos que el transform-origin sea el centro para que crezca desde el medio */
+  transform-origin: center center;
 }
 
+/* Color específico para la estrella interior */
 .star-icon.animate-pop .star-icon-path {
+  stroke: #ffbd07;
+}
+
+/* Color específico para el borde del círculo */
+.low-rating-circle.animate-pop {
   stroke: #ffbd07;
 }
