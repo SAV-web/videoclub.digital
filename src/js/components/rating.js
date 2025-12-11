@@ -1,10 +1,11 @@
 // =================================================================
-//          COMPONENTE: Rating Stars (v3.0 - Fix Delegación)
+//          COMPONENTE: Rating Stars (v3.1 - Invisible Touch)
 // =================================================================
-// v3.0 - Corrección Crítica: Eliminados listeners de clic individuales.
-//        Se confía 100% en la delegación de eventos de main.js para evitar
-//        dobles escrituras que corrompían los datos al guardar.
-//        Refactorizado handleRatingClick para usar .closest() robusto.
+// FICHERO: src/js/components/rating.js
+// - Las estrellas vacías "hideUnfilled" tienen opacity: 0
+//   en lugar de visibility: hidden.
+// - Esto permite que sigan siendo interactivas (clicables) aunque
+//   el usuario no las vea, permitiendo votar 4 estrellas en una peli de 2.
 // =================================================================
 
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
@@ -42,9 +43,14 @@ function renderStars(starContainer, filledStars, { hideUnfilled = false, snapToI
     const filledPath = star.querySelector(".star-icon-path--filled");
 
     if (hideUnfilled && fillValue === 0) {
-      star.style.visibility = "hidden";
+      // opacity 0 (invisible, color de fondo) en lugar de hidden
+      // Funcionalmente: El elemento existe y recibe clics
+      star.style.opacity = "0"; 
+      star.style.visibility = "visible"; // Aseguramos que capture eventos
     } else {
+      star.style.opacity = "1";
       star.style.visibility = "visible";
+      // Recorte de la estrella (llenado parcial)
       const clipPercentage = 100 - fillValue * 100;
       filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
     }
@@ -63,56 +69,21 @@ export function renderUserStars(starContainer, filledLevel, hideHollowStars = fa
 //          MANEJADORES DE EVENTOS
 // =================================================================
 
-async function handleRatingClick(event) {
-  event.preventDefault();
-  event.stopPropagation();
-
-  // FIX: Usamos target.closest para soportar delegación correctamente.
-  // event.currentTarget fallaba cuando el listener estaba en el grid container.
-  const clickedElement = event.target.closest(".star-icon[data-rating-level]");
-  const interactiveContainer = event.target.closest("[data-movie-id]");
-  
-  if (!interactiveContainer || !clickedElement) return;
-
-  const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
-  const starIndex = parseInt(clickedElement.dataset.ratingLevel, 10) - 1;
-
-  const currentUserData = getUserDataForMovie(movieId) || { rating: null };
-  const currentStars = calculateUserStars(currentUserData.rating);
-  const numStarsClicked = starIndex + 1;
-
-  // Lógica de toggle: si pulsas la que ya tienes, se borra (salvo nivel 1 que va a suspenso en lógica de card.js)
-  // Nota: La lógica de alternancia con "Suspenso" se gestiona parcialmente aquí al devolver null,
-  // y card.js decide qué mostrar.
-  let newRating = numStarsClicked === currentStars ? null : LEVEL_TO_RATING_MAP[starIndex];
-
-  const newUserData = { rating: newRating };
-  const previousUserData = JSON.parse(interactiveContainer.dataset.previousUserData || "{}");
-
-  // UI Optimista
-  updateUserDataForMovie(movieId, newUserData);
-  updateCardUI(interactiveContainer);
-
-  try {
-    await setUserMovieDataAPI(movieId, newUserData);
-  } catch (error) {
-    showToast(error.message, "error");
-    // Rollback
-    updateUserDataForMovie(movieId, previousUserData);
-    updateCardUI(interactiveContainer);
-  }
-}
+// Efectos visuales de hover (handleRatingClick se eliminó pq usamos delegación en main.js/card.js)
 
 function handleRatingMouseMove(event) {
   const starContainer = event.currentTarget.closest(".star-rating-container");
-  // Aquí sí usamos currentTarget porque el listener está directo en la estrella (mousemove)
+  if (!starContainer) return;
+  // Al pasar el ratón, mostramos temporalmente la nota que tendrías
   const hoverLevel = parseInt(event.currentTarget.dataset.ratingLevel, 10);
-  renderUserStars(starContainer, hoverLevel);
+  // Renderizamos estrellas de usuario (incluso vacías) para feedback visual inmediato
+  renderUserStars(starContainer, hoverLevel, false);
 }
 
 function handleRatingMouseLeave(event) {
   const interactiveContainer = event.currentTarget.closest("[data-movie-id]");
   if (interactiveContainer) {
+    // Al salir,  la tarjeta se repinta con su estado real
     const updateEvent = new CustomEvent("card:requestUpdate", {
       bubbles: true,
       composed: true,
@@ -124,18 +95,12 @@ function handleRatingMouseLeave(event) {
 
 export function setupRatingListeners(starContainer, isInteractive) {
   const stars = starContainer.querySelectorAll(".star-icon[data-rating-level]");
-  
   if (isInteractive) {
     stars.forEach((star) => {
-      // FIX CRÍTICO: Eliminado star.addEventListener("click", handleRatingClick);
-      // El clic ya se gestiona globalmente en main.js -> handleCardClick.
-      // Mantenerlo aquí causaba dobles peticiones y corrupción de datos.
-      
-      // Mantenemos mousemove para el efecto visual de "hover" sobre las estrellas
+      // Efecto visual al pasar el ratón (Desktop)
       star.addEventListener("mousemove", handleRatingMouseMove);
     });
-    
-    // Mantenemos mouseleave para restaurar el estado al salir
+    // Restaurar estado al salir
     starContainer.addEventListener("mouseleave", handleRatingMouseLeave);
   }
 }

@@ -21,7 +21,7 @@
 @import "components/header.css";
 @import "components/modal.css";
 @import "components/sidebar.css";
-@import "components/ui-general.css";
+@import "components/ui.css";
 
 /* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
 @import "layout.css";

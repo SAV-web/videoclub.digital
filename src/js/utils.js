@@ -20,15 +20,17 @@ export const formatVotesUnified = (votes) => {
   const numVotes = parseInt(String(votes).replace(/\D/g, ""), 10);
   if (isNaN(numVotes) || numVotes === 0) return "";
 
+  // 1. Millones: Formato compacto (Ej: 1,5 M)
   if (numVotes >= 1000000) {
     return new Intl.NumberFormat('es-ES', {
-      notation: "compact", maximumFractionDigits: 1
+      notation: "compact", 
+      maximumFractionDigits: 1
     }).format(numVotes).replace("M", " M");
   }
-  if (numVotes >= 1000) {
-    return new Intl.NumberFormat('es-ES').format(numVotes);
-  }
-  return numVotes.toString();
+
+  // 2. Miles y resto: Forzamos el punto con Regex
+  // Esto garantiza que 1500 se vea "1.500" y 15000 se vea "15.000"
+  return numVotes.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
 export const formatRuntime = (minutesString, useShortLabel = false) => {

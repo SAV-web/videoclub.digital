@@ -19,7 +19,7 @@ import {
   calculateUserStars,
   renderUserStars,
   setupRatingListeners,
-} from "./rating-stars.js";
+} from "./rating.js";
 
 import spriteUrl from "../../sprite.svg";
 
@@ -202,21 +202,24 @@ export function updateCardUI(cardElement) {
       starContainer.style.display = "flex";
       renderUserStars(starContainer, calculateUserStars(userRating), true);
     }
-  } else {
+} else {
+    // ESTADO: NO LOGUEADO O SIN VOTO (Minimalista)
     starContainer.classList.remove("has-user-rating");
     lowRatingCircle.classList.remove("has-user-rating");
+    
     const ratings = [movieData.fa_rating, movieData.imdb_rating].filter(r => r && r > 0);
     if (ratings.length > 0) {
       const average = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-      if (average <= 5.5) lowRatingCircle.style.display = "block";
-      else {
+      
+      // Si la nota es mala, círculo. Si es buena, estrellas.
+      if (average <= 5.5) {
+        lowRatingCircle.style.display = "block";
+      } else {
         starContainer.style.display = "flex";
         renderAverageStars(starContainer, calculateAverageStars(average));
       }
     }
   }
-  starContainer.classList.toggle("is-interactive", isLoggedIn);
-  lowRatingCircle.classList.toggle("is-interactive", isLoggedIn);
 }
 
 // =================================================================

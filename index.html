@@ -282,54 +282,33 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
     <span data-template="duration"></span>
             </div>
           </div>
-          <div class="ratings-container">
-            <a
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="rating-line"
-              data-template="fa-link"
-            >
-              <span class="rating-left">
-                <svg class="rating-icon" data-template="fa-icon">
-                  <use
-                    href="/src/sprite.svg#icon-filmaffinity"
-                  ></use>
-                </svg>
-                <span data-template="fa-rating"></span>
-              </span>
-              <div
-                class="rating-bar-container"
-                data-template="fa-votes-bar-container"
-              >
-                <div class="rating-bar" data-template="fa-votes-bar"></div>
-              </div>
-            </a>
-            <a
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="rating-line"
-              data-template="imdb-link"
-            >
-              <span class="rating-left">
-                <svg
-                  class="rating-icon"
-                  data-template="imdb-icon"
-                  fill="#F5C618"
-                >
-                  <use href="/src/sprite.svg#icon-imdb"></use>
-                </svg>
-                <span data-template="imdb-rating"></span>
-              </span>
-              <div
-                class="rating-bar-container"
-                data-template="imdb-votes-bar-container"
-              >
-                <div class="rating-bar" data-template="imdb-votes-bar"></div>
-              </div>
-            </a>
-          </div>
+<div class="ratings-container">
+  <!-- FILMAFFINITY -->
+  <div class="rating-line"> <!-- Antes era <a>, ahora <div> -->
+    <a href="#" target="_blank" rel="noopener noreferrer" class="rating-left" data-template="fa-link">
+      <svg class="rating-icon" data-template="fa-icon">
+        <use href="/src/sprite.svg#icon-filmaffinity"></use>
+      </svg>
+      <span data-template="fa-rating"></span>
+    </a>
+    <div class="rating-bar-container" data-template="fa-votes-bar-container">
+      <div class="rating-bar" data-template="fa-votes-bar"></div>
+    </div>
+  </div>
+
+  <!-- IMDB -->
+  <div class="rating-line"> <!-- Antes era <a>, ahora <div> -->
+    <a href="#" target="_blank" rel="noopener noreferrer" class="rating-left" data-template="imdb-link">
+      <svg class="rating-icon" data-template="imdb-icon" fill="#F5C618">
+        <use href="/src/sprite.svg#icon-imdb"></use>
+      </svg>
+      <span data-template="imdb-rating"></span>
+    </a>
+    <div class="rating-bar-container" data-template="imdb-votes-bar-container">
+      <div class="rating-bar" data-template="imdb-votes-bar"></div>
+    </div>
+  </div>
+</div>
           <div class="details-list">
             <div class="detail-item">
               <span class="detail-label">🎬</span
@@ -453,54 +432,32 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
         </div>
       </div>
 <div class="ratings-container">
-            <!-- Filmaffinity -->
-            <a
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="rating-line"
-              data-template="fa-link"
-            >
-              <span class="rating-left">
-                <svg class="rating-icon" data-template="fa-icon">
-                  <use href="/src/sprite.svg#icon-filmaffinity"></use>
-                </svg>
-                <span data-template="fa-rating"></span>
-              </span>
-              <div
-                class="rating-bar-container"
-                data-template="fa-votes-bar-container"
-              >
-                <div class="rating-bar" data-template="fa-votes-bar"></div>
-              </div>
-            </a>
-            
-            <!-- IMDb -->
-            <a
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="rating-line"
-              data-template="imdb-link"
-            >
-              <span class="rating-left">
-                <svg
-                  class="rating-icon"
-                  data-template="imdb-icon"
-                  fill="#F5C618"
-                >
-                  <use href="/src/sprite.svg#icon-imdb"></use>
-                </svg>
-                <span data-template="imdb-rating"></span>
-              </span>
-              <div
-                class="rating-bar-container"
-                data-template="imdb-votes-bar-container"
-              >
-                <div class="rating-bar" data-template="imdb-votes-bar"></div>
-              </div>
-            </a>
-          </div>
+  <!-- FILMAFFINITY -->
+  <div class="rating-line"> <!-- Antes era <a>, ahora <div> -->
+    <a href="#" target="_blank" rel="noopener noreferrer" class="rating-left" data-template="fa-link">
+      <svg class="rating-icon" data-template="fa-icon">
+        <use href="/src/sprite.svg#icon-filmaffinity"></use>
+      </svg>
+      <span data-template="fa-rating"></span>
+    </a>
+    <div class="rating-bar-container" data-template="fa-votes-bar-container">
+      <div class="rating-bar" data-template="fa-votes-bar"></div>
+    </div>
+  </div>
+
+  <!-- IMDB -->
+  <div class="rating-line"> <!-- Antes era <a>, ahora <div> -->
+    <a href="#" target="_blank" rel="noopener noreferrer" class="rating-left" data-template="imdb-link">
+      <svg class="rating-icon" data-template="imdb-icon" fill="#F5C618">
+        <use href="/src/sprite.svg#icon-imdb"></use>
+      </svg>
+      <span data-template="imdb-rating"></span>
+    </a>
+    <div class="rating-bar-container" data-template="imdb-votes-bar-container">
+      <div class="rating-bar" data-template="imdb-votes-bar"></div>
+    </div>
+  </div>
+</div>
       <div class="details-list">
         <div class="detail-item">
           <span class="detail-label">🎬</span
