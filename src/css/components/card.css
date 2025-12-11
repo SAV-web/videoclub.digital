@@ -90,7 +90,9 @@ html.dark-mode .flip-card-inner.is-flipped {
   padding: var(--space-xs) var(--space-sm);
   line-height: var(--line-height-normal);
   z-index: 1;
-  pointer-events: none;
+  /* Bloqueamos clics por defecto en la trasera para evitar toques fantasma.
+     Habilitaremos explícitamente los elementos interactivos hijos. */
+  pointer-events: none; 
 }
 
 /* Gestión de Interactividad al girar */
@@ -204,8 +206,12 @@ html.dark-mode .flip-card-inner.is-flipped {
 }
 
 .back-meta-header {
-  display: flex; justify-content: flex-start; align-items: center;
-  width: 100%; margin-bottom: 10px;
+  display: flex; 
+  /* CAMBIO AQUÍ: Alineamos todo el bloque a la derecha */
+  justify-content: flex-end; 
+  align-items: center;
+  width: 100%; 
+  margin-bottom: 10px;
   font-size: var(--font-size-sm);
 }
 
@@ -218,7 +224,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   display: flex; align-items: center; text-decoration: none;
   transition: transform var(--duration-fast);
   margin-right: var(--space-xs);
-  pointer-events: auto; 
+  pointer-events: auto; /* Habilitar click explícitamente */
 }
 [data-template="wikipedia-link"]:hover { transform: scale(1.1); }
 
@@ -234,7 +240,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   display: flex; 
   align-items: center; 
   gap: var(--space-sm); 
-  /* pointer-events se maneja en los hijos */
 }
 
 /* La parte izquierda (Icono + Nota) -> AHORA ES EL LINK */
@@ -279,7 +284,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   
   /* Permitimos hover para ver el tooltip (title), pero no click */
   pointer-events: auto; 
-  cursor: default; /* Cursor de ayuda para indicar información */
+  cursor: default; /* Sin interrogación */
 }
 
 .rating-bar {
@@ -365,7 +370,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
   transition: all var(--duration-quick) ease-out;
   z-index: 20; /* Prioridad de clic */
-  pointer-events: auto;   /* Forzamos que sean clickeables siempre */
+  pointer-events: auto; /* Habilitar click explícitamente */
 }
 .actors-expand-btn { bottom: 2px; right: 2px; z-index: 5; }
 .expand-content-btn { bottom: 14px; right: 14px; }
@@ -483,8 +488,16 @@ html.dark-mode .low-rating-circle.has-user-rating {
 }
 html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0.2); }
 
-/* Iconos de plataformas pequeñas */
+/* Iconos de plataformas pequeñas (Unificado) */
 .rating-icon { width: 1.6em; height: 1.6em; border-radius: var(--radius-sm); object-fit: contain; }
+
+/* CORRECCIÓN ÓPTICA: Icono de Wikipedia */
+[data-template="wikipedia-link"] .rating-icon {
+  width: 1.9em;  /* Un poco más grande que el 1.6em estándar */
+  height: 1.9em;
+  /* Ajuste fino de posición si es necesario para centrarlo verticalmente */
+  transform: translateY(-1px); 
+}
 
 /* Overrides para Modal (Quick View) */
 .quick-view-modal .flip-card-back > *:not(.scrollable-content) { display: none; }
@@ -525,6 +538,7 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
     transform: rotateY(180deg);
   }
   
+  /* Levitación sutil */
   .movie-card:not(.is-flipped):hover {
     transform: translateY(-8px) translateZ(0) scale(1.02);
     filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
