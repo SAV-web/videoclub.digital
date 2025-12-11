@@ -398,6 +398,7 @@ export function setupCardRatings(containerElement, movieData) {
     const ratingEl = containerElement.querySelector(`[data-template="${platform}-rating"]`);
     const votesBarContainer = containerElement.querySelector(`[data-template="${platform}-votes-bar-container"]`);
     const votesBar = containerElement.querySelector(`[data-template="${platform}-votes-bar"]`);
+    const votesCountEl = containerElement.querySelector(`[data-template="${platform}-votes-count"]`);
     
     const id = movieData[`${platform}_id`];
     const rating = movieData[`${platform}_rating`];
@@ -412,7 +413,13 @@ export function setupCardRatings(containerElement, movieData) {
     votesBarContainer.style.display = votesCount > 0 ? "block" : "none";
     if (votesCount > 0) {
       votesBar.style.width = `${Math.min((Math.sqrt(votesCount) / SQRT_MAX_VOTES[maxVotesKey]) * 100, 100)}%`;
-      votesBarContainer.title = `${formatVotesUnified(votesCount)} votos`;
+      votesBarContainer.title = ""; // Tooltip eliminado
+      if (votesCountEl) {
+        votesCountEl.textContent = formatVotesUnified(votesCount);
+        votesCountEl.style.display = "flex";
+      }
+    } else {
+      if (votesCountEl) votesCountEl.style.display = "none";
     }
   };
 
@@ -453,6 +460,7 @@ export function handleCardClick(event) {
   const cardElement = this;
   const target = event.target;
 
+  // 1. Acciones de botones (Watchlist, Rating...)
   if (target.closest('[data-action="toggle-watchlist"]')) {
     handleWatchlistClick.call(cardElement, event);
     return;
@@ -466,6 +474,7 @@ export function handleCardClick(event) {
   const mainExpandBtn = target.closest(".expand-content-btn");
   const actorsExpandBtn = target.closest(".actors-expand-btn");
 
+  // 2. Lógica de Botones de Expansión (+ / -)
   if (actorsExpandBtn) {
     event.stopPropagation();
     flipCardBack.classList.add("is-expanded", "show-actors");
@@ -491,6 +500,27 @@ export function handleCardClick(event) {
     return;
   }
 
+  // --- 🔥 FIX CRÍTICO: Bloquear volteo al interactuar con contenido expandido ---
+  // Si estamos haciendo clic en el texto de la sinopsis expandida o en la lista de actores,
+  // detenemos aquí para que no llegue a la lógica de "Flip".
+  // Excepción: Los enlaces de actores (.actor-list-item) sí deben funcionar.
+  const isInsideExpandedContent = 
+    (target.closest('.scrollable-content') && flipCardBack.classList.contains('is-expanded')) ||
+    target.closest('.actors-scrollable-content');
+
+  if (isInsideExpandedContent) {
+    // Si es un clic en un actor (filtro), dejamos que pase al siguiente bloque
+    if (target.closest('.actor-list-item')) {
+       // Pasa al siguiente if (lógica de filtro de actor)
+    } else {
+       // Si es solo texto o scroll, paramos.
+       event.stopPropagation();
+       return; 
+    }
+  }
+  // -----------------------------------------------------------------------------
+
+  // 3. Lógica de Enlaces (Director, Actor...)
   const directorLink = target.closest(".front-director-info a[data-director-name]");
   if (directorLink) {
     event.preventDefault();
@@ -512,6 +542,7 @@ export function handleCardClick(event) {
   const externalLink = target.closest("a");
   if (externalLink && externalLink.href && !externalLink.href.endsWith("#")) return;
 
+  // 4. Lógica de Volteo (Flip)
   if (cardElement.id === 'quick-view-content') return;
   const isRotationDisabled = document.body.classList.contains("rotation-disabled");
   

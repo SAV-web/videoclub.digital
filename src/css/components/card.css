@@ -223,8 +223,13 @@ html.dark-mode .flip-card-inner.is-flipped {
 [data-template="wikipedia-link"] {
   display: flex; align-items: center; text-decoration: none;
   transition: transform var(--duration-fast);
-  margin-right: var(--space-xs);
-  pointer-events: auto; /* Habilitar click explícitamente */
+  
+  margin-right: 0;
+  
+  /* CAMBIO AQUÍ: Aumentamos de xs (0.5rem) a md (1rem) */
+  margin-left: var(--space-md); 
+  
+  pointer-events: auto; 
 }
 [data-template="wikipedia-link"]:hover { transform: scale(1.1); }
 
@@ -385,10 +390,29 @@ html.dark-mode .flip-card-inner.is-flipped {
   transition: opacity var(--duration-quick), transform var(--duration-normal) var(--ease-smooth-out);
 }
 
+/* ESTADO: Sinopsis Expandida */
 .flip-card-back.is-expanded .scrollable-content {
   position: absolute; inset: 0; padding: var(--space-md);
   background-color: var(--color-surface);
   overflow-y: auto; scrollbar-width: none;
+  
+  /* 🔥 FIX: Habilitar interacción para poder hacer scroll */
+  pointer-events: auto; 
+  z-index: 15; /* Por debajo del botón de cerrar (z-index 20) */
+}
+
+/* ESTADO: Actores Expandidos (Overlay) */
+.actors-scrollable-content {
+  position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-xl);
+  background-color: var(--color-surface);
+  overflow-y: auto; scrollbar-width: none;
+  opacity: 0; visibility: hidden; transform: translateY(100%);
+  transition: all var(--duration-normal) var(--ease-smooth-out);
+  z-index: 5;
+  font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary);
+  
+  /* 🔥 FIX: Habilitar interacción para poder hacer scroll */
+  pointer-events: auto; 
 }
 
 .flip-card-back.is-expanded.show-actors .actors-scrollable-content {

@@ -47,24 +47,29 @@ function handleOutsideClick(event) {
 }
 
 /**
- * Permite filtrar por director al hacer clic en su nombre dentro de la modal.
+ * Permite filtrar por director o actor al hacer clic en su nombre dentro de la modal.
  * Dispara el evento global de reseteo de filtros.
  */
-function handleDirectorClick(event) {
+function handleMetadataClick(event) {
   const directorLink = event.target.closest(".front-director-info a[data-director-name]");
-  if (!directorLink) return;
-  
-  event.preventDefault();
-  closeModal();
-  
-  document.dispatchEvent(
-    new CustomEvent("filtersReset", {
-      detail: { 
-        keepSort: true, 
-        newFilter: { type: "director", value: directorLink.dataset.directorName } 
-      },
-    })
-  );
+  const actorLink = event.target.closest('[data-template="actors"] a[data-actor-name]');
+
+  if (directorLink || actorLink) {
+    event.preventDefault();
+    closeModal();
+    
+    const filterType = directorLink ? "director" : "actor";
+    const filterValue = directorLink ? directorLink.dataset.directorName : actorLink.dataset.actorName;
+
+    document.dispatchEvent(
+      new CustomEvent("filtersReset", {
+        detail: { 
+          keepSort: true, 
+          newFilter: { type: filterType, value: filterValue } 
+        },
+      })
+    );
+  }
 }
 
 // --- Lógica de Gestos (Swipe to Dismiss) ---
@@ -151,7 +156,16 @@ function populateModal(cardElement) {
   else if (titleLen > 20) titleEl.classList.add("title-long");
 
   // 3. Metadatos básicos
-  front.querySelector('[data-template="director"]').textContent = movieData.directors || "";
+  const directorContainer = front.querySelector('[data-template="director"]');
+  directorContainer.textContent = "";
+  if (movieData.directors) {
+    movieData.directors.split(", ").forEach((name, index, arr) => {
+      const link = createElement("a", { textContent: name.trim(), href: "#", dataset: { directorName: name.trim() } });
+      directorContainer.appendChild(link);
+      if (index < arr.length - 1) directorContainer.appendChild(document.createTextNode(", "));
+    });
+  }
+
   front.querySelector('[data-template="year"]').textContent = movieData.year || "";
   
   renderCountryFlag(
@@ -222,7 +236,19 @@ function populateModal(cardElement) {
 
   // 5. Textos Largos
   back.querySelector('[data-template="genre"]').textContent = movieData.genres || "No disponible";
-  back.querySelector('[data-template="actors"]').textContent = movieData.actors || "No disponible";
+  
+  const actorsContainer = back.querySelector('[data-template="actors"]');
+  actorsContainer.textContent = "";
+  if (movieData.actors) {
+    movieData.actors.split(",").forEach((name, index, arr) => {
+      const link = createElement("a", { textContent: name.trim(), href: "#", dataset: { actorName: name.trim() } });
+      actorsContainer.appendChild(link);
+      if (index < arr.length - 1) actorsContainer.appendChild(document.createTextNode(", "));
+    });
+  } else {
+    actorsContainer.textContent = "No disponible";
+  }
+
   back.querySelector('[data-template="synopsis"]').textContent = movieData.synopsis || "No disponible";
   
   const criticContainer = back.querySelector('[data-template="critic-container"]');
@@ -241,8 +267,8 @@ function populateModal(cardElement) {
   updateCardUI(dom.content);
   initializeCard(dom.content);
   
-  // Listener para cerrar al navegar por director
-  dom.content.addEventListener("click", handleDirectorClick);
+  // Listener para cerrar al navegar por director o actor
+  dom.content.addEventListener("click", handleMetadataClick);
 }
 
 // =================================================================

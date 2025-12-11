@@ -224,6 +224,55 @@
   box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
 }
 
+/* --- Textos y Metadatos (Aumentados 50%) --- */
+/* Al aumentar la fuente, los iconos (en em) y otros elementos relativos también crecen proporcionalmente */
+.quick-view-modal .episode-duration-group {
+  font-size: calc(var(--font-size-sm) * 1.5);
+}
+
+.quick-view-modal .rating-left {
+  font-size: calc(var(--font-size-base) * 1.5);
+}
+
+.quick-view-modal .details-list,
+.quick-view-modal .plot-summary-final,
+.quick-view-modal .critic-review {
+  font-size: calc(var(--font-size-xs) * 1.5);
+}
+
+/* --- Enlaces de Actores (Clickables) --- */
+.quick-view-modal [data-template="actors"] a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+.quick-view-modal [data-template="actors"] a:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
+}
+
+/* --- Contador de Votos (Rediseñado: Grande y Vertical) --- */
+.quick-view-modal .rating-votes-count {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  min-width: 5ch;
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1;
+  margin-right: var(--space-sm);
+}
+
+.quick-view-modal .rating-votes-count::after {
+  content: "votos";
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
 /* --- Título Original (Reverso) --- */
 .quick-view-modal .back-original-title-wrapper span {
   font-size: 1.5rem; 
@@ -276,7 +325,7 @@
   .quick-view-modal {
     top: 50%; left: 50%;
     width: 90%;
-    max-width: 630px;
+    max-width: 720px; /* Aumentado para que las columnas del 50% mantengan la anchura original del póster */
     max-height: 92vh; 
     height: auto; /* Dejamos que la altura la decida el contenido (columna izq) */
     border-radius: var(--radius-lg);
@@ -296,7 +345,7 @@
   /* COLUMNA IZQUIERDA (ANCLA) */
   /* Esta columna define la altura real de la modal */
   .quick-view-front {
-    width: 57%;
+    width: 50%;
     height: auto; /* Altura natural basada en póster + datos */
     border-right: 1px solid var(--color-border);
     border-bottom: none;
@@ -310,7 +359,7 @@
     top: 0;
     right: 0;
     bottom: 0; /* Se estira hasta abajo */
-    width: 43%;
+    width: 50%;
     
     /* Scroll interno solo si el texto supera la altura del póster */
     overflow-y: auto; 
@@ -358,6 +407,11 @@
   .quick-view-front img {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Sombra suave para separar del fondo */
   }
+}
+
+/* --- Separación entre líneas de Rating --- */
+.quick-view-modal .ratings-container {
+  gap: var(--space-lg);
 }
 
 /* =================================================================
