@@ -253,7 +253,7 @@
 
 /* --- Contador de Votos (Rediseñado: Grande y Vertical) --- */
 .quick-view-modal .rating-votes-count {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   min-width: 5ch;
@@ -266,11 +266,14 @@
 
 .quick-view-modal .rating-votes-count::after {
   content: "votos";
-  font-size: var(--font-size-xs);
+  font-size: 0.6em;
   font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
   margin-top: 2px;
   letter-spacing: 0.5px;
+  /* Alinea la palabra "votos" a la derecha dentro de su columna */
+  width: 100%;
+  text-align: right;
 }
 
 /* --- Título Original (Reverso) --- */

@@ -415,7 +415,7 @@ export function setupCardRatings(containerElement, movieData) {
       votesBar.style.width = `${Math.min((Math.sqrt(votesCount) / SQRT_MAX_VOTES[maxVotesKey]) * 100, 100)}%`;
       votesBarContainer.title = ""; // Tooltip eliminado
       if (votesCountEl) {
-        votesCountEl.textContent = formatVotesUnified(votesCount);
+        votesCountEl.textContent = formatVotesUnified(votesCount, platform);
         votesCountEl.style.display = "flex";
       }
     } else {

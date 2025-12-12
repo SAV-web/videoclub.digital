@@ -614,6 +614,13 @@ export function initSidebar() {
 
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);
   
+  // Restaurar estado de rotación (Modal Mode) desde localStorage
+  try {
+    if (localStorage.getItem("rotationState") === "disabled") {
+      document.body.classList.add("rotation-disabled");
+    }
+  } catch (e) {}
+
   if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains("rotation-disabled");
     dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;

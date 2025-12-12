@@ -16,7 +16,7 @@ import flagSpriteUrl from "../flags.svg";
 //          1. FORMATO DE DATOS (Texto y Números)
 // =================================================================
 
-export const formatVotesUnified = (votes) => {
+export const formatVotesUnified = (votes, platform) => {
   const numVotes = parseInt(String(votes).replace(/\D/g, ""), 10);
   if (isNaN(numVotes) || numVotes === 0) return "";
 
@@ -28,7 +28,22 @@ export const formatVotesUnified = (votes) => {
     }).format(numVotes).replace("M", " M");
   }
 
-  // 2. Miles y resto: Forzamos el punto con Regex
+  // 2. Entre 100.000 y 999.999: Formato miles + k (Ej: 251 k)
+  if (numVotes >= 100000) {
+    return `${Math.floor(numVotes / 1000)} k`;
+  }
+
+  // 3. Menores de 100.000: Redondeo específico por plataforma
+  if (platform === 'imdb') {
+    // Redondear al millar al alza (Ej: 85740 -> 86.000)
+    return (Math.ceil(numVotes / 1000) * 1000).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+  if (platform === 'fa') {
+    // Redondear a la centena al alza (Ej: 85740 -> 85.800)
+    return (Math.ceil(numVotes / 100) * 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  // 4. Miles y resto (Fallback): Forzamos el punto con Regex
   // Esto garantiza que 1500 se vea "1.500" y 15000 se vea "15.000"
   return numVotes.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };

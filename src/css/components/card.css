@@ -163,7 +163,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 
 /* Metadatos Frontales */
 .movie-meta {
-  padding-top: var(--space-xs);
+  padding-top: var(--space-xxs);
   display: flex; justify-content: space-between; align-items: center;
   min-height: 24px;
   font-size: var(--font-size-sm);
