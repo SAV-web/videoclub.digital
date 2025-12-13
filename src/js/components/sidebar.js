@@ -84,7 +84,7 @@ function handleTouchStart(e) {
   
   const isOpen = document.body.classList.contains("sidebar-is-open");
   // Zona de activación: Borde izquierdo (40px) o cualquier parte si ya está abierto
-  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 40);
+  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 80);
 
   if (!canStartDrag) {
     touchState.isDragging = false;
@@ -163,9 +163,15 @@ function handleTouchEnd(e) {
   const distance = finalX - touchState.startX;
   const velocity = duration > 0 ? distance / duration : 0;
 
-  // Lógica de decisión: Velocidad (flick) o Posición
-  const shouldOpen = velocity > SWIPE_VELOCITY_THRESHOLD || 
-                     (touchState.currentTranslate > -DRAWER_WIDTH * 0.6); // Umbral 40% visible
+  // Lógica de decisión mejorada: Flick o Posición (50%)
+  let shouldOpen;
+  if (velocity > SWIPE_VELOCITY_THRESHOLD) {
+    shouldOpen = true; // Flick rápido derecha -> Abrir
+  } else if (velocity < -SWIPE_VELOCITY_THRESHOLD) {
+    shouldOpen = false; // Flick rápido izquierda -> Cerrar
+  } else {
+    shouldOpen = touchState.currentTranslate > -DRAWER_WIDTH * 0.5; // Lento -> Decidir por mitad
+  }
 
   if (shouldOpen) {
     openMobileDrawer();

@@ -63,6 +63,8 @@
   height: 100vh;
   height: 100dvh;
   z-index: 1001;
+  overflow-y: auto; /* Permitir scroll en todo el sidebar */
+  -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
   background-color: var(--color-surface);
   border-right: 2px solid var(--color-border);
   /* Cálculo automático para esconderlo exactamente su ancho */

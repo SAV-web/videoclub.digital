@@ -11,8 +11,6 @@
 .sidebar-inner-wrapper {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
   padding: var(--space-xl) var(--space-lg);
   transition: padding var(--transition-duration-normal) var(--transition-timing-function);
 }
@@ -151,17 +149,12 @@ body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 
 /* --- 5. Área de Scroll y Secciones --- */
 .sidebar-scrollable-filters {
-  flex-grow: 1;
-  min-height: 0;
   padding-top: var(--space-md);
-  overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
-  scrollbar-width: none;
+  /* El scroll ahora lo gestiona el contenedor .sidebar en layout.css */
   touch-action: pan-y;
   overscroll-behavior-y: contain;
 }
-.sidebar-scrollable-filters::-webkit-scrollbar { display: none; }
 
 .collapsible-section {
   display: flex;
