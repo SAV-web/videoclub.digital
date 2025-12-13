@@ -99,7 +99,16 @@
   cursor: pointer;
   font-size: var(--font-size-xs);
   font-weight: bold;
+  line-height: 1.1;
   animation: pill-pop-in 0.3s var(--transition-timing-function);
+}
+
+/* Truncamiento de texto en pills (máximo 2 líneas) */
+.filter-pill > span:first-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .filter-pill--exclude {

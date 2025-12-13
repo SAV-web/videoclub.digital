@@ -322,6 +322,12 @@ html.dark-mode .flip-card-inner.is-flipped {
 .scrollable-content::after {
   content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 20px;
   background: linear-gradient(to bottom, transparent, var(--color-surface)); pointer-events: none;
+  content: ""; 
+  position: absolute; 
+  bottom: 0; left: 0; right: 0; 
+  height: 40px; /* Aumentamos la altura para un degradado más suave */
+  background: linear-gradient(to bottom, rgba(var(--color-surface-rgb), 0), rgba(var(--color-surface-rgb), 1) 75%);
+  pointer-events: none;
 }
 .flip-card-back.is-expanded .scrollable-content::after { opacity: 0; }
 
@@ -525,7 +531,7 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
 
 /* Overrides para Modal (Quick View) */
 .quick-view-modal .flip-card-back > *:not(.scrollable-content) { display: none; }
-.quick-view-modal .scrollable-content { position: static; height: 100%; overflow-y: auto; }
+.quick-view-modal .scrollable-content { position: static; height: auto; overflow: visible; }
 .quick-view-modal .detail-item[data-template="actors-container"] {
   -webkit-line-clamp: initial; white-space: normal; overflow: visible; display: block;
 }

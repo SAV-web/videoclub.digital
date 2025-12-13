@@ -152,8 +152,8 @@ function populateModal(cardElement) {
   titleEl.classList.remove("title-long", "title-xl-long");
   
   const titleLen = movieData.title.length;
-  if (titleLen > 40) titleEl.classList.add("title-xl-long");
-  else if (titleLen > 20) titleEl.classList.add("title-long");
+  if (titleLen > 45) titleEl.classList.add("title-xl-long");
+  else if (titleLen > 25) titleEl.classList.add("title-long");
 
   // 3. Metadatos básicos
   const directorContainer = front.querySelector('[data-template="director"]');
@@ -199,7 +199,11 @@ function populateModal(cardElement) {
 
   // 1. Título Original
   const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
-  if (movieData.original_title && movieData.original_title.trim() !== '') {
+  const showOriginalTitle = movieData.original_title &&
+                            movieData.original_title.trim() !== "" &&
+                            movieData.original_title.trim().toLowerCase() !== movieData.title.trim().toLowerCase();
+
+  if (showOriginalTitle) {
     const span = originalTitleWrapper.querySelector('span');
     span.textContent = movieData.original_title;
     
@@ -226,10 +230,12 @@ function populateModal(cardElement) {
   const wikipediaLink = back.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {
     wikipediaLink.href = movieData.wikipedia;
-    wikipediaLink.style.display = 'flex';
+    wikipediaLink.classList.remove('disabled');
   } else {
-    wikipediaLink.style.display = 'none';
+    wikipediaLink.removeAttribute('href');
+    wikipediaLink.classList.add('disabled');
   }
+  wikipediaLink.style.display = 'flex';
 
   // 4. Ratings (Reutilización de lógica centralizada)
   setupCardRatings(back, movieData);
