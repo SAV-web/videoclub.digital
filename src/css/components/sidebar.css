@@ -26,6 +26,11 @@
 .sidebar-inner-wrapper.is-compact #year-slider-container { padding-top: 0; }
 .sidebar-inner-wrapper.is-compact .sidebar-static-filters { padding-bottom: var(--space-xs); }
 
+.sidebar-inner-wrapper.is-compact .logo-title {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
 /* --- 2. Área de Logo --- */
 .logo-area {
   margin-bottom: var(--space-xl);
@@ -39,7 +44,8 @@
   font-size: var(--font-size-xl);
   font-weight: 700;
   line-height: 1.2;
-  letter-spacing: -0.03em; 
+  letter-spacing: -0.03em;
+  transition: font-size var(--transition-duration-normal) var(--transition-timing-function), line-height var(--transition-duration-normal) var(--transition-timing-function);
 }
 .logo-line-1, .logo-line-2 { display: block; }
 
@@ -549,4 +555,33 @@ body.sidebar-is-dragging .main-content-wrapper {
   pointer-events: none;
   filter: grayscale(0.5); /* Feedback visual sutil opcional */
   transition: filter 0.2s ease;
+}
+
+/* --- Iconos de Estudios en Sidebar --- */
+.filter-link--studio {
+  justify-content: flex-start;
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
+}
+
+.sidebar-platform-icon {
+  height: 24px;
+  width: auto;
+  max-width: 100%;
+  transition: transform var(--transition-duration-fast);
+}
+
+.filter-link--studio:hover .sidebar-platform-icon {
+  transform: scale(1.1);
+}
+
+/* Grid de 3 columnas para la lista de estudios */
+#studios-list-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xs);
+}
+
+#studios-list-container .filter-link {
+  justify-content: center;
 }

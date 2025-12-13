@@ -14,9 +14,10 @@ import {
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount } from "../state.js";
-import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG } from "../constants.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, PLATFORM_DATA } from "../constants.js";
 import { loadAndRenderMovies } from "../main.js";
 import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
+import spriteUrl from "../../sprite.svg";
 
 // --- Constantes Locales ---
 const MOBILE_BREAKPOINT = 768;
@@ -573,6 +574,14 @@ function setupEventListeners() {
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
       header.setAttribute('aria-expanded', isNowActive);
       dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive);
+
+      if (isNowActive) {
+        setTimeout(() => {
+          if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
+            clickedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 300);
+      }
     });
   });
 }
@@ -596,8 +605,22 @@ export function initSidebar() {
     const fragment = document.createDocumentFragment();
     Object.entries(config.items).forEach(([value, text]) => {
       const link = createElement("button", { type: "button", className: "filter-link", dataset: { filterType, filterValue: value } });
-      const textWrapper = createElement("span", { textContent: text });
-      link.appendChild(textWrapper);
+      
+      if (filterType === 'studio' && PLATFORM_DATA[value]) {
+        const p = PLATFORM_DATA[value];
+        link.classList.add("filter-link--studio");
+        link.title = text; 
+        link.innerHTML = `
+          <svg width="${p.w}" height="${p.h}" viewBox="${p.vb}" class="sidebar-platform-icon ${p.class || ''}" fill="currentColor">
+            <use href="${spriteUrl}#${p.id}"></use>
+          </svg>
+          <span class="sr-only">${text}</span>
+        `;
+      } else {
+        const textWrapper = createElement("span", { textContent: text });
+        link.appendChild(textWrapper);
+      }
+
       if (config.excludable?.includes(value)) {
         const excludeBtn = createElement("button", {
           type: "button", className: "exclude-filter-btn",
