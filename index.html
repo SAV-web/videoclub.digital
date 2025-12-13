@@ -131,9 +131,13 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
     <main class="main-content-wrapper">
       <header class="main-header header--loading">
         <div class="main-header-primary-controls">
+          <button id="mobile-sidebar-toggle" type="button" class="mobile-sidebar-toggle" aria-label="Abrir menú de filtros" aria-controls="sidebar" aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
           <div class="sort-control">
+            <svg class="sort-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
             <select id="sort-select" aria-label="Criterio de ordenación">
-              <option value="relevance,asc">⮃ Orden</option>
+              <option value="relevance,asc">Orden</option>
               <option value="year,desc">Recientes</option>
               <option value="year,asc">Antiguas</option>
               <option value="fa_rating,desc">Nota FA</option>
@@ -164,7 +168,6 @@ html.dark-mode .skeleton-card::after{background:linear-gradient(90deg,transparen
     </main>
   </div>
 
-  <button id="back-to-top" type="button" class="back-to-top" title="Volver al inicio" aria-label="Volver al inicio de la página">↑</button>
   <div id="toast-container" class="toast-container" aria-live="assertive"></div>
 
     <!-- Auth Modal -->

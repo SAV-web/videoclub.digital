@@ -22,7 +22,6 @@ export const dom = {
   searchInput: document.querySelector(SELECTORS.SEARCH_INPUT),
   sortSelect: document.querySelector(SELECTORS.SORT_SELECT),
   themeToggleButton: document.querySelector(SELECTORS.THEME_TOGGLE),
-  backToTopButton: document.querySelector(SELECTORS.BACK_TO_TOP),
   sidebarOverlay: document.querySelector(SELECTORS.SIDEBAR_OVERLAY),
   sidebar: document.querySelector(".sidebar"),
   typeFilterToggle: document.querySelector(SELECTORS.TYPE_FILTER_TOGGLE),
@@ -86,7 +85,9 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
   });
 
   if (currentPage > 1) {
-    paginationContainer.appendChild(createButton(currentPage - 1, "<", false, "Página anterior"));
+    const btn = createButton(currentPage - 1, "<", false, "Página anterior");
+    btn.classList.add("pagination-arrow");
+    paginationContainer.appendChild(btn);
   }
 
   const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
@@ -111,7 +112,9 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
   }
 
   if (currentPage < totalPages) {
-    paginationContainer.appendChild(createButton(currentPage + 1, ">", false, "Página siguiente"));
+    const btn = createButton(currentPage + 1, ">", false, "Página siguiente");
+    btn.classList.add("pagination-arrow");
+    paginationContainer.appendChild(btn);
   }
 }
 

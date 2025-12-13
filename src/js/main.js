@@ -1,14 +1,14 @@
 // src/js/main.js
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
-import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest } from "./utils.js";
+import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback } from "./utils.js";
 import { fetchMovies, queryCache, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
-import { initSidebar, collapseAllSections } from "./components/sidebar.js";
+import { initSidebar, collapseAllSections, openMobileDrawer, closeMobileDrawer } from "./components/sidebar.js";
 import { initAuthForms } from "./auth.js";
 import { renderMovieGrid, updateCardUI, handleCardClick, initGridHoverSystem, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
-import { initQuickView } from "./components/modal.js";
+import { initQuickView, closeModal } from "./components/modal.js";
 
 const URL_PARAM_MAP = { q: "searchTerm", genre: "genre", year: "year", country: "country", dir: "director", actor: "actor", sel: "selection", stu: "studio", sort: "sort", type: "mediaType", p: "page", exg: "excludedGenres", exc: "excludedCountries" };
 const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key]));
@@ -146,6 +146,17 @@ function setupHeaderListeners() {
   dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
+
+  const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
+  if (mobileSidebarToggle) {
+    mobileSidebarToggle.addEventListener('click', () => {
+      triggerHapticFeedback('light');
+      const isOpen = document.body.classList.contains('sidebar-is-open');
+      if (isOpen) closeMobileDrawer();
+      else openMobileDrawer();
+    });
+  }
+
   const navigatePage = async (direction) => {
     const currentPage = getCurrentPage();
     const totalPages = Math.ceil(getState().totalMovies / CONFIG.ITEMS_PER_PAGE);
@@ -186,18 +197,14 @@ function setupGlobalListeners() {
     if (!isTicking) {
       window.requestAnimationFrame(() => {
         const scrollY = window.scrollY;
-        dom.backToTopButton.classList.toggle(CSS_CLASSES.SHOW, scrollY > 300);
         dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, scrollY > 10);
         isTicking = false;
       });
       isTicking = true;
     }
   }, { passive: true });
-  dom.backToTopButton.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
-  const rewindButton = document.querySelector("#rewind-button");
-  if (dom.sidebarOverlay && rewindButton) dom.sidebarOverlay.addEventListener("click", () => rewindButton.click());
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { if (rewindButton) rewindButton.click(); }
+    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { closeMobileDrawer(); }
   });
   document.addEventListener("card:requestUpdate", (e) => { if (e.detail.cardElement) updateCardUI(e.detail.cardElement); });
 }
@@ -299,6 +306,7 @@ function init() {
     });
   }
   window.addEventListener("popstate", () => {
+    closeModal();
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
     loadAndRenderMovies(getCurrentPage());

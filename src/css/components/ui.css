@@ -82,26 +82,9 @@ html.dark-mode .skeleton::after {
   cursor: default;
 }
 
-/* --- Botón de "Volver Arriba" --- */
-.back-to-top {
-  position: fixed;
-  bottom: var(--space-md);
-  right: var(--space-xl);
-  z-index: var(--z-index-sidebar);
-  width: 44px; height: 44px;
-  border: none;
-  border-radius: var(--radius-round);
-  background-color: var(--color-accent);
-  box-shadow: var(--shadow);
-  color: #fff;
-  cursor: pointer;
-  font-size: var(--font-size-xl);
-  opacity: 0; visibility: hidden; transform: translateY(20px);
-  transition: opacity var(--transition-duration-normal), visibility var(--transition-duration-normal), transform var(--transition-duration-normal);
+@media (max-width: 768px) {
+  .pagination-arrow { display: none; }
 }
-.back-to-top:hover { transform: scale(1.05); }
-.back-to-top:active { transform: scale(0.95); transition-duration: 0.1s; }
-.back-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
 
 /* --- Overlay del Sidebar (Móvil) --- */
 /* 

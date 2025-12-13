@@ -56,7 +56,7 @@ let touchState = {
   startTranslate: 0
 };
 
-const openMobileDrawer = () => {
+export const openMobileDrawer = () => {
   document.body.classList.add("sidebar-is-open");
   // Usamos clases CSS para la transición suave, no inline styles
   dom.sidebar.style.transform = ''; 
@@ -64,7 +64,7 @@ const openMobileDrawer = () => {
   updateRewindButtonIcon(true);
 };
 
-const closeMobileDrawer = () => {
+export const closeMobileDrawer = () => {
   document.body.classList.remove("sidebar-is-open");
   dom.sidebar.style.transform = ''; 
   touchState.currentTranslate = -DRAWER_WIDTH;
@@ -84,7 +84,7 @@ function handleTouchStart(e) {
   
   const isOpen = document.body.classList.contains("sidebar-is-open");
   // Zona de activación: Borde izquierdo (40px) o cualquier parte si ya está abierto
-  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 80);
+  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
 
   if (!canStartDrag) {
     touchState.isDragging = false;
@@ -185,6 +185,13 @@ function updateRewindButtonIcon(isOpen) {
   dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
   dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
   dom.rewindButton.setAttribute("aria-expanded", isOpen);
+
+  // Also update the mobile toggle in the header
+  const mobileToggle = document.getElementById('mobile-sidebar-toggle');
+  if (mobileToggle) {
+    mobileToggle.setAttribute('aria-expanded', String(isOpen));
+    mobileToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú de filtros' : 'Abrir menú de filtros');
+  }
 }
 
 function initTouchGestures() {

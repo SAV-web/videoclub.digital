@@ -92,7 +92,6 @@ export const SELECTORS = {
   SEARCH_INPUT: "#search-input",
   SORT_SELECT: "#sort-select",
   THEME_TOGGLE: "#theme-toggle",
-  BACK_TO_TOP: "#back-to-top",
   SIDEBAR_TOGGLE_BTN: "#sidebar-toggle-btn",
   SIDEBAR_OVERLAY: "#sidebar-overlay",
   TYPE_FILTER_TOGGLE: "#type-filter-toggle",
