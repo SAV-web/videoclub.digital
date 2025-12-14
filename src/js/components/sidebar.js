@@ -14,9 +14,9 @@ import {
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount } from "../state.js";
-import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, PLATFORM_DATA } from "../constants.js";
-import { loadAndRenderMovies } from "../main.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
+import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
 
 // --- Constantes Locales ---
@@ -345,6 +345,7 @@ async function handleFilterChangeOptimistic(type, value) {
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
   try { await loadAndRenderMovies(1); } catch (error) {
     if (error.name === "AbortError") return;
+    console.error("Fallo al aplicar filtro:", error); // Añadimos log para depuración
     showToast(`No se pudo aplicar el filtro.`, "error");
     setFilter('selection', previousFilters.selection);
     setFilter('studio', previousFilters.studio);
@@ -401,6 +402,23 @@ function initYearSlider() {
   sliderInstance.on("set", debouncedUpdate);
   yearInputs.forEach((input, index) => {
     input.addEventListener("change", (e) => {
+      const newValue = parseFloat(e.target.value);
+      const currentValues = sliderInstance.get().map(v => parseFloat(v));
+
+      // Lógica para mantener rango de un solo año al empujar los límites
+      if (currentValues[0] === currentValues[1]) {
+        // Si subimos el inicio (min), subimos también el fin (max)
+        if (index === 0 && newValue > currentValues[0]) {
+          sliderInstance.set([newValue, newValue]);
+          return;
+        }
+        // Si bajamos el fin (max), bajamos también el inicio (min)
+        if (index === 1 && newValue < currentValues[1]) {
+          sliderInstance.set([newValue, newValue]);
+          return;
+        }
+      }
+
       const values = [null, null];
       values[index] = e.target.value;
       sliderInstance.set(values);
@@ -619,8 +637,8 @@ export function initSidebar() {
     Object.entries(config.items).forEach(([value, text]) => {
       const link = createElement("button", { type: "button", className: "filter-link", dataset: { filterType, filterValue: value } });
       
-      if (filterType === 'studio' && PLATFORM_DATA[value]) {
-        const p = PLATFORM_DATA[value];
+      if (filterType === 'studio' && STUDIO_DATA[value]) {
+        const p = STUDIO_DATA[value];
         link.classList.add("filter-link--studio");
         link.title = text; 
         link.innerHTML = `

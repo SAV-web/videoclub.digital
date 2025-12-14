@@ -33,7 +33,13 @@ export const formatVotesUnified = (votes, platform) => {
     return `${Math.floor(numVotes / 1000)} k`;
   }
 
-  // 3. Menores de 100.000: Redondeo específico por plataforma
+  // 3. Menores de 100.000
+
+  // < 3.000: Redondeo a la centena (para ambos)
+  if (numVotes < 3000) {
+    return (Math.ceil(numVotes / 100) * 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
   if (platform === 'imdb') {
     // Redondear al millar al alza (Ej: 85740 -> 86.000)
     return (Math.ceil(numVotes / 1000) * 1000).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");

@@ -70,6 +70,7 @@ export async function loadAndRenderMovies(page = 1) {
       console.error("Error en carga (Main):", error); // MIRA LA CONSOLA SI FALLA
       
       const msg = getFriendlyErrorMessage(error);
+      if (msg) throw new Error(msg); // 🔥 RE-LANZAMOS EL ERROR
       if (msg) showToast(msg, "error");
       renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
     } finally {
@@ -144,6 +145,14 @@ function setupHeaderListeners() {
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
   dom.searchInput.addEventListener("input", debouncedSearch);
   dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
+  
+  dom.searchInput.addEventListener("focus", () => {
+    dom.mainHeader.classList.add("is-search-focused");
+  });
+  dom.searchInput.addEventListener("blur", () => {
+    dom.mainHeader.classList.remove("is-search-focused");
+  });
+
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
 

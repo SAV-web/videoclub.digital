@@ -8,7 +8,7 @@ import {
   triggerHapticFeedback,
   renderCountryFlag
 } from "../utils.js";
-import { CSS_CLASSES, SELECTORS, PLATFORM_DATA } from "../constants.js";
+import { CSS_CLASSES, SELECTORS, STUDIO_DATA } from "../constants.js";
 import { openModal } from "./modal.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
@@ -325,10 +325,12 @@ function populateCardText(cardElement, movieData) {
   const wikiLink = backContext.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {
     wikiLink.href = movieData.wikipedia;
-    wikiLink.style.display = 'flex';
+    wikiLink.classList.remove('disabled');
   } else {
-    wikiLink.style.display = 'none';
+    wikiLink.removeAttribute('href');
+    wikiLink.classList.add('disabled');
   }
+  wikiLink.style.display = 'flex';
 
   backContext.querySelector(SELECTORS.GENRE).textContent = movieData.genres || "Género no disponible";
   
@@ -370,9 +372,16 @@ function populateCardText(cardElement, movieData) {
   const iconsContainer = frontContext.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
-    if (movieData.collections_list) {
-      movieData.collections_list.split(",").forEach(code => {
-        const config = PLATFORM_DATA[code];
+    
+    // Combinamos estudios y selecciones para mostrar iconos
+    const codes = [
+      ...(movieData.studios_list ? movieData.studios_list.split(",") : []),
+      ...(movieData.selections_list ? movieData.selections_list.split(",") : [])
+    ];
+
+    if (codes.length > 0) {
+      codes.forEach(code => {
+        const config = STUDIO_DATA[code];
         if (config) {
           iconsContainer.appendChild(createElement('span', {
             className: config.class ? `platform-icon ${config.class}` : `platform-icon`,
@@ -414,6 +423,7 @@ export function setupCardRatings(containerElement, movieData) {
     if (votesCount > 0) {
       votesBar.style.width = `${Math.min((Math.sqrt(votesCount) / SQRT_MAX_VOTES[maxVotesKey]) * 100, 100)}%`;
       votesBarContainer.title = ""; // Tooltip eliminado
+      votesBarContainer.dataset.votes = formatVotesUnified(votesCount, platform);
       if (votesCountEl) {
         votesCountEl.textContent = formatVotesUnified(votesCount, platform);
         votesCountEl.style.display = "flex";

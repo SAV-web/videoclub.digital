@@ -46,7 +46,8 @@ CREATE OR REPLACE FUNCTION public.search_movies_offset(
     director_name text,
     actor_name text,
     media_type text,
-    selection_code text,
+    p_selection_code text,
+    p_studio_code text,
     excluded_genres text[],
     excluded_countries text[],
     sort_field text,
@@ -123,9 +124,10 @@ BEGIN
                 AND ($8 IS NULL OR $8 = ''all''
                      OR ($8 = ''movies'' AND (m.type IS NULL OR m.type IN (''D'', ''A'')))
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))
-                AND ($9 IS NULL OR m.collections_tsv @@ plainto_tsquery(''simple'', $9))
-                AND ($10 IS NULL OR NOT m.genres_tsv @@ to_tsquery(''spanish'', array_to_string($10, '' | '')))
-                AND ($11 IS NULL OR NOT (m.country_id = ANY($11)))
+                AND ($9 IS NULL OR m.selections_tsv @@ plainto_tsquery(''simple'', $9))
+                AND ($10 IS NULL OR m.studios_tsv @@ plainto_tsquery(''simple'', $10))
+                AND ($11 IS NULL OR NOT m.genres_tsv @@ to_tsquery(''spanish'', array_to_string($11, '' | '')))
+                AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         )' || v_count_cte || '
         SELECT json_build_object(
             ''total'', ' || v_count_select || ',
@@ -146,13 +148,13 @@ BEGIN
                             m.imdb_id, m.imdb_rating, m.imdb_votes, 
                             m.synopsis, m.thumbhash_st, m.critic,
                             m.last_synced_at, m.episodes, m.wikipedia, 
-                            m.collections_list
+                            m.selections_list, m.studios_list
                         FROM filtered_movies fm
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id
                         ' || v_order_clause || '
-                        LIMIT $12
-                        OFFSET $13
+                        LIMIT $13
+                        OFFSET $14
                     ) as rows
                 ),
                 ''[]''::json
@@ -164,9 +166,9 @@ BEGIN
     EXECUTE v_query
     INTO v_json_result
     USING
-        search_term, genre_name, p_year_start, p_year_end, v_country_id,
-        director_name, actor_name, media_type, selection_code,
-        excluded_genres, v_excluded_country_ids, page_limit, page_offset;
+        search_term, genre_name, p_year_start, p_year_end, v_country_id, -- $1..$5
+        director_name, actor_name, media_type, p_selection_code, p_studio_code, -- $6..$10
+        excluded_genres, v_excluded_country_ids, page_limit, page_offset; -- $11..$14
         
     RETURN v_json_result;
 END;
@@ -234,8 +236,10 @@ CREATE INDEX IF NOT EXISTS movie_directors_movie_id_idx ON public.movie_director
 CREATE INDEX IF NOT EXISTS movie_directors_director_id_idx ON public.movie_directors(director_id);
 CREATE INDEX IF NOT EXISTS movie_actors_movie_id_idx ON public.movie_actors(movie_id);
 CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(actor_id);
-CREATE INDEX IF NOT EXISTS movie_collections_movie_id_idx ON public.movie_collections(movie_id);
-CREATE INDEX IF NOT EXISTS movie_collections_collection_id_idx ON public.movie_collections(collection_id);
+CREATE INDEX IF NOT EXISTS movie_selections_movie_id_idx ON public.movie_selections(movie_id);
+CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_selections(selection_id);
+CREATE INDEX IF NOT EXISTS movie_studios_movie_id_idx ON public.movie_studios(movie_id);
+CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
 -- Para guardar el orden de los actores y su índice.
 CREATE INDEX IF NOT EXISTS movie_actors_ordinality_idx ON public.movie_actors(ordinality);
 -- Para tablas de entidad (sugerencias). Solo índices GIN (pg_trgm) pq las búsquedas son substring ('%texto%'), donde los índices B-Tree (prefix) no tienen efecto.
@@ -247,7 +251,8 @@ CREATE INDEX IF NOT EXISTS genres_name_norm_trgm_idx ON public.genres USING gin 
 CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
 CREATE INDEX IF NOT EXISTS movies_directors_tsv_idx ON public.movies USING GIN(directors_tsv);
 CREATE INDEX IF NOT EXISTS movies_actors_tsv_idx ON public.movies USING GIN(actors_tsv);
-CREATE INDEX IF NOT EXISTS movies_collections_tsv_idx ON public.movies USING GIN(collections_tsv);
+CREATE INDEX IF NOT EXISTS movies_selections_tsv_idx ON public.movies USING GIN(selections_tsv);
+CREATE INDEX IF NOT EXISTS movies_studios_tsv_idx ON public.movies USING GIN(studios_tsv);
 -- El índice de relevancia es vital porque es el orden por defecto.
 CREATE INDEX IF NOT EXISTS movies_relevance_idx ON public.movies(relevance ASC);
 -- Para ordenación por votos (que también usas en el selector)
@@ -378,6 +383,16 @@ BEGIN
     INSERT INTO public.actors (name)
     SELECT DISTINCT TRIM(a.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(actors, ',')) AS a(name)
     WHERE actors IS NOT NULL AND TRIM(a.name) <> '' AND actors <> '(A)' ON CONFLICT (name) DO NOTHING;
+    
+    -- Poblar Selections (si no existen, usando el código como nombre temporalmente)
+    INSERT INTO public.selections (code, name)
+    SELECT DISTINCT TRIM(s.code), TRIM(s.code) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(collection, ',')) AS s(code)
+    WHERE collection IS NOT NULL AND TRIM(s.code) <> '' ON CONFLICT (code) DO NOTHING;
+
+    -- Poblar Studios (si no existen, usando el código como nombre temporalmente)
+    INSERT INTO public.studios (code, name)
+    SELECT DISTINCT TRIM(s.code), TRIM(s.code) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(studio, ',')) AS s(code)
+    WHERE studio IS NOT NULL AND TRIM(s.code) <> '' ON CONFLICT (name) DO NOTHING;
 
     -- FASE 1: UPSERT DE PELÍCULAS Y CAPTURA DE IDs AFECTADOS
     WITH upserted_movies AS (
@@ -413,7 +428,8 @@ BEGIN
     DELETE FROM public.movie_genres WHERE movie_id = ANY(affected_movie_ids);
     DELETE FROM public.movie_directors WHERE movie_id = ANY(affected_movie_ids);
     DELETE FROM public.movie_actors WHERE movie_id = ANY(affected_movie_ids);
-    DELETE FROM public.movie_collections WHERE movie_id = ANY(affected_movie_ids);
+    DELETE FROM public.movie_selections WHERE movie_id = ANY(affected_movie_ids);
+    DELETE FROM public.movie_studios WHERE movie_id = ANY(affected_movie_ids);
 
     -- FASE 3: RECONSTRUCCIÓN DE RELACIONES NUEVAS
     INSERT INTO public.movie_genres (movie_id, genre_id)
@@ -433,10 +449,15 @@ BEGIN
     WHERE m.id = ANY(affected_movie_ids) AND s.actors <> '(A)'
     ORDER BY m.id, a.id, actor_name.ordinality ASC ON CONFLICT (movie_id, actor_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
 
-    INSERT INTO public.movie_collections (movie_id, collection_id)
+    INSERT INTO public.movie_selections (movie_id, selection_id)
     SELECT m.id, c.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS collection_code(code) JOIN public.collections c ON c.code = TRIM(collection_code.code)
-    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, collection_id) DO NOTHING;
+    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS sel_code(code) JOIN public.selections c ON c.code = TRIM(sel_code.code)
+    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, selection_id) DO NOTHING;
+
+    INSERT INTO public.movie_studios (movie_id, studio_id)
+    SELECT m.id, st.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.studio, ',')) AS stu_code(code) JOIN public.studios st ON st.code = TRIM(stu_code.code)
+    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, studio_id) DO NOTHING;
 
     -- ==========================================================
     --  ▼▼▼ FASE 4: DESNORMALIZACIÓN (SIMPLIFICADA) ▼▼▼
@@ -446,7 +467,8 @@ BEGIN
             m.id,
             STRING_AGG(DISTINCT g.name, ', ' ORDER BY g.name) AS genres,
             STRING_AGG(DISTINCT d.name, ', ' ORDER BY d.name) AS directors,
-            STRING_AGG(DISTINCT c.code, ',') AS collections,
+            STRING_AGG(DISTINCT sel.code, ',') AS selections,
+            STRING_AGG(DISTINCT stu.code, ',') AS studios,
             (
                 SELECT STRING_AGG(actor_name, ', ' ORDER BY ordinality)
                 FROM (
@@ -462,8 +484,10 @@ BEGIN
         LEFT JOIN public.genres g ON mg.genre_id = g.id
         LEFT JOIN public.movie_directors md ON m.id = md.movie_id
         LEFT JOIN public.directors d ON md.director_id = d.id
-        LEFT JOIN public.movie_collections mc ON m.id = mc.movie_id
-        LEFT JOIN public.collections c ON mc.collection_id = c.id
+        LEFT JOIN public.movie_selections ms ON m.id = ms.movie_id
+        LEFT JOIN public.selections sel ON ms.selection_id = sel.id
+        LEFT JOIN public.movie_studios mst ON m.id = mst.movie_id
+        LEFT JOIN public.studios stu ON mst.studio_id = stu.id
         WHERE m.id = ANY(affected_movie_ids)
         GROUP BY m.id
     )
@@ -474,7 +498,8 @@ BEGIN
         genres_list = ad.genres,
         directors_list = ad.directors,
         actors_list = ad.actors,
-        collections_list = ad.collections
+        selections_list = ad.selections,
+        studios_list = ad.studios
     FROM aggregated_data ad
     WHERE m.id = ad.id;
 

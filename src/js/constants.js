@@ -133,8 +133,8 @@ export const ICONS = {
  * DATOS DE PLATAFORMAS (Streaming / Estudios)
  * Define ID del icono, dimensiones y viewBox para consistencia visual.
  */
-export const PLATFORM_DATA = {
-  N: { id: "icon-netflix", class: "netflix-icon", title: "Original de Netflix" },
+export const STUDIO_DATA = {
+  N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix" },
   H: { id: "icon-hbo", class: "hbo-icon", title: "Original de HBO", color: true },
   D: { id: "icon-disney", class: "disney-icon", title: "Disney" },
   W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros." },
@@ -142,8 +142,8 @@ export const PLATFORM_DATA = {
   S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia" },
   P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount" },
   L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate" },
-  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon" },
-  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Fox" },
+  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon MGM" },
+  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Century Fox" },
   2: { id: "icon-a24", class: "a24-icon", title: "A24" },
   O: { id: "icon-movistar", class: "movistar-icon", title: "Movistar" },
   X: { id: "icon-miramax", class: "miramax-icon", title: "Miramax" }

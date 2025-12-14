@@ -235,6 +235,13 @@ html.dark-mode .flip-card-inner.is-flipped {
   pointer-events: auto; 
 }
 [data-template="wikipedia-link"]:hover { transform: scale(1.1); }
+/* Estado deshabilitado para Wikipedia (cuando no hay enlace) */
+[data-template="wikipedia-link"].disabled {
+  opacity: 0.3;
+  pointer-events: none;
+  filter: grayscale(100%);
+  cursor: default;
+}
 
 /* Barras de Puntuación */
 .ratings-container { 
@@ -288,11 +295,32 @@ html.dark-mode .flip-card-inner.is-flipped {
   height: var(--space-xs);
   border-radius: var(--space-xxs); 
   background-color: var(--color-bg); 
-  overflow: hidden;
+  overflow: visible; /* Permitir tooltip */
+  position: relative;
   
   /* Permitimos hover para ver el tooltip (title), pero no click */
   pointer-events: auto; 
   cursor: default; /* Sin interrogación */
+}
+
+/* Tooltip de votos al hacer hover */
+.rating-bar-container[data-votes]:hover::after {
+  content: attr(data-votes) " votos";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-5px);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  animation: fade-in-subtle 0.2s ease-out;
 }
 
 .rating-bar {

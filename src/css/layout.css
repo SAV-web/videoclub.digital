@@ -254,7 +254,6 @@ body.sidebar-is-open .sidebar .play-button-container {
     height: 44px;
     font-size: 1rem; /* Evita zoom en iOS */
   }
-  #sort-select { padding-left: 34px; padding-right: 32px; }
   
   /* Botones de paginación más grandes en móvil */
   .pagination-container > .btn,

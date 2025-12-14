@@ -11,7 +11,7 @@
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, setupCardRatings } from "./card.js";
 import { formatRuntime, createElement, renderCountryFlag } from "../utils.js"; 
-import { PLATFORM_DATA } from "../constants.js";
+import { STUDIO_DATA } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 
 // --- Referencias DOM Cacheadas ---
@@ -179,10 +179,16 @@ function populateModal(cardElement) {
   const iconsContainer = front.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
-    if (movieData.collections_list) {
+    
+    const codes = [
+      ...(movieData.studios_list ? movieData.studios_list.split(",") : []),
+      ...(movieData.selections_list ? movieData.selections_list.split(",") : [])
+    ];
+
+    if (codes.length > 0) {
       const fragment = document.createDocumentFragment();
-      movieData.collections_list.split(",").forEach(code => {
-        const config = PLATFORM_DATA[code];
+      codes.forEach(code => {
+        const config = STUDIO_DATA[code];
         if (config) {
           fragment.appendChild(createElement('span', {
             className: config.class ? `platform-icon ${config.class}` : `platform-icon`,
