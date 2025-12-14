@@ -157,6 +157,7 @@ body.sidebar-is-open .sidebar .play-button-container {
   
   /* Layout interno móvil */
   flex-wrap: nowrap;
+  justify-content: center; /* Centra los controles en la barra inferior */
   padding: var(--space-xs) var(--space-md);
 }
 

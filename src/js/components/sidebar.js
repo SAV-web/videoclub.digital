@@ -624,7 +624,7 @@ export function initSidebar() {
         link.classList.add("filter-link--studio");
         link.title = text; 
         link.innerHTML = `
-          <svg width="${p.w}" height="${p.h}" viewBox="${p.vb}" class="sidebar-platform-icon ${p.class || ''}" fill="currentColor">
+          <svg width="${p.w || 24}" height="${p.h || 24}" viewBox="${p.vb || '0 0 24 24'}" class="sidebar-platform-icon ${p.class || ''}" fill="currentColor">
             <use href="${spriteUrl}#${p.id}"></use>
           </svg>
           <span class="sr-only">${text}</span>

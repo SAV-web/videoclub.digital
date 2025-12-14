@@ -187,7 +187,7 @@ function populateModal(cardElement) {
           fragment.appendChild(createElement('span', {
             className: config.class ? `platform-icon ${config.class}` : `platform-icon`,
             title: config.title,
-            innerHTML: `<svg width="${config.w}" height="${config.h}" fill="currentColor" viewBox="${config.vb}"><use href="${spriteUrl}#${config.id}"></use></svg>`
+            innerHTML: `<svg width="${config.w || 24}" height="${config.h || 24}" fill="currentColor" viewBox="${config.vb || '0 0 24 24'}"><use href="${spriteUrl}#${config.id}"></use></svg>`
           }));
         }
       });

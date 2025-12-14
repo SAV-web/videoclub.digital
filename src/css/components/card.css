@@ -185,6 +185,9 @@ html.dark-mode .flip-card-inner.is-flipped {
 .lionsgate-icon { color: #CC7722; } html.dark-mode .lionsgate-icon { color: #f9d7b5; }
 .amazon-icon { color: #f6a61f; }
 .twenty-icon { color: #000b6c; } html.dark-mode .twenty-icon { color: #E0E0E0; }
+.a24-icon { color: #000; } html.dark-mode .a24-icon { color: #fff; }
+.movistar-icon { color: #00a9e0; }
+.miramax-icon { color: #005596; } html.dark-mode .miramax-icon { color: #4da4f2; }
 
 /* =================================================================
    4. CONTENIDO TRASERO (Detalles)
