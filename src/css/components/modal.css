@@ -220,6 +220,7 @@
 /* Al aumentar la fuente, los iconos (en em) y otros elementos relativos también crecen proporcionalmente */
 .quick-view-modal .episode-duration-group {
   font-size: calc(var(--font-size-sm) * 1.5);
+  letter-spacing: 1px;
 }
 
 .quick-view-modal .rating-left {

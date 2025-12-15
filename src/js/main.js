@@ -1,6 +1,6 @@
 // src/js/main.js
 import "../css/main.css";
-import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback } from "./utils.js";
 import { fetchMovies, queryCache, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
@@ -250,18 +250,30 @@ function setupAuthSystem() {
 }
 
 function updatePageTitle() {
-  const { searchTerm, genre, year, country, director, actor, selection } = getActiveFilters();
-  let title = "Tu brújula cinéfila y seriéfila inteligente";
+  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType } = getActiveFilters();
+  
+  let baseNoun = "Películas y series";
+  if (mediaType === "movies") baseNoun = "Películas";
+  else if (mediaType === "series") baseNoun = "Series";
+
+  let title = baseNoun;
+
+  const yearSuffix = (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) 
+    ? ` (${year.replace("-", " a ")})` 
+    : "";
+
   if (searchTerm) title = `Resultados para "${searchTerm}"`;
-  else if (genre) title = `Películas de ${genre}`;
-  else if (director) title = `Películas de ${director}`;
-  else if (actor) title = `Películas con ${actor}`;
-  else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `Películas de ${year.replace("-", " a ")}`;
-  else if (country) title = `Películas de ${country}`;
   else if (selection) {
-    const names = { C: "Colección Criterion", M: "1001 Películas que ver", A: "Arrow Video", K: "Kino Lorber", E: "Eureka", H: "Series de HBO", N: "Originales de Netflix" };
-    title = names[selection] || title;
+    const names = { C: "Colección Criterion", M: "1001 Películas que ver", A: "Arrow Video", K: "Kino Lorber", E: "Eureka", H: "Series de HBO" };
+    title = (names[selection] || title) + yearSuffix;
+  } else if (studio) {
+    title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
   }
+  else if (genre) title = `${baseNoun} de ${genre}`;
+  else if (director) title = `${baseNoun} de ${director}`;
+  else if (actor) title = `${baseNoun} con ${actor}`;
+  else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `${baseNoun} de ${year.replace("-", " a ")}`;
+  else if (country) title = `${baseNoun} de ${country}`;
   document.title = `${title} | videoclub.digital`;
 }
 

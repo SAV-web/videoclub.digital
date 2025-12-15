@@ -58,12 +58,11 @@ export const formatRuntime = (minutesString, useShortLabel = false) => {
   const minutes = parseInt(minutesString, 10);
   if (isNaN(minutes) || minutes <= 0) return "";
   
-  // Excepción para series exactas de 60 min
-  if (useShortLabel && minutes === 60) return "60'";
+  if (useShortLabel) return `${minutes} min`;
 
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  const minLabel = useShortLabel ? "'" : "min";
+  const minLabel = "min";
 
   if (h > 0 && m === 0) return `${h}h`; 
   return h > 0 ? `${h}h ${m}${minLabel}` : `${m}${minLabel}`;

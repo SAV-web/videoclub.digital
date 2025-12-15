@@ -228,7 +228,8 @@ function populateModal(cardElement) {
   back.querySelector('[data-template="duration"]').textContent = formatRuntime(movieData.minutes, isSeries);
 
   const episodesEl = back.querySelector('[data-template="episodes"]');
-  const epText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
+  const formattedEpisodes = movieData.episodes ? movieData.episodes.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
+  const epText = isSeries && movieData.episodes ? `${formattedEpisodes} x` : "";
   episodesEl.textContent = epText;
   episodesEl.style.display = epText ? "inline" : "none";
 

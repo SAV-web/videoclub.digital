@@ -318,7 +318,8 @@ function populateCardText(cardElement, movieData) {
   backContext.querySelector(SELECTORS.DURATION).textContent = formatRuntime(movieData.minutes, isSeries);
   
   const episodesEl = backContext.querySelector('[data-template="episodes"]');
-  const epText = isSeries && movieData.episodes ? `${movieData.episodes} x` : "";
+  const formattedEpisodes = movieData.episodes ? movieData.episodes.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
+  const epText = isSeries && movieData.episodes ? `${formattedEpisodes} x` : "";
   episodesEl.textContent = epText;
   episodesEl.style.display = epText ? "inline" : "none";
 
