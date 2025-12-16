@@ -120,7 +120,7 @@
   --z-index-header: 900;
   --z-index-sidebar: 1000;
   --z-index-overlay: 1999;
-  --z-index-toast: 2000;
+  --z-index-toast: 2100;
 }
 
 /* ---- Paleta Modo Oscuro (Overrides Globales) ---- */
@@ -142,6 +142,6 @@ html.dark-mode {
   
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   
-  --color-error: #28a745; 
-  --color-success: #dc3545;
+  --color-error: #cf6679; 
+  --color-success: #66bb6a;
 }

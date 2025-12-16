@@ -72,17 +72,47 @@
 }
 .quick-view-content::-webkit-scrollbar { display: none; }
 
+/* --- Reset de Tarjeta para Modal --- */
+/* Anulamos el comportamiento de flip y posicionamiento absoluto de la tarjeta original */
+.is-quick-view.movie-card {
+  aspect-ratio: auto;
+  perspective: none;
+  animation: none;
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
+}
+
+.is-quick-view .flip-card-inner {
+  transform-style: flat;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column; /* Móvil por defecto */
+  height: 100%;
+}
+
+/* En modal, front y back son secciones estáticas, no caras giratorias */
+.is-quick-view .flip-card-front,
+.is-quick-view .flip-card-back {
+  position: relative;
+  inset: auto;
+  transform: none;
+  backface-visibility: visible;
+  height: auto;
+  overflow: visible;
+}
+
 /* Secciones: Frontal (Póster/Info) y Trasera (Detalles) */
-.quick-view-front {
+.is-quick-view .flip-card-front {
   padding: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
-.quick-view-back {
+.is-quick-view .flip-card-back {
   padding: var(--space-lg);
   flex-grow: 1;
   min-width: 0;
+  pointer-events: auto; /* Habilitar interacción (links actores) */
 }
 
 /* =================================================================
@@ -92,13 +122,20 @@
    para crear la estética "Gigante" y "Compacta" de la modal.
    ================================================================= */
 
-/* --- Imagen del Póster --- */
-.quick-view-front img {
+/* --- Imagen del Póster (Reset de estilos de Card) --- */
+.is-quick-view .poster-container {
+  height: auto; /* Permitir altura natural */
+  width: 100%;
+  border: none;
+}
+
+.is-quick-view .poster-container img {
   width: 100%;
   margin: 0 auto; 
   height: auto;
   display: block;
   border-radius: var(--radius-md);
+  border: none; /* Eliminar borde blanco de la tarjeta */
   margin-bottom: 0; /* Pegado a los iconos */
   box-shadow: var(--shadow);
 }
@@ -120,7 +157,7 @@
 }
 
 /* Título Principal */
-.quick-view-modal .movie-summary h3[data-template="title"] {
+.is-quick-view .movie-summary h3[data-template="title"] {
   font-size: 2rem;
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-primary);
@@ -135,11 +172,11 @@
 }
 
 /* Variaciones de Título */
-.quick-view-modal .movie-summary h3[data-template="title"].title-long {font-size: 1.6rem;}
-.quick-view-modal .movie-summary h3[data-template="title"].title-xl-long {font-size: 1.3rem;}
+.is-quick-view .movie-summary h3[data-template="title"].title-long {font-size: 1.6rem;}
+.is-quick-view .movie-summary h3[data-template="title"].title-xl-long {font-size: 1.3rem;}
 
 /* Info Director */
-.quick-view-modal .movie-summary .front-director-info {
+.is-quick-view .movie-summary .front-director-info {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
@@ -147,7 +184,7 @@
 }
 
 /* --- Acciones y Valoración (ICONOS GIGANTES) --- */
-.quick-view-modal .card-rating-block {
+.is-quick-view .card-rating-block {
   position: static;
   transform: none;
   display: flex;
@@ -159,31 +196,31 @@
 }
 
 /* Estrellas */
-.quick-view-modal .star-icon {
+.is-quick-view .star-icon {
   width: 42px; height: 42px;
   margin-right: 1px;
 }
 
 /* Círculo Suspenso */
-.quick-view-modal .low-rating-circle {
+.is-quick-view .low-rating-circle {
   width: 40px; height: 40px;
   stroke-width: 2.5px;
 }
 
 /* Botón Watchlist */
-.quick-view-modal .card-action-btn {
+.is-quick-view .card-action-btn {
   width: 60px; 
   height: 60px;
   margin-left: auto; 
 }
-.quick-view-modal .card-action-btn svg {
+.is-quick-view .card-action-btn svg {
   width: 38px; 
   height: 38px;
   stroke-width: 2.5px;
 }
 
 /* --- Metadatos Inferiores --- */
-.quick-view-modal .movie-meta {
+.is-quick-view .movie-meta {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -192,15 +229,15 @@
 }
 
 /* Iconos Estudio */
-.quick-view-modal .card-icons-line {
+.is-quick-view .card-icons-line {
   display: flex; align-items: center; gap: var(--space-md);
 }
-.quick-view-modal .platform-icon svg { 
+.is-quick-view .platform-icon svg { 
   width: 40px; height: 40px;
 }
 
 /* Grupo Año + Bandera */
-.quick-view-modal .year-flag-group {
+.is-quick-view .year-flag-group {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -211,37 +248,37 @@
   line-height: 1;
 }
 
-.quick-view-modal .country-flag-icon svg {
+.is-quick-view .country-flag-icon svg {
   width: 28px; height: 28px;
   box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
 }
 
 /* --- Textos y Metadatos (Aumentados 50%) --- */
 /* Al aumentar la fuente, los iconos (en em) y otros elementos relativos también crecen proporcionalmente */
-.quick-view-modal .episode-duration-group {
+.is-quick-view .episode-duration-group {
   font-size: calc(var(--font-size-sm) * 1.5);
   letter-spacing: 1px;
 }
 
-.quick-view-modal .rating-left {
+.is-quick-view .rating-left {
   font-size: calc(var(--font-size-base) * 1.5);
 }
 
-.quick-view-modal .details-list,
-.quick-view-modal .plot-summary-final,
-.quick-view-modal .critic-review {
+.is-quick-view .details-list,
+.is-quick-view .plot-summary-final,
+.is-quick-view .critic-review {
   font-size: calc(var(--font-size-xs) * 1.5);
 }
 
 /* Espaciado aumentado en la lista de detalles (Modal) */
-.quick-view-modal .details-list {
+.is-quick-view .details-list {
   margin-top: var(--space-xl);   /* Espacio entre Notas y Géneros (borde superior) */
   padding-top: var(--space-md);  /* Espacio entre borde y texto */
   gap: var(--space-md);          /* Espacio entre Géneros y Actores */
 }
 
 /* Iconos de detalles (Género/Actores) más grandes */
-.quick-view-modal .detail-label {
+.is-quick-view .detail-label {
   font-size: 1.5em;
   line-height: 1;
   vertical-align: -0.15em; /* Ajuste óptico para centrar con el texto */
@@ -249,40 +286,40 @@
 }
 
 /* --- Grosor de Barras de Votación (Modal) --- */
-.quick-view-modal .rating-bar-container {
+.is-quick-view .rating-bar-container {
   height: var(--space-sm); /* Aumentamos el grosor (de 0.5rem a 0.75rem) */
   border-radius: var(--radius-md); /* Ajustamos el radio */
 }
 
-.quick-view-modal .rating-bar {
+.is-quick-view .rating-bar {
   border-radius: var(--radius-md);
 }
 
 /* Ocultar tooltip de votos en la modal (ya se muestra el número explícitamente) */
-.quick-view-modal .rating-bar-container[data-votes]:hover::after {
+.is-quick-view .rating-bar-container[data-votes]:hover::after {
   display: none;
 }
 
 /* --- Wikipedia Link (Estado Deshabilitado) --- */
-.quick-view-modal [data-template="wikipedia-link"].disabled {
+.is-quick-view [data-template="wikipedia-link"].disabled {
   opacity: 0.3;
   pointer-events: none;
   filter: grayscale(100%);
 }
 
 /* --- Enlaces de Actores (Clickables) --- */
-.quick-view-modal [data-template="actors"] a {
+.is-quick-view [data-template="actors"] a {
   color: inherit;
   text-decoration: none;
   transition: color var(--duration-fast);
 }
-.quick-view-modal [data-template="actors"] a:hover {
+.is-quick-view [data-template="actors"] a:hover {
   color: var(--color-text-primary);
   text-decoration: underline;
 }
 
 /* --- Contador de Votos (Rediseñado: Grande y Vertical) --- */
-.quick-view-modal .rating-votes-count {
+.is-quick-view .rating-votes-count {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
@@ -292,9 +329,13 @@
   justify-content: center;
   line-height: 1;
   margin-right: var(--space-sm);
+  display: flex !important; /* Forzar visibilidad en modal */
+}
+.is-quick-view .rating-votes-count:empty {
+  display: none !important; /* Ocultar si no hay votos (evita hueco vacío) */
 }
 
-.quick-view-modal .rating-votes-count::after {
+.is-quick-view .rating-votes-count::after {
   content: "votos";
   font-size: 0.6em;
   font-weight: var(--font-weight-normal);
@@ -307,21 +348,52 @@
 }
 
 /* --- Título Original (Reverso) --- */
-.quick-view-modal .back-original-title-wrapper span {
+.is-quick-view .back-original-title-wrapper {
+  min-height: 0; /* Eliminar altura mínima de la tarjeta */
+  margin-bottom: var(--space-md);
+  padding: 0;
+  align-items: flex-start; /* Alinear arriba, no al centro */
+  flex-shrink: 0; /* Evitar que se aplaste o solape */
+}
+
+.is-quick-view .back-original-title-wrapper span {
   font-size: 2rem; 
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   line-height: 1.1;
-  text-align: center;
+  text-align: left;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: -0.2em; /* Ajuste óptico para alinear con el borde superior del póster */
 }
 
-.quick-view-modal .back-original-title-wrapper span.title-long {font-size: 1.6rem;}
-.quick-view-modal .back-original-title-wrapper span.title-xl-long {font-size: 1.3rem;}
+.is-quick-view .back-original-title-wrapper span.title-long {font-size: 1.6rem;}
+.is-quick-view .back-original-title-wrapper span.title-xl-long {font-size: 1.3rem;}
+
+/* Asegurar que la cabecera de metadatos (duración/wiki) no se solape */
+.is-quick-view .back-meta-header {
+  flex-shrink: 0;
+  margin-bottom: var(--space-lg); /* Más espacio con los ratings */
+}
+
+/* Habilitar scroll en el contenido de texto (reset de card.css) */
+.is-quick-view .scrollable-content {
+  overflow: visible;
+  height: auto;
+  mask-image: none; /* Quitar degradado si lo hubiera */
+}
+
+/* Mostrar todos los actores en la modal (sin cortar) */
+.is-quick-view .detail-item[data-template="actors-container"] {
+  -webkit-line-clamp: initial; white-space: normal; overflow: visible; display: block;
+}
+
+/* Ocultar elementos de la tarjeta que no se usan en la modal */
+.is-quick-view .expand-content-btn,
+.is-quick-view .actors-expand-btn { display: none; }
 
 /* =================================================================
    4. ADAPTACIÓN RESPONSIVA
@@ -329,6 +401,12 @@
 
 /* --- Móvil / Tablet (< 769px): Bottom Sheet --- */
 @media (max-width: 768px) {
+  /* Optimización de rendimiento: Menos blur en móvil para mejorar FPS */
+  .quick-view-overlay {
+    backdrop-filter: blur(6px) saturate(50%);
+    -webkit-backdrop-filter: blur(6px) saturate(50%);
+  }
+
   .quick-view-modal {
     top: auto; bottom: 0; left: 50%;
     width: 96%;
@@ -342,7 +420,10 @@
     transform: translate(-50%, 0);
   }
   
-  .quick-view-content { flex-direction: column; }
+  /* En móvil, .flip-card-inner ya es flex-column por defecto en .is-quick-view */
+  .is-quick-view .flip-card-inner {
+    flex-direction: column;
+  }
 }
 
 /* --- B) ESCRITORIO (>= 769px): MODAL FLOTANTE --- */
@@ -361,7 +442,7 @@
     transform: translate(-50%, -50%) scale(1);
   }
   
-  .quick-view-content {
+  .is-quick-view .flip-card-inner {
     display: block; /* Cambiamos a block para manejar el flujo manual */
     position: relative; /* Contexto para el absoluto */
     overflow: visible; /* El overflow lo manejan los hijos */
@@ -369,7 +450,7 @@
   
   /* COLUMNA IZQUIERDA (ANCLA) */
   /* Esta columna define la altura real de la modal */
-  .quick-view-front {
+  .is-quick-view .flip-card-front {
     width: 50%;
     height: auto; /* Altura natural basada en póster + datos */
     border-right: 1px solid var(--color-border);
@@ -379,7 +460,7 @@
   
   /* COLUMNA DERECHA (ADAPTABLE) */
   /* Se pega a los bordes de la izquierda, forzando su altura a ser idéntica */
-  .quick-view-back {
+  .is-quick-view .flip-card-back {
     position: absolute; /* Sacamos del flujo de altura */
     top: 0;
     right: 0;
@@ -388,6 +469,7 @@
     
     /* Scroll interno solo si el texto supera la altura del póster */
     overflow-y: auto; 
+    overscroll-behavior: contain; /* Evita que el scroll se propague al body */
     scrollbar-width: thin; /* Scrollbar fina y elegante */
   }
 }
@@ -421,7 +503,7 @@
   .quick-view-modal.is-dragging {
     transition: none;
   }
-  .quick-view-front {
+  .is-quick-view .flip-card-front {
     /* Añadimos padding extra arriba para que la imagen no toque la barrita gris */
     padding-top: 30px; 
     /* Quitamos el borde inferior en móvil para que fluya mejor hacia los detalles */
@@ -429,13 +511,13 @@
   }
   
   /* Ajuste para que la imagen se vea limpia */
-  .quick-view-front img {
+  .is-quick-view .flip-card-front img {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Sombra suave para separar del fondo */
   }
 }
 
 /* --- Separación entre líneas de Rating --- */
-.quick-view-modal .ratings-container {
+.is-quick-view .ratings-container {
   gap: var(--space-lg);
 }
 

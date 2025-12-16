@@ -19,6 +19,7 @@ import {
   calculateUserStars,
   renderUserStars,
   setupRatingListeners,
+  LEVEL_TO_RATING_MAP,
 } from "./rating.js";
 
 import spriteUrl from "../../sprite.svg";
@@ -155,7 +156,7 @@ async function handleRatingClick(event) {
     const level = parseInt(starElement.dataset.ratingLevel, 10);
     const currentStars = calculateUserStars(currentUserData.rating);
     if (level === 1 && currentStars === 0) newRating = 2;
-    else newRating = level === currentStars ? null : [3, 5, 7, 9][level - 1];
+    else newRating = level === currentStars ? null : LEVEL_TO_RATING_MAP[level - 1];
   }
   if (newRating === currentUserData.rating) return;
   const newUserData = { rating: newRating };
@@ -569,6 +570,7 @@ export function handleCardClick(event) {
     } else {
       currentlyFlippedCard = null;
       resetCardBackState(cardElement);
+      document.removeEventListener("click", handleDocumentClick);
     }
     return;
   }
@@ -632,7 +634,7 @@ export function renderMovieGrid(gridContainer, movies) {
       if (cardNode) {
         const cardElement = cardNode.querySelector(".movie-card");
         if (cardElement) {
-          const staggerIndex = i % BATCH_SIZE;
+          const staggerIndex = i;
           cardElement.style.setProperty("--card-index", staggerIndex);
           renderedCardCount++;
         }

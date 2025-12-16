@@ -39,7 +39,7 @@ function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
   }
 
   const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
-  const offset = (currentPage - 1) * CONFIG.ITEMS_PER_PAGE;
+  const offset = (currentPage - 1) * pageSize;
 
   return {
     search_term: activeFilters.searchTerm || null,
@@ -73,18 +73,12 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
   try {
     const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
     
-    // Configuración correcta de Supabase v2 para AbortSignal
-    const rpcCall = supabase.rpc("search_movies_offset", rpcParams);
+    let query = supabase.rpc("search_movies_offset", rpcParams);
     if (signal) {
-       // OJO: En v2 a veces esto se hace diferente, pero si falla, el catch lo atrapa.
-       // Lo más estándar es pasar { signal } en opciones si el método lo soporta, 
-       // pero rpc() retorna un Promise-like builder. 
-       if (typeof rpcCall.abortSignal === 'function') {
-           rpcCall.abortSignal(signal);
-       }
+      query = query.abortSignal(signal);
     }
 
-    const { data, error } = await rpcCall;
+    const { data, error } = await query;
 
     if (error) {
       if (error.name === "AbortError" || error.message?.includes("abort")) {

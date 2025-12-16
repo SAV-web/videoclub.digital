@@ -19,7 +19,7 @@ const dom = {
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
   content: document.getElementById("quick-view-content"),
-  template: document.getElementById("quick-view-template")?.content,
+  template: document.getElementById("movie-card-template")?.content,
 };
 
 // --- Estado de Gestos Táctiles ---
@@ -127,14 +127,18 @@ function populateModal(cardElement) {
   
   const movieData = cardElement.movieData;
   const clone = dom.template.cloneNode(true);
+  
+  // Añadimos clase modificadora para que el CSS sepa que es una modal
+  const cardClone = clone.querySelector('.movie-card');
+  cardClone.classList.add('is-quick-view');
 
   // Vinculamos datos al contenedor para que las actualizaciones de UI funcionen
   dom.content.movieData = movieData;
   dom.content.dataset.movieId = movieData.id;
 
   // Referencias locales para búsqueda acotada (Scoped Lookup - Mejora 2.A)
-  const front = clone.querySelector(".quick-view-front");
-  const back = clone.querySelector(".quick-view-back");
+  const front = clone.querySelector(".flip-card-front");
+  const back = clone.querySelector(".flip-card-back");
 
   // --- A. COLUMNA IZQUIERDA (FRONT) ---
   
@@ -147,7 +151,7 @@ function populateModal(cardElement) {
   }
   
   // 2. Título (Con lógica de tamaño de fuente)
-  const titleEl = front.querySelector("#quick-view-title");
+  const titleEl = front.querySelector('[data-template="title"]');
   titleEl.textContent = movieData.title;
   titleEl.classList.remove("title-long", "title-xl-long");
   
@@ -279,9 +283,6 @@ function populateModal(cardElement) {
   // Inicializamos interactividad interna (estrellas, watchlist)
   updateCardUI(dom.content);
   initializeCard(dom.content);
-  
-  // Listener para cerrar al navegar por director o actor
-  dom.content.addEventListener("click", handleMetadataClick);
 }
 
 // =================================================================
@@ -343,6 +344,9 @@ export function initQuickView() {
     console.error("Elemento modal no encontrado en el DOM.");
     return;
   }
+
+  // Listener para cerrar al navegar por director o actor (Delegación de eventos)
+  if (dom.content) dom.content.addEventListener("click", handleMetadataClick);
 
   // Listener Teclado (Esc)
   window.addEventListener("keydown", (e) => {

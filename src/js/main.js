@@ -2,7 +2,7 @@
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback } from "./utils.js";
-import { fetchMovies, queryCache, supabase, fetchUserMovieData } from "./api.js";
+import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
 import { initSidebar, collapseAllSections, openMobileDrawer, closeMobileDrawer } from "./components/sidebar.js";
@@ -31,7 +31,7 @@ export async function loadAndRenderMovies(page = 1) {
   const currentKnownTotal = getState().totalMovies;
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
-  window.scrollTo({ top: 0, behavior: "instant" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 
   const supportsViewTransitions = !!document.startViewTransition;
 
@@ -70,9 +70,13 @@ export async function loadAndRenderMovies(page = 1) {
       console.error("Error en carga (Main):", error); // MIRA LA CONSOLA SI FALLA
       
       const msg = getFriendlyErrorMessage(error);
-      if (msg) throw new Error(msg); // 🔥 RE-LANZAMOS EL ERROR
+      
+      // 1. Mostrar feedback visual PRIMERO (antes de romper el flujo)
       if (msg) showToast(msg, "error");
       renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
+      
+      // 2. Ahora sí, re-lanzamos el error para que sidebar.js pueda revertir filtros
+      if (msg) throw new Error(msg); 
     } finally {
       if (!signal.aborted) {
         document.body.classList.remove('is-fetching');
@@ -333,8 +337,6 @@ function init() {
     loadAndRenderMovies(getCurrentPage());
   });
   const handleDataRefresh = () => {
-    console.log("%c[CACHE] Datos cambiaron.", "color: #f57c00");
-    queryCache.clear();
     document.querySelectorAll(".movie-card").forEach(updateCardUI);
   };
   document.addEventListener("userMovieDataChanged", handleDataRefresh);

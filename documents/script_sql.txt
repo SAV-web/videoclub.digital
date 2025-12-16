@@ -92,10 +92,12 @@ BEGIN
 
     -- FASE 2: PRE-PROCESAMIENTO (Igual que antes)
     IF country_name IS NOT NULL AND country_name != '' THEN
-        SELECT c.id INTO v_country_id FROM public.countries c WHERE c.name = country_name;
+        SELECT c.id INTO v_country_id FROM public.countries c WHERE c.name_norm = public.unaccent_immutable(lower(country_name)) LIMIT 1;
     END IF;
     IF excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 0 THEN
-        SELECT array_agg(c.id) INTO v_excluded_country_ids FROM public.countries c WHERE c.name = ANY(excluded_countries);
+        SELECT array_agg(c.id) INTO v_excluded_country_ids FROM public.countries c WHERE c.name_norm = ANY(
+            SELECT public.unaccent_immutable(lower(x)) FROM unnest(excluded_countries) x
+        );
     END IF;
 
     -- FASE 3: LÓGICA CONDICIONAL DE CONTEO (NUEVO)
@@ -126,7 +128,9 @@ BEGIN
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))
                 AND ($9 IS NULL OR m.selections_tsv @@ plainto_tsquery(''simple'', $9))
                 AND ($10 IS NULL OR m.studios_tsv @@ plainto_tsquery(''simple'', $10))
-                AND ($11 IS NULL OR NOT m.genres_tsv @@ to_tsquery(''spanish'', array_to_string($11, '' | '')))
+                AND ($11 IS NULL OR NOT m.genres_tsv @@ (
+                    SELECT string_agg(plainto_tsquery(''spanish'', g)::text, '' | '')::tsquery FROM unnest($11) g
+                ))
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         )' || v_count_cte || '
         SELECT json_build_object(

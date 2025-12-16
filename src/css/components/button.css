@@ -33,6 +33,7 @@
 
   position: relative; /* Necesario para el efecto ripple */
   overflow: hidden; /* Oculta el ripple fuera del botón */
+  isolation: isolate; /* Crea contexto de apilamiento para el ripple */
 }
 
 .btn:hover {
@@ -44,7 +45,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-body.dark-mode .btn:hover {
+html.dark-mode .btn:hover {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
@@ -71,7 +72,7 @@ body.dark-mode .btn:hover {
   background: rgba(255, 255, 255, 0.3); /* Color del ripple */
   transform: translate(-50%, -50%);
   transition: width 0.6s ease, height 0.6s ease; /* Transición del ripple */
-  z-index: 1; /* Asegura que el ripple esté sobre el contenido */
+  z-index: -1; /* Detrás del contenido */
 }
 
 .btn:active::after {

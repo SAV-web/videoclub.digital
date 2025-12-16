@@ -194,7 +194,7 @@ html.dark-mode .flip-card-inner.is-flipped {
    ================================================================= */
 
 .back-original-title-wrapper {
-  display: flex; justify-content: center; align-items: center;
+  display: flex; justify-content: flex-start; align-items: center;
   margin-bottom: 10px; padding: 0 var(--space-xs);
   min-height: calc(var(--font-size-sm) * var(--line-height-tight) * 2);
   width: 100%;
@@ -203,7 +203,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 .back-original-title-wrapper span {
   font-family: var(--font-title); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
   color: var(--color-text-primary); line-height: var(--line-height-tight);
-  text-align: center;
+  text-align: left;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; text-overflow: ellipsis;
 }
@@ -303,6 +303,11 @@ html.dark-mode .flip-card-inner.is-flipped {
   cursor: default; /* Sin interrogación */
 }
 
+/* Ocultar contador numérico en tarjeta estándar (se usa tooltip) */
+.rating-votes-count {
+  display: none !important;
+}
+
 /* Tooltip de votos al hacer hover */
 .rating-bar-container[data-votes]:hover::after {
   content: attr(data-votes) " votos";
@@ -351,13 +356,9 @@ html.dark-mode .flip-card-inner.is-flipped {
 }
 /* Indicador visual de "leer más" */
 .scrollable-content::after {
-  content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 20px;
-  background: linear-gradient(to bottom, transparent, var(--color-surface)); pointer-events: none;
-  content: ""; 
-  position: absolute; 
-  bottom: 0; left: 0; right: 0; 
-  height: 40px; /* Aumentamos la altura para un degradado más suave */
-  background: linear-gradient(to bottom, rgba(var(--color-surface-rgb), 0), rgba(var(--color-surface-rgb), 1) 75%);
+  content: ""; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--color-surface));
   pointer-events: none;
 }
 .flip-card-back.is-expanded .scrollable-content::after { opacity: 0; }
@@ -373,6 +374,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 .actors-scrollable-content {
   position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-xl);
   background-color: var(--color-surface);
+  -webkit-overflow-scrolling: touch; /* Scroll con inercia en iOS */
   overflow-y: auto; scrollbar-width: none;
   opacity: 0; visibility: hidden; transform: translateY(100%);
   transition: all var(--duration-normal) var(--ease-smooth-out);
@@ -432,6 +434,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   position: absolute; inset: 0; padding: var(--space-md);
   background-color: var(--color-surface);
   overflow-y: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch; /* Scroll con inercia en iOS */
   
   /* 🔥 FIX: Habilitar interacción para poder hacer scroll */
   pointer-events: auto; 
@@ -558,13 +561,6 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
   height: 1.9em;
   /* Ajuste fino de posición si es necesario para centrarlo verticalmente */
   transform: translateY(-1px); 
-}
-
-/* Overrides para Modal (Quick View) */
-.quick-view-modal .flip-card-back > *:not(.scrollable-content) { display: none; }
-.quick-view-modal .scrollable-content { position: static; height: auto; overflow: visible; }
-.quick-view-modal .detail-item[data-template="actors-container"] {
-  -webkit-line-clamp: initial; white-space: normal; overflow: visible; display: block;
 }
 
 /* =================================================================

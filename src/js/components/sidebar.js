@@ -83,7 +83,7 @@ function handleTouchStart(e) {
   updateDrawerWidth(); 
   
   const isOpen = document.body.classList.contains("sidebar-is-open");
-  // Zona de activación: Borde izquierdo (40px) o cualquier parte si ya está abierto
+  // Zona de activación: Borde izquierdo (150px) o cualquier parte si ya está abierto
   const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
 
   if (!canStartDrag) {
@@ -104,6 +104,9 @@ function handleTouchStart(e) {
   // 2. Bloquear interacción en el resto de la página
   dom.sidebar.classList.add("is-dragging");
   document.body.classList.add("sidebar-is-dragging");
+
+  // Optimización: Añadimos el listener costoso (no pasivo) SOLO cuando empieza un posible drag
+  document.addEventListener("touchmove", handleTouchMove, { passive: false });
 }
 
 function handleTouchMove(e) {
@@ -122,6 +125,7 @@ function handleTouchMove(e) {
       // Limpieza inmediata
       dom.sidebar.classList.remove("is-dragging");
       document.body.classList.remove("sidebar-is-dragging");
+      document.removeEventListener("touchmove", handleTouchMove); // Dejar de escuchar
       return;
     }
     touchState.isHorizontalDrag = true;
@@ -150,6 +154,9 @@ function handleTouchMove(e) {
 
 function handleTouchEnd(e) {
   if (!touchState.isDragging) return;
+
+  // Limpieza: Quitamos el listener para devolver el control del scroll al navegador
+  document.removeEventListener("touchmove", handleTouchMove);
   
   touchState.isDragging = false;
   touchState.isHorizontalDrag = false;
@@ -202,7 +209,7 @@ function initTouchGestures() {
   // Passive true para start/end mejora rendimiento de scroll
   // Passive false para move es necesario para e.preventDefault()
   document.addEventListener("touchstart", handleTouchStart, { passive: true });
-  document.addEventListener("touchmove", handleTouchMove, { passive: false });
+  // Eliminado listener global de touchmove para mejorar rendimiento de scroll general
   document.addEventListener("touchend", handleTouchEnd, { passive: true });
 
   window.addEventListener("resize", () => {

@@ -15,6 +15,20 @@
   transition: padding var(--transition-duration-normal) var(--transition-timing-function);
 }
 
+/* En desktop, forzamos altura completa para permitir scroll interno */
+@media (min-width: 769px) {
+  .sidebar-inner-wrapper {
+    height: 100%;
+  }
+}
+
+/* Excepción para pantallas apaisadas (Restaurar flujo natural) */
+@media (min-width: 769px) and (max-height: 600px) {
+  .sidebar-inner-wrapper {
+    height: auto;
+  }
+}
+
 /* Estado Compacto (cuando se abre una sección) */
 .sidebar-inner-wrapper.is-compact {
   padding-top: var(--space-md);
@@ -141,11 +155,11 @@
 }
 .filter-pill.is-removing { animation: fadeOutPill 0.2s ease-out forwards; }
 
-body.dark-mode .filter-pill {
+html.dark-mode .filter-pill {
   color: var(--color-bg);
   background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
 }
-body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
+html.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 
 /* --- 5. Área de Scroll y Secciones --- */
 .sidebar-scrollable-filters {
@@ -154,6 +168,31 @@ body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
   /* El scroll ahora lo gestiona el contenedor .sidebar en layout.css */
   touch-action: pan-y;
   overscroll-behavior-y: contain;
+}
+
+/* Lógica de Scroll Interno para Desktop */
+@media (min-width: 769px) {
+  .sidebar-scrollable-filters {
+    overflow-y: auto;
+    flex-grow: 1; /* Ocupa el espacio restante */
+    min-height: 0; /* Crítico para que el scroll funcione dentro de flex */
+    padding-right: 0;
+    
+    /* Ocultar barra de scroll visualmente (Petición usuario) */
+    scrollbar-width: none;
+  }
+
+  .sidebar-scrollable-filters::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Excepción para pantallas apaisadas (Restaurar flujo natural) */
+@media (min-width: 769px) and (max-height: 600px) {
+  .sidebar-scrollable-filters {
+    overflow-y: visible; /* No scrollear internamente */
+    flex-grow: 0;
+  }
 }
 
 .collapsible-section {
@@ -257,7 +296,7 @@ body.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
   color: #fff;
   font-weight: bold;
 }
-body.dark-mode .filter-link.active { color: var(--color-bg); }
+html.dark-mode .filter-link.active { color: var(--color-bg); }
 .filter-link.active::before {
   content: "▶";
   position: absolute;
@@ -387,7 +426,7 @@ body.dark-mode .filter-link.active { color: var(--color-bg); }
 }
 .year-input::-webkit-outer-spin-button, .year-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .year-input:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(0, 115, 230, 0.2); }
-body.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2); }
+html.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2); }
 
 .year-input-wrapper { position: relative; flex: 1; min-width: 0; }
 .year-input-stepper {

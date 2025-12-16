@@ -12,7 +12,7 @@ import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
 
-const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
+export const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
 
 // --- LÓGICA DE CÁLCULO ---
 export function calculateUserStars(rating) {
@@ -98,7 +98,7 @@ export function setupRatingListeners(starContainer, isInteractive) {
   if (isInteractive) {
     stars.forEach((star) => {
       // Efecto visual al pasar el ratón (Desktop)
-      star.addEventListener("mousemove", handleRatingMouseMove);
+      star.addEventListener("mouseenter", handleRatingMouseMove);
     });
     // Restaurar estado al salir
     starContainer.addEventListener("mouseleave", handleRatingMouseLeave);
