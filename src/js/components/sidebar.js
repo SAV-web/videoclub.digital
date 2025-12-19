@@ -225,6 +225,94 @@ function initTouchGestures() {
 }
 
 // =================================================================
+//          LOGICA DE ROTACIÓN Y GESTOS (Pinch-to-Zoom)
+// =================================================================
+
+function toggleRotationMode(forceState = null) {
+  const button = dom.toggleRotationBtn;
+  if (!button) return;
+
+  const isCurrentlyDisabled = document.body.classList.contains("rotation-disabled");
+  // Si forceState es null, alternamos. Si no, usamos el estado forzado.
+  const shouldDisable = forceState !== null ? forceState : !isCurrentlyDisabled;
+
+  // Si ya estamos en el estado deseado, no hacemos nada
+  if (isCurrentlyDisabled === shouldDisable) return;
+
+  triggerHapticFeedback('medium');
+  unflipAllCards();
+  closeModal();
+
+  const updateState = () => {
+    document.body.classList.toggle("rotation-disabled", shouldDisable);
+    
+    button.innerHTML = shouldDisable ? ICONS.SQUARE_STOP : ICONS.PAUSE;
+    button.setAttribute("aria-label", shouldDisable ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
+    button.title = shouldDisable ? "Giro automático" : "Vista Rápida";
+    button.setAttribute("aria-pressed", shouldDisable);
+    localStorage.setItem("rotationState", shouldDisable ? "disabled" : "enabled");
+  };
+
+  if (document.startViewTransition) {
+    document.startViewTransition(() => updateState());
+  } else {
+    updateState();
+  }
+
+  triggerPopAnimation(button);
+}
+
+function initPinchGestures() {
+  const target = document.querySelector('.main-content-wrapper');
+  if (!target) return;
+
+  let initialDistance = null;
+  let isPinching = false;
+
+  target.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      isPinching = true;
+      initialDistance = Math.hypot(
+        e.touches[0].pageX - e.touches[1].pageX,
+        e.touches[0].pageY - e.touches[1].pageY
+      );
+    }
+  }, { passive: true });
+
+  target.addEventListener('touchmove', (e) => {
+    if (!isPinching || e.touches.length !== 2 || initialDistance === null) return;
+
+    const currentDistance = Math.hypot(
+      e.touches[0].pageX - e.touches[1].pageX,
+      e.touches[0].pageY - e.touches[1].pageY
+    );
+
+    const diff = currentDistance - initialDistance;
+    const THRESHOLD = 60; // Sensibilidad en píxeles
+
+    if (Math.abs(diff) > THRESHOLD) {
+      // Pinch In (Zoom Out / Juntar dedos) -> Modo Muro (Más fichas, sin rotación)
+      if (diff < 0) {
+         toggleRotationMode(true);
+      } 
+      // Pinch Out (Zoom In / Separar dedos) -> Modo Fichas (Menos fichas, con rotación)
+      else {
+         toggleRotationMode(false);
+      }
+      
+      // Reset para evitar múltiples disparos en el mismo gesto
+      isPinching = false;
+      initialDistance = null;
+    }
+  }, { passive: true });
+
+  target.addEventListener('touchend', () => {
+    isPinching = false;
+    initialDistance = null;
+  });
+}
+
+// =================================================================
 //          2. RESTO DE FUNCIONES (Sin cambios lógicos mayores)
 // =================================================================
 
@@ -552,22 +640,7 @@ function setupEventListeners() {
 
   if (dom.toggleRotationBtn) {
     dom.toggleRotationBtn.addEventListener("click", (e) => {
-      triggerHapticFeedback('light');
-      unflipAllCards();
-      closeModal();
-      
-      document.body.classList.toggle("rotation-disabled");
-      const isRotationDisabled = document.body.classList.contains("rotation-disabled");
-      const button = e.currentTarget;
-      
-      button.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
-      button.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
-      button.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
-      
-      button.setAttribute("aria-pressed", isRotationDisabled);
-      
-      localStorage.setItem("rotationState", isRotationDisabled ? "disabled" : "enabled");
-      triggerPopAnimation(button);
+      toggleRotationMode();
     });
   }
 
@@ -693,6 +766,7 @@ export function initSidebar() {
   initYearSlider();
   initTouchGestures();
   setupEventListeners();
+  initPinchGestures();
   setupAutocompleteHandlers();
   setupYearInputSteppers();
 

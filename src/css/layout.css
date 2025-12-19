@@ -236,6 +236,13 @@ body.sidebar-is-open .sidebar .play-button-container {
   }
 }
 
+/* --- MODO MURO (Rotation Disabled / Modal Mode) --- */
+/* Priorizamos cantidad sobre detalle: reducción del ~33% en tamaño mínimo */
+body.rotation-disabled .grid-container {
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: var(--space-xs);
+}
+
 /* --- DESKTOP (>= 769px) --- */
 /* Mantenemos este bloque solo para ajustar el espaciado (gap) a medidas
    de escritorio, pero el grid ya viene arreglado desde los 400px. */

@@ -386,6 +386,11 @@
   mask-image: none; /* Quitar degradado si lo hubiera */
 }
 
+/* Eliminar el degradado inferior de "leer más" en la modal */
+.is-quick-view .scrollable-content::after {
+  display: none;
+}
+
 /* Mostrar todos los actores en la modal (sin cortar) */
 .is-quick-view .detail-item[data-template="actors-container"] {
   -webkit-line-clamp: initial; white-space: normal; overflow: visible; display: block;
