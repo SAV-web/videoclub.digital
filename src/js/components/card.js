@@ -108,51 +108,74 @@ export function initCardInteractions(gridContainer) {
     });
   }
 
-  // 3. LONG PRESS (Móvil/Táctil): Abrir modal manteniendo pulsado
+  // 3. TAP / DOUBLE-TAP (Móvil/Táctil)
   if (isTouchDevice) {
-    let longPressTimer;
-    let startX, startY;
-    const LONG_PRESS_DELAY = 500;
+    let lastTapTime = 0;
+    let tapTimeout = null;
+    let touchstartX = 0;
+    let touchstartY = 0;
+    const DOUBLE_TAP_DELAY = 300; // ms
+    const MOVE_THRESHOLD = 10; // px
 
-    gridContainer.addEventListener("touchstart", (e) => {
-      // Ignorar si hay un gesto de pellizco reciente
-      if (document.body.dataset.gestureCooldown) return;
+    const handleSingleTap = (cardElement) => {
+      if (!cardElement) return;
+      const inner = cardElement.querySelector(".flip-card-inner");
+      if (!inner) return;
 
-      const card = e.target.closest(".movie-card");
-      if (!card || document.body.classList.contains("rotation-disabled")) return;
-
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      
-      longPressTimer = setTimeout(() => {
-        triggerHapticFeedback('medium');
-        openModal(card);
-        // Marcamos para bloquear el click subsiguiente
-        gridContainer.dataset.longPressActive = "true";
-      }, LONG_PRESS_DELAY);
-    }, { passive: true });
-
-    gridContainer.addEventListener("touchmove", (e) => {
-      if (!longPressTimer) return;
-      const moveX = Math.abs(e.touches[0].clientX - startX);
-      const moveY = Math.abs(e.touches[0].clientY - startY);
-      // Si se mueve el dedo más de 10px, cancelamos el long press (es un scroll)
-      if (moveX > 10 || moveY > 10) clearTimeout(longPressTimer);
-    }, { passive: true });
-
-    gridContainer.addEventListener("touchend", () => {
-      clearTimeout(longPressTimer);
-      // Limpiamos la marca después de un breve periodo para que el click handler la vea
-      setTimeout(() => delete gridContainer.dataset.longPressActive, 100);
-    }, { passive: true });
-
-    // Interceptamos el click si fue un long press para evitar el giro de la tarjeta
-    gridContainer.addEventListener("click", (e) => {
-      if (gridContainer.dataset.longPressActive === "true") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
+      const isThisCardFlipped = inner.classList.contains("is-flipped");
+      if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) {
+        unflipAllCards();
       }
-    }, { capture: true });
+      inner.classList.toggle("is-flipped");
+      if (!isThisCardFlipped) {
+        currentlyFlippedCard = cardElement;
+        setTimeout(() => document.addEventListener("click", handleDocumentClick), 0);
+      } else {
+        currentlyFlippedCard = null;
+        resetCardBackState(cardElement);
+        document.removeEventListener("click", handleDocumentClick);
+      }
+    };
+
+    gridContainer.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+            touchstartX = e.touches[0].clientX;
+            touchstartY = e.touches[0].clientY;
+        }
+    }, { passive: true });
+
+    gridContainer.addEventListener('touchend', e => {
+        const card = e.target.closest('.movie-card');
+        if (!card || document.body.classList.contains('rotation-disabled') || e.target.closest('[data-action], a, button, .expand-content-btn')) {
+            return;
+        }
+
+        const touchendX = e.changedTouches[0].clientX;
+        const touchendY = e.changedTouches[0].clientY;
+        const diffX = Math.abs(touchstartX - touchendX);
+        const diffY = Math.abs(touchstartY - touchendY);
+        if (diffX > MOVE_THRESHOLD || diffY > MOVE_THRESHOLD) {
+            return; // Fue un scroll/swipe, no un tap
+        }
+
+        e.preventDefault();
+
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapTime;
+
+        if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+            clearTimeout(tapTimeout);
+            tapTimeout = null;
+            lastTapTime = 0;
+            openModal(card);
+        } else {
+            clearTimeout(tapTimeout);
+            tapTimeout = setTimeout(() => {
+                handleSingleTap(card);
+            }, DOUBLE_TAP_DELAY);
+        }
+        lastTapTime = currentTime;
+    });
   }
 }
 
@@ -623,23 +646,11 @@ export function handleCardClick(event) {
   if (cardElement.id === 'quick-view-content') return;
   const isRotationDisabled = document.body.classList.contains("rotation-disabled");
   
-  if (!isDesktop && !isRotationDisabled) {
-    event.preventDefault(); event.stopPropagation();
-    const inner = cardElement.querySelector(".flip-card-inner");
-    const isThisCardFlipped = inner.classList.contains("is-flipped");
-    if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) unflipAllCards();
-    inner.classList.toggle("is-flipped");
-    if (!isThisCardFlipped) {
-      currentlyFlippedCard = cardElement;
-      setTimeout(() => document.addEventListener("click", handleDocumentClick), 0);
-    } else {
-      currentlyFlippedCard = null;
-      resetCardBackState(cardElement);
-      document.removeEventListener("click", handleDocumentClick);
-    }
-    return;
+  // La lógica de tap/double-tap en móvil se gestiona en `initCardInteractions`.
+  // Este manejador ahora solo se preocupa por el modo muro.
+  if (isRotationDisabled) {
+    openModal(cardElement);
   }
-  if (isRotationDisabled) openModal(cardElement);
 }
 
 export function initializeCard(cardElement) {

@@ -266,6 +266,18 @@ function initPinchGestures() {
   const target = document.querySelector('.main-content-wrapper');
   if (!target) return;
 
+  // 🛡️ INTERCEPTOR GLOBAL DE CLICS (Fase de Captura)
+  // Esto es crucial: detiene el evento 'click' en la raíz (window) antes de que
+  // baje a los elementos del DOM. Es la única forma segura de evitar que
+  // el navegador interprete el final del gesto como un clic en una tarjeta.
+  window.addEventListener('click', (e) => {
+    if (document.body.dataset.gestureCooldown === "true") {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    }
+  }, { capture: true });
+
   let initialDistance = null;
   let isPinching = false;
   let hasTriggered = false;
@@ -274,10 +286,11 @@ function initPinchGestures() {
   const activateCooldown = () => {
     document.body.dataset.gestureCooldown = "true";
     if (cooldownTimer) clearTimeout(cooldownTimer);
+    // Aumentamos a 800ms para cubrir dispositivos más lentos o transiciones largas
     cooldownTimer = setTimeout(() => {
       delete document.body.dataset.gestureCooldown;
       cooldownTimer = null;
-    }, 600); // Tiempo suficiente para cubrir el evento click
+    }, 800); 
   };
 
   target.addEventListener('touchstart', (e) => {
