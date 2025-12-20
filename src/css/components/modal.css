@@ -436,9 +436,9 @@
   .quick-view-modal {
     top: 50%; left: 50%;
     width: 90%;
-    max-width: 720px;
+    max-width: 720px; /* Aumentado para que las columnas del 50% mantengan la anchura original del póster */
     max-height: 92vh; 
-    height: 92vh; /* Altura fija para permitir scroll interno en ambas columnas */
+    height: auto; /* Dejamos que la altura la decida el contenido (columna izq) */
     border-radius: var(--radius-lg);
     transform: translate(-50%, -50%) scale(0.95);
   }
@@ -448,31 +448,34 @@
   }
   
   .is-quick-view .flip-card-inner {
-    display: flex; /* Usamos flexbox para el layout de dos columnas */
-    flex-direction: row;
-    height: 100%;
-    overflow: hidden; /* Los hijos gestionan su propio scroll */
+    display: block; /* Cambiamos a block para manejar el flujo manual */
+    position: relative; /* Contexto para el absoluto */
+    overflow: visible; /* El overflow lo manejan los hijos */
   }
   
-  /* AMBAS COLUMNAS */
+  /* COLUMNA IZQUIERDA (ANCLA) */
+  /* Esta columna define la altura real de la modal */
   .is-quick-view .flip-card-front {
     width: 50%;
-    height: 100%;
-    overflow-y: auto; /* Scroll independiente para la columna izquierda */
+    height: auto; /* Altura natural basada en póster + datos */
     border-right: 1px solid var(--color-border);
     border-bottom: none;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    overflow-y: hidden; /* Sin scroll, debe verse entera */
   }
   
+  /* COLUMNA DERECHA (ADAPTABLE) */
+  /* Se pega a los bordes de la izquierda, forzando su altura a ser idéntica */
   .is-quick-view .flip-card-back {
-    position: static; /* Reset de la lógica de tarjeta */
+    position: absolute; /* Sacamos del flujo de altura */
+    top: 0;
+    right: 0;
+    bottom: 0; /* Se estira hasta abajo */
     width: 50%;
-    height: 100%;
+    
+    /* Scroll interno solo si el texto supera la altura del póster */
     overflow-y: auto; 
     overscroll-behavior: contain; /* Evita que el scroll se propague al body */
     scrollbar-width: thin; /* Scrollbar fina y elegante */
-    -webkit-overflow-scrolling: touch;
   }
 }
 
