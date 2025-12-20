@@ -268,10 +268,22 @@ function initPinchGestures() {
 
   let initialDistance = null;
   let isPinching = false;
+  let hasTriggered = false;
+  let cooldownTimer = null;
+
+  const activateCooldown = () => {
+    document.body.dataset.gestureCooldown = "true";
+    if (cooldownTimer) clearTimeout(cooldownTimer);
+    cooldownTimer = setTimeout(() => {
+      delete document.body.dataset.gestureCooldown;
+      cooldownTimer = null;
+    }, 600); // Tiempo suficiente para cubrir el evento click
+  };
 
   target.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
       isPinching = true;
+      hasTriggered = false;
       initialDistance = Math.hypot(
         e.touches[0].pageX - e.touches[1].pageX,
         e.touches[0].pageY - e.touches[1].pageY
@@ -281,6 +293,12 @@ function initPinchGestures() {
 
   target.addEventListener('touchmove', (e) => {
     if (!isPinching || e.touches.length !== 2 || initialDistance === null) return;
+
+    // Si ya se disparó la acción, solo mantenemos el cooldown vivo y salimos
+    if (hasTriggered) {
+      activateCooldown();
+      return;
+    }
 
     const currentDistance = Math.hypot(
       e.touches[0].pageX - e.touches[1].pageX,
@@ -294,21 +312,26 @@ function initPinchGestures() {
       // Solo reaccionamos a "Pellizcar hacia adentro" (juntar dedos)
       if (diff < 0) {
          toggleRotationMode(); // Actúa como interruptor (toggle)
-         
-         // Bloquear interacciones posteriores (clics accidentales) durante un breve periodo
-         document.body.dataset.gestureCooldown = "true";
-         setTimeout(() => delete document.body.dataset.gestureCooldown, 500);
+         activateCooldown();
+         hasTriggered = true;
       } 
-      
-      // Reset para evitar múltiples disparos en el mismo gesto
-      isPinching = false;
-      initialDistance = null;
     }
   }, { passive: true });
 
-  target.addEventListener('touchend', () => {
-    isPinching = false;
-    initialDistance = null;
+  target.addEventListener('touchend', (e) => {
+    // Al soltar, si hubo gesto, renovamos el cooldown una última vez para matar el click
+    if (hasTriggered) {
+      activateCooldown();
+    }
+
+    if (e.touches.length < 2) {
+      isPinching = false;
+      initialDistance = null;
+    }
+    
+    if (e.touches.length === 0) {
+      hasTriggered = false;
+    }
   });
 }
 
