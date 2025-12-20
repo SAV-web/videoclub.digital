@@ -7,7 +7,7 @@ import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, s
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
 import { initSidebar, collapseAllSections, openMobileDrawer, closeMobileDrawer } from "./components/sidebar.js";
 import { initAuthForms } from "./auth.js";
-import { renderMovieGrid, updateCardUI, handleCardClick, initGridHoverSystem, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
+import { renderMovieGrid, updateCardUI, handleCardClick, initCardInteractions, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
 import { initQuickView, closeModal } from "./components/modal.js";
 
 const URL_PARAM_MAP = { q: "searchTerm", genre: "genre", year: "year", country: "country", dir: "director", actor: "actor", sel: "selection", stu: "studio", sort: "sort", type: "mediaType", p: "page", exg: "excludedGenres", exc: "excludedCountries" };
@@ -203,7 +203,7 @@ function setupGlobalListeners() {
     const clearButton = e.target.closest("#clear-filters-from-empty");
     if (clearButton) document.dispatchEvent(new CustomEvent("filtersReset"));
   });
-  initGridHoverSystem(dom.gridContainer);
+  initCardInteractions(dom.gridContainer);
   document.getElementById("quick-view-content").addEventListener("click", function(e) { handleCardClick.call(this, e); });
   let isTicking = false;
   window.addEventListener("scroll", () => {

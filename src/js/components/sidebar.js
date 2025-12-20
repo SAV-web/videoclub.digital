@@ -291,14 +291,10 @@ function initPinchGestures() {
     const THRESHOLD = 60; // Sensibilidad en píxeles
 
     if (Math.abs(diff) > THRESHOLD) {
-      // Pinch In (Zoom Out / Juntar dedos) -> Modo Muro (Más fichas, sin rotación)
+      // Solo reaccionamos a "Pellizcar hacia adentro" (juntar dedos)
       if (diff < 0) {
-         toggleRotationMode(true);
+         toggleRotationMode(); // Actúa como interruptor (toggle)
       } 
-      // Pinch Out (Zoom In / Separar dedos) -> Modo Fichas (Menos fichas, con rotación)
-      else {
-         toggleRotationMode(false);
-      }
       
       // Reset para evitar múltiples disparos en el mismo gesto
       isPinching = false;

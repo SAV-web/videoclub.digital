@@ -33,6 +33,7 @@ const SQRT_MAX_VOTES = {
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
 let renderedCardCount = 0;
 let currentlyFlippedCard = null;
+let currentRenderRequestId = 0; // Control de concurrencia para renderizado
 
 const isPointerDevice = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -71,31 +72,85 @@ function clearCardHoverState(cardElement) {
   }
 }
 
-export function initGridHoverSystem(gridContainer) {
-  if (isTouchDevice || !isPointerDevice) return;
-  
-  gridContainer.addEventListener("mouseover", (e) => {
-    const target = e.target;
-    const card = target.closest(".movie-card");
-    if (!card) return;
+export function initCardInteractions(gridContainer) {
+  // 1. SISTEMA DE HOVER (Solo Desktop)
+  if (!isTouchDevice && isPointerDevice) {
+    gridContainer.addEventListener("mouseover", (e) => {
+      const target = e.target;
+      const card = target.closest(".movie-card");
+      if (!card) return;
 
-    if (currentHoveredCard !== card) {
-      if (currentHoveredCard) clearCardHoverState(currentHoveredCard);
-      currentHoveredCard = card;
-      startFlipTimer(card);
-    } else {
-      if (target.closest(INTERACTIVE_SELECTOR)) cancelFlipTimer();
-      else startFlipTimer(card);
-    }
-  });
+      if (currentHoveredCard !== card) {
+        if (currentHoveredCard) clearCardHoverState(currentHoveredCard);
+        currentHoveredCard = card;
+        startFlipTimer(card);
+      } else {
+        if (target.closest(INTERACTIVE_SELECTOR)) cancelFlipTimer();
+        else startFlipTimer(card);
+      }
+    });
 
-  gridContainer.addEventListener("mouseout", (e) => {
-    if (!currentHoveredCard) return;
-    if (!currentHoveredCard.contains(e.relatedTarget)) {
-      clearCardHoverState(currentHoveredCard);
-      currentHoveredCard = null;
-    }
-  });
+    gridContainer.addEventListener("mouseout", (e) => {
+      if (!currentHoveredCard) return;
+      if (!currentHoveredCard.contains(e.relatedTarget)) {
+        clearCardHoverState(currentHoveredCard);
+        currentHoveredCard = null;
+      }
+    });
+
+    // 2. DOBLE CLICK (Desktop): Abrir modal en modo rotación
+    gridContainer.addEventListener("dblclick", (e) => {
+      const card = e.target.closest(".movie-card");
+      // Solo si estamos en modo rotación (si no, el click simple ya abre la modal)
+      if (card && !document.body.classList.contains("rotation-disabled")) {
+        openModal(card);
+      }
+    });
+  }
+
+  // 3. LONG PRESS (Móvil/Táctil): Abrir modal manteniendo pulsado
+  if (isTouchDevice) {
+    let longPressTimer;
+    let startX, startY;
+    const LONG_PRESS_DELAY = 500;
+
+    gridContainer.addEventListener("touchstart", (e) => {
+      const card = e.target.closest(".movie-card");
+      if (!card || document.body.classList.contains("rotation-disabled")) return;
+
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      
+      longPressTimer = setTimeout(() => {
+        triggerHapticFeedback('medium');
+        openModal(card);
+        // Marcamos para bloquear el click subsiguiente
+        gridContainer.dataset.longPressActive = "true";
+      }, LONG_PRESS_DELAY);
+    }, { passive: true });
+
+    gridContainer.addEventListener("touchmove", (e) => {
+      if (!longPressTimer) return;
+      const moveX = Math.abs(e.touches[0].clientX - startX);
+      const moveY = Math.abs(e.touches[0].clientY - startY);
+      // Si se mueve el dedo más de 10px, cancelamos el long press (es un scroll)
+      if (moveX > 10 || moveY > 10) clearTimeout(longPressTimer);
+    }, { passive: true });
+
+    gridContainer.addEventListener("touchend", () => {
+      clearTimeout(longPressTimer);
+      // Limpiamos la marca después de un breve periodo para que el click handler la vea
+      setTimeout(() => delete gridContainer.dataset.longPressActive, 100);
+    }, { passive: true });
+
+    // Interceptamos el click si fue un long press para evitar el giro de la tarjeta
+    gridContainer.addEventListener("click", (e) => {
+      if (gridContainer.dataset.longPressActive === "true") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, { capture: true });
+  }
 }
 
 const lazyLoadObserver = new IntersectionObserver(
@@ -615,6 +670,7 @@ function createMovieCard(movieData) {
 }
 
 export function renderMovieGrid(gridContainer, movies) {
+  const renderId = ++currentRenderRequestId; // Nuevo ID para esta ejecución
   renderedCardCount = 0; 
   unflipAllCards();
   if (!gridContainer) return;
@@ -624,6 +680,9 @@ export function renderMovieGrid(gridContainer, movies) {
   let currentIndex = 0;
 
   function renderBatch() {
+    // Si ha empezado otro renderizado (esqueletos, otra página, etc.), detenemos este.
+    if (renderId !== currentRenderRequestId) return;
+
     if (currentIndex >= movies.length || !document.body.contains(gridContainer)) return;
     const fragment = document.createDocumentFragment();
     const limit = Math.min(currentIndex + BATCH_SIZE, movies.length);
@@ -651,6 +710,7 @@ export function renderMovieGrid(gridContainer, movies) {
 // ... (renderSkeletons, renderNoResults, renderErrorState iguales)
 // COPIA AQUÍ renderSkeletons, renderNoResults, renderErrorState del archivo original
 export function renderSkeletons(gridContainer, paginationContainer) {
+  currentRenderRequestId++; // Invalidar cualquier renderizado de películas en curso
   if (gridContainer) gridContainer.textContent = "";
   if (paginationContainer) paginationContainer.textContent = "";
   if (!gridContainer) return;
@@ -662,6 +722,7 @@ export function renderSkeletons(gridContainer, paginationContainer) {
 }
 
 export function renderNoResults(gridContainer, paginationContainer, activeFilters) {
+  currentRenderRequestId++; // Invalidar renders anteriores
   if (gridContainer) gridContainer.textContent = "";
   if (paginationContainer) paginationContainer.textContent = "";
   if (!gridContainer) return;
@@ -678,6 +739,7 @@ export function renderNoResults(gridContainer, paginationContainer, activeFilter
 }
 
 export function renderErrorState(gridContainer, paginationContainer, message) {
+  currentRenderRequestId++; // Invalidar renders anteriores
   if (gridContainer) gridContainer.textContent = "";
   if (paginationContainer) paginationContainer.textContent = "";
   if (!gridContainer) return;

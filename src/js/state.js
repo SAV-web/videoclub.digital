@@ -227,6 +227,7 @@ export function toggleExcludedFilter(filterType, value) {
 
 export function resetFiltersState() {
   state.activeFilters = structuredClone(initialState.activeFilters);
+  state.totalMovies = 0; // Forzar recálculo del total al cambiar contexto (ej: popstate)
 }
 
 export function setUserMovieData(data) {
