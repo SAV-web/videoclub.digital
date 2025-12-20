@@ -325,7 +325,7 @@ export function openModal(cardElement) {
     dom.overlay.classList.add("is-visible");
     
     // 4. Activar trampas de foco (Esto es lo que causa el scroll indeseado)
-    openAccessibleModal(dom.modal, dom.overlay);
+    openAccessibleModal(dom.modal, dom.overlay, true); // true = No enfocar el primer elemento (Director)
     
     // 🔥 FIX CRÍTICO: Forzar scroll al inicio (Top)
     // Usamos un setTimeout para ejecutar esto DESPUÉS de que el navegador 

@@ -176,12 +176,14 @@ function handleTrapKeyDown(e) {
   }
 }
 
-function activateTrap(element) {
+function activateTrap(element, skipInitialFocus = false) {
   previouslyFocusedElement = document.activeElement;
   element.addEventListener("keydown", handleTrapKeyDown);
   
-  const firstFocusable = Array.from(element.querySelectorAll(FOCUSABLE_SELECTOR)).find(isVisible);
-  setTimeout(() => { if (firstFocusable) firstFocusable.focus(); }, 0);
+  if (!skipInitialFocus) {
+    const firstFocusable = Array.from(element.querySelectorAll(FOCUSABLE_SELECTOR)).find(isVisible);
+    setTimeout(() => { if (firstFocusable) firstFocusable.focus(); }, 0);
+  }
 
   focusTrapCleanup = () => {
     element.removeEventListener("keydown", handleTrapKeyDown);
@@ -191,12 +193,12 @@ function activateTrap(element) {
   };
 }
 
-export function openAccessibleModal(modalElement, overlayElement) {
+export function openAccessibleModal(modalElement, overlayElement, skipInitialFocus = false) {
   if (!modalElement) return;
   modalElement.hidden = false;
   if (overlayElement) overlayElement.hidden = false;
   modalElement.focus();
-  activateTrap(modalElement);
+  activateTrap(modalElement, skipInitialFocus);
 }
 
 export function closeAccessibleModal(modalElement, overlayElement) {
