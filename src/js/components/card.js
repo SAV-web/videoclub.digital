@@ -115,6 +115,9 @@ export function initCardInteractions(gridContainer) {
     const LONG_PRESS_DELAY = 500;
 
     gridContainer.addEventListener("touchstart", (e) => {
+      // Ignorar si hay un gesto de pellizco reciente
+      if (document.body.dataset.gestureCooldown) return;
+
       const card = e.target.closest(".movie-card");
       if (!card || document.body.classList.contains("rotation-disabled")) return;
 
@@ -524,6 +527,13 @@ function handleDocumentClick(e) {
 }
 
 export function handleCardClick(event) {
+  // Ignorar si hay un gesto de pellizco reciente (evita abrir modal accidentalmente)
+  if (document.body.dataset.gestureCooldown) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
   const cardElement = this;
   const target = event.target;
 

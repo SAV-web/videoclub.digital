@@ -294,6 +294,10 @@ function initPinchGestures() {
       // Solo reaccionamos a "Pellizcar hacia adentro" (juntar dedos)
       if (diff < 0) {
          toggleRotationMode(); // Actúa como interruptor (toggle)
+         
+         // Bloquear interacciones posteriores (clics accidentales) durante un breve periodo
+         document.body.dataset.gestureCooldown = "true";
+         setTimeout(() => delete document.body.dataset.gestureCooldown, 500);
       } 
       
       // Reset para evitar múltiples disparos en el mismo gesto
