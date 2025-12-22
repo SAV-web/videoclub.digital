@@ -163,6 +163,7 @@ export const FILTER_CONFIG = {
       K: "Kino Lorber",
       E: "Eureka",
       H: "Series HBO",
+      T: "A Contra+",
     },
   },
   studio: {

@@ -268,7 +268,7 @@ function updatePageTitle() {
 
   if (searchTerm) title = `Resultados para "${searchTerm}"`;
   else if (selection) {
-    const names = { C: "Colección Criterion", M: "1001 Películas que ver", A: "Arrow Video", K: "Kino Lorber", E: "Eureka", H: "Series de HBO" };
+    const names = { C: "Colección Criterion", M: "1001 Películas que ver", A: "Arrow Video", K: "Kino Lorber", E: "Eureka", H: "Series de HBO", T: "A Contracorriente" };
     title = (names[selection] || title) + yearSuffix;
   } else if (studio) {
     title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
