@@ -562,8 +562,8 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
 /* CORRECCIÓN ÓPTICA: Icono de Wikipedia */
 [data-template="wikipedia-link"] .rating-icon,
 [data-template="justwatch-link"] .rating-icon {
-  width: 1.9em;  /* Un poco más grande que el 1.6em estándar */
-  height: 1.9em;
+  width: 1.5em;  /* Reducido un 20% (era 1.9em) */
+  height: 1.5em;
   /* Ajuste fino de posición si es necesario para centrarlo verticalmente */
   transform: translateY(-1px); 
 }
