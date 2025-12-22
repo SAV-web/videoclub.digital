@@ -405,6 +405,16 @@ function populateCardText(cardElement, movieData) {
   episodesEl.textContent = epText;
   episodesEl.style.display = epText ? "inline" : "none";
 
+  const jwLink = backContext.querySelector('[data-template="justwatch-link"]');
+  if (movieData.justwatch) {
+    jwLink.href = movieData.justwatch;
+    jwLink.classList.remove('disabled');
+  } else {
+    jwLink.removeAttribute('href');
+    jwLink.classList.add('disabled');
+  }
+  jwLink.style.display = 'flex';
+
   const wikiLink = backContext.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {
     wikiLink.href = movieData.wikipedia;

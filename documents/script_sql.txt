@@ -152,7 +152,7 @@ BEGIN
                             m.imdb_id, m.imdb_rating, m.imdb_votes, 
                             m.synopsis, m.thumbhash_st, m.critic,
                             m.last_synced_at, m.episodes, m.wikipedia, 
-                            m.selections_list, m.studios_list
+                            m.selections_list, m.studios_list, m.justwatch
                         FROM filtered_movies fm
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id
@@ -402,14 +402,14 @@ BEGIN
     WITH upserted_movies AS (
         INSERT INTO public.movies (
             relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
-            original_title, country_id, minutes, synopsis, fa_id, imdb_id, critic, last_synced_at, episodes, wikipedia
+            original_title, country_id, minutes, synopsis, fa_id, imdb_id, critic, last_synced_at, episodes, wikipedia, justwatch
         )
         SELECT
             s.relevance, TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
-            s.imdb_id, s.critic, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia)
+            s.imdb_id, s.critic, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia), TRIM(s.justwatch)
         FROM public.movies_staging s
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
         WHERE s.image IS NOT NULL AND TRIM(s.image) <> ''
@@ -418,7 +418,7 @@ BEGIN
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
             fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id, critic = EXCLUDED.critic, last_synced_at = sync_timestamp,
-            episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia
+            episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia, justwatch = EXCLUDED.justwatch
         RETURNING id
     )
     SELECT array_agg(id) INTO affected_movie_ids FROM upserted_movies;

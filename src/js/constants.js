@@ -135,7 +135,6 @@ export const ICONS = {
  */
 export const STUDIO_DATA = {
   N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix" },
-  H: { id: "icon-hbo", class: "hbo-icon", title: "Original de HBO", color: true },
   D: { id: "icon-disney", class: "disney-icon", title: "Disney" },
   W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros." },
   U: { id: "icon-universal", class: "universal-icon", title: "Universal" },

@@ -301,7 +301,8 @@
 }
 
 /* --- Wikipedia Link (Estado Deshabilitado) --- */
-.is-quick-view [data-template="wikipedia-link"].disabled {
+.is-quick-view [data-template="wikipedia-link"].disabled,
+.is-quick-view [data-template="justwatch-link"].disabled {
   opacity: 0.3;
   pointer-events: none;
   filter: grayscale(100%);

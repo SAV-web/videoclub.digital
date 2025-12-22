@@ -237,6 +237,17 @@ function populateModal(cardElement) {
   episodesEl.textContent = epText;
   episodesEl.style.display = epText ? "inline" : "none";
 
+  // 3. JustWatch
+  const jwLink = back.querySelector('[data-template="justwatch-link"]');
+  if (movieData.justwatch) {
+    jwLink.href = movieData.justwatch;
+    jwLink.classList.remove('disabled');
+  } else {
+    jwLink.removeAttribute('href');
+    jwLink.classList.add('disabled');
+  }
+  jwLink.style.display = 'flex';
+
   // 3. Wikipedia
   const wikipediaLink = back.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {

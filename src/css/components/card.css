@@ -221,22 +221,26 @@ html.dark-mode .flip-card-inner.is-flipped {
 .episode-duration-group {
   display: flex; align-items: center; gap: 4px;
   font-weight: var(--font-weight-medium); color: var(--color-text-secondary);
+  white-space: nowrap; /* Evita que el texto salte de línea */
 }
 
-[data-template="wikipedia-link"] {
+[data-template="wikipedia-link"],
+[data-template="justwatch-link"] {
   display: flex; align-items: center; text-decoration: none;
   transition: transform var(--duration-fast);
   
   margin-right: 0;
   
   /* CAMBIO AQUÍ: Aumentamos de xs (0.5rem) a md (1rem) */
-  margin-left: var(--space-md); 
+  margin-left: var(--space-xs); /* Reducido para apretar los iconos */
   
   pointer-events: auto; 
 }
-[data-template="wikipedia-link"]:hover { transform: scale(1.1); }
+[data-template="wikipedia-link"]:hover,
+[data-template="justwatch-link"]:hover { transform: scale(1.1); }
 /* Estado deshabilitado para Wikipedia (cuando no hay enlace) */
-[data-template="wikipedia-link"].disabled {
+[data-template="wikipedia-link"].disabled,
+[data-template="justwatch-link"].disabled {
   opacity: 0.3;
   pointer-events: none;
   filter: grayscale(100%);
@@ -556,7 +560,8 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
 .rating-icon { width: 1.6em; height: 1.6em; border-radius: var(--radius-sm); object-fit: contain; }
 
 /* CORRECCIÓN ÓPTICA: Icono de Wikipedia */
-[data-template="wikipedia-link"] .rating-icon {
+[data-template="wikipedia-link"] .rating-icon,
+[data-template="justwatch-link"] .rating-icon {
   width: 1.9em;  /* Un poco más grande que el 1.6em estándar */
   height: 1.9em;
   /* Ajuste fino de posición si es necesario para centrarlo verticalmente */
