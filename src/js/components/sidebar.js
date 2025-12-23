@@ -82,6 +82,9 @@ function handleTouchStart(e) {
   if (window.innerWidth > MOBILE_BREAKPOINT) return;
   updateDrawerWidth(); 
   
+  // 🛡️ FIX: Si la modal está abierta, el sidebar NO debe responder a gestos.
+  if (document.body.classList.contains("modal-open")) return;
+  
   const isOpen = document.body.classList.contains("sidebar-is-open");
   // Zona de activación: Borde izquierdo (150px) o cualquier parte si ya está abierto
   const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);

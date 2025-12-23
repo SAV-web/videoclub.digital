@@ -20,12 +20,16 @@ const dom = {
   modal: document.getElementById("quick-view-modal"),
   content: document.getElementById("quick-view-content"),
   template: document.getElementById("movie-card-template")?.content,
+  prevBtn: document.getElementById("modal-prev-btn"),
+  nextBtn: document.getElementById("modal-next-btn"),
 };
 
 // --- Estado de Gestos Táctiles ---
 let touchStartY = 0;
+let touchStartX = 0;
 let currentModalY = 0;
 let isDraggingModal = false;
+let isHorizontalSwipe = false;
 
 // =================================================================
 //          1. MANEJADORES DE EVENTOS
@@ -75,36 +79,69 @@ function handleMetadataClick(event) {
 // --- Lógica de Gestos (Swipe to Dismiss) ---
 
 function handleModalTouchStart(e) {
-  // UX CRÍTICA: Solo permitimos arrastrar si el usuario está al principio del contenido.
-  // Si ha hecho scroll para leer la sinopsis, el gesto no debe activarse.
-  if (dom.content.scrollTop > 0) return;
-
   touchStartY = e.touches[0].clientY;
-  isDraggingModal = true;
-  // Añadimos clase para eliminar la transición CSS y que el movimiento sea instantáneo (1:1 con el dedo)
-  dom.modal.classList.add("is-dragging");
+  touchStartX = e.touches[0].clientX;
+  
+  // Reseteamos estados
+  isDraggingModal = false;
+  isHorizontalSwipe = false;
+  
+  // Eliminamos transición para respuesta inmediata si empezamos a arrastrar
+  dom.modal.classList.remove("is-dragging"); 
 }
 
 function handleModalTouchMove(e) {
-  if (!isDraggingModal) return;
+  // Si ya decidimos que no es un gesto válido, salimos
+  if (!isDraggingModal && !isHorizontalSwipe && e.defaultPrevented) return;
 
   const currentY = e.touches[0].clientY;
+  const currentX = e.touches[0].clientX;
   const deltaY = currentY - touchStartY;
+  const deltaX = currentX - touchStartX;
 
-  // Solo permitimos arrastrar hacia ABAJO (delta positivo)
-  if (deltaY > 0) {
-    // Importante: Prevenir scroll del body o rebote elástico del navegador
-    if (e.cancelable) e.preventDefault();
-    
-    // Movemos la modal visualmente
-    dom.modal.style.transform = `translate(-50%, ${deltaY}px)`;
+  // 1. DETECCIÓN DE INTENCIÓN (Solo la primera vez que movemos)
+  if (!isDraggingModal && !isHorizontalSwipe) {
+    // Umbral mínimo para evitar ruido
+    if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return;
+
+    // Si el movimiento es vertical y estamos arriba del todo -> DISMISS
+    if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && dom.content.scrollTop <= 0) {
+      isDraggingModal = true;
+      dom.modal.classList.add("is-dragging"); // Quitar transición CSS
+    } 
+    // Si el movimiento es horizontal -> NAVEGACIÓN
+    else if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      isHorizontalSwipe = true;
+    }
+  }
+
+  // 2. EJECUCIÓN DEL GESTO
+  if (isDraggingModal) {
+    if (e.cancelable) e.preventDefault(); // Evitar scroll
+    dom.modal.style.transform = `translate(-50%, ${deltaY}px)`; // Mover modal
     currentModalY = deltaY;
+  } else if (isHorizontalSwipe) {
+    if (e.cancelable) e.preventDefault(); // Evitar gestos de navegador (atrás/adelante)
   }
 }
 
 function handleModalTouchEnd(e) {
+  // A. GESTO HORIZONTAL (Navegación)
+  if (isHorizontalSwipe) {
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const SWIPE_THRESHOLD = 80; // Píxeles para considerar swipe
+    
+    if (Math.abs(deltaX) > SWIPE_THRESHOLD) {
+      // Izquierda (< 0) -> Siguiente | Derecha (> 0) -> Anterior
+      navigateToSibling(deltaX < 0 ? 1 : -1);
+    }
+    isHorizontalSwipe = false;
+    return;
+  }
+
+  // B. GESTO VERTICAL (Cierre)
   if (!isDraggingModal) return;
-  isDraggingModal = false;
+  
   dom.modal.classList.remove("is-dragging"); // Reactivamos transiciones CSS para el rebote o cierre suave
 
   // UMBRAL DE CIERRE: 120px
@@ -116,6 +153,52 @@ function handleModalTouchEnd(e) {
     dom.modal.style.transform = ""; 
   }
   currentModalY = 0;
+  isDraggingModal = false;
+}
+
+/**
+ * Navega a la película anterior (-1) o siguiente (1) en el grid actual.
+ */
+function navigateToSibling(direction) {
+  const currentId = dom.content.dataset.movieId;
+  if (!currentId) return;
+
+  // Buscamos la tarjeta actual en el grid para encontrar a sus vecinos
+  const currentCard = document.querySelector(`.movie-card[data-movie-id="${currentId}"]`);
+  if (!currentCard) return;
+
+  const sibling = direction === 1 ? currentCard.nextElementSibling : currentCard.previousElementSibling;
+  
+  // Si existe y es una tarjeta (no un esqueleto o mensaje de error), la abrimos
+  if (sibling && sibling.classList.contains('movie-card')) {
+    openModal(sibling);
+  }
+}
+
+/**
+ * Actualiza el estado (habilitado/deshabilitado) de las flechas de navegación
+ * basándose en si existen tarjetas hermanas en el grid.
+ */
+function updateNavButtons(currentId) {
+  const currentCard = document.querySelector(`.movie-card[data-movie-id="${currentId}"]`);
+  if (!currentCard) return;
+
+  const prev = currentCard.previousElementSibling;
+  const next = currentCard.nextElementSibling;
+  
+  const hasPrev = prev && prev.classList.contains('movie-card');
+  const hasNext = next && next.classList.contains('movie-card');
+
+  if (dom.prevBtn) {
+    dom.prevBtn.disabled = !hasPrev;
+    dom.prevBtn.style.opacity = hasPrev ? "1" : "0";
+    dom.prevBtn.style.pointerEvents = hasPrev ? "auto" : "none";
+  }
+  if (dom.nextBtn) {
+    dom.nextBtn.disabled = !hasNext;
+    dom.nextBtn.style.opacity = hasNext ? "1" : "0";
+    dom.nextBtn.style.pointerEvents = hasNext ? "auto" : "none";
+  }
 }
 
 // =================================================================
@@ -294,6 +377,9 @@ function populateModal(cardElement) {
   // Inicializamos interactividad interna (estrellas, watchlist)
   updateCardUI(dom.content);
   initializeCard(dom.content);
+  
+  // Actualizamos estado de las flechas
+  updateNavButtons(movieData.id);
 }
 
 // =================================================================
@@ -364,6 +450,16 @@ export function initQuickView() {
     if (e.key === "Escape" && dom.modal.classList.contains("is-visible")) {
       closeModal();
     }
+  });
+
+  // Listeners para flechas de navegación (Desktop)
+  if (dom.prevBtn) dom.prevBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    navigateToSibling(-1);
+  });
+  if (dom.nextBtn) dom.nextBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    navigateToSibling(1);
   });
 
   // Listeners Táctiles (Optimización: Solo en pantallas pequeñas)

@@ -327,7 +327,7 @@ function updateUrl() {
 function init() {
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(err => console.error("Fallo SW:", err));
+      navigator.serviceWorker.register("public/sw.js").catch(err => console.error("Fallo SW:", err));
     });
   }
   window.addEventListener("popstate", () => {
