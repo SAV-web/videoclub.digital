@@ -21,8 +21,7 @@ function createCanonicalCacheKey(filters, page, pageSize) {
       const hasValue = value !== null && value !== undefined && value !== "";
       const isNonEmptyArray = Array.isArray(value) && value.length > 0;
       if (hasValue && (!Array.isArray(value) || isNonEmptyArray)) {
-        if (isNonEmptyArray) normalizedFilters[key] = [...value].sort();
-        else normalizedFilters[key] = value;
+        normalizedFilters[key] = isNonEmptyArray ? [...value].sort() : value;
       }
     });
   return JSON.stringify({ filters: normalizedFilters, page, pageSize });

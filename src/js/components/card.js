@@ -506,8 +506,11 @@ export function setupCardRatings(containerElement, movieData) {
     const rating = movieData[`${platform}_rating`];
     const votes = movieData[`${platform}_votes`];
     
-    link.href = (id && (id.startsWith("http://") || id.startsWith("https://"))) ? id : "#";
-    link.classList.toggle("disabled", !link.href.startsWith("http"));
+      link.classList.remove("disabled");
+    } else {
+      link.removeAttribute("href");
+      link.classList.add("disabled");
+    }
     
     ratingEl.textContent = rating ? (String(rating).includes(".") ? rating : `${rating}.0`) : "N/A";
     

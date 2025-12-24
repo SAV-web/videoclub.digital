@@ -229,7 +229,9 @@ function populateModal(cardElement) {
   const frontImg = front.querySelector("img");
   const cardImg = cardElement.querySelector(".flip-card-front img");
   if (frontImg && cardImg) {
-    frontImg.src = cardImg.src;
+    // FIX: Usar dataset.src (HQ) si está disponible.
+    // Esto evita copiar el LQIP borroso si la tarjeta original aún no se ha cargado en el grid.
+    frontImg.src = cardImg.dataset.src || cardImg.src;
     frontImg.alt = cardImg.alt;
   }
   
@@ -445,10 +447,16 @@ export function initQuickView() {
   // Listener para cerrar al navegar por director o actor (Delegación de eventos)
   if (dom.content) dom.content.addEventListener("click", handleMetadataClick);
 
-  // Listener Teclado (Esc)
+  // Listener Teclado (Esc + Navegación)
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && dom.modal.classList.contains("is-visible")) {
+    if (!dom.modal.classList.contains("is-visible")) return;
+
+    if (e.key === "Escape") {
       closeModal();
+    } else if (e.key === "ArrowLeft") {
+      navigateToSibling(-1);
+    } else if (e.key === "ArrowRight") {
+      navigateToSibling(1);
     }
   });
 
