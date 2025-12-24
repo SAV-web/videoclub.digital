@@ -506,6 +506,8 @@ export function setupCardRatings(containerElement, movieData) {
     const rating = movieData[`${platform}_rating`];
     const votes = movieData[`${platform}_votes`];
     
+    if (id && (id.startsWith("http://") || id.startsWith("https://"))) {
+      link.href = id;
       link.classList.remove("disabled");
     } else {
       link.removeAttribute("href");
