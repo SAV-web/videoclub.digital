@@ -46,6 +46,9 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  
+  /* UX TÁCTIL: Navegador maneja scroll vertical, JS maneja swipe horizontal (navegación) */
+  touch-action: pan-y;
 }
 
 /* --- Estados Visibles --- */

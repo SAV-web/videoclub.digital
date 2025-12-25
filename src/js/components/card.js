@@ -209,7 +209,8 @@ async function handleWatchlistClick(event) {
   const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
   const wasOnWatchlist = button.classList.contains("is-active");
   const newUserData = { onWatchlist: !wasOnWatchlist };
-  const previousUserData = JSON.parse(interactiveContainer.dataset.previousUserData || "{}");
+  // FIX: Usar state como fuente de verdad para el rollback, no el DOM
+  const previousUserData = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newUserData);
   updateCardUI(interactiveContainer);
@@ -228,8 +229,9 @@ async function handleRatingClick(event) {
   const interactiveContainer = this;
   const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
   if (!movieId) return;
-  const previousUserData = JSON.parse(interactiveContainer.dataset.previousUserData || "{}");
-  const currentUserData = getUserDataForMovie(movieId) || { rating: null };
+  // FIX: Usar state como fuente de verdad. currentUserData es el estado actual antes del cambio.
+  const previousUserData = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
+  const currentUserData = previousUserData;
   let newRating = null;
   const suspensoCircle = event.target.closest('[data-action="set-rating-suspenso"]');
   const starElement = event.target.closest(".star-icon[data-rating-level]");

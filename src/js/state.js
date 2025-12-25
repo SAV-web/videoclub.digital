@@ -190,8 +190,8 @@ export function setMediaType(mediaType) {
 
 export function toggleExcludedFilter(filterType, value) {
   const config = {
-    genre: { list: state.activeFilters.excludedGenres, limit: 3 },
-    country: { list: state.activeFilters.excludedCountries, limit: 3 },
+    genre: { list: state.activeFilters.excludedGenres, limit: CONFIG.MAX_EXCLUDED_FILTERS },
+    country: { list: state.activeFilters.excludedCountries, limit: CONFIG.MAX_EXCLUDED_FILTERS },
   };
 
   if (!config[filterType]) return false;

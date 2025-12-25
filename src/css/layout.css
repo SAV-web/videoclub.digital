@@ -78,6 +78,9 @@
 
   /* Ocultar barra de scroll en móvil (Firefox) */
   scrollbar-width: none;
+  
+  /* UX TÁCTIL: Navegador maneja scroll vertical, JS maneja swipe horizontal (cerrar) */
+  touch-action: pan-y;
 }
 
 /* Ocultar barra de scroll en móvil (Chrome/Safari) */

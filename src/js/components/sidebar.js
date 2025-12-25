@@ -53,7 +53,8 @@ let touchState = {
   startY: 0,
   startTime: 0,
   currentTranslate: 0,
-  startTranslate: 0
+  startTranslate: 0,
+  isInteractive: false // Nuevo: Para detección de intención
 };
 
 export const openMobileDrawer = () => {
@@ -101,12 +102,10 @@ function handleTouchStart(e) {
   touchState.startTime = Date.now();
   // Si está abierto empieza en 0, si no en -280
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
-  
-  // ✨ OPTIMIZACIÓN 3.B: 
-  // 1. Activar aceleración GPU (.is-dragging tiene will-change: transform)
-  // 2. Bloquear interacción en el resto de la página
-  dom.sidebar.classList.add("is-dragging");
-  document.body.classList.add("sidebar-is-dragging");
+
+  // INTENT DETECTION: Comprobamos si el gesto empieza sobre un elemento interactivo.
+  // Solo relevante si el sidebar está cerrado (swipe desde borde) para no bloquear cards.
+  touchState.isInteractive = !isOpen && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
 
   // Optimización: Añadimos el listener costoso (no pasivo) SOLO cuando empieza un posible drag
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
@@ -122,22 +121,40 @@ function handleTouchMove(e) {
 
   // Detección de intención (Scroll Vertical vs Swipe Horizontal)
   if (!touchState.isHorizontalDrag) {
+    // LÓGICA DE UMBRALES DINÁMICOS
+    // Si estamos sobre una card/botón, exigimos un movimiento más claro (15px) para "robar" el gesto.
+    // Si estamos en fondo neutro, respondemos rápido (5px).
+    const threshold = touchState.isInteractive ? 15 : 5;
+    
+    // Si el movimiento es menor al umbral, no hacemos nada (esperamos intención)
+    if (Math.abs(diffX) < threshold && Math.abs(diffY) < threshold) return;
+
     // Si se mueve más en Y que en X, asumimos que es scroll y cancelamos el swipe
     if (Math.abs(diffY) > Math.abs(diffX)) {
       touchState.isDragging = false;
-      // Limpieza inmediata
-      dom.sidebar.classList.remove("is-dragging");
-      document.body.classList.remove("sidebar-is-dragging");
       document.removeEventListener("touchmove", handleTouchMove); // Dejar de escuchar
       return;
     }
+    
+    // ¡INTENCIÓN CONFIRMADA! Es un swipe horizontal.
     touchState.isHorizontalDrag = true;
+    
+    // Reseteamos el origen (startX) al punto actual para evitar un "salto" visual
+    // y asegurar que el arrastre empiece suavemente desde aquí.
+    touchState.startX = currentX;
+    touchState.startY = currentY;
+    touchState.startTime = Date.now();
+
+    // AHORA SÍ: Bloqueamos la UI y activamos GPU
+    dom.sidebar.classList.add("is-dragging");
+    document.body.classList.add("sidebar-is-dragging");
   }
 
   // Prevenir scroll nativo del navegador (pull-to-refresh, etc.)
   if (e.cancelable) e.preventDefault();
 
-  let newTranslate = touchState.startTranslate + diffX;
+  // Usamos (currentX - touchState.startX) porque startX se reseteó al confirmar el gesto
+  let newTranslate = touchState.startTranslate + (currentX - touchState.startX);
 
   // Física de límites (Rubber Banding)
   if (newTranslate > 0) {
@@ -367,7 +384,9 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
   resultsContainer.textContent = "";
 
   if (suggestions.length === 0) {
-    input.removeAttribute("aria-expanded");
+    input.setAttribute("aria-expanded", "false"); // FIX: Estado explícito
+    input.removeAttribute("aria-activedescendant"); // FIX: Limpieza
+    input.removeAttribute("aria-controls"); // FIX: Limpieza
     resultsContainer.remove();
     return;
   }

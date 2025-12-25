@@ -23,7 +23,7 @@ export const CONFIG = {
   
   // Filtros y Búsqueda
   MAX_ACTIVE_FILTERS: 3,
-  MAX_FILTER_PILLS: 3,
+  MAX_EXCLUDED_FILTERS: 3, // Límite específico para exclusiones (ej: máx 3 géneros excluidos)
   SEARCH_DEBOUNCE_DELAY: 400, // ms
   
   // Rangos
