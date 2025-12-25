@@ -836,7 +836,12 @@ export function initSidebar() {
     const currentFilters = getActiveFilters();
     const years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
     if (dom.yearSlider?.noUiSlider) dom.yearSlider.noUiSlider.set(years, false);
-    renderFilterPills();
+    
+    // FIX: Usar requestAnimationFrame para asegurar que el DOM está estable antes de ocultar enlaces.
+    // Esto soluciona el problema de duplicidad visual en Chrome al recargar con filtros activos.
+    requestAnimationFrame(() => {
+      renderFilterPills();
+    });
   });
   
   document.addEventListener("filtersReset", collapseAllSections);
