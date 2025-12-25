@@ -37,9 +37,14 @@
   animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 50ms);
   transition: transform var(--duration-quick) var(--ease-spring);
+  /* GPU Acceleration: Promueve la tarjeta a su propia capa de composición
+     para animaciones más suaves (transform y opacity). */
+  will-change: transform, opacity;
   /* Renderizado optimizado */
   content-visibility: auto;
   contain-intrinsic-size: 165px 314px;
+  /* UX TÁCTIL: Permite pan/zoom, pero deshabilita "doble tap para zoom" del navegador */
+  touch-action: manipulation;
 }
 
 /* El "papel" que gira (Contenedor de caras) */
@@ -50,6 +55,8 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   transform-style: preserve-3d; /* Habilita el 3D real */
+  /* GPU Acceleration: Optimiza la animación de giro. */
+  will-change: transform;
   transition: transform var(--duration-leisurely) var(--ease-smooth-out);
 }
 
@@ -236,8 +243,10 @@ html.dark-mode .flip-card-inner.is-flipped {
   
   pointer-events: auto; 
 }
-[data-template="wikipedia-link"]:hover,
-[data-template="justwatch-link"]:hover { transform: scale(1.1); }
+@media (hover: hover) and (pointer: fine) {
+  [data-template="wikipedia-link"]:hover,
+  [data-template="justwatch-link"]:hover { transform: scale(1.1); }
+}
 /* Estado deshabilitado para Wikipedia (cuando no hay enlace) */
 [data-template="wikipedia-link"].disabled,
 [data-template="justwatch-link"].disabled {
@@ -280,9 +289,11 @@ html.dark-mode .flip-card-inner.is-flipped {
   pointer-events: auto; /* Habilitar click explícitamente */
 }
 
-.rating-left:hover {
-  opacity: 0.8;
-  transform: scale(1.05); /* Feedback visual al pasar por encima */
+@media (hover: hover) and (pointer: fine) {
+  .rating-left:hover {
+    opacity: 0.8;
+    transform: scale(1.05); /* Feedback visual al pasar por encima */
+  }
 }
 
 /* Estado deshabilitado (gestionado por JS si no hay link) */
@@ -313,23 +324,25 @@ html.dark-mode .flip-card-inner.is-flipped {
 }
 
 /* Tooltip de votos al hacer hover */
-.rating-bar-container[data-votes]:hover::after {
-  content: attr(data-votes) " votos";
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(-5px);
-  background-color: rgba(0, 0, 0, 0.85);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 10;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  animation: fade-in-subtle 0.2s ease-out;
+@media (hover: hover) and (pointer: fine) {
+  .rating-bar-container[data-votes]:hover::after {
+    content: attr(data-votes) " votos";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-5px);
+    background-color: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: fade-in-subtle 0.2s ease-out;
+  }
 }
 
 .rating-bar {
@@ -356,7 +369,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 /* Áreas con Scroll (Sinopsis/Crítica/Actores) */
 .scrollable-content {
   position: relative; overflow: hidden;
-  transition: all var(--duration-normal) var(--ease-smooth-out);
+  transition: opacity var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
 }
 /* Indicador visual de "leer más" */
 .scrollable-content::after {
@@ -381,7 +394,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   -webkit-overflow-scrolling: touch; /* Scroll con inercia en iOS */
   overflow-y: auto; scrollbar-width: none;
   opacity: 0; visibility: hidden; transform: translateY(100%);
-  transition: all var(--duration-normal) var(--ease-smooth-out);
+  transition: opacity var(--duration-normal) var(--ease-smooth-out), visibility var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
   z-index: 5;
   font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary);
 }
@@ -416,16 +429,19 @@ html.dark-mode .flip-card-inner.is-flipped {
   display: flex; align-items: center; justify-content: center;
   padding-bottom: 2px;
   cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-  transition: all var(--duration-quick) ease-out;
-  z-index: 20; /* Prioridad de clic */
+  transition: transform var(--duration-quick) ease-out, background-color var(--duration-quick) ease-out;
+  z-index: var(--z-index-card-content); /* Prioridad de clic */
   pointer-events: auto; /* Habilitar click explícitamente */
 }
 .actors-expand-btn { bottom: 2px; right: 2px; z-index: 5; }
 .expand-content-btn { bottom: 14px; right: 14px; }
 
-.expand-content-btn:hover, .actors-expand-btn:hover {
-  transform: scale(1.15); background-color: var(--color-text-primary);
+@media (hover: hover) and (pointer: fine) {
+  .expand-content-btn:hover, .actors-expand-btn:hover {
+    transform: scale(1.15); background-color: var(--color-text-primary);
+  }
 }
+.expand-content-btn:active, .actors-expand-btn:active { transform: scale(0.9); }
 
 /* Lógica de Visibilidad al Expandir */
 .flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn):not(.actors-scrollable-content) {
@@ -496,16 +512,19 @@ html.dark-mode .card-rating-block > * {
   width: 38px; height: 38px; padding: 0; border: none; border-radius: var(--radius-round);
   background-color: transparent; color: var(--color-accent); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: all var(--duration-normal) var(--ease-smooth-out);
+  transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
   position: relative; /* Necesario para centrar el área táctil expandida (::after) */
 }
-.card-action-btn:hover { transform: scale(1.15) rotate(10deg); }
+@media (hover: hover) and (pointer: fine) {
+  .card-action-btn:hover { transform: scale(1.15) rotate(10deg); }
+}
+.card-action-btn:active { transform: scale(0.9); }
 
 .card-action-btn svg {
   width: 30px; height: 30px;
   fill: transparent; stroke: currentColor;
   stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-  transition: all var(--duration-normal) var(--ease-smooth-out);
+  transition: fill var(--duration-normal) var(--ease-smooth-out), stroke var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
 }
 
 .card-action-btn.is-active svg {

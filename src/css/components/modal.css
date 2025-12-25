@@ -31,7 +31,7 @@
 /* --- Contenedor Principal de la Modal --- */
 .quick-view-modal {
   position: fixed;
-  z-index: 2000; /* Encima del overlay */
+  z-index: calc(var(--z-index-overlay) + 1); /* Encima del overlay */
   display: flex;
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
@@ -423,11 +423,15 @@
     max-height: 85dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translate(-50%, 100%);
-    padding-bottom: env(safe-area-inset-bottom); /* Evita que el contenido toque la barra home */
+    /* padding-bottom movido a .quick-view-content para mejor UX de scroll */
   }
   
   .quick-view-modal.is-visible {
     transform: translate(-50%, 0);
+  }
+
+  .quick-view-content {
+    padding-bottom: env(safe-area-inset-bottom);
   }
   
   /* En móvil, .flip-card-inner ya es flex-column por defecto en .is-quick-view */
@@ -551,7 +555,7 @@
   cursor: pointer;
   color: var(--color-text-primary);
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
 html.dark-mode .modal-nav-btn {
@@ -586,7 +590,7 @@ html.dark-mode .modal-nav-btn {
   position: fixed;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 2000;
+  z-index: calc(var(--z-index-overlay) + 1);
   width: 90%;
   max-width: 420px;
 }

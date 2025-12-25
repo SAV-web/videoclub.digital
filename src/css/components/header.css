@@ -121,7 +121,9 @@ html.dark-mode .search-form input:focus {
   cursor: pointer;
   transition: transform 0.2s ease, color 0.2s ease;
 }
-.mobile-sidebar-toggle:hover { color: var(--color-text-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .mobile-sidebar-toggle:hover { color: var(--color-text-primary); }
+}
 .mobile-sidebar-toggle:active { transform: scale(0.9); }
 
 @media (min-width: 769px) {
@@ -139,14 +141,16 @@ html.dark-mode .search-form input:focus {
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1), 0 1px 1px rgba(0, 0, 0, 0.08);
-  transition: all 0.1s ease-in-out;
+  transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out, background-color 0.1s ease-in-out, color 0.1s ease-in-out;
   background-color: var(--color-surface);
   color: var(--color-text-primary);
 }
 
-.type-filter-toggle:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .type-filter-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
 }
 .type-filter-toggle:active {
   transform: translateY(1px);
@@ -173,7 +177,9 @@ html.dark-mode .search-form input:focus {
 /* Heredar tamaño si está dentro de un control de sidebar */
 .sidebar-control-button.theme-toggle { font-size: initial; }
 
-.theme-toggle:hover { transform: scale(1.1); }
+@media (hover: hover) and (pointer: fine) {
+  .theme-toggle:hover { transform: scale(1.1); }
+}
 .theme-toggle:active { transform: scale(0.9); }
 
 .theme-icon {

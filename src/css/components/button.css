@@ -28,7 +28,7 @@
   cursor: pointer;
   user-select: none;
   /* Aplicando nuevas transiciones y transform-origin */
-  transition: all var(--duration-fast) var(--ease-smooth);
+  transition: transform var(--duration-fast) var(--ease-smooth), box-shadow var(--duration-fast) var(--ease-smooth), background-color var(--duration-fast) var(--ease-smooth), color var(--duration-fast) var(--ease-smooth), border-color var(--duration-fast) var(--ease-smooth);
   transform-origin: center;
 
   position: relative; /* Necesario para el efecto ripple */
@@ -36,13 +36,15 @@
   isolation: isolate; /* Crea contexto de apilamiento para el ripple */
 }
 
-.btn:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  /* Combinando transformaciones para un efecto más rico */
-  transform: translateY(-2px) scale(1.03);
-  /* Sombra de "brillo" sutil */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    /* Combinando transformaciones para un efecto más rico */
+    transform: translateY(-2px) scale(1.03);
+    /* Sombra de "brillo" sutil */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
 }
 
 html.dark-mode .btn:hover {
@@ -103,9 +105,11 @@ html.dark-mode .btn:hover {
   border-color: var(--color-border);
 }
 
-.btn--outline:hover {
-  background-color: var(--color-surface);
-  border-color: var(--color-accent);
+@media (hover: hover) and (pointer: fine) {
+  .btn--outline:hover {
+    background-color: var(--color-surface);
+    border-color: var(--color-accent);
+  }
 }
 
 /*
@@ -133,10 +137,12 @@ html.dark-mode .btn:hover {
   box-shadow: none;
 }
 
-.btn--active:hover {
-  background-color: var(--color-accent);
-  color: var(--color-bg);
-  border-color: var(--color-accent);
+@media (hover: hover) and (pointer: fine) {
+  .btn--active:hover {
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+    border-color: var(--color-accent);
+  }
 }
 
 /* ----------------------------------------------------------------- 

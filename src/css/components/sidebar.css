@@ -48,7 +48,7 @@
 .logo-area {
   margin-bottom: var(--space-xl);
   text-align: center;
-  transition: all var(--transition-duration-normal) var(--transition-timing-function);
+  transition: margin-bottom var(--transition-duration-normal) var(--transition-timing-function);
 }
 
 .logo-title {
@@ -83,7 +83,9 @@
   line-height: 1;
   transition: transform var(--transition-duration-fast) ease;
 }
-.sidebar-control-button:hover { transform: scale(1.1); }
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-control-button:hover { transform: scale(1.1); }
+}
 .sidebar-control-button:active { transform: scale(0.95); transition-duration: 0.1s; }
 
 /* Tamaño estandarizado de iconos SVG */
@@ -148,7 +150,9 @@
   align-items: center;
   height: 100%; 
 }
+@media (hover: hover) and (pointer: fine) {
 .filter-pill .remove-filter-btn:hover { opacity: 1; }
+}
 .filter-pill .remove-filter-btn:active { transform: scale(0.9); }
 
 @keyframes fadeOutPill {
@@ -219,7 +223,9 @@ html.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
   font-weight: bold;
   transition: background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
 }
-.collapsible-section .section-header:hover { background-color: var(--color-bg); }
+@media (hover: hover) and (pointer: fine) {
+  .collapsible-section .section-header:hover { background-color: var(--color-bg); }
+}
 .collapsible-section .section-header:active { transform: scale(0.99); }
 
 /* Foco accesible para cabeceras de sección */
@@ -280,7 +286,9 @@ html.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
   font-weight: bold;
   transition: color var(--transition-duration-fast), background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
 }
-.filter-link:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .filter-link:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
+}
 .filter-link:active { transform: scale(0.98); transition-duration: 0.1s; }
 
 /* ✨ MEJORA: Accesibilidad teclado */
@@ -319,13 +327,15 @@ html.dark-mode .filter-link.active { color: var(--color-bg); }
   background-color: transparent;
   color: var(--color-text-secondary);
   opacity: 0;
-  transition: all var(--transition-duration-fast);
+  transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast);
 }
 .collapsible-section.active .exclude-filter-btn,
 .filter-link:hover .exclude-filter-btn,
 .filter-link:focus-visible .exclude-filter-btn { opacity: 1; }
 
-.exclude-filter-btn:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); }
+@media (hover: hover) and (pointer: fine) {
+  .exclude-filter-btn:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); }
+}
 
 /* ✨ MEJORA: Accesibilidad teclado para botón excluir */
 .exclude-filter-btn:focus-visible {
@@ -374,8 +384,10 @@ html.dark-mode .filter-link.active { color: var(--color-bg); }
   font-size: var(--font-size-sm);
   transition: background-color var(--transition-duration-fast);
 }
-.sidebar-autocomplete-item:hover,
 .sidebar-autocomplete-item.is-active { background-color: var(--color-bg); color: var(--color-text-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-autocomplete-item:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
+}
 .sidebar-autocomplete-item strong { color: var(--color-accent); }
 
 /* --- 8. Slider de Años --- */
@@ -409,7 +421,9 @@ html.dark-mode .filter-link.active { color: var(--color-bg); }
   transition: transform 0.2s ease;
 }
 #year-slider .noUi-handle:focus { outline: none; }
-#year-slider .noUi-handle:hover { transform: scale(1.1); }
+@media (hover: hover) and (pointer: fine) {
+  #year-slider .noUi-handle:hover { transform: scale(1.1); }
+}
 #year-slider .noUi-handle:active { cursor: grabbing; }
 #year-slider .noUi-handle::before, #year-slider .noUi-handle::after { display: none; }
 
@@ -453,7 +467,9 @@ html.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2)
   line-height: 1; padding: 0;
   transition: background-color var(--transition-duration-fast);
 }
-.stepper-btn:hover { background-color: var(--color-border-soft); color: var(--color-text-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .stepper-btn:hover { background-color: var(--color-border-soft); color: var(--color-text-primary); }
+}
 .stepper-btn:active { background-color: var(--color-border); }
 .stepper-btn.stepper-up { border-bottom: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) 0 0; }
 
@@ -498,7 +514,7 @@ html.dark-mode .year-input:focus { box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2)
   background-repeat: no-repeat;
   background-position: -50% 0;
   opacity: 0;
-  z-index: 1001;
+  z-index: calc(var(--z-index-sidebar) + 1);
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
@@ -547,7 +563,9 @@ body.is-fetching .sidebar::before {
   cursor: pointer;
   transition: transform 0.2s ease;
 }
-.user-avatar:hover { transform: scale(1.1); }
+@media (hover: hover) and (pointer: fine) {
+  .user-avatar:hover { transform: scale(1.1); }
+}
 
 body.user-logged-in #login-button { display: none; }
 body.user-logged-in #user-session-group { display: inline-flex; }
@@ -604,8 +622,10 @@ body.sidebar-is-dragging .main-content-wrapper {
   transition: transform var(--transition-duration-fast);
 }
 
-.filter-link--studio:hover .sidebar-platform-icon {
-  transform: scale(1.1);
+@media (hover: hover) and (pointer: fine) {
+  .filter-link--studio:hover .sidebar-platform-icon {
+    transform: scale(1.1);
+  }
 }
 
 /* Grid de 3 columnas para la lista de estudios */

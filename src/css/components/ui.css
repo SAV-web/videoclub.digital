@@ -98,7 +98,7 @@ html.dark-mode .skeleton::after {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999; /* Debajo del Sidebar (1001), encima del Header (900) */
+  z-index: calc(var(--z-index-sidebar) - 1); /* Debajo del Sidebar, encima del Header */
   opacity: 0;
   transition: opacity var(--transition-duration-normal);
   backdrop-filter: blur(2px);
@@ -155,17 +155,7 @@ body.sidebar-is-open .sidebar-overlay {
     bottom: calc(var(--space-md) + var(--mobile-header-height) + env(safe-area-inset-bottom));
   }
 }
-
-/* --- Animaciones View Transitions --- */
-@keyframes card-enter-animation {
-  from { opacity: 0; transform: translateY(15px); }
-}
-::view-transition-new(root) { animation: card-enter-animation 0.4s ease-out; }
-
-/* --- Accesibilidad Táctil --- */
-@media (hover: none) and (pointer: coarse) {
   .btn--pagination,
   .pagination-current {
     min-width: 48px; height: 48px; font-size: 1rem;
   }
-}

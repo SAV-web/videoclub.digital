@@ -33,8 +33,6 @@
   /* Asegura que el fondo cubra todo el viewport siempre */
   min-height: 100vh;
   min-height: 100dvh;
-  
-  touch-action: pan-y; /* Optimización de scroll táctil */
 }
 
 /* Contenedor interno con padding */
@@ -45,7 +43,7 @@
   max-width: 1440px;
   
   /* Padding Base (Móvil) */
-  padding: var(--space-md) var(--space-md) calc(var(--mobile-header-height) + var(--space-md));
+  padding: var(--space-md) var(--space-md) calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-bottom));
   
   /* Transición suave al cambiar de tamaño */
   transition: padding 0.3s ease;
@@ -62,7 +60,7 @@
   width: var(--sidebar-width-mobile); 
   height: 100vh;
   height: 100dvh;
-  z-index: 1001;
+  z-index: var(--z-index-sidebar);
   overflow-y: auto; /* Permitir scroll en todo el sidebar */
   -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
   background-color: var(--color-surface);
