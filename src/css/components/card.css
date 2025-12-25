@@ -7,8 +7,8 @@
    ================================================================= */
 
 @keyframes card-appear {
-  from { opacity: 0; transform: translateY(30px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes watchlist-pop {
@@ -34,8 +34,8 @@
   aspect-ratio: 500 / 950;
   position: relative;
   /* Animación de entrada escalonada (variable --card-index inyectada por JS) */
-  animation: card-appear var(--duration-normal) var(--ease-smooth-out) backwards;
-  animation-delay: calc(var(--card-index, 0) * 50ms);
+  animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
+  animation-delay: calc(var(--card-index, 0) * 40ms);
   transition: transform var(--duration-quick) var(--ease-spring);
   /* GPU Acceleration: Promueve la tarjeta a su propia capa de composición
      para animaciones más suaves (transform y opacity). */

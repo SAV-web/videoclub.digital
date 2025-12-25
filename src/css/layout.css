@@ -194,10 +194,7 @@ body.sidebar-is-open .sidebar .play-button-container {
 }
 
 /* Visibilidad de Paginación en Header */
-.header-pagination-group { display: none; } /* Móvil: Oculto */
-@media (min-width: 769px) {
-  .header-pagination-group { display: flex; } /* Desktop: Visible */
-}
+.header-pagination-group { display: flex; gap: 2px; }
 
 /* =================================================================
    4. SISTEMA DE REJILLA (GRID)
