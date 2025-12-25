@@ -35,10 +35,6 @@ let renderedCardCount = 0;
 let currentlyFlippedCard = null;
 let currentRenderRequestId = 0; // Control de concurrencia para renderizado
 
-const isPointerDevice = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-const isDesktop = isPointerDevice && !isTouchDevice;
-
 // =================================================================
 //          SISTEMA DE HOVER Y LOGICA UI
 // =================================================================
@@ -73,9 +69,13 @@ function clearCardHoverState(cardElement) {
 }
 
 export function initCardInteractions(gridContainer) {
-  // 1. SISTEMA DE HOVER (Solo Desktop)
-  if (!isTouchDevice && isPointerDevice) {
-    gridContainer.addEventListener("mouseover", (e) => {
+  // =================================================================
+  //    SISTEMA DE INTERACCIÓN UNIFICADO (POINTER EVENTS)
+  // =================================================================
+  
+  // 1. GESTIÓN DE HOVER (Solo Punteros tipo Mouse)
+  gridContainer.addEventListener("pointerover", (e) => {
+      if (e.pointerType !== 'mouse') return;
       const target = e.target;
       const card = target.closest(".movie-card");
       if (!card) return;
@@ -88,36 +88,36 @@ export function initCardInteractions(gridContainer) {
         if (target.closest(INTERACTIVE_SELECTOR)) cancelFlipTimer();
         else startFlipTimer(card);
       }
-    });
+  });
 
-    gridContainer.addEventListener("mouseout", (e) => {
+  gridContainer.addEventListener("pointerout", (e) => {
+      if (e.pointerType !== 'mouse') return;
       if (!currentHoveredCard) return;
       if (!currentHoveredCard.contains(e.relatedTarget)) {
         clearCardHoverState(currentHoveredCard);
         currentHoveredCard = null;
       }
-    });
+  });
 
-    // 2. DOBLE CLICK (Desktop): Abrir modal en modo rotación
-    gridContainer.addEventListener("dblclick", (e) => {
-      const card = e.target.closest(".movie-card");
-      // Solo si estamos en modo rotación (si no, el click simple ya abre la modal)
-      if (card && !document.body.classList.contains("rotation-disabled")) {
-        openModal(card);
-      }
-    });
-  }
+  // 2. DOBLE CLICK (Nativo para Mouse)
+  gridContainer.addEventListener("dblclick", (e) => {
+    const card = e.target.closest(".movie-card");
+    // Solo si estamos en modo rotación (si no, el click simple ya abre la modal)
+    if (card && !document.body.classList.contains("rotation-disabled")) {
+      openModal(card);
+    }
+  });
 
-  // 3. TAP / DOUBLE-TAP (Móvil/Táctil)
-  if (isTouchDevice) {
-    let lastTapTime = 0;
-    let tapTimeout = null;
-    let touchstartX = 0;
-    let touchstartY = 0;
-    const DOUBLE_TAP_DELAY = 300; // ms
-    const MOVE_THRESHOLD = 10; // px
+  // 3. TAP / DOUBLE-TAP (Táctil / Pen)
+  // Implementación manual para eliminar el delay de 300ms y conflictos.
+  let lastTapTime = 0;
+  let tapTimeout = null;
+  let startX = 0;
+  let startY = 0;
+  const DOUBLE_TAP_DELAY = 300; // ms
+  const MOVE_THRESHOLD = 10; // px
 
-    const handleSingleTap = (cardElement) => {
+  const handleSingleTap = (cardElement) => {
       if (!cardElement) return;
       const inner = cardElement.querySelector(".flip-card-inner");
       if (!inner) return;
@@ -135,48 +135,52 @@ export function initCardInteractions(gridContainer) {
         resetCardBackState(cardElement);
         document.removeEventListener("click", handleDocumentClick);
       }
-    };
+  };
 
-    gridContainer.addEventListener('touchstart', e => {
-        if (e.touches.length === 1) {
-            touchstartX = e.touches[0].clientX;
-            touchstartY = e.touches[0].clientY;
-        }
-    }, { passive: true });
+  gridContainer.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse') return; // El ratón usa eventos nativos
+      if (!e.isPrimary) return; // Ignorar toques multitáctiles secundarios
 
-    gridContainer.addEventListener('touchend', e => {
-        const card = e.target.closest('.movie-card');
-        if (!card || document.body.classList.contains('rotation-disabled') || e.target.closest('[data-action], a, button, .expand-content-btn')) {
-            return;
-        }
+      startX = e.clientX;
+      startY = e.clientY;
+  }, { passive: true });
 
-        const touchendX = e.changedTouches[0].clientX;
-        const touchendY = e.changedTouches[0].clientY;
-        const diffX = Math.abs(touchstartX - touchendX);
-        const diffY = Math.abs(touchstartY - touchendY);
-        if (diffX > MOVE_THRESHOLD || diffY > MOVE_THRESHOLD) {
-            return; // Fue un scroll/swipe, no un tap
-        }
+  gridContainer.addEventListener('pointerup', e => {
+      if (e.pointerType === 'mouse') return;
 
-        e.preventDefault();
+      const card = e.target.closest('.movie-card');
+      // Filtros de seguridad
+      if (!card || document.body.classList.contains('rotation-disabled') || e.target.closest('[data-action], a, button, .expand-content-btn')) {
+          return;
+      }
 
-        const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastTapTime;
+      const diffX = Math.abs(e.clientX - startX);
+      const diffY = Math.abs(e.clientY - startY);
+      
+      // Si hubo desplazamiento, es un scroll, no un tap
+      if (diffX > MOVE_THRESHOLD || diffY > MOVE_THRESHOLD) return;
 
-        if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
-            clearTimeout(tapTimeout);
-            tapTimeout = null;
-            lastTapTime = 0;
-            openModal(card);
-        } else {
-            clearTimeout(tapTimeout);
-            tapTimeout = setTimeout(() => {
-                handleSingleTap(card);
-            }, DOUBLE_TAP_DELAY);
-        }
-        lastTapTime = currentTime;
-    });
-  }
+      // 🔥 CRÍTICO: Prevenir el evento 'click' de compatibilidad que el navegador dispara después
+      if (e.cancelable) e.preventDefault();
+
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTapTime;
+
+      if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+          // Doble Tap -> Modal
+          clearTimeout(tapTimeout);
+          tapTimeout = null;
+          lastTapTime = 0;
+          openModal(card);
+      } else {
+          // Primer Tap -> Esperar posible segundo
+          clearTimeout(tapTimeout);
+          tapTimeout = setTimeout(() => {
+              handleSingleTap(card);
+          }, DOUBLE_TAP_DELAY);
+      }
+      lastTapTime = currentTime;
+  });
 }
 
 const lazyLoadObserver = new IntersectionObserver(
