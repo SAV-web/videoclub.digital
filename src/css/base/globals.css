@@ -90,3 +90,12 @@ body.sidebar-is-open {
 .pop-animation {
   animation: pop-effect 0.3s var(--transition-timing-function);
 }
+
+/* --- 7. Mejoras Táctiles (Mobile Web App) --- */
+button, input, select, textarea, a {
+  touch-action: manipulation; /* Elimina delay de 300ms y zoom de doble toque */
+}
+
+* {
+  -webkit-tap-highlight-color: transparent; /* Elimina flash gris al pulsar en iOS */
+}

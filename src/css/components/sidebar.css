@@ -11,7 +11,8 @@
 .sidebar-inner-wrapper {
   display: flex;
   flex-direction: column;
-  padding: var(--space-xl) var(--space-lg);
+  /* Padding inferior respeta la zona segura */
+  padding: var(--space-xl) var(--space-lg) calc(var(--space-xl) + env(safe-area-inset-bottom));
   transition: padding var(--transition-duration-normal) var(--transition-timing-function);
 }
 

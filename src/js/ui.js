@@ -197,7 +197,8 @@ export function openAccessibleModal(modalElement, overlayElement, skipInitialFoc
   if (!modalElement) return;
   modalElement.hidden = false;
   if (overlayElement) overlayElement.hidden = false;
-  modalElement.focus();
+  // FIX: Usar preventScroll para evitar saltos visuales al abrir
+  modalElement.focus({ preventScroll: true });
   activateTrap(modalElement, skipInitialFocus);
 }
 

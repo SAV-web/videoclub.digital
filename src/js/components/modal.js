@@ -106,8 +106,12 @@ function handleModalTouchMove(e) {
 
     // Si el movimiento es vertical y estamos arriba del todo -> DISMISS
     if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && dom.content.scrollTop <= 0) {
-      isDraggingModal = true;
-      dom.modal.classList.add("is-dragging"); // Quitar transición CSS
+      // FIX: Solo permitir "Swipe to Dismiss" (vertical) en móvil (Bottom Sheet).
+      // En desktop/tablet, la modal está centrada y arrastrarla rompería el layout.
+      if (window.innerWidth <= 768) {
+        isDraggingModal = true;
+        dom.modal.classList.add("is-dragging"); // Quitar transición CSS
+      }
     } 
     // Si el movimiento es horizontal -> NAVEGACIÓN
     else if (Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -426,13 +430,8 @@ export function openModal(cardElement) {
     // 4. Activar trampas de foco (Esto es lo que causa el scroll indeseado)
     openAccessibleModal(dom.modal, dom.overlay, true); // true = No enfocar el primer elemento (Director)
     
-    // 🔥 FIX CRÍTICO: Forzar scroll al inicio (Top)
-    // Usamos un setTimeout para ejecutar esto DESPUÉS de que el navegador 
-    // haya intentado hacer scroll hacia el botón enfocado (Watchlist).
-    // Esto "gana" la pelea contra el comportamiento nativo del navegador.
-    setTimeout(() => {
-      if (dom.content) dom.content.scrollTop = 0;
-    }, 10); // 10ms es suficiente para ocurrir en el siguiente ciclo de pintado
+    // Reset de scroll (Síncrono, ya no necesitamos setTimeout gracias a preventScroll)
+    if (dom.content) dom.content.scrollTop = 0;
 
     setTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
   });
@@ -470,9 +469,9 @@ export function initQuickView() {
     navigateToSibling(1);
   });
 
-  // Listeners Táctiles (Optimización: Solo en pantallas pequeñas)
-  // Aunque CSS media query maneja el estilo, JS necesita saber si activar la lógica.
-  if (window.matchMedia("(max-width: 768px)").matches) {
+  // Listeners Táctiles (Activación por capacidad, no por tamaño)
+  // Esto habilita el swipe horizontal en iPads y Tablets grandes.
+  if (navigator.maxTouchPoints > 0) {
     // Usamos dom.modal como superficie táctil (incluye la barra de título/imagen)
     dom.modal.addEventListener("touchstart", handleModalTouchStart, { passive: true });
     dom.modal.addEventListener("touchmove", handleModalTouchMove, { passive: false }); // false para poder prevenir scroll
