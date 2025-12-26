@@ -60,6 +60,12 @@ export async function loadAndRenderMovies(page = 1) {
         // Si returnedTotal es -1 (no se pidió), usamos el que ya teníamos
         const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
         updateDomWithResults(movies, effectiveTotal);
+        
+        // FIX: En móvil, al buscar con el teclado abierto, el navegador a veces desplaza el scroll.
+        // Forzamos scroll arriba de nuevo tras renderizar para asegurar que los resultados sean visibles.
+        if (page === 1 && window.innerWidth <= 768) {
+           window.scrollTo({ top: 0, behavior: "auto" });
+        }
       };
 
       if (supportsViewTransitions) document.startViewTransition(performRender);
@@ -185,16 +191,25 @@ function setupHeaderListeners() {
   // Listener para el botón de limpiar búsqueda (Lupa con aspa)
   const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
   if (clearSearchBtn) {
-    clearSearchBtn.addEventListener('click', () => {
+    const performClear = (e) => {
+      // Prevenir pérdida de foco y eventos duplicados
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
+      
       dom.searchInput.value = '';
       dom.searchInput.focus(); // Mantener foco para seguir escribiendo
       handleSearchInput(); // Actualizar resultados (volver a mostrar todo)
-    });
+    };
+
+    // Mousedown evita el blur en desktop, Touchstart asegura respuesta en móvil
+    clearSearchBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    clearSearchBtn.addEventListener('touchstart', performClear, { passive: false });
+    clearSearchBtn.addEventListener('click', performClear);
   }
 
-  // Placeholder responsivo: "T" en móvil para ahorrar espacio, "Título" en escritorio
+  // Placeholder responsivo: Vacío en móvil (icono), "Título" en escritorio
   const updateSearchPlaceholder = () => {
-    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "T" : "Título";
+    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
   };
   window.addEventListener("resize", updateSearchPlaceholder);
   updateSearchPlaceholder();
