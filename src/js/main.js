@@ -181,6 +181,23 @@ function setupHeaderListeners() {
   };
   dom.headerPrevBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(-1); });
   dom.headerNextBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(1); });
+
+  // Listener para el botón de limpiar búsqueda (Lupa con aspa)
+  const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', () => {
+      dom.searchInput.value = '';
+      dom.searchInput.focus(); // Mantener foco para seguir escribiendo
+      handleSearchInput(); // Actualizar resultados (volver a mostrar todo)
+    });
+  }
+
+  // Placeholder responsivo: "T" en móvil para ahorrar espacio, "Título" en escritorio
+  const updateSearchPlaceholder = () => {
+    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "T" : "Título";
+  };
+  window.addEventListener("resize", updateSearchPlaceholder);
+  updateSearchPlaceholder();
 }
 
 function setupGlobalListeners() {
@@ -206,36 +223,11 @@ function setupGlobalListeners() {
   initCardInteractions(dom.gridContainer);
   document.getElementById("quick-view-content").addEventListener("click", function(e) { handleCardClick.call(this, e); });
   let isTicking = false;
-  let lastScrollY = window.scrollY;
-
   window.addEventListener("scroll", () => {
     if (!isTicking) {
       window.requestAnimationFrame(() => {
-        const currentScrollY = window.scrollY;
-        
-        // 1. Estado Scrolled (Sombra/Borde)
-        dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
-
-        // 2. Lógica Smart Hide para Móvil (Ocultar al bajar, Mostrar al subir)
-        if (window.innerWidth <= 768) {
-          const isScrollingDown = currentScrollY > lastScrollY;
-          const scrollDifference = Math.abs(currentScrollY - lastScrollY);
-          // Detectar si estamos cerca del final (buffer de 50px) para mostrar siempre el header
-          const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
-
-          if (isAtBottom) {
-            dom.mainHeader.classList.remove('is-hidden-mobile');
-          } else if (scrollDifference > 5) {
-            // Ocultar si bajamos y ya hemos pasado el inicio (60px)
-            if (isScrollingDown && currentScrollY > 60) {
-              dom.mainHeader.classList.add('is-hidden-mobile');
-            } else {
-              dom.mainHeader.classList.remove('is-hidden-mobile');
-            }
-          }
-        }
-
-        lastScrollY = currentScrollY;
+        const scrollY = window.scrollY;
+        dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, scrollY > 10);
         isTicking = false;
       });
       isTicking = true;

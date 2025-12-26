@@ -20,7 +20,8 @@
     padding-top 0.3s ease,
     padding-bottom 0.3s ease,
     box-shadow 0.3s ease,
-    border-color var(--transition-duration-normal);
+    border-color var(--transition-duration-normal),
+    transform 0.3s ease;
 }
 
 /* Estilos específicos Desktop */
@@ -72,6 +73,15 @@
 }
 html.dark-mode .search-form input:focus {
   box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2);
+}
+
+/* Ocultar la "X" nativa de los inputs type="search" para usar la nuestra personalizada */
+.search-form input::-webkit-search-decoration,
+.search-form input::-webkit-search-cancel-button,
+.search-form input::-webkit-search-results-button,
+.search-form input::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
 }
 
 /* Selector de Ordenación */
@@ -315,6 +325,21 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
     color: var(--color-text-primary);
   }
   .main-header.is-search-focused .search-icon { right: var(--space-sm); transform: translateY(-50%); }
+}
+
+/* --- Lógica de Iconos de Búsqueda (Idle vs Clear) --- */
+.search-icon { transition: opacity 0.2s ease, transform 0.2s ease, right 0.2s ease; }
+
+.search-icon--clear {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.main-header.is-search-focused .search-icon--idle { opacity: 0; pointer-events: none; }
+.main-header.is-search-focused .search-icon--clear { 
+  opacity: 1; 
+  pointer-events: auto; cursor: pointer;
+  color: var(--color-text-primary);
 }
 
 /* Desktop: Mostrar texto, ocultar icono */

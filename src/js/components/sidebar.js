@@ -552,6 +552,8 @@ function initYearSlider() {
   const debouncedUpdate = debounce((values) => {
     const yearFilter = `${values[0]}-${values[1]}`;
     handleFilterChangeOptimistic("year", yearFilter);
+    // FIX: Cerrar sidebar en móvil al cambiar años (slider o inputs)
+    if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
   }, 500);
   sliderInstance.on("set", debouncedUpdate);
   yearInputs.forEach((input, index) => {
@@ -711,6 +713,7 @@ function setupEventListeners() {
   if (dom.toggleRotationBtn) {
     dom.toggleRotationBtn.addEventListener("click", (e) => {
       toggleRotationMode();
+      if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
     });
   }
 
