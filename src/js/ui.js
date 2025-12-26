@@ -9,8 +9,7 @@
 // - Re-exportación de componentes complejos (Card, QuickView).
 // =================================================================
 
-import { CONFIG } from "./constants.js"; // Corrección de import anterior
-import { CSS_CLASSES, SELECTORS } from "./constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, ICONS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement } from "./utils.js";
 
@@ -229,9 +228,20 @@ export function updateTypeFilterUI(mediaType) {
   if (!button) return;
   button.classList.remove(CSS_CLASSES.TYPE_FILTER_MOVIES, CSS_CLASSES.TYPE_FILTER_SERIES);
   switch (mediaType) {
-    case "movies": button.textContent = "Cine"; button.classList.add(CSS_CLASSES.TYPE_FILTER_MOVIES); break;
-    case "series": button.textContent = "TV"; button.classList.add(CSS_CLASSES.TYPE_FILTER_SERIES); break;
-    default: button.textContent = "Todo"; break;
+    case "movies": 
+      button.innerHTML = `<span class="desktop-text">Cine</span><span class="mobile-icon">${ICONS.CLAPPERBOARD}</span>`;
+      button.setAttribute("aria-label", "Filtrar por tipo: Cine");
+      button.classList.add(CSS_CLASSES.TYPE_FILTER_MOVIES); 
+      break;
+    case "series": 
+      button.innerHTML = `<span class="desktop-text">TV</span><span class="mobile-icon">${ICONS.TV}</span>`;
+      button.setAttribute("aria-label", "Filtrar por tipo: TV");
+      button.classList.add(CSS_CLASSES.TYPE_FILTER_SERIES); 
+      break;
+    default: 
+      button.innerHTML = `<span class="desktop-text">Todo</span><span class="mobile-icon">${ICONS.POPCORN}</span>`;
+      button.setAttribute("aria-label", "Filtrar por tipo: Todo");
+      break;
   }
 }
 

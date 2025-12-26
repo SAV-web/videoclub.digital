@@ -529,6 +529,7 @@ function resetFilters() {
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
   document.dispatchEvent(new CustomEvent("filtersReset"));
+  if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
 }
 
 export function collapseAllSections() {
@@ -648,6 +649,7 @@ function setupAutocompleteHandlers() {
         handleFilterChangeOptimistic(filterType, suggestionItem.dataset.value);
         input.value = "";
         clearAllSidebarAutocomplete();
+        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
       }
     });
   });
@@ -675,6 +677,16 @@ function setupEventListeners() {
     iconWrapper.innerHTML = ICONS.CHEVRON_RIGHT;
     if (iconWrapper.firstChild) header.appendChild(iconWrapper.firstChild);
   });
+
+  // Listener para píldoras superiores (Static Filters) que no estaban cubiertas
+  const staticFilters = document.querySelector(".sidebar-static-filters");
+  if (staticFilters) {
+    staticFilters.addEventListener("click", (e) => {
+      if (handlePillClick(e)) {
+        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+      }
+    });
+  }
 
   if (dom.rewindButton) {
     dom.rewindButton.addEventListener("click", (e) => {
@@ -710,16 +722,21 @@ function setupEventListeners() {
         triggerHapticFeedback('medium');
         triggerPopAnimation(excludeBtn);
         handleToggleExcludedFilterOptimistic(excludeBtn.dataset.type, excludeBtn.dataset.value);
+        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
         return;
       }
       
-      if (handlePillClick(e)) return;
+      if (handlePillClick(e)) {
+        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+        return;
+      }
 
       const link = e.target.closest(".filter-link");
       if (link && !link.hasAttribute("disabled")) {
         triggerHapticFeedback('light');
         triggerPopAnimation(link);
         handleFilterChangeOptimistic(link.dataset.filterType, link.dataset.filterValue);
+        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
       }
     });
   }

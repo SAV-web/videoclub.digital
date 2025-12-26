@@ -107,6 +107,12 @@ html.dark-mode .search-form input:focus {
   pointer-events: none;
 }
 
+/* Icono de ordenación (Oculto por defecto en escritorio) */
+.sort-icon {
+  display: none;
+  pointer-events: none;
+}
+
 /* Botón de hamburguesa para sidebar (Móvil) */
 .mobile-sidebar-toggle {
   display: inline-flex;
@@ -145,6 +151,10 @@ html.dark-mode .search-form input:focus {
   background-color: var(--color-surface);
   color: var(--color-text-primary);
 }
+
+/* Por defecto (Móvil): Mostrar icono, ocultar texto */
+.type-filter-toggle .desktop-text { display: none; }
+.type-filter-toggle .mobile-icon { display: flex; align-items: center; }
 
 @media (hover: hover) and (pointer: fine) {
   .type-filter-toggle:hover {
@@ -208,21 +218,74 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
 }
 
 @media (max-width: 768px) {
-  #sort-select { width: 60px; }
-  .search-form input { min-width: 45px; padding-left: var(--space-xxs); }
-
-  .main-header-primary-controls {
-    gap: var(--space-xs);
+  /* --- 1. LAYOUT Y ESTILO UNIFICADO DE BOTONES --- */
+  /* Espaciado consistente para un look más ordenado */
+  .main-header-primary-controls,
+  .search-and-theme-group,
+  .header-pagination-group {
+    gap: var(--space-sm);
   }
-  
-  /* UNIFICACIÓN ALTURA MÓVIL: Todos los controles a 44px para consistencia y accesibilidad táctil */
-  #sort-select,
+
+  /* Estilo de "botón enmarcado" para todos los controles */
+  .mobile-sidebar-toggle,
+  .sort-control,
   .type-filter-toggle,
   .header-pagination-group .btn,
-  .search-form input {
+  .search-form {
+    width: 44px;
     height: 44px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+    padding: 0;
+    position: relative;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
   }
-  .header-pagination-group .btn { width: 44px; } /* Hacer cuadrados los botones de icono */
+
+  /* Mejora de contraste en modo oscuro para los botones móviles */
+  html.dark-mode .mobile-sidebar-toggle,
+  html.dark-mode .sort-control,
+  html.dark-mode .type-filter-toggle,
+  html.dark-mode .header-pagination-group .btn,
+  html.dark-mode .search-form {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Estado oculto al hacer scroll hacia abajo */
+  .main-header.is-hidden-mobile {
+    transform: translateY(100%);
+  }
+  
+  /* --- 2. AJUSTES ESPECÍFICOS --- */
+  .mobile-sidebar-toggle { color: var(--color-text-primary); }
+  .type-filter-toggle { font-size: 0.8rem; }
+
+  /* Control de Ordenación (icono sobre select invisible) */
+  .sort-control::after { display: none; } /* Ocultar triángulo del select */
+  .sort-icon { display: block; color: var(--color-text-primary); } /* Mostrar icono SVG */
+  #sort-select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0; /* Invisible pero interactivo */
+    z-index: 2;
+  }
+
+  /* Control de Búsqueda (icono sobre input invisible) */
+  .search-form input { 
+    min-width: 44px; 
+    border: none;
+    background: transparent;
+    color: transparent; /* Ocultar placeholder "T" */
+  }
+  .search-form .search-icon { right: 50%; transform: translate(50%, -50%); }
 
   /* Expansión del buscador en móvil al hacer foco */
   .main-header.is-search-focused .sort-control,
@@ -237,11 +300,25 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   
   .main-header.is-search-focused .search-form {
     width: 80%;
-    margin: 0 auto;
+    /* El estilo de botón ya le da borde y fondo, no necesita más */
   }
+
+  /* Ajuste fino para el icono en móvil */
+  .type-filter-toggle .mobile-icon svg { width: 20px; height: 20px; }
 
   .main-header.is-search-focused .search-form input {
     width: 100%;
     min-width: 0;
+    /* Restaurar aspecto de input al escribir */
+    padding-left: var(--space-md); 
+    padding-right: var(--space-xxl); /* Espacio extra para el icono de 24px */
+    color: var(--color-text-primary);
   }
+  .main-header.is-search-focused .search-icon { right: var(--space-sm); transform: translateY(-50%); }
+}
+
+/* Desktop: Mostrar texto, ocultar icono */
+@media (min-width: 769px) {
+  .type-filter-toggle .desktop-text { display: block; }
+  .type-filter-toggle .mobile-icon { display: none; }
 }

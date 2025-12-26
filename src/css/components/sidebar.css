@@ -638,3 +638,36 @@ body.sidebar-is-dragging .main-content-wrapper {
 #studios-list-container .filter-link {
   justify-content: center;
 }
+
+/* =================================================================
+   14. AJUSTES RESPONSIVE (MÓVIL)
+   ================================================================= */
+
+@media (max-width: 768px) {
+  /* Aumentamos el tamaño de las fuentes para mejorar la legibilidad en móvil */
+
+  .logo-title {
+    font-size: 1.8rem; /* Aumento del título principal */
+  }
+
+  .collapsible-section .section-header {
+    font-size: var(--font-size-md); /* Menús desplegables */
+  }
+
+  .filter-link,
+  .sidebar-autocomplete-item {
+    font-size: var(--font-size-base); /* Items de las listas */
+  }
+
+  .filter-pill {
+    font-size: var(--font-size-sm); /* Píldoras */
+  }
+
+  .year-input {
+    font-size: var(--font-size-md); /* Inputs de año aumentados */
+  }
+
+  .total-results-container {
+    font-size: var(--font-size-base); /* Contador de resultados */
+  }
+}
