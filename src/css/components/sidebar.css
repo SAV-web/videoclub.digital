@@ -17,14 +17,14 @@
 }
 
 /* En desktop, forzamos altura completa para permitir scroll interno */
-@media (min-width: 701px) {
+@media (min-width: 769px) {
   .sidebar-inner-wrapper {
     height: 100%;
   }
 }
 
 /* Excepción para pantallas apaisadas (Restaurar flujo natural) */
-@media (min-width: 701px) and (max-height: 600px) {
+@media (min-width: 769px) and (max-height: 600px) {
   .sidebar-inner-wrapper {
     height: auto;
   }
@@ -176,7 +176,7 @@ html.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 }
 
 /* Lógica de Scroll Interno para Desktop */
-@media (min-width: 701px) {
+@media (min-width: 769px) {
   .sidebar-scrollable-filters {
     overflow-y: auto;
     flex-grow: 1; /* Ocupa el espacio restante */
@@ -193,7 +193,7 @@ html.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 }
 
 /* Excepción para pantallas apaisadas (Restaurar flujo natural) */
-@media (min-width: 701px) and (max-height: 600px) {
+@media (min-width: 769px) and (max-height: 600px) {
   .sidebar-scrollable-filters {
     overflow-y: visible; /* No scrollear internamente */
     flex-grow: 0;
@@ -570,7 +570,7 @@ body.is-fetching .sidebar::before {
 body.user-logged-in #login-button { display: none; }
 body.user-logged-in #user-session-group { display: inline-flex; }
 
-@media (min-width: 701px) {
+@media (min-width: 769px) {
   body.sidebar-collapsed .user-avatar { display: none; }
   body.sidebar-collapsed .user-session-group { gap: 0; }
   body.sidebar-collapsed .profile-container { justify-content: center; }

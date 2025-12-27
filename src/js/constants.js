@@ -167,6 +167,14 @@ export const FILTER_CONFIG = {
       H: "Series HBO",
       T: "A Contra+",
     },
+    // Títulos largos para SEO / Cabecera de página (Single Source of Truth)
+    titles: {
+      C: "Colección Criterion",
+      M: "1001 Películas que ver",
+      A: "Arrow Video",
+      H: "Series de HBO",
+      T: "A Contracorriente",
+    },
   },
   studio: {
     label: "Estudios",

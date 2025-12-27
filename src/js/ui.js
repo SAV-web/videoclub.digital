@@ -131,14 +131,19 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
   if (currentPage >= totalPages) return;
   const nextPage = currentPage + 1;
 
+  const runPrefetch = async () => {
+    try { 
+      // CAMBIO AQUÍ: Añadimos 'null' (signal) y 'false' (requestCount)
+      await fetchMovies(activeFilters, nextPage, CONFIG.ITEMS_PER_PAGE, null, false); 
+    } 
+    catch (e) { }
+  };
+
   if ("requestIdleCallback" in window) {
-    requestIdleCallback(async () => {
-      try { 
-        // CAMBIO AQUÍ: Añadimos 'null' (signal) y 'false' (requestCount)
-        await fetchMovies(activeFilters, nextPage, CONFIG.ITEMS_PER_PAGE, null, false); 
-      } 
-      catch (e) { }
-    });
+    requestIdleCallback(runPrefetch);
+  } else {
+    // Fallback para Safari antiguo y entornos sin requestIdleCallback
+    setTimeout(runPrefetch, 600);
   }
 }
 

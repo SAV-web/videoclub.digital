@@ -1,6 +1,6 @@
 // src/js/main.js
 import "../css/main.css";
-import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA } from "./constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
@@ -325,8 +325,9 @@ function updatePageTitle() {
 
   if (searchTerm) title = `Resultados para "${searchTerm}"`;
   else if (selection) {
-    const names = { C: "Colección Criterion", M: "1001 Películas que ver", A: "Arrow Video", K: "Kino Lorber", E: "Eureka", H: "Series de HBO", T: "A Contracorriente" };
-    title = (names[selection] || title) + yearSuffix;
+    const config = FILTER_CONFIG.selection;
+    const name = config.titles?.[selection] || config.items[selection];
+    if (name) title = name + yearSuffix;
   } else if (studio) {
     title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
   }

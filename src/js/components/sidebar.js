@@ -20,7 +20,7 @@ import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
 
 // --- Constantes Locales ---
-const MOBILE_BREAKPOINT = 700;
+const MOBILE_BREAKPOINT = 768;
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
 let DRAWER_WIDTH = 280;
 

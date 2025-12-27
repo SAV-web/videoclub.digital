@@ -142,7 +142,7 @@ html.dark-mode .search-form input:focus {
 }
 .mobile-sidebar-toggle:active { transform: scale(0.9); }
 
-@media (min-width: 701px) {
+@media (min-width: 769px) {
   .mobile-sidebar-toggle { display: none; }
 }
 
