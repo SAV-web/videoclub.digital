@@ -568,9 +568,10 @@ html.dark-mode .modal-nav-btn {
 .modal-nav-btn--prev { left: 20px; }
 .modal-nav-btn--next { right: 20px; }
 
-/* Ocultar en móvil (usan swipe) */
-@media (max-width: 700px) {
-  .modal-nav-btn { display: none; }
+/* Estado oculto temporalmente (al tocar póster en móvil) */
+.quick-view-modal.hide-arrows .modal-nav-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* =================================================================

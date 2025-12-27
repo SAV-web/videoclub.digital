@@ -108,7 +108,7 @@ function handleModalTouchMove(e) {
     if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && dom.content.scrollTop <= 0) {
       // FIX: Solo permitir "Swipe to Dismiss" (vertical) en móvil (Bottom Sheet).
       // En desktop/tablet, la modal está centrada y arrastrarla rompería el layout.
-      if (window.innerWidth <= 768) {
+      if (window.innerWidth <= 700) {
         isDraggingModal = true;
         dom.modal.classList.add("is-dragging"); // Quitar transición CSS
       }
@@ -214,6 +214,9 @@ function populateModal(cardElement) {
   
   const movieData = cardElement.movieData;
   const clone = dom.template.cloneNode(true);
+
+  // Resetear visibilidad de flechas al cargar nueva ficha
+  dom.modal.classList.remove("hide-arrows");
   
   // Añadimos clase modificadora para que el CSS sepa que es una modal
   const cardClone = clone.querySelector('.movie-card');
@@ -444,7 +447,15 @@ export function initQuickView() {
   }
 
   // Listener para cerrar al navegar por director o actor (Delegación de eventos)
-  if (dom.content) dom.content.addEventListener("click", handleMetadataClick);
+  if (dom.content) {
+    dom.content.addEventListener("click", (e) => {
+      handleMetadataClick(e);
+      // Toggle flechas al tocar el póster en móvil
+      if (window.innerWidth <= 700 && e.target.closest(".poster-container")) {
+        dom.modal.classList.toggle("hide-arrows");
+      }
+    });
+  }
 
   // Listener Teclado (Esc + Navegación)
   window.addEventListener("keydown", (e) => {
