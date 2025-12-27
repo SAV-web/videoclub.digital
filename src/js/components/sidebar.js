@@ -20,7 +20,7 @@ import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
 
 // --- Constantes Locales ---
-const MOBILE_BREAKPOINT = 768;
+const MOBILE_BREAKPOINT = 700;
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
 let DRAWER_WIDTH = 280;
 
@@ -480,13 +480,15 @@ function renderFilterPills() {
   updateFilterAvailabilityUI();
 }
 
-async function handleFilterChangeOptimistic(type, value) {
+async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   const previousFilters = getActiveFilters();
   if (value) {
     if (type === 'selection' && previousFilters.studio) setFilter('studio', null); 
     else if (type === 'studio' && previousFilters.selection) setFilter('selection', null);
   }
-  const isActivating = previousFilters[type] !== value;
+  
+  // FIX: Si forceSet es true (slider), aplicamos el valor aunque sea igual al actual.
+  const isActivating = forceSet || previousFilters[type] !== value;
   const newValue = isActivating ? value : null;
   if (!setFilter(type, newValue)) {
     showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, "error");
@@ -549,12 +551,27 @@ function initYearSlider() {
     format: { to: (value) => Math.round(value), from: (value) => Number(value) },
   });
   sliderInstance.on("update", (values, handle) => { yearInputs[handle].value = values[handle]; });
-  const debouncedUpdate = debounce((values) => {
-    const yearFilter = `${values[0]}-${values[1]}`;
-    handleFilterChangeOptimistic("year", yearFilter);
-    // FIX: Cerrar sidebar en móvil al cambiar años (slider o inputs)
+
+  const updateSliderFilter = (values, handle) => {
+    let [start, end] = values.map(Number);
+
+    // BUG FIX: If the user creates an invalid range (start > end) by dragging
+    // one handle past the other, we correct it to a single-year selection.
+    if (start > end) {
+      if (handle === 0) { // Left handle (start) was moved
+        end = start;
+      } else { // Right handle (end) was moved
+        start = end;
+      }
+    }
+
+    const yearFilter = `${start}-${end}`;
+    // FIX: Usar forceSet=true para evitar que el filtro se desactive si el valor es el mismo (toggle)
+    handleFilterChangeOptimistic("year", yearFilter, true);
     if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
-  }, 500);
+  };
+
+  const debouncedUpdate = debounce(updateSliderFilter, 500);
   sliderInstance.on("set", debouncedUpdate);
   yearInputs.forEach((input, index) => {
     input.addEventListener("change", (e) => {

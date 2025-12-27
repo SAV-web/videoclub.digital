@@ -25,7 +25,7 @@
 }
 
 /* Estilos específicos Desktop */
-@media (min-width: 769px) {
+@media (min-width: 701px) {
   .main-header {
     border-top: none; /* En desktop no queremos borde arriba */
   }
@@ -142,7 +142,7 @@ html.dark-mode .search-form input:focus {
 }
 .mobile-sidebar-toggle:active { transform: scale(0.9); }
 
-@media (min-width: 769px) {
+@media (min-width: 701px) {
   .mobile-sidebar-toggle { display: none; }
 }
 
@@ -227,7 +227,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 700px) {
   /* --- 1. LAYOUT Y ESTILO UNIFICADO DE BOTONES --- */
   /* Espaciado consistente para un look más ordenado */
   .main-header-primary-controls,
@@ -343,7 +343,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
 }
 
 /* Desktop: Mostrar texto, ocultar icono */
-@media (min-width: 769px) {
+@media (min-width: 701px) {
   .type-filter-toggle .desktop-text { display: block; }
   .type-filter-toggle .mobile-icon { display: none; }
 }

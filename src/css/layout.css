@@ -117,7 +117,7 @@ body.sidebar-is-open .sidebar .play-button-container {
 }
 
 /* --- Estilos Desktop (Sticky Sidebar) --- */
-@media (min-width: 769px) {
+@media (min-width: 701px) {
   .sidebar {
     position: sticky;
     transform: none; /* Reseteamos posición */
@@ -148,7 +148,7 @@ body.sidebar-is-open .sidebar .play-button-container {
 }
 
 /* Excepción para pantallas apaisadas con poca altura (Móvil Landscape) */
-@media (min-width: 769px) and (max-height: 600px) {
+@media (min-width: 701px) and (max-height: 600px) {
   .sidebar {
     overflow-y: auto; /* Permitir scroll completo en lugar de interno */
   }
@@ -179,7 +179,7 @@ body.sidebar-is-open .sidebar .play-button-container {
 }
 
 /* --- DESKTOP: Sticky Superior --- */
-@media (min-width: 769px) {
+@media (min-width: 701px) {
   .main-header {
     position: sticky;
     top: 0;
@@ -244,7 +244,7 @@ body.rotation-disabled .grid-container {
 /* --- DESKTOP (>= 769px) --- */
 /* Mantenemos este bloque solo para ajustar el espaciado (gap) a medidas
    de escritorio, pero el grid ya viene arreglado desde los 400px. */
-@media (min-width: 769px) {
+@media (min-width: 701px) {
   .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
   
   .grid-container {

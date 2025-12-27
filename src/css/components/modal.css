@@ -409,7 +409,7 @@
    ================================================================= */
 
 /* --- Móvil / Tablet (< 769px): Bottom Sheet --- */
-@media (max-width: 768px) {
+@media (max-width: 700px) {
   /* Optimización de rendimiento: Menos blur en móvil para mejorar FPS */
   .quick-view-overlay {
     backdrop-filter: blur(6px) saturate(50%);
@@ -441,7 +441,7 @@
 }
 
 /* --- B) ESCRITORIO (>= 769px): MODAL FLOTANTE --- */
-@media (min-width: 769px) {
+@media (min-width: 701px) {
   .quick-view-modal {
     top: 50%; left: 50%;
     width: 90%;
@@ -489,7 +489,7 @@
 }
 
 /* --- BOTTOM SHEET HANDLE (Solo Móvil) --- */
-@media (max-width: 768px) {
+@media (max-width: 700px) {
   /* Añadimos un pseudo-elemento para la barrita gris */
   .quick-view-modal::before {
     content: "";
@@ -569,7 +569,7 @@ html.dark-mode .modal-nav-btn {
 .modal-nav-btn--next { right: 20px; }
 
 /* Ocultar en móvil (usan swipe) */
-@media (max-width: 768px) {
+@media (max-width: 700px) {
   .modal-nav-btn { display: none; }
 }
 

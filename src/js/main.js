@@ -63,7 +63,7 @@ export async function loadAndRenderMovies(page = 1) {
         
         // FIX: En móvil, al buscar con el teclado abierto, el navegador a veces desplaza el scroll.
         // Forzamos scroll arriba de nuevo tras renderizar para asegurar que los resultados sean visibles.
-        if (page === 1 && window.innerWidth <= 768) {
+        if (page === 1 && window.innerWidth <= 700) {
            window.scrollTo({ top: 0, behavior: "auto" });
         }
       };
@@ -209,7 +209,7 @@ function setupHeaderListeners() {
 
   // Placeholder responsivo: Vacío en móvil (icono), "Título" en escritorio
   const updateSearchPlaceholder = () => {
-    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
+    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 700 ? "" : "Título";
   };
   window.addEventListener("resize", updateSearchPlaceholder);
   updateSearchPlaceholder();
@@ -238,11 +238,36 @@ function setupGlobalListeners() {
   initCardInteractions(dom.gridContainer);
   document.getElementById("quick-view-content").addEventListener("click", function(e) { handleCardClick.call(this, e); });
   let isTicking = false;
+  let lastScrollY = window.scrollY;
+
   window.addEventListener("scroll", () => {
     if (!isTicking) {
       window.requestAnimationFrame(() => {
-        const scrollY = window.scrollY;
-        dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, scrollY > 10);
+        const currentScrollY = window.scrollY;
+        
+        // 1. Estado Scrolled (Sombra/Borde)
+        dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
+
+        // 2. Lógica Smart Hide para Móvil (Ocultar al bajar, Mostrar al subir)
+        if (window.innerWidth <= 700) {
+          const isScrollingDown = currentScrollY > lastScrollY;
+          const scrollDifference = Math.abs(currentScrollY - lastScrollY);
+          // Detectar si estamos cerca del final (buffer de 50px) para mostrar siempre el header
+          const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
+
+          if (isAtBottom) {
+            dom.mainHeader.classList.remove('is-hidden-mobile');
+          } else if (scrollDifference > 5) {
+            // Ocultar si bajamos y ya hemos pasado el inicio (60px)
+            if (isScrollingDown && currentScrollY > 60) {
+              dom.mainHeader.classList.add('is-hidden-mobile');
+            } else {
+              dom.mainHeader.classList.remove('is-hidden-mobile');
+            }
+          }
+        }
+
+        lastScrollY = currentScrollY;
         isTicking = false;
       });
       isTicking = true;
