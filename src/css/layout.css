@@ -117,6 +117,8 @@ body.sidebar-is-open .sidebar .play-button-container {
 }
 
 /* --- Estilos Desktop (Sticky Sidebar) --- */
+/* NOTA: Breakpoint 769px (no 701px) para mantener el sidebar oculto en Tablets (iPad vertical)
+   y aprovechar el ancho completo para el grid de películas. */
 @media (min-width: 769px) {
   .sidebar {
     position: sticky;
@@ -171,18 +173,24 @@ body.sidebar-is-open .sidebar .play-button-container {
   left: 0;
   right: 0;
   top: auto;
+  border-radius: 0;
   
   /* Layout interno móvil */
   flex-wrap: nowrap;
   justify-content: center; /* Centra los controles en la barra inferior */
-  padding: var(--space-xs) var(--space-md);
+  padding: var(--space-xs) var(--space-md) calc(var(--space-xs) + env(safe-area-inset-bottom));
 }
 
 /* --- DESKTOP: Sticky Superior --- */
+/* NOTA: Breakpoint 701px. En Tablets (701-768px) el header sube arriba (estilo Desktop)
+   aunque el sidebar siga oculto. Estrategia Híbrida. */
 @media (min-width: 701px) {
   .main-header {
     position: sticky;
     top: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0;
     bottom: auto;
     
     /* Layout interno desktop */

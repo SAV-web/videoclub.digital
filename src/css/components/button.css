@@ -154,15 +154,15 @@ html.dark-mode .btn:hover {
  */
 @media (hover: none) and (pointer: coarse) {
   .btn {
-    --btn-height: 48px; /* Aumenta la altura base del botón */
+    --btn-height: var(--tap-target-size); /* Aumenta la altura base del botón */
     padding: 0 1.5rem; /* Ajusta el padding horizontal */
     font-size: 1rem; /* Ligeramente más grande para mejor legibilidad */
   }
 
   /* Asegura que los botones de icono sean cuadrados y de 48x48px */
   .btn--icon {
-    width: 48px;
-    height: 48px;
+    width: var(--tap-target-size);
+    height: var(--tap-target-size);
   }
 
   /* Sobrescribe reglas de responsive.css para asegurar tamaño táctil */

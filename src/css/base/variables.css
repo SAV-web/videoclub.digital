@@ -114,6 +114,9 @@
   --space-xxl: 3rem;
   --space-xxxl: 4rem;
 
+  /* Accesibilidad Táctil */
+  --tap-target-size: 48px;
+
   /* ---- Capas (Z-Index) ---- */
   --z-index-card-content: 20;
   --z-index-autocomplete: 850;

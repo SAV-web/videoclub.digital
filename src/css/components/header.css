@@ -7,7 +7,9 @@
   
   /* Bordes base (Móvil tiene borde arriba) */
   border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid transparent;
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
   
   /* View Transitions API */
   view-transition-name: main-header;
@@ -25,22 +27,28 @@
 }
 
 /* Estilos específicos Desktop */
+/* Estrategia Híbrida: A partir de 701px (Tablet) el header se comporta como Desktop */
 @media (min-width: 701px) {
   .main-header {
-    border-top: none; /* En desktop no queremos borde arriba */
+    border: none; /* Reset de borde base */
+    border-bottom: 1px solid transparent; /* Preparamos para el scroll */
   }
 }
 
 /* --- Estado: Scrolled (Solo Desktop) --- */
-.main-header.is-scrolled {
-  /* Reduce el padding vertical (override de layout) */
-  padding-top: var(--space-sm);
-  padding-bottom: var(--space-sm);
-  
-  /* Feedback visual */
-  border-bottom-color: var(--color-border);
-  background-color: var(--color-surface);
-  box-shadow: var(--shadow);
+/* FIX: Envolver en media query para no romper el padding safe-area en móvil */
+@media (min-width: 701px) {
+  .main-header.is-scrolled {
+    /* Reduce el padding vertical (override de layout) */
+    padding-top: var(--space-sm);
+    padding-bottom: var(--space-sm);
+    
+    /* Feedback visual */
+    border-bottom: 1px solid var(--color-border);
+    border-bottom-color: var(--color-border);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow);
+  }
 }
 
 /* --- Elementos Internos --- */
@@ -142,6 +150,8 @@ html.dark-mode .search-form input:focus {
 }
 .mobile-sidebar-toggle:active { transform: scale(0.9); }
 
+/* Ocultar botón solo en Desktop real (>= 769px).
+   En Tablet (701-768px) sigue visible porque el sidebar es un drawer. */
 @media (min-width: 769px) {
   .mobile-sidebar-toggle { display: none; }
 }
@@ -242,8 +252,8 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .type-filter-toggle,
   .header-pagination-group .btn,
   .search-form {
-    width: 44px;
-    height: 44px;
+    width: var(--tap-target-size);
+    height: var(--tap-target-size);
     border: 1px solid var(--color-border);
     background-color: var(--color-surface);
     border-radius: var(--radius-md);

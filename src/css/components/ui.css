@@ -7,7 +7,7 @@
 .skeleton {
   position: relative;
   overflow: hidden;
-  background-color: #e0e0e0; 
+  background-color: var(--color-border);
 }
 
 .skeleton-card {
@@ -30,9 +30,6 @@
 @keyframes shimmer {
   100% { transform: translateX(100%); }
 }
-
-html.dark-mode .skeleton-card,
-html.dark-mode .skeleton { background-color: #2c2c2c; }
 
 html.dark-mode .skeleton-card::after,
 html.dark-mode .skeleton::after {
@@ -157,6 +154,6 @@ body.sidebar-is-open .sidebar-overlay {
 
   .btn--pagination,
   .pagination-current {
-    min-width: 48px; height: 48px; font-size: 1rem;
+    min-width: var(--tap-target-size); height: var(--tap-target-size); font-size: 1rem;
   }
 }

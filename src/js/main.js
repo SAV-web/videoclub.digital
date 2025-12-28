@@ -383,6 +383,11 @@ function updateUrl() {
 }
 
 function init() {
+  // Limpieza de clases de carga crítica para evitar parpadeos en navegación/dev
+  // Esto asegura que el estado "loading" no interfiera una vez que JS toma el control.
+  document.getElementById('sidebar')?.classList.remove('sidebar--loading');
+  document.querySelector('.main-header')?.classList.remove('header--loading');
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("sw.js").catch(err => console.error("Fallo SW:", err));

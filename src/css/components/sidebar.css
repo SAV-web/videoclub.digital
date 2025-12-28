@@ -166,6 +166,13 @@ html.dark-mode .filter-pill {
 }
 html.dark-mode .filter-pill .remove-filter-btn { color: var(--color-bg); }
 
+/* Corrección: Restaurar color de exclusión en modo oscuro (superar especificidad) */
+html.dark-mode .filter-pill.filter-pill--exclude {
+  background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
+  color: #fff;
+}
+html.dark-mode .filter-pill.filter-pill--exclude .remove-filter-btn { color: #fff; }
+
 /* --- 5. Área de Scroll y Secciones --- */
 .sidebar-scrollable-filters {
   padding-top: var(--space-md);
@@ -320,7 +327,7 @@ html.dark-mode .filter-link.active { color: var(--color-bg); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px; height: 18px;
+  width: 30px; height: 30px; /* Aumentado para igualar tamaño visual */
   margin-left: var(--space-md);
   border: 1px solid transparent;
   border-radius: 50%;
@@ -329,7 +336,6 @@ html.dark-mode .filter-link.active { color: var(--color-bg); }
   opacity: 0;
   transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast);
 }
-.collapsible-section.active .exclude-filter-btn,
 .filter-link:hover .exclude-filter-btn,
 .filter-link:focus-visible .exclude-filter-btn { opacity: 1; }
 
@@ -347,7 +353,7 @@ html.dark-mode .filter-link.active { color: var(--color-bg); }
 .filter-link.active .exclude-filter-btn,
 .filter-link.is-excluded .exclude-filter-btn { color: #fff; }
 
-.exclude-filter-btn svg { width: 15px; height: 15px; stroke-width: 3; }
+.exclude-filter-btn svg { width: 22px; height: 22px; stroke-width: 2; }
 
 /* --- 7. Inputs y Autocompletado --- */
 .sidebar-filter-form { position: relative; margin-top: var(--space-xxs); }
@@ -669,5 +675,16 @@ body.sidebar-is-dragging .main-content-wrapper {
 
   .total-results-container {
     font-size: var(--font-size-base); /* Contador de resultados */
+  }
+
+  /* UX TÁCTIL: Botón de excluir accesible y con mayor área */
+  .exclude-filter-btn {
+    width: 32px; height: 32px;
+    opacity: 1; /* Siempre visible en móvil (no hay hover) */
+  }
+
+  .exclude-filter-btn svg {
+    width: 22px; height: 22px; /* Aumentado de 15px a 22px para igualar estado activo */
+    stroke-width: 2; /* Ajustamos el grosor para que no se vea tosco al escalar */
   }
 }

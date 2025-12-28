@@ -434,7 +434,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   z-index: var(--z-index-card-content); /* Prioridad de clic */
   pointer-events: auto; /* Habilitar click explícitamente */
 }
-.actors-expand-btn { bottom: 2px; right: 2px; z-index: 5; }
+.actors-expand-btn { bottom: 2px; right: 2px; }
 .expand-content-btn { bottom: 14px; right: 14px; }
 
 @media (hover: hover) and (pointer: fine) {
@@ -448,6 +448,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 .flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn):not(.actors-scrollable-content) {
   opacity: 0; transform: translateY(-100%);
   transition: opacity var(--duration-quick), transform var(--duration-normal) var(--ease-smooth-out);
+  pointer-events: none;
 }
 
 /* ESTADO: Sinopsis Expandida */
@@ -588,7 +589,7 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
   .actors-expand-btn::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 48px; height: 48px; z-index: 10;
+    width: var(--tap-target-size); height: var(--tap-target-size); z-index: 10;
   }
 
   .star-icon::after {
