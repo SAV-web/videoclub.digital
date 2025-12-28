@@ -10,15 +10,11 @@ const envUrl = import.meta.env.VITE_SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Fallback solo en desarrollo para no romper el flujo local si falta .env
-const devUrl = "https://wibygecgfczcvaqewleq.supabase.co";
-const devKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
+const defaultUrl = "https://wibygecgfczcvaqewleq.supabase.co";
+const defaultKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
 
-const supabaseUrl = envUrl || (import.meta.env.DEV ? devUrl : "");
-const supabaseKey = envKey || (import.meta.env.DEV ? devKey : "");
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Faltan variables de entorno VITE_SUPABASE_* requeridas para producción.");
-}
+const supabaseUrl = envUrl || defaultUrl;
+const supabaseKey = envKey || defaultKey;
 
 /**
  * CONFIGURACIÓN TÉCNICA Y DE COMPORTAMIENTO
