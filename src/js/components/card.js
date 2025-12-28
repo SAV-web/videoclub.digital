@@ -6,7 +6,7 @@ import {
   formatVotesUnified,
   createElement,
   triggerHapticFeedback,
-  renderCountryFlag
+  renderCountryFlag,
 } from "../utils.js";
 import { CSS_CLASSES, SELECTORS, STUDIO_DATA } from "../constants.js";
 import { openModal } from "./modal.js";
@@ -414,9 +414,11 @@ function populateCardText(cardElement, movieData) {
   const jwLink = backContext.querySelector('[data-template="justwatch-link"]');
   if (movieData.justwatch) {
     jwLink.href = movieData.justwatch;
+    jwLink.setAttribute("aria-label", `Ver ${movieData.title} en JustWatch`);
     jwLink.classList.remove('disabled');
   } else {
     jwLink.removeAttribute('href');
+    jwLink.removeAttribute("aria-label");
     jwLink.classList.add('disabled');
   }
   jwLink.style.display = 'flex';
@@ -424,9 +426,11 @@ function populateCardText(cardElement, movieData) {
   const wikiLink = backContext.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {
     wikiLink.href = movieData.wikipedia;
+    wikiLink.setAttribute("aria-label", `Ver ${movieData.title} en Wikipedia`);
     wikiLink.classList.remove('disabled');
   } else {
     wikiLink.removeAttribute('href');
+    wikiLink.removeAttribute("aria-label");
     wikiLink.classList.add('disabled');
   }
   wikiLink.style.display = 'flex';
@@ -449,8 +453,21 @@ function populateCardText(cardElement, movieData) {
     }
     const actorsOverlay = cardElement.querySelector('.actors-scrollable-content');
     if (actorsOverlay) {
-       const actorsListHtml = movieData.actors.split(',').map(actor => `<button type="button" class="actor-list-item" data-actor-name="${actor.trim()}">${actor.trim()}</button>`).join(''); 
-       actorsOverlay.innerHTML = `<h4>Reparto</h4><div class="actors-list-text">${actorsListHtml}</div>`;
+       actorsOverlay.textContent = "";
+       actorsOverlay.appendChild(createElement("h4", { textContent: "Reparto" }));
+       const listDiv = createElement("div", { className: "actors-list-text" });
+       movieData.actors.split(',').forEach(actor => {
+         const name = actor.trim();
+         if (name) {
+           listDiv.appendChild(createElement("button", {
+             type: "button",
+             className: "actor-list-item",
+             textContent: name,
+             dataset: { actorName: name }
+           }));
+         }
+       });
+       actorsOverlay.appendChild(listDiv);
     }
   } else {
     // Limpieza si no hay actores (reutilización de nodos)
@@ -514,9 +531,12 @@ export function setupCardRatings(containerElement, movieData) {
     
     if (id && (id.startsWith("http://") || id.startsWith("https://"))) {
       link.href = id;
+      const platformName = platform === 'fa' ? 'Filmaffinity' : 'IMDb';
+      link.setAttribute("aria-label", `Ver en ${platformName} - Nota: ${rating || 'N/A'}`);
       link.classList.remove("disabled");
     } else {
       link.removeAttribute("href");
+      link.removeAttribute("aria-label");
       link.classList.add("disabled");
     }
     

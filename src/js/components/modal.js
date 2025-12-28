@@ -333,9 +333,11 @@ function populateModal(cardElement) {
   const jwLink = back.querySelector('[data-template="justwatch-link"]');
   if (movieData.justwatch) {
     jwLink.href = movieData.justwatch;
+    jwLink.setAttribute("aria-label", `Ver ${movieData.title} en JustWatch`);
     jwLink.classList.remove('disabled');
   } else {
     jwLink.removeAttribute('href');
+    jwLink.removeAttribute("aria-label");
     jwLink.classList.add('disabled');
   }
   jwLink.style.display = 'flex';
@@ -344,9 +346,11 @@ function populateModal(cardElement) {
   const wikipediaLink = back.querySelector('[data-template="wikipedia-link"]');
   if (movieData.wikipedia) {
     wikipediaLink.href = movieData.wikipedia;
+    wikipediaLink.setAttribute("aria-label", `Ver ${movieData.title} en Wikipedia`);
     wikipediaLink.classList.remove('disabled');
   } else {
     wikipediaLink.removeAttribute('href');
+    wikipediaLink.removeAttribute("aria-label");
     wikipediaLink.classList.add('disabled');
   }
   wikipediaLink.style.display = 'flex';

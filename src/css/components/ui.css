@@ -154,8 +154,9 @@ body.sidebar-is-open .sidebar-overlay {
     /* Espacio base + altura del header + zona segura de iOS/Android */
     bottom: calc(var(--space-md) + var(--mobile-header-height) + env(safe-area-inset-bottom));
   }
-}
+
   .btn--pagination,
   .pagination-current {
     min-width: 48px; height: 48px; font-size: 1rem;
   }
+}

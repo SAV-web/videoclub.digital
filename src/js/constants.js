@@ -5,14 +5,29 @@
 // selectores DOM, clases CSS y datos estáticos.
 // =================================================================
 
+// --- Validación de Entorno (Seguridad) ---
+const envUrl = import.meta.env.VITE_SUPABASE_URL;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Fallback solo en desarrollo para no romper el flujo local si falta .env
+const devUrl = "https://wibygecgfczcvaqewleq.supabase.co";
+const devKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
+
+const supabaseUrl = envUrl || (import.meta.env.DEV ? devUrl : "");
+const supabaseKey = envKey || (import.meta.env.DEV ? devKey : "");
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("Faltan variables de entorno VITE_SUPABASE_* requeridas para producción.");
+}
+
 /**
  * CONFIGURACIÓN TÉCNICA Y DE COMPORTAMIENTO
  * Nota: Soporta variables de entorno (.env) para mayor seguridad.
  */
 export const CONFIG = {
-  // Credenciales de Supabase (Busca en .env primero, usa fallback si no existe)
-  SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || "https://wibygecgfczcvaqewleq.supabase.co",
-  SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc",
+  // Credenciales de Supabase (Validadas arriba)
+  SUPABASE_URL: supabaseUrl,
+  SUPABASE_ANON_KEY: supabaseKey,
   
   // URLs de Assets
   POSTER_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/",

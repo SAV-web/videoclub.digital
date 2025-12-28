@@ -401,10 +401,10 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
     const item = createElement("div", {
       className: CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM,
       dataset: { value: suggestion },
-      innerHTML: highlightAccentInsensitive(suggestion, searchTerm),
       id: `suggestion-item-${formElement.dataset.filterType}-${index}`,
       attributes: { role: "option" },
     });
+    item.appendChild(highlightAccentInsensitive(suggestion, searchTerm));
     fragment.appendChild(item);
   });
 
@@ -784,7 +784,11 @@ function setupEventListeners() {
       if (isNowActive) {
         setTimeout(() => {
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
-            clickedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // ESTRATEGIA "NEAREST": Solo scrollear si la cabecera se ha salido de la vista.
+            // Usamos 'nearest' para evitar movimientos bruscos del body.
+            if (header) {
+              header.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+            }
           }
         }, 300);
       }

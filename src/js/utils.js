@@ -74,18 +74,34 @@ export const normalizeText = (text) => {
 };
 
 export const highlightAccentInsensitive = (text, searchTerm) => {
-  if (!text || !searchTerm) return text;
+  const fragment = document.createDocumentFragment();
+  if (!text) return fragment;
+  
+  if (!searchTerm) {
+    fragment.textContent = text;
+    return fragment;
+  }
+
   const normalizedText = normalizeText(text);
   const normalizedSearchTerm = normalizeText(searchTerm);
   const index = normalizedText.indexOf(normalizedSearchTerm);
   
-  if (index === -1) return text;
+  if (index === -1) {
+    fragment.textContent = text;
+    return fragment;
+  }
   
   const before = text.substring(0, index);
   const match = text.substring(index, index + normalizedSearchTerm.length);
   const after = text.substring(index + normalizedSearchTerm.length);
   
-  return `${before}<strong>${match}</strong>${after}`;
+  fragment.appendChild(document.createTextNode(before));
+  const strong = document.createElement("strong");
+  strong.textContent = match;
+  fragment.appendChild(strong);
+  fragment.appendChild(document.createTextNode(after));
+  
+  return fragment;
 };
 
 export const capitalizeWords = (str) => {
