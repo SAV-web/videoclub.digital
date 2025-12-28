@@ -178,6 +178,13 @@ function handleTouchEnd(e) {
   // Limpieza: Quitamos el listener para devolver el control del scroll al navegador
   document.removeEventListener("touchmove", handleTouchMove);
   
+  // OPTIMIZACIÓN: Si no hubo arrastre horizontal real (fue un tap o scroll vertical), salimos.
+  // Esto evita cálculos de física y repintados innecesarios.
+  if (!touchState.isHorizontalDrag) {
+    touchState.isDragging = false;
+    return;
+  }
+  
   touchState.isDragging = false;
   touchState.isHorizontalDrag = false;
 
@@ -292,9 +299,13 @@ function initPinchGestures() {
   // el navegador interprete el final del gesto como un clic en una tarjeta.
   window.addEventListener('click', (e) => {
     if (document.body.dataset.gestureCooldown === "true") {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
+      // MEJORA: Limitar el bloqueo a la zona afectada (Grid/Tarjetas)
+      // Evita "comerse" clicks en el header o sidebar si el gesto terminó cerca.
+      if (e.target.closest('.movie-card, .grid-container')) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
     }
   }, { capture: true });
 
