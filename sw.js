@@ -17,36 +17,35 @@ const CACHE_API_NAME = "videoclub-api-v2";
 // --- 1. ACTIVOS CRÍTICOS (Blocking) ---
 // Sin esto, la app no arranca o se ve rota.
 const CRITICAL_ASSETS = [
-  "/index.html",
-  "/src/css/main.css",
-  "/src/css/base/variables.css",
-  "/src/css/base/globals.css",
-  "/src/css/components/button.css",
-  "/src/css/components/card.css",
-  "/src/css/components/header.css",
-  "/src/css/components/modal.css",
-  "/src/css/components/sidebar.css",
-  "/src/css/components/ui.css",
-  "/src/css/layout.css",
-  "/src/js/main.js",    // IMPRESCINDIBLE para el arranque
-  "/src/js/config.js",  // Configuración base
-  "/src/js/utils.js",   // Utilidades base
-  "/src/js/state.js",   // Estado global
-  "/src/js/ui.js",      // Manejo del DOM crítico
-  "/src/js/api.js",      // Lógica de red
-  "/src/js/auth.js",
-  "/src/js/components/card.js",
-  "/src/js/components/sidebar.js",
-  "/src/js/components/modal.js",
-  "/src/js/components/rating.js"
+  "index.html",
+  "src/css/main.css",
+  "src/css/base/variables.css",
+  "src/css/base/globals.css",
+  "src/css/components/button.css",
+  "src/css/components/card.css",
+  "src/css/components/header.css",
+  "src/css/components/modal.css",
+  "src/css/components/sidebar.css",
+  "src/css/components/ui.css",
+  "src/css/layout.css",
+  "src/js/main.js",
+  "src/js/constants.js", // CORREGIDO: config.js -> constants.js
+  "src/js/utils.js",
+  "src/js/state.js",
+  "src/js/ui.js",
+  "src/js/api.js",
+  "src/js/auth.js",
+  "src/js/components/card.js",
+  "src/js/components/sidebar.js",
+  "src/js/components/modal.js",
+  "src/js/components/rating.js"
 ];
 
 // --- 2. ACTIVOS SECUNDARIOS (Lazy) ---
 // Se descargan en segundo plano. Si fallan, la app sigue funcionando.
 const LAZY_ASSETS = [
-  "/manifest.webmanifest",
-  // Iconos y recursos gráficos no vitales para el primer paint
-  "/src/img/icons/sprite.svg" 
+  // Dejamos esta lista vacía para evitar errores 404 en consola.
+  // Estos recursos se cachearán automáticamente gracias a la estrategia de runtime del SW.
 ];
 
 // --- INSTALACIÓN (Estrategia Híbrida) ---
