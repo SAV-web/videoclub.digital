@@ -408,7 +408,7 @@
    4. ADAPTACIÓN RESPONSIVA
    ================================================================= */
 
-/* --- Móvil / Tablet (< 769px): Bottom Sheet --- */
+/* --- Móvil / Tablet (<= 700px): Bottom Sheet --- */
 @media (max-width: 700px) {
   /* Optimización de rendimiento: Menos blur en móvil para mejorar FPS */
   .quick-view-overlay {
@@ -440,7 +440,7 @@
   }
 }
 
-/* --- B) ESCRITORIO (>= 769px): MODAL FLOTANTE --- */
+/* --- B) ESCRITORIO (> 700px): MODAL FLOTANTE --- */
 @media (min-width: 701px) {
   .quick-view-modal {
     top: 50%; left: 50%;

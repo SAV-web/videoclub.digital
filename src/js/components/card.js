@@ -199,8 +199,6 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 800px 0px" }
 );
 
-// ... (handleWatchlistClick y handleRatingClick se mantienen igual, omitidos por brevedad pero deben estar aquí)
-// COPIA AQUÍ handleWatchlistClick y handleRatingClick del archivo original si no se modifican
 async function handleWatchlistClick(event) {
   event.preventDefault(); event.stopPropagation();
   const interactiveContainer = this;
@@ -769,8 +767,6 @@ export function renderMovieGrid(gridContainer, movies) {
   renderBatch();
 }
 
-// ... (renderSkeletons, renderNoResults, renderErrorState iguales)
-// COPIA AQUÍ renderSkeletons, renderNoResults, renderErrorState del archivo original
 export function renderSkeletons(gridContainer, paginationContainer) {
   currentRenderRequestId++; // Invalidar cualquier renderizado de películas en curso
   if (gridContainer) gridContainer.textContent = "";

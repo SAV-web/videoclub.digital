@@ -397,6 +397,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   transition: opacity var(--duration-normal) var(--ease-smooth-out), visibility var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
   z-index: 5;
   font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary);
+  pointer-events: auto; /* Habilitar interacción para scroll */
 }
 .actors-scrollable-content h4 {
   margin-top: 0; margin-bottom: var(--space-sm);
@@ -459,20 +460,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   /* 🔥 FIX: Habilitar interacción para poder hacer scroll */
   pointer-events: auto; 
   z-index: 15; /* Por debajo del botón de cerrar (z-index 20) */
-}
-
-/* ESTADO: Actores Expandidos (Overlay) */
-.actors-scrollable-content {
-  position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-xl);
-  background-color: var(--color-surface);
-  overflow-y: auto; scrollbar-width: none;
-  opacity: 0; visibility: hidden; transform: translateY(100%);
-  transition: all var(--duration-normal) var(--ease-smooth-out);
-  z-index: 5;
-  font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary);
-  
-  /* 🔥 FIX: Habilitar interacción para poder hacer scroll */
-  pointer-events: auto; 
 }
 
 .flip-card-back.is-expanded.show-actors .actors-scrollable-content {
@@ -596,7 +583,9 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
 @media (hover: none) and (pointer: coarse) {
   /* Expandimos áreas táctiles sin afectar el layout visual */
   .low-rating-circle::after,
-  .card-action-btn::after {
+  .card-action-btn::after,
+  .expand-content-btn::after,
+  .actors-expand-btn::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: 48px; height: 48px; z-index: 10;

@@ -40,6 +40,9 @@ export const CONFIG = {
   // Rangos
   YEAR_MIN: 1926,
   YEAR_MAX: 2025,
+  
+  // Persistencia
+  STORAGE_VERSION: 1, // Incrementar para invalidar cachés locales antiguas
 };
 
 /**

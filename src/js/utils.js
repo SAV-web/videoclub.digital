@@ -227,3 +227,37 @@ export function triggerHapticFeedback(style = "light") {
     }
   } catch (e) {}
 }
+
+// =================================================================
+//          5. ALMACENAMIENTO LOCAL SEGURO (VERSIONADO)
+// =================================================================
+
+export const LocalStore = {
+  get(key) {
+    try {
+      const item = localStorage.getItem(key);
+      if (!item) return null;
+      
+      // Intentamos parsear como JSON versionado
+      try {
+        const parsed = JSON.parse(item);
+        // Verificamos firma de versión: debe ser objeto y coincidir la versión
+        if (parsed && typeof parsed === 'object' && 'v' in parsed && 'd' in parsed) {
+          if (parsed.v !== CONFIG.STORAGE_VERSION) return null; // Versión antigua: invalidar
+          return parsed.d;
+        }
+      } catch (e) {
+        // Si no es JSON válido o no tiene la estructura, es un dato legacy. Lo descartamos.
+        return null; 
+      }
+      return null;
+    } catch (e) { return null; }
+  },
+
+  set(key, value) {
+    try {
+      const payload = { v: CONFIG.STORAGE_VERSION, d: value };
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch (e) { console.warn("LocalStore write failed", e); }
+  }
+};

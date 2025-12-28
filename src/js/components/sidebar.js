@@ -7,7 +7,7 @@
 import noUiSlider from 'nouislider';
 import 'nouislider/dist/nouislider.css'; 
 import { CONFIG } from "../constants.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive } from "../utils.js";
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
 } from "../api.js";
@@ -277,7 +277,7 @@ function toggleRotationMode(forceState = null) {
     button.setAttribute("aria-label", shouldDisable ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
     button.title = shouldDisable ? "Giro automático" : "Vista Rápida";
     button.setAttribute("aria-pressed", shouldDisable);
-    localStorage.setItem("rotationState", shouldDisable ? "disabled" : "enabled");
+    LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
   };
 
   if (document.startViewTransition) {
@@ -859,11 +859,9 @@ export function initSidebar() {
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);
   
   // Restaurar estado de rotación (Modal Mode) desde localStorage
-  try {
-    if (localStorage.getItem("rotationState") === "disabled") {
-      document.body.classList.add("rotation-disabled");
-    }
-  } catch (e) {}
+  if (LocalStore.get("rotationState") === "disabled") {
+    document.body.classList.add("rotation-disabled");
+  }
 
   if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains("rotation-disabled");
