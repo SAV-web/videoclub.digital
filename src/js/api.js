@@ -1,5 +1,5 @@
 // src/js/api.js
-import { CONFIG } from "./constants.js";
+import { CONFIG, IGNORED_ACTORS } from "./constants.js";
 import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest } from "./utils.js";
@@ -142,6 +142,17 @@ export const fetchDirectorSuggestions = (term) => fetchSuggestions("get_director
 export const fetchCountrySuggestions = (term) => fetchSuggestions("get_country_suggestions", term);
 export const fetchActorSuggestions = async (term) => {
   const suggestions = await fetchSuggestions("get_actor_suggestions", term);
-  const ignoredTerms = ["(a)", "animación", "animacion", "documental"];
-  return suggestions.filter(name => !ignoredTerms.includes(name.toLowerCase()));
+  return suggestions.filter(name => !IGNORED_ACTORS.includes(name.toLowerCase()));
+};
+
+export const fetchRandomTopActors = async () => {
+  const { data, error } = await supabase.rpc("get_random_top_actors");
+  if (error) return [];
+  return data.map(d => d.name).filter(name => !IGNORED_ACTORS.includes(name.toLowerCase()));
+};
+
+export const fetchRandomTopDirectors = async () => {
+  const { data, error } = await supabase.rpc("get_random_top_directors");
+  if (error) return [];
+  return data.map(d => d.name);
 };

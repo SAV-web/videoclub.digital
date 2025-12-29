@@ -10,6 +10,7 @@ import { CONFIG } from "../constants.js";
 import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
+  fetchRandomTopActors, fetchRandomTopDirectors
 } from "../api.js";
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
@@ -857,6 +858,30 @@ export function initSidebar() {
   };
 
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);
+
+  // --- ACTUALIZACIÓN DINÁMICA DE FILTROS (Top 100 Aleatorio) ---
+  const updateDynamicFilters = async () => {
+    try {
+      const [actors, directors] = await Promise.all([
+        fetchRandomTopActors(),
+        fetchRandomTopDirectors()
+      ]);
+
+      if (actors && actors.length > 0) {
+        FILTER_CONFIG.actor.items = actors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
+        populateFilterSection('actor');
+      }
+
+      if (directors && directors.length > 0) {
+        FILTER_CONFIG.director.items = directors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
+        populateFilterSection('director');
+      }
+    } catch (e) { /* Fallback silencioso a estáticos */ }
+  };
+
+  // Ejecutar en background para no bloquear la interactividad inicial
+  if ("requestIdleCallback" in window) requestIdleCallback(updateDynamicFilters);
+  else setTimeout(updateDynamicFilters, 500);
   
   // Restaurar estado de rotación (Modal Mode) desde localStorage
   if (LocalStore.get("rotationState") === "disabled") {

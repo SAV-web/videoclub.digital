@@ -8,7 +8,7 @@ import {
   triggerHapticFeedback,
   renderCountryFlag,
 } from "../utils.js";
-import { CSS_CLASSES, SELECTORS, STUDIO_DATA } from "../constants.js";
+import { CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import { openModal } from "./modal.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
@@ -441,7 +441,7 @@ function populateCardText(cardElement, movieData) {
   actorsEl.textContent = actorsData.truncated;
   
   const rawActors = movieData.actors ? movieData.actors.trim() : "";
-  const hasInteractiveActors = rawActors.length > 0 && !["(a)", "animación", "animacion", "documental"].includes(rawActors.toLowerCase());
+  const hasInteractiveActors = rawActors.length > 0 && !IGNORED_ACTORS.includes(rawActors.toLowerCase());
 
   if (hasInteractiveActors) {
     const actorsContainer = actorsEl.parentElement;
@@ -457,12 +457,20 @@ function populateCardText(cardElement, movieData) {
        movieData.actors.split(',').forEach(actor => {
          const name = actor.trim();
          if (name) {
-           listDiv.appendChild(createElement("button", {
-             type: "button",
-             className: "actor-list-item",
-             textContent: name,
-             dataset: { actorName: name }
-           }));
+           if (IGNORED_ACTORS.includes(name.toLowerCase())) {
+             listDiv.appendChild(createElement("span", {
+               className: "actor-list-item",
+               textContent: name,
+               style: "cursor: default; pointer-events: none;"
+             }));
+           } else {
+             listDiv.appendChild(createElement("button", {
+               type: "button",
+               className: "actor-list-item",
+               textContent: name,
+               dataset: { actorName: name }
+             }));
+           }
          }
        });
        actorsOverlay.appendChild(listDiv);

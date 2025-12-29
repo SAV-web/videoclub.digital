@@ -11,7 +11,7 @@
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, setupCardRatings } from "./card.js";
 import { formatRuntime, createElement, renderCountryFlag } from "../utils.js"; 
-import { STUDIO_DATA } from "../constants.js";
+import { STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 
 // --- Referencias DOM Cacheadas ---
@@ -365,8 +365,13 @@ function populateModal(cardElement) {
   actorsContainer.textContent = "";
   if (movieData.actors) {
     movieData.actors.split(",").forEach((name, index, arr) => {
-      const link = createElement("a", { textContent: name.trim(), href: "#", dataset: { actorName: name.trim() } });
-      actorsContainer.appendChild(link);
+      const actorName = name.trim();
+      if (IGNORED_ACTORS.includes(actorName.toLowerCase())) {
+        actorsContainer.appendChild(document.createTextNode(actorName));
+      } else {
+        const link = createElement("a", { textContent: actorName, href: "#", dataset: { actorName: actorName } });
+        actorsContainer.appendChild(link);
+      }
       if (index < arr.length - 1) actorsContainer.appendChild(document.createTextNode(", "));
     });
   } else {

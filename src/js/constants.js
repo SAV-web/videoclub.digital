@@ -46,6 +46,11 @@ export const CONFIG = {
 };
 
 /**
+ * ACTORES QUE NO DEBEN SER CLICKABLES NI APARECER EN FILTROS
+ */
+export const IGNORED_ACTORS = ["(a)", "animación", "animacion", "documental"];
+
+/**
  * VALORES POR DEFECTO PARA EL ESTADO
  */
 export const DEFAULTS = {

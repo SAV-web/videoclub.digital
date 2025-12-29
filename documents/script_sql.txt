@@ -144,8 +144,8 @@ BEGIN
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
                 AND ($5 IS NULL OR m.country_id = $5)
-                AND ($6 IS NULL OR m.directors_tsv @@ phraseto_tsquery(''simple'', $6))
-                AND ($7 IS NULL OR m.actors_tsv @@ phraseto_tsquery(''simple'', $7))
+                AND ($6 IS NULL OR m.directors_tsv @@ phraseto_tsquery(''simple'', public.unaccent_immutable($6)))
+                AND ($7 IS NULL OR m.actors_tsv @@ phraseto_tsquery(''simple'', public.unaccent_immutable($7)))
                 AND ($8 IS NULL OR $8 = ''all''
                      OR ($8 = ''movies'' AND (m.type IS NULL OR m.type IN (''D'', ''A'')))
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))
@@ -356,6 +356,36 @@ RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     WHERE similarity(name_norm, public.unaccent_immutable(lower(search_term))) > 0.2
     ORDER BY similarity(name_norm, public.unaccent_immutable(lower(search_term))) DESC
     LIMIT 5;
+$$;
+
+-- =================================================================
+-- FUNCIONES PARA FILTROS DINÁMICOS (TOP 100 ALEATORIO)
+-- =================================================================
+
+CREATE OR REPLACE FUNCTION public.get_random_top_actors(limit_count int DEFAULT 5)
+RETURNS TABLE(name text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
+    WITH top_actors AS (
+        SELECT a.name
+        FROM public.actors a
+        JOIN public.movie_actors ma ON a.id = ma.actor_id
+        GROUP BY a.id, a.name
+        ORDER BY count(ma.movie_id) DESC
+        LIMIT 100
+    )
+    SELECT name FROM top_actors ORDER BY random() LIMIT limit_count;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_random_top_directors(limit_count int DEFAULT 5)
+RETURNS TABLE(name text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
+    WITH top_directors AS (
+        SELECT d.name
+        FROM public.directors d
+        JOIN public.movie_directors md ON d.id = md.director_id
+        GROUP BY d.id, d.name
+        ORDER BY count(md.movie_id) DESC
+        LIMIT 100
+    )
+    SELECT name FROM top_directors ORDER BY random() LIMIT limit_count;
 $$;
 
 -- =================================================================
