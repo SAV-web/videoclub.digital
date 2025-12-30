@@ -302,8 +302,7 @@ function populateModal(cardElement) {
   // 1. Título Original
   const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
   const showOriginalTitle = movieData.original_title &&
-                            movieData.original_title.trim() !== "" &&
-                            movieData.original_title.trim().toLowerCase() !== movieData.title.trim().toLowerCase();
+                            movieData.original_title.trim() !== "";
 
   if (showOriginalTitle) {
     const span = originalTitleWrapper.querySelector('span');

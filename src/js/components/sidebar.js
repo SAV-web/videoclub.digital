@@ -82,7 +82,9 @@ function updateDrawerWidth() {
 
 function handleTouchStart(e) {
   if (window.innerWidth > MOBILE_BREAKPOINT) return;
-  updateDrawerWidth(); 
+  // OPTIMIZACIÓN: Eliminamos updateDrawerWidth() de aquí.
+  // Leer offsetWidth fuerza un Reflow (re-cálculo de layout) síncrono, causando lag al iniciar el toque.
+  // El ancho ya se actualiza en el evento 'resize' y al inicio.
   
   // 🛡️ FIX: Si la modal está abierta, el sidebar NO debe responder a gestos.
   if (document.body.classList.contains("modal-open")) return;
@@ -449,9 +451,11 @@ function updateFilterLinksUI() {
   });
 }
 
+// Estado local para reconciliación de DOM (evita reflows innecesarios)
+let lastPillState = {};
+
 function renderFilterPills() {
   const activeFilters = getActiveFilters();
-  document.querySelectorAll(".active-filters-list").forEach((container) => (container.textContent = ""));
   let pillIndex = 0;
 
   const createPill = (type, value, isExcluded = false, index = 0) => {
@@ -468,6 +472,21 @@ function renderFilterPills() {
     if (!section) return currentIndex;
     const container = section.querySelector(".active-filters-list");
     if (!container) return currentIndex;
+
+    // RECONCILIACIÓN SIMPLE: Comprobar si los datos han cambiado antes de tocar el DOM
+    const stateKey = `${filterType}-${isExcluded ? 'ex' : 'inc'}`;
+    const newValueJson = JSON.stringify(values);
+    
+    if (lastPillState[stateKey] === newValueJson) {
+      // Si no hay cambios, solo actualizamos el índice para que las siguientes secciones animen bien
+      const count = Array.isArray(values) ? values.length : (values ? 1 : 0);
+      return currentIndex + count;
+    }
+
+    // Si hay cambios, actualizamos caché y DOM
+    lastPillState[stateKey] = newValueJson;
+    container.textContent = "";
+    
     const valuesArray = Array.isArray(values) ? values : [values].filter(Boolean);
     valuesArray.forEach((value) => { container.appendChild(createPill(filterType, value, isExcluded, currentIndex++)); });
     return currentIndex;
@@ -832,12 +851,18 @@ export function initSidebar() {
         const p = STUDIO_DATA[value];
         link.classList.add("filter-link--studio");
         link.title = text; 
-        link.innerHTML = `
-          <svg width="${p.w || 24}" height="${p.h || 24}" viewBox="${p.vb || '0 0 24 24'}" class="sidebar-platform-icon ${p.class || ''}" fill="currentColor">
-            <use href="${spriteUrl}#${p.id}"></use>
-          </svg>
-          <span class="sr-only">${text}</span>
-        `;
+        
+        // Refactor: Usar DOM API en lugar de innerHTML para el SVG
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", p.w || "24"); svg.setAttribute("height", p.h || "24");
+        svg.setAttribute("viewBox", p.vb || "0 0 24 24"); svg.setAttribute("class", `sidebar-platform-icon ${p.class || ''}`);
+        svg.setAttribute("fill", "currentColor");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `${spriteUrl}#${p.id}`);
+        svg.appendChild(use);
+        
+        link.appendChild(svg);
+        link.appendChild(createElement("span", { className: "sr-only", textContent: text }));
       } else {
         const textWrapper = createElement("span", { textContent: text });
         link.appendChild(textWrapper);

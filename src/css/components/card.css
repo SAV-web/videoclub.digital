@@ -210,6 +210,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 .back-original-title-wrapper span {
   font-family: var(--font-title); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
   color: var(--color-text-primary); line-height: var(--line-height-tight);
+  letter-spacing: -0.01em; /* Ajuste sutil para compactar Inter en negrita */
   text-align: left;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; text-overflow: ellipsis;
@@ -582,6 +583,11 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
    ================================================================= */
 
 @media (hover: none) and (pointer: coarse) {
+  /* Feedback táctil al pulsar la tarjeta (Micro-interacción) */
+  .movie-card:active {
+    transform: scale(0.98);
+  }
+
   /* Expandimos áreas táctiles sin afectar el layout visual */
   .low-rating-circle::after,
   .card-action-btn::after,
@@ -825,8 +831,8 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
   left: auto;
   right: auto;
   height: 12%; /* El espacio restante abajo */
-  justify-content: center; /* Centrado horizontal */
-  padding: 2px 0 0 0;
+  justify-content: flex-start; /* Alineado a la izquierda */
+  padding: 2px 0 0 var(--space-sm); /* Margen izquierdo para que no toque el borde */
   background: transparent;
 }
 
@@ -834,7 +840,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
 body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container,
 body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-circle {
   transform: scale(0.7);
-  transform-origin: center top;
+  transform-origin: left center; /* Escalar desde la izquierda para mantener alineación visual */
 }
 
 /* Botón Watchlist: Solo visible si activo, arriba a la derecha */
