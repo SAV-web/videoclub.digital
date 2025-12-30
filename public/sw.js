@@ -81,6 +81,12 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
+  // 🛡️ EXCEPCIÓN CRÍTICA: Datos de Usuario y Autenticación
+  // Nunca cachear peticiones REST (votos, watchlist) ni Auth. Deben ser siempre frescas.
+  if (url.pathname.includes("/rest/v1/") || url.pathname.includes("/auth/v1/")) {
+    return; // Salimos y dejamos que el navegador haga la petición de red normal
+  }
+
   // === ESTRATEGIA API: Stale-While-Revalidate con Ventana de Frescura ===
   if (url.pathname.includes("/functions/v1/")) {
     event.respondWith(
