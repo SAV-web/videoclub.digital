@@ -2,12 +2,14 @@
 /* Componentes de UI General (Skeletons, Paginación, Toasts, etc.)
 /* ================================================================= */
 
-/* --- Esqueleto de Carga (Shimmer Effect Real) --- */
+/* --- 1. Esqueleto de Carga (Shimmer Effect) --- */
 .skeleton-card,
 .skeleton {
   position: relative;
   overflow: hidden;
   background-color: var(--color-border);
+  /* Mejora de rendimiento: aislar capa de pintura */
+  transform: translateZ(0);
 }
 
 .skeleton-card {
@@ -17,14 +19,27 @@
   box-shadow: none; 
 }
 
+/* Ajuste para modo "Muro" (Rotation Disabled) para coincidir con card.css */
+body.rotation-disabled .skeleton-card {
+  aspect-ratio: 2 / 3.2;
+}
+
 .skeleton-card::after,
 .skeleton::after {
   content: "";
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
+  /* Gradiente más suave y moderno */
+  background: linear-gradient(
+    90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.4) 50%, 
+    transparent 100%
+  );
   animation: shimmer 1.5s infinite;
+  /* Optimización: avisar al navegador */
+  will-change: transform;
 }
 
 @keyframes shimmer {
@@ -33,17 +48,17 @@
 
 html.dark-mode .skeleton-card::after,
 html.dark-mode .skeleton::after {
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
 }
 
-/* --- Skeletons Sidebar --- */
+/* --- 2. Skeletons Sidebar --- */
 .skeleton-sidebar-header { width: 60%; height: 24px; margin: var(--space-sm) var(--space-xs); border-radius: var(--radius-sm); }
 .skeleton-sidebar-line { height: 16px; margin-bottom: var(--space-xs); margin-left: var(--space-sm); border-radius: var(--radius-sm); }
 .skeleton-sidebar-line:nth-of-type(1) { width: 70%; }
 .skeleton-sidebar-line:nth-of-type(2) { width: 85%; }
 .skeleton-sidebar-line:nth-of-type(3) { width: 60%; }
 
-/* --- Paginación --- */
+/* --- 3. Paginación --- */
 .pagination-container {
   display: flex;
   justify-content: center;
@@ -54,95 +69,138 @@ html.dark-mode .skeleton::after {
   padding: var(--space-xs);
 }
 
-/* 
-   ✨ MEJORA 10: Botón de Paginación Específico 
-   Sobrescribe el padding lateral del .btn estándar para hacerlo cuadrado.
-*/
-.btn--pagination {
-  width: var(--btn-height, 40px);
-  padding: 0; /* Centrado geométrico del número/flecha */
-}
-
-/* Indicador de página actual (no es botón, es span) */
+/* Estilos compartidos para elementos de paginación */
+.btn--pagination,
 .pagination-current {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: var(--btn-height, 40px);
   height: var(--btn-height, 40px);
-  width: var(--btn-height, 40px); /* Cuadrado perfecto */
   padding: 0;
   border-radius: var(--radius-md);
   font-size: 0.9rem;
   font-weight: 700;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+/* Estado activo (span) */
+.pagination-current {
   background-color: var(--color-accent);
   color: var(--color-bg);
   cursor: default;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Botones interactivos */
+.btn--pagination:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 @media (max-width: 700px) {
   .pagination-arrow { display: none; }
 }
 
-/* --- Overlay del Sidebar (Móvil) --- */
-/* 
-   NOTA ARQUITECTURA: 
-   Este overlay (.sidebar-overlay) es exclusivo para el Drawer de navegación.
-   NO confundir con .quick-view-overlay (modales) ni .auth-overlay (login).
-   Tienen z-index y contextos diferentes.
-*/
+/* --- 4. Overlay del Sidebar (Móvil) --- */
 .sidebar-overlay {
-  display: none;
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: calc(var(--z-index-sidebar) - 1); /* Debajo del Sidebar, encima del Header */
+  
+  /* Transiciones de visibilidad para permitir fade-in/out */
   opacity: 0;
-  transition: opacity var(--transition-duration-normal);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  visibility: hidden;
+  transition: opacity var(--transition-duration-normal), visibility 0s linear var(--transition-duration-normal);
+  
+  /* Efecto moderno */
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 
 body.sidebar-is-open .sidebar-overlay {
-  display: block;
   opacity: 1;
+  visibility: visible;
+  transition-delay: 0s; /* Aparecer inmediatamente */
 }
 
-/* --- Mensaje de "Sin Resultados" --- */
+/* --- 5. Mensaje de "Sin Resultados" --- */
 .no-results {
   grid-column: 1 / -1;
-  padding: var(--space-xl) var(--space-xl);
+  padding: var(--space-xl);
   color: var(--color-text-secondary);
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px; /* Altura mínima para que no se vea colapsado */
 }
-.no-results p { margin-top: var(--space-xs); margin-bottom: var(--space-lg); }
 
-/* --- Notificaciones Toast --- */
+.no-results h3 {
+  font-size: var(--font-size-xl);
+  margin-bottom: var(--space-sm);
+  color: var(--color-text-primary);
+}
+
+.no-results p { 
+  margin-top: 0; 
+  margin-bottom: var(--space-lg);
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+/* --- 6. Notificaciones Toast --- */
 .toast-container {
   position: fixed;
   bottom: var(--space-md);
   right: var(--space-lg);
   z-index: var(--z-index-toast);
   display: flex; flex-direction: column; gap: var(--space-xs);
+  pointer-events: none; /* Permitir clics a través del contenedor */
 }
 
 .toast {
   padding: var(--space-md) var(--space-lg);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
   color: #fff;
   font-size: var(--font-size-sm);
   font-weight: bold;
-  animation: toast-in 0.5s ease, toast-out 0.5s ease 4.5s forwards;
+  
+  /* Animación de entrada/salida */
+  animation: toast-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+             toast-out 0.4s ease 4.6s forwards;
+             
+  pointer-events: auto; /* Reactivar clics en el toast */
+  display: flex;
+  align-items: center;
+  
+  /* Glassmorphism sutil para modernizar */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
-.toast--error { background-color: var(--color-error); }
-.toast--success { background-color: var(--color-success); }
+
+.toast--error { 
+  background-color: rgba(220, 53, 69, 0.95); /* var(--color-error) con transparencia */
+  border-left: 4px solid #a71d2a;
+}
+
+.toast--success { 
+  background-color: rgba(40, 167, 69, 0.95); /* var(--color-success) con transparencia */
+  border-left: 4px solid #1e7e34;
+}
 
 @keyframes toast-in {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 @keyframes toast-out {
-  to { transform: translateY(100%); opacity: 0; }
+  to { transform: translateX(100%); opacity: 0; }
 }
 
 /* Ajuste para móvil: Elevar toasts por encima de la barra inferior */
@@ -150,6 +208,24 @@ body.sidebar-is-open .sidebar-overlay {
   .toast-container {
     /* Espacio base + altura del header + zona segura de iOS/Android */
     bottom: calc(var(--space-md) + var(--mobile-header-height) + env(safe-area-inset-bottom));
+    left: var(--space-md); /* Centrado o ancho completo en móvil */
+    right: var(--space-md);
+    align-items: center;
+  }
+  
+  .toast {
+    width: 100%;
+    justify-content: center;
+    animation-name: toast-in-mobile, toast-out-mobile;
+  }
+
+  @keyframes toast-in-mobile {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes toast-out-mobile {
+    to { transform: translateY(20px); opacity: 0; }
   }
 
   .btn--pagination,

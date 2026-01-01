@@ -239,21 +239,13 @@ export const FILTER_CONFIG = {
   director: {
     label: "Directores",
     items: {
-      "Woody Allen": "Woody Allen",
-      "Alfred Hitchcock": "Hitchcock",
-      "Steven Spielberg": "Spielberg",
-      "Martin Scorsese": "Scorsese",
-      "Pedro Almodóvar": "Almodóvar",
+      // Se poblará dinámicamente desde la API (Top 100)
     },
   },
   actor: {
     label: "Actores",
     items: {
-      "Tom Cruise": "Tom Cruise",
-      "Robert De Niro": "De Niro",
-      "Brad Pitt": "Brad Pitt",
-      "Helen Mirren": "Helen Mirren",
-      "Javier Bardem": "Javier Bardem",
+      // Se poblará dinámicamente desde la API (Top 100)
     },
   },
 };

@@ -146,13 +146,13 @@ export const fetchActorSuggestions = async (term) => {
 };
 
 export const fetchRandomTopActors = async () => {
-  const { data, error } = await supabase.rpc("get_random_top_actors");
+  const { data, error } = await supabase.rpc("get_random_top_actors", { limit_count: 5 });
   if (error) return [];
   return data.map(d => d.name).filter(name => !IGNORED_ACTORS.includes(name.toLowerCase()));
 };
 
 export const fetchRandomTopDirectors = async () => {
-  const { data, error } = await supabase.rpc("get_random_top_directors");
+  const { data, error } = await supabase.rpc("get_random_top_directors", { limit_count: 5 });
   if (error) return [];
   return data.map(d => d.name);
 };

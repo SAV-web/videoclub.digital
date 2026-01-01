@@ -140,7 +140,7 @@ BEGIN
             FROM public.movies m
             WHERE
                 ($1 IS NULL OR $1 = '''' OR m.title_norm LIKE ''%'' || public.unaccent_immutable(lower($1)) || ''%'')
-                AND ($2 IS NULL OR m.genres_tsv @@ plainto_tsquery(''spanish'', $2))
+                AND ($2 IS NULL OR m.genres_tsv @@ plainto_tsquery(''spanish'', public.unaccent_immutable($2)))
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
                 AND ($5 IS NULL OR m.country_id = $5)
@@ -152,7 +152,7 @@ BEGIN
                 AND ($9 IS NULL OR m.selections_tsv @@ plainto_tsquery(''simple'', $9))
                 AND ($10 IS NULL OR m.studios_tsv @@ plainto_tsquery(''simple'', $10))
                 AND ($11 IS NULL OR NOT m.genres_tsv @@ (
-                    SELECT string_agg(plainto_tsquery(''spanish'', g)::text, '' | '')::tsquery FROM unnest($11) g
+                    SELECT string_agg(plainto_tsquery(''spanish'', public.unaccent_immutable(g))::text, '' | '')::tsquery FROM unnest($11) g
                 ))
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         )' || v_count_cte || '
@@ -363,7 +363,7 @@ $$;
 -- =================================================================
 
 CREATE OR REPLACE FUNCTION public.get_random_top_actors(limit_count int DEFAULT 5)
-RETURNS TABLE(name text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
+RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE AS $$
     WITH top_actors AS (
         SELECT a.name
         FROM public.actors a
@@ -376,7 +376,7 @@ RETURNS TABLE(name text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_random_top_directors(limit_count int DEFAULT 5)
-RETURNS TABLE(name text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
+RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE AS $$
     WITH top_directors AS (
         SELECT d.name
         FROM public.directors d
