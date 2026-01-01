@@ -215,8 +215,11 @@ function populateModal(cardElement) {
   const movieData = cardElement.movieData;
   const clone = dom.template.cloneNode(true);
 
-  // Resetear visibilidad de flechas al cargar nueva ficha
-  dom.modal.classList.remove("hide-arrows");
+  // Resetear visibilidad de flechas SOLO si abrimos la modal desde cero.
+  // Si ya está visible (navegación), mantenemos la preferencia del usuario.
+  if (!dom.modal.classList.contains("is-visible")) {
+    dom.modal.classList.remove("hide-arrows");
+  }
   
   // Añadimos clase modificadora para que el CSS sepa que es una modal
   const cardClone = clone.querySelector('.movie-card');
@@ -458,9 +461,11 @@ export function initQuickView() {
   if (dom.content) {
     dom.content.addEventListener("click", (e) => {
       handleMetadataClick(e);
-      // Toggle flechas al tocar el póster en móvil
-      if (window.innerWidth <= 700 && e.target.closest(".poster-container")) {
-        dom.modal.classList.toggle("hide-arrows");
+      // Toggle flechas al tocar la ficha en móvil (salvo interactivos)
+      if (window.innerWidth <= 700 && e.target.closest(".movie-card")) {
+        if (!e.target.closest("button, a, [data-action]")) {
+          dom.modal.classList.toggle("hide-arrows");
+        }
       }
     });
   }
