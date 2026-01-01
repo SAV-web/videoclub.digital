@@ -10,9 +10,9 @@
 //
 // =================================================================
 
-const CACHE_STATIC_NAME = "videoclub-static-v2";
-const CACHE_DYNAMIC_NAME = "videoclub-dynamic-v2";
-const CACHE_API_NAME = "videoclub-api-v2";
+const CACHE_STATIC_NAME = "videoclub-static-v4";
+const CACHE_DYNAMIC_NAME = "videoclub-dynamic-v4";
+const CACHE_API_NAME = "videoclub-api-v4";
 
 // --- 1. ACTIVOS CRÍTICOS (Blocking) ---
 // Sin esto, la app no arranca o se ve rota.
@@ -85,6 +85,16 @@ self.addEventListener("fetch", (event) => {
   // Nunca cachear peticiones REST (votos, watchlist) ni Auth. Deben ser siempre frescas.
   if (url.pathname.includes("/rest/v1/") || url.pathname.includes("/auth/v1/")) {
     return; // Salimos y dejamos que el navegador haga la petición de red normal
+  }
+
+  // === ESTRATEGIA NAVEGACIÓN: Network First (Para que index.html siempre esté fresco) ===
+  // Esto asegura que si actualizas la app, el usuario reciba el nuevo index.html (y nuevos JS)
+  // en lugar de la versión cacheada antigua.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
   }
 
   // === ESTRATEGIA API: Stale-While-Revalidate con Ventana de Frescura ===
