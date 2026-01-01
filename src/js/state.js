@@ -153,12 +153,13 @@ export function setTotalMovies(total) {
   state.totalMovies = total;
 }
 
-export function setFilter(filterType, value) {
+export function setFilter(filterType, value, bypassLimit = false) {
   if (filterType in state.activeFilters) {
     const isAddingNewFilter =
       value !== null && state.activeFilters[filterType] !== value;
       
     if (
+      !bypassLimit &&
       isAddingNewFilter &&
       getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS
     ) {

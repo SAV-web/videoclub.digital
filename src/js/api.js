@@ -35,10 +35,6 @@ const suggestionsCache = new LRUCache({
   ttl: 1000 * 60 * 5,
 });
 
-// 3. Mapa de peticiones en vuelo (Deduplicación)
-// Evita lanzar la misma petición de red si ya hay una idéntica procesándose.
-const inflightRequests = new Map();
-
 /**
  * Genera una clave única y determinista para la caché basada en los filtros.
  * Ordena las claves y los arrays para que {a:1, b:2} sea igual a {b:2, a:1}.
@@ -115,14 +111,8 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
     return queryCache.get(queryKey);
   }
 
-  // 2. Deduplicación (In-flight)
-  // Si ya hay una petición idéntica viajando, nos suscribimos a su promesa.
-  if (inflightRequests.has(queryKey)) {
-    return inflightRequests.get(queryKey);
-  }
-
-  // 3. Nueva Petición a Red
-  const requestPromise = (async () => {
+  // 2. Nueva Petición a Red
+  return (async () => {
     try {
       const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
       
@@ -156,14 +146,8 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
           return { aborted: true, items: [], total: -1 };
       }
       throw error;
-    } finally {
-      // Siempre limpiar el mapa de deduplicación al terminar
-      inflightRequests.delete(queryKey);
     }
   })();
-
-  inflightRequests.set(queryKey, requestPromise);
-  return requestPromise;
 }
 
 /**

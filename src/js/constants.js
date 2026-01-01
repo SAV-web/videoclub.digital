@@ -33,8 +33,8 @@ export const CONFIG = {
   DYNAMIC_PAGE_SIZE_LIMIT: 56, // Límite para mostrar resultados en una sola página
   
   // Filtros y Búsqueda
-  MAX_ACTIVE_FILTERS: 3,
-  MAX_EXCLUDED_FILTERS: 3, // Límite específico para exclusiones (ej: máx 3 géneros excluidos)
+  MAX_ACTIVE_FILTERS: 20,
+  MAX_EXCLUDED_FILTERS: 20, // Límite específico para exclusiones
   SEARCH_DEBOUNCE_DELAY: 400, // ms
   
   // Rangos

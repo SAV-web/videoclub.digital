@@ -367,8 +367,8 @@ function readUrlAndSetState() {
       else if (stateKey === "searchTerm") setSearchTerm(value);
       else if (stateKey === "sort") setSort(value);
       else if (stateKey === "mediaType") setMediaType(value);
-      else if (stateKey === "excludedGenres" || stateKey === "excludedCountries") setFilter(stateKey, value.split(","));
-      else setFilter(stateKey, value);
+      else if (stateKey === "excludedGenres" || stateKey === "excludedCountries") setFilter(stateKey, value.split(","), true);
+      else setFilter(stateKey, value, true);
     }
   });
   if (!params.has(REVERSE_URL_PARAM_MAP.sort)) setSort(DEFAULTS.SORT);
