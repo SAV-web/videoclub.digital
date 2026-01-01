@@ -7,10 +7,10 @@
  * ================================================================= */
 
 /* =================================================================
-   1. LAYOUT Y ESTRUCTURA BASE (Overlay y Contenedor)
+   1. QUICK VIEW: LAYOUT BASE (Overlay y Contenedor)
    ================================================================= */
 
-/* --- Overlay de Fondo (Efecto Cinemático) --- */
+/* --- Overlay de Fondo --- */
 .quick-view-overlay {
   position: fixed;
   inset: 0;
@@ -28,7 +28,7 @@
   pointer-events: none;
 }
 
-/* --- Contenedor Principal de la Modal --- */
+/* --- Contenedor Principal de la Modal (Quick View) --- */
 .quick-view-modal {
   position: fixed;
   z-index: calc(var(--z-index-overlay) + 1); /* Encima del overlay */
@@ -62,7 +62,7 @@
 }
 
 /* =================================================================
-   2. ESTRUCTURA INTERNA Y SCROLL
+   2. QUICK VIEW: ESTRUCTURA INTERNA Y RESETS
    ================================================================= */
 
 .quick-view-content {
@@ -72,7 +72,9 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  overscroll-behavior: contain;
 }
+
 .quick-view-content::-webkit-scrollbar { display: none; }
 
 /* --- Reset de Tarjeta para Modal --- */
@@ -86,7 +88,7 @@
 }
 
 .is-quick-view .flip-card-inner {
-  transform-style: flat;
+  transform-style: flat; /* Desactivamos 3D */
   box-shadow: none;
   display: flex;
   flex-direction: column; /* Móvil por defecto */
@@ -119,13 +121,13 @@
 }
 
 /* =================================================================
-   3. OVERRIDES DE COMPONENTES (Adaptación de Card a Modal)
+   3. QUICK VIEW: OVERRIDES DE COMPONENTES (Estilo "Gigante")
    =================================================================
    IMPORTANTE: Estas reglas sobrescriben los estilos de 'card.css'
-   para crear la estética "Gigante" y "Compacta" de la modal.
+   para adaptar los componentes al layout de la modal.
    ================================================================= */
 
-/* --- Imagen del Póster (Reset de estilos de Card) --- */
+/* --- Imagen del Póster --- */
 .is-quick-view .poster-container {
   height: auto; /* Permitir altura natural */
   width: 100%;
@@ -150,7 +152,7 @@
   padding-right: var(--space-xs);
 }
 
-/* Caja rígida para estabilidad visual */
+/* Caja rígida para estabilidad visual del título */
 .quick-view-modal .title-director-block {
   display: flex;
   flex-direction: column;
@@ -174,7 +176,7 @@
   text-overflow: ellipsis;
 }
 
-/* Variaciones de Título */
+/* Variaciones de Título para textos largos */
 .is-quick-view .movie-summary h3[data-template="title"].title-long {font-size: 1.6rem;}
 .is-quick-view .movie-summary h3[data-template="title"].title-xl-long {font-size: 1.3rem;}
 
@@ -303,14 +305,6 @@
   display: none;
 }
 
-/* --- Wikipedia Link (Estado Deshabilitado) --- */
-.is-quick-view [data-template="wikipedia-link"].disabled,
-.is-quick-view [data-template="justwatch-link"].disabled {
-  opacity: 0.3;
-  pointer-events: none;
-  filter: grayscale(100%);
-}
-
 /* --- Enlaces de Actores (Clickables) --- */
 .is-quick-view [data-template="actors"] a {
   color: inherit;
@@ -405,11 +399,16 @@
 .is-quick-view .expand-content-btn,
 .is-quick-view .actors-expand-btn { display: none; }
 
+/* --- Separación entre líneas de Rating --- */
+.is-quick-view .ratings-container {
+  gap: var(--space-lg);
+}
+
 /* =================================================================
-   4. ADAPTACIÓN RESPONSIVA
+   4. QUICK VIEW: ADAPTACIÓN RESPONSIVA Y GESTOS
    ================================================================= */
 
-/* --- Móvil / Tablet (<= 700px): Bottom Sheet --- */
+/* --- A) MÓVIL / TABLET (<= 700px): Bottom Sheet --- */
 @media (max-width: 700px) {
   /* Optimización de rendimiento: Menos blur en móvil para mejorar FPS */
   .quick-view-overlay {
@@ -424,7 +423,9 @@
     max-height: 85dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translate(-50%, 100%);
-    /* padding-bottom movido a .quick-view-content para mejor UX de scroll */
+    /* Optimizamos para GPU y transiciones suaves */
+    will-change: transform;
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   
   .quick-view-modal.is-visible {
@@ -438,6 +439,37 @@
   /* En móvil, .flip-card-inner ya es flex-column por defecto en .is-quick-view */
   .is-quick-view .flip-card-inner {
     flex-direction: column;
+  }
+  
+  /* --- Bottom Sheet Handle (Barrita gris) --- */
+  .quick-view-modal::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 5px;
+    background-color: var(--color-border);
+    border-radius: 10px;
+    z-index: 10;
+    pointer-events: none; /* Dejamos pasar el toque al JS */
+  }
+  
+  /* Clase para cuando estamos arrastrando (quita el lag de la transición) */
+  .quick-view-modal.is-dragging {
+    transition: none;
+  }
+  
+  .is-quick-view .flip-card-front {
+    /* Padding extra arriba para que la imagen no toque la barrita gris */
+    padding-top: 30px; 
+    /* Quitamos el borde inferior en móvil para que fluya mejor hacia los detalles */
+    border-bottom: none;
+  }
+  
+  .is-quick-view .flip-card-front img {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Sombra suave para separar del fondo */
   }
 }
 
@@ -487,87 +519,37 @@
     overscroll-behavior: contain; /* Evita que el scroll se propague al body */
     scrollbar-width: thin; /* Scrollbar fina y elegante */
   }
-}
-
-/* --- BOTTOM SHEET HANDLE (Solo Móvil) --- */
-@media (max-width: 700px) {
-  /* Añadimos un pseudo-elemento para la barrita gris */
-  .quick-view-modal::before {
-    content: "";
+  
+  /* --- Navegación Desktop (Flechas) --- */
+  .modal-nav-btn {
     position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 5px;
-    background-color: var(--color-border); /* O un gris suave #e0e0e0 */
-    border-radius: 10px;
-    z-index: 10;
-    pointer-events: none; /* Dejamos pasar el toque al JS */
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--color-text-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease, background-color 0.2s ease;
   }
-  
-  /* Aseguramos que la modal se mueva suavemente pero responda al dedo */
-  .quick-view-modal {
-    /* Quitamos la transición de transform durante el arrastre JS para que sea instantáneo */
-    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    /* Optimizamos para gpu */
-    will-change: transform;
+
+  html.dark-mode .modal-nav-btn {
+    background: rgba(40, 40, 40, 0.9);
   }
-  
-  /* Clase para cuando estamos arrastrando (quita el lag de la transición) */
-  .quick-view-modal.is-dragging {
-    transition: none;
-  }
-  .is-quick-view .flip-card-front {
-    /* Añadimos padding extra arriba para que la imagen no toque la barrita gris */
-    padding-top: 30px; 
-    /* Quitamos el borde inferior en móvil para que fluya mejor hacia los detalles */
-    border-bottom: none;
-  }
-  
-  /* Ajuste para que la imagen se vea limpia */
-  .is-quick-view .flip-card-front img {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Sombra suave para separar del fondo */
-  }
+
+  .modal-nav-btn:hover { transform: translateY(-50%) scale(1.1); background: var(--color-surface); }
+  .modal-nav-btn:active { transform: translateY(-50%) scale(0.95); }
+
+  .modal-nav-btn--prev { left: 20px; }
+  .modal-nav-btn--next { right: 20px; }
 }
-
-/* --- Separación entre líneas de Rating --- */
-.is-quick-view .ratings-container {
-  gap: var(--space-lg);
-}
-
-/* =================================================================
-   6. NAVEGACIÓN DESKTOP (Flechas)
-   ================================================================= */
-
-.modal-nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--color-text-primary);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  transition: transform 0.2s ease, background-color 0.2s ease;
-}
-
-html.dark-mode .modal-nav-btn {
-  background: rgba(40, 40, 40, 0.9);
-}
-
-.modal-nav-btn:hover { transform: translateY(-50%) scale(1.1); background: var(--color-surface); }
-.modal-nav-btn:active { transform: translateY(-50%) scale(0.95); }
-
-.modal-nav-btn--prev { left: 20px; }
-.modal-nav-btn--next { right: 20px; }
 
 /* Estado oculto temporalmente (al tocar póster en móvil) */
 .quick-view-modal.hide-arrows .modal-nav-btn {

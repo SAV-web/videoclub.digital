@@ -1,6 +1,6 @@
 // src/js/components/card.js
 
-import { CONFIG } from "../constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import {
   formatRuntime,
   formatVotesUnified,
@@ -8,7 +8,6 @@ import {
   triggerHapticFeedback,
   renderCountryFlag,
 } from "../utils.js";
-import { CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import { openModal } from "./modal.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
@@ -24,25 +23,30 @@ import {
 
 import spriteUrl from "../../sprite.svg";
 
-// --- Constantes y Estado ---
+// =================================================================
+//          CONSTANTES Y ESTADO
+// =================================================================
+
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
 const SQRT_MAX_VOTES = {
   FA: Math.sqrt(MAX_VOTES.FA),
   IMDB: Math.sqrt(MAX_VOTES.IMDB),
 };
+
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
 let renderedCardCount = 0;
 let currentlyFlippedCard = null;
 let currentRenderRequestId = 0; // Control de concurrencia para renderizado
 
-// =================================================================
-//          SISTEMA DE HOVER Y LOGICA UI
-// =================================================================
-
+// Variables para lógica de interacción
 let hoverTimeout;
 let currentHoveredCard = null;
 const HOVER_DELAY = 1000;
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn"; 
+
+// =================================================================
+//          1. GESTIÓN DE ESTADO DE TARJETA (Flip/Hover)
+// =================================================================
 
 function startFlipTimer(cardElement) {
   if (document.body.classList.contains("rotation-disabled")) return;
@@ -68,12 +72,69 @@ function clearCardHoverState(cardElement) {
   }
 }
 
-export function initCardInteractions(gridContainer) {
-  // =================================================================
-  //    SISTEMA DE INTERACCIÓN UNIFICADO (POINTER EVENTS)
-  // =================================================================
+function resetCardBackState(cardElement) {
+  const flipCardBack = cardElement.querySelector(".flip-card-back");
+  if (flipCardBack?.classList.contains("is-expanded")) {
+    flipCardBack.classList.remove("is-expanded", "show-actors");
+    const expandBtn = flipCardBack.querySelector(".expand-content-btn");
+    if (expandBtn) {
+      expandBtn.textContent = "+";
+      expandBtn.setAttribute("aria-label", "Expandir sinopsis");
+    }
+    const scrolls = flipCardBack.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+    scrolls.forEach(el => el.scrollTop = 0);
+  }
+}
+
+export function unflipAllCards() {
+  if (currentlyFlippedCard) {
+    currentlyFlippedCard.querySelector(".flip-card-inner")?.classList.remove("is-flipped");
+    resetCardBackState(currentlyFlippedCard);
+    currentlyFlippedCard = null;
+    document.removeEventListener("click", handleDocumentClick);
+  }
+}
+
+function handleDocumentClick(e) {
+  if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) {
+    unflipAllCards();
+  }
+}
+
+// =================================================================
+//          2. LÓGICA DE INTERACCIÓN (Pointer Events)
+// =================================================================
+
+/**
+ * Maneja el volteo manual (Tap) en dispositivos táctiles.
+ */
+const handleSingleTap = (cardElement) => {
+  if (!cardElement) return;
+  const inner = cardElement.querySelector(".flip-card-inner");
+  if (!inner) return;
+
+  const isThisCardFlipped = inner.classList.contains("is-flipped");
   
-  // 1. GESTIÓN DE HOVER (Solo Punteros tipo Mouse)
+  // Si tocamos otra tarjeta, cerrar la anterior
+  if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) {
+    unflipAllCards();
+  }
+  
+  inner.classList.toggle("is-flipped");
+  
+  if (!isThisCardFlipped) {
+    currentlyFlippedCard = cardElement;
+    // Pequeño delay para evitar que el mismo click cierre la tarjeta inmediatamente
+    setTimeout(() => document.addEventListener("click", handleDocumentClick), 0);
+  } else {
+    currentlyFlippedCard = null;
+    resetCardBackState(cardElement);
+    document.removeEventListener("click", handleDocumentClick);
+  }
+};
+
+export function initCardInteractions(gridContainer) {
+  // --- A. GESTIÓN DE HOVER (Solo Mouse) ---
   gridContainer.addEventListener("pointerover", (e) => {
       if (e.pointerType !== 'mouse') return;
       const target = e.target;
@@ -85,6 +146,7 @@ export function initCardInteractions(gridContainer) {
         currentHoveredCard = card;
         startFlipTimer(card);
       } else {
+        // Si estamos sobre elementos interactivos, pausar el flip automático
         if (target.closest(INTERACTIVE_SELECTOR)) cancelFlipTimer();
         else startFlipTimer(card);
       }
@@ -99,7 +161,7 @@ export function initCardInteractions(gridContainer) {
       }
   });
 
-  // 2. DOBLE CLICK (Nativo para Mouse)
+  // --- B. DOBLE CLICK (Nativo para Mouse) ---
   gridContainer.addEventListener("dblclick", (e) => {
     const card = e.target.closest(".movie-card");
     // Solo si estamos en modo rotación (si no, el click simple ya abre la modal)
@@ -108,7 +170,7 @@ export function initCardInteractions(gridContainer) {
     }
   });
 
-  // 3. TAP / DOUBLE-TAP (Táctil / Pen)
+  // --- C. TAP / DOUBLE-TAP (Táctil / Pen) ---
   // Implementación manual para eliminar el delay de 300ms y conflictos.
   let lastTapTime = 0;
   let tapTimeout = null;
@@ -117,29 +179,9 @@ export function initCardInteractions(gridContainer) {
   const DOUBLE_TAP_DELAY = 300; // ms
   const MOVE_THRESHOLD = 10; // px
 
-  const handleSingleTap = (cardElement) => {
-      if (!cardElement) return;
-      const inner = cardElement.querySelector(".flip-card-inner");
-      if (!inner) return;
-
-      const isThisCardFlipped = inner.classList.contains("is-flipped");
-      if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) {
-        unflipAllCards();
-      }
-      inner.classList.toggle("is-flipped");
-      if (!isThisCardFlipped) {
-        currentlyFlippedCard = cardElement;
-        setTimeout(() => document.addEventListener("click", handleDocumentClick), 0);
-      } else {
-        currentlyFlippedCard = null;
-        resetCardBackState(cardElement);
-        document.removeEventListener("click", handleDocumentClick);
-      }
-  };
-
   gridContainer.addEventListener('pointerdown', e => {
-      if (e.pointerType === 'mouse') return; // El ratón usa eventos nativos
-      if (!e.isPrimary) return; // Ignorar toques multitáctiles secundarios
+      if (e.pointerType === 'mouse') return; 
+      if (!e.isPrimary) return; 
 
       startX = e.clientX;
       startY = e.clientY;
@@ -149,7 +191,8 @@ export function initCardInteractions(gridContainer) {
       if (e.pointerType === 'mouse') return;
 
       const card = e.target.closest('.movie-card');
-      // Filtros de seguridad
+      
+      // Filtros de seguridad: Ignorar si no es tarjeta, si rotación desactivada o si es botón
       if (!card || document.body.classList.contains('rotation-disabled') || e.target.closest('[data-action], a, button, .expand-content-btn')) {
           return;
       }
@@ -160,7 +203,7 @@ export function initCardInteractions(gridContainer) {
       // Si hubo desplazamiento, es un scroll, no un tap
       if (diffX > MOVE_THRESHOLD || diffY > MOVE_THRESHOLD) return;
 
-      // 🔥 CRÍTICO: Prevenir el evento 'click' de compatibilidad que el navegador dispara después
+      // 🔥 CRÍTICO: Prevenir el evento 'click' de compatibilidad
       if (e.cancelable) e.preventDefault();
 
       const currentTime = new Date().getTime();
@@ -183,6 +226,174 @@ export function initCardInteractions(gridContainer) {
   });
 }
 
+// =================================================================
+//          3. MANEJADORES DE CLICS (Delegación)
+// =================================================================
+
+async function handleWatchlistClick(event) {
+  event.preventDefault(); event.stopPropagation();
+  const interactiveContainer = this;
+  const button = event.target.closest('[data-action="toggle-watchlist"]');
+  if (!interactiveContainer || !button) return;
+  
+  const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
+  const wasOnWatchlist = button.classList.contains("is-active");
+  const newUserData = { onWatchlist: !wasOnWatchlist };
+  
+  // Optimistic UI: Guardar estado previo para rollback
+  const previousUserData = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
+  
+  triggerHapticFeedback("light");
+  updateUserDataForMovie(movieId, newUserData);
+  updateCardUI(interactiveContainer);
+  
+  try {
+    await setUserMovieDataAPI(movieId, newUserData);
+    triggerHapticFeedback("success");
+  } catch (error) {
+    showToast(error.message, "error");
+    updateUserDataForMovie(movieId, previousUserData);
+    updateCardUI(interactiveContainer);
+  }
+}
+
+async function handleRatingClick(event) {
+  event.preventDefault(); event.stopPropagation();
+  const interactiveContainer = this;
+  const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
+  if (!movieId) return;
+  
+  const previousUserData = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
+  const currentUserData = previousUserData;
+  let newRating = null;
+  
+  const suspensoCircle = event.target.closest('[data-action="set-rating-suspenso"]');
+  const starElement = event.target.closest(".star-icon[data-rating-level]");
+  
+  if (suspensoCircle) {
+    // Toggle entre 2 (suspenso) y 3 (aprobado bajo) o nada
+    if (currentUserData.rating === null) newRating = 2;
+    else if (currentUserData.rating === 2) newRating = 3;
+    else newRating = null;
+  } else if (starElement) {
+    const level = parseInt(starElement.dataset.ratingLevel, 10);
+    const currentStars = calculateUserStars(currentUserData.rating);
+    // Lógica especial para estrella 1: toggle entre 2 y nota real
+    if (level === 1 && currentStars === 0) newRating = 2;
+    else newRating = level === currentStars ? null : LEVEL_TO_RATING_MAP[level - 1];
+  }
+  
+  if (newRating === currentUserData.rating) return;
+  
+  const newUserData = { rating: newRating };
+  triggerHapticFeedback("light");
+  updateUserDataForMovie(movieId, newUserData);
+  updateCardUI(interactiveContainer);
+  
+  try {
+    await setUserMovieDataAPI(movieId, newUserData);
+    if (newRating !== null) triggerHapticFeedback("success");
+  } catch (error) {
+    showToast(error.message, "error");
+    updateUserDataForMovie(movieId, previousUserData);
+    updateCardUI(interactiveContainer);
+  }
+}
+
+export function handleCardClick(event) {
+  // Ignorar si hay un gesto de pellizco reciente
+  if (document.body.dataset.gestureCooldown) {
+    event.preventDefault(); event.stopPropagation(); return;
+  }
+
+  const cardElement = this;
+  const target = event.target;
+
+  // 1. Acciones de botones (Watchlist, Rating...)
+  if (target.closest('[data-action="toggle-watchlist"]')) {
+    handleWatchlistClick.call(cardElement, event); return;
+  }
+  if (target.closest('[data-action^="set-rating-"]')) {
+    handleRatingClick.call(cardElement, event); return;
+  }
+
+  const flipCardBack = cardElement.querySelector(".flip-card-back");
+  const mainExpandBtn = target.closest(".expand-content-btn");
+  const actorsExpandBtn = target.closest(".actors-expand-btn");
+
+  // 2. Lógica de Botones de Expansión (+ / -)
+  if (actorsExpandBtn) {
+    event.stopPropagation();
+    flipCardBack.classList.add("is-expanded", "show-actors");
+    const bottomBtn = flipCardBack.querySelector(".expand-content-btn");
+    if (bottomBtn) {
+      bottomBtn.textContent = "−";
+      bottomBtn.setAttribute("aria-label", "Cerrar detalles");
+    }
+    return;
+  }
+
+  if (mainExpandBtn) {
+    event.stopPropagation();
+    const isExpanded = flipCardBack.classList.contains("is-expanded");
+    if (isExpanded) {
+      resetCardBackState(cardElement);
+    } else {
+      flipCardBack.classList.add("is-expanded");
+      flipCardBack.classList.remove("show-actors");
+      mainExpandBtn.textContent = "−";
+      mainExpandBtn.setAttribute("aria-label", "Contraer sinopsis");
+    }
+    return;
+  }
+
+  // 3. Bloquear volteo al interactuar con contenido expandido (scroll)
+  const isInsideExpandedContent = 
+    (target.closest('.scrollable-content') && flipCardBack.classList.contains('is-expanded')) ||
+    target.closest('.actors-scrollable-content');
+
+  if (isInsideExpandedContent) {
+    // Permitir clic en actores, bloquear resto (scroll)
+    if (!target.closest('.actor-list-item')) {
+       event.stopPropagation(); return; 
+    }
+  }
+
+  // 4. Lógica de Enlaces (Director, Actor...)
+  const directorLink = target.closest(".front-director-info a[data-director-name]");
+  if (directorLink) {
+    event.preventDefault();
+    document.dispatchEvent(new CustomEvent("filtersReset", { 
+      detail: { keepSort: true, newFilter: { type: "director", value: directorLink.dataset.directorName } } 
+    }));
+    return;
+  }
+
+  const actorBtn = target.closest(".actor-list-item");
+  if (actorBtn) {
+    event.preventDefault();
+    document.dispatchEvent(new CustomEvent("filtersReset", { 
+      detail: { keepSort: true, newFilter: { type: "actor", value: actorBtn.dataset.actorName } } 
+    }));
+    return;
+  }
+
+  const externalLink = target.closest("a");
+  if (externalLink && externalLink.href && !externalLink.href.endsWith("#")) return;
+
+  // 5. Lógica de Apertura Modal (Modo Muro)
+  if (cardElement.id === 'quick-view-content') return;
+  const isRotationDisabled = document.body.classList.contains("rotation-disabled");
+  
+  if (isRotationDisabled) {
+    openModal(cardElement);
+  }
+}
+
+// =================================================================
+//          4. RENDERIZADO Y POBLADO DE DATOS
+// =================================================================
+
 const lazyLoadObserver = new IntersectionObserver(
   (entries, observer) => {
     entries.forEach((entry) => {
@@ -199,119 +410,6 @@ const lazyLoadObserver = new IntersectionObserver(
   { rootMargin: "0px 0px 800px 0px" }
 );
 
-async function handleWatchlistClick(event) {
-  event.preventDefault(); event.stopPropagation();
-  const interactiveContainer = this;
-  const button = event.target.closest('[data-action="toggle-watchlist"]');
-  if (!interactiveContainer || !button) return;
-  const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
-  const wasOnWatchlist = button.classList.contains("is-active");
-  const newUserData = { onWatchlist: !wasOnWatchlist };
-  // FIX: Usar state como fuente de verdad para el rollback, no el DOM
-  const previousUserData = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
-  triggerHapticFeedback("light");
-  updateUserDataForMovie(movieId, newUserData);
-  updateCardUI(interactiveContainer);
-  try {
-    await setUserMovieDataAPI(movieId, newUserData);
-    triggerHapticFeedback("success");
-  } catch (error) {
-    showToast(error.message, "error");
-    updateUserDataForMovie(movieId, previousUserData);
-    updateCardUI(interactiveContainer);
-  }
-}
-
-async function handleRatingClick(event) {
-  event.preventDefault(); event.stopPropagation();
-  const interactiveContainer = this;
-  const movieId = parseInt(interactiveContainer.dataset.movieId, 10);
-  if (!movieId) return;
-  // FIX: Usar state como fuente de verdad. currentUserData es el estado actual antes del cambio.
-  const previousUserData = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
-  const currentUserData = previousUserData;
-  let newRating = null;
-  const suspensoCircle = event.target.closest('[data-action="set-rating-suspenso"]');
-  const starElement = event.target.closest(".star-icon[data-rating-level]");
-  if (suspensoCircle) {
-    if (currentUserData.rating === null) newRating = 2;
-    else if (currentUserData.rating === 2) newRating = 3;
-    else newRating = null;
-  } else if (starElement) {
-    const level = parseInt(starElement.dataset.ratingLevel, 10);
-    const currentStars = calculateUserStars(currentUserData.rating);
-    if (level === 1 && currentStars === 0) newRating = 2;
-    else newRating = level === currentStars ? null : LEVEL_TO_RATING_MAP[level - 1];
-  }
-  if (newRating === currentUserData.rating) return;
-  const newUserData = { rating: newRating };
-  triggerHapticFeedback("light");
-  updateUserDataForMovie(movieId, newUserData);
-  updateCardUI(interactiveContainer);
-  try {
-    await setUserMovieDataAPI(movieId, newUserData);
-    if (newRating !== null) triggerHapticFeedback("success");
-  } catch (error) {
-    showToast(error.message, "error");
-    updateUserDataForMovie(movieId, previousUserData);
-    updateCardUI(interactiveContainer);
-  }
-}
-
-export function updateCardUI(cardElement) {
-  const movieId = parseInt(cardElement.dataset.movieId, 10);
-  const movieData = cardElement.movieData;
-  if (!movieData) return;
-  const userData = getUserDataForMovie(movieId);
-  const userRating = userData?.rating;
-  const starContainer = cardElement.querySelector('[data-action="set-rating-estrellas"]');
-  const lowRatingCircle = cardElement.querySelector('[data-action="set-rating-suspenso"]');
-  const watchlistButton = cardElement.querySelector('[data-action="toggle-watchlist"]');
-  const isLoggedIn = document.body.classList.contains("user-logged-in");
-  
-  if (!starContainer || !lowRatingCircle || !watchlistButton) return;
-  
-  cardElement.dataset.previousUserData = JSON.stringify(userData || { onWatchlist: false, rating: null });
-  const isOnWatchlist = userData?.onWatchlist ?? false;
-  
-  watchlistButton.classList.toggle("is-active", isOnWatchlist);
-  watchlistButton.setAttribute("aria-label", isOnWatchlist ? "Quitar de mi lista" : "Añadir a mi lista");
-  
-  lowRatingCircle.style.display = "none";
-  starContainer.style.display = "none";
-  
-  if (isLoggedIn && userRating !== null && userRating !== undefined) {
-    starContainer.classList.add("has-user-rating");
-    lowRatingCircle.classList.add("has-user-rating");
-    if (userRating === 2) lowRatingCircle.style.display = "block";
-    else if (userRating >= 3) {
-      starContainer.style.display = "flex";
-      renderUserStars(starContainer, calculateUserStars(userRating), true);
-    }
-} else {
-    // ESTADO: NO LOGUEADO O SIN VOTO (Minimalista)
-    starContainer.classList.remove("has-user-rating");
-    lowRatingCircle.classList.remove("has-user-rating");
-    
-    const ratings = [movieData.fa_rating, movieData.imdb_rating].filter(r => r && r > 0);
-    if (ratings.length > 0) {
-      const average = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-      
-      // Si la nota es mala, círculo. Si es buena, estrellas.
-      if (average <= 5.5) {
-        lowRatingCircle.style.display = "block";
-      } else {
-        starContainer.style.display = "flex";
-        renderAverageStars(starContainer, calculateAverageStars(average));
-      }
-    }
-  }
-}
-
-// =================================================================
-//          LOGICA OPTIMIZADA (TRAVERSING & SCOPED LOOKUPS)
-// =================================================================
-
 function setupCardImage(imgElement, movieData) {
   const version = movieData.last_synced_at ? new Date(movieData.last_synced_at).getTime() : "1";
   const basePosterUrl = movieData.image && movieData.image !== "."
@@ -321,11 +419,12 @@ function setupCardImage(imgElement, movieData) {
   
   imgElement.alt = `Póster de ${movieData.title}`;
   
-  // Lógica LCP optimizada: cargamos eager las primeras 4 (suficiente para móvil y desktop)
+  // LCP: Carga eager para las primeras 4 tarjetas
   if (renderedCardCount < 4) {
     imgElement.src = highQualityPoster;
     imgElement.loading = "eager";
     imgElement.setAttribute("fetchpriority", "high");
+    imgElement.decoding = "auto"; 
   } else {
     if (movieData.thumbhash_st) {
       imgElement.src = movieData.thumbhash_st;
@@ -357,10 +456,7 @@ function formatActorsWithEllipsis(actorsString, maxLength = 85) {
   return { truncated: truncatedActors.join(", "), full: allActors, isTruncated: true };
 }
 
-// ✨ OPTIMIZACIÓN 2.A: Recibimos el elemento card y usamos lookups acotados
-// En lugar de buscar en todo el clon, buscamos en contenedores específicos (frontContext, backContext)
 function populateCardText(cardElement, movieData) {
-  // Contextos de búsqueda (reduce el árbol de búsqueda)
   const frontContext = cardElement.querySelector('.movie-summary');
   const backContext = cardElement.querySelector('.flip-card-back');
 
@@ -435,7 +531,7 @@ function populateCardText(cardElement, movieData) {
 
   backContext.querySelector(SELECTORS.GENRE).textContent = movieData.genres || "Género no disponible";
   
-  // Actores
+  // --- ACTORES (Optimizado) ---
   const actorsEl = backContext.querySelector(SELECTORS.ACTORS);
   const actorsData = formatActorsWithEllipsis(movieData.actors);
   actorsEl.textContent = actorsData.truncated;
@@ -444,40 +540,51 @@ function populateCardText(cardElement, movieData) {
   const hasInteractiveActors = rawActors.length > 0 && !IGNORED_ACTORS.includes(rawActors.toLowerCase());
 
   if (hasInteractiveActors) {
+    // 1. Botón de expansión
     const actorsContainer = actorsEl.parentElement;
     if (!actorsContainer.querySelector(".actors-expand-btn")) {
         const expandBtn = createElement("button", { className: "actors-expand-btn", textContent: "+", attributes: { "aria-label": "Ver reparto completo" } });
         actorsContainer.appendChild(expandBtn);
     }
-    const actorsOverlay = cardElement.querySelector('.actors-scrollable-content');
-    if (actorsOverlay) {
-       actorsOverlay.textContent = "";
-       actorsOverlay.appendChild(createElement("h4", { textContent: "Reparto" }));
-       const listDiv = createElement("div", { className: "actors-list-text" });
-       movieData.actors.split(',').forEach(actor => {
-         const name = actor.trim();
-         if (name) {
-           if (IGNORED_ACTORS.includes(name.toLowerCase())) {
-             listDiv.appendChild(createElement("span", {
-               className: "actor-list-item",
-               textContent: name,
-               style: "cursor: default; pointer-events: none;"
-             }));
-           } else {
-             listDiv.appendChild(createElement("button", {
-               type: "button",
-               className: "actor-list-item",
-               textContent: name,
-               dataset: { actorName: name }
-             }));
-           }
-         }
-       });
-       actorsOverlay.appendChild(listDiv);
+    
+    // 2. Overlay de lista (Lazy creation: solo si hay actores)
+    let actorsOverlay = backContext.querySelector('.actors-scrollable-content');
+    if (!actorsOverlay) {
+        actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
+        const expandBtn = backContext.querySelector(".expand-content-btn");
+        backContext.insertBefore(actorsOverlay, expandBtn);
     }
+    
+    // Poblar lista
+    actorsOverlay.textContent = "";
+    actorsOverlay.appendChild(createElement("h4", { textContent: "Reparto" }));
+    const listDiv = createElement("div", { className: "actors-list-text" });
+    
+    movieData.actors.split(',').forEach(actor => {
+      const name = actor.trim();
+      if (name) {
+        if (IGNORED_ACTORS.includes(name.toLowerCase())) {
+          listDiv.appendChild(createElement("span", {
+            className: "actor-list-item",
+            textContent: name,
+            style: "cursor: default; pointer-events: none;"
+          }));
+        } else {
+          listDiv.appendChild(createElement("button", {
+            type: "button",
+            className: "actor-list-item",
+            textContent: name,
+            dataset: { actorName: name }
+          }));
+        }
+      }
+    });
+    actorsOverlay.appendChild(listDiv);
+
   } else {
-    // Limpieza si no hay actores (reutilización de nodos)
+    // Limpieza si no hay actores
     actorsEl.parentElement.querySelector(".actors-expand-btn")?.remove();
+    backContext.querySelector('.actors-scrollable-content')?.remove();
   }
 
   backContext.querySelector(SELECTORS.SYNOPSIS).textContent = movieData.synopsis || "Argumento no disponible.";
@@ -490,12 +597,10 @@ function populateCardText(cardElement, movieData) {
     criticContainer.style.display = 'none';
   }
 
-  // Iconos Plataforma (Usa el contenedor del Front)
+  // Iconos Plataforma
   const iconsContainer = frontContext.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
-    
-    // Combinamos estudios y selecciones para mostrar iconos
     const codes = [
       ...(movieData.studios_list ? movieData.studios_list.split(",") : []),
       ...(movieData.selections_list ? movieData.selections_list.split(",") : [])
@@ -516,14 +621,9 @@ function populateCardText(cardElement, movieData) {
   }
 }
 
-// ✨ OPTIMIZACIÓN 2.A: Ahora acepta un CONTENEDOR, no un objeto de elementos
-// Esto permite que 'createMovieCard' no tenga que buscar estos elementos previamente.
-// La función busca solo lo que necesita DENTRO del contenedor pasado.
 export function setupCardRatings(containerElement, movieData) {
   const setupRating = (platform, maxVotesKey) => {
-    // Búsqueda eficiente (scoped)
     const link = containerElement.querySelector(`[data-template="${platform}-link"]`);
-    // Si no existe el link, asumimos que el resto tampoco (fail fast)
     if (!link) return;
 
     const ratingEl = containerElement.querySelector(`[data-template="${platform}-rating"]`);
@@ -552,7 +652,7 @@ export function setupCardRatings(containerElement, movieData) {
     votesBarContainer.style.display = votesCount > 0 ? "block" : "none";
     if (votesCount > 0) {
       votesBar.style.width = `${Math.min((Math.sqrt(votesCount) / SQRT_MAX_VOTES[maxVotesKey]) * 100, 100)}%`;
-      votesBarContainer.title = ""; // Tooltip eliminado
+      votesBarContainer.title = ""; 
       votesBarContainer.dataset.votes = formatVotesUnified(votesCount, platform);
       if (votesCountEl) {
         votesCountEl.textContent = formatVotesUnified(votesCount, platform);
@@ -567,136 +667,50 @@ export function setupCardRatings(containerElement, movieData) {
   setupRating("imdb", "IMDB");
 }
 
-function resetCardBackState(cardElement) {
-  const flipCardBack = cardElement.querySelector(".flip-card-back");
-  if (flipCardBack?.classList.contains("is-expanded")) {
-    flipCardBack.classList.remove("is-expanded", "show-actors");
-    const expandBtn = flipCardBack.querySelector(".expand-content-btn");
-    if (expandBtn) {
-      expandBtn.textContent = "+";
-      expandBtn.setAttribute("aria-label", "Expandir sinopsis");
-    }
-    const scrolls = flipCardBack.querySelectorAll(".scrollable-content, .actors-scrollable-content");
-    scrolls.forEach(el => el.scrollTop = 0);
-  }
-}
-
-export function unflipAllCards() {
-  if (currentlyFlippedCard) {
-    currentlyFlippedCard.querySelector(".flip-card-inner")?.classList.remove("is-flipped");
-    resetCardBackState(currentlyFlippedCard);
-    currentlyFlippedCard = null;
-    document.removeEventListener("click", handleDocumentClick);
-  }
-}
-
-function handleDocumentClick(e) {
-  if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) {
-    unflipAllCards();
-  }
-}
-
-export function handleCardClick(event) {
-  // Ignorar si hay un gesto de pellizco reciente (evita abrir modal accidentalmente)
-  if (document.body.dataset.gestureCooldown) {
-    event.preventDefault();
-    event.stopPropagation();
-    return;
-  }
-
-  const cardElement = this;
-  const target = event.target;
-
-  // 1. Acciones de botones (Watchlist, Rating...)
-  if (target.closest('[data-action="toggle-watchlist"]')) {
-    handleWatchlistClick.call(cardElement, event);
-    return;
-  }
-  if (target.closest('[data-action^="set-rating-"]')) {
-    handleRatingClick.call(cardElement, event);
-    return;
-  }
-
-  const flipCardBack = cardElement.querySelector(".flip-card-back");
-  const mainExpandBtn = target.closest(".expand-content-btn");
-  const actorsExpandBtn = target.closest(".actors-expand-btn");
-
-  // 2. Lógica de Botones de Expansión (+ / -)
-  if (actorsExpandBtn) {
-    event.stopPropagation();
-    flipCardBack.classList.add("is-expanded", "show-actors");
-    const bottomBtn = flipCardBack.querySelector(".expand-content-btn");
-    if (bottomBtn) {
-      bottomBtn.textContent = "−";
-      bottomBtn.setAttribute("aria-label", "Cerrar detalles");
-    }
-    return;
-  }
-
-  if (mainExpandBtn) {
-    event.stopPropagation();
-    const isExpanded = flipCardBack.classList.contains("is-expanded");
-    if (isExpanded) {
-      resetCardBackState(cardElement);
-    } else {
-      flipCardBack.classList.add("is-expanded");
-      flipCardBack.classList.remove("show-actors");
-      mainExpandBtn.textContent = "−";
-      mainExpandBtn.setAttribute("aria-label", "Contraer sinopsis");
-    }
-    return;
-  }
-
-  // --- 🔥 FIX CRÍTICO: Bloquear volteo al interactuar con contenido expandido ---
-  // Si estamos haciendo clic en el texto de la sinopsis expandida o en la lista de actores,
-  // detenemos aquí para que no llegue a la lógica de "Flip".
-  // Excepción: Los enlaces de actores (.actor-list-item) sí deben funcionar.
-  const isInsideExpandedContent = 
-    (target.closest('.scrollable-content') && flipCardBack.classList.contains('is-expanded')) ||
-    target.closest('.actors-scrollable-content');
-
-  if (isInsideExpandedContent) {
-    // Si es un clic en un actor (filtro), dejamos que pase al siguiente bloque
-    if (target.closest('.actor-list-item')) {
-       // Pasa al siguiente if (lógica de filtro de actor)
-    } else {
-       // Si es solo texto o scroll, paramos.
-       event.stopPropagation();
-       return; 
-    }
-  }
-  // -----------------------------------------------------------------------------
-
-  // 3. Lógica de Enlaces (Director, Actor...)
-  const directorLink = target.closest(".front-director-info a[data-director-name]");
-  if (directorLink) {
-    event.preventDefault();
-    document.dispatchEvent(new CustomEvent("filtersReset", { 
-      detail: { keepSort: true, newFilter: { type: "director", value: directorLink.dataset.directorName } } 
-    }));
-    return;
-  }
-
-  const actorBtn = target.closest(".actor-list-item");
-  if (actorBtn) {
-    event.preventDefault();
-    document.dispatchEvent(new CustomEvent("filtersReset", { 
-      detail: { keepSort: true, newFilter: { type: "actor", value: actorBtn.dataset.actorName } } 
-    }));
-    return;
-  }
-
-  const externalLink = target.closest("a");
-  if (externalLink && externalLink.href && !externalLink.href.endsWith("#")) return;
-
-  // 4. Lógica de Volteo (Flip)
-  if (cardElement.id === 'quick-view-content') return;
-  const isRotationDisabled = document.body.classList.contains("rotation-disabled");
+export function updateCardUI(cardElement) {
+  const movieId = parseInt(cardElement.dataset.movieId, 10);
+  const movieData = cardElement.movieData;
+  if (!movieData) return;
+  const userData = getUserDataForMovie(movieId);
+  const userRating = userData?.rating;
+  const starContainer = cardElement.querySelector('[data-action="set-rating-estrellas"]');
+  const lowRatingCircle = cardElement.querySelector('[data-action="set-rating-suspenso"]');
+  const watchlistButton = cardElement.querySelector('[data-action="toggle-watchlist"]');
+  const isLoggedIn = document.body.classList.contains("user-logged-in");
   
-  // La lógica de tap/double-tap en móvil se gestiona en `initCardInteractions`.
-  // Este manejador ahora solo se preocupa por el modo muro.
-  if (isRotationDisabled) {
-    openModal(cardElement);
+  if (!starContainer || !lowRatingCircle || !watchlistButton) return;
+  
+  cardElement.dataset.previousUserData = JSON.stringify(userData || { onWatchlist: false, rating: null });
+  const isOnWatchlist = userData?.onWatchlist ?? false;
+  
+  watchlistButton.classList.toggle("is-active", isOnWatchlist);
+  watchlistButton.setAttribute("aria-label", isOnWatchlist ? "Quitar de mi lista" : "Añadir a mi lista");
+  
+  lowRatingCircle.style.display = "none";
+  starContainer.style.display = "none";
+  
+  if (isLoggedIn && userRating !== null && userRating !== undefined) {
+    starContainer.classList.add("has-user-rating");
+    lowRatingCircle.classList.add("has-user-rating");
+    if (userRating === 2) lowRatingCircle.style.display = "block";
+    else if (userRating >= 3) {
+      starContainer.style.display = "flex";
+      renderUserStars(starContainer, calculateUserStars(userRating), true);
+    }
+} else {
+    starContainer.classList.remove("has-user-rating");
+    lowRatingCircle.classList.remove("has-user-rating");
+    
+    const ratings = [movieData.fa_rating, movieData.imdb_rating].filter(r => r && r > 0);
+    if (ratings.length > 0) {
+      const average = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+      if (average <= 5.5) {
+        lowRatingCircle.style.display = "block";
+      } else {
+        starContainer.style.display = "flex";
+        renderAverageStars(starContainer, calculateAverageStars(average));
+      }
+    }
   }
 }
 
@@ -715,20 +729,13 @@ function createMovieCard(movieData) {
   cardElement.movieData = movieData;
   if (movieData.id) cardElement.style.viewTransitionName = `movie-${movieData.id}`;
   
-  const backFace = cardClone.querySelector(".flip-card-back");
-  if (backFace) {
-    const actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
-    const expandBtn = backFace.querySelector(".expand-content-btn");
-    backFace.insertBefore(actorsOverlay, expandBtn);
-  }
+  // NOTA: La creación del div 'actors-scrollable-content' se ha movido a populateCardText
+  // para evitar crear nodos vacíos innecesarios.
 
-  // ✨ MEJORA 2.A: ELIMINADO EL OBJETO GIGANTE 'elements'.
-  // Pasamos directamente el cardElement para que las funciones busquen de forma 'scoped'.
-  
   populateCardText(cardElement, movieData);
   setupCardImage(cardElement.querySelector("img"), movieData);
   
-  // setupCardRatings ahora busca dentro del backFace, mucho más eficiente
+  const backFace = cardClone.querySelector(".flip-card-back");
   setupCardRatings(backFace, movieData);
   
   updateCardUI(cardElement);
@@ -738,7 +745,7 @@ function createMovieCard(movieData) {
 }
 
 export function renderMovieGrid(gridContainer, movies) {
-  const renderId = ++currentRenderRequestId; // Nuevo ID para esta ejecución
+  const renderId = ++currentRenderRequestId;
   renderedCardCount = 0; 
   unflipAllCards();
   if (!gridContainer) return;
@@ -748,7 +755,6 @@ export function renderMovieGrid(gridContainer, movies) {
   let currentIndex = 0;
 
   function renderBatch() {
-    // Si ha empezado otro renderizado (esqueletos, otra página, etc.), detenemos este.
     if (renderId !== currentRenderRequestId) return;
 
     if (currentIndex >= movies.length || !document.body.contains(gridContainer)) return;
@@ -776,7 +782,7 @@ export function renderMovieGrid(gridContainer, movies) {
 }
 
 export function renderSkeletons(gridContainer, paginationContainer) {
-  currentRenderRequestId++; // Invalidar cualquier renderizado de películas en curso
+  currentRenderRequestId++;
   if (gridContainer) gridContainer.textContent = "";
   if (paginationContainer) paginationContainer.textContent = "";
   if (!gridContainer) return;
@@ -788,7 +794,7 @@ export function renderSkeletons(gridContainer, paginationContainer) {
 }
 
 export function renderNoResults(gridContainer, paginationContainer, activeFilters) {
-  currentRenderRequestId++; // Invalidar renders anteriores
+  currentRenderRequestId++;
   if (gridContainer) gridContainer.textContent = "";
   if (paginationContainer) paginationContainer.textContent = "";
   if (!gridContainer) return;
@@ -805,7 +811,7 @@ export function renderNoResults(gridContainer, paginationContainer, activeFilter
 }
 
 export function renderErrorState(gridContainer, paginationContainer, message) {
-  currentRenderRequestId++; // Invalidar renders anteriores
+  currentRenderRequestId++;
   if (gridContainer) gridContainer.textContent = "";
   if (paginationContainer) paginationContainer.textContent = "";
   if (!gridContainer) return;

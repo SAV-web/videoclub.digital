@@ -151,6 +151,56 @@ async function handleSearchInput() {
   }
 }
 
+// =================================================================
+//          MANEJADORES DE EVENTOS GLOBALES (Extraídos)
+// =================================================================
+
+let isTicking = false;
+let lastScrollY = 0;
+
+function handleGlobalScroll() {
+  if (!isTicking) {
+    window.requestAnimationFrame(() => {
+      const currentScrollY = window.scrollY;
+      
+      // 1. Estado Scrolled (Sombra/Borde)
+      dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
+
+      // 2. Lógica Smart Hide para Móvil (Ocultar al bajar, Mostrar al subir)
+      if (window.innerWidth <= 700) {
+        const isScrollingDown = currentScrollY > lastScrollY;
+        const scrollDifference = Math.abs(currentScrollY - lastScrollY);
+        // Detectar si estamos cerca del final (buffer de 50px) para mostrar siempre el header
+        const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
+
+        if (isAtBottom) {
+          dom.mainHeader.classList.remove('is-hidden-mobile');
+        } else if (scrollDifference > 5) {
+          // Ocultar si bajamos y ya hemos pasado el inicio (60px)
+          dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
+        }
+      }
+
+      lastScrollY = currentScrollY;
+      isTicking = false;
+    });
+    isTicking = true;
+  }
+}
+
+function handleFiltersReset(e) {
+  const { keepSort, newFilter } = e.detail || {};
+  const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
+  resetFiltersState();
+  setSort(currentSort);
+  if (newFilter) setFilter(newFilter.type, newFilter.value);
+  dom.searchInput.value = "";
+  dom.sortSelect.value = currentSort;
+  updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
+  document.dispatchEvent(new CustomEvent("updateSidebarUI"));
+  loadAndRenderMovies(1);
+}
+
 function setupHeaderListeners() {
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
   dom.searchInput.addEventListener("input", debouncedSearch);
@@ -237,42 +287,10 @@ function setupGlobalListeners() {
   });
   initCardInteractions(dom.gridContainer);
   document.getElementById("quick-view-content").addEventListener("click", function(e) { handleCardClick.call(this, e); });
-  let isTicking = false;
-  let lastScrollY = window.scrollY;
-
-  window.addEventListener("scroll", () => {
-    if (!isTicking) {
-      window.requestAnimationFrame(() => {
-        const currentScrollY = window.scrollY;
-        
-        // 1. Estado Scrolled (Sombra/Borde)
-        dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
-
-        // 2. Lógica Smart Hide para Móvil (Ocultar al bajar, Mostrar al subir)
-        if (window.innerWidth <= 700) {
-          const isScrollingDown = currentScrollY > lastScrollY;
-          const scrollDifference = Math.abs(currentScrollY - lastScrollY);
-          // Detectar si estamos cerca del final (buffer de 50px) para mostrar siempre el header
-          const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
-
-          if (isAtBottom) {
-            dom.mainHeader.classList.remove('is-hidden-mobile');
-          } else if (scrollDifference > 5) {
-            // Ocultar si bajamos y ya hemos pasado el inicio (60px)
-            if (isScrollingDown && currentScrollY > 60) {
-              dom.mainHeader.classList.add('is-hidden-mobile');
-            } else {
-              dom.mainHeader.classList.remove('is-hidden-mobile');
-            }
-          }
-        }
-
-        lastScrollY = currentScrollY;
-        isTicking = false;
-      });
-      isTicking = true;
-    }
-  }, { passive: true });
+  
+  lastScrollY = window.scrollY;
+  window.addEventListener("scroll", handleGlobalScroll, { passive: true });
+  
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { closeMobileDrawer(); }
   });
@@ -404,18 +422,8 @@ function init() {
   };
   document.addEventListener("userMovieDataChanged", handleDataRefresh);
   document.addEventListener("userDataUpdated", handleDataRefresh);
-  document.addEventListener("filtersReset", (e) => {
-    const { keepSort, newFilter } = e.detail || {};
-    const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
-    resetFiltersState();
-    setSort(currentSort);
-    if (newFilter) setFilter(newFilter.type, newFilter.value);
-    dom.searchInput.value = "";
-    dom.sortSelect.value = currentSort;
-    updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
-    document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-    loadAndRenderMovies(1);
-  });
+  document.addEventListener("filtersReset", handleFiltersReset);
+  
   initSidebar();
   initQuickView();
   initThemeToggle();

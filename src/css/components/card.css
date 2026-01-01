@@ -37,9 +37,6 @@
   animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 40ms);
   transition: transform var(--duration-quick) var(--ease-spring);
-  /* GPU Acceleration: Promueve la tarjeta a su propia capa de composición
-     para animaciones más suaves (transform y opacity). */
-  will-change: transform, opacity;
   /* Renderizado optimizado */
   content-visibility: auto;
   contain-intrinsic-size: 165px 314px;
@@ -239,7 +236,6 @@ html.dark-mode .flip-card-inner.is-flipped {
   
   margin-right: 0;
   
-  /* CAMBIO AQUÍ: Aumentamos de xs (0.5rem) a md (1rem) */
   margin-left: var(--space-xs); /* Reducido para apretar los iconos */
   
   pointer-events: auto; 
@@ -619,6 +615,7 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
   
   /* Levitación sutil */
   .movie-card:not(.is-flipped):hover {
+    will-change: transform; /* Optimización: Solo crear capa al interactuar */
     transform: translateY(-8px) translateZ(0) scale(1.02);
     filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
   }
@@ -648,150 +645,6 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
     transform: scale(1.2);
     filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
     cursor: pointer;
-  }
-}
-
-/* =================================================================
-   10. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
-   ================================================================= */
-
-/* Ajuste de la tarjeta para ser puramente visual */
-body.rotation-disabled .movie-card:not(.is-quick-view) {
-  aspect-ratio: 2 / 3.2; /* Formato más vertical, ajustado al póster + estrellas */
-  transition: transform var(--duration-quick) ease;
-}
-
-/* Ocultar resumen de texto (título, director, etc.) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .movie-summary {
-  display: none;
-}
-
-/* El contenedor del póster ocupa casi todo, dejando espacio abajo */
-body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
-  height: 88%; /* El póster domina */
-  object-fit: cover;
-  border-radius: var(--radius-md);
-}
-
-/* Bloque de valoración (Estrellas/Suspenso) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
-  position: static; /* Para que el botón watchlist se posicione respecto al poster-container */
-  transform: none;
-  bottom: auto;
-  left: auto;
-  right: auto;
-  height: 12%; /* El espacio restante abajo */
-  justify-content: center; /* Centrado horizontal */
-  padding: 2px 0 0 0;
-  background: transparent;
-}
-
-/* Reducción de tamaño del 33% (aprox 0.67) para estrellas */
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container,
-body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-circle {
-  transform: scale(0.7);
-  transform-origin: center top;
-}
-
-/* Botón Watchlist: Solo visible si activo, arriba a la derecha */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 10;
-  display: none; /* Oculto por defecto */
-  transform: scale(0.7); /* Reducción de tamaño */
-  background-color: rgba(0, 0, 0, 0.6); /* Fondo para contraste sobre póster */
-  border-radius: 50%;
-}
-
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn.is-active {
-  display: flex; /* Solo se ve si está marcado */
-}
-
-/* En móvil (táctil), desactivar interacción en elementos pequeños */
-@media (hover: none) and (pointer: coarse) {
-  body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block,
-  body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
-    pointer-events: none;
-  }
-}
-
-/* =================================================================
-   10. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
-   ================================================================= */
-
-/* Ajuste de la tarjeta para ser puramente visual */
-body.rotation-disabled .movie-card:not(.is-quick-view) {
-  aspect-ratio: 2 / 3.2; /* Formato más vertical, ajustado al póster + estrellas */
-  transition: transform var(--duration-quick) ease;
-}
-
-/* Ocultar resumen de texto (título, director, etc.) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .movie-summary {
-  display: none;
-}
-
-/* El contenedor del póster ocupa casi todo, dejando espacio abajo */
-body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
-  height: 88%; /* El póster domina */
-  object-fit: cover;
-  border-radius: var(--radius-md);
-}
-
-/* Bloque de valoración (Estrellas/Suspenso) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
-  position: static; /* Para que el botón watchlist se posicione respecto al poster-container */
-  transform: none;
-  bottom: auto;
-  left: auto;
-  right: auto;
-  height: 12%; /* El espacio restante abajo */
-  justify-content: center; /* Centrado horizontal */
-  padding: 2px 0 0 0;
-  background: transparent;
-}
-
-/* Reducción de tamaño del 33% (aprox 0.67) para estrellas */
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container,
-body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-circle {
-  transform: scale(0.7);
-  transform-origin: center top;
-}
-
-/* Botón Watchlist: Solo visible si activo, arriba a la derecha */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 10;
-  display: none; /* Oculto por defecto */
-  transform: scale(0.7); /* Reducción de tamaño */
-  background-color: rgba(0, 0, 0, 0.6); /* Fondo para contraste sobre póster */
-  border-radius: 50%;
-}
-
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn.is-active {
-  display: flex; /* Solo se ve si está marcado */
-}
-
-/* En móvil (táctil), desactivar interacción en elementos pequeños */
-@media (hover: none) and (pointer: coarse) {
-  body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block,
-  body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
-    pointer-events: none;
   }
 }
 
