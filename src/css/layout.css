@@ -2,9 +2,7 @@
  *          LAYOUT MAESTRO (Estructura y Adaptabilidad)
  * =================================================================
  *  FICHERO: src/css/layout.css
- *  RESPONSABILIDAD: Definir el esqueleto de la aplicación, el sistema
- *  de rejilla (Grid), el comportamiento responsive (Móvil vs Desktop)
- *  y las animaciones de transición entre páginas.
+ *  ESTRATEGIA: Mobile-First, Propiedades Lógicas y View Transitions.
  * ================================================================= */
 
 :root {
@@ -15,12 +13,12 @@
    1. ESTRUCTURA MACRO (Wrappers)
    ================================================================= */
 
-/* Contenedor Flex Principal (Sidebar + Contenido) */
+/* Contenedor Flex Principal */
 .main-layout {
   display: flex;
   width: 100%;
   min-height: 100vh;
-  min-height: 100dvh; /* Soporte para móviles modernos */
+  min-height: 100dvh; /* Soporte robusto para móviles (barras dinámicas) */
 }
 
 /* Columna Derecha (Header + Grid) */
@@ -28,24 +26,23 @@
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Evita desbordamientos de flexbox */
-  
-  /* Asegura que el fondo cubra todo el viewport siempre */
-  min-height: 100vh;
+  min-width: 0; /* Previene desbordamientos en Flexbox (CSS Grid blowout fix) */
   min-height: 100dvh;
 }
 
-/* Contenedor interno con padding */
+/* Contenedor interno */
 .content {
   flex-grow: 1;
   width: 100%;
-  margin: 0 auto;
   max-width: 1440px;
+  margin-inline: auto; /* Centrado horizontal lógico */
   
-  /* Padding Base (Móvil) */
-  padding: var(--space-md) var(--space-md) calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-bottom));
+  /* Padding Base (Móvil) - Cálculo con zona segura */
+  padding: 
+    var(--space-md) 
+    var(--space-md) 
+    calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-bottom));
   
-  /* Transición suave al cambiar de tamaño */
   transition: padding 0.3s ease;
 }
 
@@ -56,56 +53,57 @@
 /* --- Estilos Base y Móvil (Drawer Flotante) --- */
 .sidebar {
   position: fixed;
-  left: 0; top: 0;
+  inset-block: 0; /* top: 0; bottom: 0; */
+  inset-inline-start: 0; /* left: 0; */
   width: var(--sidebar-width-mobile); 
-  height: 100vh;
-  height: 100dvh;
   z-index: var(--z-index-sidebar);
-  overflow-y: auto; /* Permitir scroll en todo el sidebar */
-  -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+  
   background-color: var(--color-surface);
-  border-right: 2px solid var(--color-border);
-  /* Cálculo automático para esconderlo exactamente su ancho */
-  transform: translateX(calc(-1 * var(--sidebar-width-mobile)));
-  /* Definición ÚNICA y completa de transiciones */
+  border-inline-end: 2px solid var(--color-border); /* Borde derecho lógico */
+  
+  /* Scroll y UX */
+  overflow-y: auto;
+  overscroll-behavior: contain; /* Evita arrastrar el body al terminar el scroll */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  
+  /* Estado Inicial: Oculto a la izquierda */
+  transform: translateX(-100%); 
+  
+  /* Rendimiento: Aislar renderizado y preparar animación */
+  contain: layout style;
+  will-change: transform;
+  
+  /* Gestos Táctiles */
+  touch-action: pan-y; /* Permite scroll vertical, JS maneja horizontal */
+
   transition: 
     transform 0.3s var(--ease-snap),
     width var(--transition-duration-normal),
     background-color var(--transition-duration-normal),
     border-color var(--transition-duration-normal);
-
-  /* Ocultar barra de scroll en móvil (Firefox) */
-  scrollbar-width: none;
-  
-  /* UX TÁCTIL: Navegador maneja scroll vertical, JS maneja swipe horizontal (cerrar) */
-  touch-action: pan-y;
 }
 
-/* Ocultar barra de scroll en móvil (Chrome/Safari) */
-.sidebar::-webkit-scrollbar {
-  display: none;
-}
+/* Ocultar barra de scroll (Chrome/Safari) */
+.sidebar::-webkit-scrollbar { display: none; }
 
-/* Estado Abierto en Móvil */
-body.sidebar-is-open .sidebar {
-  transform: translateX(0);
-}
+/* Estado Abierto (Móvil) */
+body.sidebar-is-open .sidebar { transform: translateX(0); }
 
-/* --- Elementos internos del Sidebar (Visibilidad Responsiva) --- */
+/* --- Visibilidad de Contenido Interno (Optimización) --- */
 .sidebar .logo-area,
 .sidebar .sidebar-static-filters,
 .sidebar .sidebar-scrollable-filters {
-  /* En móvil, ocultamos el contenido mientras está cerrado para rendimiento */
   opacity: 0; visibility: hidden;
   transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
 }
 
 .sidebar .play-button-container {
-  display: none; /* Oculto en móvil cerrado */
+  display: none; 
   flex-direction: column; gap: var(--space-md); margin-top: var(--space-xs);
 }
 
-/* Cuando se abre el sidebar móvil: */
+/* Animación de entrada de contenido al abrir */
 body.sidebar-is-open .sidebar .logo-area,
 body.sidebar-is-open .sidebar .sidebar-static-filters,
 body.sidebar-is-open .sidebar .sidebar-scrollable-filters {
@@ -116,20 +114,21 @@ body.sidebar-is-open .sidebar .play-button-container {
   display: flex; flex-direction: row; margin-top: 0;
 }
 
-/* --- Estilos Desktop (Sticky Sidebar) --- */
-/* NOTA: Breakpoint 769px (no 701px) para mantener el sidebar oculto en Tablets (iPad vertical)
-   y aprovechar el ancho completo para el grid de películas. */
+/* --- Estilos Desktop (Sticky) --- */
+/* Breakpoint 769px: Coherencia con JS sidebar.js */
 @media (min-width: 769px) {
   .sidebar {
     position: sticky;
-    transform: none; /* Reseteamos posición */
-    flex-basis: 200px;
+    transform: none; /* Reset de posición */
     width: 200px;
-    z-index: var(--z-index-sidebar);
-    overflow: hidden; /* En desktop, bloqueamos el scroll general */
+    flex-basis: 200px; /* Flexbox sizing */
+    
+    /* En desktop bloqueamos scroll general, usamos scroll interno */
+    overflow: hidden; 
+    border-inline-end: 2px solid var(--color-border);
   }
 
-  /* Restaurar visibilidad permanente en escritorio */
+  /* Restaurar visibilidad */
   .sidebar .logo-area,
   .sidebar .sidebar-static-filters,
   .sidebar .sidebar-scrollable-filters {
@@ -141,67 +140,60 @@ body.sidebar-is-open .sidebar .play-button-container {
     margin-top: 0; margin-bottom: var(--space-lg);
   }
 
-  /* Sidebar Colapsado (Solo Desktop) */
-  body.sidebar-collapsed .sidebar { flex-basis: 65px; }
+  /* Estado Colapsado (Desktop Only) */
+  body.sidebar-collapsed .sidebar { flex-basis: 65px; width: 65px; } /* width explícito necesario para transiciones */
+  
   body.sidebar-collapsed .logo-area,
   body.sidebar-collapsed .sidebar-static-filters,
   body.sidebar-collapsed .sidebar-scrollable-filters { display: none; }
-  body.sidebar-collapsed .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
-}
-
-/* Excepción para pantallas apaisadas con poca altura (Móvil Landscape) */
-@media (min-width: 769px) and (max-height: 600px) {
-  .sidebar {
-    overflow-y: auto; /* Permitir scroll completo en lugar de interno */
+  
+  body.sidebar-collapsed .play-button-container { 
+    flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); 
   }
 }
 
+/* Excepción: Móvil Landscape (Poca altura) */
+@media (min-width: 769px) and (max-height: 600px) {
+  .sidebar { overflow-y: auto; }
+}
+
 /* =================================================================
-   3. HEADER PRINCIPAL (Estructura y Posición)
+   3. HEADER PRINCIPAL
    ================================================================= */
 
 .main-header {
   display: flex;
   align-items: center;
-  /* El gap lo definimos aquí porque afecta al layout de los hijos */
   gap: var(--space-xs);
   z-index: var(--z-index-header);
   
-  /* --- MÓVIL: Posición Inferior (Bottom Bar) --- */
+  /* --- MÓVIL: Bottom Bar --- */
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  inset-inline: 0; /* left: 0; right: 0; */
   top: auto;
-  border-radius: 0;
   
-  /* Layout interno móvil */
-  flex-wrap: nowrap;
-  justify-content: center; /* Centra los controles en la barra inferior */
+  /* Padding ajustado a zona segura inferior */
   padding: var(--space-xs) var(--space-md) calc(var(--space-xs) + env(safe-area-inset-bottom));
+  justify-content: center;
+  flex-wrap: nowrap;
 }
 
-/* --- DESKTOP: Sticky Superior --- */
-/* NOTA: Breakpoint 701px. En Tablets (701-768px) el header sube arriba (estilo Desktop)
-   aunque el sidebar siga oculto. Estrategia Híbrida. */
+/* --- DESKTOP: Sticky Top --- */
+/* Breakpoint 701px: Estrategia Híbrida Tablet */
 @media (min-width: 701px) {
   .main-header {
     position: sticky;
     top: 0;
-    left: 0;
-    right: 0;
-    border-radius: 0;
     bottom: auto;
     
-    /* Layout interno desktop */
-    flex-wrap: wrap;
-    justify-content: center;
     padding: var(--space-lg) var(--space-xxl) var(--space-md);
     gap: var(--space-md) var(--space-lg);
+    justify-content: center;
+    flex-wrap: wrap;
   }
 }
 
-/* Visibilidad de Paginación en Header */
 .header-pagination-group { display: flex; gap: 2px; }
 
 /* =================================================================
@@ -211,14 +203,13 @@ body.sidebar-is-open .sidebar .play-button-container {
 .grid-container {
   display: grid;
   justify-content: start;
-  
-  /* --- MÓVIL PEQUEÑO (< 400px) --- */
-  /* Solo forzamos 2 columnas estrictas por debajo de 400px. */
-  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-sm);
+  
+  /* Estrategia Mobile-First: < 400px = 2 columnas forzadas */
+  grid-template-columns: repeat(2, 1fr);
 }
 
-/* Estado de Carga */
+/* Estado de Carga (Feedback visual) */
 .grid-container.is-fetching {
   opacity: 0.6;
   pointer-events: none;
@@ -226,15 +217,8 @@ body.sidebar-is-open .sidebar .play-button-container {
   transition: opacity 0.2s ease-out;
 }
 
-/* --- ADAPTATIVO UNIVERSAL (>= 400px) --- */
-/* A partir de 400px, soltamos la restricción y dejamos que el navegador
-   meta tantas fichas de 165px como quepan.
-   
-   Ejemplos:
-   - Móvil ancho (430px): 2 columnas cómodas.
-   - Tablet pequeña (600px): 3 columnas.
-   - iPad (768px): 4 columnas.
-*/
+/* --- ADAPTATIVO (>= 400px) --- */
+/* El navegador calcula automáticamente cuántas columnas caben */
 @media (min-width: 400px) {
   .grid-container {
     grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
@@ -242,49 +226,42 @@ body.sidebar-is-open .sidebar .play-button-container {
   }
 }
 
-/* --- MODO MURO (Rotation Disabled / Modal Mode) --- */
-/* Priorizamos cantidad sobre detalle: reducción del ~33% en tamaño mínimo */
+/* --- MODO MURO (Compacto) --- */
 body.rotation-disabled .grid-container {
   grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
   gap: var(--space-xs);
 }
 
-/* --- DESKTOP (>= 769px) --- */
-/* Mantenemos este bloque solo para ajustar el espaciado (gap) a medidas
-   de escritorio, pero el grid ya viene arreglado desde los 400px. */
+/* --- DESKTOP TWEAKS --- */
 @media (min-width: 701px) {
   .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
-  
-  .grid-container {
-    gap: var(--space-lg) var(--space-md);
-  }
+  .grid-container { gap: var(--space-lg) var(--space-md); }
 }
 
-/* Breakpoints para pantallas muy anchas (HD/4K) - Opcional pero recomendado */
-@media (min-width: 62em) { /* ~992px */
-  .grid-container { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+/* Opcional: Ajuste para pantallas Ultra-Wide */
+@media (min-width: 1600px) {
+  .content { max-width: 1800px; }
 }
 
 /* =================================================================
-   5. TIPOGRAFÍA FLUIDA Y ACCESIBILIDAD TÁCTIL
+   5. TIPOGRAFÍA FLUIDA & ACCESIBILIDAD
    ================================================================= */
 
-/* Escalado de fuentes según viewport */
-@media (min-width: 48em) { /* Tablet */
+/* Escala fluida */
+@media (min-width: 48em) {
   :root { --font-size-md: 1.25rem; --font-size-lg: 1.5rem; --font-size-xl: 1.75rem; --font-size-xxl: 2.25rem; }
 }
-@media (min-width: 62em) { /* Desktop */
+@media (min-width: 62em) {
   :root { --font-size-md: 1.5rem; --font-size-lg: 1.75rem; --font-size-xl: 2.25rem; --font-size-xxl: 3rem; }
 }
 
-/* Mejoras para Punteros Gruesos (Dedos) */
+/* UX Puntero Grueso (Dedos) */
 @media (hover: none) and (pointer: coarse) {
   #sort-select, .search-form input {
     height: 44px;
-    font-size: 1rem; /* Evita zoom en iOS */
+    font-size: 1rem; /* Previene zoom automático en iOS */
   }
   
-  /* Botones de paginación más grandes en móvil */
   .pagination-container > .btn,
   .pagination-container > .pagination-current {
     --btn-height: 36px;
@@ -292,7 +269,7 @@ body.rotation-disabled .grid-container {
 }
 
 /* =================================================================
-   6. ANIMACIONES DE TRANSICIÓN (View Transitions API)
+   6. VIEW TRANSITIONS (Animaciones entre páginas)
    ================================================================= */
 
 @keyframes card-enter-animation {
@@ -302,15 +279,18 @@ body.rotation-disabled .grid-container {
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
 
+/* Animación global */
 ::view-transition-old(root) { animation-name: fade-out; }
 ::view-transition-new(root) { animation-name: fade-in; }
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 0.25s; animation-timing-function: ease-in-out;
 }
-::view-transition-group(main-header) { z-index: 1; }
 
-/* Transiciones específicas para tarjetas */
+/* Aislamiento del header durante la transición */
+::view-transition-group(main-header) { z-index: 100; }
+
+/* Animación granular de tarjetas */
 ::view-transition-group(movie-*) { animation-duration: 0.5s; animation-timing-function: ease; }
 ::view-transition-new(movie-*) { animation-name: card-enter-animation; }
 ::view-transition-old(movie-*) { animation-name: fade-out; }

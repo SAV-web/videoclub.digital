@@ -1,37 +1,54 @@
 /* src/css/base/globals.css */
 
 /* =================================================================
-   ESTILOS GLOBALES Y RESET
+   RESET Y ESTILOS BASE
    ================================================================= */
 
-/* --- 1. Reset Básico --- */
+/* 1. Box Sizing Universal */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* --- 2. Configuración del Body --- */
+/* 2. Configuración Raíz */
+html {
+  font-size: 100%; /* Respeta configuración del usuario */
+  scroll-behavior: smooth; /* Scroll suave para anclas */
+  
+  /* Scrollbar Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-bg);
+}
+
+/* 3. Configuración del Body */
 body {
   font-family: var(--font-body);
-  background-color: var(--color-bg); /* Consume token */
-  color: var(--color-text-primary);  /* Consume token */
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
   
-  overflow-x: hidden;
   line-height: var(--line-height-normal);
+  overflow-x: hidden; /* Evita scroll horizontal accidental */
   
-  /* Rendering de texto optimizado */
+  /* Renderizado de texto */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "cv05", "calt", "case";
 
-  /* Transición suave de tema global */
-  transition: background-color var(--transition-duration-normal) var(--transition-timing-function),
-              color var(--transition-duration-normal) var(--transition-timing-function);
+  /* Transición de tema suave (Solo colores base) */
+  transition: 
+    background-color var(--transition-duration-normal) var(--transition-timing-function),
+    color var(--transition-duration-normal) var(--transition-timing-function);
 }
 
-/* --- 3. Scrollbar Personalizada --- */
+/* 4. Reset de Imágenes y Medios */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* 5. Scrollbar Personalizada (Webkit) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -42,26 +59,20 @@ body {
 ::-webkit-scrollbar-thumb {
   background-color: var(--color-border);
   border-radius: var(--radius-pill);
-  border: 2px solid var(--color-bg); /* Espacio visual */
+  border: 2px solid var(--color-bg); /* Margen visual */
 }
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-text-secondary);
 }
 
-/* Soporte Firefox */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) var(--color-bg);
-}
-
-/* --- 4. Estados de Body (Bloqueo de Scroll) --- */
+/* 6. Estados de Bloqueo de Scroll */
 body.modal-open,
 body.sidebar-is-open {
   overflow: hidden;
-  overscroll-behavior: none; /* Evita rebote elástico en móviles */
+  overscroll-behavior: none; /* Previene efecto rebote en iOS */
 }
 
-/* --- 5. Utilidades de Accesibilidad --- */
+/* 7. Utilidad: Screen Reader Only (Accesible) */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -74,6 +85,7 @@ body.sidebar-is-open {
   border-width: 0;
 }
 
+/* 8. Preferencias de Movimiento Reducido */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -83,7 +95,7 @@ body.sidebar-is-open {
   }
 }
 
-/* --- 6. Animaciones Globales --- */
+/* 9. Animaciones Globales */
 @keyframes pop-effect {
   50% { transform: scale(1.1); }
 }
@@ -91,11 +103,13 @@ body.sidebar-is-open {
   animation: pop-effect 0.3s var(--transition-timing-function);
 }
 
-/* --- 7. Mejoras Táctiles (Mobile Web App) --- */
+/* 10. Optimizaciones Táctiles (Mobile App Feel) */
 button, input, select, textarea, a {
-  touch-action: manipulation; /* Elimina delay de 300ms y zoom de doble toque */
+  /* Elimina delay de 300ms y zoom de doble toque */
+  touch-action: manipulation; 
 }
 
+/* Elimina el resaltado gris al tocar en iOS/Android */
 * {
-  -webkit-tap-highlight-color: transparent; /* Elimina flash gris al pulsar en iOS */
+  -webkit-tap-highlight-color: transparent; 
 }
