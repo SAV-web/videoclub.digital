@@ -5,70 +5,60 @@
 .main-header {
   background-color: var(--color-bg);
   
-  /* Bordes base (Móvil tiene borde arriba) */
-  border-top: 1px solid var(--color-border);
-  border-bottom: none;
-  border-left: none;
-  border-right: none;
+  /* Bordes base (Móvil: Borde superior) */
+  border-block-start: 1px solid var(--color-border);
   
   /* View Transitions API */
   view-transition-name: main-header;
 
-  /* ✨ CENTRALIZACIÓN DE TRANSICIONES:
-     Aquí se definen TODAS las propiedades que animan, tanto para el tema
-     como para el scroll. Se eliminan de layout.css para evitar conflictos. */
+  /* Transiciones unificadas para cambio de tema y scroll */
   transition: 
     background-color var(--transition-duration-normal),
-    padding-top 0.3s ease,
-    padding-bottom 0.3s ease,
+    padding-block 0.3s ease,
     box-shadow 0.3s ease,
     border-color var(--transition-duration-normal),
     transform 0.3s ease;
 }
 
-/* Estilos específicos Desktop */
-/* Estrategia Híbrida: A partir de 701px (Tablet) el header se comporta como Desktop */
+/* --- Estilos Desktop (Sticky Superior) --- */
 @media (min-width: 701px) {
   .main-header {
-    border: none; /* Reset de borde base */
-    border-bottom: 1px solid transparent; /* Preparamos para el scroll */
+    border: none;
+    border-bottom: 1px solid transparent; /* Preparación para estado scroll */
   }
-}
 
-/* --- Estado: Scrolled (Solo Desktop) --- */
-/* FIX: Envolver en media query para no romper el padding safe-area en móvil */
-@media (min-width: 701px) {
+  /* Estado Scrolled: Reducción de padding y sombra */
   .main-header.is-scrolled {
-    /* Reduce el padding vertical (override de layout) */
-    padding-top: var(--space-sm);
-    padding-bottom: var(--space-sm);
-    
-    /* Feedback visual */
-    border-bottom: 1px solid var(--color-border);
+    padding-block: var(--space-sm);
     border-bottom-color: var(--color-border);
     background-color: var(--color-surface);
     box-shadow: var(--shadow);
   }
 }
 
-/* --- Elementos Internos --- */
+/* =================================================================
+   ELEMENTOS INTERNOS
+   ================================================================= */
 
-/* Grupos de controles */
+/* --- Layout de Grupos --- */
 .main-header-primary-controls,
 .search-and-theme-group {
   flex-wrap: nowrap;
 }
 
-/* Input de búsqueda */
+/* --- Input de Búsqueda --- */
 .search-form input {
   height: 40px;
-  padding: 0 var(--space-xl) 0 var(--space-md);
+  /* padding-inline define izquierda y derecha automáticamente */
+  padding-inline: var(--space-md) var(--space-xl);
+  padding-block: 0;
+  
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-primary);
-  transition: min-width var(--transition-duration-normal) ease-in-out;
   min-width: 130px;
+  transition: min-width var(--transition-duration-normal) ease-in-out;
 }
 
 .search-form input::placeholder { color: var(--color-text-secondary); }
@@ -83,7 +73,7 @@ html.dark-mode .search-form input:focus {
   box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2);
 }
 
-/* Ocultar la "X" nativa de los inputs type="search" para usar la nuestra personalizada */
+/* Reset de estilos nativos de búsqueda (Webkit) */
 .search-form input::-webkit-search-decoration,
 .search-form input::-webkit-search-cancel-button,
 .search-form input::-webkit-search-results-button,
@@ -92,18 +82,19 @@ html.dark-mode .search-form input:focus {
   -webkit-appearance: none;
 }
 
-/* Selector de Ordenación */
-.sort-control { position: relative; } /* Para posicionar el pseudo-elemento flecha */
+/* --- Selector de Ordenación --- */
+.sort-control { position: relative; }
 
 #sort-select {
   height: 40px;
-  width: 130px; /* Aumentado para acomodar icono y texto */
+  width: 130px;
   color: var(--color-text-primary);
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 0 var(--space-sm);
-  padding-right: 1.8em; /* Espacio para la flecha */
+  padding-inline: var(--space-sm) 1.8em;
+  padding-block: 0;
+  
   -moz-appearance: none;
   -webkit-appearance: none;
   appearance: none;
@@ -111,36 +102,27 @@ html.dark-mode .search-form input:focus {
   font-family: inherit;
 }
 
-/* Triángulo CSS puro para el select (Reemplaza al SVG base64) */
+/* Triángulo CSS puro para el select */
 .sort-control::after {
   content: "";
   position: absolute;
   right: 12px;
   top: 50%;
-  width: 0.6em;
-  height: 0.4em;
+  transform: translateY(-50%);
+  width: 0.6em; height: 0.4em;
   background-color: var(--color-text-primary);
   clip-path: polygon(100% 0%, 0 0%, 50% 100%);
-  transform: translateY(-50%);
   pointer-events: none;
 }
 
-/* Icono de ordenación (Oculto por defecto en escritorio) */
-.sort-icon {
-  display: none;
-  pointer-events: none;
-}
+/* Icono de ordenación (Visible solo en móvil) */
+.sort-icon { display: none; pointer-events: none; }
 
-/* Botón de hamburguesa para sidebar (Móvil) */
+/* --- Botón Hamburguesa (Móvil) --- */
 .mobile-sidebar-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: none;
-  background: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0;
+  border: none; background: none;
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: transform 0.2s ease, color 0.2s ease;
@@ -150,21 +132,17 @@ html.dark-mode .search-form input:focus {
 }
 .mobile-sidebar-toggle:active { transform: scale(0.9); }
 
-/* Ocultar botón solo en Desktop real (>= 769px).
-   En Tablet (701-768px) sigue visible porque el sidebar es un drawer. */
+/* Ocultar en Desktop (>= 769px) */
 @media (min-width: 769px) {
   .mobile-sidebar-toggle { display: none; }
 }
 
-/* Botones Toggle (Tipo de filtro, etc) */
+/* --- Toggle de Filtro (Tipo) --- */
 .type-filter-toggle {
   height: 40px;
-  padding: 0 var(--space-sm);
-  border: none;
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding-inline: var(--space-sm);
+  border: none; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1), 0 1px 1px rgba(0, 0, 0, 0.08);
   transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out, background-color 0.1s ease-in-out, color 0.1s ease-in-out;
@@ -172,7 +150,6 @@ html.dark-mode .search-form input:focus {
   color: var(--color-text-primary);
 }
 
-/* Por defecto (Móvil): Mostrar icono, ocultar texto */
 .type-filter-toggle .desktop-text { display: none; }
 .type-filter-toggle .mobile-icon { display: flex; align-items: center; }
 
@@ -187,24 +164,18 @@ html.dark-mode .search-form input:focus {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-/* Estados del filtro de tipo */
-.type-filter-toggle.type-filter--movies {
-  background-color: var(--color-accent);
-  color: #fff;
-}
-.type-filter-toggle.type-filter--series {
-  background-color: var(--color-accent-exclude);
-  color: #fff;
-}
+/* Variantes de Color */
+.type-filter-toggle.type-filter--movies { background-color: var(--color-accent); color: #fff; }
+.type-filter-toggle.type-filter--series { background-color: var(--color-accent-exclude); color: #fff; }
 
-/* Botón de Tema (Iconos) */
+/* --- Toggle de Tema --- */
 .theme-toggle {
   position: relative;
   width: 24px; height: 24px;
   background: none; border: none; padding: 0;
   cursor: pointer;
 }
-/* Heredar tamaño si está dentro de un control de sidebar */
+/* Reset específico para sidebar */
 .sidebar-control-button.theme-toggle { font-size: initial; }
 
 @media (hover: hover) and (pointer: fine) {
@@ -219,16 +190,15 @@ html.dark-mode .search-form input:focus {
   transition: opacity 0.4s ease-in-out, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Lógica visual sol/luna */
+/* Lógica Sol/Luna */
 .moon-icon { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 .sun-icon { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(-90deg); }
 
 html.dark-mode .moon-icon { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(90deg); }
 html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 
-/* Accesibilidad Táctil */
+/* --- Accesibilidad Táctil (Inputs Grandes) --- */
 @media (hover: none) and (pointer: coarse) {
-  /* Inputs y botones más grandes en móvil */
   .search-form input,
   #sort-select,
   .type-filter-toggle {
@@ -237,16 +207,20 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   }
 }
 
+/* =================================================================
+   ESTILOS MÓVIL (<= 700px)
+   ================================================================= */
 @media (max-width: 700px) {
-  /* --- 1. LAYOUT Y ESTILO UNIFICADO DE BOTONES --- */
-  /* Espaciado consistente para un look más ordenado */
+  
+  /* 1. Unificación de Espaciado */
   .main-header-primary-controls,
   .search-and-theme-group,
   .header-pagination-group {
     gap: var(--space-sm);
   }
 
-  /* Estilo de "botón enmarcado" para todos los controles */
+  /* 2. Unificación de Estilo de Botones (DRY - Código limpio) */
+  /* Aplicamos el estilo de "botón cuadrado enmarcado" a todos los controles */
   .mobile-sidebar-toggle,
   .sort-control,
   .type-filter-toggle,
@@ -254,20 +228,20 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .search-form {
     width: var(--tap-target-size);
     height: var(--tap-target-size);
+    padding: 0;
+    
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; position: relative;
+    
     border: 1px solid var(--color-border);
     background-color: var(--color-surface);
     border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
     box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
-    padding: 0;
-    position: relative;
+    
     transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
   }
 
-  /* Mejora de contraste en modo oscuro para los botones móviles */
+  /* Contraste Dark Mode */
   html.dark-mode .mobile-sidebar-toggle,
   html.dark-mode .sort-control,
   html.dark-mode .type-filter-toggle,
@@ -277,82 +251,67 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
     background-color: rgba(255, 255, 255, 0.08);
   }
 
-  /* Estado oculto al hacer scroll hacia abajo */
-  .main-header.is-hidden-mobile {
-    transform: translateY(100%);
-  }
-  
-  /* --- 2. AJUSTES ESPECÍFICOS --- */
+  /* 3. Ajustes Específicos */
   .mobile-sidebar-toggle { color: var(--color-text-primary); }
   .type-filter-toggle { font-size: 0.8rem; }
+  .type-filter-toggle .mobile-icon svg { width: 20px; height: 20px; }
 
-  /* Control de Ordenación (icono sobre select invisible) */
-  .sort-control::after { display: none; } /* Ocultar triángulo del select */
-  .sort-icon { display: block; color: var(--color-text-primary); } /* Mostrar icono SVG */
+  /* Smart Hide (Scroll Down) */
+  .main-header.is-hidden-mobile { transform: translateY(100%); }
+
+  /* --- Modificaciones de Controles para Móvil --- */
+  
+  /* Sort: Icono SVG visible, Select invisible encima */
+  .sort-control::after { display: none; }
+  .sort-icon { display: block; color: var(--color-text-primary); }
   #sort-select {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0; /* Invisible pero interactivo */
-    z-index: 2;
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0; z-index: 2;
   }
 
-  /* Control de Búsqueda (icono sobre input invisible) */
+  /* Búsqueda: Estado colapsado (lupa) */
   .search-form input { 
-    min-width: 44px; 
-    border: none;
-    background: transparent;
-    color: transparent; /* Ocultar placeholder "T" */
+    min-width: 100%; height: 100%;
+    border: none; background: transparent; color: transparent;
+    padding: 0;
   }
   .search-form .search-icon { right: 50%; transform: translate(50%, -50%); }
 
-  /* Expansión del buscador en móvil al hacer foco */
+  /* --- Estado: Búsqueda Expandida (Foco) --- */
   .main-header.is-search-focused .sort-control,
   .main-header.is-search-focused .type-filter-toggle,
   .main-header.is-search-focused .header-pagination-group {
     display: none;
   }
 
-  .main-header.is-search-focused .search-and-theme-group {
-    flex-grow: 1;
-  }
-  
-  .main-header.is-search-focused .search-form {
-    width: 80%;
-    /* El estilo de botón ya le da borde y fondo, no necesita más */
-  }
+  .main-header.is-search-focused .search-and-theme-group { flex-grow: 1; }
+  .main-header.is-search-focused .search-form { width: 80%; }
 
-  /* Ajuste fino para el icono en móvil */
-  .type-filter-toggle .mobile-icon svg { width: 20px; height: 20px; }
-
+  /* Restaurar aspecto de input al escribir */
   .main-header.is-search-focused .search-form input {
-    width: 100%;
-    min-width: 0;
-    /* Restaurar aspecto de input al escribir */
-    padding-left: var(--space-md); 
-    padding-right: var(--space-xxl); /* Espacio extra para el icono de 24px */
     color: var(--color-text-primary);
+    padding-inline-start: var(--space-md);
+    padding-inline-end: var(--space-xxl);
   }
-  .main-header.is-search-focused .search-icon { right: var(--space-sm); transform: translateY(-50%); }
+  .main-header.is-search-focused .search-icon { 
+    right: var(--space-sm); transform: translateY(-50%); 
+  }
 }
 
-/* --- Lógica de Iconos de Búsqueda (Idle vs Clear) --- */
+/* =================================================================
+   ESTADOS GLOBALES DE ICONOS
+   ================================================================= */
+
 .search-icon { transition: opacity 0.2s ease, transform 0.2s ease, right 0.2s ease; }
-
-.search-icon--clear {
-  opacity: 0;
-  pointer-events: none;
-}
+.search-icon--clear { opacity: 0; pointer-events: none; }
 
 .main-header.is-search-focused .search-icon--idle { opacity: 0; pointer-events: none; }
 .main-header.is-search-focused .search-icon--clear { 
-  opacity: 1; 
-  pointer-events: auto; cursor: pointer;
-  color: var(--color-text-primary);
+  opacity: 1; pointer-events: auto; cursor: pointer; color: var(--color-text-primary);
 }
 
-/* Desktop: Mostrar texto, ocultar icono */
+/* Desktop: Ajuste Toggle Texto/Icono */
 @media (min-width: 701px) {
   .type-filter-toggle .desktop-text { display: block; }
   .type-filter-toggle .mobile-icon { display: none; }
