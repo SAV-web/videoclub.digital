@@ -12,15 +12,14 @@
 }
 
 @keyframes watchlist-pop {
-  0% { transform: scale(1) rotate(0deg); }
+  0% { transform: scale(1); }
   50% { transform: scale(1.3) rotate(-5deg); }
   100% { transform: scale(1); }
 }
 
 @keyframes watchlist-glow {
-  0% { filter: drop-shadow(0 0 0 rgba(255, 189, 7, 0)); }
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 189, 7, 0)); }
   50% { filter: drop-shadow(0 0 10px rgba(255, 189, 7, 0.8)); }
-  100% { filter: drop-shadow(0 0 0 rgba(255, 189, 7, 0)); }
 }
 
 @keyframes fade-in-subtle {
@@ -30,17 +29,23 @@
 
 /* Contenedor principal */
 .movie-card {
+  position: relative;
   perspective: 1000px; /* Profundidad 3D */
   aspect-ratio: 500 / 950;
-  position: relative;
-  /* Animación de entrada escalonada (variable --card-index inyectada por JS) */
-  animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
-  animation-delay: calc(var(--card-index, 0) * 40ms);
-  transition: transform var(--duration-quick) var(--ease-spring);
-  /* Renderizado optimizado */
+  
+  /* Renderizado optimizado: Omitir renderizado fuera de pantalla */
   content-visibility: auto;
   contain-intrinsic-size: 165px 314px;
-  /* UX TÁCTIL: Permite pan/zoom, pero deshabilita "doble tap para zoom" del navegador */
+  /* Aislamiento para evitar repintados en el resto de la página */
+  contain: layout paint style; 
+
+  /* Animación de entrada escalonada */
+  animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
+  animation-delay: calc(var(--card-index, 0) * 40ms);
+  
+  transition: transform var(--duration-quick) var(--ease-spring);
+  
+  /* UX TÁCTIL: Permite pan/zoom, deshabilita "doble tap para zoom" y delay */
   touch-action: manipulation;
 }
 
@@ -51,10 +56,12 @@
   height: 100%;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+  
   transform-style: preserve-3d; /* Habilita el 3D real */
-  /* GPU Acceleration: Optimiza la animación de giro. */
-  will-change: transform;
   transition: transform var(--duration-leisurely) var(--ease-smooth-out);
+  
+  /* Optimización: Solo promover a capa GPU durante transición */
+  will-change: transform; 
 }
 
 .flip-card-inner.is-flipped { transform: rotateY(180deg); }
@@ -69,13 +76,14 @@ html.dark-mode .flip-card-inner.is-flipped {
 
 .flip-card-front, .flip-card-back {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0; /* Reemplaza top/left/width/height */
   border-radius: var(--radius-lg);
   overflow: hidden;
-  -webkit-backface-visibility: hidden; /* Oculta la cara opuesta */
+  
+  /* Oculta la cara opuesta */
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  
   background-color: var(--color-surface);
   color: var(--color-text-primary);
   display: flex;
@@ -85,7 +93,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 /* --- Cara Frontal --- */
 .flip-card-front {
   z-index: 2;
-  pointer-events: auto;
+  pointer-events: auto; /* Interactuable por defecto */
 }
 
 /* --- Cara Trasera --- */
@@ -94,9 +102,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   padding: var(--space-xs) var(--space-sm);
   line-height: var(--line-height-normal);
   z-index: 1;
-  /* Bloqueamos clics por defecto en la trasera para evitar toques fantasma.
-     Habilitaremos explícitamente los elementos interactivos hijos. */
-  pointer-events: none; 
+  pointer-events: none; /* Bloqueamos clics fantasmas */
 }
 
 /* Gestión de Interactividad al girar */
@@ -153,6 +159,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.025em;
+  /* Truncado multilínea */
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; text-overflow: ellipsis;
 }
@@ -178,7 +185,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 .year-flag-group { display: flex; align-items: center; gap: var(--space-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); }
 .country-info { display: flex; align-items: center; gap: var(--space-xxs); }
 
-/* Colores de Estudios/Plataformas */
+/* Colores de Estudios (Mantenidos igual) */
 .netflix-icon { color: #e50914; }
 .hbo-icon { color: #002be7; }
 .disney-icon { color: #990000; } html.dark-mode .disney-icon { color: #D9534F; }
@@ -199,7 +206,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 
 .back-original-title-wrapper {
   display: flex; justify-content: flex-start; align-items: center;
-  margin-bottom: 10px; padding: 0 var(--space-xs);
+  margin-bottom: 10px; padding-inline: var(--space-xs);
   min-height: calc(var(--font-size-sm) * var(--line-height-tight) * 2);
   width: 100%;
   animation: fade-in-subtle 0.5s var(--ease-smooth-out) 0.2s backwards;
@@ -207,145 +214,82 @@ html.dark-mode .flip-card-inner.is-flipped {
 .back-original-title-wrapper span {
   font-family: var(--font-title); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
   color: var(--color-text-primary); line-height: var(--line-height-tight);
-  letter-spacing: -0.01em; /* Ajuste sutil para compactar Inter en negrita */
+  letter-spacing: -0.01em;
   text-align: left;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; text-overflow: ellipsis;
 }
 
 .back-meta-header {
-  display: flex; 
-  /* CAMBIO AQUÍ: Alineamos todo el bloque a la derecha */
-  justify-content: flex-end; 
-  align-items: center;
-  width: 100%; 
-  margin-bottom: 10px;
+  display: flex; justify-content: flex-end; align-items: center;
+  width: 100%; margin-bottom: 10px;
   font-size: var(--font-size-sm);
 }
 
 .episode-duration-group {
   display: flex; align-items: center; gap: 4px;
   font-weight: var(--font-weight-medium); color: var(--color-text-secondary);
-  white-space: nowrap; /* Evita que el texto salte de línea */
+  white-space: nowrap;
 }
 
 [data-template="wikipedia-link"],
 [data-template="justwatch-link"] {
   display: flex; align-items: center; text-decoration: none;
   transition: transform var(--duration-fast);
-  
-  margin-right: 0;
-  
-  margin-left: var(--space-xs); /* Reducido para apretar los iconos */
-  
+  margin-left: var(--space-xs);
   pointer-events: auto; 
 }
 @media (hover: hover) and (pointer: fine) {
   [data-template="wikipedia-link"]:hover,
   [data-template="justwatch-link"]:hover { transform: scale(1.1); }
 }
-/* Estado deshabilitado para Wikipedia (cuando no hay enlace) */
+
 [data-template="wikipedia-link"].disabled,
 [data-template="justwatch-link"].disabled {
-  opacity: 0.3;
-  pointer-events: none;
-  filter: grayscale(100%);
-  cursor: default;
+  opacity: 0.3; pointer-events: none; filter: grayscale(100%); cursor: default;
 }
 
 /* Barras de Puntuación */
-.ratings-container { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 10px; 
-}
+.ratings-container { display: flex; flex-direction: column; gap: 10px; }
+.rating-line { display: flex; align-items: center; gap: var(--space-sm); }
 
-/* El contenedor general (ya no es clickeable) */
-.rating-line { 
-  display: flex; 
-  align-items: center; 
-  gap: var(--space-sm); 
-}
-
-/* La parte izquierda (Icono + Nota) -> AHORA ES EL LINK */
 .rating-left {
-  display: flex; 
-  align-items: center; 
-  gap: var(--space-sm); 
-  flex-shrink: 0;
-  
-  /* Estilos de texto */
-  color: var(--color-text-primary); 
-  font-size: var(--font-size-base); 
-  font-weight: var(--font-weight-bold);
-  text-decoration: none; /* Quitamos subrayado de link */
-  
-  /* Interactividad */
-  cursor: pointer;
+  display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0;
+  color: var(--color-text-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
+  text-decoration: none; cursor: pointer;
   transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: auto; /* Habilitar click explícitamente */
+  pointer-events: auto;
 }
-
 @media (hover: hover) and (pointer: fine) {
-  .rating-left:hover {
-    opacity: 0.8;
-    transform: scale(1.05); /* Feedback visual al pasar por encima */
-  }
+  .rating-left:hover { opacity: 0.8; transform: scale(1.05); }
 }
+.rating-left.disabled { pointer-events: none; opacity: 0.7; cursor: default; }
 
-/* Estado deshabilitado (gestionado por JS si no hay link) */
-.rating-left.disabled { 
-  pointer-events: none; 
-  opacity: 0.7; 
-  cursor: default;
-}
-
-/* La barra (Barra + Tooltip) -> NO CLICKEABLE PERO SÍ HOVERABLE */
 .rating-bar-container {
-  flex-grow: 1; 
-  width: 100%; 
-  height: var(--space-xs);
-  border-radius: var(--space-xxs); 
-  background-color: var(--color-bg); 
-  overflow: visible; /* Permitir tooltip */
-  position: relative;
-  
-  /* Permitimos hover para ver el tooltip (title), pero no click */
-  pointer-events: auto; 
-  cursor: default; /* Sin interrogación */
+  flex-grow: 1; width: 100%; height: var(--space-xs);
+  border-radius: var(--space-xxs); background-color: var(--color-bg);
+  overflow: visible; position: relative;
+  pointer-events: auto; cursor: default;
 }
 
-/* Ocultar contador numérico en tarjeta estándar (se usa tooltip) */
-.rating-votes-count {
-  display: none !important;
-}
+.rating-votes-count { display: none !important; }
 
-/* Tooltip de votos al hacer hover */
 @media (hover: hover) and (pointer: fine) {
   .rating-bar-container[data-votes]:hover::after {
     content: attr(data-votes) " votos";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
+    position: absolute; bottom: 100%; left: 50%;
     transform: translateX(-50%) translateY(-5px);
-    background-color: rgba(0, 0, 0, 0.85);
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: bold;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 10;
+    background-color: rgba(0, 0, 0, 0.85); color: #fff;
+    padding: 4px 8px; border-radius: 4px;
+    font-size: 0.75rem; font-weight: bold; white-space: nowrap;
+    pointer-events: none; z-index: 10;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     animation: fade-in-subtle 0.2s ease-out;
   }
 }
 
 .rating-bar {
-  width: 0; 
-  height: 100%;
-  border-radius: var(--space-xxs); 
+  width: 0; height: 100%; border-radius: var(--space-xxs);
   background-color: var(--color-accent);
   transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
 }
@@ -363,15 +307,13 @@ html.dark-mode .flip-card-inner.is-flipped {
   padding-right: 10px;
 }
 
-/* Áreas con Scroll (Sinopsis/Crítica/Actores) */
+/* Áreas con Scroll */
 .scrollable-content {
   position: relative; overflow: hidden;
   transition: opacity var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
 }
-/* Indicador visual de "leer más" */
 .scrollable-content::after {
-  content: ""; position: absolute; bottom: 0; left: 0; right: 0;
-  height: 40px;
+  content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
   background: linear-gradient(to bottom, transparent, var(--color-surface));
   pointer-events: none;
 }
@@ -388,13 +330,13 @@ html.dark-mode .flip-card-inner.is-flipped {
 .actors-scrollable-content {
   position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-xl);
   background-color: var(--color-surface);
-  -webkit-overflow-scrolling: touch; /* Scroll con inercia en iOS */
+  -webkit-overflow-scrolling: touch;
   overflow-y: auto; scrollbar-width: none;
   opacity: 0; visibility: hidden; transform: translateY(100%);
   transition: opacity var(--duration-normal) var(--ease-smooth-out), visibility var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
   z-index: 5;
   font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary);
-  pointer-events: auto; /* Habilitar interacción para scroll */
+  pointer-events: auto;
 }
 .actors-scrollable-content h4 {
   margin-top: 0; margin-bottom: var(--space-sm);
@@ -406,8 +348,7 @@ html.dark-mode .flip-card-inner.is-flipped {
 .actor-list-item {
   background: none; border: none; padding: 0;
   font-family: inherit; font-size: inherit; color: var(--color-text-primary);
-  text-align: left; cursor: pointer;
-  display: block; width: 100%; line-height: 1.6;
+  text-align: left; cursor: pointer; display: block; width: 100%; line-height: 1.6;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color var(--transition-duration-fast);
 }
@@ -417,8 +358,7 @@ html.dark-mode .flip-card-inner.is-flipped {
    5. BOTONES DE EXPANSIÓN Y LOGICA
    ================================================================= */
 
-.expand-content-btn,
-.actors-expand-btn {
+.expand-content-btn, .actors-expand-btn {
   position: absolute;
   width: 22px; height: 22px;
   border-radius: 50%; border: none;
@@ -428,8 +368,8 @@ html.dark-mode .flip-card-inner.is-flipped {
   padding-bottom: 2px;
   cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
   transition: transform var(--duration-quick) ease-out, background-color var(--duration-quick) ease-out;
-  z-index: var(--z-index-card-content); /* Prioridad de clic */
-  pointer-events: auto; /* Habilitar click explícitamente */
+  z-index: var(--z-index-card-content);
+  pointer-events: auto;
 }
 .actors-expand-btn { bottom: 2px; right: 2px; }
 .expand-content-btn { bottom: 14px; right: 14px; }
@@ -448,16 +388,12 @@ html.dark-mode .flip-card-inner.is-flipped {
   pointer-events: none;
 }
 
-/* ESTADO: Sinopsis Expandida */
 .flip-card-back.is-expanded .scrollable-content {
   position: absolute; inset: 0; padding: var(--space-md);
   background-color: var(--color-surface);
   overflow-y: auto; scrollbar-width: none;
-  -webkit-overflow-scrolling: touch; /* Scroll con inercia en iOS */
-  
-  /* 🔥 FIX: Habilitar interacción para poder hacer scroll */
-  pointer-events: auto; 
-  z-index: 15; /* Por debajo del botón de cerrar (z-index 20) */
+  -webkit-overflow-scrolling: touch;
+  pointer-events: auto; z-index: 15;
 }
 
 .flip-card-back.is-expanded.show-actors .actors-scrollable-content {
@@ -471,13 +407,12 @@ html.dark-mode .flip-card-inner.is-flipped {
    6. ELEMENTOS INTERACTIVOS (Botones y Estrellas)
    ================================================================= */
 
-/* Bloque flotante sobre el póster */
 .card-rating-block {
   position: absolute; bottom: 1px; left: 0; right: 0;
   transform: translateY(66.66%); z-index: 5;
   display: flex; justify-content: space-between; align-items: center;
-  padding: 0 var(--space-sm);
-  pointer-events: none; /* Hueco pasante */
+  padding-inline: var(--space-sm);
+  pointer-events: none;
 }
 
 /* Efecto Aura */
@@ -498,7 +433,7 @@ html.dark-mode .card-rating-block > * {
   background-color: transparent; color: var(--color-accent); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
-  position: relative; /* Necesario para centrar el área táctil expandida (::after) */
+  position: relative;
 }
 @media (hover: hover) and (pointer: fine) {
   .card-action-btn:hover { transform: scale(1.15) rotate(10deg); }
@@ -507,19 +442,17 @@ html.dark-mode .card-rating-block > * {
 
 .card-action-btn svg {
   width: 30px; height: 30px;
-  fill: transparent; stroke: currentColor;
-  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  fill: transparent; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
   transition: fill var(--duration-normal) var(--ease-smooth-out), stroke var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
 }
 
 .card-action-btn.is-active svg {
   color: #e50914; fill: #e50914; stroke: #e50914;
-  --icon-plus-color: var(--color-surface);
   animation: watchlist-glow 0.6s ease-out;
 }
 .card-action-btn.is-active { animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in); }
 
-/* Iconos de Estrellas */
+/* Estrellas */
 .star-rating-container { display: flex; align-items: center; gap: 2px; }
 .star-icon { position: relative; width: 25px; height: 25px; }
 
@@ -540,7 +473,7 @@ html.dark-mode .card-rating-block > * {
   stroke: var(--color-accent); stroke-width: 2px; fill: transparent;
   border: none; background-color: transparent;
   transition: stroke 0.3s ease, transform var(--duration-quick) var(--ease-spring);
-  position: relative; /* Necesario para centrar el área táctil expandida (::after) */
+  position: relative;
 }
 .low-rating-circle.has-user-rating {
   stroke: #ffbd07; color: #ffbd07; fill: none;
@@ -551,10 +484,9 @@ html.dark-mode .low-rating-circle.has-user-rating {
 }
 
 /* =================================================================
-   7. UTILIDADES Y MODAL OVERRIDES
+   7. UTILIDADES
    ================================================================= */
 
-/* Banderas */
 .country-flag-icon { display: flex; align-items: center; justify-content: center; }
 .country-flag-icon svg {
   width: 16px; height: 16px; border-radius: 20%; object-fit: cover;
@@ -562,29 +494,22 @@ html.dark-mode .low-rating-circle.has-user-rating {
 }
 html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0.2); }
 
-/* Iconos de plataformas pequeñas (Unificado) */
 .rating-icon { width: 1.6em; height: 1.6em; border-radius: var(--radius-sm); object-fit: contain; }
 
-/* CORRECCIÓN ÓPTICA: Icono de Wikipedia */
 [data-template="wikipedia-link"] .rating-icon,
 [data-template="justwatch-link"] .rating-icon {
-  width: 1.5em;  /* Reducido un 20% (era 1.9em) */
-  height: 1.5em;
-  /* Ajuste fino de posición si es necesario para centrarlo verticalmente */
-  transform: translateY(-1px); 
+  width: 1.5em; height: 1.5em; transform: translateY(-1px);
 }
 
 /* =================================================================
-   8. ACCESIBILIDAD TÁCTIL (WCAG 2.5.5 - Hit Area Expansion)
+   8. ACCESIBILIDAD TÁCTIL (WCAG 2.5.5)
    ================================================================= */
 
 @media (hover: none) and (pointer: coarse) {
-  /* Feedback táctil al pulsar la tarjeta (Micro-interacción) */
-  .movie-card:active {
-    transform: scale(0.98);
-  }
+  /* Feedback táctil nativo */
+  .movie-card:active { transform: scale(0.98); transition-duration: 0s; }
 
-  /* Expandimos áreas táctiles sin afectar el layout visual */
+  /* Expandir áreas táctiles */
   .low-rating-circle::after,
   .card-action-btn::after,
   .expand-content-btn::after,
@@ -597,25 +522,20 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
   .star-icon::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 30px; height: 48px; /* Ancho ajustado para no solapar vecinas */
-    z-index: 10;
+    width: 30px; height: 48px; z-index: 10;
   }
 }
 
 /* =================================================================
-   9. INTERACCIONES DE ESCRITORIO (Solo Mouse/Hover)
+   9. INTERACCIONES ESCRITORIO (Solo Mouse)
    ================================================================= */
 
 @media (hover: hover) and (pointer: fine) {
-  
-  /* 1. Giro de la tarjeta */
   body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
   
-  /* Levitación sutil */
   .movie-card:not(.is-flipped):hover {
-    will-change: transform; /* Optimización: Solo crear capa al interactuar */
     transform: translateY(-8px) translateZ(0) scale(1.02);
     filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
   }
@@ -623,16 +543,8 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
     filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.3));
   }
 
-  /* 2. Hover en Enlaces del Director */
   body.rotation-disabled .front-director-info a:hover { 
     color: var(--color-text-primary); text-decoration: underline; 
-  }
-
-  /* 3. Efectos en Estrellas y Botones */
-  .star-rating-container.is-interactive .star-icon {
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
-    transform-origin: center center;
-    will-change: transform;
   }
 
   .star-rating-container.is-interactive .star-icon:hover {
@@ -652,67 +564,45 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
    10. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
    ================================================================= */
 
-/* Ajuste de la tarjeta para ser puramente visual */
+/* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
-  aspect-ratio: 2 / 3.2; /* Formato más vertical, ajustado al póster + estrellas */
+  aspect-ratio: 2 / 3.2;
   transition: transform var(--duration-quick) ease;
 }
 
-/* Ocultar resumen de texto (título, director, etc.) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .movie-summary {
-  display: none;
-}
+/* Ocultar textos */
+body.rotation-disabled .movie-card:not(.is-quick-view) .movie-summary { display: none; }
 
-/* El contenedor del póster ocupa casi todo, dejando espacio abajo */
+/* Póster domina */
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  height: 100%; display: flex; flex-direction: column;
 }
-
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
-  height: 88%; /* El póster domina */
-  object-fit: cover;
-  border-radius: var(--radius-md);
+  height: 88%; object-fit: cover; border-radius: var(--radius-md);
 }
 
-/* Bloque de valoración (Estrellas/Suspenso) */
+/* Bloque valoración inferior */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
-  position: static; /* Para que el botón watchlist se posicione respecto al poster-container */
-  transform: none;
-  bottom: auto;
-  left: auto;
-  right: auto;
-  height: 12%; /* El espacio restante abajo */
-  justify-content: flex-start; /* Alineado a la izquierda */
-  padding: 2px 0 0 var(--space-sm); /* Margen izquierdo para que no toque el borde */
-  background: transparent;
+  position: static; transform: none; bottom: auto; left: auto; right: auto;
+  height: 12%; justify-content: flex-start;
+  padding: 2px 0 0 var(--space-sm); background: transparent;
 }
 
-/* Reducción de tamaño del 33% (aprox 0.67) para estrellas */
+/* Reducción elementos */
 body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container,
 body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-circle {
-  transform: scale(0.7);
-  transform-origin: left center; /* Escalar desde la izquierda para mantener alineación visual */
+  transform: scale(0.7); transform-origin: left center;
 }
 
-/* Botón Watchlist: Solo visible si activo, arriba a la derecha */
+/* Watchlist flotante */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 10;
-  display: none; /* Oculto por defecto */
-  transform: scale(0.7); /* Reducción de tamaño */
-  background-color: rgba(0, 0, 0, 0.6); /* Fondo para contraste sobre póster */
-  border-radius: 50%;
+  position: absolute; top: 4px; right: 4px; z-index: 10;
+  display: none; transform: scale(0.7);
+  background-color: rgba(0, 0, 0, 0.6); border-radius: 50%;
 }
+body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn.is-active { display: flex; }
 
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn.is-active {
-  display: flex; /* Solo se ve si está marcado */
-}
-
-/* En móvil (táctil), desactivar interacción en elementos pequeños */
+/* En móvil desactivar interacción en elementos pequeños del muro */
 @media (hover: none) and (pointer: coarse) {
   body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block,
   body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
