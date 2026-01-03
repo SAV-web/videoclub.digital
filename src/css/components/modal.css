@@ -2,35 +2,33 @@
  *                      SISTEMA DE DISEÑO: MODALES
  * =================================================================
  *  FICHERO: src/css/components/modal.css
- *  ESTRATEGIA: 
- *  1. Quick View: Transformación de tarjeta a modal (Desktop) o Sheet (Móvil).
- *  2. Auth Modal: Modal de sistema estándar.
+ *  RESPONSABILIDAD: Quick View (Ficha) y Auth Modal.
  * ================================================================= */
 
 /* =================================================================
    1. QUICK VIEW: CAPA BASE Y OVERLAY
    ================================================================= */
 
-/* Fondo oscurecido */
+/* --- Overlay de Fondo --- */
 .quick-view-overlay {
   position: fixed;
   inset: 0;
   z-index: var(--z-index-overlay);
   background-color: rgba(0, 0, 0, 0.6);
+  
+  /* Efecto Frost: Nota - Puede ser costoso en móviles gama baja */
+  backdrop-filter: blur(10px) saturate(50%);
+  -webkit-backdrop-filter: blur(10px) saturate(50%);
+  
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   
-  /* OPTIMIZACIÓN: Transición suave solo en opacidad */
+  /* Optimización: Transición suave solo de propiedades visuales */
   transition: opacity 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
-
-  /* Estética Desktop: Frost Effect */
-  /* Nota: En móvil se simplifica mediante Media Query para rendimiento */
-  backdrop-filter: blur(10px) saturate(50%);
-  -webkit-backdrop-filter: blur(10px) saturate(50%);
 }
 
-/* Contenedor Principal */
+/* --- Contenedor Principal (Quick View) --- */
 .quick-view-modal {
   position: fixed;
   z-index: calc(var(--z-index-overlay) + 1);
@@ -39,12 +37,11 @@
   box-shadow: var(--shadow);
   overflow: hidden;
   
-  /* Estado inicial */
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   
-  /* Transiciones Hardware-Accelerated */
+  /* Transición unificada */
   transition: 
     opacity 0.4s var(--ease-snap), 
     transform 0.4s var(--ease-snap), 
@@ -54,13 +51,13 @@
   touch-action: pan-y;
 }
 
-/* Estados Activos */
+/* --- Estados Visibles --- */
 .quick-view-overlay.is-visible,
 .quick-view-modal.is-visible {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition-delay: 0s; /* Respuesta inmediata al abrir */
+  transition-delay: 0s;
 }
 
 /* =================================================================
@@ -71,18 +68,18 @@
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  /* Scroll suave en iOS */
+  /* Scroll inercial nativo en iOS */
   -webkit-overflow-scrolling: touch;
-  /* Ocultar scrollbars manteniendo funcionalidad */
+  /* Ocultar barras de scroll */
   scrollbar-width: none;
   -ms-overflow-style: none;
-  /* CRÍTICO: Evita que el scroll del modal mueva el body detrás */
+  /* CRÍTICO: Evita que el scroll se propague a la página de fondo */
   overscroll-behavior: contain;
 }
 .quick-view-content::-webkit-scrollbar { display: none; }
 
 /* --- Reset de "Card" a "Modal" --- */
-/* Eliminamos comportamientos 3D y animaciones de la tarjeta original */
+/* Eliminamos estilos 3D y de posicionamiento de la tarjeta original */
 .is-quick-view.movie-card {
   aspect-ratio: auto;
   perspective: none;
@@ -99,71 +96,80 @@
   height: 100%;
 }
 
-/* Las caras se convierten en contenedores de bloque normales */
+/* Las caras se convierten en contenedores estáticos */
 .is-quick-view .flip-card-front,
 .is-quick-view .flip-card-back {
   position: relative;
+  inset: auto;
   transform: none;
   backface-visibility: visible;
   height: auto;
   overflow: visible;
-  padding: var(--space-lg);
 }
 
+/* Frontal (Izq en Desktop, Arriba en Móvil) */
 .is-quick-view .flip-card-front {
+  padding: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
+/* Trasera (Der en Desktop, Abajo en Móvil) */
 .is-quick-view .flip-card-back {
+  padding: var(--space-lg);
   flex-grow: 1;
+  min-width: 0;
   pointer-events: auto; /* Reactivar clicks para enlaces */
 }
 
 /* =================================================================
-   3. QUICK VIEW: ESTILIZACIÓN "GIGANTE" (Overrides)
+   3. QUICK VIEW: ESTILOS "GIGANTE" (Overrides de card.css)
    ================================================================= */
 
-/* Póster */
+/* --- Póster --- */
 .is-quick-view .poster-container {
-  height: auto;
-  width: 100%;
-  border: none;
+  height: auto; width: 100%; border: none;
 }
 .is-quick-view .poster-container img {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow);
   border: none;
+  margin-bottom: 0;
 }
 
-/* Cabecera (Título y Director) */
+/* --- Cabecera (Título y Director) --- */
 .quick-view-modal .movie-summary {
-  padding: 0 var(--space-xs);
+  padding-inline: var(--space-xs);
+  padding-top: 0;
 }
+
 .quick-view-modal .title-director-block {
-  min-height: 82px;
+  min-height: 82px; /* Mantiene altura estable */
   justify-content: center;
-  margin: 0;
+  margin-bottom: 0;
 }
 
 .is-quick-view .movie-summary h3[data-template="title"] {
   font-size: 2rem;
   font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-primary);
   line-height: 1.1;
   margin-bottom: 4px;
   letter-spacing: -0.03em;
-  /* Limitar a 2 líneas para evitar desbordes masivos */
+  /* Truncado a 2 líneas */
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* Variantes de tamaño para títulos largos */
 .is-quick-view .movie-summary h3.title-long { font-size: 1.6rem; }
 .is-quick-view .movie-summary h3.title-xl-long { font-size: 1.3rem; }
 
 .is-quick-view .front-director-info {
   font-size: var(--font-size-base);
   color: var(--color-text-secondary);
+  margin-bottom: 0;
 }
 
-/* Iconos de Acción y Valoración (Aumentados) */
+/* --- Iconos de Acción y Valoración (Aumentados) --- */
 .is-quick-view .card-rating-block {
   position: static; transform: none;
   padding: 1px var(--space-xs) 2px;
@@ -171,85 +177,111 @@
   pointer-events: auto;
 }
 
-.is-quick-view .star-icon { width: 42px; height: 42px; }
+.is-quick-view .star-icon { width: 42px; height: 42px; margin-right: 1px; }
 .is-quick-view .low-rating-circle { width: 40px; height: 40px; stroke-width: 2.5px; }
 .is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: auto; }
 .is-quick-view .card-action-btn svg { width: 38px; height: 38px; stroke-width: 2.5px; }
 
-/* Metadatos Inferiores */
+/* --- Metadatos Inferiores --- */
 .is-quick-view .movie-meta {
   align-items: flex-end;
   margin-top: auto;
   padding-top: var(--space-xs);
 }
 
+.is-quick-view .card-icons-line { gap: var(--space-md); }
 .is-quick-view .platform-icon svg { width: 40px; height: 40px; }
 .is-quick-view .year-flag-group { font-size: 2rem; line-height: 1; }
-.is-quick-view .country-flag-icon svg { width: 28px; height: 28px; }
+.is-quick-view .country-flag-icon svg { width: 28px; height: 28px; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
 
-/* Reverso: Textos Aumentados (Escala 1.5x) */
-.is-quick-view .episode-duration-group,
-.is-quick-view .rating-left,
+/* --- Textos Detalles (Escala Aumentada) --- */
+/* Usamos calc() para mantener la proporción respecto a las variables base */
+.is-quick-view .episode-duration-group { font-size: calc(var(--font-size-sm) * 1.5); letter-spacing: 1px; }
+.is-quick-view .rating-left { font-size: calc(var(--font-size-base) * 1.5); }
 .is-quick-view .details-list,
 .is-quick-view .plot-summary-final,
-.is-quick-view .critic-review {
-  /* Uso de 'em' relativo al padre aumentado o cálculo directo */
-  font-size: calc(var(--font-size-sm) * 1.5);
+.is-quick-view .critic-review { font-size: calc(var(--font-size-xs) * 1.5); }
+
+/* Espaciado de Detalles */
+.is-quick-view .details-list {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
+  gap: var(--space-md);
 }
 
-/* Barras de votación */
-.is-quick-view .rating-bar-container { height: var(--space-sm); }
-.is-quick-view .rating-bar-container[data-votes]:hover::after { display: none; } /* Sin tooltip */
+.is-quick-view .detail-label {
+  font-size: 1.5em; line-height: 1;
+  vertical-align: -0.15em; margin-right: var(--space-xs);
+}
 
-/* Contador de votos vertical */
+/* --- Barras de Votación --- */
+.is-quick-view .rating-bar-container { height: var(--space-sm); }
+/* Ocultar tooltip en modal (ya se muestra el número) */
+.is-quick-view .rating-bar-container[data-votes]:hover::after { display: none; }
+
+/* Contador de Votos Vertical */
 .is-quick-view .rating-votes-count {
   display: flex !important;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 5ch;
-  text-align: center;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-bold);
-  margin-right: var(--space-sm);
-  line-height: 1;
+  flex-direction: column; justify-content: center;
+  min-width: 5ch; text-align: center;
+  font-size: var(--font-size-base); font-weight: bold;
+  margin-right: var(--space-sm); line-height: 1;
 }
+.is-quick-view .rating-votes-count:empty { display: none !important; }
 .is-quick-view .rating-votes-count::after {
   content: "votos";
-  font-size: 0.6em;
-  font-weight: 400;
-  color: var(--color-text-secondary);
-  text-align: right;
-  width: 100%;
+  font-size: 0.6em; font-weight: normal; color: var(--color-text-secondary);
+  text-align: right; width: 100%; margin-top: 2px;
 }
 
-/* Elementos Ocultos en Modal */
-.is-quick-view .expand-content-btn,
-.is-quick-view .actors-expand-btn,
-.is-quick-view .scrollable-content::after { display: none; }
+/* --- Enlaces de Actores --- */
+.is-quick-view [data-template="actors"] a {
+  color: inherit; text-decoration: none;
+  transition: color var(--duration-fast);
+}
+.is-quick-view [data-template="actors"] a:hover {
+  color: var(--color-text-primary); text-decoration: underline;
+}
 
-/* Reset de Scrollable Content */
+/* --- Título Original (Reverso) --- */
+.is-quick-view .back-original-title-wrapper {
+  min-height: 0; margin-bottom: var(--space-md); padding: 0;
+  align-items: flex-start; flex-shrink: 0;
+}
+.is-quick-view .back-original-title-wrapper span {
+  font-size: 2rem; font-weight: bold; line-height: 1.1;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  margin-top: -0.2em;
+}
+.is-quick-view .back-original-title-wrapper span.title-long { font-size: 1.6rem; }
+.is-quick-view .back-original-title-wrapper span.title-xl-long { font-size: 1.3rem; }
+
+.is-quick-view .back-meta-header { flex-shrink: 0; margin-bottom: var(--space-lg); }
+
+/* --- Resets de Scroll y Elementos Ocultos --- */
 .is-quick-view .scrollable-content {
-  overflow: visible;
-  height: auto;
-  mask-image: none;
+  overflow: visible; height: auto; mask-image: none;
 }
+.is-quick-view .scrollable-content::after { display: none; }
+.is-quick-view .expand-content-btn,
+.is-quick-view .actors-expand-btn { display: none; }
 
 .is-quick-view .detail-item[data-template="actors-container"] {
-  -webkit-line-clamp: initial; display: block;
+  -webkit-line-clamp: initial; white-space: normal; display: block;
 }
+
+.is-quick-view .ratings-container { gap: var(--space-lg); }
 
 /* =================================================================
    4. NAVEGACIÓN (Flechas)
    ================================================================= */
+
 .modal-nav-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  position: absolute; top: 50%; transform: translateY(-50%);
   z-index: 100;
   width: 48px; height: 48px;
-  border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border); border-radius: 50%;
   color: var(--color-text-primary);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
@@ -264,79 +296,60 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 .modal-nav-btn--prev { left: 20px; }
 .modal-nav-btn--next { right: 20px; }
 
+/* Clase JS para ocultar flechas temporalmente */
+.quick-view-modal.hide-arrows .modal-nav-btn {
+  opacity: 0 !important; pointer-events: none !important;
+}
+
 /* =================================================================
    5. RESPONSIVE Y GESTOS (MÓVIL VS DESKTOP)
    ================================================================= */
 
 /* --- A) MÓVIL / TABLET (<= 700px): BOTTOM SHEET --- */
 @media (max-width: 700px) {
-  /* PERFORMANCE: Reducir coste de renderizado en móvil */
+  /* Reducir blur para rendimiento */
   .quick-view-overlay {
-    backdrop-filter: blur(4px); /* Menos blur = Más FPS */
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(6px) saturate(50%);
+    -webkit-backdrop-filter: blur(6px) saturate(50%);
   }
 
   .quick-view-modal {
-    top: auto; 
-    bottom: 0; 
-    left: 50%;
+    top: auto; bottom: 0; left: 50%;
     width: 96%;
-    height: 85dvh; /* Dynamic Viewport Height */
-    max-height: 85dvh;
+    height: 85dvh; max-height: 85dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     
-    /* Estado inicial: fuera de pantalla abajo */
-    transform: translate(-50%, 100%);
+    transform: translate(-50%, 100%); /* Inicial: Abajo */
     
-    /* Optimización GPU para animación suave */
-    will-change: transform;
+    will-change: transform; /* Hint para GPU */
     transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   
-  .quick-view-modal.is-visible {
-    transform: translate(-50%, 0);
-  }
-  
-  /* Ajuste para zona segura del iPhone (barra inferior) */
-  .quick-view-content {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+  .quick-view-modal.is-visible { transform: translate(-50%, 0); }
 
-  .is-quick-view .flip-card-inner {
-    flex-direction: column;
-  }
+  .quick-view-content { padding-bottom: env(safe-area-inset-bottom); }
   
-  /* Handle (Barrita gris para arrastrar) */
+  .is-quick-view .flip-card-inner { flex-direction: column; }
+  
+  /* Handle (Barrita para arrastrar) */
   .quick-view-modal::before {
-    content: "";
-    position: absolute;
-    top: 12px; left: 50%;
-    transform: translateX(-50%);
+    content: ""; position: absolute;
+    top: 12px; left: 50%; transform: translateX(-50%);
     width: 40px; height: 5px;
-    background-color: var(--color-border);
-    border-radius: 10px;
-    z-index: 10;
-    pointer-events: none;
+    background-color: var(--color-border); border-radius: 10px;
+    z-index: 10; pointer-events: none;
   }
   
-  /* Clase JS durante el arrastre: elimina lag de transición */
-  .quick-view-modal.is-dragging {
-    transition: none;
-  }
+  /* Sin transición mientras se arrastra con JS */
+  .quick-view-modal.is-dragging { transition: none; }
   
-  /* Ajustes visuales cabecera */
   .is-quick-view .flip-card-front {
     padding-top: 30px; /* Espacio para el handle */
-    border-bottom: none; /* Flujo continuo */
-  }
-  .is-quick-view .flip-card-front img {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Separación visual */
+    border-bottom: none;
   }
   
-  /* Ocultar flechas en móvil al tocar el póster (clase toggleada por JS) */
-  .quick-view-modal.hide-arrows .modal-nav-btn {
-    opacity: 0 !important;
-    pointer-events: none !important;
+  .is-quick-view .flip-card-front img {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   }
 }
 
@@ -344,53 +357,47 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 @media (min-width: 701px) {
   .quick-view-modal {
     top: 50%; left: 50%;
-    width: 90%;
-    max-width: 720px;
-    max-height: 92vh;
-    height: auto;
+    width: 90%; max-width: 720px;
+    max-height: 92vh; height: auto;
     border-radius: var(--radius-lg);
     
-    /* Estado inicial: Centrado y ligeramente más pequeño */
-    transform: translate(-50%, -50%) scale(0.95);
+    transform: translate(-50%, -50%) scale(0.95); /* Inicial */
   }
   
-  .quick-view-modal.is-visible {
-    transform: translate(-50%, -50%) scale(1);
-  }
+  .quick-view-modal.is-visible { transform: translate(-50%, -50%) scale(1); }
   
-  /* Layout de dos columnas */
   .is-quick-view .flip-card-inner {
-    display: block; 
-    position: relative; 
-    overflow: visible;
+    display: block; position: relative; overflow: visible;
   }
   
-  /* Columna Izq (Póster + Datos Clave) - Altura maestra */
+  /* COLUMNA IZQUIERDA (ANCLA) */
   .is-quick-view .flip-card-front {
-    width: 50%;
-    height: auto;
+    width: 50%; height: auto;
     border-right: 1px solid var(--color-border);
     border-bottom: none;
     overflow-y: hidden;
   }
   
-  /* Columna Der (Detalles) - Scroll independiente */
+  /* COLUMNA DERECHA (ADAPTABLE) */
   .is-quick-view .flip-card-back {
     position: absolute;
     top: 0; right: 0; bottom: 0;
+    
+    /* 🔥 FIX CRÍTICO: Sobrescribir herencia de 'inset:0' de card.css.
+       Sin 'left: auto', la columna se pega a la izquierda y desaparece. */
+    left: auto;
+    
     width: 50%;
-    overflow-y: auto;
-    scrollbar-width: thin;
+    overflow-y: auto; scrollbar-width: thin;
   }
 }
 
 /* =================================================================
-   6. AUTH MODAL (Login / Registro)
+   6. MODAL DE AUTENTICACIÓN
    ================================================================= */
 
 .auth-overlay {
-  position: fixed;
-  inset: 0;
+  position: fixed; inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
   z-index: var(--z-index-overlay);
   backdrop-filter: blur(2px);
@@ -398,17 +405,14 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 }
 
 .auth-modal {
-  position: fixed;
-  top: 50%; left: 50%;
+  position: fixed; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   z-index: calc(var(--z-index-overlay) + 1);
-  width: 90%;
-  max-width: 420px;
+  width: 90%; max-width: 420px;
 }
 
 .auth-box {
-  width: 100%;
-  padding: var(--space-xl);
+  width: 100%; padding: var(--space-xl);
   border-radius: var(--radius-lg);
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
@@ -421,19 +425,18 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Elementos del formulario Auth */
 .auth-header { margin-bottom: var(--space-lg); display: flex; justify-content: center; }
 .auth-logo-modal { font-family: var(--font-title); font-size: var(--font-size-xl); font-weight: 700; line-height: 1.2; }
 .auth-logo-modal span:first-child { color: var(--color-accent); }
+
+.auth-box h3 { margin-bottom: var(--space-lg); font-size: var(--font-size-lg); }
 
 .form-group { margin-bottom: var(--space-md); text-align: left; }
 .form-group label { display: block; margin-bottom: var(--space-xs); font-size: var(--font-size-sm); font-weight: bold; color: var(--color-text-secondary); }
 .form-group input {
   width: 100%; padding: var(--space-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-bg);
-  color: var(--color-text-primary);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background-color: var(--color-bg); color: var(--color-text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .form-group input:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(0,0,0,0.1); }

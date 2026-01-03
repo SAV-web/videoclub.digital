@@ -71,8 +71,13 @@
   .skeleton-card::after { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,0,0,.04), transparent); animation: skeleton-loading 1.5s infinite; }
   html.dark-mode .skeleton-card::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent); }
   @keyframes skeleton-loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-  .sidebar--loading > *, .header--loading > * { opacity: 0; visibility: hidden; }
-</style>
+  /* ACTUALIZACIÓN: Lógica Anti-FOUC Crítica */
+  /* Esto asegura que los elementos nazcan invisibles antes de cargar main.css */
+  [data-loading] > * {
+    opacity: 0;
+    visibility: hidden;
+  }
+  </style>
 
 <!-- === 6. ANTI-FLICKER === -->
     <script>(function () { try { if (localStorage.getItem("theme") === "dark") { document.documentElement.classList.add("dark-mode"); } } catch (e) {} })(); </script>
@@ -85,7 +90,7 @@
   <!-- Contenedor principal -->
   <div class="main-layout">
     <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar sidebar--loading">
+    <aside id="sidebar" class="sidebar" data-loading>
       <div class="sidebar-inner-wrapper">
         <header class="logo-area">
             <h2 class="logo-title"><span class="logo-line-1">videoclub</span><span class="logo-line-2">.digital</span></h2>
@@ -152,7 +157,7 @@
 
     <!-- Contenido -->
     <main class="main-content-wrapper">
-      <header class="main-header header--loading">
+      <header class="main-header" data-loading>
         <div class="main-header-primary-controls">
           <button id="mobile-sidebar-toggle" type="button" class="mobile-sidebar-toggle" aria-label="Abrir menú de filtros" aria-controls="sidebar" aria-expanded="false">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>

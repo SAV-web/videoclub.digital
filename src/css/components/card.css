@@ -448,13 +448,14 @@ html.dark-mode .card-rating-block > * {
 
 .card-action-btn.is-active svg {
   color: #e50914; fill: #e50914; stroke: #e50914;
+  --icon-plus-color: var(--color-surface);
   animation: watchlist-glow 0.6s ease-out;
 }
 .card-action-btn.is-active { animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in); }
 
 /* Estrellas */
 .star-rating-container { display: flex; align-items: center; gap: 2px; }
-.star-icon { position: relative; width: 25px; height: 25px; }
+.star-icon { position: relative; width: 25px; height: 25px; cursor: pointer; }
 
 .star-icon-path { stroke: var(--color-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .star-icon-path--empty { fill: transparent; }
@@ -474,6 +475,7 @@ html.dark-mode .card-rating-block > * {
   border: none; background-color: transparent;
   transition: stroke 0.3s ease, transform var(--duration-quick) var(--ease-spring);
   position: relative;
+  cursor: pointer;
 }
 .low-rating-circle.has-user-rating {
   stroke: #ffbd07; color: #ffbd07; fill: none;

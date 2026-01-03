@@ -1,45 +1,46 @@
-/**
- * =================================================================
+/* =================================================================
  * FICHERO CSS PRINCIPAL (ORQUESTADOR)
  * =================================================================
- * NOTA DE ARQUITECTURA:
- * Este archivo actúa como índice y utiliza @import para modularidad.
- * ESTÁ DISEÑADO PARA UN BUNDLER (Vite).
- * Vite resolverá estos imports en tiempo de compilación (build) generando
- * un único archivo CSS optimizado. No usar como CSS plano en producción
- * sin procesar, ya que causaría problemas de rendimiento (waterfall).
+ * ARQUITECTURA: es el índice y utiliza @import para modularidad.
+ * DISEÑADO PARA UN BUNDLER: Vite resolverá estos imports en tiempo de 
+ * compilación (build) generando un único archivo CSS optimizado. No usar 
+ * como CSS plano en producción sin procesar (problemas de rendimiento: waterfall).
  * =================================================================
  */
 
-/* --- 1. ESTILOS BASE Y GLOBALES --- */
-@import "base/variables.css"; /* Incluye fuentes y tokens */
+/* --- 1. ESTILOS BASE Y GLOBALES (Reset, Variables, Tipografía global) --- */
+@import "base/variables.css";
 @import "base/globals.css";
 
-/* --- 2. COMPONENTES DE UI --- */
-@import "components/button.css";
-@import "components/card.css";
-@import "components/header.css";
-@import "components/modal.css";
-@import "components/sidebar.css";
-@import "components/ui.css";
-
-/* --- 3. ESTILOS DE LAYOUT Y RESPONSIVE --- */
+/* --- 2. LAYOUT (Estructura Macro: rejilla, wrapper del sidebar y contenedores principales) --- */
 @import "layout.css";
 
+/* --- 3. COMPONENTES (Estructura Micro: UI Específica) --- */
+@import "components/button.css";
+@import "components/card.css";
+@import "components/header.css"; /* Estilos internos del header */
+@import "components/modal.css";
+@import "components/sidebar.css"; /* Estilos internos del sidebar */
+@import "components/ui.css";
+
 /* =================================================================
-   ANTI-FOUC (Flash of Unstyled Content)
+   ANTI-FOUC (Flash of Unstyled Content) - GESTIÓN DE ESTADO
    =================================================================
-   Esta regla sobrescribe los estilos inline críticos definidos en index.html
-   (que establecen opacity: 0).
-   
-   MECANISMO:
-   1. HTML carga: Sidebar/Header ocultos (opacity: 0 en <style> inline).
-   2. Main.css carga: Se aplica esta regla.
-   3. Resultado: El contenido aparece suavemente (fade-in).
+   Utilizamos un atributo de datos 'data-loading' en el HTML.
+   Mientras este atributo exista, los hijos directos estarán ocultos.
+   JS elimina este atributo cuando el DOM está listo.
 */
-.sidebar--loading > *, 
-.header--loading > * {
-  transition: opacity 0.2s ease-in, visibility 0s linear;
-  opacity: 1;
-  visibility: visible;
+
+/* Estado Inicial (Cargando) */
+[data-loading] > * {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Transición de Entrada (Al quitar el atributo en JS)
+   Se aplica a los elementos estructurales principales para un fade-in suave. */
+.sidebar > *,
+.main-header > * {
+  /* La transición ocurre cuando el elemento vuelve a su estado natural (opacity: 1) */
+  transition: opacity 0.3s ease-out, visibility 0s linear;
 }
