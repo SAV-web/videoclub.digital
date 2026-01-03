@@ -10,106 +10,147 @@ import { initAuthForms } from "./auth.js";
 import { renderMovieGrid, updateCardUI, handleCardClick, initCardInteractions, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
 import { initQuickView, closeModal } from "./components/modal.js";
 
-// Mapeo de parámetros URL a Estado interno
+// =================================================================
+//          GESTIÓN DE URL (Routing Básico)
+// =================================================================
+
 const URL_PARAM_MAP = { 
   q: "searchTerm", genre: "genre", year: "year", country: "country", 
   dir: "director", actor: "actor", sel: "selection", stu: "studio", 
   sort: "sort", type: "mediaType", p: "page", 
   exg: "excludedGenres", exc: "excludedCountries" 
 };
-const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key]));
+const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([k, v]) => [v, k]));
 
-/**
- * Carga y renderiza la rejilla de películas.
- * Gestiona estados de carga, errores y transiciones.
- */
+const UrlManager = {
+  syncStateFromUrl() {
+    resetFiltersState();
+    const params = new URLSearchParams(window.location.search);
+    
+    Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
+      const value = params.get(shortKey);
+      if (value !== null) {
+        if (stateKey === "page") setCurrentPage(parseInt(value, 10) || 1);
+        else if (stateKey === "searchTerm") setSearchTerm(value);
+        else if (stateKey === "sort") setSort(value);
+        else if (stateKey === "mediaType") setMediaType(value);
+        else if (stateKey === "excludedGenres" || stateKey === "excludedCountries") setFilter(stateKey, value.split(","), true);
+        else setFilter(stateKey, value, true);
+      }
+    });
+    
+    // Defaults
+    if (!params.has("sort")) setSort(DEFAULTS.SORT);
+    if (!params.has("type")) setMediaType(DEFAULTS.MEDIA_TYPE);
+    if (!params.has("p")) setCurrentPage(1);
+    
+    // Sincronizar UI Header
+    const activeFilters = getActiveFilters();
+    dom.searchInput.value = activeFilters.searchTerm;
+    dom.sortSelect.value = activeFilters.sort;
+    updateTypeFilterUI(activeFilters.mediaType);
+  },
+
+  updateUrlFromState() {
+    const params = new URLSearchParams();
+    const activeFilters = getActiveFilters();
+    const currentPage = getCurrentPage();
+    
+    Object.entries(activeFilters).forEach(([key, value]) => {
+      const shortKey = REVERSE_URL_PARAM_MAP[key];
+      if (!shortKey) return;
+      
+      if (Array.isArray(value) && value.length > 0) params.set(shortKey, value.join(","));
+      else if (typeof value === "string" && value.trim() !== "") {
+        // Ignorar defaults para URL limpia
+        if (key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) return;
+        if (key === "sort" && value === DEFAULTS.SORT) return;
+        if (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) return;
+        
+        params.set(shortKey, value);
+      }
+    });
+    
+    if (currentPage > 1) params.set("p", currentPage);
+    
+    const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+    if (newUrl !== `${window.location.pathname}${window.location.search}`) {
+      history.pushState({ path: newUrl }, "", newUrl);
+    }
+  }
+};
+
+// =================================================================
+//          CORE: CARGA Y RENDERIZADO
+// =================================================================
+
 export async function loadAndRenderMovies(page = 1) {
   const controller = createAbortableRequest('movie-grid-load');
   const signal = controller.signal;
 
   setCurrentPage(page);
   updatePageTitle();
-  updateUrl(); // Sincronizar URL antes de cargar
+  UrlManager.updateUrlFromState();
 
-  // Estado de carga visual
+  // Estado de carga UI
   document.body.classList.add('is-fetching');
   dom.gridContainer.classList.add('is-fetching');
   dom.gridContainer.setAttribute("aria-busy", "true");
   
-  // Renderizado optimista: Esqueletos + Paginación conocida
+  // Renderizado optimista
   renderSkeletons(dom.gridContainer, dom.paginationContainer);
   const currentKnownTotal = getState().totalMovies;
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
-  // Scroll al inicio siempre al cambiar de página
   window.scrollTo({ top: 0, behavior: "auto" });
 
-  const supportsViewTransitions = !!document.startViewTransition;
+  try {
+    const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+    
+    // Smart Count: Pedir total solo si no lo tenemos o es primera página (refresco)
+    const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
 
-  const renderLogic = async () => {
-    try {
-      // Primera página carga más elementos para llenar pantallas grandes
-      const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+    const result = await fetchMovies(getActiveFilters(), page, pageSize, signal, shouldRequestCount);
+
+    if (result.aborted) return;
+
+    const { items: movies, total: returnedTotal } = result;
+
+    // Precarga LCP
+    if (movies && movies.length > 0) preloadLcpImage(movies[0]);
+    
+    const performRender = () => {
+      const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
+      updateDomWithResults(movies, effectiveTotal);
       
-      // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
-      const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
-
-      const result = await fetchMovies(
-        getActiveFilters(),
-        page,
-        pageSize,
-        signal,
-        shouldRequestCount
-      );
-
-      if (result.aborted) return;
-
-      const { items: movies, total: returnedTotal } = result;
-
-      // Precarga LCP (Largest Contentful Paint) para la primera imagen
-      if (movies && movies.length > 0) preloadLcpImage(movies[0]);
-      
-      const performRender = () => {
-        // Usar total retornado o mantener el conocido si no se pidió actualización
-        const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
-        updateDomWithResults(movies, effectiveTotal);
-        
-        // FIX MÓVIL: Forzar scroll arriba tras renderizar si el teclado desplazó la vista
-        if (page === 1 && window.innerWidth <= 700) {
-           window.scrollTo({ top: 0, behavior: "auto" });
-        }
-      };
-
-      // Usar View Transitions API si está disponible para suavidad nativa
-      if (supportsViewTransitions) document.startViewTransition(performRender);
-      else performRender();
-
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      console.error("Error en carga (Main):", error);
-      
-      const msg = getFriendlyErrorMessage(error);
-      if (msg) showToast(msg, "error");
-      renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
-      
-      // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
-      if (msg) throw new Error(msg); 
-    } finally {
-      if (!signal.aborted) {
-        document.body.classList.remove('is-fetching');
-        dom.gridContainer.classList.remove('is-fetching');
-        dom.gridContainer.setAttribute("aria-busy", "false");
+      // Fix scroll en móvil tras renderizado
+      if (page === 1 && window.innerWidth <= 700) {
+         window.scrollTo({ top: 0, behavior: "auto" });
       }
-    }
-  };
+    };
 
-  await renderLogic();
+    if (document.startViewTransition) document.startViewTransition(performRender);
+    else performRender();
+
+  } catch (error) {
+    if (error.name === "AbortError") return;
+    console.error("Main Load Error:", error);
+    
+    const msg = getFriendlyErrorMessage(error);
+    if (msg) showToast(msg, "error");
+    renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
+    
+    // Propagar error para manejo en UI lateral (rollback filtros)
+    if (msg) throw new Error(msg); 
+  } finally {
+    if (!signal.aborted) {
+      document.body.classList.remove('is-fetching');
+      dom.gridContainer.classList.remove('is-fetching');
+      dom.gridContainer.setAttribute("aria-busy", "false");
+    }
+  }
 }
 
-/**
- * Actualiza el DOM con los resultados obtenidos.
- * Gestiona casos de vacío, paginación y precarga.
- */
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
@@ -119,14 +160,12 @@ function updateDomWithResults(movies, totalMovies) {
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
   } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
-    // Caso: Todos los resultados caben en una página
     renderMovieGrid(dom.gridContainer, movies);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
   } else {
-    // Caso: Paginación necesaria
     const limit = CONFIG.ITEMS_PER_PAGE; 
-    const moviesToRender = movies.slice(0, limit); // Recortar exceso de "fetch" dinámico
+    const moviesToRender = movies.slice(0, limit);
     renderMovieGrid(dom.gridContainer, moviesToRender);
     
     if (currentState.totalMovies > limit) {
@@ -137,44 +176,44 @@ function updateDomWithResults(movies, totalMovies) {
     updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
   }
 
-  // Precarga inteligente de la siguiente página
   if (currentState.totalMovies > 0) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
 
-// --- Manejadores de Eventos de UI ---
+// =================================================================
+//          MANEJADORES DE EVENTOS UI
+// =================================================================
 
-async function handleSortChange(event) {
+function handleSortChange(event) {
   triggerPopAnimation(event.target);
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
   setSort(dom.sortSelect.value);
-  await loadAndRenderMovies(1);
+  loadAndRenderMovies(1);
 }
 
-async function handleMediaTypeToggle(event) {
+function handleMediaTypeToggle(event) {
   triggerPopAnimation(event.currentTarget);
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-  const currentType = getState().activeFilters.mediaType;
+  const current = getState().activeFilters.mediaType;
   const cycle = { all: "movies", movies: "series", series: "all" };
-  setMediaType(cycle[currentType]);
-  updateTypeFilterUI(cycle[currentType]);
-  await loadAndRenderMovies(1);
+  setMediaType(cycle[current]);
+  updateTypeFilterUI(cycle[current]);
+  loadAndRenderMovies(1);
 }
 
-async function handleSearchInput() {
+const handleSearchInput = debounce(() => {
   const searchTerm = dom.searchInput.value.trim();
   if (searchTerm === getState().activeFilters.searchTerm) return;
   
-  // Buscar solo si hay 3+ caracteres o se borró todo
   if (searchTerm.length >= 3 || searchTerm.length === 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     setSearchTerm(searchTerm);
-    await loadAndRenderMovies(1);
+    loadAndRenderMovies(1);
   }
-}
+}, CONFIG.SEARCH_DEBOUNCE_DELAY);
 
-// --- Gestión Global de Scroll (Optimizado) ---
+// --- Scroll Global (Throttled) ---
 let isTicking = false;
 let lastScrollY = 0;
 
@@ -182,25 +221,19 @@ function handleGlobalScroll() {
   if (!isTicking) {
     window.requestAnimationFrame(() => {
       const currentScrollY = window.scrollY;
-      
-      // 1. Efecto Sombra/Borde en Header
       dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
 
-      // 2. Smart Hide (Barra inferior móvil)
       if (window.innerWidth <= 700) {
         const isScrollingDown = currentScrollY > lastScrollY;
         const scrollDifference = Math.abs(currentScrollY - lastScrollY);
         const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
 
         if (isAtBottom) {
-          // Siempre mostrar al llegar al final
           dom.mainHeader.classList.remove('is-hidden-mobile');
         } else if (scrollDifference > 5) {
-          // Ocultar al bajar, mostrar al subir
           dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
         }
       }
-
       lastScrollY = currentScrollY;
       isTicking = false;
     });
@@ -208,7 +241,6 @@ function handleGlobalScroll() {
   }
 }
 
-// --- Reset de Filtros ---
 function handleFiltersReset(e) {
   const { keepSort, newFilter } = e.detail || {};
   const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
@@ -216,10 +248,8 @@ function handleFiltersReset(e) {
   resetFiltersState();
   setSort(currentSort);
   
-  // Aplicar nuevo filtro si viene en el evento (ej: click en director)
   if (newFilter) setFilter(newFilter.type, newFilter.value);
   
-  // Actualizar UI
   dom.searchInput.value = "";
   dom.sortSelect.value = currentSort;
   updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
@@ -228,21 +258,20 @@ function handleFiltersReset(e) {
   loadAndRenderMovies(1);
 }
 
-// --- Configuración de Listeners ---
+// =================================================================
+//          SETUP & INIT
+// =================================================================
 
-function setupHeaderListeners() {
-  const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
-  dom.searchInput.addEventListener("input", debouncedSearch);
+function setupListeners() {
+  // --- Header ---
+  dom.searchInput.addEventListener("input", handleSearchInput);
   dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
-  
-  // UX Búsqueda Móvil (Expandir/Colapsar)
   dom.searchInput.addEventListener("focus", () => dom.mainHeader.classList.add("is-search-focused"));
   dom.searchInput.addEventListener("blur", () => dom.mainHeader.classList.remove("is-search-focused"));
-
+  
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
 
-  // Toggle Sidebar Móvil
   const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
   if (mobileSidebarToggle) {
     mobileSidebarToggle.addEventListener('click', () => {
@@ -252,236 +281,127 @@ function setupHeaderListeners() {
     });
   }
 
-  // Navegación Paginación Header
-  const navigatePage = async (direction) => {
-    const currentPage = getCurrentPage();
+  // Navegación Páginas
+  const navigatePage = (dir) => {
+    const curr = getCurrentPage();
     const totalPages = Math.ceil(getState().totalMovies / CONFIG.ITEMS_PER_PAGE);
-    const newPage = currentPage + direction;
-    if (newPage > 0 && newPage <= totalPages) {
+    if (curr + dir > 0 && curr + dir <= totalPages) {
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-      await loadAndRenderMovies(newPage);
+      loadAndRenderMovies(curr + dir);
     }
   };
   dom.headerPrevBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(-1); });
   dom.headerNextBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(1); });
 
-  // Botón "X" Limpiar Búsqueda
+  // Clear Search
   const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
   if (clearSearchBtn) {
     const performClear = (e) => {
-      if (e.cancelable) e.preventDefault();
-      e.stopPropagation();
-      dom.searchInput.value = '';
-      dom.searchInput.focus();
-      handleSearchInput(); 
+      if (e.cancelable) e.preventDefault(); e.stopPropagation();
+      dom.searchInput.value = ''; dom.searchInput.focus(); handleSearchInput(); 
     };
-    clearSearchBtn.addEventListener('mousedown', (e) => e.preventDefault()); // Evitar blur
+    clearSearchBtn.addEventListener('mousedown', (e) => e.preventDefault());
     clearSearchBtn.addEventListener('touchstart', performClear, { passive: false });
     clearSearchBtn.addEventListener('click', performClear);
   }
 
-  // Placeholder Responsivo
-  const updateSearchPlaceholder = () => {
-    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 700 ? "" : "Título";
-  };
-  window.addEventListener("resize", updateSearchPlaceholder);
-  updateSearchPlaceholder();
-}
-
-function setupGlobalListeners() {
-  // Cierres al hacer click fuera
+  // --- Global ---
   document.addEventListener("click", (e) => {
     if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
     if (!e.target.closest(".sidebar")) collapseAllSections();
   });
 
-  // Delegación de eventos Grid (Cards)
-  dom.gridContainer.addEventListener("click", function(e) {
-    const cardElement = e.target.closest(".movie-card");
-    if (cardElement) { handleCardClick.call(cardElement, e); return; }
-    
-    // Botón "Limpiar Filtros" en estado vacío
-    if (e.target.closest("#clear-filters-from-empty")) {
-      document.dispatchEvent(new CustomEvent("filtersReset"));
-    }
+  dom.gridContainer.addEventListener("click", (e) => {
+    const card = e.target.closest(".movie-card");
+    if (card) return handleCardClick.call(card, e);
+    if (e.target.closest("#clear-filters-from-empty")) document.dispatchEvent(new CustomEvent("filtersReset"));
   });
-  
-  // Interacciones Card (Hover, Tap)
+
   initCardInteractions(dom.gridContainer);
+  document.getElementById("quick-view-content").addEventListener("click", function(e) { handleCardClick.call(this, e); });
   
-  // Quick View Delegation
-  document.getElementById("quick-view-content").addEventListener("click", function(e) { 
-    handleCardClick.call(this, e); 
-  });
-  
-  // Paginación Footer
-  dom.paginationContainer.addEventListener("click", async (e) => {
-    const button = e.target.closest(".btn[data-page]");
-    if (button) {
+  dom.paginationContainer.addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn[data-page]");
+    if (btn) {
+      triggerPopAnimation(btn);
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-      triggerPopAnimation(button);
-      const page = parseInt(button.dataset.page, 10);
-      await loadAndRenderMovies(page);
+      loadAndRenderMovies(parseInt(btn.dataset.page, 10));
     }
   });
 
-  // Scroll Global Unificado
   lastScrollY = window.scrollY;
   window.addEventListener("scroll", handleGlobalScroll, { passive: true });
   
-  // Teclado
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { closeMobileDrawer(); }
+    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) closeMobileDrawer();
   });
 
-  // Eventos Personalizados de la App
-  document.addEventListener("card:requestUpdate", (e) => { if (e.detail.cardElement) updateCardUI(e.detail.cardElement); });
-  const handleDataRefresh = () => document.querySelectorAll(".movie-card").forEach(updateCardUI);
-  document.addEventListener("userMovieDataChanged", handleDataRefresh);
-  document.addEventListener("userDataUpdated", handleDataRefresh);
+  // Eventos Custom
+  const refreshUI = () => document.querySelectorAll(".movie-card").forEach(updateCardUI);
+  document.addEventListener("card:requestUpdate", (e) => updateCardUI(e.detail.cardElement));
+  document.addEventListener("userMovieDataChanged", refreshUI);
+  document.addEventListener("userDataUpdated", refreshUI);
   document.addEventListener("filtersReset", handleFiltersReset);
-}
-
-// --- Autenticación ---
-function setupAuthSystem() {
-  const userAvatarInitials = document.getElementById("user-avatar-initials");
-  const logoutButton = document.getElementById("logout-button");
   
-  async function onLogin(user) {
-    document.body.classList.add("user-logged-in");
-    const userEmail = user.email || "";
-    userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
-    userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
-    try {
-      const data = await fetchUserMovieData();
-      setUserMovieData(data);
-      document.dispatchEvent(new CustomEvent("userDataUpdated"));
-    } catch (error) { showToast(error.message, "error"); }
-  }
-  
-  function onLogout() {
-    document.body.classList.remove("user-logged-in");
-    userAvatarInitials.textContent = "";
-    userAvatarInitials.title = "";
-    clearUserMovieData();
-    document.dispatchEvent(new CustomEvent("userDataUpdated"));
-  }
-  
-  async function handleLogout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) { console.error("Logout error:", error); showToast("Error al cerrar sesión.", "error"); }
-  }
-  
-  if (logoutButton) logoutButton.addEventListener("click", handleLogout);
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session?.user) onLogin(session.user); else onLogout();
+  window.addEventListener("resize", () => {
+    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 700 ? "" : "Título";
   });
 }
 
-// --- Gestión de URL y Título ---
 function updatePageTitle() {
-  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType } = getActiveFilters();
-  
-  let baseNoun = "Películas y series";
-  if (mediaType === "movies") baseNoun = "Películas";
-  else if (mediaType === "series") baseNoun = "Series";
+  const f = getActiveFilters();
+  let title = f.mediaType === "movies" ? "Películas" : f.mediaType === "series" ? "Series" : "Películas y series";
+  const yearSuffix = (f.year && f.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) ? ` (${f.year.replace("-", " a ")})` : "";
 
-  let title = baseNoun;
-  const yearSuffix = (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) 
-    ? ` (${year.replace("-", " a ")})` : "";
-
-  if (searchTerm) title = `Resultados para "${searchTerm}"`;
-  else if (selection) {
-    const config = FILTER_CONFIG.selection;
-    const name = config.titles?.[selection] || config.items[selection];
-    if (name) title = name + yearSuffix;
-  } else if (studio) {
-    title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
-  }
-  else if (genre) title = `${baseNoun} de ${genre}`;
-  else if (director) title = `${baseNoun} de ${director}`;
-  else if (actor) title = `${baseNoun} con ${actor}`;
-  else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `${baseNoun} de ${year.replace("-", " a ")}`;
-  else if (country) title = `${baseNoun} de ${country}`;
+  if (f.searchTerm) title = `Resultados para "${f.searchTerm}"`;
+  else if (f.selection) title = (FILTER_CONFIG.selection.titles?.[f.selection] || FILTER_CONFIG.selection.items[f.selection]) + yearSuffix;
+  else if (f.studio) title = (STUDIO_DATA[f.studio]?.title || title) + yearSuffix;
+  else if (f.genre) title = `${title} de ${f.genre}`;
+  else if (f.director) title = `${title} de ${f.director}`;
+  else if (f.actor) title = `${title} con ${f.actor}`;
+  else if (f.country) title = `${title} de ${f.country}`;
   
   document.title = `${title} | videoclub.digital`;
 }
 
-function readUrlAndSetState() {
-  resetFiltersState();
-  const params = new URLSearchParams(window.location.search);
+function setupAuthSystem() {
+  const avatar = document.getElementById("user-avatar-initials");
+  const logoutBtn = document.getElementById("logout-button");
   
-  Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
-    const value = params.get(shortKey);
-    if (value !== null) {
-      if (stateKey === "page") setCurrentPage(parseInt(value, 10) || 1);
-      else if (stateKey === "searchTerm") setSearchTerm(value);
-      else if (stateKey === "sort") setSort(value);
-      else if (stateKey === "mediaType") setMediaType(value);
-      else if (stateKey === "excludedGenres" || stateKey === "excludedCountries") setFilter(stateKey, value.split(","), true);
-      else setFilter(stateKey, value, true);
+  supabase.auth.onAuthStateChange(async (e, session) => {
+    if (session?.user) {
+      document.body.classList.add("user-logged-in");
+      avatar.textContent = session.user.email.charAt(0).toUpperCase();
+      avatar.title = `Sesión: ${session.user.email}`;
+      try {
+        const data = await fetchUserMovieData();
+        setUserMovieData(data);
+        document.dispatchEvent(new CustomEvent("userDataUpdated"));
+      } catch (err) { showToast(err.message, "error"); }
+    } else {
+      document.body.classList.remove("user-logged-in");
+      clearUserMovieData();
+      document.dispatchEvent(new CustomEvent("userDataUpdated"));
     }
   });
-  
-  // Defaults si no hay params
-  if (!params.has(REVERSE_URL_PARAM_MAP.sort)) setSort(DEFAULTS.SORT);
-  if (!params.has(REVERSE_URL_PARAM_MAP.mediaType)) setMediaType(DEFAULTS.MEDIA_TYPE);
-  if (!params.has(REVERSE_URL_PARAM_MAP.page)) setCurrentPage(1);
-  
-  // Sincronizar UI
-  const activeFilters = getActiveFilters();
-  dom.searchInput.value = activeFilters.searchTerm;
-  dom.sortSelect.value = activeFilters.sort;
-  updateTypeFilterUI(activeFilters.mediaType);
-}
 
-function updateUrl() {
-  const params = new URLSearchParams();
-  const activeFilters = getActiveFilters();
-  const currentPage = getCurrentPage();
-  
-  Object.entries(activeFilters).forEach(([key, value]) => {
-    const shortKey = REVERSE_URL_PARAM_MAP[key];
-    if (!shortKey) return;
-    
-    if (Array.isArray(value) && value.length > 0) params.set(shortKey, value.join(","));
-    else if (typeof value === "string" && value.trim() !== "") {
-      // Ignorar valores por defecto
-      if (key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) return;
-      if (key === "sort" && value === DEFAULTS.SORT) return;
-      if (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) return;
-      
-      params.set(shortKey, value);
-    }
+  logoutBtn?.addEventListener("click", async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) showToast("Error al cerrar sesión.", "error");
   });
-  
-  if (currentPage > 1) params.set(REVERSE_URL_PARAM_MAP.page, currentPage);
-  
-  const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-  if (newUrl !== `${window.location.pathname}${window.location.search}`) {
-    history.pushState({ path: newUrl }, "", newUrl);
-  }
 }
 
-// --- Inicialización ---
 function init() {
-  // GESTIÓN ANTI-FOUC GENÉRICA
-  // Elimina atributo data-loading para activar transiciones CSS
-  requestAnimationFrame(() => {
-    document.querySelectorAll('[data-loading]').forEach(el => {
-      el.removeAttribute('data-loading');
-    });
-  });
+  // Anti-FOUC
+  requestAnimationFrame(() => document.querySelectorAll('[data-loading]').forEach(el => el.removeAttribute('data-loading')));
 
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(err => console.error("Fallo SW:", err));
-    });
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(console.error));
   }
   
   window.addEventListener("popstate", () => {
     closeModal();
-    readUrlAndSetState();
+    UrlManager.syncStateFromUrl();
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
     loadAndRenderMovies(getCurrentPage());
   });
@@ -489,13 +409,12 @@ function init() {
   initSidebar();
   initQuickView();
   initThemeToggle();
-  setupHeaderListeners();
-  setupGlobalListeners();
+  setupListeners();
   setupAuthSystem();
   setupAuthModal();
   initAuthForms();
   
-  readUrlAndSetState();
+  UrlManager.syncStateFromUrl();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   loadAndRenderMovies(getCurrentPage());
 }

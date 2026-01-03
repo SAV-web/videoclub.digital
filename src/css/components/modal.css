@@ -131,7 +131,7 @@
   height: auto; width: 100%; border: none;
 }
 .is-quick-view .poster-container img {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow);
   border: none;
   margin-bottom: 0;

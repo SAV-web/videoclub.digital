@@ -91,6 +91,7 @@ function handleTouchStart(e) {
   if (document.body.classList.contains("modal-open")) return;
   
   const isOpen = document.body.classList.contains("sidebar-is-open");
+  // Zona de activación: Borde izquierdo (150px) o cualquier parte si ya está abierto
   const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
 
   if (!canStartDrag) {
@@ -104,8 +105,11 @@ function handleTouchStart(e) {
   touchState.startY = e.touches[0].clientY;
   touchState.startTime = Date.now();
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
+  
+  // Detección de elementos interactivos para no robarles el clic
   touchState.isInteractive = !isOpen && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
 
+  // Passive false para poder cancelar el scroll nativo si es necesario
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
 }
 
@@ -117,29 +121,36 @@ function handleTouchMove(e) {
   const diffX = currentX - touchState.startX;
   const diffY = currentY - touchState.startY;
 
+  // Detección de intención (Scroll Vertical vs Swipe Horizontal)
   if (!touchState.isHorizontalDrag) {
+    // Umbral dinámico: más alto si estamos sobre un elemento interactivo
     const threshold = touchState.isInteractive ? 15 : 5;
+    
+    // Si no superamos el umbral, esperamos
     if (Math.abs(diffX) < threshold && Math.abs(diffY) < threshold) return;
 
+    // Si es scroll vertical, cancelamos el swipe del sidebar
     if (Math.abs(diffY) > Math.abs(diffX)) {
       touchState.isDragging = false;
       document.removeEventListener("touchmove", handleTouchMove);
       return;
     }
     
+    // Confirmado: Es swipe horizontal
     touchState.isHorizontalDrag = true;
-    touchState.startX = currentX;
+    touchState.startX = currentX; // Resetear origen para evitar salto visual
     touchState.startY = currentY;
     touchState.startTime = Date.now();
 
-    dom.sidebar.classList.add("is-dragging");
-    document.body.classList.add("sidebar-is-dragging");
+    dom.sidebar.classList.add("is-dragging"); // Quitar transición CSS
+    document.body.classList.add("sidebar-is-dragging"); // Bloquear scroll body
   }
 
-  if (e.cancelable) e.preventDefault();
+  if (e.cancelable) e.preventDefault(); // Evitar navegación nativa
 
   let newTranslate = touchState.startTranslate + (currentX - touchState.startX);
 
+  // Física de límites (Rubber Banding)
   if (newTranslate > 0) {
     newTranslate *= 0.2; 
   } else if (newTranslate < -DRAWER_WIDTH) {
@@ -171,13 +182,14 @@ function handleTouchEnd(e) {
   const distance = finalX - touchState.startX;
   const velocity = duration > 0 ? distance / duration : 0;
 
+  // Lógica de decisión: Flick rápido o posición
   let shouldOpen;
   if (velocity > SWIPE_VELOCITY_THRESHOLD) {
-    shouldOpen = true;
+    shouldOpen = true; // Flick derecha -> Abrir
   } else if (velocity < -SWIPE_VELOCITY_THRESHOLD) {
-    shouldOpen = false;
+    shouldOpen = false; // Flick izquierda -> Cerrar
   } else {
-    shouldOpen = touchState.currentTranslate > -DRAWER_WIDTH * 0.5;
+    shouldOpen = touchState.currentTranslate > -DRAWER_WIDTH * 0.5; // Posición > 50%
   }
 
   if (shouldOpen) openMobileDrawer();
@@ -287,8 +299,9 @@ function initPinchGestures() {
     const diff = currentDistance - initialDistance;
 
     if (Math.abs(diff) > 60) {
+      // Solo "Pellizcar hacia adentro" (Zoom Out) -> Activar modo muro
       if (diff < 0) {
-         toggleRotationMode();
+         toggleRotationMode(); // Toggle
          activateCooldown();
          hasTriggered = true;
       } 
@@ -385,6 +398,7 @@ function updateAllFilterControls() {
     // C. Visibilidad de Botones de Exclusión
     const excludeBtn = link.querySelector(".exclude-filter-btn");
     if (excludeBtn) {
+        // Solo mostrar botón excluir si NO hay un país activo (para evitar conflictos)
         const shouldHideExclude = (type === 'country' && activeFilters.country);
         if (excludeBtn.style.display !== (shouldHideExclude ? "none" : "")) {
             excludeBtn.style.display = shouldHideExclude ? "none" : "";

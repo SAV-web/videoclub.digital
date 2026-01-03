@@ -112,42 +112,40 @@ export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.
   }
 
   // 2. Nueva Petición a Red
-  return (async () => {
-    try {
-      const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
-      
-      let query = supabase.rpc("search_movies_offset", rpcParams);
-      if (signal) {
-        query = query.abortSignal(signal);
-      }
+  try {
+    const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
+    
+    let query = supabase.rpc("search_movies_offset", rpcParams);
+    if (signal) {
+      query = query.abortSignal(signal);
+    }
 
-      const { data, error } = await query;
+    const { data, error } = await query;
 
-      if (error) {
-        // Manejo silencioso de cancelaciones
-        if (error.name === "AbortError" || error.message?.includes("abort")) {
-           return { aborted: true, items: [], total: -1 };
-        }
-        console.error("[API] Error RPC Supabase:", error);
-        throw new Error("Error de base de datos al obtener películas.");
-      }
-
-      const result = { total: data?.total ?? -1, items: data?.items || [] };
-      
-      // Guardar en caché solo si la petición terminó con éxito completo
-      if (!signal?.aborted) {
-        queryCache.set(queryKey, result);
-      }
-      
-      return result;
-
-    } catch (error) {
-      if (error.name === "AbortError" || (signal && signal.aborted)) {
+    if (error) {
+      // Manejo silencioso de cancelaciones
+      if (error.name === "AbortError" || error.message?.includes("abort")) {
           return { aborted: true, items: [], total: -1 };
       }
-      throw error;
+      console.error("[API] Error RPC Supabase:", error);
+      throw new Error("Error de base de datos al obtener películas.");
     }
-  })();
+
+    const result = { total: data?.total ?? -1, items: data?.items || [] };
+    
+    // Guardar en caché solo si la petición terminó con éxito completo
+    if (!signal?.aborted) {
+      queryCache.set(queryKey, result);
+    }
+    
+    return result;
+
+  } catch (error) {
+    if (error.name === "AbortError" || (signal && signal.aborted)) {
+        return { aborted: true, items: [], total: -1 };
+    }
+    throw error;
+  }
 }
 
 /**

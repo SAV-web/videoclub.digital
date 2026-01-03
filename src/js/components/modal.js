@@ -1,11 +1,8 @@
 // =================================================================
 //          COMPONENTE: Quick View (Modal & Bottom Sheet)
 // =================================================================
-//  FICHERO:  src/js/components/modal.js
-//  RESPONSABILIDAD:
-//  - Gestionar apertura/cierre de la vista detallada.
-//  - Poblar datos dinámicamente (optimizando DOM).
-//  - Lógica "Bottom Sheet" con gestos táctiles para móvil.
+//  FICHERO: src/js/components/modal.js
+//  RESPONSABILIDAD: Gestión de vista detallada, navegación y gestos.
 // =================================================================
 
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
@@ -14,46 +11,38 @@ import { formatRuntime, createElement, renderCountryFlag } from "../utils.js";
 import { STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 
-// --- Referencias DOM Cacheadas ---
-const dom = {
+// --- Referencias DOM (Lazy Getter para seguridad) ---
+const getDom = () => ({
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
   content: document.getElementById("quick-view-content"),
   template: document.getElementById("movie-card-template")?.content,
   prevBtn: document.getElementById("modal-prev-btn"),
   nextBtn: document.getElementById("modal-next-btn"),
-};
+});
 
 // --- Estado de Gestos Táctiles ---
-let touchStartY = 0;
-let touchStartX = 0;
-let currentModalY = 0;
-let isDraggingModal = false;
-let isHorizontalSwipe = false;
+const touchState = {
+  startY: 0,
+  startX: 0,
+  currentY: 0,
+  isDragging: false,
+  isHorizontalSwipe: false
+};
 
 // =================================================================
-//          1. MANEJADORES DE EVENTOS
+//          1. GESTIÓN DE EVENTOS (Navegación y Cierre)
 // =================================================================
 
-/**
- * Cierra la modal si se hace clic fuera del contenido (en el overlay).
- * Ignora clics que provengan de tarjetas para evitar conflictos de apertura.
- */
 function handleOutsideClick(event) {
+  const { modal } = getDom();
   const isClickInsideCard = event.target.closest(".movie-card");
-  if (
-    dom.modal.classList.contains("is-visible") &&
-    !dom.modal.contains(event.target) &&
-    !isClickInsideCard
-  ) {
+  
+  if (modal.classList.contains("is-visible") && !modal.contains(event.target) && !isClickInsideCard) {
     closeModal();
   }
 }
 
-/**
- * Permite filtrar por director o actor al hacer clic en su nombre dentro de la modal.
- * Dispara el evento global de reseteo de filtros.
- */
 function handleMetadataClick(event) {
   const directorLink = event.target.closest(".front-director-info a[data-director-name]");
   const actorLink = event.target.closest('[data-template="actors"] a[data-actor-name]');
@@ -65,440 +54,364 @@ function handleMetadataClick(event) {
     const filterType = directorLink ? "director" : "actor";
     const filterValue = directorLink ? directorLink.dataset.directorName : actorLink.dataset.actorName;
 
-    document.dispatchEvent(
-      new CustomEvent("filtersReset", {
-        detail: { 
-          keepSort: true, 
-          newFilter: { type: filterType, value: filterValue } 
-        },
-      })
-    );
+    document.dispatchEvent(new CustomEvent("filtersReset", {
+      detail: { keepSort: true, newFilter: { type: filterType, value: filterValue } },
+    }));
   }
 }
 
-// --- Lógica de Gestos (Swipe to Dismiss) ---
+// =================================================================
+//          2. LÓGICA DE GESTOS (Swipe to Dismiss / Navigate)
+// =================================================================
 
-function handleModalTouchStart(e) {
-  touchStartY = e.touches[0].clientY;
-  touchStartX = e.touches[0].clientX;
+function handleTouchStart(e) {
+  const { modal } = getDom();
+  touchState.startY = e.touches[0].clientY;
+  touchState.startX = e.touches[0].clientX;
+  touchState.isDragging = false;
+  touchState.isHorizontalSwipe = false;
   
-  // Reseteamos estados
-  isDraggingModal = false;
-  isHorizontalSwipe = false;
-  
-  // Eliminamos transición para respuesta inmediata si empezamos a arrastrar
-  dom.modal.classList.remove("is-dragging"); 
+  modal.classList.remove("is-dragging"); // Reactivar transición CSS si estaba desactivada
 }
 
-function handleModalTouchMove(e) {
-  // Si ya decidimos que no es un gesto válido, salimos
-  if (!isDraggingModal && !isHorizontalSwipe && e.defaultPrevented) return;
+function handleTouchMove(e) {
+  // Salir rápido si no es un gesto válido o ya está cancelado
+  if (!touchState.isDragging && !touchState.isHorizontalSwipe && e.defaultPrevented) return;
 
+  const { modal, content } = getDom();
   const currentY = e.touches[0].clientY;
   const currentX = e.touches[0].clientX;
-  const deltaY = currentY - touchStartY;
-  const deltaX = currentX - touchStartX;
+  const deltaY = currentY - touchState.startY;
+  const deltaX = currentX - touchState.startX;
 
-  // 1. DETECCIÓN DE INTENCIÓN (Solo la primera vez que movemos)
-  if (!isDraggingModal && !isHorizontalSwipe) {
-    // Umbral mínimo para evitar ruido
-    if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return;
+  // 1. Detección de Intención (Primera vez)
+  if (!touchState.isDragging && !touchState.isHorizontalSwipe) {
+    if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return; // Umbral de ruido
 
-    // Si el movimiento es vertical y estamos arriba del todo -> DISMISS
-    if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && dom.content.scrollTop <= 0) {
-      // FIX: Solo permitir "Swipe to Dismiss" (vertical) en móvil (Bottom Sheet).
-      // En desktop/tablet, la modal está centrada y arrastrarla rompería el layout.
-      if (window.innerWidth <= 700) {
-        isDraggingModal = true;
-        dom.modal.classList.add("is-dragging"); // Quitar transición CSS
+    // Gesto Vertical (Cierre): Solo si estamos arriba del todo y arrastramos hacia abajo
+    if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= 0) {
+      if (window.innerWidth <= 700) { // Solo móvil
+        touchState.isDragging = true;
+        modal.classList.add("is-dragging"); // Desactivar transición para seguir el dedo
       }
     } 
-    // Si el movimiento es horizontal -> NAVEGACIÓN
+    // Gesto Horizontal (Navegación)
     else if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      isHorizontalSwipe = true;
+      touchState.isHorizontalSwipe = true;
     }
   }
 
-  // 2. EJECUCIÓN DEL GESTO
-  if (isDraggingModal) {
-    if (e.cancelable) e.preventDefault(); // Evitar scroll
-    dom.modal.style.transform = `translate(-50%, ${deltaY}px)`; // Mover modal
-    currentModalY = deltaY;
-  } else if (isHorizontalSwipe) {
-    if (e.cancelable) e.preventDefault(); // Evitar gestos de navegador (atrás/adelante)
+  // 2. Ejecución
+  if (touchState.isDragging) {
+    if (e.cancelable) e.preventDefault();
+    modal.style.transform = `translate(-50%, ${deltaY}px)`;
+    touchState.currentY = deltaY;
+  } else if (touchState.isHorizontalSwipe) {
+    if (e.cancelable) e.preventDefault(); // Evitar "Atrás/Adelante" del navegador
   }
 }
 
-function handleModalTouchEnd(e) {
-  // A. GESTO HORIZONTAL (Navegación)
-  if (isHorizontalSwipe) {
-    const deltaX = e.changedTouches[0].clientX - touchStartX;
-    const SWIPE_THRESHOLD = 80; // Píxeles para considerar swipe
-    
-    if (Math.abs(deltaX) > SWIPE_THRESHOLD) {
-      // Izquierda (< 0) -> Siguiente | Derecha (> 0) -> Anterior
+function handleTouchEnd(e) {
+  const { modal } = getDom();
+
+  // A. Navegación Horizontal
+  if (touchState.isHorizontalSwipe) {
+    const deltaX = e.changedTouches[0].clientX - touchState.startX;
+    if (Math.abs(deltaX) > 80) { // Umbral de swipe
       navigateToSibling(deltaX < 0 ? 1 : -1);
     }
-    isHorizontalSwipe = false;
+    touchState.isHorizontalSwipe = false;
     return;
   }
 
-  // B. GESTO VERTICAL (Cierre)
-  if (!isDraggingModal) return;
+  // B. Cierre Vertical
+  if (!touchState.isDragging) return;
   
-  dom.modal.classList.remove("is-dragging"); // Reactivamos transiciones CSS para el rebote o cierre suave
+  modal.classList.remove("is-dragging"); // Reactivar transición CSS
 
-  // UMBRAL DE CIERRE: 120px
-  if (currentModalY > 120) {
+  if (touchState.currentY > 120) { // Umbral de cierre
     closeModal();
   } else {
-    // Rebote elástico a la posición original.
-    // Al quitar el estilo inline, el CSS toma el control y anima el retorno.
-    dom.modal.style.transform = ""; 
+    modal.style.transform = ""; // Rebote elástico
   }
-  currentModalY = 0;
-  isDraggingModal = false;
+  
+  touchState.currentY = 0;
+  touchState.isDragging = false;
 }
 
-/**
- * Navega a la película anterior (-1) o siguiente (1) en el grid actual.
- */
+// =================================================================
+//          3. NAVEGACIÓN ENTRE FICHAS
+// =================================================================
+
 function navigateToSibling(direction) {
-  const currentId = dom.content.dataset.movieId;
+  const { content } = getDom();
+  const currentId = content.dataset.movieId;
   if (!currentId) return;
 
-  // Buscamos la tarjeta actual en el grid para encontrar a sus vecinos
   const currentCard = document.querySelector(`.movie-card[data-movie-id="${currentId}"]`);
   if (!currentCard) return;
 
   const sibling = direction === 1 ? currentCard.nextElementSibling : currentCard.previousElementSibling;
   
-  // Si existe y es una tarjeta (no un esqueleto o mensaje de error), la abrimos
   if (sibling && sibling.classList.contains('movie-card')) {
     openModal(sibling);
   }
 }
 
-/**
- * Actualiza el estado (habilitado/deshabilitado) de las flechas de navegación
- * basándose en si existen tarjetas hermanas en el grid.
- */
 function updateNavButtons(currentId) {
+  const { prevBtn, nextBtn } = getDom();
   const currentCard = document.querySelector(`.movie-card[data-movie-id="${currentId}"]`);
   if (!currentCard) return;
 
   const prev = currentCard.previousElementSibling;
   const next = currentCard.nextElementSibling;
-  
   const hasPrev = prev && prev.classList.contains('movie-card');
   const hasNext = next && next.classList.contains('movie-card');
 
-  if (dom.prevBtn) {
-    dom.prevBtn.disabled = !hasPrev;
-    dom.prevBtn.style.opacity = hasPrev ? "1" : "0";
-    dom.prevBtn.style.pointerEvents = hasPrev ? "auto" : "none";
+  if (prevBtn) {
+    prevBtn.disabled = !hasPrev;
+    prevBtn.style.opacity = hasPrev ? "1" : "0";
+    prevBtn.style.pointerEvents = hasPrev ? "auto" : "none";
   }
-  if (dom.nextBtn) {
-    dom.nextBtn.disabled = !hasNext;
-    dom.nextBtn.style.opacity = hasNext ? "1" : "0";
-    dom.nextBtn.style.pointerEvents = hasNext ? "auto" : "none";
+  if (nextBtn) {
+    nextBtn.disabled = !hasNext;
+    nextBtn.style.opacity = hasNext ? "1" : "0";
+    nextBtn.style.pointerEvents = hasNext ? "auto" : "none";
   }
 }
 
 // =================================================================
-//          2. LÓGICA DE RENDERIZADO (OPTIMIZADA)
+//          4. RENDERIZADO (POBLADO DE DATOS)
 // =================================================================
 
-function populateModal(cardElement) {
-  if (!dom.template) return;
-  
-  const movieData = cardElement.movieData;
-  const clone = dom.template.cloneNode(true);
+// Helpers de Renderizado
+const createLink = (text, type) => createElement("a", { 
+  textContent: text, href: "#", dataset: { [type === 'director' ? 'directorName' : 'actorName']: text } 
+});
 
-  // Resetear visibilidad de flechas SOLO si abrimos la modal desde cero.
-  // Si ya está visible (navegación), mantenemos la preferencia del usuario.
-  if (!dom.modal.classList.contains("is-visible")) {
-    dom.modal.classList.remove("hide-arrows");
-  }
-  
-  // Añadimos clase modificadora para que el CSS sepa que es una modal
-  const cardClone = clone.querySelector('.movie-card');
-  cardClone.classList.add('is-quick-view');
-
-  // Vinculamos datos al contenedor para que las actualizaciones de UI funcionen
-  dom.content.movieData = movieData;
-  dom.content.dataset.movieId = movieData.id;
-
-  // Referencias locales para búsqueda acotada (Scoped Lookup - Mejora 2.A)
-  const front = clone.querySelector(".flip-card-front");
-  const back = clone.querySelector(".flip-card-back");
-
-  // --- A. COLUMNA IZQUIERDA (FRONT) ---
-  
-  // 1. Imagen (Copia directa para evitar recarga de red)
+function setupModalHeader(front, movie) {
+  // Imagen
   const frontImg = front.querySelector("img");
-  const cardImg = cardElement.querySelector(".flip-card-front img");
-  if (frontImg && cardImg) {
-    // FIX: Usar dataset.src (HQ) si está disponible.
-    // Esto evita copiar el LQIP borroso si la tarjeta original aún no se ha cargado en el grid.
-    frontImg.src = cardImg.dataset.src || cardImg.src;
-    frontImg.alt = cardImg.alt;
+  if (frontImg) {
+    // Usar imagen HQ (dataset.src) si está disponible
+    frontImg.src = movie.image_hq || movie.image; 
+    frontImg.alt = `Póster de ${movie.title}`;
   }
-  
-  // 2. Título (Con lógica de tamaño de fuente)
-  const titleEl = front.querySelector('[data-template="title"]');
-  titleEl.textContent = movieData.title;
-  titleEl.classList.remove("title-long", "title-xl-long");
-  
-  const titleLen = movieData.title.length;
-  if (titleLen > 45) titleEl.classList.add("title-xl-long");
-  else if (titleLen > 25) titleEl.classList.add("title-long");
 
-  // 3. Metadatos básicos
-  const directorContainer = front.querySelector('[data-template="director"]');
-  directorContainer.textContent = "";
-  if (movieData.directors) {
-    movieData.directors.split(", ").forEach((name, index, arr) => {
-      const link = createElement("a", { textContent: name.trim(), href: "#", dataset: { directorName: name.trim() } });
-      directorContainer.appendChild(link);
-      if (index < arr.length - 1) directorContainer.appendChild(document.createTextNode(", "));
+  // Título
+  const titleEl = front.querySelector('[data-template="title"]');
+  titleEl.textContent = movie.title;
+  titleEl.className = ""; // Reset clases
+  if (movie.title.length > 45) titleEl.classList.add("title-xl-long");
+  else if (movie.title.length > 25) titleEl.classList.add("title-long");
+
+  // Director
+  const dirContainer = front.querySelector('[data-template="director"]');
+  dirContainer.textContent = "";
+  if (movie.directors) {
+    movie.directors.split(", ").forEach((name, i, arr) => {
+      dirContainer.appendChild(createLink(name.trim(), 'director'));
+      if (i < arr.length - 1) dirContainer.append(", ");
     });
   }
 
-  front.querySelector('[data-template="year"]').textContent = movieData.year || "";
-  
+  // Año y País
+  front.querySelector('[data-template="year"]').textContent = movie.year || "";
   renderCountryFlag(
     front.querySelector('[data-template="country-container"]'),
     front.querySelector('[data-template="country-flag"]'),
-    movieData.country_code,
-    movieData.country
+    movie.country_code,
+    movie.country
   );
 
-  // 4. Iconos de Plataforma
+  // Iconos Plataforma
   const iconsContainer = front.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
+    const codes = [...(movie.studios_list?.split(",") || []), ...(movie.selections_list?.split(",") || [])];
     
-    const codes = [
-      ...(movieData.studios_list ? movieData.studios_list.split(",") : []),
-      ...(movieData.selections_list ? movieData.selections_list.split(",") : [])
-    ];
+    codes.forEach(code => {
+      const conf = STUDIO_DATA[code];
+      if (conf) {
+        iconsContainer.appendChild(createElement('span', {
+          className: `platform-icon ${conf.class || ''}`, title: conf.title,
+          innerHTML: `<svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="${conf.vb || '0 0 24 24'}"><use href="${spriteUrl}#${conf.id}"></use></svg>`
+        }));
+      }
+    });
+  }
+}
 
-    if (codes.length > 0) {
-      const fragment = document.createDocumentFragment();
-      codes.forEach(code => {
-        const config = STUDIO_DATA[code];
-        if (config) {
-          fragment.appendChild(createElement('span', {
-            className: config.class ? `platform-icon ${config.class}` : `platform-icon`,
-            title: config.title,
-            innerHTML: `<svg width="${config.w || 24}" height="${config.h || 24}" fill="currentColor" viewBox="${config.vb || '0 0 24 24'}"><use href="${spriteUrl}#${config.id}"></use></svg>`
-          }));
-        }
-      });
-      iconsContainer.appendChild(fragment);
+function setupModalDetails(back, movie) {
+  // Título Original
+  const origTitle = back.querySelector('.back-original-title-wrapper');
+  const hasOrig = movie.original_title && movie.original_title.trim() && 
+                  movie.original_title.toLowerCase() !== movie.title.toLowerCase();
+  
+  if (hasOrig) {
+    const span = origTitle.querySelector('span');
+    span.textContent = movie.original_title;
+    span.className = ""; // Reset
+    if (movie.original_title.length > 40) span.classList.add("title-xl-long");
+    else if (movie.original_title.length > 20) span.classList.add("title-long");
+    origTitle.style.display = 'flex';
+  } else {
+    origTitle.style.display = 'none';
+  }
+
+  // Duración y Episodios
+  const isSeries = movie.type?.toUpperCase().startsWith("S.");
+  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movie.minutes, isSeries);
+  
+  const epEl = back.querySelector('[data-template="episodes"]');
+  const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
+  epEl.textContent = epText;
+  epEl.style.display = epText ? "inline" : "none";
+
+  // Links Externos
+  const setupLink = (key, url) => {
+    const el = back.querySelector(`[data-template="${key}-link"]`);
+    if (url) {
+      el.href = url; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
+    } else {
+      el.removeAttribute('href'); el.classList.add('disabled'); el.removeAttribute("aria-label");
     }
-  }
+    el.style.display = 'flex';
+  };
+  setupLink('justwatch', movie.justwatch);
+  setupLink('wikipedia', movie.wikipedia);
+
+  // Textos Largos
+  back.querySelector('[data-template="genre"]').textContent = movie.genres || "N/A";
+  back.querySelector('[data-template="synopsis"]').textContent = movie.synopsis || "N/A";
   
-  // --- B. COLUMNA DERECHA (BACK/DETALLES) ---
+  const critic = back.querySelector('[data-template="critic-container"]');
+  if (movie.critic?.trim()) {
+    critic.querySelector('[data-template="critic"]').textContent = movie.critic;
+    critic.style.display = 'block';
+  } else { critic.style.display = 'none'; }
 
-  // 1. Título Original
-  const originalTitleWrapper = back.querySelector('.back-original-title-wrapper');
-  const showOriginalTitle = movieData.original_title &&
-                            movieData.original_title.trim() !== "";
-
-  if (showOriginalTitle) {
-    const span = originalTitleWrapper.querySelector('span');
-    span.textContent = movieData.original_title;
-    
-    span.classList.remove("title-long", "title-xl-long");
-    const len = movieData.original_title.length;
-    if (len > 40) span.classList.add("title-xl-long");
-    else if (len > 20) span.classList.add("title-long");
-    
-    originalTitleWrapper.style.display = 'flex';
-  } else {
-    originalTitleWrapper.style.display = 'none';
-  }
-
-  // 2. Duración y Episodios
-  const isSeries = movieData.type?.toUpperCase().startsWith("S.");
-  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movieData.minutes, isSeries);
-
-  const episodesEl = back.querySelector('[data-template="episodes"]');
-  const formattedEpisodes = movieData.episodes ? movieData.episodes.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
-  const epText = isSeries && movieData.episodes ? `${formattedEpisodes} x` : "";
-  episodesEl.textContent = epText;
-  episodesEl.style.display = epText ? "inline" : "none";
-
-  // 3. JustWatch
-  const jwLink = back.querySelector('[data-template="justwatch-link"]');
-  if (movieData.justwatch) {
-    jwLink.href = movieData.justwatch;
-    jwLink.setAttribute("aria-label", `Ver ${movieData.title} en JustWatch`);
-    jwLink.classList.remove('disabled');
-  } else {
-    jwLink.removeAttribute('href');
-    jwLink.removeAttribute("aria-label");
-    jwLink.classList.add('disabled');
-  }
-  jwLink.style.display = 'flex';
-
-  // 3. Wikipedia
-  const wikipediaLink = back.querySelector('[data-template="wikipedia-link"]');
-  if (movieData.wikipedia) {
-    wikipediaLink.href = movieData.wikipedia;
-    wikipediaLink.setAttribute("aria-label", `Ver ${movieData.title} en Wikipedia`);
-    wikipediaLink.classList.remove('disabled');
-  } else {
-    wikipediaLink.removeAttribute('href');
-    wikipediaLink.removeAttribute("aria-label");
-    wikipediaLink.classList.add('disabled');
-  }
-  wikipediaLink.style.display = 'flex';
-
-  // 4. Ratings (Reutilización de lógica centralizada)
-  setupCardRatings(back, movieData);
-
-  // 5. Textos Largos
-  back.querySelector('[data-template="genre"]').textContent = movieData.genres || "No disponible";
-  
-  const actorsContainer = back.querySelector('[data-template="actors"]');
-  actorsContainer.textContent = "";
-  if (movieData.actors) {
-    movieData.actors.split(",").forEach((name, index, arr) => {
+  // Actores
+  const actorsCont = back.querySelector('[data-template="actors"]');
+  actorsCont.textContent = "";
+  if (movie.actors) {
+    movie.actors.split(",").forEach((name, i, arr) => {
       const actorName = name.trim();
       if (IGNORED_ACTORS.includes(actorName.toLowerCase())) {
-        actorsContainer.appendChild(document.createTextNode(actorName));
+        actorsCont.append(actorName);
       } else {
-        const link = createElement("a", { textContent: actorName, href: "#", dataset: { actorName: actorName } });
-        actorsContainer.appendChild(link);
+        actorsCont.appendChild(createLink(actorName, 'actor'));
       }
-      if (index < arr.length - 1) actorsContainer.appendChild(document.createTextNode(", "));
+      if (i < arr.length - 1) actorsCont.append(", ");
     });
   } else {
-    actorsContainer.textContent = "No disponible";
+    actorsCont.textContent = "N/A";
   }
+}
 
-  back.querySelector('[data-template="synopsis"]').textContent = movieData.synopsis || "No disponible";
+function populateModal(cardElement) {
+  const { template, content, modal } = getDom();
+  if (!template) return;
   
-  const criticContainer = back.querySelector('[data-template="critic-container"]');
-  if (movieData.critic?.trim()) {
-    criticContainer.querySelector('[data-template="critic"]').textContent = movieData.critic;
-    criticContainer.style.display = 'block';
-  } else {
-    criticContainer.style.display = 'none';
-  }
-  
-  // --- C. MONTAJE FINAL ---
-  dom.content.textContent = "";
-  dom.content.appendChild(clone);
+  const movie = cardElement.movieData;
+  // Extraemos URL HQ si ya se cargó en la card para evitar parpadeo
+  const cardImg = cardElement.querySelector("img");
+  movie.image_hq = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
 
-  // Inicializamos interactividad interna (estrellas, watchlist)
-  updateCardUI(dom.content);
-  initializeCard(dom.content);
+  const clone = template.cloneNode(true);
+  const cardClone = clone.querySelector('.movie-card');
+  cardClone.classList.add('is-quick-view');
+
+  // Reset UI
+  if (!modal.classList.contains("is-visible")) modal.classList.remove("hide-arrows");
   
-  // Actualizamos estado de las flechas
-  updateNavButtons(movieData.id);
+  // Binding de Datos
+  content.movieData = movie;
+  content.dataset.movieId = movie.id;
+
+  const front = clone.querySelector(".flip-card-front");
+  const back = clone.querySelector(".flip-card-back");
+
+  setupModalHeader(front, movie);
+  setupModalDetails(back, movie);
+  setupCardRatings(back, movie); // Reutilizado de card.js
+
+  // Montaje
+  content.textContent = "";
+  content.appendChild(clone);
+
+  // Inicializar interactividad
+  updateCardUI(content);
+  initializeCard(content);
+  updateNavButtons(movie.id);
 }
 
 // =================================================================
-//          3. API PÚBLICA (Control de Modal)
+//          5. API PÚBLICA
 // =================================================================
 
 export function closeModal() {
-  if (!dom.modal.classList.contains("is-visible")) return;
+  const { modal, overlay } = getDom();
+  if (!modal.classList.contains("is-visible")) return;
   
-  // Animación de salida (CSS)
-  dom.modal.classList.remove("is-visible");
-  dom.overlay.classList.remove("is-visible");
+  modal.classList.remove("is-visible");
+  overlay.classList.remove("is-visible");
   document.body.classList.remove("modal-open");
   
-  // LIMPIEZA POST-ANIMACIÓN:
-  // Es vital limpiar el transform inline por si el usuario cerró arrastrando a medias.
-  // Usamos setTimeout coincidiendo con la duración de la transición CSS (300ms).
-  setTimeout(() => {
-      dom.modal.style.transform = ""; 
-  }, 300);
-
-  // Accesibilidad y limpieza de listeners
-  closeAccessibleModal(dom.modal, dom.overlay);
+  // Limpieza
+  setTimeout(() => modal.style.transform = "", 300);
+  closeAccessibleModal(modal, overlay);
   document.removeEventListener("click", handleOutsideClick);
 }
 
 export function openModal(cardElement) {
   if (!cardElement) return;
+  const { modal, overlay, content } = getDom();
   
-  // 1. Preparar UI
   unflipAllCards();
-  
-  // 2. Poblar datos
   populateModal(cardElement);
   document.body.classList.add("modal-open");
   
-  // 3. Mostrar con animación
   requestAnimationFrame(() => {
-    dom.modal.classList.add("is-visible");
-    dom.overlay.classList.add("is-visible");
-    
-    // 4. Activar trampas de foco (Esto es lo que causa el scroll indeseado)
-    openAccessibleModal(dom.modal, dom.overlay, true); // true = No enfocar el primer elemento (Director)
-    
-    // Reset de scroll (Síncrono, ya no necesitamos setTimeout gracias a preventScroll)
-    if (dom.content) dom.content.scrollTop = 0;
-
+    modal.classList.add("is-visible");
+    overlay.classList.add("is-visible");
+    openAccessibleModal(modal, overlay, true);
+    if (content) content.scrollTop = 0;
     setTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
   });
 }
 
 export function initQuickView() {
-  if (!dom.modal) {
-    console.error("Elemento modal no encontrado en el DOM.");
-    return;
-  }
+  const { modal, content, prevBtn, nextBtn } = getDom();
+  if (!modal) return;
 
-  // Listener para cerrar al navegar por director o actor (Delegación de eventos)
-  if (dom.content) {
-    dom.content.addEventListener("click", (e) => {
+  // Delegación de eventos en contenido
+  if (content) {
+    content.addEventListener("click", (e) => {
       handleMetadataClick(e);
-      // Toggle flechas al tocar la ficha en móvil (salvo interactivos)
-      if (window.innerWidth <= 700 && e.target.closest(".movie-card")) {
-        if (!e.target.closest("button, a, [data-action]")) {
-          dom.modal.classList.toggle("hide-arrows");
-        }
+      // Toggle flechas en móvil al tocar póster
+      if (window.innerWidth <= 700 && e.target.closest(".poster-container")) {
+        modal.classList.toggle("hide-arrows");
       }
     });
   }
 
-  // Listener Teclado (Esc + Navegación)
+  // Teclado
   window.addEventListener("keydown", (e) => {
-    if (!dom.modal.classList.contains("is-visible")) return;
-
-    if (e.key === "Escape") {
-      closeModal();
-    } else if (e.key === "ArrowLeft") {
-      navigateToSibling(-1);
-    } else if (e.key === "ArrowRight") {
-      navigateToSibling(1);
-    }
+    if (!modal.classList.contains("is-visible")) return;
+    if (e.key === "Escape") closeModal();
+    else if (e.key === "ArrowLeft") navigateToSibling(-1);
+    else if (e.key === "ArrowRight") navigateToSibling(1);
   });
 
-  // Listeners para flechas de navegación (Desktop)
-  if (dom.prevBtn) dom.prevBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    navigateToSibling(-1);
-  });
-  if (dom.nextBtn) dom.nextBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    navigateToSibling(1);
-  });
+  // Botones
+  prevBtn?.addEventListener("click", (e) => { e.stopPropagation(); navigateToSibling(-1); });
+  nextBtn?.addEventListener("click", (e) => { e.stopPropagation(); navigateToSibling(1); });
 
-  // Listeners Táctiles (Activación por capacidad, no por tamaño)
-  // Esto habilita el swipe horizontal en iPads y Tablets grandes.
+  // Gestos
   if (navigator.maxTouchPoints > 0) {
-    // Usamos dom.modal como superficie táctil (incluye la barra de título/imagen)
-    dom.modal.addEventListener("touchstart", handleModalTouchStart, { passive: true });
-    dom.modal.addEventListener("touchmove", handleModalTouchMove, { passive: false }); // false para poder prevenir scroll
-    dom.modal.addEventListener("touchend", handleModalTouchEnd, { passive: true });
+    modal.addEventListener("touchstart", handleTouchStart, { passive: true });
+    modal.addEventListener("touchmove", handleTouchMove, { passive: false });
+    modal.addEventListener("touchend", handleTouchEnd, { passive: true });
   }
 }

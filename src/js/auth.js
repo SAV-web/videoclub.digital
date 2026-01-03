@@ -1,9 +1,9 @@
 /* src/js/auth.js */
-
 import { supabase } from "./api.js";
 import { closeAuthModal, showToast } from "./ui.js";
 
-const dom = {
+// Referencias DOM (Lazy getter o validación de existencia para evitar errores si no existen)
+const getDom = () => ({
   loginView: document.getElementById("login-view"),
   registerView: document.getElementById("register-view"),
   loginForm: document.getElementById("login-form"),
@@ -11,140 +11,143 @@ const dom = {
   showRegisterBtn: document.getElementById("show-register-view"),
   showLoginBtn: document.getElementById("show-login-view"),
   authMessage: document.getElementById("auth-message"),
-};
+});
 
-function showMessage(text, type = "error") {
-  if (!dom.authMessage) return;
-  dom.authMessage.textContent = text;
-  dom.authMessage.className = `auth-message auth-message--${type}`;
-  dom.authMessage.style.display = "block";
-}
+// =================================================================
+//          HELPERS DE UI Y ERRORES
+// =================================================================
 
-function clearMessage() {
-  if (!dom.authMessage) return;
-  dom.authMessage.style.display = "none";
-  dom.authMessage.textContent = "";
+function setFeedback(message, type = "error") {
+  const { authMessage } = getDom();
+  if (!authMessage) return;
+  
+  if (!message) {
+    authMessage.style.display = "none";
+    authMessage.textContent = "";
+    return;
+  }
+
+  authMessage.textContent = message;
+  authMessage.className = `auth-message auth-message--${type}`;
+  authMessage.style.display = "block";
 }
 
 /**
- * Gestiona el estado de carga del botón para evitar dobles envíos.
- * @param {HTMLButtonElement} btn - El botón de submit.
- * @param {boolean} isLoading - Estado de carga.
- * @param {string} originalText - Texto original del botón.
+ * Traduce errores comunes de Supabase a Español
  */
-function setButtonLoading(btn, isLoading, originalText) {
-  if (!btn) return;
-  btn.disabled = isLoading;
-  btn.textContent = isLoading ? "Procesando..." : originalText;
-  btn.style.cursor = isLoading ? "wait" : "pointer";
-  btn.style.opacity = isLoading ? "0.7" : "1";
+function getFriendlyErrorMessage(error) {
+  const msg = error.message.toLowerCase();
+  if (msg.includes("invalid login") || msg.includes("invalid credentials")) return "Email o contraseña incorrectos.";
+  if (msg.includes("user already registered")) return "Este email ya está registrado.";
+  if (msg.includes("rate limit")) return "Demasiados intentos. Espera un momento.";
+  if (msg.includes("not confirmed")) return "Por favor, confirma tu email primero.";
+  if (msg.includes("weak password")) return "La contraseña es muy débil.";
+  return `Error: ${error.message}`; // Fallback
 }
 
-async function handleRegister(e) {
-  e.preventDefault();
-  clearMessage();
+/**
+ * Función genérica para manejar el envío de formularios de autenticación.
+ * Elimina la duplicidad de try/catch/finally y gestión de botones.
+ */
+async function handleAuthSubmit(event, authAction) {
+  event.preventDefault();
+  setFeedback(null); // Limpiar mensajes
 
-  const form = dom.registerForm;
-  const email = form.elements["register-email"].value.trim();
-  const password = form.elements["register-password"].value.trim();
+  const form = event.currentTarget;
   const submitBtn = form.querySelector('button[type="submit"]');
   const originalBtnText = submitBtn.textContent;
+  
+  // 1. Extracción de datos con FormData (Más limpio)
+  const formData = new FormData(form);
+  const email = formData.get(form.id === "login-form" ? "login-email" : "register-email")?.trim();
+  const password = formData.get(form.id === "login-form" ? "login-password" : "register-password")?.trim();
 
-  // 1. Validación Previa (Ahorra llamada a API)
+  // 2. Validación
   if (!email || !password) {
-    showMessage("Por favor, completa todos los campos.", "error");
+    setFeedback("Por favor, completa todos los campos.");
     return;
   }
 
-  // 2. Bloqueo de UI
-  setButtonLoading(submitBtn, true, originalBtnText);
+  // 3. Bloqueo UI
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Procesando...";
+  submitBtn.style.opacity = "0.7";
 
   try {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-
-    if (error) {
-      showMessage(`Error en el registro: ${error.message}`);
-    } else if (data.user && data.user.identities && data.user.identities.length === 0) {
-      showMessage("Este usuario ya está registrado.", "error");
-    } else if (data.user) {
-      showMessage("¡Registro exitoso! Revisa tu email para confirmar tu cuenta.", "success");
-      form.reset();
-    }
+    // 4. Ejecución de la lógica específica (Inyectada)
+    await authAction(email, password, form);
   } catch (err) {
-    showMessage("Ocurrió un error inesperado.", "error");
     console.error(err);
+    setFeedback("Ocurrió un error inesperado de conexión.");
   } finally {
-    // 3. Restauración de UI (Siempre se ejecuta)
-    setButtonLoading(submitBtn, false, originalBtnText);
+    // 5. Restauración UI
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
+      submitBtn.style.opacity = "1";
+    }
   }
 }
 
-async function handleLogin(e) {
-  e.preventDefault();
-  clearMessage();
+// =================================================================
+//          LÓGICA ESPECÍFICA (LOGIN / REGISTER)
+// =================================================================
 
-  const form = dom.loginForm;
-  const email = form.elements["login-email"].value.trim();
-  const password = form.elements["login-password"].value.trim();
-  const submitBtn = form.querySelector('button[type="submit"]');
-  const originalBtnText = submitBtn.textContent;
-
-  // 1. Validación Previa
-  if (!email || !password) {
-    showMessage("Introduce tu email y contraseña.", "error");
-    return;
-  }
-
-  // 2. Bloqueo de UI
-  setButtonLoading(submitBtn, true, originalBtnText);
-
-  try {
+const actions = {
+  login: async (email, password, form) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-
+    
     if (error) {
-      if (error.message.includes("Invalid login")) {
-        showMessage("Email o contraseña incorrectos.");
-      } else if (error.message.includes("not confirmed")) {
-        showMessage("Por favor, confirma tu email antes de iniciar sesión.");
-      } else {
-        showMessage(`Error: ${error.message}`);
-      }
+      setFeedback(getFriendlyErrorMessage(error));
     } else {
-      // Éxito
       showToast("¡Hola de nuevo! Sesión iniciada.", "success");
       closeAuthModal();
       form.reset();
     }
-  } catch (err) {
-    showMessage("Error de conexión al iniciar sesión.", "error");
-    console.error(err);
-  } finally {
-    // 3. Restauración de UI
-    setButtonLoading(submitBtn, false, originalBtnText);
+  },
+
+  register: async (email, password, form) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+      setFeedback(getFriendlyErrorMessage(error));
+    } else if (data.user && data.user.identities?.length === 0) {
+      setFeedback("Este usuario ya está registrado.", "error");
+    } else if (data.user) {
+      setFeedback("¡Registro exitoso! Revisa tu email para confirmar.", "success");
+      form.reset();
+    }
+  }
+};
+
+// =================================================================
+//          INICIALIZACIÓN Y EVENTOS
+// =================================================================
+
+function toggleView(showRegister) {
+  const dom = getDom();
+  setFeedback(null);
+  
+  if (showRegister) {
+    dom.loginView.style.display = "none";
+    dom.registerView.style.display = "block";
+    setTimeout(() => dom.registerForm.querySelector('input').focus(), 50);
+  } else {
+    dom.registerView.style.display = "none";
+    dom.loginView.style.display = "block";
+    setTimeout(() => dom.loginForm.querySelector('input').focus(), 50);
   }
 }
 
 export function initAuthForms() {
+  const dom = getDom();
   if (!dom.loginForm) return;
 
-  dom.loginForm.addEventListener("submit", handleLogin);
-  dom.registerForm.addEventListener("submit", handleRegister);
+  // Listeners de Submit usando el wrapper genérico
+  dom.loginForm.addEventListener("submit", (e) => handleAuthSubmit(e, actions.login));
+  dom.registerForm.addEventListener("submit", (e) => handleAuthSubmit(e, actions.register));
 
-  dom.showRegisterBtn.addEventListener("click", () => {
-    clearMessage();
-    dom.loginView.style.display = "none";
-    dom.registerView.style.display = "block";
-    // Foco UX: Llevar al usuario al primer campo
-    const emailInput = dom.registerForm.elements["register-email"];
-    if (emailInput) setTimeout(() => emailInput.focus(), 50);
-  });
-
-  dom.showLoginBtn.addEventListener("click", () => {
-    clearMessage();
-    dom.registerView.style.display = "none";
-    dom.loginView.style.display = "block";
-    // Foco UX
-    const emailInput = dom.loginForm.elements["login-email"];
-    if (emailInput) setTimeout(() => emailInput.focus(), 50);
-  });
+  // Listeners de Navegación (Toggle)
+  dom.showRegisterBtn.addEventListener("click", () => toggleView(true));
+  dom.showLoginBtn.addEventListener("click", () => toggleView(false));
 }

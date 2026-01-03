@@ -1,110 +1,85 @@
 // =================================================================
-//                      CONSTANTES GLOBALES (UNIFICADO)
-// =================================================================
-// Este archivo es la única fuente de verdad para configuraciones,
-// selectores DOM, clases CSS y datos estáticos.
+// CONSTANTES GLOBALES (Fuente única de verdad. Inmutable y tipada)
 // =================================================================
 
-// --- Validación de Entorno (Seguridad) ---
+// --- Validación de Entorno (Explícita para Vite) ---
+// Vite necesita acceder a import.meta.env.NOMBRE_VAR explícitamente para el reemplazo estático.
 const envUrl = import.meta.env.VITE_SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Fallback solo en desarrollo para no romper el flujo local si falta .env
+// Fallback solo en desarrollo
 const defaultUrl = "https://wibygecgfczcvaqewleq.supabase.co";
 const defaultKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
-
 const supabaseUrl = envUrl || defaultUrl;
 const supabaseKey = envKey || defaultKey;
 
 /**
- * CONFIGURACIÓN TÉCNICA Y DE COMPORTAMIENTO
- * Nota: Soporta variables de entorno (.env) para mayor seguridad.
+ * CONFIGURACIÓN TÉCNICA
+ * Object.freeze asegura que nadie modifique esto en tiempo de ejecución.
  */
-export const CONFIG = {
-  // Credenciales de Supabase (Validadas arriba)
+export const CONFIG = Object.freeze({
+  // API
   SUPABASE_URL: supabaseUrl,
   SUPABASE_ANON_KEY: supabaseKey,
-  
-  // URLs de Assets
+  // Usamos la URL directa para evitar errores de concatenación
   POSTER_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/",
   
-  // Paginación y Límites
+  // Paginación
   ITEMS_PER_PAGE: 42,
-  DYNAMIC_PAGE_SIZE_LIMIT: 56, // Límite para mostrar resultados en una sola página
+  DYNAMIC_PAGE_SIZE_LIMIT: 56,
   
-  // Filtros y Búsqueda
+  // Comportamiento
   MAX_ACTIVE_FILTERS: 20,
-  MAX_EXCLUDED_FILTERS: 20, // Límite específico para exclusiones
+  MAX_EXCLUDED_FILTERS: 20,
   SEARCH_DEBOUNCE_DELAY: 400, // ms
   
-  // Rangos
+  // Límites de Datos
   YEAR_MIN: 1926,
-  YEAR_MAX: 2025,
+  YEAR_MAX: new Date().getFullYear(),
   
-  // Persistencia
-  STORAGE_VERSION: 1, // Incrementar para invalidar cachés locales antiguas
-};
+  // Sistema
+  STORAGE_VERSION: 1, 
+});
 
-/**
- * ACTORES QUE NO DEBEN SER CLICKABLES NI APARECER EN FILTROS
- */
-export const IGNORED_ACTORS = ["(a)", "animación", "animacion", "documental"];
+// Listas estáticas
+export const IGNORED_ACTORS = Object.freeze(["(a)", "animación", "animacion", "documental"]);
 
-/**
- * VALORES POR DEFECTO PARA EL ESTADO
- */
-export const DEFAULTS = {
+export const DEFAULTS = Object.freeze({
   SORT: "relevance,asc",
   MEDIA_TYPE: "all",
-};
+});
 
 /**
- * CLASES CSS DE ESTADO Y UTILIDAD
+ * CLASES CSS (Mapeo Estado -> Clase)
  */
-export const CSS_CLASSES = {
-  // Estados
+export const CSS_CLASSES = Object.freeze({
   ACTIVE: "active",
   DISABLED: "disabled",
   IS_FLIPPED: "is-flipped",
   IS_SCROLLED: "is-scrolled",
   SHOW: "show",
   SIDEBAR_OPEN: "sidebar-is-open",
-
+  
   // Componentes
   MOVIE_CARD: "movie-card",
   FILTER_PILL_REMOVE_BTN: "remove-filter-btn",
   SIDEBAR_AUTOCOMPLETE_ITEM: "sidebar-autocomplete-item",
   AUTOCOMPLETE_ITEM: "autocomplete-item",
+  
+  // Tipos
   TYPE_FILTER_MOVIES: "type-filter--movies",
   TYPE_FILTER_SERIES: "type-filter--series",
 
-  // Carga de imágenes
+  // Carga
   LAZY_LQIP: "lazy-lqip",
   LOADED: "loaded",
-};
+});
 
 /**
- * SELECTORES DEL DOM (IDs, Clases y Atributos)
+ * SELECTORES DOM (Centralizados)
  */
-export const SELECTORS = {
-  // Elementos de la Tarjeta (Data Attributes)
-  TITLE: '[data-template="title"]',
-  DIRECTOR: '[data-template="director"]',
-  YEAR: '[data-template="year"]',
-  COUNTRY_CONTAINER: '[data-template="country-container"]',
-  COUNTRY_FLAG: '[data-template="country-flag"]',
-  DURATION: '[data-template="duration"]',
-  FA_LINK: '[data-template="fa-link"]',
-  FA_RATING: '[data-template="fa-rating"]',
-  FA_VOTES: '[data-template="fa-votes"]',
-  IMDB_LINK: '[data-template="imdb-link"]',
-  IMDB_RATING: '[data-template="imdb-rating"]',
-  IMDB_VOTES: '[data-template="imdb-votes"]',
-  GENRE: '[data-template="genre"]',
-  ACTORS: '[data-template="actors"]',
-  SYNOPSIS: '[data-template="synopsis"]',
-
-  // Elementos Globales (IDs)
+export const SELECTORS = Object.freeze({
+  // Globales (IDs)
   GRID_CONTAINER: "#grid-container",
   PAGINATION_CONTAINER: "#pagination-container",
   SEARCH_FORM: "#search-form",
@@ -125,20 +100,32 @@ export const SELECTORS = {
   TOAST_CONTAINER: "#toast-container",
   MOVIE_CARD_TEMPLATE: "#movie-card-template",
 
-  // Elementos Dinámicos (Clases)
+  // Dinámicos (Clases/Atributos)
+  TITLE: '[data-template="title"]',
+  DIRECTOR: '[data-template="director"]',
+  YEAR: '[data-template="year"]',
+  COUNTRY_CONTAINER: '[data-template="country-container"]',
+  COUNTRY_FLAG: '[data-template="country-flag"]',
+  DURATION: '[data-template="duration"]',
+  FA_LINK: '[data-template="fa-link"]',
+  FA_RATING: '[data-template="fa-rating"]',
+  FA_VOTES: '[data-template="fa-votes"]',
+  IMDB_LINK: '[data-template="imdb-link"]',
+  IMDB_RATING: '[data-template="imdb-rating"]',
+  IMDB_VOTES: '[data-template="imdb-votes"]',
+  GENRE: '[data-template="genre"]',
+  ACTORS: '[data-template="actors"]',
+  SYNOPSIS: '[data-template="synopsis"]',
+  
   SIDEBAR_FILTER_FORM: ".sidebar-filter-form",
   SIDEBAR_AUTOCOMPLETE_RESULTS: ".sidebar-autocomplete-results",
   SIDEBAR_FILTER_INPUT: ".sidebar-filter-input",
-  CLICKABLE_BTN: ".btn:not(.active)",
-  FLIP_CARD_INNER: ".flip-card-inner",
-  SCROLLABLE_CONTENT: ".scrollable-content",
-  PLOT_SUMMARY: ".plot-summary-final",
-};
+});
 
 /**
- * ICONOS SVG INLINE (Para inyección dinámica en Sidebar)
+ * RECURSOS SVG (Iconos Inline)
  */
-export const ICONS = {
+export const ICONS = Object.freeze({
   PAUSE: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,
   SQUARE_STOP: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`,
   REWIND: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`,
@@ -149,13 +136,12 @@ export const ICONS = {
   POPCORN: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 3 5m6 1V3m4 4 2-2"/><circle cx="9" cy="13" r="3"/><path d="M11.83 12H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h2.17M16 16h2"/></svg>`,
   CLAPPERBOARD: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Zm-14-.7 3.1 3.9m3.1-5.8 3.1 4M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>`,
   TV: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2-5 5-5-5"/><rect width="20" height="15" x="2" y="7" rx="2"/></svg>`,
-};
+});
 
 /**
  * DATOS DE PLATAFORMAS (Streaming / Estudios)
- * Define ID del icono, dimensiones y viewBox para consistencia visual.
  */
-export const STUDIO_DATA = {
+export const STUDIO_DATA = Object.freeze({
   N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix" },
   D: { id: "icon-disney", class: "disney-icon", title: "Disney" },
   W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros." },
@@ -168,11 +154,10 @@ export const STUDIO_DATA = {
   2: { id: "icon-a24", class: "a24-icon", title: "A24" },
   O: { id: "icon-movistar", class: "movistar-icon", title: "Movistar" },
   X: { id: "icon-miramax", class: "miramax-icon", title: "Miramax" }
-};
+});
 
 /**
- * CONFIGURACIÓN DE FILTROS LATERALES
- * Define etiquetas, ítems y si son excluibles.
+ * CONFIGURACIÓN DE FILTROS LATERALES (COMPLETA)
  */
 export const FILTER_CONFIG = {
   selection: {
@@ -186,7 +171,6 @@ export const FILTER_CONFIG = {
       H: "Series HBO",
       T: "A Contra+",
     },
-    // Títulos largos para SEO / Cabecera de página (Single Source of Truth)
     titles: {
       C: "Colección Criterion",
       M: "1001 Películas que ver",
@@ -239,13 +223,21 @@ export const FILTER_CONFIG = {
   director: {
     label: "Directores",
     items: {
-      // Se poblará dinámicamente desde la API (Top 100)
+      "Woody Allen": "Woody Allen",
+      "Alfred Hitchcock": "Hitchcock",
+      "Steven Spielberg": "Spielberg",
+      "Martin Scorsese": "Scorsese",
+      "Pedro Almodóvar": "Almodóvar",
     },
   },
   actor: {
     label: "Actores",
     items: {
-      // Se poblará dinámicamente desde la API (Top 100)
+      "Tom Cruise": "Tom Cruise",
+      "Robert De Niro": "De Niro",
+      "Brad Pitt": "Brad Pitt",
+      "Helen Mirren": "Helen Mirren",
+      "Javier Bardem": "Javier Bardem",
     },
   },
 };

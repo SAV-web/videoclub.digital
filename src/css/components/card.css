@@ -32,6 +32,7 @@
   position: relative;
   perspective: 1000px; /* Profundidad 3D */
   aspect-ratio: 500 / 950;
+  border-radius: 10px;
   
   /* Renderizado optimizado: Omitir renderizado fuera de pantalla */
   content-visibility: auto;
@@ -56,12 +57,11 @@
   height: 100%;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-surface);
   
   transform-style: preserve-3d; /* Habilita el 3D real */
-  transition: transform var(--duration-leisurely) var(--ease-smooth-out);
-  
-  /* Optimización: Solo promover a capa GPU durante transición */
-  will-change: transform; 
+  transition: transform var(--duration-leisurely) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
 }
 
 .flip-card-inner.is-flipped { transform: rotateY(180deg); }
@@ -121,7 +121,7 @@ html.dark-mode .flip-card-inner.is-flipped {
   width: 100%;
   height: 100%;
   border: var(--space-xxs) solid var(--color-surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   object-fit: cover;
 }
 
@@ -539,10 +539,12 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
   
   .movie-card:not(.is-flipped):hover {
     transform: translateY(-8px) translateZ(0) scale(1.02);
-    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
   }
-  html.dark-mode .movie-card:not(.is-flipped):hover {
-    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.3));
+  .movie-card:not(.is-flipped):hover .flip-card-inner {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  }
+  html.dark-mode .movie-card:not(.is-flipped):hover .flip-card-inner {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
   }
 
   body.rotation-disabled .front-director-info a:hover { 
@@ -580,7 +582,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
   height: 100%; display: flex; flex-direction: column;
 }
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
-  height: 88%; object-fit: cover; border-radius: var(--radius-md);
+  height: 88%; object-fit: cover; border-radius: var(--radius-xl);
 }
 
 /* Bloque valoración inferior */
