@@ -1,7 +1,4 @@
 // src/js/main.js
-// Orquestador principal de la aplicación.
-// Coordina Estado, API, UI y Eventos.
-
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback } from "./utils.js";
@@ -13,166 +10,140 @@ import { initAuthForms } from "./auth.js";
 import { renderMovieGrid, updateCardUI, handleCardClick, initCardInteractions, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
 import { initQuickView, closeModal } from "./components/modal.js";
 
-// =================================================================
-//          CONFIGURACIÓN Y MAPEO DE URL
-// =================================================================
-
+// Mapeo de parámetros URL a Estado interno
 const URL_PARAM_MAP = { 
   q: "searchTerm", genre: "genre", year: "year", country: "country", 
   dir: "director", actor: "actor", sel: "selection", stu: "studio", 
   sort: "sort", type: "mediaType", p: "page", 
   exg: "excludedGenres", exc: "excludedCountries" 
 };
-
-// Invertimos el mapa para escritura rápida en URL
-const REVERSE_URL_PARAM_MAP = Object.fromEntries(
-  Object.entries(URL_PARAM_MAP).map(([k, v]) => [v, k])
-);
-
-// =================================================================
-//          LÓGICA PRINCIPAL DE CARGA
-// =================================================================
+const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key]));
 
 /**
- * Carga y renderiza la rejilla de películas basándose en el estado actual.
- * @param {number} page - Número de página a cargar.
+ * Carga y renderiza la rejilla de películas.
+ * Gestiona estados de carga, errores y transiciones.
  */
 export async function loadAndRenderMovies(page = 1) {
-  // 1. Gestión de concurrencia (Cancelar peticiones anteriores)
   const controller = createAbortableRequest('movie-grid-load');
   const signal = controller.signal;
 
-  // 2. Actualización de Estado y UI
   setCurrentPage(page);
   updatePageTitle();
-  updateUrl(); // Sincroniza la URL antes de cargar para reflejar el estado actual
+  updateUrl(); // Sincronizar URL antes de cargar
 
-  // Indicadores de carga visual
+  // Estado de carga visual
   document.body.classList.add('is-fetching');
   dom.gridContainer.classList.add('is-fetching');
   dom.gridContainer.setAttribute("aria-busy", "true");
   
-  // Renderizado optimista (Skeleton Screen)
+  // Renderizado optimista: Esqueletos + Paginación conocida
   renderSkeletons(dom.gridContainer, dom.paginationContainer);
-  
-  // Mantener paginación visible si ya conocemos el total (UX mejorada)
   const currentKnownTotal = getState().totalMovies;
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
-  // Reset de scroll
+  // Scroll al inicio siempre al cambiar de página
   window.scrollTo({ top: 0, behavior: "auto" });
 
-  // Detección de View Transitions (Navegadores modernos)
   const supportsViewTransitions = !!document.startViewTransition;
 
-  try {
-    // 3. Estrategia de Carga Inteligente
-    // Primera página carga más ítems para llenar pantallas grandes
-    const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
-    
-    // Solo pedimos el conteo total (COUNT(*)) si no lo tenemos o es la primera página.
-    // Esto ahorra recursos significativos en base de datos.
-    const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
-
-    const result = await fetchMovies(
-      getActiveFilters(),
-      page,
-      pageSize,
-      signal,
-      shouldRequestCount
-    );
-
-    if (result.aborted) return; // Salida silenciosa si se canceló
-
-    const { items: movies, total: returnedTotal } = result;
-
-    // Precarga LCP: Acelera la carga visual de la primera imagen
-    if (movies && movies.length > 0) preloadLcpImage(movies[0]);
-    
-    // 4. Renderizado Final
-    const performRender = () => {
-      // Usar total retornado o mantener el conocido
-      const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
+  const renderLogic = async () => {
+    try {
+      // Primera página carga más elementos para llenar pantallas grandes
+      const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
       
-      updateDomWithResults(movies, effectiveTotal);
+      // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
+      const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
+
+      const result = await fetchMovies(
+        getActiveFilters(),
+        page,
+        pageSize,
+        signal,
+        shouldRequestCount
+      );
+
+      if (result.aborted) return;
+
+      const { items: movies, total: returnedTotal } = result;
+
+      // Precarga LCP (Largest Contentful Paint) para la primera imagen
+      if (movies && movies.length > 0) preloadLcpImage(movies[0]);
       
-      // Fix Móvil: Asegurar scroll arriba tras renderizar si el teclado desplazó el viewport
-      if (page === 1 && window.innerWidth <= 700) {
-         window.scrollTo({ top: 0, behavior: "auto" });
+      const performRender = () => {
+        // Usar total retornado o mantener el conocido si no se pidió actualización
+        const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
+        updateDomWithResults(movies, effectiveTotal);
+        
+        // FIX MÓVIL: Forzar scroll arriba tras renderizar si el teclado desplazó la vista
+        if (page === 1 && window.innerWidth <= 700) {
+           window.scrollTo({ top: 0, behavior: "auto" });
+        }
+      };
+
+      // Usar View Transitions API si está disponible para suavidad nativa
+      if (supportsViewTransitions) document.startViewTransition(performRender);
+      else performRender();
+
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      console.error("Error en carga (Main):", error);
+      
+      const msg = getFriendlyErrorMessage(error);
+      if (msg) showToast(msg, "error");
+      renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
+      
+      // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
+      if (msg) throw new Error(msg); 
+    } finally {
+      if (!signal.aborted) {
+        document.body.classList.remove('is-fetching');
+        dom.gridContainer.classList.remove('is-fetching');
+        dom.gridContainer.setAttribute("aria-busy", "false");
       }
-    };
-
-    if (supportsViewTransitions) document.startViewTransition(performRender);
-    else performRender();
-
-  } catch (error) {
-    if (error.name === "AbortError") return;
-    console.error("Error crítico en carga:", error);
-    
-    const msg = getFriendlyErrorMessage(error);
-    if (msg) showToast(msg, "error");
-    renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
-    
-    // Re-lanzar para permitir rollback en componentes optimistas (sidebar)
-    if (msg) throw new Error(msg); 
-
-  } finally {
-    if (!signal.aborted) {
-      document.body.classList.remove('is-fetching');
-      dom.gridContainer.classList.remove('is-fetching');
-      dom.gridContainer.setAttribute("aria-busy", "false");
     }
-  }
+  };
+
+  await renderLogic();
 }
 
 /**
- * Actualiza el DOM con los resultados.
- * Maneja estados vacíos y paginación.
+ * Actualiza el DOM con los resultados obtenidos.
+ * Gestiona casos de vacío, paginación y precarga.
  */
 function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
-  
   const currentState = getState();
 
-  // Caso 1: Sin resultados
   if (currentState.totalMovies === 0) {
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
-    return;
-  } 
-  
-  // Caso 2: Todo cabe en una página (sin paginación)
-  if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
+  } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
+    // Caso: Todos los resultados caben en una página
     renderMovieGrid(dom.gridContainer, movies);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
-    return;
-  }
-  
-  // Caso 3: Paginación necesaria
-  const limit = CONFIG.ITEMS_PER_PAGE; 
-  // Recortamos el exceso de items traídos por la estrategia dinámica
-  const moviesToRender = movies.slice(0, limit);
-  
-  renderMovieGrid(dom.gridContainer, moviesToRender);
-  
-  if (currentState.totalMovies > limit) {
-    renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
   } else {
-    dom.paginationContainer.textContent = "";
+    // Caso: Paginación necesaria
+    const limit = CONFIG.ITEMS_PER_PAGE; 
+    const moviesToRender = movies.slice(0, limit); // Recortar exceso de "fetch" dinámico
+    renderMovieGrid(dom.gridContainer, moviesToRender);
+    
+    if (currentState.totalMovies > limit) {
+      renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
+    } else {
+      dom.paginationContainer.textContent = "";
+    }
+    updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
   }
-  updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
 
-  // 5. Precarga Inteligente (Siguiente Página)
+  // Precarga inteligente de la siguiente página
   if (currentState.totalMovies > 0) {
     prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
   }
 }
 
-// =================================================================
-//          MANEJADORES DE INTERACCIÓN (Header & Filtros)
-// =================================================================
+// --- Manejadores de Eventos de UI ---
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
@@ -184,23 +155,18 @@ async function handleSortChange(event) {
 async function handleMediaTypeToggle(event) {
   triggerPopAnimation(event.currentTarget);
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-  
   const currentType = getState().activeFilters.mediaType;
   const cycle = { all: "movies", movies: "series", series: "all" };
-  const nextType = cycle[currentType] || "movies"; // Fallback seguro
-  
-  setMediaType(nextType);
-  updateTypeFilterUI(nextType);
+  setMediaType(cycle[currentType]);
+  updateTypeFilterUI(cycle[currentType]);
   await loadAndRenderMovies(1);
 }
 
 async function handleSearchInput() {
   const searchTerm = dom.searchInput.value.trim();
-  const currentTerm = getState().activeFilters.searchTerm;
+  if (searchTerm === getState().activeFilters.searchTerm) return;
   
-  if (searchTerm === currentTerm) return;
-  
-  // Evitar búsquedas muy cortas a menos que se esté borrando
+  // Buscar solo si hay 3+ caracteres o se borró todo
   if (searchTerm.length >= 3 || searchTerm.length === 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     setSearchTerm(searchTerm);
@@ -208,88 +174,75 @@ async function handleSearchInput() {
   }
 }
 
-function handleFiltersReset(e) {
-  const { keepSort, newFilter } = e.detail || {};
-  
-  // Preservar ordenación si se solicita, sino volver a defecto
-  const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
-  
-  resetFiltersState();
-  setSort(currentSort);
-  
-  // Aplicar nuevo filtro específico (ej: clic en actor)
-  if (newFilter) {
-    setFilter(newFilter.type, newFilter.value, true); // true = bypass limits
-  }
-  
-  // Sincronizar UI
-  dom.searchInput.value = "";
-  dom.sortSelect.value = currentSort;
-  updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
-  
-  document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-  loadAndRenderMovies(1);
-}
-
-// =================================================================
-//          SCROLL GLOBAL (Optimizado con rAF)
-// =================================================================
-
-let isScrollTicking = false;
+// --- Gestión Global de Scroll (Optimizado) ---
+let isTicking = false;
 let lastScrollY = 0;
 
 function handleGlobalScroll() {
-  if (!isScrollTicking) {
+  if (!isTicking) {
     window.requestAnimationFrame(() => {
       const currentScrollY = window.scrollY;
       
-      // 1. Estilo Header (Sombra)
+      // 1. Efecto Sombra/Borde en Header
       dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
 
-      // 2. Comportamiento Móvil (Smart Hide)
+      // 2. Smart Hide (Barra inferior móvil)
       if (window.innerWidth <= 700) {
         const isScrollingDown = currentScrollY > lastScrollY;
         const scrollDifference = Math.abs(currentScrollY - lastScrollY);
-        const docHeight = document.documentElement.scrollHeight;
-        const winHeight = window.innerHeight;
-        
-        // Detectar si estamos cerca del final para mostrar siempre la barra
-        const isAtBottom = (winHeight + currentScrollY) >= (docHeight - 50);
+        const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
 
         if (isAtBottom) {
+          // Siempre mostrar al llegar al final
           dom.mainHeader.classList.remove('is-hidden-mobile');
         } else if (scrollDifference > 5) {
-          // Ocultar solo si bajamos y ya pasamos el tope superior
+          // Ocultar al bajar, mostrar al subir
           dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
         }
       }
 
       lastScrollY = currentScrollY;
-      isScrollTicking = false;
+      isTicking = false;
     });
-    isScrollTicking = true;
+    isTicking = true;
   }
 }
 
-// =================================================================
-//          CONFIGURACIÓN DE EVENTOS (Setup)
-// =================================================================
+// --- Reset de Filtros ---
+function handleFiltersReset(e) {
+  const { keepSort, newFilter } = e.detail || {};
+  const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
+  
+  resetFiltersState();
+  setSort(currentSort);
+  
+  // Aplicar nuevo filtro si viene en el evento (ej: click en director)
+  if (newFilter) setFilter(newFilter.type, newFilter.value);
+  
+  // Actualizar UI
+  dom.searchInput.value = "";
+  dom.sortSelect.value = currentSort;
+  updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
+  document.dispatchEvent(new CustomEvent("updateSidebarUI"));
+  
+  loadAndRenderMovies(1);
+}
+
+// --- Configuración de Listeners ---
 
 function setupHeaderListeners() {
-  // Búsqueda con Debounce
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
   dom.searchInput.addEventListener("input", debouncedSearch);
   dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
   
-  // Foco Búsqueda (UX Móvil)
+  // UX Búsqueda Móvil (Expandir/Colapsar)
   dom.searchInput.addEventListener("focus", () => dom.mainHeader.classList.add("is-search-focused"));
   dom.searchInput.addEventListener("blur", () => dom.mainHeader.classList.remove("is-search-focused"));
 
-  // Controles Header
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
 
-  // Botón Sidebar Móvil
+  // Toggle Sidebar Móvil
   const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
   if (mobileSidebarToggle) {
     mobileSidebarToggle.addEventListener('click', () => {
@@ -299,32 +252,35 @@ function setupHeaderListeners() {
     });
   }
 
-  // Paginación Header (Flechas)
-  const navigatePage = async (dir) => {
-    const page = getCurrentPage() + dir;
-    if (page > 0) {
-      triggerPopAnimation(dir > 0 ? dom.headerNextBtn : dom.headerPrevBtn);
-      await loadAndRenderMovies(page);
+  // Navegación Paginación Header
+  const navigatePage = async (direction) => {
+    const currentPage = getCurrentPage();
+    const totalPages = Math.ceil(getState().totalMovies / CONFIG.ITEMS_PER_PAGE);
+    const newPage = currentPage + direction;
+    if (newPage > 0 && newPage <= totalPages) {
+      document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+      await loadAndRenderMovies(newPage);
     }
   };
-  dom.headerPrevBtn.addEventListener("click", () => navigatePage(-1));
-  dom.headerNextBtn.addEventListener("click", () => navigatePage(1));
+  dom.headerPrevBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(-1); });
+  dom.headerNextBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(1); });
 
-  // Botón "X" Búsqueda
+  // Botón "X" Limpiar Búsqueda
   const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
   if (clearSearchBtn) {
     const performClear = (e) => {
-      if (e.cancelable) e.preventDefault(); // Prevenir pérdida de foco
+      if (e.cancelable) e.preventDefault();
+      e.stopPropagation();
       dom.searchInput.value = '';
       dom.searchInput.focus();
-      handleSearchInput();
+      handleSearchInput(); 
     };
-    // Soporte táctil y ratón robusto
-    clearSearchBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    clearSearchBtn.addEventListener('mousedown', (e) => e.preventDefault()); // Evitar blur
+    clearSearchBtn.addEventListener('touchstart', performClear, { passive: false });
     clearSearchBtn.addEventListener('click', performClear);
   }
 
-  // Placeholder Adaptable
+  // Placeholder Responsivo
   const updateSearchPlaceholder = () => {
     if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 700 ? "" : "Título";
   };
@@ -333,19 +289,16 @@ function setupHeaderListeners() {
 }
 
 function setupGlobalListeners() {
-  // Cierre de paneles al hacer click fuera
+  // Cierres al hacer click fuera
   document.addEventListener("click", (e) => {
     if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
-    if (!e.target.closest(".sidebar") && !e.target.closest("#mobile-sidebar-toggle")) collapseAllSections();
+    if (!e.target.closest(".sidebar")) collapseAllSections();
   });
 
-  // Delegación de Eventos Grid (Mejora rendimiento vs listeners individuales)
+  // Delegación de eventos Grid (Cards)
   dom.gridContainer.addEventListener("click", function(e) {
     const cardElement = e.target.closest(".movie-card");
-    if (cardElement) { 
-      handleCardClick.call(cardElement, e); 
-      return; 
-    }
+    if (cardElement) { handleCardClick.call(cardElement, e); return; }
     
     // Botón "Limpiar Filtros" en estado vacío
     if (e.target.closest("#clear-filters-from-empty")) {
@@ -353,87 +306,103 @@ function setupGlobalListeners() {
     }
   });
   
-  // Inicialización de interacciones complejas (Pointer Events)
+  // Interacciones Card (Hover, Tap)
   initCardInteractions(dom.gridContainer);
   
-  // Delegación Quick View
-  const qvContent = document.getElementById("quick-view-content");
-  if (qvContent) {
-    qvContent.addEventListener("click", function(e) { handleCardClick.call(this, e); });
-  }
+  // Quick View Delegation
+  document.getElementById("quick-view-content").addEventListener("click", function(e) { 
+    handleCardClick.call(this, e); 
+  });
   
   // Paginación Footer
-  dom.paginationContainer.addEventListener("click", (e) => {
+  dom.paginationContainer.addEventListener("click", async (e) => {
     const button = e.target.closest(".btn[data-page]");
     if (button) {
+      document.dispatchEvent(new CustomEvent("uiActionTriggered"));
       triggerPopAnimation(button);
-      loadAndRenderMovies(parseInt(button.dataset.page, 10));
+      const page = parseInt(button.dataset.page, 10);
+      await loadAndRenderMovies(page);
     }
   });
 
-  // Scroll Global
+  // Scroll Global Unificado
   lastScrollY = window.scrollY;
   window.addEventListener("scroll", handleGlobalScroll, { passive: true });
   
-  // Teclado (Accesibilidad)
+  // Teclado
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
-      closeMobileDrawer();
-    }
+    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { closeMobileDrawer(); }
   });
 
-  // Bus Eventos de la Aplicación
+  // Eventos Personalizados de la App
   document.addEventListener("card:requestUpdate", (e) => { if (e.detail.cardElement) updateCardUI(e.detail.cardElement); });
-  
-  const refreshUI = () => document.querySelectorAll(".movie-card").forEach(updateCardUI);
-  document.addEventListener("userMovieDataChanged", refreshUI);
-  document.addEventListener("userDataUpdated", refreshUI);
-  
+  const handleDataRefresh = () => document.querySelectorAll(".movie-card").forEach(updateCardUI);
+  document.addEventListener("userMovieDataChanged", handleDataRefresh);
+  document.addEventListener("userDataUpdated", handleDataRefresh);
   document.addEventListener("filtersReset", handleFiltersReset);
 }
 
-// =================================================================
-//          SISTEMA DE USUARIO Y URL
-// =================================================================
-
+// --- Autenticación ---
 function setupAuthSystem() {
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
   
-  const onLogin = async (user) => {
+  async function onLogin(user) {
     document.body.classList.add("user-logged-in");
-    userAvatarInitials.textContent = (user.email || "U").charAt(0).toUpperCase();
-    userAvatarInitials.title = `Sesión: ${user.email}`;
+    const userEmail = user.email || "";
+    userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
+    userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
     try {
       const data = await fetchUserMovieData();
       setUserMovieData(data);
       document.dispatchEvent(new CustomEvent("userDataUpdated"));
-    } catch (e) { showToast(e.message, "error"); }
-  };
+    } catch (error) { showToast(error.message, "error"); }
+  }
   
-  const onLogout = () => {
+  function onLogout() {
     document.body.classList.remove("user-logged-in");
+    userAvatarInitials.textContent = "";
+    userAvatarInitials.title = "";
     clearUserMovieData();
     document.dispatchEvent(new CustomEvent("userDataUpdated"));
-  };
+  }
   
-  logoutButton?.addEventListener("click", async () => {
+  async function handleLogout() {
     const { error } = await supabase.auth.signOut();
-    if (error) showToast("Error al salir", "error");
-  });
+    if (error) { console.error("Logout error:", error); showToast("Error al cerrar sesión.", "error"); }
+  }
   
-  supabase.auth.onAuthStateChange((_, session) => {
-    session?.user ? onLogin(session.user) : onLogout();
+  if (logoutButton) logoutButton.addEventListener("click", handleLogout);
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) onLogin(session.user); else onLogout();
   });
 }
 
+// --- Gestión de URL y Título ---
 function updatePageTitle() {
-  const filters = getActiveFilters();
-  let title = filters.mediaType === "series" ? "Series" : "Películas";
+  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType } = getActiveFilters();
   
-  if (filters.searchTerm) title = `Resultados: "${filters.searchTerm}"`;
-  else if (filters.genre) title = `${title} de ${filters.genre}`;
-  // ... (otros casos básicos)
+  let baseNoun = "Películas y series";
+  if (mediaType === "movies") baseNoun = "Películas";
+  else if (mediaType === "series") baseNoun = "Series";
+
+  let title = baseNoun;
+  const yearSuffix = (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) 
+    ? ` (${year.replace("-", " a ")})` : "";
+
+  if (searchTerm) title = `Resultados para "${searchTerm}"`;
+  else if (selection) {
+    const config = FILTER_CONFIG.selection;
+    const name = config.titles?.[selection] || config.items[selection];
+    if (name) title = name + yearSuffix;
+  } else if (studio) {
+    title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
+  }
+  else if (genre) title = `${baseNoun} de ${genre}`;
+  else if (director) title = `${baseNoun} de ${director}`;
+  else if (actor) title = `${baseNoun} con ${actor}`;
+  else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `${baseNoun} de ${year.replace("-", " a ")}`;
+  else if (country) title = `${baseNoun} de ${country}`;
   
   document.title = `${title} | videoclub.digital`;
 }
@@ -443,74 +412,73 @@ function readUrlAndSetState() {
   const params = new URLSearchParams(window.location.search);
   
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
-    const val = params.get(shortKey);
-    if (val !== null) {
-      if (stateKey === "page") setCurrentPage(parseInt(val, 10) || 1);
-      else if (stateKey === "sort" || stateKey === "mediaType" || stateKey === "searchTerm") {
-        if (stateKey === "sort") setSort(val);
-        else if (stateKey === "mediaType") setMediaType(val);
-        else setSearchTerm(val);
-      } else {
-        // Filtros complejos (arrays)
-        const isArray = ["excludedGenres", "excludedCountries"].includes(stateKey);
-        setFilter(stateKey, isArray ? val.split(",") : val, true);
-      }
+    const value = params.get(shortKey);
+    if (value !== null) {
+      if (stateKey === "page") setCurrentPage(parseInt(value, 10) || 1);
+      else if (stateKey === "searchTerm") setSearchTerm(value);
+      else if (stateKey === "sort") setSort(value);
+      else if (stateKey === "mediaType") setMediaType(value);
+      else if (stateKey === "excludedGenres" || stateKey === "excludedCountries") setFilter(stateKey, value.split(","), true);
+      else setFilter(stateKey, value, true);
     }
   });
   
-  // Defaults
-  if (!params.has("sort")) setSort(DEFAULTS.SORT);
-  if (!params.has("type")) setMediaType(DEFAULTS.MEDIA_TYPE);
+  // Defaults si no hay params
+  if (!params.has(REVERSE_URL_PARAM_MAP.sort)) setSort(DEFAULTS.SORT);
+  if (!params.has(REVERSE_URL_PARAM_MAP.mediaType)) setMediaType(DEFAULTS.MEDIA_TYPE);
+  if (!params.has(REVERSE_URL_PARAM_MAP.page)) setCurrentPage(1);
   
-  // Sincronizar Inputs UI
-  const current = getActiveFilters();
-  dom.searchInput.value = current.searchTerm;
-  dom.sortSelect.value = current.sort;
-  updateTypeFilterUI(current.mediaType);
+  // Sincronizar UI
+  const activeFilters = getActiveFilters();
+  dom.searchInput.value = activeFilters.searchTerm;
+  dom.sortSelect.value = activeFilters.sort;
+  updateTypeFilterUI(activeFilters.mediaType);
 }
 
 function updateUrl() {
   const params = new URLSearchParams();
-  const filters = getActiveFilters();
+  const activeFilters = getActiveFilters();
+  const currentPage = getCurrentPage();
   
-  Object.entries(filters).forEach(([key, val]) => {
+  Object.entries(activeFilters).forEach(([key, value]) => {
     const shortKey = REVERSE_URL_PARAM_MAP[key];
     if (!shortKey) return;
     
-    if (Array.isArray(val) && val.length > 0) params.set(shortKey, val.join(","));
-    else if (typeof val === "string" && val.trim()) {
-      if (key === "mediaType" && val === DEFAULTS.MEDIA_TYPE) return;
-      if (key === "sort" && val === DEFAULTS.SORT) return;
-      if (key === "year" && val.includes(CONFIG.YEAR_MIN) && val.includes(CONFIG.YEAR_MAX)) return;
-      params.set(shortKey, val);
+    if (Array.isArray(value) && value.length > 0) params.set(shortKey, value.join(","));
+    else if (typeof value === "string" && value.trim() !== "") {
+      // Ignorar valores por defecto
+      if (key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) return;
+      if (key === "sort" && value === DEFAULTS.SORT) return;
+      if (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) return;
+      
+      params.set(shortKey, value);
     }
   });
   
-  if (getCurrentPage() > 1) params.set("p", getCurrentPage());
+  if (currentPage > 1) params.set(REVERSE_URL_PARAM_MAP.page, currentPage);
   
-  const newUrl = `${window.location.pathname}?${params.toString()}`;
-  if (newUrl !== window.location.href) history.pushState({ path: newUrl }, "", newUrl);
+  const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+  if (newUrl !== `${window.location.pathname}${window.location.search}`) {
+    history.pushState({ path: newUrl }, "", newUrl);
+  }
 }
 
-// =================================================================
-//          INICIALIZACIÓN (Entry Point)
-// =================================================================
-
+// --- Inicialización ---
 function init() {
-  // Anti-FOUC (Flash of Unstyled Content)
-  // Eliminamos el atributo data-loading para que el CSS active la visibilidad
+  // GESTIÓN ANTI-FOUC GENÉRICA
+  // Elimina atributo data-loading para activar transiciones CSS
   requestAnimationFrame(() => {
-    document.querySelectorAll('[data-loading]').forEach(el => el.removeAttribute('data-loading'));
+    document.querySelectorAll('[data-loading]').forEach(el => {
+      el.removeAttribute('data-loading');
+    });
   });
 
-  // Service Worker
-  if ("serviceWorker" in navigator && !import.meta.env.DEV) {
+  if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker.register("sw.js").catch(err => console.error("Fallo SW:", err));
     });
   }
   
-  // Navegación Historial (Atrás/Adelante)
   window.addEventListener("popstate", () => {
     closeModal();
     readUrlAndSetState();
@@ -518,7 +486,6 @@ function init() {
     loadAndRenderMovies(getCurrentPage());
   });
   
-  // Inicialización de Módulos
   initSidebar();
   initQuickView();
   initThemeToggle();
@@ -528,15 +495,9 @@ function init() {
   setupAuthModal();
   initAuthForms();
   
-  // Carga Inicial
   readUrlAndSetState();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   loadAndRenderMovies(getCurrentPage());
 }
 
-// Arranque seguro
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
+document.addEventListener("DOMContentLoaded", init);
