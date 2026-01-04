@@ -189,8 +189,11 @@ function handleGlobalScroll() {
 
       // 2. Smart Hide (Barra inferior móvil)
       if (window.innerWidth <= 700) {
-        // Si el buscador está enfocado, forzamos visibilidad (evita que se oculte al teclear/scrollear)
-        if (dom.mainHeader.classList.contains("is-search-focused")) {
+        const isSearchActive = document.activeElement === dom.searchInput;
+        // Detectar teclado: si el viewport visual es significativamente menor que la ventana (iOS style)
+        const isKeyboardOpen = window.visualViewport && (window.visualViewport.height < window.innerHeight * 0.9);
+
+        if (isSearchActive || dom.mainHeader.classList.contains("is-search-focused") || isKeyboardOpen) {
           dom.mainHeader.classList.remove('is-hidden-mobile');
         } else {
           const isScrollingDown = currentScrollY > lastScrollY;
