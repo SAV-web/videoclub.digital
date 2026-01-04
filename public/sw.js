@@ -1,189 +1,198 @@
 // =================================================================
-//              SERVICE WORKER OPTIMIZADO (v2.0)
-// =================================================================
-//
-//  ESTRATEGIAS:
-//    1. App Shell Crítica: Cache First (Instalación bloqueante).
-//    2. Recursos Secundarios: Cache Lazy (Instalación no bloqueante).
-//    3. API: Stale-While-Revalidate con ventana de frescura (30s).
-//    4. Assets (Img/Fonts): Stale-While-Revalidate.
-//
+//              SERVICE WORKER OPTIMIZADO (v2.1)
 // =================================================================
 
-const CACHE_STATIC_NAME = "videoclub-static-v4";
-const CACHE_DYNAMIC_NAME = "videoclub-dynamic-v4";
-const CACHE_API_NAME = "videoclub-api-v4";
+const VERSION = "v5"; // Incrementado para invalidar cachés anteriores
+const CACHE_STATIC = `videoclub-static-${VERSION}`;
+const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
+const CACHE_API = `videoclub-api-${VERSION}`;
 
-// --- 1. ACTIVOS CRÍTICOS (Blocking) ---
-// Sin esto, la app no arranca o se ve rota.
+// --- 1. ACTIVOS CRÍTICOS (Instalación) ---
 const CRITICAL_ASSETS = [
-  "index.html",
-  "manifest.webmanifest"
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  // Añade aquí tu CSS/JS compilado si no usas inyección de Vite, 
+  // pero con Vite normalmente index.html es suficiente entry point.
 ];
 
-// --- 2. ACTIVOS SECUNDARIOS (Lazy) ---
-// Se descargan en segundo plano. Si fallan, la app sigue funcionando.
-const LAZY_ASSETS = [
-  // Dejamos esta lista vacía para evitar errores 404 en consola.
-  // Estos recursos se cachearán automáticamente gracias a la estrategia de runtime del SW.
-];
+// --- 2. HELPERS DE ESTRATEGIAS ---
 
-// --- INSTALACIÓN (Estrategia Híbrida) ---
+/**
+ * Helper para guardar en caché asíncronamente sin bloquear la respuesta
+ */
+const cacheResponse = async (cacheName, request, response) => {
+  if (!response || response.status !== 200 || response.type !== 'basic' && response.type !== 'cors') {
+    return;
+  }
+  const cache = await caches.open(cacheName);
+  await cache.put(request, response.clone());
+};
+
+/**
+ * ESTRATEGIA: Network First (Prioridad Red, fallback Caché)
+ * Ideal para index.html para asegurar que siempre se carga la última versión de la app.
+ */
+async function networkFirst(request) {
+  try {
+    const networkResponse = await fetch(request);
+    // Guardamos copia fresca
+    cacheResponse(CACHE_STATIC, request, networkResponse);
+    return networkResponse;
+  } catch (error) {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) return cachedResponse;
+    throw error;
+  }
+}
+
+/**
+ * ESTRATEGIA: Stale While Revalidate (Caché rápido, actualiza en segundo plano)
+ * Ideal para assets estáticos (CSS, JS, Fuentes).
+ */
+async function staleWhileRevalidate(request, cacheName = CACHE_DYNAMIC) {
+  const cache = await caches.open(cacheName);
+  const cachedResponse = await cache.match(request);
+  
+  const networkFetch = fetch(request).then(response => {
+    cache.put(request, response.clone());
+    return response;
+  });
+
+  return cachedResponse || networkFetch;
+}
+
+/**
+ * ESTRATEGIA: API con Ventana de Frescura (Lógica personalizada)
+ * - Si la caché tiene < 30s: Retorna caché (muy rápido).
+ * - Si es vieja o no existe: Retorna caché (si hay) Y actualiza en background, o espera red.
+ */
+async function handleApiRequest(request) {
+  const cache = await caches.open(CACHE_API);
+  const cachedResponse = await cache.match(request);
+  
+  const networkFetch = fetch(request).then(response => {
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  });
+
+  if (cachedResponse) {
+    const dateHeader = cachedResponse.headers.get('date');
+    if (dateHeader) {
+      const ageMs = new Date() - new Date(dateHeader);
+      // Si es "fresco" (< 30s), devolvemos caché y NO esperamos a la red
+      // (aunque la red se dispara en background para la próxima vez)
+      if (ageMs < 30000) {
+        networkFetch.catch(() => {}); // Evitar errores de promesa no manejada
+        return cachedResponse;
+      }
+    }
+    // Si es "viejo", devolvemos lo que tenemos (stale) para velocidad,
+    // mientras se actualiza detrás.
+    return cachedResponse; 
+  }
+
+  // Si no hay caché, esperamos a la red
+  try {
+    return await networkFetch;
+  } catch (error) {
+    // Fallback JSON offline
+    return new Response(JSON.stringify({ error: "Sin conexión" }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+// --- CICLO DE VIDA ---
+
 self.addEventListener("install", (event) => {
-  console.log("[Service Worker] Instalando...");
+  console.log(`[SW ${VERSION}] Instalando...`);
+  // skipWaiting fuerza a este SW a activarse inmediatamente, no espera a cerrar pestañas
+  self.skipWaiting(); 
   
   event.waitUntil(
-    caches.open(CACHE_STATIC_NAME).then(async (cache) => {
-      console.log("[Service Worker] Cacheando App Shell Crítica...");
-      
-      // 1. Forzamos la carga de lo crítico. Si esto falla, el SW no se instala.
-      await cache.addAll(CRITICAL_ASSETS);
-      
-      // 2. Intentamos cargar lo secundario sin bloquear.
-      // Si falla, no pasa nada, se cacheará dinámicamente al usarse.
-      console.log("[Service Worker] Iniciando caché background...");
-      LAZY_ASSETS.forEach(url => {
-        cache.add(url).catch(err => console.warn(`[SW] Fallo lazy asset ${url}`, err));
-      });
+    caches.open(CACHE_STATIC).then((cache) => {
+      // addAll es atómico: si uno falla, falla toda la instalación.
+      // Es bueno para asegurar integridad crítica.
+      return cache.addAll(CRITICAL_ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
-// --- ACTIVACIÓN (Limpieza) ---
 self.addEventListener("activate", (event) => {
-  console.log("[Service Worker] Activando y limpiando...");
+  console.log(`[SW ${VERSION}] Activando y limpiando...`);
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(
         keyList.map((key) => {
-          if (
-            key !== CACHE_STATIC_NAME &&
-            key !== CACHE_DYNAMIC_NAME &&
-            key !== CACHE_API_NAME
-          ) {
-            console.log("[Service Worker] Borrando caché antigua:", key);
+          if (key !== CACHE_STATIC && key !== CACHE_DYNAMIC && key !== CACHE_API) {
+            console.log(`[SW] Borrando caché antigua: ${key}`);
             return caches.delete(key);
           }
         })
       );
     })
   );
-  return self.clients.claim();
+  return self.clients.claim(); // Controlar clientes inmediatamente
 });
 
-// --- INTERCEPTACIÓN DE RED (FETCH) ---
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  
-  // Ignorar peticiones que no sean GET (POST, PUT, etc. no se cachean)
-  if (request.method !== 'GET') return;
+// --- INTERCEPTACIÓN DE RED ---
 
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
   const url = new URL(request.url);
 
-  // 🛡️ EXCEPCIÓN CRÍTICA: Datos de Usuario y Autenticación
-  // Nunca cachear peticiones REST (votos, watchlist) ni Auth. Deben ser siempre frescas.
-  if (url.pathname.includes("/rest/v1/") || url.pathname.includes("/auth/v1/")) {
-    return; // Salimos y dejamos que el navegador haga la petición de red normal
-  }
+  // 1. Ignorar métodos no-GET y esquemas no-http
+  if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // === ESTRATEGIA NAVEGACIÓN: Network First (Para que index.html siempre esté fresco) ===
-  // Esto asegura que si actualizas la app, el usuario reciba el nuevo index.html (y nuevos JS)
-  // en lugar de la versión cacheada antigua.
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
+  // 2. EXCEPCIONES: Nunca cachear Auth ni REST directo (datos vivos)
+  if (url.pathname.includes("/auth/v1/") || url.pathname.includes("/rest/v1/")) {
     return;
   }
 
-  // === ESTRATEGIA API: Stale-While-Revalidate con Ventana de Frescura ===
-  if (url.pathname.includes("/functions/v1/")) {
-    event.respondWith(
-      caches.open(CACHE_API_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(request);
-        
-        // Promesa de red (se ejecuta siempre para actualizar la caché)
-        const networkFetch = fetch(request).then(response => {
-          // Clonar y guardar solo si la respuesta es válida
-          if (response.ok) {
-            cache.put(request, response.clone());
-          }
-          return response;
-        });
-
-        // Lógica de Frescura
-        if (cachedResponse) {
-          const cacheDateHeader = cachedResponse.headers.get('date');
-          
-          if (cacheDateHeader) {
-            const cacheDate = new Date(cacheDateHeader);
-            const now = new Date();
-            const ageInSeconds = (now - cacheDate) / 1000;
-
-            // Si la caché tiene menos de 30 segundos, la consideramos "fresca"
-            // y la devolvemos INMEDIATAMENTE sin esperar a la red.
-            if (ageInSeconds < 30) {
-              // Dejamos que la red actualice en background (sin 'await')
-              // para que la próxima vez esté aún más fresca.
-              networkFetch.catch(() => {}); 
-              return cachedResponse;
-            }
-          }
-          
-          // Si es vieja (>30s) o no tiene fecha, usamos estrategia "Fastest/Hybrid":
-          // Devolvemos la caché vieja para renderizar YA, pero la UI se actualizará
-          // si implementas lógica reactiva, o simplemente la próxima vez.
-          // Para ser conservadores y priorizar la velocidad:
-          networkFetch.catch(() => {}); // Asegurar actualización background
-          return cachedResponse; 
-        }
-
-        // Si no hay caché, esperamos a la red
-        try {
-          return await networkFetch;
-        } catch (error) {
-          // Fallback offline para API si fuera necesario
-          return new Response(JSON.stringify({ error: "Offline" }), { 
-            status: 503, 
-            headers: { 'Content-Type': 'application/json' } 
-          });
-        }
-      })
-    );
+  // 3. ESTRATEGIA: Navegación (HTML)
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirst(request));
+    return;
   }
-  
-  // === ESTRATEGIA ASSETS: Stale-While-Revalidate (Imágenes y Fuentes) ===
-  else if (request.destination === "image" || request.destination === "font") {
-    event.respondWith(
-      caches.open(CACHE_DYNAMIC_NAME).then(async (cache) => {
-        const cachedResponse = await cache.match(request);
-        const networkFetch = fetch(request).then((networkResponse) => {
-          if(networkResponse.ok) cache.put(request, networkResponse.clone());
+
+  // 4. ESTRATEGIA: API RPC (Supabase Functions)
+  if (url.pathname.includes("/functions/v1/") || url.pathname.includes("rpc/")) {
+    event.respondWith(handleApiRequest(request));
+    return;
+  }
+
+  // 5. ESTRATEGIA: Imágenes de Supabase Storage (Posters)
+  // Las tratamos como assets dinámicos con caché agresiva
+  if (url.pathname.includes("/storage/v1/object/public/")) {
+    event.respondWith(staleWhileRevalidate(request, CACHE_DYNAMIC));
+    return;
+  }
+
+  // 6. ESTRATEGIA: Assets Estáticos (JS, CSS, Fuentes, Iconos)
+  // Vite suele versionar los archivos (ej: index.a3b4c.js), así que CacheFirst
+  // o StaleWhileRevalidate son seguros.
+  if (
+    request.destination === "script" ||
+    request.destination === "style" ||
+    request.destination === "image" ||
+    request.destination === "font"
+  ) {
+    event.respondWith(staleWhileRevalidate(request, CACHE_DYNAMIC));
+    return;
+  }
+
+  // 7. Fallback por defecto (Cache First simple)
+  // Para cualquier otro recurso no contemplado
+  event.respondWith(
+    caches.match(request).then((response) => {
+      return response || fetch(request).then((networkResponse) => {
+        return caches.open(CACHE_DYNAMIC).then((cache) => {
+          cache.put(request, networkResponse.clone());
           return networkResponse;
         });
-        return cachedResponse || networkFetch;
-      })
-    );
-  }
-  
-  // === ESTRATEGIA APP SHELL: Cache First (Falling back to Network) ===
-  else {
-    event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(request).then((networkResponse) => {
-          return caches.open(CACHE_DYNAMIC_NAME).then((cache) => {
-            // Cacheamos dinámicamente nuevos archivos JS/CSS visitados
-            if (request.url.startsWith("http")) {
-              cache.put(request, networkResponse.clone());
-            }
-            return networkResponse;
-          });
-        });
-      })
-    );
-  }
+      });
+    })
+  );
 });

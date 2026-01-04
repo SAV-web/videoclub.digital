@@ -2,7 +2,7 @@
 import { supabase } from "./api.js";
 import { closeAuthModal, showToast } from "./ui.js";
 
-// Referencias DOM (Lazy getter o validación de existencia para evitar errores si no existen)
+// Referencias DOM (Lazy getter para evitar errores de carga)
 const getDom = () => ({
   loginView: document.getElementById("login-view"),
   registerView: document.getElementById("register-view"),
@@ -47,24 +47,31 @@ function getFriendlyErrorMessage(error) {
 
 /**
  * Función genérica para manejar el envío de formularios de autenticación.
- * Elimina la duplicidad de try/catch/finally y gestión de botones.
  */
 async function handleAuthSubmit(event, authAction) {
   event.preventDefault();
-  setFeedback(null); // Limpiar mensajes
+  setFeedback(null); // Limpiar mensajes previos
 
   const form = event.currentTarget;
   const submitBtn = form.querySelector('button[type="submit"]');
   const originalBtnText = submitBtn.textContent;
   
-  // 1. Extracción de datos con FormData (Más limpio)
-  const formData = new FormData(form);
-  const email = formData.get(form.id === "login-form" ? "login-email" : "register-email")?.trim();
-  const password = formData.get(form.id === "login-form" ? "login-password" : "register-password")?.trim();
+  // 1. Extracción de datos (CORREGIDO: Usamos selectores CSS en lugar de FormData)
+  // Detectamos si es el formulario de login para buscar los IDs correctos
+  const isLogin = form.id === "login-form";
+  
+  const emailInput = form.querySelector(isLogin ? '#login-email' : '#register-email');
+  const passwordInput = form.querySelector(isLogin ? '#login-password' : '#register-password');
+
+  const email = emailInput?.value.trim();
+  const password = passwordInput?.value.trim();
 
   // 2. Validación
   if (!email || !password) {
     setFeedback("Por favor, completa todos los campos.");
+    // Añadir foco visual al campo vacío para ayudar al usuario
+    if (!email) emailInput?.focus();
+    else if (!password) passwordInput?.focus();
     return;
   }
 
@@ -74,7 +81,7 @@ async function handleAuthSubmit(event, authAction) {
   submitBtn.style.opacity = "0.7";
 
   try {
-    // 4. Ejecución de la lógica específica (Inyectada)
+    // 4. Ejecución de la lógica específica
     await authAction(email, password, form);
   } catch (err) {
     console.error(err);
@@ -131,23 +138,25 @@ function toggleView(showRegister) {
   if (showRegister) {
     dom.loginView.style.display = "none";
     dom.registerView.style.display = "block";
-    setTimeout(() => dom.registerForm.querySelector('input').focus(), 50);
+    // Pequeño delay para asegurar que el cambio de display ha ocurrido antes del foco
+    setTimeout(() => dom.registerForm.querySelector('input')?.focus(), 50);
   } else {
     dom.registerView.style.display = "none";
     dom.loginView.style.display = "block";
-    setTimeout(() => dom.loginForm.querySelector('input').focus(), 50);
+    setTimeout(() => dom.loginForm.querySelector('input')?.focus(), 50);
   }
 }
 
 export function initAuthForms() {
   const dom = getDom();
+  // Si no existe el formulario en esta página, no hacemos nada (evita errores)
   if (!dom.loginForm) return;
 
   // Listeners de Submit usando el wrapper genérico
   dom.loginForm.addEventListener("submit", (e) => handleAuthSubmit(e, actions.login));
   dom.registerForm.addEventListener("submit", (e) => handleAuthSubmit(e, actions.register));
 
-  // Listeners de Navegación (Toggle)
+  // Listeners de Navegación (Toggle entre Login y Registro)
   dom.showRegisterBtn.addEventListener("click", () => toggleView(true));
   dom.showLoginBtn.addEventListener("click", () => toggleView(false));
 }

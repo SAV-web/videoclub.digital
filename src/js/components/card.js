@@ -525,7 +525,7 @@ export function updateCardUI(card) {
   if (!movie) return;
 
   const userData = getUserDataForMovie(movieId);
-  const userRating = userData?.rating;
+  const userRating = userData?.rating; // Esto puede ser: número, null, o undefined
   const isOnWatchlist = userData?.onWatchlist ?? false;
   const isLoggedIn = document.body.classList.contains("user-logged-in");
 
@@ -545,22 +545,38 @@ export function updateCardUI(card) {
   circleEl.style.display = "none";
   starCont.style.display = "none";
 
-  if (isLoggedIn && userRating !== null) {
+  // 🔥 CORRECCIÓN AQUÍ:
+  // Verificamos explícitamente que sea un número.
+  // Si userRating es undefined o null, entra en el 'else' (mostrar media).
+  const hasUserVote = isLoggedIn && typeof userRating === 'number';
+
+  if (hasUserVote) {
+    // MODO: VOTO DE USUARIO
     starCont.classList.add("has-user-rating");
     circleEl.classList.add("has-user-rating");
-    if (userRating === 2) circleEl.style.display = "block";
-    else if (userRating >= 3) {
+    
+    if (userRating === 2) {
+      circleEl.style.display = "block";
+    } else if (userRating >= 3) {
       starCont.style.display = "flex";
       renderUserStars(starCont, calculateUserStars(userRating), true);
     }
+    // Nota: Si el voto es 1 (muy malo), userRating es 1, calculateUserStars devuelve 0.
+    // Podrías querer mostrar el círculo de suspenso también para el 1 si lo prefieres:
+    // if (userRating <= 2) circleEl.style.display = "block";
+    
   } else {
+    // MODO: NOTA MEDIA (No logueado O Logueado sin votar)
     starCont.classList.remove("has-user-rating");
     circleEl.classList.remove("has-user-rating");
+    
     const ratings = [movie.fa_rating, movie.imdb_rating].filter(r => r > 0);
     if (ratings.length > 0) {
       const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-      if (avg <= 5.5) circleEl.style.display = "block";
-      else {
+      
+      if (avg <= 5.5) {
+        circleEl.style.display = "block";
+      } else {
         starCont.style.display = "flex";
         renderAverageStars(starCont, calculateAverageStars(avg));
       }
