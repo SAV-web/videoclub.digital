@@ -189,6 +189,11 @@ export function setFilter(filterType, value, force = false) {
 
 export function setSearchTerm(term) {
   state.activeFilters.searchTerm = term;
+  // Lógica de exclusividad: Si buscamos por texto, limpiamos actor y director
+  if (term && term.length > 0) {
+    state.activeFilters.actor = null;
+    state.activeFilters.director = null;
+  }
 }
 
 export function setSort(sortValue) {

@@ -170,6 +170,7 @@ async function handleSearchInput() {
   if (searchTerm.length >= 3 || searchTerm.length === 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     setSearchTerm(searchTerm);
+    document.dispatchEvent(new CustomEvent("updateSidebarUI"));
     await loadAndRenderMovies(1);
   }
 }
@@ -188,16 +189,21 @@ function handleGlobalScroll() {
 
       // 2. Smart Hide (Barra inferior móvil)
       if (window.innerWidth <= 700) {
-        const isScrollingDown = currentScrollY > lastScrollY;
-        const scrollDifference = Math.abs(currentScrollY - lastScrollY);
-        const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
-
-        if (isAtBottom) {
-          // Siempre mostrar al llegar al final
+        // Si el buscador está enfocado, forzamos visibilidad (evita que se oculte al teclear/scrollear)
+        if (dom.mainHeader.classList.contains("is-search-focused")) {
           dom.mainHeader.classList.remove('is-hidden-mobile');
-        } else if (scrollDifference > 5) {
-          // Ocultar al bajar, mostrar al subir
-          dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
+        } else {
+          const isScrollingDown = currentScrollY > lastScrollY;
+          const scrollDifference = Math.abs(currentScrollY - lastScrollY);
+          const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
+
+          if (isAtBottom) {
+            // Siempre mostrar al llegar al final
+            dom.mainHeader.classList.remove('is-hidden-mobile');
+          } else if (scrollDifference > 5) {
+            // Ocultar al bajar, mostrar al subir
+            dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
+          }
         }
       }
 
