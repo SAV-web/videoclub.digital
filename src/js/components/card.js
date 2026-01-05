@@ -419,10 +419,12 @@ function populateCard(card, movie) {
       el.href = url;
       el.classList.remove('disabled');
       el.setAttribute("aria-label", `Ver en ${key}`);
+      el.style.display = 'flex';
     } else {
       el.removeAttribute('href');
       el.classList.add('disabled');
       el.removeAttribute("aria-label");
+      el.style.display = 'flex';
     }
   };
   setupLink('justwatch', movie.justwatch);

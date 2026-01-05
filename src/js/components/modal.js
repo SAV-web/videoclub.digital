@@ -273,10 +273,11 @@ function setupModalDetails(back, movie) {
     const el = back.querySelector(`[data-template="${key}-link"]`);
     if (url) {
       el.href = url; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
+      el.style.display = 'flex';
     } else {
       el.removeAttribute('href'); el.classList.add('disabled'); el.removeAttribute("aria-label");
+      el.style.display = 'flex';
     }
-    el.style.display = 'flex';
   };
   setupLink('justwatch', movie.justwatch);
   setupLink('wikipedia', movie.wikipedia);

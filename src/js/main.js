@@ -71,6 +71,8 @@ export async function loadAndRenderMovies(page = 1) {
       
       const performRender = () => {
         // Usar total retornado o mantener el conocido si no se pidió actualización
+        // NOTA: El backend devuelve -1 cuando get_count=false para optimizar rendimiento.
+        // En ese caso, confiamos en el estado local (currentKnownTotal).
         const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
         updateDomWithResults(movies, effectiveTotal);
         
@@ -111,8 +113,12 @@ export async function loadAndRenderMovies(page = 1) {
  * Gestiona casos de vacío, paginación y precarga.
  */
 function updateDomWithResults(movies, totalMovies) {
-  setTotalMovies(totalMovies);
-  updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
+  // Optimización: Solo actualizar estado y DOM si el total ha cambiado (ej: nueva búsqueda)
+  // Al paginar, totalMovies suele ser igual al anterior, ahorramos ciclos.
+  if (getState().totalMovies !== totalMovies) {
+    setTotalMovies(totalMovies);
+    updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
+  }
   const currentState = getState();
 
   if (currentState.totalMovies === 0) {

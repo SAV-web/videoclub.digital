@@ -10,7 +10,7 @@ import flagSpriteUrl from "../flags.svg";
 
 // Cache para Intl.NumberFormat (Es costoso instanciarlo cada vez)
 const compactFormatter = new Intl.NumberFormat('es-ES', { notation: "compact", maximumFractionDigits: 1 });
-const thousandsFormatter = new Intl.NumberFormat('es-ES');
+const thousandsFormatter = new Intl.NumberFormat('de-DE');
 
 export const formatVotesUnified = (votes, platform) => {
   // Conversión numérica rápida
