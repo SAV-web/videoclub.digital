@@ -1,20 +1,17 @@
 // src/js/components/card.js
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
-import { formatRuntime, formatVotesUnified, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
 import { openModal } from "./modal.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
-import { calculateAverageStars, calculateUserStars, renderAverageStars, renderUserStars, setupRatingListeners, LEVEL_TO_RATING_MAP } from "./rating.js";
+import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings } from "./rating.js";
 import spriteUrl from "../../sprite.svg";
 
 // =================================================================
 //          CONSTANTES Y ESTADO
 // =================================================================
-
-const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
-const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
 
 // Cachear template una sola vez
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
@@ -147,7 +144,7 @@ export function initCardInteractions(gridContainer) {
   let lastTapTime = 0;
   let tapTimeout = null;
   let startX = 0, startY = 0;
-  const DOUBLE_TAP_DELAY = 300;
+  const DOUBLE_TAP_DELAY = 250;
   const MOVE_THRESHOLD = 10;
 
   gridContainer.addEventListener('pointerdown', e => {
@@ -206,25 +203,6 @@ async function toggleWatchlist(movieId, btn, card) {
   }
 }
 
-async function setRating(movieId, value, card) {
-  const prevState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
-  if (prevState.rating === value) return; // No cambio
-
-  const newState = { rating: value };
-  triggerHapticFeedback("light");
-  updateUserDataForMovie(movieId, newState);
-  updateCardUI(card);
-
-  try {
-    await setUserMovieDataAPI(movieId, newState);
-    if (value !== null) triggerHapticFeedback("success");
-  } catch (err) {
-    showToast(err.message, "error");
-    updateUserDataForMovie(movieId, prevState);
-    updateCardUI(card);
-  }
-}
-
 export function handleCardClick(event) {
   if (document.body.dataset.gestureCooldown) { event.preventDefault(); event.stopPropagation(); return; }
 
@@ -241,31 +219,7 @@ export function handleCardClick(event) {
   }
 
   // 2. Rating (Estrellas o Suspenso)
-  const starEl = target.closest(".star-icon[data-rating-level]");
-  if (starEl) {
-    event.preventDefault(); event.stopPropagation();
-    const currentRating = getUserDataForMovie(movieId)?.rating;
-    const level = parseInt(starEl.dataset.ratingLevel, 10);
-    let newRating = null;
-
-    if (level === 1) {
-      // Ciclo especial para la primera estrella:
-      // 1. Click inicial (o desde otra nota) -> 2 (Suspenso/Hueca)
-      // 2. Click estando en 2 -> 3 (Una estrella/Maciza)
-      // 3. Click estando en 3 -> null (Borrar)
-      if (currentRating === 2) newRating = 3;
-      else if (currentRating === 3) newRating = null;
-      else newRating = 2;
-    } else {
-      const potential = LEVEL_TO_RATING_MAP[level - 1];
-      const currentVisualStars = calculateUserStars(currentRating);
-      if (level === currentVisualStars) newRating = null;
-      else newRating = potential;
-    }
-
-    setRating(movieId, newRating, card);
-    return;
-  }
+  if (handleRatingClick(event, card)) return;
 
   // 3. Expansión de Contenido
   const flipBack = card.querySelector(".flip-card-back");
@@ -488,44 +442,6 @@ function populateCard(card, movie) {
   setupCardRatings(back, movie);
 }
 
-// Configuración de Ratings (IMDb, FA)
-export function setupCardRatings(container, movie) {
-  const setup = (key, maxKey) => {
-    const link = container.querySelector(`[data-template="${key}-link"]`);
-    if (!link) return;
-
-    const id = movie[`${key}_id`];
-    const rating = movie[`${key}_rating`];
-    const votes = movie[`${key}_votes`] || 0;
-
-    if (id && (id.startsWith("http"))) {
-      link.href = id;
-      link.classList.remove("disabled");
-      link.setAttribute("aria-label", `Nota ${key.toUpperCase()}: ${rating}`);
-    } else {
-      link.removeAttribute("href");
-      link.classList.add("disabled");
-    }
-
-    container.querySelector(`[data-template="${key}-rating"]`).textContent = rating ? (String(rating).includes(".") ? rating : `${rating}.0`) : "N/A";
-    
-    const barCont = container.querySelector(`[data-template="${key}-votes-bar-container"]`);
-    const countEl = container.querySelector(`[data-template="${key}-votes-count"]`);
-    
-    barCont.style.display = votes > 0 ? "block" : "none";
-    if (votes > 0) {
-      const width = Math.min((Math.sqrt(votes) / SQRT_MAX_VOTES[maxKey]) * 100, 100);
-      container.querySelector(`[data-template="${key}-votes-bar"]`).style.width = `${width}%`;
-      const formattedVotes = formatVotesUnified(votes, key);
-      barCont.dataset.votes = formattedVotes; // Tooltip CSS
-      if (countEl) countEl.textContent = formattedVotes; // Visible en modal
-    }
-  };
-
-  setup("fa", "FA");
-  setup("imdb", "IMDB");
-}
-
 export function updateCardUI(card) {
   const movieId = parseInt(card.dataset.movieId, 10);
   const movie = card.movieData;
@@ -534,7 +450,6 @@ export function updateCardUI(card) {
   const userData = getUserDataForMovie(movieId);
   const userRating = userData?.rating; // Esto puede ser: número, null, o undefined
   const isOnWatchlist = userData?.onWatchlist ?? false;
-  const isLoggedIn = document.body.classList.contains("user-logged-in");
 
   // Botón Watchlist
   const watchlistBtn = card.querySelector('[data-action="toggle-watchlist"]');
@@ -544,63 +459,7 @@ export function updateCardUI(card) {
   }
 
   // Estrellas
-  const starCont = card.querySelector('[data-action="set-rating-estrellas"]');
-  const circleEl = card.querySelector('[data-action="set-rating-suspenso"]');
-  
-  if (!starCont || !circleEl) return;
-
-  circleEl.style.display = "none";
-  starCont.style.display = "none";
-
-  // 🔥 CORRECCIÓN AQUÍ:
-  // Verificamos explícitamente que sea un número.
-  // Si userRating es undefined o null, entra en el 'else' (mostrar media).
-  const hasUserVote = isLoggedIn && typeof userRating === 'number';
-
-  if (hasUserVote) {
-    // MODO: VOTO DE USUARIO
-    starCont.classList.add("has-user-rating");
-    circleEl.classList.add("has-user-rating");
-    
-    if (userRating === 2) {
-      // Suspenso: Mostrar 1 estrella hueca
-      starCont.style.display = "flex";
-      renderUserStars(starCont, 0, false);
-      const stars = starCont.querySelectorAll(".star-icon");
-      for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
-    } else if (userRating >= 3) {
-      starCont.style.display = "flex";
-      renderUserStars(starCont, calculateUserStars(userRating), true);
-    }
-    
-  } else {
-    // MODO: NOTA MEDIA (No logueado O Logueado sin votar)
-    starCont.classList.remove("has-user-rating");
-    circleEl.classList.remove("has-user-rating");
-    
-    const ratings = [movie.fa_rating, movie.imdb_rating].filter(r => r > 0);
-    if (ratings.length > 0) {
-      const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-      
-      if (avg <= 5.5) {
-        if (isLoggedIn) {
-          circleEl.style.display = "none";
-          starCont.style.display = "flex";
-          renderUserStars(starCont, 0);
-          // Ocultar las 3 últimas estrellas para que solo se vea la primera (que actúa como botón de suspenso)
-          const stars = starCont.querySelectorAll(".star-icon");
-          for (let i = 1; i < stars.length; i++) {
-            stars[i].style.opacity = "0";
-          }
-        } else {
-          circleEl.style.display = "block";
-        }
-      } else {
-        starCont.style.display = "flex";
-        renderAverageStars(starCont, calculateAverageStars(avg));
-      }
-    }
-  }
+  updateRatingUI(card);
 }
 
 export function initializeCard(card) {

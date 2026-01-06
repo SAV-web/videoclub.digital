@@ -6,7 +6,8 @@
 // =================================================================
 
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
-import { updateCardUI, initializeCard, unflipAllCards, setupCardRatings } from "./card.js";
+import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
+import { setupCardRatings } from "./rating.js";
 import { formatRuntime, createElement, renderCountryFlag } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import spriteUrl from "../../sprite.svg";

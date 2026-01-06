@@ -8,8 +8,16 @@
 // - Renderizar el estado visual de las estrellas (relleno/clip).
 // =================================================================
 
+import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
+import { setUserMovieDataAPI } from "../api.js";
+import { showToast } from "../ui.js";
+import { triggerHapticFeedback, formatVotesUnified } from "../utils.js";
+
 // Mapeo de niveles visuales (1-4 estrellas) a valores de base de datos (1-10)
 export const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
+
+const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
+const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
 
 // =================================================================
 //          1. LÓGICA DE CÁLCULO (Funciones Puras)
@@ -141,4 +149,148 @@ export function setupRatingListeners(starContainer, isInteractive) {
 
   // Listener en el contenedor para detectar cuando salimos del área de votación
   starContainer.addEventListener("mouseleave", handleRatingMouseLeave, { passive: true });
+}
+
+// =================================================================
+//          4. GESTIÓN DE ESTADO Y CLICS (Lógica de Negocio)
+// =================================================================
+
+async function setRating(movieId, value, card) {
+  const prevState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
+  if (prevState.rating === value) return;
+
+  const newState = { rating: value };
+  triggerHapticFeedback("light");
+  updateUserDataForMovie(movieId, newState);
+  updateRatingUI(card);
+
+  try {
+    await setUserMovieDataAPI(movieId, newState);
+    if (value !== null) triggerHapticFeedback("success");
+  } catch (err) {
+    showToast(err.message, "error");
+    updateUserDataForMovie(movieId, prevState);
+    updateRatingUI(card);
+  }
+}
+
+export function handleRatingClick(event, card) {
+  const target = event.target;
+  const starEl = target.closest(".star-icon[data-rating-level]");
+  
+  if (starEl) {
+    event.preventDefault(); event.stopPropagation();
+    const movieId = parseInt(card.dataset.movieId, 10);
+    const currentRating = getUserDataForMovie(movieId)?.rating;
+    const level = parseInt(starEl.dataset.ratingLevel, 10);
+    let newRating = null;
+
+    if (level === 1) {
+      if (currentRating === 2) newRating = 3;
+      else if (currentRating === 3) newRating = null;
+      else newRating = 2;
+    } else {
+      const potential = LEVEL_TO_RATING_MAP[level - 1];
+      const currentVisualStars = calculateUserStars(currentRating);
+      if (level === currentVisualStars) newRating = null;
+      else newRating = potential;
+    }
+
+    setRating(movieId, newRating, card);
+    return true; // Handled
+  }
+  return false; // Not handled
+}
+
+// =================================================================
+//          5. ACTUALIZACIÓN DE UI (Estrellas y Barras)
+// =================================================================
+
+export function updateRatingUI(card) {
+  const movieId = parseInt(card.dataset.movieId, 10);
+  const movie = card.movieData;
+  if (!movie) return;
+
+  const userData = getUserDataForMovie(movieId);
+  const userRating = userData?.rating;
+  const isLoggedIn = document.body.classList.contains("user-logged-in");
+
+  const starCont = card.querySelector('[data-action="set-rating-estrellas"]');
+  const circleEl = card.querySelector('[data-action="set-rating-suspenso"]');
+  
+  if (!starCont || !circleEl) return;
+
+  circleEl.style.display = "none";
+  starCont.style.display = "none";
+
+  const hasUserVote = isLoggedIn && typeof userRating === 'number';
+
+  if (hasUserVote) {
+    starCont.classList.add("has-user-rating");
+    circleEl.classList.add("has-user-rating");
+    
+    if (userRating === 2) {
+      starCont.style.display = "flex";
+      renderUserStars(starCont, 0, false);
+      const stars = starCont.querySelectorAll(".star-icon");
+      for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
+    } else if (userRating >= 3) {
+      starCont.style.display = "flex";
+      renderUserStars(starCont, calculateUserStars(userRating), true);
+    }
+  } else {
+    starCont.classList.remove("has-user-rating");
+    circleEl.classList.remove("has-user-rating");
+    
+    const ratings = [movie.fa_rating, movie.imdb_rating].filter(r => r > 0);
+    if (ratings.length > 0) {
+      const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+      
+      if (avg <= 5.5) {
+        if (isLoggedIn) {
+          circleEl.style.display = "none";
+          starCont.style.display = "flex";
+          renderUserStars(starCont, 0);
+          const stars = starCont.querySelectorAll(".star-icon");
+          for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
+        } else {
+          circleEl.style.display = "block";
+        }
+      } else {
+        starCont.style.display = "flex";
+        renderAverageStars(starCont, calculateAverageStars(avg));
+      }
+    }
+  }
+}
+
+export function setupCardRatings(container, movie) {
+  const setup = (key, maxKey) => {
+    const link = container.querySelector(`[data-template="${key}-link"]`);
+    if (!link) return;
+    const id = movie[`${key}_id`];
+    const rating = movie[`${key}_rating`];
+    const votes = movie[`${key}_votes`] || 0;
+    if (id && (id.startsWith("http"))) {
+      link.href = id;
+      link.classList.remove("disabled");
+      link.setAttribute("aria-label", `Nota ${key.toUpperCase()}: ${rating}`);
+    } else {
+      link.removeAttribute("href");
+      link.classList.add("disabled");
+    }
+    container.querySelector(`[data-template="${key}-rating"]`).textContent = rating ? (String(rating).includes(".") ? rating : `${rating}.0`) : "N/A";
+    const barCont = container.querySelector(`[data-template="${key}-votes-bar-container"]`);
+    const countEl = container.querySelector(`[data-template="${key}-votes-count"]`);
+    barCont.style.display = votes > 0 ? "block" : "none";
+    if (votes > 0) {
+      const width = Math.min((Math.sqrt(votes) / SQRT_MAX_VOTES[maxKey]) * 100, 100);
+      container.querySelector(`[data-template="${key}-votes-bar"]`).style.width = `${width}%`;
+      const formattedVotes = formatVotesUnified(votes, key);
+      barCont.dataset.votes = formattedVotes;
+      if (countEl) countEl.textContent = formattedVotes;
+    }
+  };
+  setup("fa", "FA");
+  setup("imdb", "IMDB");
 }
