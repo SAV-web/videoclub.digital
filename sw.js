@@ -80,9 +80,9 @@ async function handleApiRequest(request) {
     const dateHeader = cachedResponse.headers.get('date');
     if (dateHeader) {
       const ageMs = new Date() - new Date(dateHeader);
-      // Si es "fresco" (< 30s), devolvemos caché y NO esperamos a la red
+      // Si es "fresco" (< 15m), devolvemos caché y NO esperamos a la red
       // (aunque la red se dispara en background para la próxima vez)
-      if (ageMs < 30000) {
+      if (ageMs < 90000) {
         networkFetch.catch(() => {}); // Evitar errores de promesa no manejada
         return cachedResponse;
       }
