@@ -2,7 +2,6 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
-import { openModal } from "./modal.js";
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
@@ -26,6 +25,17 @@ let hoverTimeout;
 let currentHoveredCard = null;
 const HOVER_DELAY = 1000;
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn";
+
+// =================================================================
+//          0. LAZY LOADING (Modal)
+// =================================================================
+
+async function loadAndOpenModal(cardElement) {
+  const { openModal, initQuickView } = await import("./modal.js");
+  // Asegurar inicialización única (idempotente en la práctica, pero seguro)
+  if (!window._quickViewInitialized) { initQuickView(); window._quickViewInitialized = true; }
+  openModal(cardElement);
+}
 
 // =================================================================
 //          1. GESTIÓN DE ESTADO VISUAL (Flip/Back)
@@ -136,7 +146,7 @@ export function initCardInteractions(gridContainer) {
   gridContainer.addEventListener("dblclick", (e) => {
     const card = e.target.closest(".movie-card");
     if (card && !document.body.classList.contains("rotation-disabled")) {
-      openModal(card);
+      loadAndOpenModal(card);
     }
   });
 
@@ -170,7 +180,7 @@ export function initCardInteractions(gridContainer) {
     if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
       // Doble Tap -> Modal
       clearTimeout(tapTimeout);
-      openModal(card);
+      loadAndOpenModal(card);
     } else {
       // Primer Tap -> Esperar
       clearTimeout(tapTimeout);
@@ -271,7 +281,7 @@ export function handleCardClick(event) {
 
   // 7. Apertura Modal (Modo Muro)
   if (document.body.classList.contains("rotation-disabled") && card.id !== 'quick-view-content') {
-    openModal(card);
+    loadAndOpenModal(card);
   }
 }
 

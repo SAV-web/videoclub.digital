@@ -5,10 +5,20 @@ import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
-import { initSidebar, collapseAllSections, openMobileDrawer, closeMobileDrawer } from "./components/sidebar.js";
 import { initAuthForms } from "./auth.js";
 import { renderMovieGrid, updateCardUI, handleCardClick, initCardInteractions, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
-import { initQuickView, closeModal } from "./components/modal.js";
+
+// --- Lazy Modules State ---
+let sidebarModule = null;
+
+async function loadSidebar() {
+  if (sidebarModule) return sidebarModule;
+  try {
+    sidebarModule = await import("./components/sidebar.js");
+    sidebarModule.initSidebar(); // Inicializar listeners al cargar
+    return sidebarModule;
+  } catch (e) { console.error("Error loading sidebar", e); }
+}
 
 // Mapeo de parámetros URL a Estado interno
 const URL_PARAM_MAP = { 
@@ -257,13 +267,16 @@ function setupHeaderListeners() {
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
 
-  // Toggle Sidebar Móvil
+  // Toggle Sidebar Móvil (Lazy Load)
   const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
   if (mobileSidebarToggle) {
-    mobileSidebarToggle.addEventListener('click', () => {
+    mobileSidebarToggle.addEventListener('click', async () => {
+      // Cargar módulo si no existe
+      const mod = await loadSidebar();
+      if (!mod) return;
       triggerHapticFeedback('light');
       const isOpen = document.body.classList.contains('sidebar-is-open');
-      isOpen ? closeMobileDrawer() : openMobileDrawer();
+      isOpen ? mod.closeMobileDrawer() : mod.openMobileDrawer();
     });
   }
 
@@ -307,7 +320,7 @@ function setupGlobalListeners() {
   // Cierres al hacer click fuera
   document.addEventListener("click", (e) => {
     if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
-    if (!e.target.closest(".sidebar")) collapseAllSections();
+    if (!e.target.closest(".sidebar") && sidebarModule) sidebarModule.collapseAllSections();
   });
 
   // Delegación de eventos Grid (Cards)
@@ -346,7 +359,9 @@ function setupGlobalListeners() {
   
   // Teclado
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { closeMobileDrawer(); }
+    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { 
+      if (sidebarModule) sidebarModule.closeMobileDrawer();
+    }
   });
 
   // Eventos Personalizados de la App
@@ -494,15 +509,23 @@ function init() {
     });
   }
   
-  window.addEventListener("popstate", () => {
+  window.addEventListener("popstate", async () => {
+    // Import dinámico para cerrar modal (si está cargado es instantáneo)
+    const { closeModal } = await import("./components/modal.js");
     closeModal();
+    
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
     loadAndRenderMovies(getCurrentPage());
   });
   
-  initSidebar();
-  initQuickView();
+  // Carga diferida del Sidebar (Desktop necesita filtros, Móvil no tanto)
+  // Usamos requestIdleCallback para no bloquear el renderizado inicial de la grid
+  const idleLoad = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000));
+  idleLoad(() => loadSidebar());
+
+  // initQuickView se elimina de aquí, se llama al abrir la primera ficha en card.js
+  
   initThemeToggle();
   setupHeaderListeners();
   setupGlobalListeners();
