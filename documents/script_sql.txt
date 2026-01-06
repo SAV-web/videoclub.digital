@@ -236,7 +236,6 @@ CREATE TABLE IF NOT EXISTS public.user_movie_entries (
 );
 
 -- 4.3. Creación de índices para optimizar el rendimiento.
-CREATE INDEX IF NOT EXISTS user_movie_entries_user_id_idx ON public.user_movie_entries(user_id);
 CREATE INDEX IF NOT EXISTS user_movie_entries_movie_id_idx ON public.user_movie_entries(movie_id);
 
 -- 4.4. Función de trigger y trigger para 'updated_at'.
@@ -260,24 +259,18 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 -- Índice GIN (Generalized Inverted Index) sobre la columna normalizada.
 -- Es el tipo de índice más eficiente para búsquedas con `ILIKE '%...%'` cuando se usa la extensión pg_trgm.
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm gin_trgm_ops);
+-- Índice único para la columna image, necesario para la cláusula ON CONFLICT (image) en la función de carga.
+CREATE UNIQUE INDEX IF NOT EXISTS movies_image_unique_idx ON public.movies(image);
 -- Para claves foráneas y campos de ordenación comunes.
-CREATE INDEX IF NOT EXISTS movies_country_id_idx ON public.movies(country_id);
 CREATE INDEX IF NOT EXISTS movies_year_idx ON public.movies(year DESC);
 CREATE INDEX IF NOT EXISTS movies_fa_rating_idx ON public.movies(fa_rating DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_imdb_rating_idx ON public.movies(imdb_rating DESC NULLS LAST);
 -- Para las tablas de relación.
-CREATE INDEX IF NOT EXISTS movie_genres_movie_id_idx ON public.movie_genres(movie_id);
 CREATE INDEX IF NOT EXISTS movie_genres_genre_id_idx ON public.movie_genres(genre_id);
-CREATE INDEX IF NOT EXISTS movie_directors_movie_id_idx ON public.movie_directors(movie_id);
 CREATE INDEX IF NOT EXISTS movie_directors_director_id_idx ON public.movie_directors(director_id);
-CREATE INDEX IF NOT EXISTS movie_actors_movie_id_idx ON public.movie_actors(movie_id);
 CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(actor_id);
-CREATE INDEX IF NOT EXISTS movie_selections_movie_id_idx ON public.movie_selections(movie_id);
 CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_selections(selection_id);
-CREATE INDEX IF NOT EXISTS movie_studios_movie_id_idx ON public.movie_studios(movie_id);
 CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
--- Para guardar el orden de los actores y su índice.
-CREATE INDEX IF NOT EXISTS movie_actors_ordinality_idx ON public.movie_actors(ordinality);
 -- Para tablas de entidad (sugerencias). Solo índices GIN (pg_trgm) pq las búsquedas son substring ('%texto%'), donde los índices B-Tree (prefix) no tienen efecto.
 CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS actors_name_norm_trgm_idx ON public.actors USING gin (name_norm gin_trgm_ops);

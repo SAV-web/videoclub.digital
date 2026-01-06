@@ -331,8 +331,6 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   }
   
   .quick-view-modal.is-visible { transform: translate(-50%, 0); }
-
-  .quick-view-content { padding-bottom: env(safe-area-inset-bottom); }
   
   .is-quick-view .flip-card-inner { flex-direction: column; }
   
@@ -414,6 +412,9 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   transform: translate(-50%, -50%);
   z-index: calc(var(--z-index-overlay) + 1);
   width: 90%; max-width: 420px;
+
+  /* Safe Area Universal */
+  padding-bottom: max(var(--space-md), env(safe-area-inset-bottom));
 }
 
 .auth-box {

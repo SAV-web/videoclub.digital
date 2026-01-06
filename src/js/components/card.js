@@ -302,16 +302,15 @@ function populateCard(card, movie) {
   const hqPoster = `${CONFIG.POSTER_BASE_URL}${movie.image}.webp?v=${version}`;
   
   img.alt = `Póster de ${movie.title}`;
+  img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+  img.dataset.src = hqPoster;
+  img.classList.add(movie.thumbhash_st ? CSS_CLASSES.LAZY_LQIP : "");
+
   if (renderedCardCount < 4) {
-    img.src = hqPoster;
     img.loading = "eager";
     img.setAttribute("fetchpriority", "high");
-  } else {
-    img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-    img.dataset.src = hqPoster;
-    img.classList.add(movie.thumbhash_st ? CSS_CLASSES.LAZY_LQIP : "");
-    lazyLoadObserver.observe(img);
   }
+  lazyLoadObserver.observe(img);
 
   // --- TEXTOS BÁSICOS ---
   front.querySelector(SELECTORS.TITLE).textContent = movie.title;

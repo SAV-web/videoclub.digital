@@ -144,8 +144,17 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
   const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 500));
   
   idleCallback(() => {
+    // 1. Prefetch página siguiente (Prioridad)
     fetchMovies(activeFilters, currentPage + 1, CONFIG.ITEMS_PER_PAGE, null, false)
-      .catch(() => {}); // Ignorar errores silenciosamente en prefetch
+      .catch(() => {});
+
+    // 2. Prefetch página subsiguiente (Estrategia agresiva post-optimización DB)
+    if (currentPage + 1 < totalPages) {
+      setTimeout(() => {
+        fetchMovies(activeFilters, currentPage + 2, CONFIG.ITEMS_PER_PAGE, null, false)
+          .catch(() => {});
+      }, 1000); // Delay para no competir con recursos críticos
+    }
   });
 }
 
