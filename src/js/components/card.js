@@ -242,22 +242,27 @@ export function handleCardClick(event) {
 
   // 2. Rating (Estrellas o Suspenso)
   const starEl = target.closest(".star-icon[data-rating-level]");
-  const circleEl = target.closest('[data-action="set-rating-suspenso"]');
-  
-  if (starEl || circleEl) {
+  if (starEl) {
     event.preventDefault(); event.stopPropagation();
     const currentRating = getUserDataForMovie(movieId)?.rating;
+    const level = parseInt(starEl.dataset.ratingLevel, 10);
     let newRating = null;
 
-    if (circleEl) {
-      newRating = (currentRating === null) ? 2 : (currentRating === 2 ? 3 : null);
+    if (level === 1) {
+      // Ciclo especial para la primera estrella:
+      // 1. Click inicial (o desde otra nota) -> 2 (Suspenso/Hueca)
+      // 2. Click estando en 2 -> 3 (Una estrella/Maciza)
+      // 3. Click estando en 3 -> null (Borrar)
+      if (currentRating === 2) newRating = 3;
+      else if (currentRating === 3) newRating = null;
+      else newRating = 2;
     } else {
-      const level = parseInt(starEl.dataset.ratingLevel, 10);
-      const visualStars = calculateUserStars(currentRating);
-      // Lógica de estrella 1: toggle entre 2 (1 estrella real) y null
-      if (level === 1 && visualStars === 0) newRating = 2;
-      else newRating = level === visualStars ? null : LEVEL_TO_RATING_MAP[level - 1];
+      const potential = LEVEL_TO_RATING_MAP[level - 1];
+      const currentVisualStars = calculateUserStars(currentRating);
+      if (level === currentVisualStars) newRating = null;
+      else newRating = potential;
     }
+
     setRating(movieId, newRating, card);
     return;
   }
@@ -558,14 +563,15 @@ export function updateCardUI(card) {
     circleEl.classList.add("has-user-rating");
     
     if (userRating === 2) {
-      circleEl.style.display = "block";
+      // Suspenso: Mostrar 1 estrella hueca
+      starCont.style.display = "flex";
+      renderUserStars(starCont, 0, false);
+      const stars = starCont.querySelectorAll(".star-icon");
+      for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
     } else if (userRating >= 3) {
       starCont.style.display = "flex";
       renderUserStars(starCont, calculateUserStars(userRating), true);
     }
-    // Nota: Si el voto es 1 (muy malo), userRating es 1, calculateUserStars devuelve 0.
-    // Podrías querer mostrar el círculo de suspenso también para el 1 si lo prefieres:
-    // if (userRating <= 2) circleEl.style.display = "block";
     
   } else {
     // MODO: NOTA MEDIA (No logueado O Logueado sin votar)
@@ -577,7 +583,18 @@ export function updateCardUI(card) {
       const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
       
       if (avg <= 5.5) {
-        circleEl.style.display = "block";
+        if (isLoggedIn) {
+          circleEl.style.display = "none";
+          starCont.style.display = "flex";
+          renderUserStars(starCont, 0);
+          // Ocultar las 3 últimas estrellas para que solo se vea la primera (que actúa como botón de suspenso)
+          const stars = starCont.querySelectorAll(".star-icon");
+          for (let i = 1; i < stars.length; i++) {
+            stars[i].style.opacity = "0";
+          }
+        } else {
+          circleEl.style.display = "block";
+        }
       } else {
         starCont.style.display = "flex";
         renderAverageStars(starCont, calculateAverageStars(avg));
