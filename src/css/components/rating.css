@@ -1,0 +1,141 @@
+/* =================================================================
+ *          COMPONENTE: SISTEMA DE ESTRELLAS (Rating)
+ * =================================================================
+ *  FICHERO: src/css/components/rating.css
+ *  RESPONSABILIDAD: Estilos visuales de estrellas y círculo de nota.
+ * ================================================================= */
+
+/* --- Contenedor de Estrellas --- */
+.star-rating-container {
+  display: flex; align-items: center; gap: 2px;
+  
+  &.is-interactive { cursor: pointer; }
+
+  &.has-user-rating {
+    & .star-icon-path { stroke: #ffbd07; }
+    & .star-icon-path--filled { fill: #ffbd07; }
+  }
+}
+
+/* --- Icono de Estrella Individual --- */
+.star-icon {
+  position: relative; width: 25px; height: 25px; cursor: pointer;
+}
+
+.star-icon-path {
+  stroke: var(--color-accent); stroke-width: 2;
+  stroke-linejoin: round; stroke-linecap: round;
+  
+  &--empty { fill: transparent; }
+  &--filled {
+    fill: var(--color-accent);
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+}
+
+/* --- Círculo de Suspenso (Nota baja) --- */
+.low-rating-circle {
+  display: none; width: 25px; height: 25px;
+  stroke: var(--color-accent); stroke-width: 2px; fill: transparent;
+  border: none; background-color: transparent;
+  transition: stroke 0.3s ease, transform var(--duration-quick) var(--ease-spring);
+  position: relative;
+  cursor: pointer;
+
+  &.is-interactive { cursor: pointer; }
+
+  &.has-user-rating {
+    stroke: #ffbd07; color: #ffbd07; fill: none;
+    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.6));
+
+    html.dark-mode & {
+      filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.8));
+    }
+  }
+}
+
+/* --- Interacciones (Hover) --- */
+@media (hover: hover) and (pointer: fine) {
+  .star-rating-container.is-interactive .star-icon:hover {
+    transform: scale(1.35); z-index: 20;
+    filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
+  }
+
+  .low-rating-circle.is-interactive:hover {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
+  }
+}
+
+/* --- Accesibilidad Táctil (Áreas expandidas) --- */
+@media (hover: none) and (pointer: coarse) {
+  .low-rating-circle::after,
+  .star-icon::after {
+    content: ''; position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 10;
+  }
+
+  /* Expandir círculo */
+  .low-rating-circle::after {
+    width: var(--tap-target-size);
+    height: var(--tap-target-size);
+  }
+
+  /* Expandir estrella (más alto que ancho por la forma) */
+  .star-icon::after {
+    width: 30px; height: 48px;
+  }
+}
+
+/* =================================================================
+   SECCIÓN: RATINGS EXTERNOS (Barras y Puntuaciones)
+   ================================================================= */
+
+.ratings-container { display: flex; flex-direction: column; gap: 10px; }
+.rating-line { display: flex; align-items: center; gap: var(--space-sm); }
+
+.rating-left {
+  display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0;
+  color: var(--color-text-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
+  text-decoration: none; cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: auto;
+  
+  @media (hover: hover) and (pointer: fine) {
+    &:hover { opacity: 0.8; transform: scale(1.05); }
+  }
+  &.disabled { pointer-events: none; opacity: 0.7; cursor: default; }
+}
+
+.rating-icon { width: 1.6em; height: 1.6em; border-radius: var(--radius-sm); object-fit: contain; }
+
+.rating-bar-container {
+  flex-grow: 1; width: 100%; height: var(--space-xs);
+  border-radius: var(--space-xxs); background-color: var(--color-bg);
+  overflow: visible; position: relative;
+  pointer-events: auto; cursor: default;
+
+  @media (hover: hover) and (pointer: fine) {
+    &[data-votes]:hover::after {
+      content: attr(data-votes) " votos";
+      position: absolute; bottom: 100%; left: 50%;
+      transform: translateX(-50%) translateY(-5px);
+      background-color: rgba(0, 0, 0, 0.85); color: #fff;
+      padding: 4px 8px; border-radius: 4px;
+      font-size: 0.75rem; font-weight: bold; white-space: nowrap;
+      pointer-events: none; z-index: 10;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      animation: fade-in-subtle 0.2s ease-out;
+    }
+  }
+}
+
+.rating-votes-count { display: none !important; }
+
+.rating-bar {
+  width: 0; height: 100%; border-radius: var(--space-xxs);
+  background-color: var(--color-accent);
+  transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+}

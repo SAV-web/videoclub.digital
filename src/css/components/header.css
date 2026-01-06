@@ -18,22 +18,23 @@
     box-shadow 0.3s ease,
     border-color var(--transition-duration-normal),
     transform 0.3s ease;
-}
 
-/* --- Estilos Desktop (Sticky Superior) --- */
-@media (min-width: 701px) {
-  .main-header {
+  /* --- Estilos Desktop (Sticky Superior) --- */
+  @media (min-width: 701px) {
     border: none;
-    border-bottom: 1px solid transparent; /* Preparación para estado scroll */
+    border-bottom: 1px solid transparent;
+
+    /* Estado Scrolled: Reducción de padding y sombra */
+    &.is-scrolled {
+      padding-block: var(--space-sm);
+      border-bottom-color: var(--color-border);
+      background-color: var(--color-surface);
+      box-shadow: var(--shadow);
+    }
   }
 
-  /* Estado Scrolled: Reducción de padding y sombra */
-  .main-header.is-scrolled {
-    padding-block: var(--space-sm);
-    border-bottom-color: var(--color-border);
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow);
-  }
+  /* Smart Hide (Scroll Down) */
+  &.is-hidden-mobile { transform: translateY(100%); }
 }
 
 /* =================================================================
@@ -59,18 +60,19 @@
   color: var(--color-text-primary);
   min-width: 130px;
   transition: min-width var(--transition-duration-normal) ease-in-out;
-}
 
-.search-form input::placeholder { color: var(--color-text-secondary); }
+  &::placeholder { color: var(--color-text-secondary); }
 
-.search-form input:focus {
-  min-width: 160px;
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(0, 115, 230, 0.2);
-}
-html.dark-mode .search-form input:focus {
-  box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2);
+  &:focus {
+    min-width: 160px;
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(0, 115, 230, 0.2);
+
+    html.dark-mode & {
+      box-shadow: 0 0 0 2px rgba(41, 151, 255, 0.2);
+    }
+  }
 }
 
 /* Reset de estilos nativos de búsqueda (Webkit) */
@@ -148,25 +150,25 @@ html.dark-mode .search-form input:focus {
   transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out, background-color 0.1s ease-in-out, color 0.1s ease-in-out;
   background-color: var(--color-surface);
   color: var(--color-text-primary);
-}
 
-.type-filter-toggle .desktop-text { display: none; }
-.type-filter-toggle .mobile-icon { display: flex; align-items: center; }
+  & .desktop-text { display: none; }
+  & .mobile-icon { display: flex; align-items: center; }
 
-@media (hover: hover) and (pointer: fine) {
-  .type-filter-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
   }
-}
-.type-filter-toggle:active {
-  transform: translateY(1px);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
+  &:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  }
 
-/* Variantes de Color */
-.type-filter-toggle.type-filter--movies { background-color: var(--color-accent); color: #fff; }
-.type-filter-toggle.type-filter--series { background-color: var(--color-accent-exclude); color: #fff; }
+  /* Variantes de Color */
+  &.type-filter--movies { background-color: var(--color-accent); color: #fff; }
+  &.type-filter--series { background-color: var(--color-accent-exclude); color: #fff; }
+}
 
 /* --- Toggle de Tema --- */
 .theme-toggle {
@@ -255,9 +257,6 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .mobile-sidebar-toggle { color: var(--color-text-primary); }
   .type-filter-toggle { font-size: 0.8rem; }
   .type-filter-toggle .mobile-icon svg { width: 20px; height: 20px; }
-
-  /* Smart Hide (Scroll Down) */
-  .main-header.is-hidden-mobile { transform: translateY(100%); }
 
   /* --- Modificaciones de Controles para Móvil --- */
   

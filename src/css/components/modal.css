@@ -26,6 +26,13 @@
   
   /* Optimización: Transición suave solo de propiedades visuales */
   transition: opacity 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
+
+  &.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
 }
 
 /* --- Contenedor Principal (Quick View) --- */
@@ -49,15 +56,13 @@
     
   /* UX: Prevenir scroll del body al tocar el modal */
   touch-action: pan-y;
-}
 
-/* --- Estados Visibles --- */
-.quick-view-overlay.is-visible,
-.quick-view-modal.is-visible {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transition-delay: 0s;
+  &.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
 }
 
 /* =================================================================

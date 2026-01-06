@@ -48,6 +48,21 @@
   
   /* UX TÁCTIL: Permite pan/zoom, deshabilita "doble tap para zoom" y delay */
   touch-action: manipulation;
+
+  /* Interacciones Desktop */
+  @media (hover: hover) and (pointer: fine) {
+    &:not(.is-flipped):hover {
+      transform: translateY(-8px) translateZ(0) scale(1.02);
+
+      & .flip-card-inner {
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+      }
+
+      html.dark-mode & .flip-card-inner {
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+      }
+    }
+  }
 }
 
 /* El "papel" que gira (Contenedor de caras) */
@@ -62,12 +77,12 @@
   
   transform-style: preserve-3d; /* Habilita el 3D real */
   transition: transform var(--duration-leisurely) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
-}
 
-.flip-card-inner.is-flipped { transform: rotateY(180deg); }
+  &.is-flipped { transform: rotateY(180deg); }
 
-html.dark-mode .flip-card-inner.is-flipped {
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
+  html.dark-mode &.is-flipped {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
+  }
 }
 
 /* =================================================================
@@ -102,11 +117,11 @@ html.dark-mode .flip-card-inner.is-flipped {
   padding: var(--space-xs) var(--space-sm);
   line-height: var(--line-height-normal);
   z-index: 1;
-  pointer-events: none; /* Bloqueamos clics fantasmas */
-}
+  pointer-events: none;
 
-/* Gestión de Interactividad al girar */
-.flip-card-inner.is-flipped .flip-card-back { pointer-events: auto; z-index: 2; }
+  /* Gestión de Interactividad al girar */
+  .flip-card-inner.is-flipped & { pointer-events: auto; z-index: 2; }
+}
 .flip-card-inner.is-flipped .flip-card-front { pointer-events: none; z-index: 1; }
 
 /* --- Imagen del Póster --- */
@@ -115,14 +130,14 @@ html.dark-mode .flip-card-inner.is-flipped {
   width: 100%;
   height: 66%;
   flex-shrink: 0;
-}
 
-.poster-container img {
-  width: 100%;
-  height: 100%;
-  border: var(--space-xxs) solid var(--color-surface);
-  border-radius: var(--radius-xl);
-  object-fit: cover;
+  & img {
+    width: 100%;
+    height: 100%;
+    border: var(--space-xxs) solid var(--color-surface);
+    border-radius: var(--radius-xl);
+    object-fit: cover;
+  }
 }
 
 /* Efecto carga LQIP (Blur) */
@@ -130,8 +145,8 @@ html.dark-mode .flip-card-inner.is-flipped {
   filter: blur(10px);
   transform: scale(1.1);
   transition: filter var(--duration-normal) ease-in-out, transform var(--duration-normal) ease-in-out;
+  &.loaded { filter: blur(0); transform: scale(1); }
 }
-.flip-card-front img.lazy-lqip.loaded { filter: blur(0); transform: scale(1); }
 
 /* =================================================================
    3. CONTENIDO FRONTAL (Resumen)
@@ -152,25 +167,24 @@ html.dark-mode .flip-card-inner.is-flipped {
   justify-content: center;
 }
 
-.movie-summary h3 {
-  margin-bottom: 0;
-  line-height: 1.1;
-  font-family: var(--font-title);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -0.025em;
-  /* Truncado multilínea */
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; text-overflow: ellipsis;
-}
+& h3 {
+    margin-bottom: 0;
+    line-height: 1.1;
+    font-family: var(--font-title);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: -0.025em;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; text-overflow: ellipsis;
+  }
 
 .front-director-info {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-light);
   color: var(--color-text-tertiary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  & a { color: inherit; text-decoration: none; transition: color var(--duration-fast); }
 }
-.front-director-info a { color: inherit; text-decoration: none; transition: color var(--duration-fast); }
 
 /* Metadatos Frontales */
 .movie-meta {
@@ -210,14 +224,15 @@ html.dark-mode .flip-card-inner.is-flipped {
   min-height: calc(var(--font-size-sm) * var(--line-height-tight) * 2);
   width: 100%;
   animation: fade-in-subtle 0.5s var(--ease-smooth-out) 0.2s backwards;
-}
-.back-original-title-wrapper span {
-  font-family: var(--font-title); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary); line-height: var(--line-height-tight);
-  letter-spacing: -0.01em;
-  text-align: left;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; text-overflow: ellipsis;
+
+  & span {
+    font-family: var(--font-title); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary); line-height: var(--line-height-tight);
+    letter-spacing: -0.01em;
+    text-align: left;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; text-overflow: ellipsis;
+  }
 }
 
 .back-meta-header {
@@ -238,60 +253,14 @@ html.dark-mode .flip-card-inner.is-flipped {
   transition: transform var(--duration-fast);
   margin-left: var(--space-xs);
   pointer-events: auto; 
-}
-@media (hover: hover) and (pointer: fine) {
-  [data-template="wikipedia-link"]:hover,
-  [data-template="justwatch-link"]:hover { transform: scale(1.1); }
-}
 
-[data-template="wikipedia-link"].disabled,
-[data-template="justwatch-link"].disabled {
-  opacity: 0.3; pointer-events: none; filter: grayscale(100%); cursor: default;
-}
-
-/* Barras de Puntuación */
-.ratings-container { display: flex; flex-direction: column; gap: 10px; }
-.rating-line { display: flex; align-items: center; gap: var(--space-sm); }
-
-.rating-left {
-  display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0;
-  color: var(--color-text-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
-  text-decoration: none; cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: auto;
-}
-@media (hover: hover) and (pointer: fine) {
-  .rating-left:hover { opacity: 0.8; transform: scale(1.05); }
-}
-.rating-left.disabled { pointer-events: none; opacity: 0.7; cursor: default; }
-
-.rating-bar-container {
-  flex-grow: 1; width: 100%; height: var(--space-xs);
-  border-radius: var(--space-xxs); background-color: var(--color-bg);
-  overflow: visible; position: relative;
-  pointer-events: auto; cursor: default;
-}
-
-.rating-votes-count { display: none !important; }
-
-@media (hover: hover) and (pointer: fine) {
-  .rating-bar-container[data-votes]:hover::after {
-    content: attr(data-votes) " votos";
-    position: absolute; bottom: 100%; left: 50%;
-    transform: translateX(-50%) translateY(-5px);
-    background-color: rgba(0, 0, 0, 0.85); color: #fff;
-    padding: 4px 8px; border-radius: 4px;
-    font-size: 0.75rem; font-weight: bold; white-space: nowrap;
-    pointer-events: none; z-index: 10;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    animation: fade-in-subtle 0.2s ease-out;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover { transform: scale(1.1); }
   }
-}
 
-.rating-bar {
-  width: 0; height: 100%; border-radius: var(--space-xxs);
-  background-color: var(--color-accent);
-  transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  &.disabled {
+    opacity: 0.3; pointer-events: none; filter: grayscale(100%); cursor: default;
+  }
 }
 
 /* Listas de Detalles */
@@ -311,13 +280,14 @@ html.dark-mode .flip-card-inner.is-flipped {
 .scrollable-content {
   position: relative; overflow: hidden;
   transition: opacity var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
+
+  &::after {
+    content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
+    background: linear-gradient(to bottom, transparent, var(--color-surface));
+    pointer-events: none;
+  }
+  .flip-card-back.is-expanded &::after { opacity: 0; }
 }
-.scrollable-content::after {
-  content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
-  background: linear-gradient(to bottom, transparent, var(--color-surface));
-  pointer-events: none;
-}
-.flip-card-back.is-expanded .scrollable-content::after { opacity: 0; }
 
 .plot-summary-final, .critic-review {
   padding-top: var(--space-xs); border-top: 1px solid var(--color-border);
@@ -337,12 +307,13 @@ html.dark-mode .flip-card-inner.is-flipped {
   z-index: 5;
   font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary);
   pointer-events: auto;
-}
-.actors-scrollable-content h4 {
-  margin-top: 0; margin-bottom: var(--space-sm);
-  font-family: var(--font-title); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
-  border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-xxs);
-  color: var(--color-text-primary);
+
+  & h4 {
+    margin-top: 0; margin-bottom: var(--space-sm);
+    font-family: var(--font-title); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
+    border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-xxs);
+    color: var(--color-text-primary);
+  }
 }
 .actors-list-text { margin: 0; text-align: left; color: var(--color-text-primary); padding-bottom: var(--space-xl); }
 .actor-list-item {
@@ -351,8 +322,8 @@ html.dark-mode .flip-card-inner.is-flipped {
   text-align: left; cursor: pointer; display: block; width: 100%; line-height: 1.6;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: color var(--transition-duration-fast);
+  &:hover { color: var(--color-accent); text-decoration: underline; }
 }
-.actor-list-item:hover { color: var(--color-accent); text-decoration: underline; }
 
 /* =================================================================
    5. BOTONES DE EXPANSIÓN Y LOGICA
@@ -370,16 +341,16 @@ html.dark-mode .flip-card-inner.is-flipped {
   transition: transform var(--duration-quick) ease-out, background-color var(--duration-quick) ease-out;
   z-index: var(--z-index-card-content);
   pointer-events: auto;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: scale(1.15); background-color: var(--color-text-primary);
+    }
+  }
+  &:active { transform: scale(0.9); }
 }
 .actors-expand-btn { bottom: 2px; right: 2px; }
 .expand-content-btn { bottom: 14px; right: 14px; }
-
-@media (hover: hover) and (pointer: fine) {
-  .expand-content-btn:hover, .actors-expand-btn:hover {
-    transform: scale(1.15); background-color: var(--color-text-primary);
-  }
-}
-.expand-content-btn:active, .actors-expand-btn:active { transform: scale(0.9); }
 
 /* Lógica de Visibilidad al Expandir */
 .flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn):not(.actors-scrollable-content) {
@@ -413,90 +384,50 @@ html.dark-mode .flip-card-inner.is-flipped {
   display: flex; justify-content: space-between; align-items: center;
   padding-inline: var(--space-sm);
   pointer-events: none;
+
+  /* Efecto Aura */
+  & > * {
+    pointer-events: auto;
+    filter: drop-shadow(0 0 6px var(--color-surface)) drop-shadow(0 0 8px var(--color-surface));
+    transition: filter 0.3s ease, transform var(--duration-quick) var(--ease-spring);
+
+    html.dark-mode & {
+      filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #000);
+    }
+  }
 }
 
-/* Efecto Aura */
-.card-rating-block > * {
-  pointer-events: auto;
-  filter: drop-shadow(0 0 6px var(--color-surface)) drop-shadow(0 0 8px var(--color-surface));
-  transition: filter 0.3s ease, transform var(--duration-quick) var(--ease-spring);
-}
-html.dark-mode .card-rating-block > * {
-  filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #000);
-}
-
-.star-rating-container.is-interactive, .low-rating-circle.is-interactive { cursor: pointer; }
-
-/* Botón Watchlist */
 .card-action-btn {
   width: 38px; height: 38px; padding: 0; border: none; border-radius: var(--radius-round);
   background-color: transparent; color: var(--color-accent); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
   position: relative;
-}
-@media (hover: hover) and (pointer: fine) {
-  .card-action-btn:hover { transform: scale(1.15) rotate(10deg); }
-}
-.card-action-btn:active { transform: scale(0.9); }
 
-.card-action-btn svg {
-  width: 30px; height: 30px;
-  fill: transparent; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
-  transition: fill var(--duration-normal) var(--ease-smooth-out), stroke var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
-}
+  @media (hover: hover) and (pointer: fine) {
+    &:hover { transform: scale(1.15) rotate(10deg); }
+  }
+  &:active { transform: scale(0.9); }
 
-.card-action-btn.is-active svg {
-  color: #e50914; fill: #e50914; stroke: #e50914;
-  --icon-plus-color: var(--color-surface);
-  animation: watchlist-glow 0.6s ease-out;
-}
-.card-action-btn.is-active { animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in); }
+  & svg {
+    width: 30px; height: 30px;
+    fill: transparent; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    transition: fill var(--duration-normal) var(--ease-smooth-out), stroke var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
+  }
 
-/* Estrellas */
-.star-rating-container { display: flex; align-items: center; gap: 2px; }
-.star-icon { position: relative; width: 25px; height: 25px; cursor: pointer; }
-
-.star-icon-path { stroke: var(--color-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.star-icon-path--empty { fill: transparent; }
-.star-icon-path--filled {
-  fill: var(--color-accent);
-  clip-path: inset(0 100% 0 0);
-  transition: clip-path 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-.star-rating-container.has-user-rating .star-icon-path { stroke: #ffbd07; }
-.star-rating-container.has-user-rating .star-icon-path--filled { fill: #ffbd07; }
-
-/* Círculo Suspenso */
-.low-rating-circle {
-  display: none; width: 25px; height: 25px;
-  stroke: var(--color-accent); stroke-width: 2px; fill: transparent;
-  border: none; background-color: transparent;
-  transition: stroke 0.3s ease, transform var(--duration-quick) var(--ease-spring);
-  position: relative;
-  cursor: pointer;
-}
-.low-rating-circle.has-user-rating {
-  stroke: #ffbd07; color: #ffbd07; fill: none;
-  filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.6)) drop-shadow(0 0 4px var(--color-surface));
-}
-html.dark-mode .low-rating-circle.has-user-rating {
-  fill: none; filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.8)) drop-shadow(0 0 4px #000);
+  &.is-active {
+    animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in);
+    & svg {
+      color: #e50914; fill: #e50914; stroke: #e50914;
+      --icon-plus-color: var(--color-surface);
+      animation: watchlist-glow 0.6s ease-out;
+    }
+  }
 }
 
 /* =================================================================
    7. UTILIDADES
    ================================================================= */
-
-.country-flag-icon { display: flex; align-items: center; justify-content: center; }
-.country-flag-icon svg {
-  width: 16px; height: 16px; border-radius: 20%; object-fit: cover;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
-}
-html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0.2); }
-
-.rating-icon { width: 1.6em; height: 1.6em; border-radius: var(--radius-sm); object-fit: contain; }
 
 [data-template="wikipedia-link"] .rating-icon,
 [data-template="justwatch-link"] .rating-icon {
@@ -512,19 +443,12 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
   .movie-card:active { transform: scale(0.98); transition-duration: 0s; }
 
   /* Expandir áreas táctiles */
-  .low-rating-circle::after,
   .card-action-btn::after,
   .expand-content-btn::after,
   .actors-expand-btn::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: var(--tap-target-size); height: var(--tap-target-size); z-index: 10;
-  }
-
-  .star-icon::after {
-    content: ''; position: absolute;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 30px; height: 48px; z-index: 10;
   }
 }
 
@@ -536,31 +460,9 @@ html.dark-mode .country-flag-icon svg { box-shadow: 0 0 0 1px rgba(255,255,255,0
   body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
-  
-  .movie-card:not(.is-flipped):hover {
-    transform: translateY(-8px) translateZ(0) scale(1.02);
-  }
-  .movie-card:not(.is-flipped):hover .flip-card-inner {
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-  }
-  html.dark-mode .movie-card:not(.is-flipped):hover .flip-card-inner {
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
-  }
 
   body.rotation-disabled .front-director-info a:hover { 
     color: var(--color-text-primary); text-decoration: underline; 
-  }
-
-  .star-rating-container.is-interactive .star-icon:hover {
-    transform: scale(1.35); z-index: 20;
-    filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
-    cursor: pointer;
-  }
-
-  .low-rating-circle.is-interactive:hover {
-    transform: scale(1.2);
-    filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
-    cursor: pointer;
   }
 }
 
