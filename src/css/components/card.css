@@ -381,7 +381,7 @@
   position: absolute; bottom: 1px; left: 0; right: 0;
   transform: translateY(66.66%); z-index: 5;
   display: flex; justify-content: space-between; align-items: center;
-  padding-inline: var(--space-sm);
+  padding-inline: var(--space-lg);
   pointer-events: none;
 
   /* Efecto Aura */
@@ -489,28 +489,33 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
 /* Bloque valoración inferior */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
   position: static; transform: none; bottom: auto; left: auto; right: auto;
-  height: 12%; justify-content: flex-start;
-  padding: 2px 0 0 var(--space-sm); background: transparent;
+  height: 12%; justify-content: space-between;
+  padding: 0 var(--space-xs); background: transparent;
 }
 
 /* Reducción elementos */
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container,
+body.rotation-disabled .movie-card:not(.is-quick-view) .star-icon,
 body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-circle {
-  transform: scale(0.7); transform-origin: left center;
+  width: 18px; height: 18px;
+}
+body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container {
+  gap: 4px;
 }
 
-/* Watchlist flotante */
+/* Watchlist integrada */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
-  position: absolute; top: 4px; right: 4px; z-index: 10;
-  display: none; transform: scale(0.7);
-  background-color: rgba(0, 0, 0, 0.6); border-radius: 50%;
+  position: relative; display: flex;
+  width: 28px; height: 28px;
+  background-color: transparent; transform: none;
 }
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn.is-active { display: flex; }
+body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn svg {
+  width: 20px; height: 20px;
+}
 
 /* En móvil desactivar interacción en elementos pequeños del muro */
 @media (hover: none) and (pointer: coarse) {
-  body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block,
-  body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
+  body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
     pointer-events: none;
   }
+  body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn { pointer-events: auto; }
 }

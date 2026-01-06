@@ -241,7 +241,9 @@ export function updateRatingUI(card) {
     starCont.classList.remove("has-user-rating");
     circleEl.classList.remove("has-user-rating");
     
-    const ratings = [movie.fa_rating, movie.imdb_rating].filter(r => r > 0);
+    // Ajuste: Sumar 0.5 a la nota de FA si existe
+    const faRating = movie.fa_rating > 0 ? movie.fa_rating + 0.5 : 0;
+    const ratings = [faRating, movie.imdb_rating].filter(r => r > 0);
     if (ratings.length > 0) {
       const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
       

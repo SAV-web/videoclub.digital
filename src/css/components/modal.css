@@ -177,12 +177,13 @@
 /* --- Iconos de Acción y Valoración (Aumentados) --- */
 .is-quick-view .card-rating-block {
   position: static; transform: none;
-  padding: 1px var(--space-xs) 2px;
+  padding: 1px var(--space-xxl) 2px;
   margin: 0;
   pointer-events: auto;
 }
 
-.is-quick-view .star-icon { width: 42px; height: 42px; margin-right: 1px; }
+.is-quick-view .star-rating-container { gap: var(--space-sm); }
+.is-quick-view .star-icon { width: 42px; height: 42px; margin-right: 0; }
 .is-quick-view .low-rating-circle { width: 40px; height: 40px; stroke-width: 2.5px; }
 .is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: auto; }
 .is-quick-view .card-action-btn svg { width: 38px; height: 38px; stroke-width: 2.5px; }
