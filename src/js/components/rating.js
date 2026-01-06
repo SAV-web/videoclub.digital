@@ -13,8 +13,8 @@ import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified } from "../utils.js";
 
-// Mapeo de niveles visuales (1-4 estrellas) a valores de base de datos (1-10)
-export const LEVEL_TO_RATING_MAP = [3, 5, 7, 9];
+// Mapeo de niveles visuales (1-3 estrellas) a valores de base de datos (1-10)
+export const LEVEL_TO_RATING_MAP = [5, 7, 9];
 
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
@@ -24,29 +24,28 @@ const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.
 // =================================================================
 
 /**
- * Convierte nota de usuario (1-10) a nivel de estrellas (0-4).
- * @param {number|null} rating 
- * @returns {number} 0 a 4
+ * Convierte nota de usuario (1-10) a nivel de estrellas (0-3).
+ * @param {number|null} rating
+ * @returns {number} 0 a 3
  */
 export function calculateUserStars(rating) {
   if (!rating) return 0;
-  if (rating >= 9) return 4;
-  if (rating >= 7) return 3;
-  if (rating >= 5) return 2;
-  if (rating >= 1) return 1;
+  if (rating >= 9) return 3;
+  if (rating >= 7) return 2;
+  if (rating >= 5) return 1;
   return 0;
 }
 
 /**
- * Convierte nota media (0-10) a valor continuo para clip-path (0.0 - 4.0).
+ * Convierte nota media (0-10) a valor continuo para clip-path (0.0 - 3.0).
  * @param {number} averageRating 
  * @returns {number}
  */
 export function calculateAverageStars(averageRating) {
   if (averageRating <= 5.5) return 0;
-  if (averageRating >= 9) return 4;
-  // Interpolación lineal entre 5.5 y 9
-  return ((averageRating - 5.5) / 3.5) * 4;
+  if (averageRating >= 9) return 3;
+  // Interpolación lineal entre 5.5 y 9 sobre 3 estrellas
+  return ((averageRating - 5.5) / 3.5) * 3;
 }
 
 // =================================================================
@@ -186,8 +185,8 @@ export function handleRatingClick(event, card) {
     let newRating = null;
 
     if (level === 1) {
-      if (currentRating === 2) newRating = 3;
-      else if (currentRating === 3) newRating = null;
+      if (currentRating === 2) newRating = 5;
+      else if (currentRating === 5) newRating = null;
       else newRating = 2;
     } else {
       const potential = LEVEL_TO_RATING_MAP[level - 1];
@@ -234,7 +233,7 @@ export function updateRatingUI(card) {
       renderUserStars(starCont, 0, false);
       const stars = starCont.querySelectorAll(".star-icon");
       for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
-    } else if (userRating >= 3) {
+    } else if (userRating >= 5) {
       starCont.style.display = "flex";
       renderUserStars(starCont, calculateUserStars(userRating), true);
     }

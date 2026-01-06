@@ -5,7 +5,6 @@ import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
-import { initAuthForms } from "./auth.js";
 import { renderMovieGrid, updateCardUI, handleCardClick, initCardInteractions, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
 
 // --- Lazy Modules State ---
@@ -531,7 +530,17 @@ function init() {
   setupGlobalListeners();
   setupAuthSystem();
   setupAuthModal();
-  initAuthForms();
+  
+  // Carga diferida de lógica de autenticación (Solo si el usuario intenta entrar)
+  const loginBtn = document.getElementById("login-button");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", async () => {
+      try {
+        const { initAuthForms } = await import("./auth.js");
+        initAuthForms();
+      } catch (e) { console.error("Error loading auth module", e); }
+    }, { once: true });
+  }
   
   readUrlAndSetState();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
