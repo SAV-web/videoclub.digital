@@ -25,13 +25,13 @@
 .star-icon-path {
   stroke: var(--color-accent); stroke-width: 2;
   stroke-linejoin: round; stroke-linecap: round;
-  
-  &--empty { fill: transparent; }
-  &--filled {
-    fill: var(--color-accent);
-    clip-path: inset(0 100% 0 0);
-    transition: clip-path 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
+}
+
+.star-icon-path--empty { fill: transparent; }
+.star-icon-path--filled {
+  fill: var(--color-accent);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* --- Círculo de Suspenso (Nota baja) --- */

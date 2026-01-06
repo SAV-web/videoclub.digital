@@ -9,8 +9,8 @@
  */
 
 /* --- 1. ESTILOS BASE Y GLOBALES (Reset, Variables, Tipografía global) --- */
-@import "base/variables.css";
-@import "base/globals.css";
+@import "variables.css";
+@import "globals.css";
 
 /* --- 2. LAYOUT (Estructura Macro: rejilla, wrapper del sidebar y contenedores principales) --- */
 @import "layout.css";
