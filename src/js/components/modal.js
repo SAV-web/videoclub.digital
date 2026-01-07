@@ -401,10 +401,13 @@ export function initQuickView() {
   // Teclado
   window.addEventListener("keydown", (e) => {
     if (!modal.classList.contains("is-visible")) return;
-    if (e.key === "Escape") closeModal();
+    if (e.key === "Escape") {
+      e.stopPropagation(); // Detener para que no cierre el sidebar u otros elementos
+      closeModal();
+    }
     else if (e.key === "ArrowLeft") navigateToSibling(-1);
     else if (e.key === "ArrowRight") navigateToSibling(1);
-  });
+  }, { capture: true }); // IMPORTANTE: Capturar antes que document (main.js)
 
   // Botones
   prevBtn?.addEventListener("click", (e) => { e.stopPropagation(); navigateToSibling(-1); });

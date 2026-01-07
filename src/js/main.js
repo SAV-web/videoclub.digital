@@ -295,16 +295,14 @@ function setupHeaderListeners() {
   // Botón "X" Limpiar Búsqueda
   const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
   if (clearSearchBtn) {
-    const performClear = (e) => {
-      if (e.cancelable) e.preventDefault();
+    // FIX: Usar pointerdown para unificar mouse/touch y prevenir blur de forma robusta en Android
+    clearSearchBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); // Evita que el input pierda el foco
       e.stopPropagation();
       dom.searchInput.value = '';
       dom.searchInput.focus();
       handleSearchInput(); 
-    };
-    clearSearchBtn.addEventListener('mousedown', (e) => e.preventDefault()); // Evitar blur
-    clearSearchBtn.addEventListener('touchstart', performClear, { passive: false });
-    clearSearchBtn.addEventListener('click', performClear);
+    });
   }
 
   // Placeholder Responsivo
@@ -359,6 +357,9 @@ function setupGlobalListeners() {
   // Teclado
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { 
+      // Prioridad: Si hay un modal abierto, el sidebar no debe cerrarse (el modal lo hará)
+      if (document.body.classList.contains("modal-open")) return;
+      
       if (sidebarModule) sidebarModule.closeMobileDrawer();
     }
   });

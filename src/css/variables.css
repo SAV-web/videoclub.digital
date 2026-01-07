@@ -57,7 +57,7 @@
   --color-surface: #ffffff;
   
   --color-text-primary: #333333;
-  --color-text-secondary: #666666;
+  --color-text-secondary: #5a5a5a;
   --color-text-tertiary: #737373;
 
   --color-border: #e0e0e0;
@@ -66,6 +66,7 @@
   /* Marca */
   --color-accent: #37474f;
   --color-accent-darker: #263238;
+  --color-accent-lighter: #546e7a; /* Blue Grey 600 */
   --color-accent-exclude: #90a4ae;
   --color-accent-exclude-darker: #78909c;
   --color-focus: rgba(55, 71, 79, 0.4); /* Nuevo: Para anillos de foco */
@@ -140,6 +141,7 @@ html.dark-mode {
   
   --color-accent: #b0bec5;
   --color-accent-darker: #b0bec5;
+  --color-accent-lighter: #ffffff; /* Máximo contraste para foco */
   --color-accent-exclude: #546e7a;
   --color-accent-exclude-darker: #607d8b;
   --color-focus: rgba(176, 190, 197, 0.4);

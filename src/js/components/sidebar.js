@@ -624,6 +624,14 @@ function initYearSlider() {
       sliderInstance.set(values);
     });
   });
+
+  // FIX: Escuchar actualizaciones externas para cancelar debounce pendiente y actualizar UI
+  document.addEventListener("updateSidebarUI", () => {
+    debouncedUpdate.cancel(); // Cancelar cualquier actualización pendiente del usuario
+    const currentFilters = getActiveFilters();
+    const years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
+    sliderInstance.set(years, false); // false = no disparar eventos 'set'
+  });
 }
 
 function setupYearInputSteppers() {
@@ -647,6 +655,11 @@ function setupYearInputSteppers() {
 
 const suggestionFetchers = { genre: fetchGenreSuggestions, director: fetchDirectorSuggestions, actor: fetchActorSuggestions, country: fetchCountrySuggestions };
 
+function sanitizeSearchTerm(term) {
+  // Escapar % y _ para que ILIKE los trate como literales y no como comodines
+  return term.replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
 function setupAutocompleteHandlers() {
   dom.sidebarFilterForms.forEach((form) => {
     const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -658,10 +671,13 @@ function setupAutocompleteHandlers() {
     input.setAttribute("aria-expanded", "false");
     
     const debouncedFetch = debounce(async () => {
-      const searchTerm = input.value;
-      if (searchTerm.length < 3) { clearAllSidebarAutocomplete(form); return; }
-      const suggestions = await fetcher(searchTerm);
-      renderSidebarAutocomplete(form, suggestions, searchTerm);
+      const rawTerm = input.value.trim();
+      if (rawTerm.length < 3) { clearAllSidebarAutocomplete(form); return; }
+      
+      // Sanitizar para la API (evitar comodines indeseados), pero usar raw para el resaltado UI
+      const apiTerm = sanitizeSearchTerm(rawTerm);
+      const suggestions = await fetcher(apiTerm);
+      renderSidebarAutocomplete(form, suggestions, rawTerm);
     }, CONFIG.SEARCH_DEBOUNCE_DELAY);
     
     input.addEventListener("input", debouncedFetch);
@@ -922,9 +938,7 @@ export function initSidebar() {
       const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
       if (input) input.value = "";
     });
-    const currentFilters = getActiveFilters();
-    const years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
-    if (dom.yearSlider?.noUiSlider) dom.yearSlider.noUiSlider.set(years, false);
+    // La actualización del slider se maneja ahora dentro de initYearSlider para gestionar el debounce
     
     requestAnimationFrame(() => {
       renderFilterPills();

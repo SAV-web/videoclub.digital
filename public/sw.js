@@ -55,7 +55,9 @@ async function staleWhileRevalidate(request, cacheName = CACHE_DYNAMIC) {
   const cachedResponse = await cache.match(request);
   
   const networkFetch = fetch(request).then(response => {
-    cache.put(request, response.clone());
+    if (response.ok) {
+      cache.put(request, response.clone());
+    }
     return response;
   });
 
@@ -78,17 +80,21 @@ async function handleApiRequest(request) {
 
   if (cachedResponse) {
     const dateHeader = cachedResponse.headers.get('date');
+    
+    // Si existe la cabecera Date, comprobamos frescura.
+    // Si no existe (CORS opaco), asumimos que es viejo y dejamos que networkFetch actualice.
     if (dateHeader) {
       const ageMs = new Date() - new Date(dateHeader);
       // Si es "fresco" (< 15m), devolvemos caché y NO esperamos a la red
       // (aunque la red se dispara en background para la próxima vez)
-      if (ageMs < 90000) {
+      if (ageMs < 900000) {
         networkFetch.catch(() => {}); // Evitar errores de promesa no manejada
         return cachedResponse;
       }
     }
     // Si es "viejo", devolvemos lo que tenemos (stale) para velocidad,
     // mientras se actualiza detrás.
+    networkFetch.catch(() => {}); // Evitar errores de promesa no manejada
     return cachedResponse; 
   }
 
@@ -189,7 +195,9 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then((response) => {
       return response || fetch(request).then((networkResponse) => {
         return caches.open(CACHE_DYNAMIC).then((cache) => {
-          cache.put(request, networkResponse.clone());
+          if (networkResponse.ok) {
+            cache.put(request, networkResponse.clone());
+          }
           return networkResponse;
         });
       });

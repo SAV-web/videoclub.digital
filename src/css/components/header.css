@@ -292,6 +292,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
     color: var(--color-text-primary);
     padding-inline-start: var(--space-md);
     padding-inline-end: var(--space-xxl);
+    width: 100%;
   }
   .main-header.is-search-focused .search-icon { 
     right: var(--space-sm); transform: translateY(-50%); 

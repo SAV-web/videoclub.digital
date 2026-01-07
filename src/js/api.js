@@ -15,7 +15,10 @@ import { createAbortableRequest } from "./utils.js";
 import { getUserDataForMovie } from "./state.js";
 
 // Inicialización del cliente Supabase
-export const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+// FIX: Usar valores dummy si faltan credenciales para evitar crash (pantalla blanca) en desarrollo
+const sbUrl = CONFIG.SUPABASE_URL || "https://placeholder.supabase.co";
+const sbKey = CONFIG.SUPABASE_ANON_KEY || "placeholder";
+export const supabase = createClient(sbUrl, sbKey);
 
 // --- SISTEMA DE CACHÉ ---
 
@@ -94,6 +97,9 @@ function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
   };
 }
 
+// Mapa para deduplicación de peticiones en vuelo
+const inFlightRequests = new Map();
+
 /**
  * Obtiene películas desde Supabase con caché y deduplicación.
  * @param {Object} activeFilters - Filtros actuales.
@@ -102,50 +108,70 @@ function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
  * @param {AbortSignal} signal - Señal para cancelar la petición.
  * @param {boolean} requestCount - Si se debe pedir el conteo total (caro).
  */
-export async function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true) {
+export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true) {
   // Incluimos requestCount en la clave porque el resultado es diferente si es true/false
   const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount }, currentPage, pageSize);
 
   // 1. Cache Hit (Memoria)
   if (queryCache.has(queryKey)) {
-    return queryCache.get(queryKey);
+    return Promise.resolve(queryCache.get(queryKey));
   }
 
-  // 2. Nueva Petición a Red
-  try {
-    const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
-    
-    let query = supabase.rpc("search_movies_offset", rpcParams);
-    if (signal) {
-      query = query.abortSignal(signal);
+  // 2. Deduplicación de peticiones en vuelo
+  const inFlight = inFlightRequests.get(queryKey);
+  if (inFlight) {
+    // Solo reutilizar si la petición original NO ha sido abortada.
+    // Esto permite que una nueva petición reemplace a una abortada inmediatamente.
+    if (!inFlight.signal?.aborted) {
+      return inFlight.promise;
     }
+    inFlightRequests.delete(queryKey);
+  }
 
-    const { data, error } = await query;
+  // 3. Nueva Petición a Red
+  const promise = (async () => {
+    try {
+      const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
+      
+      let query = supabase.rpc("search_movies_offset", rpcParams);
+      if (signal) {
+        query = query.abortSignal(signal);
+      }
 
-    if (error) {
-      // Manejo silencioso de cancelaciones
-      if (error.name === "AbortError" || error.message?.includes("abort")) {
+      const { data, error } = await query;
+
+      if (error) {
+        if (error.name === "AbortError" || error.message?.includes("abort")) {
+            return { aborted: true, items: [], total: -1 };
+        }
+        console.error("[API] Error RPC Supabase:", error);
+        throw new Error("Error de base de datos al obtener películas.");
+      }
+
+      const result = { total: data?.total ?? -1, items: data?.items || [] };
+      
+      if (!signal?.aborted) {
+        queryCache.set(queryKey, result);
+      }
+      
+      return result;
+
+    } catch (error) {
+      if (error.name === "AbortError" || (signal && signal.aborted)) {
           return { aborted: true, items: [], total: -1 };
       }
-      console.error("[API] Error RPC Supabase:", error);
-      throw new Error("Error de base de datos al obtener películas.");
+      throw error;
+    } finally {
+      // Limpieza: Solo borrar si somos la petición activa (race condition safety)
+      const current = inFlightRequests.get(queryKey);
+      if (current?.promise === promise) {
+        inFlightRequests.delete(queryKey);
+      }
     }
+  })();
 
-    const result = { total: data?.total ?? -1, items: data?.items || [] };
-    
-    // Guardar en caché solo si la petición terminó con éxito completo
-    if (!signal?.aborted) {
-      queryCache.set(queryKey, result);
-    }
-    
-    return result;
-
-  } catch (error) {
-    if (error.name === "AbortError" || (signal && signal.aborted)) {
-        return { aborted: true, items: [], total: -1 };
-    }
-    throw error;
-  }
+  inFlightRequests.set(queryKey, { promise, signal });
+  return promise;
 }
 
 /**
