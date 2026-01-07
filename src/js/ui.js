@@ -9,33 +9,42 @@ import { CONFIG, CSS_CLASSES, SELECTORS, ICONS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement } from "./utils.js";
 
-// --- Referencias DOM (Lazy Getter para seguridad) ---
-const getDom = () => ({
-  gridContainer: document.querySelector(SELECTORS.GRID_CONTAINER),
-  paginationContainer: document.querySelector(SELECTORS.PAGINATION_CONTAINER),
-  searchForm: document.querySelector(SELECTORS.SEARCH_FORM),
-  searchInput: document.querySelector(SELECTORS.SEARCH_INPUT),
-  sortSelect: document.querySelector(SELECTORS.SORT_SELECT),
-  themeToggleButton: document.querySelector(SELECTORS.THEME_TOGGLE),
-  sidebarOverlay: document.querySelector(SELECTORS.SIDEBAR_OVERLAY),
-  sidebar: document.querySelector(".sidebar"),
-  typeFilterToggle: document.querySelector(SELECTORS.TYPE_FILTER_TOGGLE),
-  headerPrevBtn: document.querySelector(SELECTORS.HEADER_PREV_BTN),
-  headerNextBtn: document.querySelector(SELECTORS.HEADER_NEXT_BTN),
-  autocompleteResults: document.querySelector(SELECTORS.AUTOCOMPLETE_RESULTS),
-  mainHeader: document.querySelector(".main-header"),
-  clearFiltersBtn: document.querySelector(SELECTORS.CLEAR_FILTERS_BTN),
-  totalResultsContainer: document.getElementById("total-results-container"),
-  totalResultsCount: document.getElementById("total-results-count"),
-  authModal: document.getElementById("auth-modal"),
-  authOverlay: document.getElementById("auth-overlay"),
-  loginButton: document.getElementById("login-button"),
-  toastContainer: document.querySelector(SELECTORS.TOAST_CONTAINER),
-});
+// --- Referencias DOM (Lazy Getter con Caché) ---
+const domCache = {};
+const domQueries = {
+  gridContainer: () => document.querySelector(SELECTORS.GRID_CONTAINER),
+  paginationContainer: () => document.querySelector(SELECTORS.PAGINATION_CONTAINER),
+  searchForm: () => document.querySelector(SELECTORS.SEARCH_FORM),
+  searchInput: () => document.querySelector(SELECTORS.SEARCH_INPUT),
+  sortSelect: () => document.querySelector(SELECTORS.SORT_SELECT),
+  themeToggleButton: () => document.querySelector(SELECTORS.THEME_TOGGLE),
+  sidebarOverlay: () => document.querySelector(SELECTORS.SIDEBAR_OVERLAY),
+  sidebar: () => document.querySelector(".sidebar"),
+  typeFilterToggle: () => document.querySelector(SELECTORS.TYPE_FILTER_TOGGLE),
+  headerPrevBtn: () => document.querySelector(SELECTORS.HEADER_PREV_BTN),
+  headerNextBtn: () => document.querySelector(SELECTORS.HEADER_NEXT_BTN),
+  autocompleteResults: () => document.querySelector(SELECTORS.AUTOCOMPLETE_RESULTS),
+  mainHeader: () => document.querySelector(".main-header"),
+  clearFiltersBtn: () => document.querySelector(SELECTORS.CLEAR_FILTERS_BTN),
+  totalResultsContainer: () => document.getElementById("total-results-container"),
+  totalResultsCount: () => document.getElementById("total-results-count"),
+  authModal: () => document.getElementById("auth-modal"),
+  authOverlay: () => document.getElementById("auth-overlay"),
+  loginButton: () => document.getElementById("login-button"),
+  toastContainer: () => document.querySelector(SELECTORS.TOAST_CONTAINER),
+};
 
 // Exportamos un Proxy para mantener compatibilidad con el código existente (dom.algo)
 export const dom = new Proxy({}, {
-  get: (_, prop) => getDom()[prop]
+  get: (_, prop) => {
+    if (domCache[prop]) return domCache[prop];
+    const query = domQueries[prop];
+    if (query) {
+      const el = query();
+      if (el) domCache[prop] = el;
+      return el;
+    }
+  }
 });
 
 // =================================================================

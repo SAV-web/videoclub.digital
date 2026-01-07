@@ -9,8 +9,7 @@ const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!envUrl || !envKey) {
   const msg = "[Config] Faltan variables de entorno VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.";
-  if (import.meta.env.PROD) throw new Error(msg);
-  else console.error(msg);
+  console.error(msg);
 }
 
 const supabaseUrl = envUrl || "";
