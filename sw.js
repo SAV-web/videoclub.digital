@@ -9,9 +9,9 @@ const CACHE_API = `videoclub-api-${VERSION}`;
 
 // --- 1. ACTIVOS CRÍTICOS (Instalación) ---
 const CRITICAL_ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
+  "./",
+  "./index.html",
+  "./manifest.webmanifest",
   // Añade aquí tu CSS/JS compilado si no usas inyección de Vite, 
   // pero con Vite normalmente index.html es suficiente entry point.
 ];
