@@ -50,6 +50,10 @@ const dom = {
 // Caché para contenedores de secciones (evita querySelector repetido en renderFilterPills)
 const sectionContainers = {};
 
+// Caché para elementos de filtro (optimización de rendimiento)
+let cachedFilterLinks = null;
+let cachedFilterInputs = null;
+
 // =================================================================
 //          1. LÓGICA DE GESTOS TÁCTILES (GPU Accelerated)
 // =================================================================
@@ -214,6 +218,7 @@ function initTouchGestures() {
   updateDrawerWidth();
   document.addEventListener("touchstart", handleTouchStart, { passive: true });
   document.addEventListener("touchend", handleTouchEnd, { passive: true });
+  document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
 
   window.addEventListener("resize", () => {
     if (window.innerWidth <= MOBILE_BREAKPOINT) updateDrawerWidth();
@@ -257,7 +262,10 @@ function toggleRotationMode(forceState = null) {
   triggerPopAnimation(button);
 }
 
+let pinchInited = false;
+
 function initPinchGestures() {
+  if (pinchInited) return;
   const target = document.querySelector('.main-content-wrapper');
   if (!target) return;
 
@@ -313,6 +321,8 @@ function initPinchGestures() {
     if (e.touches.length < 2) { isPinching = false; initialDistance = null; }
     if (e.touches.length === 0) hasTriggered = false;
   });
+
+  pinchInited = true;
 }
 
 // =================================================================
@@ -368,7 +378,8 @@ function updateAllFilterControls() {
   const limitReached = activeCount >= CONFIG.MAX_ACTIVE_FILTERS;
 
   // 1. Actualizar enlaces de filtro (Links)
-  const allLinks = document.querySelectorAll(".filter-link");
+  if (!cachedFilterLinks) cachedFilterLinks = document.querySelectorAll(".filter-link");
+  const allLinks = cachedFilterLinks;
   allLinks.forEach(link => {
     const type = link.dataset.filterType;
     const value = link.dataset.filterValue;
@@ -407,7 +418,8 @@ function updateAllFilterControls() {
   });
 
   // 2. Actualizar Inputs de texto (Autocompletado)
-  document.querySelectorAll(".sidebar-filter-input").forEach((input) => {
+  if (!cachedFilterInputs) cachedFilterInputs = document.querySelectorAll(".sidebar-filter-input");
+  cachedFilterInputs.forEach((input) => {
     if (input.disabled !== limitReached) {
         input.disabled = limitReached;
         input.placeholder = limitReached ? "Límite de filtros" : `Otro ${input.closest("form").dataset.filterType}...`;
@@ -888,6 +900,10 @@ export function initSidebar() {
       fragment.appendChild(link);
     });
     listContainer.appendChild(fragment);
+
+    // Invalidar caché de controles para que se refresque en la próxima actualización
+    cachedFilterLinks = null;
+    cachedFilterInputs = null;
   };
 
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);

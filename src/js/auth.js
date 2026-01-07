@@ -36,7 +36,7 @@ function setFeedback(message, type = "error") {
  * Traduce errores comunes de Supabase a Español
  */
 function getFriendlyErrorMessage(error) {
-  const msg = error.message.toLowerCase();
+  const msg = (error?.message || "").toLowerCase();
   if (msg.includes("invalid login") || msg.includes("invalid credentials")) return "Email o contraseña incorrectos.";
   if (msg.includes("user already registered")) return "Este email ya está registrado.";
   if (msg.includes("rate limit")) return "Demasiados intentos. Espera un momento.";
@@ -138,12 +138,15 @@ function toggleView(showRegister) {
   if (showRegister) {
     dom.loginView.style.display = "none";
     dom.registerView.style.display = "block";
-    // Pequeño delay para asegurar que el cambio de display ha ocurrido antes del foco
-    setTimeout(() => dom.registerForm.querySelector('input')?.focus(), 50);
+    requestAnimationFrame(() => {
+      dom.registerForm.querySelector('input')?.focus({ preventScroll: true });
+    });
   } else {
     dom.registerView.style.display = "none";
     dom.loginView.style.display = "block";
-    setTimeout(() => dom.loginForm.querySelector('input')?.focus(), 50);
+    requestAnimationFrame(() => {
+      dom.loginForm.querySelector('input')?.focus({ preventScroll: true });
+    });
   }
 }
 
