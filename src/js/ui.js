@@ -137,7 +137,7 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
 }
 
 export function updateHeaderPaginationState(currentPage, totalMovies) {
-  const { headerPrevBtn, headerNextBtn } = getDom();
+  const { headerPrevBtn, headerNextBtn } = dom;
   if (!headerPrevBtn || !headerNextBtn) return;
 
   const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);

@@ -26,6 +26,10 @@ jobs:
 
       - name: Build Project
         run: npm run build # Ya no necesita 'working-directory'
+        env:
+          # Mapea los secretos del repo a variables de entorno para el build
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
