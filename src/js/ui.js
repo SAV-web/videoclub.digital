@@ -52,7 +52,7 @@ export const dom = new Proxy({}, {
 // =================================================================
 
 export function showToast(message, type = "error") {
-  const { toastContainer } = getDom();
+  const { toastContainer } = dom;
   if (!toastContainer) return;
 
   const toastElement = createElement("div", {
@@ -235,8 +235,11 @@ export function closeAccessibleModal(modal, overlay) {
 export const closeAuthModal = () => closeAccessibleModal(dom.authModal, dom.authOverlay);
 export const openAuthModal = () => openAccessibleModal(dom.authModal, dom.authOverlay);
 
+let authModalInitialized = false;
+
 export function setupAuthModal() {
-  const { loginButton, authModal, authOverlay } = getDom();
+  if (authModalInitialized) return;
+  const { loginButton, authModal, authOverlay } = dom;
   if (!loginButton || !authModal) return;
 
   loginButton.addEventListener("click", openAuthModal);
@@ -245,6 +248,8 @@ export function setupAuthModal() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !authModal.hidden) closeAuthModal();
   });
+
+  authModalInitialized = true;
 }
 
 // =================================================================
@@ -272,7 +277,7 @@ export function updateTypeFilterUI(mediaType) {
 }
 
 export function updateTotalResultsUI(total, hasFilters) {
-  const { totalResultsContainer, totalResultsCount } = getDom();
+  const { totalResultsContainer, totalResultsCount } = dom;
   if (!totalResultsContainer) return;
 
   if (hasFilters && total > 0) {
