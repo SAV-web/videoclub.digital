@@ -31,6 +31,9 @@ const touchState = {
   isHorizontalSwipe: false
 };
 
+const SWIPE_X_THRESHOLD = 80;
+const SWIPE_Y_CLOSE_THRESHOLD = 120;
+
 // =================================================================
 //          1. GESTIÓN DE EVENTOS (Navegación y Cierre)
 // =================================================================
@@ -118,7 +121,7 @@ function handleTouchEnd(e) {
   // A. Navegación Horizontal
   if (touchState.isHorizontalSwipe) {
     const deltaX = e.changedTouches[0].clientX - touchState.startX;
-    if (Math.abs(deltaX) > 80) { // Umbral de swipe
+    if (Math.abs(deltaX) > SWIPE_X_THRESHOLD) { // Umbral de swipe
       navigateToSibling(deltaX < 0 ? 1 : -1);
     }
     touchState.isHorizontalSwipe = false;
@@ -130,7 +133,7 @@ function handleTouchEnd(e) {
   
   modal.classList.remove("is-dragging"); // Reactivar transición CSS
 
-  if (touchState.currentY > 120) { // Umbral de cierre
+  if (touchState.currentY > SWIPE_Y_CLOSE_THRESHOLD) { // Umbral de cierre
     closeModal();
   } else {
     modal.style.transform = ""; // Rebote elástico
@@ -315,10 +318,12 @@ function populateModal(cardElement) {
   const { template, content, modal } = getDom();
   if (!template) return;
   
-  const movie = cardElement.movieData;
   // Extraemos URL HQ si ya se cargó en la card para evitar parpadeo
   const cardImg = cardElement.querySelector("img");
-  movie.image_hq = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
+  const image_hq = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
+
+  // Crear copia superficial para no mutar el objeto original compartido
+  const movie = { ...cardElement.movieData, image_hq };
 
   const clone = template.cloneNode(true);
   const cardClone = clone.querySelector('.movie-card');
@@ -418,5 +423,6 @@ export function initQuickView() {
     modal.addEventListener("touchstart", handleTouchStart, { passive: true });
     modal.addEventListener("touchmove", handleTouchMove, { passive: false });
     modal.addEventListener("touchend", handleTouchEnd, { passive: true });
+    modal.addEventListener("touchcancel", handleTouchEnd, { passive: true });
   }
 }

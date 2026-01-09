@@ -45,12 +45,8 @@
   }
 
   &:focus-visible {
-    outline: 3px solid var(--color-accent);
-    outline-offset: 2px;
-  }
-
-  html.dark-mode &:focus-visible {
-    outline-color: var(--color-accent-lighter);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
   }
 
   &:active {

@@ -126,6 +126,13 @@
   --z-index-sidebar: 1000;
   --z-index-overlay: 1999;
   --z-index-toast: 2100;
+
+  /* ---- Breakpoints (Referencia) ---- */
+  /* Nota: CSS no permite variables en @media, usar estos valores hardcoded:
+     - Móvil: max-width: 768px
+     - Escritorio: min-width: 769px */
+  --bp-mobile-max: 768px;
+  --bp-desktop-min: 769px;
 }
 
 /* ---- Tema Oscuro (Overrides) ---- */

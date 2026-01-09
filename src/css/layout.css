@@ -180,8 +180,8 @@ body.sidebar-is-open .sidebar .play-button-container {
 }
 
 /* --- DESKTOP: Sticky Top --- */
-/* Breakpoint 701px: Estrategia Híbrida Tablet */
-@media (min-width: 701px) {
+/* Breakpoint 769px: Unificado con Sidebar */
+@media (min-width: 769px) {
   .main-header {
     position: sticky;
     top: 0;
@@ -233,7 +233,7 @@ body.rotation-disabled .grid-container {
 }
 
 /* --- DESKTOP TWEAKS --- */
-@media (min-width: 701px) {
+@media (min-width: 769px) {
   .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
   .grid-container { gap: var(--space-lg) var(--space-md); }
 }

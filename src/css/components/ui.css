@@ -102,7 +102,7 @@ html.dark-mode .skeleton::after {
   color: var(--color-accent);
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .pagination-arrow { display: none; }
 }
 
@@ -192,7 +192,7 @@ body.sidebar-is-open .sidebar-overlay {
 }
 
 /* Ajuste Móvil: Toasts elevados y centrados */
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .toast-container {
     bottom: calc(var(--space-md) + var(--mobile-header-height) + env(safe-area-inset-bottom));
     inset-inline: var(--space-md);

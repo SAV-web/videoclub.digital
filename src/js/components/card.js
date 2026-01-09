@@ -302,6 +302,11 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   });
 }, { rootMargin: "800px" });
 
+function cleanupLazyImages(container) {
+  if (!container) return;
+  container.querySelectorAll("img[data-src]").forEach(img => lazyLoadObserver.unobserve(img));
+}
+
 function populateCard(card, movie) {
   const front = card.querySelector('.movie-summary');
   const back = card.querySelector('.flip-card-back');
@@ -486,6 +491,7 @@ export function renderMovieGrid(container, movies) {
   unflipAllCards();
   if (!container) return;
 
+  cleanupLazyImages(container);
   container.textContent = "";
   const BATCH_SIZE = 12;
   let index = 0;
@@ -526,7 +532,10 @@ export function renderMovieGrid(container, movies) {
 // Skeletons y Estados Vacíos (Reutilizan createElement optimizado)
 export function renderSkeletons(container, pagContainer) {
   currentRenderRequestId++;
-  if (container) container.textContent = "";
+  if (container) {
+    cleanupLazyImages(container);
+    container.textContent = "";
+  }
   if (pagContainer) pagContainer.textContent = "";
   if (!container) return;
   
@@ -539,7 +548,10 @@ export function renderSkeletons(container, pagContainer) {
 
 export function renderNoResults(container, pagContainer, filters) {
   currentRenderRequestId++;
-  if (container) container.textContent = "";
+  if (container) {
+    cleanupLazyImages(container);
+    container.textContent = "";
+  }
   if (pagContainer) pagContainer.textContent = "";
   if (!container) return;
 
@@ -562,7 +574,10 @@ export function renderNoResults(container, pagContainer, filters) {
 
 export function renderErrorState(container, pagContainer, message) {
   currentRenderRequestId++;
-  if (container) container.textContent = "";
+  if (container) {
+    cleanupLazyImages(container);
+    container.textContent = "";
+  }
   if (pagContainer) pagContainer.textContent = "";
   
   const div = createElement("div", { className: "no-results", attributes: { role: "alert" } });
