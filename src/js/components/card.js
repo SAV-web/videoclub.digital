@@ -370,6 +370,12 @@ function populateCard(card, movie) {
     });
   }
 
+  // Nota numérica para modo muro
+  const wallRatingEl = card.querySelector('[data-template="wall-rating"]');
+  if (wallRatingEl) {
+    wallRatingEl.textContent = movie.avg_rating ? movie.avg_rating.toFixed(1) : "";
+  }
+
   // --- BACK ---
   // Título Original
   const origWrap = back.querySelector('.back-original-title-wrapper');

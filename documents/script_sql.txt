@@ -57,6 +57,18 @@ ALTER TABLE public.movies ADD COLUMN selections_tsv tsvector GENERATED ALWAYS AS
 ALTER TABLE public.movies DROP COLUMN IF EXISTS studios_tsv;
 ALTER TABLE public.movies ADD COLUMN studios_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(studios_list))) STORED;
 
+-- 2.2. COLUMNA DE PROMEDIO CALCULADO (NUEVO)
+-- Calcula automáticamente la nota media usando la lógica de negocio (FA + 0.5).
+ALTER TABLE public.movies DROP COLUMN IF EXISTS avg_rating;
+ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
+    CASE
+        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.5) + imdb_rating) / 2.0
+        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) THEN fa_rating + 0.5
+        WHEN (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN imdb_rating
+        ELSE NULL
+    END
+) STORED;
+
 -- =================================================================
 -- FUNCIÓN DE BÚSQUEDA OPTIMIZADA (v3.0 - Smart Counting)
 -- =================================================================
@@ -100,7 +112,7 @@ BEGIN
     END IF;
 
     v_safe_sort_field := lower(coalesce(sort_field, 'relevance'));
-    IF v_safe_sort_field NOT IN ('relevance', 'year', 'fa_rating', 'imdb_rating', 'fa_votes', 'imdb_votes') THEN
+    IF v_safe_sort_field NOT IN ('relevance', 'year', 'fa_rating', 'imdb_rating', 'fa_votes', 'imdb_votes', 'avg_rating') THEN
         v_safe_sort_field := 'relevance';
     END IF;
 
@@ -110,6 +122,7 @@ BEGIN
         WHEN 'imdb_rating' THEN format('ORDER BY m.imdb_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
         WHEN 'fa_votes' THEN format('ORDER BY m.fa_votes %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
         WHEN 'imdb_votes' THEN format('ORDER BY m.imdb_votes %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
+        WHEN 'avg_rating' THEN format('ORDER BY m.avg_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
         ELSE 'ORDER BY m.relevance ASC'
     END;
 
@@ -178,6 +191,7 @@ BEGIN
                             m.minutes, m.image, m.fa_id, 
                             m.fa_rating, m.fa_votes,
                             m.imdb_id, m.imdb_rating, m.imdb_votes, 
+                            m.avg_rating, -- Incluimos el promedio calculado
                             m.synopsis, m.thumbhash_st, m.critic,
                             -- Optimización: Enviar timestamp como entero (segundos) en lugar de string ISO
                             EXTRACT(EPOCH FROM m.last_synced_at)::INT as last_synced_at,
@@ -302,6 +316,8 @@ CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_
 CREATE INDEX IF NOT EXISTS movies_country_imdb_votes_idx ON public.movies(country_id, imdb_votes DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_country_fa_rating_idx ON public.movies(country_id, fa_rating DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_country_imdb_rating_idx ON public.movies(country_id, imdb_rating DESC NULLS LAST);
+-- Índice para el nuevo promedio
+CREATE INDEX IF NOT EXISTS movies_avg_rating_idx ON public.movies(avg_rating DESC NULLS LAST);
 ANALYZE public.movies;
 
 -- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.

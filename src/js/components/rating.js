@@ -176,6 +176,7 @@ async function setRating(movieId, value, card) {
 export function handleRatingClick(event, card) {
   const target = event.target;
   const starEl = target.closest(".star-icon[data-rating-level]");
+  const wallRatingEl = target.closest(".wall-rating-number");
   
   if (starEl) {
     event.preventDefault(); event.stopPropagation();
@@ -197,6 +198,12 @@ export function handleRatingClick(event, card) {
 
     setRating(movieId, newRating, card);
     return true; // Handled
+  } else if (wallRatingEl) {
+    event.preventDefault(); event.stopPropagation();
+    const movieId = parseInt(card.dataset.movieId, 10);
+    // Al pulsar la nota numérica, iniciamos el voto con "suspenso" (2)
+    setRating(movieId, 2, card);
+    return true;
   }
   return false; // Not handled
 }
@@ -241,11 +248,9 @@ export function updateRatingUI(card) {
     starCont.classList.remove("has-user-rating");
     circleEl.classList.remove("has-user-rating");
     
-    // Ajuste: Sumar 0.5 a la nota de FA si existe
-    const faRating = movie.fa_rating > 0 ? movie.fa_rating + 0.5 : 0;
-    const ratings = [faRating, movie.imdb_rating].filter(r => r > 0);
-    if (ratings.length > 0) {
-      const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    // Optimización: Usar avg_rating pre-calculado por la base de datos
+    const avg = movie.avg_rating;
+    if (avg && avg > 0) {
       
       if (avg <= 5.5) {
         if (isLoggedIn) {
