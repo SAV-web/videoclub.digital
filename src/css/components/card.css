@@ -253,6 +253,7 @@
   margin-left: var(--space-xs);
   pointer-events: auto; 
 
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-sm); }
   @media (hover: hover) and (pointer: fine) {
     &:hover { transform: scale(1.1); }
   }
@@ -320,6 +321,7 @@
   font-family: inherit; font-size: inherit; color: var(--color-text-primary);
   text-align: left; cursor: pointer; display: block; width: 100%; line-height: 1.6;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-sm); }
   transition: color var(--transition-duration-fast);
   &:hover { color: var(--color-accent); text-decoration: underline; }
 }
@@ -341,6 +343,7 @@
   z-index: var(--z-index-card-content);
   pointer-events: auto;
 
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       transform: scale(1.15); background-color: var(--color-text-primary);
@@ -404,6 +407,7 @@
   display: flex; align-items: center; justify-content: center;
   transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
   position: relative;
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
   @media (hover: hover) and (pointer: fine) {
     &:hover { transform: scale(1.15) rotate(10deg); }

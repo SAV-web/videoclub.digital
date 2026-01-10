@@ -73,6 +73,7 @@
   color: var(--color-accent);
   cursor: pointer; line-height: 1;
   transition: transform var(--transition-duration-fast) ease;
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-md); }
 
   @media (hover: hover) and (pointer: fine) {
     &:hover { transform: scale(1.1); }
@@ -258,6 +259,11 @@
   @media (hover: hover) and (pointer: fine) {
     &:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); }
   }
+  /* UX Táctil: Visible siempre (pero discreto) en dispositivos sin hover (Móviles/Tablets) */
+  @media (hover: none) and (pointer: coarse) {
+    opacity: 1;
+    color: var(--color-text-tertiary);
+  }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
   .filter-link.active &,
@@ -291,6 +297,11 @@
   box-shadow: var(--shadow);
   overflow-y: auto;
   &:empty { display: none; }
+
+  /* UX: En pantallas con poca altura (móvil landscape), reducir altura para evitar que se salga por arriba */
+  @media (max-height: 500px) {
+    max-height: 100px;
+  }
 }
 
 .sidebar-autocomplete-item {

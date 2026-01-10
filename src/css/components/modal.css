@@ -468,3 +468,25 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 }
 .auth-message--error { background-color: var(--color-error-bg); color: var(--color-error); }
 .auth-message--success { background-color: var(--color-success-bg); color: var(--color-success); }
+
+/* =================================================================
+   7. OPTIMIZACIONES (Táctil y Accesibilidad)
+   ================================================================= */
+
+@media (hover: none) and (pointer: coarse) {
+  .quick-view-overlay {
+    /* Menos blur para rendimiento en móviles, compensado con más opacidad */
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    background-color: rgba(0, 0, 0, 0.75);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .quick-view-overlay,
+  .auth-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(0, 0, 0, 0.9);
+  }
+}

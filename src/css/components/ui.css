@@ -124,6 +124,14 @@ body.sidebar-is-open .sidebar-overlay {
   opacity: 1; visibility: visible; transition-delay: 0s;
 }
 
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+}
+
 /* --- 5. Mensaje "Sin Resultados" --- */
 .no-results {
   grid-column: 1 / -1;
@@ -194,23 +202,25 @@ body.sidebar-is-open .sidebar-overlay {
 /* Ajuste Móvil: Toasts elevados y centrados */
 @media (max-width: 768px) {
   .toast-container {
-    bottom: calc(var(--space-md) + var(--mobile-header-height) + env(safe-area-inset-bottom));
+    /* UX: Mover a top para evitar conflictos con teclado virtual y header inferior */
+    bottom: auto;
+    top: var(--space-md);
     inset-inline: var(--space-md);
     align-items: center;
   }
   
   .toast {
     width: 100%; justify-content: center;
-    animation-name: toast-in-mobile, toast-out-mobile;
+    animation-name: toast-in-mobile-top, toast-out-mobile-top;
   }
 
-  @keyframes toast-in-mobile {
-    from { transform: translateY(20px); opacity: 0; }
+  @keyframes toast-in-mobile-top {
+    from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
   
-  @keyframes toast-out-mobile {
-    to { transform: translateY(20px); opacity: 0; }
+  @keyframes toast-out-mobile-top {
+    to { transform: translateY(-20px); opacity: 0; }
   }
 
   .btn--pagination,
