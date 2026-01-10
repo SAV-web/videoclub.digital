@@ -1,7 +1,7 @@
 // src/js/main.js
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
-import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback } from "./utils.js";
+import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
@@ -502,6 +502,11 @@ function init() {
       el.removeAttribute('data-loading');
     });
   });
+
+  // Restaurar estado de rotación (Modo Muro) antes de renderizar para evitar saltos visuales
+  if (LocalStore.get("rotationState") === "disabled") {
+    document.body.classList.add("rotation-disabled");
+  }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

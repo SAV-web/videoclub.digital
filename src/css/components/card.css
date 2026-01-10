@@ -477,8 +477,13 @@
 
 /* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
-  aspect-ratio: 2 / 3.2;
+  aspect-ratio: 2 / 3;
   transition: transform var(--duration-quick) ease;
+}
+
+/* Reducir sombra en modo muro para que sea proporcional al tamaño */
+body.rotation-disabled .movie-card:not(.is-quick-view) .flip-card-inner {
+  box-shadow: var(--shadow-sm);
 }
 
 /* Ocultar textos */
@@ -490,6 +495,9 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
 }
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
   height: 88%; object-fit: cover; border-radius: var(--radius-xl);
+  height: auto; flex-grow: 1; min-height: 0; object-fit: cover;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border-bottom: none;
 }
 
 /* Bloque valoración inferior */
@@ -497,11 +505,13 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
   position: static; transform: none; bottom: auto; left: auto; right: auto;
   height: 12%; justify-content: space-between;
   padding: 0 var(--space-xs); background: transparent;
+  height: auto; justify-content: space-between;
+  padding: 4px var(--space-xs); background: transparent;
 }
 
 /* Reducción elementos */
 body.rotation-disabled .movie-card:not(.is-quick-view) .star-icon,
-body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-circle {
+body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-star {
   width: 18px; height: 18px;
 }
 body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container {

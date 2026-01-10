@@ -35,7 +35,7 @@
 }
 
 /* --- Estrella hueca de Suspenso (Nota baja) --- */
-.low-rating-circle {
+.low-rating-star {
   display: none; width: 25px; height: 25px;
   stroke: var(--color-accent); stroke-width: 2px; fill: transparent;
   border: none; background-color: transparent;
@@ -62,7 +62,7 @@
     filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
   }
 
-  .low-rating-circle.is-interactive:hover {
+  .low-rating-star.is-interactive:hover {
     transform: scale(1.2);
     filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
   }
@@ -70,7 +70,7 @@
 
 /* --- Accesibilidad Táctil (Áreas expandidas) --- */
 @media (hover: none) and (pointer: coarse) {
-  .low-rating-circle::after,
+  .low-rating-star::after,
   .star-icon::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -78,7 +78,7 @@
   }
 
   /* Expandir estrella hueca */
-  .low-rating-circle::after {
+  .low-rating-star::after {
     width: var(--tap-target-size);
     height: var(--tap-target-size);
   }

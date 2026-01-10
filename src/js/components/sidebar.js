@@ -930,10 +930,6 @@ export function initSidebar() {
   if ("requestIdleCallback" in window) requestIdleCallback(updateDynamicFilters);
   else setTimeout(updateDynamicFilters, 500);
   
-  if (LocalStore.get("rotationState") === "disabled") {
-    document.body.classList.add("rotation-disabled");
-  }
-
   if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains("rotation-disabled");
     dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
