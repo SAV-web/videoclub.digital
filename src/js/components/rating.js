@@ -177,6 +177,7 @@ export function handleRatingClick(event, card) {
   const target = event.target;
   const starEl = target.closest(".star-icon[data-rating-level]");
   const wallRatingEl = target.closest(".wall-rating-number");
+  const ratingBlock = target.closest(".card-rating-block");
   
   if (starEl) {
     event.preventDefault(); event.stopPropagation();
@@ -198,10 +199,10 @@ export function handleRatingClick(event, card) {
 
     setRating(movieId, newRating, card);
     return true; // Handled
-  } else if (wallRatingEl) {
+  } else if (wallRatingEl || (ratingBlock && document.body.classList.contains("rotation-disabled"))) {
     event.preventDefault(); event.stopPropagation();
     const movieId = parseInt(card.dataset.movieId, 10);
-    // Al pulsar la nota numérica, iniciamos el voto con "suspenso" (2)
+    // Al pulsar el bloque o la nota, iniciamos el voto con "suspenso" (2)
     setRating(movieId, 2, card);
     return true;
   }
