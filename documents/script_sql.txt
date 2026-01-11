@@ -58,13 +58,13 @@ ALTER TABLE public.movies DROP COLUMN IF EXISTS studios_tsv;
 ALTER TABLE public.movies ADD COLUMN studios_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(studios_list))) STORED;
 
 -- 2.2. COLUMNA DE PROMEDIO CALCULADO (NUEVO)
--- Calcula automáticamente la nota media usando la lógica de negocio (FA + 0.5).
+-- Calcula automáticamente la nota media usando la lógica de negocio (+/- 0.3).
 ALTER TABLE public.movies DROP COLUMN IF EXISTS avg_rating;
 ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
     CASE
         WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.5) + imdb_rating) / 2.0
-        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) THEN fa_rating + 0.5
-        WHEN (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN imdb_rating
+        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) THEN fa_rating + 0.3
+        WHEN (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN imdb_rating - 0.3
         ELSE NULL
     END
 ) STORED;

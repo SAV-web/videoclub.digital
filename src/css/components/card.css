@@ -480,7 +480,7 @@
 
 /* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 2 / 2.95;
   transition: transform var(--duration-quick) ease;
 }
 
@@ -502,12 +502,23 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
   border-radius: var(--radius-xl);
 }
 
+/* Muesca en el póster para la nota numérica (mejora legibilidad) */
+body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container:has(.star-rating-container:not(.has-user-rating)) img {
+  -webkit-mask-image: radial-gradient(circle at 50% 100%, transparent 2px, black 19px);
+  mask-image: radial-gradient(circle at 50% 103%, transparent 5px, black 19px);
+}
+
 /* Bloque valoración inferior */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
   position: static; transform: none; bottom: auto; left: auto; right: auto;
   height: auto; justify-content: center;
-  padding: 4px var(--space-xs); background: transparent;
+  padding: 3px var(--space-xs); background: transparent;
   cursor: pointer; pointer-events: auto;
+}
+
+/* Subir estrellas/nota para que entren en el póster, respetando el watchlist fijo */
+body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block > *:not(.card-action-btn) {
+  transform: translateY(-40%);
 }
 
 /* Reducción elementos */
@@ -520,7 +531,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container:no
 /* Mostrar estrellas SOLO si hay voto de usuario */
 body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.has-user-rating {
   display: flex !important;
-  gap: 1px;
+  gap: 4px;
   justify-content: center;
 }
 
@@ -546,7 +557,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.ha
 /* Watchlist arriba a la derecha */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
   position: absolute; top: 6px; right: 6px;
-  background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.2); backdrop-filter: blur(1px);
   color: #fff;
   width: 32px; height: 32px;
   padding: 6px;
