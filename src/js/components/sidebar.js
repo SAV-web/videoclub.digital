@@ -959,4 +959,7 @@ export function initSidebar() {
   
   document.addEventListener("filtersReset", collapseAllSections);
   document.addEventListener("uiActionTriggered", collapseAllSections);
+
+  // Sincronizar estado visual inicial (Pills) con el estado global (URL) tras carga diferida
+  renderFilterPills();
 }
