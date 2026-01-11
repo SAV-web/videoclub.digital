@@ -62,7 +62,7 @@ ALTER TABLE public.movies ADD COLUMN studios_tsv tsvector GENERATED ALWAYS AS (t
 ALTER TABLE public.movies DROP COLUMN IF EXISTS avg_rating;
 ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
     CASE
-        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.5) + imdb_rating) / 2.0
+        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.3) + (imdb_rating - 0.3)) / 2.0
         WHEN (fa_rating IS NOT NULL AND fa_rating > 0) THEN fa_rating + 0.3
         WHEN (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN imdb_rating - 0.3
         ELSE NULL

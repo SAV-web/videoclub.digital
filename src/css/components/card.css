@@ -480,7 +480,7 @@
 
 /* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
-  aspect-ratio: 2 / 2.95;
+  aspect-ratio: 2 / 3;
   transition: transform var(--duration-quick) ease;
 }
 
