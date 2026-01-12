@@ -1,9 +1,9 @@
 /* =================================================================
- *          COMPONENTE: TARJETA DE PELÍCULA (Master)
+ *          COMPONENTE: TARJETA DE PELÍCULA (Card System)
  * ================================================================= */
 
 /* =================================================================
-   1. ANIMACIONES Y ESTRUCTURA BASE
+   1. ANIMACIONES Y KEYFRAMES
    ================================================================= */
 
 @keyframes card-appear {
@@ -27,10 +27,14 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Contenedor principal */
+/* =================================================================
+   2. ESTRUCTURA BASE (Contenedor 3D)
+   ================================================================= */
+
 .movie-card {
   position: relative;
   perspective: 1000px; /* Profundidad 3D */
+  z-index: 1; /* Contexto de apilamiento local */
   aspect-ratio: 500 / 950;
   border-radius: 10px;
   
@@ -40,10 +44,11 @@
   /* Aislamiento para evitar repintados en el resto de la página */
   contain: layout paint style; 
 
-  /* Animación de entrada escalonada */
+  /* Animación de entrada escalonada (Staggered) */
   animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 40ms);
   
+  will-change: transform; /* Hint para el navegador */
   transition: transform var(--duration-quick) var(--ease-spring);
   
   /* UX TÁCTIL: Permite pan/zoom, deshabilita "doble tap para zoom" y delay */
@@ -52,14 +57,15 @@
   /* Interacciones Desktop */
   @media (hover: hover) and (pointer: fine) {
     &:not(.is-flipped):hover {
-      transform: translateY(-8px) translateZ(0) scale(1.02);
+      transform: translateY(-6px) scale(1.02);
+      z-index: 10; /* Elevar sobre hermanos */
 
       & .flip-card-inner {
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
       }
 
       html.dark-mode & .flip-card-inner {
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
       }
     }
   }
@@ -75,28 +81,29 @@
   background-color: var(--color-surface);
   border: 1px solid var(--color-surface);
   
+  /* Borde sutil en modo oscuro para definición */
+  html.dark-mode & {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  
   transform-style: preserve-3d; /* Habilita el 3D real */
   transition: transform var(--duration-leisurely) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
 
   &.is-flipped { transform: rotateY(180deg); }
-
-  html.dark-mode &.is-flipped {
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 10px 25px rgba(0, 0, 0, 0.4);
-  }
 }
 
 /* =================================================================
-   2. CARAS DE LA TARJETA (Frontal y Trasera)
+   3. CARAS DE LA TARJETA (Front & Back)
    ================================================================= */
 
 .flip-card-front, .flip-card-back {
   position: absolute;
   inset: 0; /* Reemplaza top/left/width/height */
   border-radius: var(--radius-lg);
+  
+  /* Fix para bordes redondeados en Safari durante animación */
   overflow: hidden;
   
-  /* Oculta la cara opuesta */
-  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   
   background-color: var(--color-surface);
@@ -124,7 +131,10 @@
 }
 .flip-card-inner.is-flipped .flip-card-front { pointer-events: none; z-index: 1; }
 
-/* --- Imagen del Póster --- */
+/* =================================================================
+   4. CONTENIDO FRONTAL (Póster y Resumen)
+   ================================================================= */
+
 .poster-container {
   position: relative;
   width: 100%;
@@ -148,10 +158,6 @@
   &.loaded { filter: blur(0); transform: scale(1); }
 }
 
-/* =================================================================
-   3. CONTENIDO FRONTAL (Resumen)
-   ================================================================= */
-
 .movie-summary {
   flex-grow: 1;
   display: flex;
@@ -167,16 +173,16 @@
   justify-content: center;
 }
 
-& h3 {
-    margin-bottom: 0;
-    line-height: 1.1;
-    font-family: var(--font-title);
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-bold);
-    letter-spacing: -0.025em;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden; text-overflow: ellipsis;
-  }
+.movie-summary h3 {
+  margin-bottom: 0;
+  line-height: 1.1;
+  font-family: var(--font-title);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.025em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis;
+}
 
 .front-director-info {
   font-size: var(--font-size-xs);
@@ -200,21 +206,13 @@
 .country-info { display: flex; align-items: center; gap: var(--space-xxs); }
 
 /* Colores de Estudios (Mantenidos igual) */
-.netflix-icon { color: #e50914; }
-.disney-icon { color: #990000; } html.dark-mode .disney-icon { color: #D9534F; }
-.wb-icon { color: #000b6c; } html.dark-mode .wb-icon { color: #4da4f2; }
-.universal-icon { color: #444444; } html.dark-mode .universal-icon { color: #BBBBBB; }
-.sony-icon { color: #004098; } html.dark-mode .sony-icon { color: #3182ce; }
-.paramount-icon { color: #0063ff; } html.dark-mode .paramount-icon { color: #E0E0E0; }
-.lionsgate-icon { color: #CC7722; } html.dark-mode .lionsgate-icon { color: #f9d7b5; }
-.amazon-icon { color: #f6a61f; }
-.twenty-icon { color: #000b6c; } html.dark-mode .twenty-icon { color: #E0E0E0; }
-.a24-icon { color: #000; } html.dark-mode .a24-icon { color: #fff; }
-.movistar-icon { color: #00a9e0; }
-.miramax-icon { color: #005596; } html.dark-mode .miramax-icon { color: #4da4f2; }
+.netflix-icon { color: #e50914; } .disney-icon { color: #990000; } .wb-icon { color: #000b6c; } .universal-icon { color: #444444; } .sony-icon { color: #004098; } .paramount-icon { color: #0063ff; } .lionsgate-icon { color: #CC7722; } .amazon-icon { color: #f6a61f; } .twenty-icon { color: #000b6c; } .a24-icon { color: #000; } .movistar-icon { color: #00a9e0; } .miramax-icon { color: #005596; }
+
+/* Ajustes Dark Mode Estudios */
+html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color: #4da4f2; } html.dark-mode .universal-icon { color: #BBBBBB; } html.dark-mode .sony-icon { color: #3182ce; } html.dark-mode .paramount-icon { color: #E0E0E0; } html.dark-mode .lionsgate-icon { color: #f9d7b5; } html.dark-mode .twenty-icon { color: #E0E0E0; } html.dark-mode .a24-icon { color: #fff; } html.dark-mode .miramax-icon { color: #4da4f2; }
 
 /* =================================================================
-   4. CONTENIDO TRASERO (Detalles)
+   5. CONTENIDO TRASERO (Detalles y Links)
    ================================================================= */
 
 .back-original-title-wrapper {
@@ -246,20 +244,28 @@
   white-space: nowrap;
 }
 
+/* Enlaces Externos (Wiki/JustWatch) */
 [data-template="wikipedia-link"],
 [data-template="justwatch-link"] {
   display: flex; align-items: center; text-decoration: none;
-  transition: transform var(--duration-fast);
+  transition: transform var(--duration-fast), filter var(--duration-fast);
   margin-left: var(--space-xs);
   pointer-events: auto; 
 
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-sm); }
+  
   @media (hover: hover) and (pointer: fine) {
-    &:hover { transform: scale(1.1); }
+    &:hover { transform: scale(1.15); }
   }
+  
+  /* Glow Effect de Marca */
+  &[data-template="justwatch-link"]:hover svg { filter: drop-shadow(0 0 6px rgba(154, 20, 133, 0.6)); }
+  &[data-template="wikipedia-link"]:hover svg { filter: drop-shadow(0 0 6px rgba(179, 64, 74, 0.6)); }
 
   &.disabled {
     opacity: 0.3; pointer-events: none; filter: grayscale(100%); cursor: default;
+    
+    html.dark-mode & { filter: grayscale(100%) brightness(5); }
   }
 }
 
@@ -327,7 +333,7 @@
 }
 
 /* =================================================================
-   5. BOTONES DE EXPANSIÓN Y LOGICA
+   6. BOTONES DE EXPANSIÓN Y LOGICA
    ================================================================= */
 
 .expand-content-btn, .actors-expand-btn {
@@ -377,7 +383,7 @@
 }
 
 /* =================================================================
-   6. ELEMENTOS INTERACTIVOS (Botones y Estrellas)
+   7. ELEMENTOS INTERACTIVOS (Botones y Estrellas)
    ================================================================= */
 
 .card-rating-block {
@@ -434,7 +440,7 @@
 }
 
 /* =================================================================
-   7. UTILIDADES
+   8. UTILIDADES
    ================================================================= */
 
 [data-template="wikipedia-link"] .rating-icon,
@@ -443,7 +449,7 @@
 }
 
 /* =================================================================
-   8. ACCESIBILIDAD TÁCTIL (WCAG 2.5.5)
+   9. ACCESIBILIDAD TÁCTIL (WCAG 2.5.5)
    ================================================================= */
 
 @media (hover: none) and (pointer: coarse) {
@@ -461,7 +467,7 @@
 }
 
 /* =================================================================
-   9. INTERACCIONES ESCRITORIO (Solo Mouse)
+   10. INTERACCIONES ESCRITORIO (Solo Mouse)
    ================================================================= */
 
 @media (hover: hover) and (pointer: fine) {
@@ -475,7 +481,7 @@
 }
 
 /* =================================================================
-   10. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
+   11. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
    ================================================================= */
 
 /* Ajuste de tarjeta visual */
@@ -497,12 +503,11 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
   height: 100%; display: flex; flex-direction: column;
 }
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
-  height: 88%; object-fit: cover; border-radius: var(--radius-xl);
   height: auto; flex-grow: 1; min-height: 0; object-fit: cover;
   border-radius: var(--radius-xl);
 }
 
-/* Muesca en el póster para la nota numérica (mejora legibilidad) */
+/* Muesca en el póster para la nota numérica (mejora legibilidad) - Solo si no hay voto de usuario */
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container:has(.star-rating-container:not(.has-user-rating)) img {
   -webkit-mask-image: radial-gradient(circle at 50% 100%, transparent 2px, black 19px);
   mask-image: radial-gradient(circle at 50% 103%, transparent 5px, black 19px);
@@ -516,16 +521,16 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
   cursor: pointer; pointer-events: auto;
 }
 
-/* Subir estrellas/nota para que entren en el póster, respetando el watchlist fijo */
+/* Ajuste de posición vertical para elementos de valoración */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block > *:not(.card-action-btn) {
   transform: translateY(-40%);
 }
 
-/* Reducción elementos */
-/* Ocultar elementos de valoración por defecto en modo muro */
+/* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
+/* 1. Ocultar elementos por defecto */
 body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-star,
 body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container:not(.has-user-rating) {
-  display: none !important;
+  display: none !important; /* !important necesario para sobrescribir estilos inline de JS */
 }
 
 /* Mostrar estrellas SOLO si hay voto de usuario */
@@ -546,6 +551,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .wall-rating-number {
   font-weight: var(--font-weight-bold);
   font-size: 1.1rem;
   color: var(--color-text-primary);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3); /* Legibilidad extra */
   cursor: pointer;
 }
 

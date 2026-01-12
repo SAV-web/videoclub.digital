@@ -91,13 +91,20 @@ CREATE TABLE public.movies (
   title_norm text DEFAULT unaccent_immutable(lower(title)),
   relevance integer,
   selections_list text,
-  genres_tsv tsvector DEFAULT to_tsvector('spanish'::regconfig, COALESCE(genres_list, ''::text)),
-  selections_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, COALESCE(replace(selections_list, ','::text, ' '::text), ''::text)),
-  directors_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, COALESCE(directors_list, ''::text)),
-  actors_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, COALESCE(actors_list, ''::text)),
   studios_list text,
-  studios_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, COALESCE(studios_list, ''::text)),
   justwatch text,
+  genres_tsv tsvector DEFAULT to_tsvector('spanish'::regconfig, unaccent_immutable(genres_list)),
+  directors_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(directors_list)),
+  actors_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(actors_list)),
+  selections_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(selections_list)),
+  studios_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(studios_list)),
+  avg_rating real DEFAULT 
+CASE
+    WHEN ((fa_rating IS NOT NULL) AND (fa_rating > (0)::double precision) AND ((imdb_rating IS NOT NULL) AND (imdb_rating > (0)::double precision))) THEN (((fa_rating + (0.3)::double precision) + (imdb_rating - (0.3)::double precision)) / (2.0)::double precision)
+    WHEN ((fa_rating IS NOT NULL) AND (fa_rating > (0)::double precision)) THEN (fa_rating + (0.3)::double precision)
+    WHEN ((imdb_rating IS NOT NULL) AND (imdb_rating > (0)::double precision)) THEN (imdb_rating - (0.3)::double precision)
+    ELSE NULL::double precision
+END,
   CONSTRAINT movies_pkey PRIMARY KEY (id),
   CONSTRAINT movies_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
