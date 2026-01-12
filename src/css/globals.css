@@ -34,7 +34,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  font-feature-settings: "cv05", "calt", "case";
+  font-feature-settings: "cv05", "calt", "case", "liga", "kern";
 
   /* Transición de tema suave (Solo colores base) */
   transition: 

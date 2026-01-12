@@ -94,7 +94,10 @@
    ================================================================= */
 
 .ratings-container { display: flex; flex-direction: column; gap: 10px; }
-.rating-line { display: flex; align-items: center; gap: var(--space-sm); }
+.rating-line { 
+  display: flex; align-items: center; gap: var(--space-sm); 
+  font-variant-numeric: tabular-nums; /* Alineación perfecta de cifras */
+}
 
 .rating-left {
   display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0;

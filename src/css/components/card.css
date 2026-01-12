@@ -81,11 +81,6 @@
   background-color: var(--color-surface);
   border: 1px solid var(--color-surface);
   
-  /* Borde sutil en modo oscuro para definición */
-  html.dark-mode & {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-  }
-  
   transform-style: preserve-3d; /* Habilita el 3D real */
   transition: transform var(--duration-leisurely) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
 
@@ -181,6 +176,7 @@
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.025em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  text-wrap: balance; /* Títulos equilibrados visualmente */
   overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -299,6 +295,7 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   padding-top: var(--space-xs); border-top: 1px solid var(--color-border);
   opacity: 0.8; font-size: var(--font-size-xs); color: var(--color-text-secondary);
   font-weight: var(--font-weight-normal); line-height: var(--line-height-relaxed);
+  text-wrap: pretty; /* Evita palabras huérfanas al final */
 }
 .critic-review { margin-top: var(--space-sm); }
 
@@ -551,6 +548,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .wall-rating-number {
   font-weight: var(--font-weight-bold);
   font-size: 1.1rem;
   color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums; /* Cifras alineadas */
   text-shadow: 0 2px 4px rgba(0,0,0,0.3); /* Legibilidad extra */
   cursor: pointer;
 }
