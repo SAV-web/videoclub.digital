@@ -32,6 +32,9 @@ jobs:
           # Inyectamos las variables de entorno necesarias para el build
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          
+      - name: Disable Jekyll
+        run: touch ./dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
