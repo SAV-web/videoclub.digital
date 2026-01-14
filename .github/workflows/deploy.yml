@@ -1,15 +1,17 @@
-name: Deploy Vite Project to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main 
+    branches: [ main ] # Se ejecuta cada vez que subes cambios a la rama main
 
+# Permisos necesarios para que la acción pueda escribir en Pages
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout 🛎️
@@ -21,18 +23,28 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install Dependencies 
-        run: npm ci # Ya no necesita 'working-directory'
+      - name: Install Dependencies
+        run: npm ci
 
       - name: Build Project
-        run: npm run build # Ya no necesita 'working-directory'
+        run: npm run build
         env:
-          # Mapea los secretos del repo a variables de entorno para el build
+          # Inyectamos las variables de entorno necesarias para el build
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist # La carpeta a desplegar ahora está en la raíz
+          path: ./dist # Sube la carpeta construida
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
