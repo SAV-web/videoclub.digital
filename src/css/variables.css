@@ -10,7 +10,7 @@
   font-style: normal;
   font-weight: 100 900;
   font-display: swap; /* Evita texto invisible (FOIT) */
-  src: url("https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2") format("woff2-variations");
+  src: url("https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2") format("woff2");
 }
 
 /* Fallback métricamente ajustado para reducir CLS (Cumulative Layout Shift) */
