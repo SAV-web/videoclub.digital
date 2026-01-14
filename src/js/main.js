@@ -1,4 +1,5 @@
 // src/js/main.js
+import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
