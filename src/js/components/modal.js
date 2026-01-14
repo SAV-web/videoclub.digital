@@ -147,30 +147,40 @@ function handleTouchEnd(e) {
 //          3. NAVEGACIÓN ENTRE FICHAS
 // =================================================================
 
+// Helper para obtener la lista limpia de tarjetas del grid (ignorando la del modal)
+function getGridCards() {
+  const grid = document.getElementById("grid-container");
+  if (!grid) return [];
+  return Array.from(grid.querySelectorAll(".movie-card"));
+}
+
 function navigateToSibling(direction) {
   const { content } = getDom();
   const currentId = content.dataset.movieId;
   if (!currentId) return;
 
-  const currentCard = document.querySelector(`.movie-card[data-movie-id="${currentId}"]`);
-  if (!currentCard) return;
+  const cards = getGridCards();
+  const currentIndex = cards.findIndex(c => c.dataset.movieId === currentId);
 
-  const sibling = direction === 1 ? currentCard.nextElementSibling : currentCard.previousElementSibling;
-  
-  if (sibling && sibling.classList.contains('movie-card')) {
-    openModal(sibling);
+  if (currentIndex === -1) return;
+
+  const nextIndex = currentIndex + direction;
+  if (nextIndex >= 0 && nextIndex < cards.length) {
+    openModal(cards[nextIndex]);
   }
 }
 
 function updateNavButtons(currentId) {
   const { prevBtn, nextBtn } = getDom();
-  const currentCard = document.querySelector(`.movie-card[data-movie-id="${currentId}"]`);
-  if (!currentCard) return;
+  const strId = String(currentId); // Asegurar tipo para comparación
+  
+  const cards = getGridCards();
+  const currentIndex = cards.findIndex(c => c.dataset.movieId === strId);
 
-  const prev = currentCard.previousElementSibling;
-  const next = currentCard.nextElementSibling;
-  const hasPrev = prev && prev.classList.contains('movie-card');
-  const hasNext = next && next.classList.contains('movie-card');
+  if (currentIndex === -1) return;
+
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex < cards.length - 1;
 
   if (prevBtn) {
     prevBtn.disabled = !hasPrev;
@@ -198,13 +208,15 @@ function setupModalHeader(front, movie) {
   const frontImg = front.querySelector("img");
   if (frontImg) {
     // Usar imagen HQ (dataset.src) si está disponible
-    frontImg.src = movie.image_hq || movie.image; 
+    // FIX: movie.image es solo el ID. Usamos image_hq (URL real) o placeholder.
+    frontImg.src = movie.image_hq || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     frontImg.alt = `Póster de ${movie.title}`;
   }
 
   // Título
   const titleEl = front.querySelector('[data-template="title"]');
   titleEl.textContent = movie.title;
+  titleEl.id = "quick-view-title"; // Conectar con aria-labelledby del contenedor
   titleEl.className = ""; // Reset clases
   if (movie.title.length > 45) titleEl.classList.add("title-xl-long");
   else if (movie.title.length > 25) titleEl.classList.add("title-long");

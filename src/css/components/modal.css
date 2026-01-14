@@ -345,7 +345,7 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   }
   
   /* Sin transición mientras se arrastra con JS */
-  .quick-view-modal.is-dragging { transition: none; }
+  .quick-view-modal.is-dragging { transition: none !important; }
   
   .is-quick-view .flip-card-front {
     padding-top: 30px; /* Espacio para el handle */
@@ -480,9 +480,13 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     -webkit-backdrop-filter: blur(3px);
     background-color: rgba(0, 0, 0, 0.75);
   }
+
+  /* UX: Ocultar flechas en dispositivos táctiles donde el Swipe es nativo */
+  .modal-nav-btn { display: none; }
 }
 
-@media (prefers-reduced-transparency: reduce) {
+/* Optimización: Desactivar efectos costosos si el usuario prefiere rendimiento/simplicidad */
+@media (prefers-reduced-transparency: reduce), (prefers-reduced-motion: reduce) {
   .quick-view-overlay,
   .auth-overlay {
     backdrop-filter: none;

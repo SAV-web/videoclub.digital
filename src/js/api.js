@@ -15,10 +15,29 @@ import { createAbortableRequest } from "./utils.js";
 import { getUserDataForMovie } from "./state.js";
 
 // Inicialización del cliente Supabase
-// FIX: Usar valores dummy si faltan credenciales para evitar crash (pantalla blanca) en desarrollo
-const sbUrl = CONFIG.SUPABASE_URL || "https://placeholder.supabase.co";
-const sbKey = CONFIG.SUPABASE_ANON_KEY || "placeholder";
-export const supabase = createClient(sbUrl, sbKey);
+// GUARD: Evitar crash en PROD si faltan credenciales.
+// Si hay URL/Key (real o placeholder de dev), iniciamos cliente.
+// Si no (PROD sin config), usamos un Mock que falla controladamente al usarse.
+const sbUrl = CONFIG.SUPABASE_URL;
+const sbKey = CONFIG.SUPABASE_ANON_KEY;
+
+export const supabase = (sbUrl && sbKey) 
+  ? createClient(sbUrl, sbKey)
+  : {
+      // Mock de seguridad: Permite que la app cargue, pero falla al pedir datos
+      rpc: () => Promise.reject(new Error("Error crítico: Supabase no configurado (Faltan credenciales)")),
+      from: () => ({ 
+        select: () => Promise.reject(new Error("Supabase no configurado")),
+        upsert: () => Promise.reject(new Error("Supabase no configurado"))
+      }),
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        signInWithPassword: () => Promise.reject(new Error("Supabase no configurado")),
+        signOut: () => Promise.reject(new Error("Supabase no configurado")),
+        signUp: () => Promise.reject(new Error("Supabase no configurado"))
+      }
+    };
 
 // --- SISTEMA DE CACHÉ ---
 
@@ -51,8 +70,16 @@ function createCanonicalCacheKey(filters, page, pageSize) {
       const isNonEmptyArray = Array.isArray(value) && value.length > 0;
       
       if (hasValue && (!Array.isArray(value) || isNonEmptyArray)) {
-        // Si es array, ordenarlo para consistencia (ej: [Drama, Acción] == [Acción, Drama])
-        normalizedFilters[key] = isNonEmptyArray ? [...value].sort() : value;
+        // MEJORA: Normalización (Trim + Lowercase) para evitar cache misses por formato.
+        // El backend es case-insensitive, así que la caché también debería serlo.
+        if (typeof value === 'string') {
+          normalizedFilters[key] = value.trim().toLowerCase();
+        } else if (Array.isArray(value)) {
+          // Si es array: normalizar elementos y ordenar para consistencia
+          normalizedFilters[key] = value.map(v => (typeof v === 'string' ? v.trim().toLowerCase() : v)).sort();
+        } else {
+          normalizedFilters[key] = value;
+        }
       }
     });
   return JSON.stringify({ filters: normalizedFilters, page, pageSize });

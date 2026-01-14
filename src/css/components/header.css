@@ -297,13 +297,24 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .main-header.is-search-focused .search-icon { 
     right: var(--space-sm); transform: translateY(-50%); 
   }
+
+  /* MEJORA: Botón de limpiar con área táctil de 48px */
+  .main-header.is-search-focused .search-icon--clear {
+    width: 48px; height: 48px;
+    padding: 12px; /* 12px padding + 24px icono + 12px padding = 48px total */
+    right: 0; /* Alinear al borde para ocupar exactamente el padding-end del input */
+  }
 }
 
 /* =================================================================
    ESTADOS GLOBALES DE ICONOS
    ================================================================= */
 
-.search-icon { transition: opacity 0.2s ease, transform 0.2s ease, right 0.2s ease; }
+.search-icon { 
+  transition: opacity 0.2s ease, transform 0.2s ease, right 0.2s ease;
+  /* Reset para cuando es un botón */
+  background: none; border: none; padding: 0;
+}
 .search-icon--clear { opacity: 0; pointer-events: none; }
 
 .main-header.is-search-focused .search-icon--idle { opacity: 0; pointer-events: none; }

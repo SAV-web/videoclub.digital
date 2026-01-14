@@ -14,7 +14,6 @@
 /* 2. Configuración Raíz */
 html {
   font-size: 100%; /* Respeta configuración del usuario */
-  scroll-behavior: smooth; /* Scroll suave para anclas */
   
   /* Scrollbar Firefox */
   scrollbar-width: thin;
@@ -112,4 +111,9 @@ button, input, select, textarea, a {
 /* Elimina el resaltado gris al tocar en iOS/Android */
 * {
   -webkit-tap-highlight-color: transparent; 
+}
+
+/* 11. Utilidad: Scroll Suave (Opcional para contenedores específicos) */
+.smooth-scroll {
+  scroll-behavior: smooth;
 }

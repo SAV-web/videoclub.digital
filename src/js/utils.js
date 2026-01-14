@@ -153,8 +153,16 @@ export function renderCountryFlag(container, flagSpan, countryCode, countryName 
     container.style.display = "flex"; // Evita reflow si ya estaba flex
     flagSpan.className = "country-flag-icon";
     flagSpan.title = countryName || "";
-    // innerHTML es rápido para fragmentos pequeños como este
-    flagSpan.innerHTML = `<svg width="16" height="16"><use href="${flagSpriteUrl}#flag-${code}"></use></svg>`;
+    
+    // Limpieza y SVG Seguro (Evita XSS si countryCode viniera corrupto)
+    flagSpan.textContent = "";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "16");
+    svg.setAttribute("height", "16");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", `${flagSpriteUrl}#flag-${code}`);
+    svg.appendChild(use);
+    flagSpan.appendChild(svg);
   } else {
     container.style.display = "none";
   }
@@ -195,9 +203,14 @@ export function createElement(tag, options = {}) {
 
 export const triggerPopAnimation = (element) => {
   if (!element) return;
-  // Truco para reiniciar animación: eliminar clase -> forzar reflow -> añadir clase
-  element.classList.remove("pop-animation");
-  void element.offsetWidth; // Forzar Reflow
+  
+  // Optimización: Evitar reflow (layout thrashing) si no es estrictamente necesario.
+  // Solo forzamos el reinicio (remove -> reflow -> add) si la animación ya está corriendo.
+  if (element.classList.contains("pop-animation")) {
+    element.classList.remove("pop-animation");
+    void element.offsetWidth; // Forzar Reflow
+  }
+  
   element.classList.add("pop-animation");
   
   // Usar { once: true } evita tener que eliminar el listener manualmente

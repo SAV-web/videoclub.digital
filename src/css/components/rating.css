@@ -85,7 +85,7 @@
 
   /* Expandir estrella (más alto que ancho por la forma) */
   .star-icon::after {
-    width: 30px; height: 48px;
+    width: 30px; height: var(--tap-target-size);
   }
 }
 

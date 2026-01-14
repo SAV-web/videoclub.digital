@@ -37,15 +37,25 @@ const domQueries = {
 // Exportamos un Proxy para mantener compatibilidad con el código existente (dom.algo)
 export const dom = new Proxy({}, {
   get: (_, prop) => {
-    if (domCache[prop]) return domCache[prop];
+    // 1. Auto-Invalidación: Si está en caché pero fue eliminado del DOM, lo ignoramos.
+    if (domCache[prop] && domCache[prop].isConnected) {
+      return domCache[prop];
+    }
+
+    // 2. Búsqueda (Lazy)
     const query = domQueries[prop];
     if (query) {
       const el = query();
-      if (el) domCache[prop] = el;
+      if (el) domCache[prop] = el; // Solo cacheamos si existe
+      else delete domCache[prop];  // Limpiamos referencia si dejó de existir
       return el;
     }
   }
 });
+
+// Estado para debounce de notificaciones
+let lastToastMessage = "";
+let lastToastTime = 0;
 
 // =================================================================
 //          1. SISTEMA DE NOTIFICACIONES (TOAST)
@@ -54,6 +64,19 @@ export const dom = new Proxy({}, {
 export function showToast(message, type = "error") {
   const { toastContainer } = dom;
   if (!toastContainer) return;
+
+  // 1. Anti-Spam (Debounce): Evitar repetición del mismo mensaje en corto tiempo
+  const now = Date.now();
+  const isSameMessage = message === lastToastMessage;
+  const isRecent = (now - lastToastTime) < 2000; // 2 segundos
+
+  if (isSameMessage && isRecent && toastContainer.hasChildNodes()) return;
+
+  lastToastMessage = message;
+  lastToastTime = now;
+
+  // 2. Anti-Apilamiento: Limpiar contenedor para mostrar solo uno
+  toastContainer.replaceChildren();
 
   const toastElement = createElement("div", {
     className: `toast toast--${type}`,
@@ -68,6 +91,14 @@ export function showToast(message, type = "error") {
       toastElement.remove();
     }
   });
+
+  // Fallback de seguridad: Si la animación falla o el CSS cambia, eliminar tras 8s
+  setTimeout(() => {
+    if (toastElement.isConnected) toastElement.remove();
+  }, 8000);
+
+  // Clic para cerrar inmediatamente
+  toastElement.addEventListener("click", () => toastElement.remove());
 
   toastContainer.appendChild(toastElement);
 }
@@ -198,6 +229,10 @@ function handleTrap(e) {
 export function openAccessibleModal(modal, overlay, skipFocus = false) {
   if (!modal) return;
   
+  // Accesibilidad: Garantizar atributos críticos si faltan en HTML
+  if (!modal.hasAttribute("role")) modal.setAttribute("role", "dialog");
+  if (!modal.hasAttribute("aria-modal")) modal.setAttribute("aria-modal", "true");
+
   lastFocusedElement = document.activeElement;
   modal.hidden = false;
   if (overlay) overlay.hidden = false;

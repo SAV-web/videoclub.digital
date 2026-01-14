@@ -111,7 +111,10 @@ function handleTouchStart(e) {
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
   
   // Detección de elementos interactivos para no robarles el clic
-  touchState.isInteractive = !isOpen && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
+  // MEJORA: Si es un swipe desde el borde real (< 30px), asumimos intención clara de abrir y bajamos el umbral.
+  // Si es más adentro, respetamos las tarjetas para no cancelar sus clics accidentalmente.
+  const isEdgeSwipe = !isOpen && touchState.startX < 30;
+  touchState.isInteractive = !isEdgeSwipe && !isOpen && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
 
   // Passive false para poder cancelar el scroll nativo si es necesario
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
@@ -269,7 +272,8 @@ function initPinchGestures() {
   const target = document.querySelector('.main-content-wrapper');
   if (!target) return;
 
-  window.addEventListener('click', (e) => {
+  // FIX: Usar target (wrapper) en lugar de window para limitar el alcance del bloqueo
+  target.addEventListener('click', (e) => {
     if (document.body.dataset.gestureCooldown === "true") {
       if (e.target.closest('.movie-card, .grid-container')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
@@ -401,6 +405,7 @@ function updateAllFilterControls() {
         // Comprobación simple de atributo para evitar repintados
         if (link.hasAttribute("disabled") !== shouldDisable) {
             link.toggleAttribute("disabled", shouldDisable);
+            link.setAttribute("aria-disabled", String(shouldDisable)); // Semántica explícita
             link.style.pointerEvents = shouldDisable ? "none" : "auto";
             link.style.opacity = shouldDisable ? "0.5" : "1";
         }

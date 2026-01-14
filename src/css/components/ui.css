@@ -191,6 +191,11 @@ body.sidebar-is-open .sidebar-overlay {
   border-inline-start: 4px solid #1e7e34;
 }
 
+.toast--info {
+  background-color: rgba(23, 162, 184, 0.95);
+  border-inline-start: 4px solid #138496;
+}
+
 @keyframes toast-in {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }

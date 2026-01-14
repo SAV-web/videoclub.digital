@@ -1,5 +1,4 @@
 // src/js/main.js
-import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
@@ -122,12 +121,10 @@ export async function loadAndRenderMovies(page = 1) {
  * Gestiona casos de vacío, paginación y precarga.
  */
 function updateDomWithResults(movies, totalMovies) {
-  // Optimización: Solo actualizar estado y DOM si el total ha cambiado (ej: nueva búsqueda)
-  // Al paginar, totalMovies suele ser igual al anterior, ahorramos ciclos.
-  if (getState().totalMovies !== totalMovies) {
-    setTotalMovies(totalMovies);
-    updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
-  }
+  // Actualizar siempre el total para asegurar consistencia UI tras invalidación
+  setTotalMovies(totalMovies);
+  updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
+  
   const currentState = getState();
 
   if (currentState.totalMovies === 0) {
@@ -184,7 +181,12 @@ async function handleSearchInput() {
   // Buscar solo si hay 3+ caracteres o se borró todo
   if (searchTerm.length >= 3 || searchTerm.length === 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    setSearchTerm(searchTerm);
+    
+    const filtersCleared = setSearchTerm(searchTerm);
+    if (filtersCleared) {
+      showToast("Filtros de Actor/Director limpiados", "info");
+    }
+
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
     await loadAndRenderMovies(1);
   }

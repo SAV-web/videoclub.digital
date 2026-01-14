@@ -48,7 +48,6 @@
   animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
   animation-delay: calc(var(--card-index, 0) * 40ms);
   
-  will-change: transform; /* Hint para el navegador */
   transition: transform var(--duration-quick) var(--ease-spring);
   
   /* UX TÁCTIL: Permite pan/zoom, deshabilita "doble tap para zoom" y delay */
@@ -57,6 +56,7 @@
   /* Interacciones Desktop */
   @media (hover: hover) and (pointer: fine) {
     &:not(.is-flipped):hover {
+      will-change: transform; /* Optimización: Solo reservar memoria al interactuar */
       transform: translateY(-6px) scale(1.02);
       z-index: 10; /* Elevar sobre hermanos */
 
@@ -68,6 +68,11 @@
         box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
       }
     }
+  }
+
+  /* FIX SAFARI: Desactivar content-visibility para evitar bugs de renderizado con 3D */
+  @supports (-webkit-touch-callout: none) {
+    content-visibility: visible;
   }
 }
 
@@ -353,6 +358,13 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
     }
   }
   &:active { transform: scale(0.9); }
+
+  /* MEJORA: Área táctil expandida (Hit Area) */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -12px; /* Expande 12px por cada lado: 22 + 24 = 46px */
+  }
 }
 .actors-expand-btn { bottom: 2px; right: 2px; }
 .expand-content-btn { bottom: 14px; right: 14px; }
@@ -454,9 +466,7 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   .movie-card:active { transform: scale(0.98); transition-duration: 0s; }
 
   /* Expandir áreas táctiles */
-  .card-action-btn::after,
-  .expand-content-btn::after,
-  .actors-expand-btn::after {
+  .card-action-btn::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: var(--tap-target-size); height: var(--tap-target-size); z-index: 10;

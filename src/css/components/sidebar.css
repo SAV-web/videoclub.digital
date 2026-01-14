@@ -296,6 +296,7 @@
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
   overflow-y: auto;
+  overscroll-behavior: contain; /* Evita que el scroll se propague al sidebar */
   &:empty { display: none; }
 
   /* UX: En pantallas con poca altura (móvil landscape), reducir altura para evitar que se salga por arriba */
@@ -338,7 +339,14 @@
   cursor: grab;
   transition: transform 0.2s ease;
 }
-#year-slider .noUi-handle::before, #year-slider .noUi-handle::after { display: none; }
+
+/* Ocultar líneas decorativas por defecto de noUiSlider (::before) */
+#year-slider .noUi-handle::before { display: none; }
+
+/* Usar ::after para expandir el área táctil (Hit Area) sin afectar visualmente */
+#year-slider .noUi-handle::after {
+  content: ""; position: absolute; inset: -12px; display: block; width: auto; height: auto; background: none;
+}
 
 #year-slider .noUi-handle:focus { outline: none; }
 #year-slider .noUi-handle:active { cursor: grabbing; }
@@ -411,6 +419,19 @@
   .collapsible-section .section-header:active {
     transform: scale(0.98);
   }
+
+  /* MEJORA: Áreas táctiles expandidas (48px) para precisión */
+  .sidebar-control-button,
+  .exclude-filter-btn {
+    min-width: var(--tap-target-size);
+    min-height: var(--tap-target-size);
+  }
+
+  /* Ajuste de layout: Reducir gap a 12px para que quepan 4 botones de 48px en 280px de ancho */
+  .play-button-container { gap: var(--space-sm); }
+
+  /* Enlaces de filtro más altos para facilitar el tap */
+  .filter-link { min-height: var(--tap-target-size); align-items: center; }
 }
 
 /* --- 11. Indicador de Progreso --- */

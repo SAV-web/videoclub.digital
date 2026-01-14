@@ -102,7 +102,13 @@ const handleSingleTap = (cardElement) => {
   
   if (!isFlipped) {
     currentlyFlippedCard = cardElement;
-    setTimeout(() => document.addEventListener("click", handleDocumentClick), 0);
+    // Fix: Race condition check. Si la tarjeta se cierra antes de que este timeout se ejecute
+    // (por ejemplo, doble tap rápido o renderizado), no debemos añadir el listener.
+    setTimeout(() => {
+      if (currentlyFlippedCard === cardElement) {
+        document.addEventListener("click", handleDocumentClick);
+      }
+    }, 0);
   } else {
     currentlyFlippedCard = null;
     resetCardBackState(cardElement);
@@ -174,10 +180,10 @@ export function initCardInteractions(gridContainer) {
 
     if (e.cancelable) e.preventDefault();
 
-    const currentTime = new Date().getTime();
+    const currentTime = performance.now();
     const tapLength = currentTime - lastTapTime;
 
-    if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+    if (lastTapTime > 0 && tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
       // Doble Tap -> Modal
       clearTimeout(tapTimeout);
       loadAndOpenModal(card);
@@ -587,6 +593,9 @@ export function renderErrorState(container, pagContainer, message) {
   if (pagContainer) pagContainer.textContent = "";
   
   const div = createElement("div", { className: "no-results", attributes: { role: "alert" } });
-  div.innerHTML = `<h3>¡Vaya! Algo ha ido mal</h3><p>${message}</p>`;
+  
+  div.appendChild(createElement("h3", { textContent: "¡Vaya! Algo ha ido mal" }));
+  div.appendChild(createElement("p", { textContent: message }));
+  
   container?.appendChild(div);
 }

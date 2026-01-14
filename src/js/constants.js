@@ -12,8 +12,13 @@ if (!envUrl || !envKey) {
   console.error(msg);
 }
 
-const supabaseUrl = envUrl || "";
-const supabaseKey = envKey || "";
+// Lógica de Fallback Unificada:
+// - En DEV: Usamos placeholder para evitar crash inicial si no hay .env.
+// - En PROD: Dejamos vacío para detectar errores de configuración explícitamente.
+const usePlaceholder = import.meta.env.DEV && (!envUrl || !envKey);
+
+const supabaseUrl = usePlaceholder ? "https://placeholder.supabase.co" : (envUrl || "");
+const supabaseKey = usePlaceholder ? "placeholder" : (envKey || "");
 
 /**
  * CONFIGURACIÓN TÉCNICA

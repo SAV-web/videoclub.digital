@@ -42,7 +42,7 @@ function getFriendlyErrorMessage(error) {
   if (msg.includes("rate limit")) return "Demasiados intentos. Espera un momento.";
   if (msg.includes("not confirmed")) return "Por favor, confirma tu email primero.";
   if (msg.includes("weak password")) return "La contraseña es muy débil.";
-  return `Error: ${error.message}`; // Fallback
+  return error?.message ? `Error: ${error.message}` : "Error desconocido"; // Fallback
 }
 
 /**
@@ -54,7 +54,7 @@ async function handleAuthSubmit(event, authAction) {
 
   const form = event.currentTarget;
   const submitBtn = form.querySelector('button[type="submit"]');
-  const originalBtnText = submitBtn.textContent;
+  const originalBtnText = submitBtn ? submitBtn.textContent : "";
   
   // 1. Extracción de datos (CORREGIDO: Usamos selectores CSS en lugar de FormData)
   // Detectamos si es el formulario de login para buscar los IDs correctos
@@ -76,9 +76,11 @@ async function handleAuthSubmit(event, authAction) {
   }
 
   // 3. Bloqueo UI
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Procesando...";
-  submitBtn.style.opacity = "0.7";
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Procesando...";
+    submitBtn.style.opacity = "0.7";
+  }
 
   try {
     // 4. Ejecución de la lógica específica

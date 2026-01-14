@@ -184,16 +184,24 @@ export function setFilter(filterType, value, force = false) {
   }
 
   state.activeFilters[filterType] = value;
+  state.totalMovies = 0; // Invalidate total on filter change
   return true;
 }
 
 export function setSearchTerm(term) {
   state.activeFilters.searchTerm = term;
+  state.totalMovies = 0; // Invalidate total on search
+  let filtersCleared = false;
+  
   // Lógica de exclusividad: Si buscamos por texto, limpiamos actor y director
   if (term && term.length > 0) {
+    if (state.activeFilters.actor || state.activeFilters.director) {
+      filtersCleared = true;
+    }
     state.activeFilters.actor = null;
     state.activeFilters.director = null;
   }
+  return filtersCleared;
 }
 
 export function setSort(sortValue) {
@@ -202,6 +210,7 @@ export function setSort(sortValue) {
 
 export function setMediaType(mediaType) {
   state.activeFilters.mediaType = mediaType;
+  state.totalMovies = 0; // Invalidate total on type change
 }
 
 /**
@@ -220,6 +229,7 @@ export function toggleExcludedFilter(filterType, value) {
   if (index > -1) {
     // Si existe, lo quitamos (siempre permitido)
     targetList.splice(index, 1);
+    state.totalMovies = 0; // Invalidate total
     return true;
   } else {
     // Si no existe, intentamos añadirlo
@@ -237,6 +247,7 @@ export function toggleExcludedFilter(filterType, value) {
     }
 
     targetList.push(value);
+    state.totalMovies = 0; // Invalidate total
     return true;
   }
 }
