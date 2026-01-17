@@ -333,19 +333,23 @@ export function initThemeToggle() {
   if (!btn) return;
 
   // Sincronización inicial
-  const isDark = document.documentElement.classList.contains("dark-mode");
+  const isDark = document.documentElement.classList.contains(CSS_CLASSES.DARK_MODE);
   btn.setAttribute("aria-pressed", isDark);
 
   btn.addEventListener("click", (e) => {
     triggerPopAnimation(e.currentTarget);
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     
-    const isNowDark = document.documentElement.classList.toggle("dark-mode");
+    const isNowDark = document.documentElement.classList.toggle(CSS_CLASSES.DARK_MODE);
     localStorage.setItem("theme", isNowDark ? "dark" : "light");
     btn.setAttribute("aria-pressed", isNowDark);
   });
 }
 
+/**
+ * Limpia las sugerencias de autocompletado del sidebar.
+ * @param {HTMLElement|null} exceptForm - Si se proporciona, no limpia las sugerencias de este formulario.
+ */
 export function clearAllSidebarAutocomplete(exceptForm = null) {
   document.querySelectorAll(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS).forEach((container) => {
     const parentForm = container.closest(SELECTORS.SIDEBAR_FILTER_FORM);

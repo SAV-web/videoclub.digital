@@ -44,15 +44,12 @@ const dom = {
   yearStartInput: document.querySelector(SELECTORS.YEAR_START_INPUT),
   yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
   sidebarOverlay: document.getElementById("sidebar-overlay"),
+  mobileSidebarToggle: document.getElementById("mobile-sidebar-toggle"),
   mainContent: document.querySelector(".main-content-wrapper"), 
 };
 
 // Caché para contenedores de secciones (evita querySelector repetido en renderFilterPills)
 const sectionContainers = {};
-
-// Caché para elementos de filtro (optimización de rendimiento)
-let cachedFilterLinks = null;
-let cachedFilterInputs = null;
 
 // =================================================================
 //          1. LÓGICA DE GESTOS TÁCTILES (GPU Accelerated)
@@ -69,19 +66,29 @@ let touchState = {
   isInteractive: false 
 };
 
-export const openMobileDrawer = () => {
-  document.body.classList.add(CSS_CLASSES.SIDEBAR_OPEN);
-  dom.sidebar.style.transform = ''; 
-  touchState.currentTranslate = 0;
-  updateRewindButtonIcon(true);
-};
+// Fuente única de verdad para el estado del sidebar
+function setSidebarState(isOpen) {
+  // 1. Clases y Estilos (Solo en móvil gestionamos la clase de drawer para evitar overlay en desktop)
+  if (window.innerWidth <= MOBILE_BREAKPOINT) {
+    document.body.classList.toggle(CSS_CLASSES.SIDEBAR_OPEN, isOpen);
+    dom.sidebar.style.transform = ''; // Limpiar transform inline para que CSS mande (o resetear drag)
+    touchState.currentTranslate = isOpen ? 0 : -DRAWER_WIDTH;
+  }
 
-export const closeMobileDrawer = () => {
-  document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
-  dom.sidebar.style.transform = ''; 
-  touchState.currentTranslate = -DRAWER_WIDTH;
-  updateRewindButtonIcon(false);
-};
+  // 2. Iconos y ARIA (Sincronización)
+  if (dom.rewindButton) {
+    dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
+    dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
+    dom.rewindButton.setAttribute("aria-expanded", isOpen);
+  }
+  if (dom.mobileSidebarToggle) {
+    dom.mobileSidebarToggle.setAttribute('aria-expanded', String(isOpen));
+    dom.mobileSidebarToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú de filtros' : 'Abrir menú de filtros');
+  }
+}
+
+export const openMobileDrawer = () => setSidebarState(true);
+export const closeMobileDrawer = () => setSidebarState(false);
 
 function updateDrawerWidth() {
   if (dom.sidebar) {
@@ -203,19 +210,6 @@ function handleTouchEnd(e) {
   else closeMobileDrawer();
 }
 
-function updateRewindButtonIcon(isOpen) {
-  if (!dom.rewindButton) return;
-  dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
-  dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
-  dom.rewindButton.setAttribute("aria-expanded", isOpen);
-
-  const mobileToggle = document.getElementById('mobile-sidebar-toggle');
-  if (mobileToggle) {
-    mobileToggle.setAttribute('aria-expanded', String(isOpen));
-    mobileToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú de filtros' : 'Abrir menú de filtros');
-  }
-}
-
 function initTouchGestures() {
   if (!dom.sidebar) return;
   updateDrawerWidth();
@@ -265,6 +259,7 @@ function toggleRotationMode(forceState = null) {
   triggerPopAnimation(button);
 }
 
+// Estado del gesto de pellizco (Pinch)
 let pinchInited = false;
 
 function initPinchGestures() {
@@ -286,6 +281,7 @@ function initPinchGestures() {
   let hasTriggered = false;
   let cooldownTimer = null;
 
+  // Owner del cooldown global: Sidebar gestiona la creación del estado de bloqueo
   const activateCooldown = () => {
     document.body.dataset.gestureCooldown = "true";
     if (cooldownTimer) clearTimeout(cooldownTimer);
@@ -382,9 +378,8 @@ function updateAllFilterControls() {
   const limitReached = activeCount >= CONFIG.MAX_ACTIVE_FILTERS;
 
   // 1. Actualizar enlaces de filtro (Links)
-  if (!cachedFilterLinks) cachedFilterLinks = document.querySelectorAll(".filter-link");
-  const allLinks = cachedFilterLinks;
-  allLinks.forEach(link => {
+  // Simplificación: Consultar DOM directamente para evitar caché obsoleta tras renderizado dinámico
+  document.querySelectorAll(".filter-link").forEach(link => {
     const type = link.dataset.filterType;
     const value = link.dataset.filterValue;
     
@@ -394,10 +389,8 @@ function updateAllFilterControls() {
     const isActive = activeFilters[type] === value;
     const shouldHide = isActive || isExcluded;
     
-    // Optimización: Solo tocar el DOM si cambia el estado
-    if (link.style.display !== (shouldHide ? "none" : "flex")) {
-        link.style.display = shouldHide ? "none" : "flex";
-    }
+    // Optimización: Usar atributo hidden estándar (delegan layout al CSS)
+    if (link.hidden !== shouldHide) link.hidden = shouldHide;
 
     // B. Disponibilidad: Deshabilitar si límite alcanzado (y no está oculto)
     if (!shouldHide) {
@@ -416,15 +409,12 @@ function updateAllFilterControls() {
     if (excludeBtn) {
         // Solo mostrar botón excluir si NO hay un país activo (para evitar conflictos)
         const shouldHideExclude = (type === 'country' && activeFilters.country);
-        if (excludeBtn.style.display !== (shouldHideExclude ? "none" : "")) {
-            excludeBtn.style.display = shouldHideExclude ? "none" : "";
-        }
+        if (excludeBtn.hidden !== !!shouldHideExclude) excludeBtn.hidden = !!shouldHideExclude;
     }
   });
 
   // 2. Actualizar Inputs de texto (Autocompletado)
-  if (!cachedFilterInputs) cachedFilterInputs = document.querySelectorAll(".sidebar-filter-input");
-  cachedFilterInputs.forEach((input) => {
+  document.querySelectorAll(".sidebar-filter-input").forEach((input) => {
     if (input.disabled !== limitReached) {
         input.disabled = limitReached;
         input.placeholder = limitReached ? "Límite de filtros" : `Otro ${input.closest("form").dataset.filterType}...`;
@@ -462,7 +452,8 @@ function renderFilterPills() {
     // RECONCILIACIÓN SIMPLE: Comprobar si los datos han cambiado antes de tocar el DOM
     // Usamos una clave combinada para evitar que la exclusión borre a la inclusión
     const stateKey = `${filterType}-combined`;
-    const currentState = JSON.stringify({ inc: incValue, exc: excValues });
+    // Optimización: Concatenación simple en lugar de JSON.stringify para reducir GC
+    const currentState = `${incValue || ""}|${excValues.join(",")}`;
     
     if (lastPillState[stateKey] === currentState) {
       // Solo incrementamos el índice para mantener la coherencia de animaciones
@@ -693,7 +684,8 @@ function setupAutocompleteHandlers() {
     
     const debouncedFetch = debounce(async () => {
       const rawTerm = input.value.trim();
-      if (rawTerm.length < 3) { clearAllSidebarAutocomplete(form); return; }
+      // FIX: Limpiar TODO (incluido este formulario) si el término es corto
+      if (rawTerm.length < 3) { clearAllSidebarAutocomplete(); return; }
       
       // Sanitizar para la API (evitar comodines indeseados), pero usar raw para el resaltado UI
       const apiTerm = sanitizeSearchTerm(rawTerm);
@@ -780,7 +772,7 @@ function setupEventListeners() {
       } else {
         document.body.classList.toggle(CSS_CLASSES.SIDEBAR_COLLAPSED);
         const isNowCollapsed = document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
-        updateRewindButtonIcon(!isNowCollapsed);
+        setSidebarState(!isNowCollapsed); // Reutilizamos la lógica de iconos
       }
     });
   }
@@ -858,7 +850,7 @@ function setupEventListeners() {
 
 export function initSidebar() {
   if (window.innerWidth <= MOBILE_BREAKPOINT) {
-    updateRewindButtonIcon(false);
+    setSidebarState(false); // Estado inicial cerrado en móvil
   }
   
   const populateFilterSection = (filterType) => {
@@ -909,10 +901,6 @@ export function initSidebar() {
       fragment.appendChild(link);
     });
     listContainer.appendChild(fragment);
-
-    // Invalidar caché de controles para que se refresque en la próxima actualización
-    cachedFilterLinks = null;
-    cachedFilterInputs = null;
   };
 
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);

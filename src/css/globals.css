@@ -4,6 +4,21 @@
    RESET Y ESTILOS BASE
    ================================================================= */
 
+/* 
+   =================================================================
+   MAPA DE ESTADOS GLOBALES (CONTRATO JS <-> CSS)
+   Estos modificadores se aplican en <body> o <html> para controlar la UI.
+   =================================================================
+   .sidebar-is-open      -> Muestra el drawer en móvil (bloquea scroll).
+   .sidebar-collapsed    -> Contrae el sidebar en desktop.
+   .sidebar-is-dragging  -> Optimiza el rendimiento durante gestos (bloquea pointer-events).
+   .modal-open           -> Indica que hay un modal activo (bloquea scroll).
+   .rotation-disabled    -> Modo "Muro" (desactiva giro de tarjetas).
+   .is-fetching          -> Muestra la barra de progreso superior.
+   .user-logged-in       -> Cambia la UI del perfil de usuario.
+   html.dark-mode        -> Activa variables de tema oscuro.
+*/
+
 /* 1. Box Sizing Universal */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -82,6 +97,11 @@ body.sidebar-is-open {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* 7b. Utilidad: Atributo hidden robusto */
+[hidden] {
+  display: none !important;
 }
 
 /* 8. Preferencias de Movimiento Reducido */

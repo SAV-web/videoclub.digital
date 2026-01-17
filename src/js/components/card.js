@@ -1,6 +1,6 @@
 // src/js/components/card.js
 
-import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } from "../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
@@ -225,6 +225,8 @@ async function toggleWatchlist(movieId, btn, card) {
 }
 
 export function handleCardClick(event) {
+  // Contrato Global: Respetar el cooldown de gestos gestionado por sidebar.js
+  // (Evita clicks accidentales durante pinch-to-zoom o swipes globales)
   if ("gestureCooldown" in document.body.dataset) { event.preventDefault(); event.stopPropagation(); return; }
 
   const card = this;
@@ -403,15 +405,15 @@ function populateCard(card, movie) {
   const origWrap = back.querySelector('.back-original-title-wrapper');
   if (movie.original_title && movie.original_title.trim()) {
     origWrap.querySelector('[data-template="original-title"]').textContent = movie.original_title;
-    origWrap.style.display = 'flex';
-  } else { origWrap.style.display = 'none'; }
+    origWrap.hidden = false;
+  } else { origWrap.hidden = true; }
 
   // Duración y Episodios
   back.querySelector(SELECTORS.DURATION).textContent = formatRuntime(movie.minutes, isSeries);
   const epEl = back.querySelector('[data-template="episodes"]');
   const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
   epEl.textContent = epText;
-  epEl.style.display = epText ? "inline" : "none";
+  epEl.hidden = !epText;
 
   // Links Externos
   const setupLink = (key, url) => {
@@ -420,13 +422,12 @@ function populateCard(card, movie) {
       el.href = url;
       el.classList.remove('disabled');
       el.setAttribute("aria-label", `Ver en ${key}`);
-      el.style.display = 'flex';
     } else {
       el.removeAttribute('href');
       el.classList.add('disabled');
       el.removeAttribute("aria-label");
-      el.style.display = 'flex';
     }
+    el.hidden = false; // Siempre visible (habilitado o deshabilitado)
   };
   setupLink('justwatch', movie.justwatch);
   setupLink('wikipedia', movie.wikipedia);
@@ -438,8 +439,8 @@ function populateCard(card, movie) {
   const criticEl = back.querySelector('[data-template="critic-container"]');
   if (movie.critic?.trim()) {
     criticEl.querySelector('[data-template="critic"]').textContent = movie.critic;
-    criticEl.style.display = 'block';
-  } else { criticEl.style.display = 'none'; }
+    criticEl.hidden = false;
+  } else { criticEl.hidden = true; }
 
   // Actores
   const actorsEl = back.querySelector(SELECTORS.ACTORS);
@@ -586,6 +587,10 @@ export function renderNoResults(container, pagContainer, filters) {
   if (!container) return;
 
   const div = createElement("div", { className: "no-results", attributes: { role: "status" } });
+  
+  // Micro-ilustración editorial (SVG Inline)
+  div.appendChild(createElement("div", { className: "no-results-icon", innerHTML: ICONS.POPCORN }));
+
   div.appendChild(createElement("h3", { textContent: "No se encontraron resultados" }));
   
   const hasFilters = hasActiveMeaningfulFilters();

@@ -78,8 +78,9 @@
   touch-action: pan-y; /* Permite scroll vertical, JS maneja horizontal */
 
   transition: 
-    transform 0.3s var(--ease-snap),
-    width var(--transition-duration-normal),
+    transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    flex-basis 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
     background-color var(--transition-duration-normal),
     border-color var(--transition-duration-normal);
 }

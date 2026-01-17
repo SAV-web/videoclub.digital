@@ -470,11 +470,19 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 .auth-button:hover { background-color: var(--color-accent-darker); }
 .auth-button:active { transform: scale(0.98); }
 
+/* Estado ocupado/deshabilitado */
+.auth-button:disabled,
+.auth-button.is-busy {
+  opacity: 0.7;
+  cursor: wait;
+  pointer-events: none;
+}
+
 .auth-toggle-text { margin-top: var(--space-lg); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
 .auth-toggle-text button { border: none; background: none; color: var(--color-accent); cursor: pointer; font-weight: bold; text-decoration: underline; }
 
 .auth-message {
-  display: none; margin-top: var(--space-md); padding: var(--space-sm);
+  margin-top: var(--space-md); padding: var(--space-sm);
   border-radius: var(--radius-md); font-weight: bold; font-size: var(--font-size-sm);
 }
 .auth-message--error { background-color: var(--color-error-bg); color: var(--color-error); }

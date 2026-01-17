@@ -135,6 +135,6 @@
   /* Sobrescribe componentes específicos */
   .type-filter-toggle,
   .sidebar .sidebar-control-button {
-    height: 48px; width: 48px; padding: 0;
+    height: var(--tap-target-size); width: var(--tap-target-size); padding: 0;
   }
 }

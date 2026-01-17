@@ -75,6 +75,8 @@ export const CSS_CLASSES = Object.freeze({
   MODAL_OPEN: "modal-open",
   USER_LOGGED_IN: "user-logged-in",
   IS_DRAGGING: "is-dragging", // Element state (sidebar/modal)
+  IS_FETCHING: "is-fetching", // Barra de progreso global
+  DARK_MODE: "dark-mode",     // Tema (en html)
   
   // Componentes
   MOVIE_CARD: "movie-card",
@@ -140,6 +142,8 @@ export const SELECTORS = Object.freeze({
 
 /**
  * RECURSOS SVG (Iconos Inline)
+ * NOTA DE SEGURIDAD: Estos strings son contenido de confianza.
+ * Se permite su uso con innerHTML exclusivamente porque son constantes estáticas.
  */
 export const ICONS = Object.freeze({
   PAUSE: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,

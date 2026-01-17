@@ -27,15 +27,18 @@
 <!-- Estilos mínimos para renderizar el "Above the Fold" (Header, Sidebar básico, Skeleton) antes de cargar el CSS principal -->
 <style>
   :root {
-    --color-bg: #f5f5f5; --color-surface: #fff; --color-text-primary: #333; --color-text-secondary: #666;
+    --color-bg: #f5f5f5; --color-surface: #fff; --color-text-primary: #1a1a1a; --color-text-secondary: #4a4a4a;
     --color-accent: #37474f; --color-accent-exclude: #90a4ae; --color-border: #e0e0e0;
     --radius-md: 6px; --radius-round: 50%; --shadow: 0 5px 15px rgba(0,0,0,0.08);
     --z-index-header: 900; --z-index-sidebar: 1000; --mobile-header-height: 57px;
+    /* Variables críticas para evitar CLS (Cumulative Layout Shift) antes de cargar variables.css */
+    --font-body: system-ui, -apple-system, sans-serif;
+    --space-xs: 0.5rem; --space-sm: 0.75rem; --space-md: 1rem; --space-lg: 1.5rem; --space-xl: 2rem; --space-xxl: 3rem;
   }
   html.dark-mode {
-    --color-bg: #121212; --color-surface: #282828; --color-text-primary: #e0e0e0;
-    --color-text-secondary: #aaa; --color-accent: #90a4ae; --color-accent-exclude: #546e7a;
-    --color-border: #333; --shadow: 0 5px 20px rgba(0,0,0,0.25);
+    --color-bg: #121212; --color-surface: #242424; --color-text-primary: #e0e0e0;
+    --color-text-secondary: #b8b8b8; --color-accent: #b0bec5; --color-accent-exclude: #546e7a;
+    --color-border: #2f2f2f; --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background-color: var(--color-bg); color: var(--color-text-primary); font-family: var(--font-body); }
@@ -214,12 +217,12 @@
           <form id="login-form"><div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" required/></div><div class="form-group"><label for="login-password">Contraseña</label><input type="password" id="login-password" required/></div><button type="submit" class="auth-button">Acceder</button></form>
           <div class="auth-toggle-text">¿No tienes cuenta? <button type="button" id="show-register-view">Regístrate</button></div>
         </section>
-        <section id="register-view" style="display: none">
+        <section id="register-view" hidden>
           <h3>Crear Cuenta</h3>
           <form id="register-form"><div class="form-group"><label for="register-email">Email</label><input type="email" id="register-email" required/><small>Te enviaremos confirmación.</small></div><div class="form-group"><label for="register-password">Contraseña</label><input type="password" id="register-password" required minlength="6"/><small>Mínimo 6 caracteres.</small></div><button type="submit" class="auth-button">Crear Cuenta</button></form>
           <div class="auth-toggle-text">¿Ya tienes cuenta? <button type="button" id="show-login-view">Inicia sesión</button></div>
         </section>
-        <div id="auth-message" class="auth-message" style="display: none" role="alert"></div>
+        <div id="auth-message" class="auth-message" hidden role="alert"></div>
       </div>
     </div>
 

@@ -44,8 +44,8 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false } =
   updateUrl({ replace: replaceHistory }); // Sincronizar URL (Push o Replace según contexto)
 
   // Estado de carga visual
-  document.body.classList.add('is-fetching');
-  dom.gridContainer.classList.add('is-fetching');
+  document.body.classList.add(CSS_CLASSES.IS_FETCHING);
+  dom.gridContainer.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer.setAttribute("aria-busy", "true");
   
   // Renderizado de Skeletons diferido (150ms) para evitar parpadeo en cargas rápidas
@@ -107,8 +107,8 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false } =
     if (msg) throw new Error(msg); 
   } finally {
     if (!signal.aborted) {
-      document.body.classList.remove('is-fetching');
-      dom.gridContainer.classList.remove('is-fetching');
+      document.body.classList.remove(CSS_CLASSES.IS_FETCHING);
+      dom.gridContainer.classList.remove(CSS_CLASSES.IS_FETCHING);
       dom.gridContainer.setAttribute("aria-busy", "false");
     }
   }

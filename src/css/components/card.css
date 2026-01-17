@@ -498,6 +498,8 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
 body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
   transition: transform var(--duration-quick) ease;
+  /* Ajuste de estimación de tamaño para evitar saltos de scroll en modo compacto */
+  contain-intrinsic-size: 105px 158px;
 }
 
 /* Reducir sombra en modo muro para que sea proporcional al tamaño */

@@ -204,7 +204,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .search-form input,
   #sort-select,
   .type-filter-toggle {
-    height: 48px;
+    height: var(--tap-target-size);
     font-size: 1rem;
   }
 }

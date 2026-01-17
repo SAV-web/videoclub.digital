@@ -22,14 +22,14 @@ function setFeedback(message, type = "error") {
   if (!authMessage) return;
   
   if (!message) {
-    authMessage.style.display = "none";
+    authMessage.hidden = true;
     authMessage.textContent = "";
     return;
   }
 
   authMessage.textContent = message;
   authMessage.className = `auth-message auth-message--${type}`;
-  authMessage.style.display = "block";
+  authMessage.hidden = false;
 }
 
 /**
@@ -42,7 +42,9 @@ function getFriendlyErrorMessage(error) {
   if (msg.includes("rate limit")) return "Demasiados intentos. Espera un momento.";
   if (msg.includes("not confirmed")) return "Por favor, confirma tu email primero.";
   if (msg.includes("weak password")) return "La contraseña es muy débil.";
-  return error?.message ? `Error: ${error.message}` : "Error desconocido"; // Fallback
+  
+  // Fallback seguro: Detalle técnico solo en DEV, mensaje genérico en PROD
+  return (import.meta.env.DEV && error?.message) ? `Error: ${error.message}` : "Error de autenticación. Inténtalo de nuevo.";
 }
 
 /**
@@ -79,7 +81,7 @@ async function handleAuthSubmit(event, authAction) {
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = "Procesando...";
-    submitBtn.style.opacity = "0.7";
+    submitBtn.classList.add("is-busy");
   }
 
   try {
@@ -93,7 +95,7 @@ async function handleAuthSubmit(event, authAction) {
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = originalBtnText;
-      submitBtn.style.opacity = "1";
+      submitBtn.classList.remove("is-busy");
     }
   }
 }
@@ -138,14 +140,14 @@ function toggleView(showRegister) {
   setFeedback(null);
   
   if (showRegister) {
-    dom.loginView.style.display = "none";
-    dom.registerView.style.display = "block";
+    dom.loginView.hidden = true;
+    dom.registerView.hidden = false;
     requestAnimationFrame(() => {
       dom.registerForm.querySelector('input')?.focus({ preventScroll: true });
     });
   } else {
-    dom.registerView.style.display = "none";
-    dom.loginView.style.display = "block";
+    dom.registerView.hidden = true;
+    dom.loginView.hidden = false;
     requestAnimationFrame(() => {
       dom.loginForm.querySelector('input')?.focus({ preventScroll: true });
     });
