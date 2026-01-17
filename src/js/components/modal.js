@@ -302,10 +302,8 @@ function setupModalDetails(back, movie) {
     span.className = ""; // Reset
     if (movie.original_title.length > 40) span.classList.add("title-xl-long");
     else if (movie.original_title.length > 20) span.classList.add("title-long");
-    origTitle.style.display = 'flex';
-  } else {
-    origTitle.style.display = 'none';
-  }
+    origTitle.hidden = false;
+  } else { origTitle.hidden = true; }
 
   // Duración y Episodios
   const isSeries = movie.type?.toUpperCase().startsWith("S.");
@@ -314,18 +312,17 @@ function setupModalDetails(back, movie) {
   const epEl = back.querySelector('[data-template="episodes"]');
   const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
   epEl.textContent = epText;
-  epEl.style.display = epText ? "inline" : "none";
+  epEl.hidden = !epText;
 
   // Links Externos
   const setupLink = (key, url) => {
     const el = back.querySelector(`[data-template="${key}-link"]`);
     if (url) {
       el.href = url; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
-      el.style.display = 'flex';
     } else {
       el.removeAttribute('href'); el.classList.add('disabled'); el.removeAttribute("aria-label");
-      el.style.display = 'flex';
     }
+    el.hidden = false; // Siempre visible (habilitado o deshabilitado)
   };
   setupLink('justwatch', movie.justwatch);
   setupLink('wikipedia', movie.wikipedia);
@@ -337,8 +334,8 @@ function setupModalDetails(back, movie) {
   const critic = back.querySelector('[data-template="critic-container"]');
   if (movie.critic?.trim()) {
     critic.querySelector('[data-template="critic"]').textContent = movie.critic;
-    critic.style.display = 'block';
-  } else { critic.style.display = 'none'; }
+    critic.hidden = false;
+  } else { critic.hidden = true; }
 
   // Actores
   const actorsCont = back.querySelector('[data-template="actors"]');

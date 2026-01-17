@@ -196,7 +196,7 @@
 }
 
 .section-content {
-  display: flex; flex-direction: column; gap: var(--space-xxs);
+  display: flex; flex-direction: column; gap: 1px;
   padding-left: var(--space-xs);
   max-height: 0; opacity: 0; transform: translateY(-10px);
   overflow: hidden; visibility: hidden;
@@ -217,11 +217,12 @@
 /* --- 6. Enlaces de Filtro --- */
 .filter-link {
   display: flex; justify-content: space-between; align-items: center;
-  padding: var(--space-xxs) var(--space-xs);
+  padding: 2px var(--space-xs);
   border: none; border-radius: var(--radius-sm); background: none;
   color: var(--color-text-secondary);
   cursor: pointer; text-align: left; text-decoration: none;
   font: inherit; font-size: var(--font-size-sm); font-weight: bold;
+  min-height: 34px; /* Equilibrar altura con items que tienen botón de exclusión (30px + 4px) */
   transition: color var(--transition-duration-fast), background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
 
   &:active { transform: scale(0.98); transition-duration: 0.1s; }
@@ -523,7 +524,7 @@ body.sidebar-is-dragging .main-content-wrapper {
 /* --- Iconos Estudios --- */
 .filter-link--studio {
   justify-content: flex-start;
-  padding-block: var(--space-xs);
+  padding-block: 2px;
 }
 
 .sidebar-platform-icon {
