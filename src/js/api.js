@@ -21,28 +21,30 @@ import { getUserDataForMovie } from "./state.js";
 const sbUrl = CONFIG.SUPABASE_URL;
 const sbKey = CONFIG.SUPABASE_ANON_KEY;
 
+// Helper para error de configuración (Mock unificado)
+const notConfiguredError = () => Promise.reject(new Error("Supabase no configurado (Faltan credenciales)"));
+
 export const supabase = (sbUrl && sbKey) 
   ? createClient(sbUrl, sbKey)
   : {
       // Mock de seguridad: Permite que la app cargue, pero falla al pedir datos
-      rpc: () => Promise.reject(new Error("Error crítico: Supabase no configurado (Faltan credenciales)")),
+      rpc: notConfiguredError,
       from: () => ({ 
-        select: () => Promise.reject(new Error("Supabase no configurado")),
-        upsert: () => Promise.reject(new Error("Supabase no configurado"))
+        select: notConfiguredError,
+        upsert: notConfiguredError
       }),
       auth: {
         getSession: () => Promise.resolve({ data: { session: null }, error: null }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        signInWithPassword: () => Promise.reject(new Error("Supabase no configurado")),
-        signOut: () => Promise.reject(new Error("Supabase no configurado")),
-        signUp: () => Promise.reject(new Error("Supabase no configurado"))
+        signInWithPassword: notConfiguredError,
+        signOut: notConfiguredError,
+        signUp: notConfiguredError
       }
     };
 
 // --- SISTEMA DE CACHÉ ---
 
-// 1. Caché principal para resultados de búsqueda (Grid)
-// TTL de 30 minutos porque el catálogo no cambia cada segundo.
+// TTL de 30 minutos: el catálogo es estable y no requiere refresco inmediato.
 export const queryCache = new LRUCache({
   max: 300, // Guardar hasta 300 páginas de resultados
   ttl: 1000 * 60 * 30, 
@@ -50,12 +52,27 @@ export const queryCache = new LRUCache({
   ttlAutopurge: true,
 });
 
-// 2. Caché para sugerencias de autocompletado (Ligera y rápida)
-// TTL corto (5 min) para agilizar la escritura repetitiva.
+// TTL corto (5 min): optimiza la escritura repetitiva sin consumir mucha memoria.
 const suggestionsCache = new LRUCache({
   max: 100,
   ttl: 1000 * 60 * 5,
 });
+
+// --- HELPERS INTERNOS ---
+
+function parseYearRange(yearStr) {
+  if (!yearStr) return { start: null, end: null };
+  const parts = yearStr.split("-").map(Number);
+  if (parts.length === 2 && !parts.some(isNaN)) {
+    return { start: parts[0], end: parts[1] };
+  }
+  return { start: null, end: null };
+}
+
+const isAbort = (error, signal) => 
+  error?.name === "AbortError" || 
+  signal?.aborted || 
+  (error?.message && error.message.toLowerCase().includes("abort"));
 
 /**
  * Genera una clave única y determinista para la caché basada en los filtros.
@@ -63,6 +80,9 @@ const suggestionsCache = new LRUCache({
  */
 function createCanonicalCacheKey(filters, page, pageSize) {
   const normalizedFilters = {};
+  // Solo normalizar campos de texto libre donde el casing no importa
+  const textFields = new Set(['searchTerm', 'genre', 'country', 'director', 'actor', 'excludedGenres', 'excludedCountries']);
+
   Object.keys(filters).sort().forEach((key) => {
       const value = filters[key];
       // Ignorar valores nulos o vacíos para normalizar la clave
@@ -70,15 +90,16 @@ function createCanonicalCacheKey(filters, page, pageSize) {
       const isNonEmptyArray = Array.isArray(value) && value.length > 0;
       
       if (hasValue && (!Array.isArray(value) || isNonEmptyArray)) {
-        // MEJORA: Normalización (Trim + Lowercase) para evitar cache misses por formato.
-        // El backend es case-insensitive, así que la caché también debería serlo.
-        if (typeof value === 'string') {
-          normalizedFilters[key] = value.trim().toLowerCase();
-        } else if (Array.isArray(value)) {
-          // Si es array: normalizar elementos y ordenar para consistencia
-          normalizedFilters[key] = value.map(v => (typeof v === 'string' ? v.trim().toLowerCase() : v)).sort();
+        if (textFields.has(key)) {
+          // Normalización segura (Trim + Lowercase) solo para texto
+          if (typeof value === 'string') {
+            normalizedFilters[key] = value.trim().toLowerCase();
+          } else if (Array.isArray(value)) {
+            normalizedFilters[key] = value.map(v => (typeof v === 'string' ? v.trim().toLowerCase() : v)).sort();
+          }
         } else {
-          normalizedFilters[key] = value;
+          // Para códigos (IDs, Sort, etc) conservar casing, pero ordenar arrays
+          normalizedFilters[key] = Array.isArray(value) ? [...value].sort() : value;
         }
       }
     });
@@ -89,16 +110,7 @@ function createCanonicalCacheKey(filters, page, pageSize) {
  * Mapea los filtros del frontend a los parámetros esperados por la función RPC de PostgreSQL.
  */
 function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
-  let yearStart = null;
-  let yearEnd = null;
-  
-  // Parseo del rango de años "YYYY-YYYY"
-  if (activeFilters.year) {
-    const parts = activeFilters.year.split("-").map(Number);
-    if (parts.length === 2 && !parts.some(isNaN)) {
-      [yearStart, yearEnd] = parts;
-    }
-  }
+  const { start: yearStart, end: yearEnd } = parseYearRange(activeFilters.year);
 
   const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
   const offset = (currentPage - 1) * pageSize;
@@ -136,26 +148,18 @@ const inFlightRequests = new Map();
  * @param {boolean} requestCount - Si se debe pedir el conteo total (caro).
  */
 export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true) {
-  // Incluimos requestCount en la clave porque el resultado es diferente si es true/false
+  // Incluimos requestCount en la clave porque el resultado varía (total vs -1)
   const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount }, currentPage, pageSize);
 
-  // 1. Cache Hit (Memoria)
-  if (queryCache.has(queryKey)) {
-    return Promise.resolve(queryCache.get(queryKey));
+  const cached = queryCache.get(queryKey);
+  if (cached) {
+    return Promise.resolve(cached);
   }
 
-  // 2. Deduplicación de peticiones en vuelo
-  const inFlight = inFlightRequests.get(queryKey);
-  if (inFlight) {
-    // Solo reutilizar si la petición original NO ha sido abortada.
-    // Esto permite que una nueva petición reemplace a una abortada inmediatamente.
-    if (!inFlight.signal?.aborted) {
-      return inFlight.promise;
-    }
-    inFlightRequests.delete(queryKey);
-  }
+  // Deduplicación: Si ya hay una petición idéntica en curso, reutilizamos su promesa
+  const inFlightPromise = inFlightRequests.get(queryKey);
+  if (inFlightPromise) return inFlightPromise;
 
-  // 3. Nueva Petición a Red
   const promise = (async () => {
     try {
       const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
@@ -168,7 +172,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
       const { data, error } = await query;
 
       if (error) {
-        if (error.name === "AbortError" || error.message?.includes("abort")) {
+        if (isAbort(error, signal)) {
             return { aborted: true, items: [], total: -1 };
         }
         console.error("[API] Error RPC Supabase:", error);
@@ -184,20 +188,19 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
       return result;
 
     } catch (error) {
-      if (error.name === "AbortError" || (signal && signal.aborted)) {
+      if (isAbort(error, signal)) {
           return { aborted: true, items: [], total: -1 };
       }
       throw error;
     } finally {
       // Limpieza: Solo borrar si somos la petición activa (race condition safety)
-      const current = inFlightRequests.get(queryKey);
-      if (current?.promise === promise) {
+      if (inFlightRequests.get(queryKey) === promise) {
         inFlightRequests.delete(queryKey);
       }
     }
   })();
 
-  inFlightRequests.set(queryKey, { promise, signal });
+  inFlightRequests.set(queryKey, promise);
   return promise;
 }
 
@@ -247,14 +250,12 @@ export async function setUserMovieDataAPI(movieId, partialData) {
 const fetchSuggestions = async (rpcName, searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) return [];
   
-  // 1. Revisar Caché de Sugerencias
   const cacheKey = `suggest:${rpcName}:${searchTerm.toLowerCase()}`;
   if (suggestionsCache.has(cacheKey)) {
     return suggestionsCache.get(cacheKey);
   }
 
-  // 2. Gestión de cancelación (Debounce de red)
-  // createAbortableRequest cancela automáticamente la petición anterior con la misma clave
+  // Debounce de red: createAbortableRequest cancela automáticamente la petición anterior
   const requestKey = `suggestion-${rpcName}`;
   const controller = createAbortableRequest(requestKey);
   
@@ -263,12 +264,13 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
     
     if (error) {
       if (error.name === "AbortError") return []; // Ignorar cancelaciones
+      // Diagnóstico en desarrollo: Avisar si falla el RPC
+      if (import.meta.env.DEV) console.warn(`[API] Error en sugerencias (${rpcName}):`, error);
       return [];
     }
     
     const results = data.map((item) => item.suggestion);
     
-    // 3. Guardar en Caché
     suggestionsCache.set(cacheKey, results);
     return results;
   } catch (error) { return []; }
@@ -280,7 +282,7 @@ export const fetchCountrySuggestions = (term) => fetchSuggestions("get_country_s
 export const fetchActorSuggestions = async (term) => {
   const suggestions = await fetchSuggestions("get_actor_suggestions", term);
   // Filtrar actores ignorados (animación, etc.)
-  return suggestions.filter(name => !IGNORED_ACTORS.includes(name.toLowerCase()));
+  return suggestions.filter(name => !IGNORED_ACTORS.includes(name.trim().toLowerCase()));
 };
 
 // --- DATOS ALEATORIOS (Discovery) ---
@@ -288,7 +290,7 @@ export const fetchActorSuggestions = async (term) => {
 export const fetchRandomTopActors = async () => {
   const { data, error } = await supabase.rpc("get_random_top_actors", { limit_count: 5 });
   if (error) return [];
-  return data.map(d => d.name).filter(name => !IGNORED_ACTORS.includes(name.toLowerCase()));
+  return data.map(d => d.name).filter(name => !IGNORED_ACTORS.includes(name.trim().toLowerCase()));
 };
 
 export const fetchRandomTopDirectors = async () => {

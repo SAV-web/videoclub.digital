@@ -219,12 +219,20 @@
   color: var(--color-text-secondary);
   cursor: pointer; text-align: left; text-decoration: none;
   font: inherit; font-size: var(--font-size-sm); font-weight: bold;
-  transition: color var(--transition-duration-fast), background-color var(--transition-duration-fast);
+  transition: color var(--transition-duration-fast), background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
+
+  &:active { transform: scale(0.98); transition-duration: 0.1s; }
 
   @media (hover: hover) and (pointer: fine) {
-    &:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
+    /* Opción A: Desplazamiento dinámico en lugar de fondo */
+    &:hover { 
+      color: var(--color-text-primary); 
+      transform: translateX(4px);
+    }
+    /* Combinar desplazamiento y escala al hacer clic para evitar saltos */
+    &:hover:active { transform: translateX(4px) scale(0.98); }
   }
-  &:active { transform: scale(0.98); transition-duration: 0.1s; }
+  
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); background-color: var(--color-bg); }
 
   &.active {

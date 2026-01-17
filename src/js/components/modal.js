@@ -9,10 +9,14 @@ import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { setupCardRatings } from "./rating.js";
 import { formatRuntime, createElement, renderCountryFlag } from "../utils.js"; 
-import { STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
+import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 
 // --- Referencias DOM (Lazy Getter para seguridad) ---
+// Lazy DOM getter:
+// - evita referencias obsoletas tras re-render
+// - coste mínimo (getElementById)
+// - preferido a cachear nodos que pueden recrearse
 const getDom = () => ({
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
@@ -22,8 +26,15 @@ const getDom = () => ({
   nextBtn: document.getElementById("modal-next-btn"),
 });
 
+// 4.3. Helper para limpiar transformaciones (DRY)
+const resetModalTransform = () => {
+  const { modal } = getDom();
+  if (modal) modal.style.transform = "";
+};
+
 // --- Estado de Gestos Táctiles ---
 const touchState = {
+  // 4.1. Invariante: Solo uno de isDragging / isHorizontalSwipe puede ser true a la vez.
   startY: 0,
   startX: 0,
   currentY: 0,
@@ -33,6 +44,7 @@ const touchState = {
 
 const SWIPE_X_THRESHOLD = 80;
 const SWIPE_Y_CLOSE_THRESHOLD = 120;
+const MODAL_TRANSITION_MS = 300;
 
 // =================================================================
 //          1. GESTIÓN DE EVENTOS (Navegación y Cierre)
@@ -40,6 +52,7 @@ const SWIPE_Y_CLOSE_THRESHOLD = 120;
 
 function handleOutsideClick(event) {
   const { modal } = getDom();
+  // No cerramos si se hace click en una card del grid para permitir navegación directa.
   const isClickInsideCard = event.target.closest(".movie-card");
   
   if (modal.classList.contains("is-visible") && !modal.contains(event.target) && !isClickInsideCard) {
@@ -58,6 +71,10 @@ function handleMetadataClick(event) {
     const filterType = directorLink ? "director" : "actor";
     const filterValue = directorLink ? directorLink.dataset.directorName : actorLink.dataset.actorName;
 
+    // Evento global de integración:
+    // - reset de filtros
+    // - aplica filtro único (director/actor)
+    // - respetado por sidebar + main
     document.dispatchEvent(new CustomEvent("filtersReset", {
       detail: { keepSort: true, newFilter: { type: filterType, value: filterValue } },
     }));
@@ -75,11 +92,12 @@ function handleTouchStart(e) {
   touchState.isDragging = false;
   touchState.isHorizontalSwipe = false;
   
-  modal.classList.remove("is-dragging"); // Reactivar transición CSS si estaba desactivada
+  modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS si estaba desactivada
 }
 
 function handleTouchMove(e) {
   // Salir rápido si no es un gesto válido o ya está cancelado
+  // 4.2. Si otro handler ya capturó el gesto, no interferimos.
   if (!touchState.isDragging && !touchState.isHorizontalSwipe && e.defaultPrevented) return;
 
   const { modal, content } = getDom();
@@ -92,11 +110,13 @@ function handleTouchMove(e) {
   if (!touchState.isDragging && !touchState.isHorizontalSwipe) {
     if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return; // Umbral de ruido
 
+    const SCROLL_TOLERANCE = 5; // FIX: Tolerancia para scroll inercial (iOS)
+
     // Gesto Vertical (Cierre): Solo si estamos arriba del todo y arrastramos hacia abajo
-    if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= 0) {
+    if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= SCROLL_TOLERANCE) {
       if (window.innerWidth <= 700) { // Solo móvil
         touchState.isDragging = true;
-        modal.classList.add("is-dragging"); // Desactivar transición para seguir el dedo
+        modal.classList.add(CSS_CLASSES.IS_DRAGGING); // Desactivar transición para seguir el dedo
       }
     } 
     // Gesto Horizontal (Navegación)
@@ -108,7 +128,14 @@ function handleTouchMove(e) {
   // 2. Ejecución
   if (touchState.isDragging) {
     if (e.cancelable) e.preventDefault();
-    modal.style.transform = `translate(-50%, ${deltaY}px)`;
+    
+    let translateY = deltaY;
+    // Bonus: Rubber Banding (Resistencia exponencial al arrastrar hacia arriba/tope)
+    if (translateY < 0) {
+      translateY = -Math.pow(Math.abs(translateY), 0.75);
+    }
+
+    modal.style.transform = `translate(-50%, ${translateY}px)`;
     touchState.currentY = deltaY;
   } else if (touchState.isHorizontalSwipe) {
     if (e.cancelable) e.preventDefault(); // Evitar "Atrás/Adelante" del navegador
@@ -131,12 +158,12 @@ function handleTouchEnd(e) {
   // B. Cierre Vertical
   if (!touchState.isDragging) return;
   
-  modal.classList.remove("is-dragging"); // Reactivar transición CSS
+  modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS
 
   if (touchState.currentY > SWIPE_Y_CLOSE_THRESHOLD) { // Umbral de cierre
     closeModal();
   } else {
-    modal.style.transform = ""; // Rebote elástico
+    resetModalTransform(); // Rebote elástico
   }
   
   touchState.currentY = 0;
@@ -166,15 +193,15 @@ function navigateToSibling(direction) {
 
   const nextIndex = currentIndex + direction;
   if (nextIndex >= 0 && nextIndex < cards.length) {
-    openModal(cards[nextIndex]);
+    openModal(cards[nextIndex], cards); // Optimización: Pasamos la lista para evitar re-query
   }
 }
 
-function updateNavButtons(currentId) {
+function updateNavButtons(currentId, contextCards = null) {
   const { prevBtn, nextBtn } = getDom();
   const strId = String(currentId); // Asegurar tipo para comparación
   
-  const cards = getGridCards();
+  const cards = contextCards || getGridCards(); // Reutilizar o consultar
   const currentIndex = cards.findIndex(c => c.dataset.movieId === strId);
 
   if (currentIndex === -1) return;
@@ -184,13 +211,9 @@ function updateNavButtons(currentId) {
 
   if (prevBtn) {
     prevBtn.disabled = !hasPrev;
-    prevBtn.style.opacity = hasPrev ? "1" : "0";
-    prevBtn.style.pointerEvents = hasPrev ? "auto" : "none";
   }
   if (nextBtn) {
     nextBtn.disabled = !hasNext;
-    nextBtn.style.opacity = hasNext ? "1" : "0";
-    nextBtn.style.pointerEvents = hasNext ? "auto" : "none";
   }
 }
 
@@ -232,7 +255,12 @@ function setupModalHeader(front, movie) {
   }
 
   // Año y País
-  front.querySelector('[data-template="year"]').textContent = movie.year || "";
+  const isSeries = movie.type?.toUpperCase().startsWith("S.");
+  let yearText = movie.year || "";
+  if (isSeries && movie.year_end) {
+    yearText += movie.year_end === "M" ? " (M)" : (movie.year_end === "-" ? "-" : `-${movie.year_end.toString().slice(-2)}`);
+  }
+  front.querySelector('[data-template="year"]').textContent = yearText;
   renderCountryFlag(
     front.querySelector('[data-template="country-container"]'),
     front.querySelector('[data-template="country-flag"]'),
@@ -249,10 +277,14 @@ function setupModalHeader(front, movie) {
     codes.forEach(code => {
       const conf = STUDIO_DATA[code];
       if (conf) {
-        iconsContainer.appendChild(createElement('span', {
-          className: `platform-icon ${conf.class || ''}`, title: conf.title,
-          innerHTML: `<svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="${conf.vb || '0 0 24 24'}"><use href="${spriteUrl}#${conf.id}"></use></svg>`
-        }));
+        const span = createElement('span', { className: `platform-icon ${conf.class || ''}`, title: conf.title });
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", conf.w || "24"); svg.setAttribute("height", conf.h || "24");
+        svg.setAttribute("fill", "currentColor"); svg.setAttribute("viewBox", conf.vb || "0 0 24 24");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `${spriteUrl}#${conf.id}`);
+        svg.appendChild(use); span.appendChild(svg);
+        iconsContainer.appendChild(span);
       }
     });
   }
@@ -314,6 +346,7 @@ function setupModalDetails(back, movie) {
   if (movie.actors) {
     movie.actors.split(",").forEach((name, i, arr) => {
       const actorName = name.trim();
+      // Regla duplicada con card.js: actores ignorados no son clicables.
       if (IGNORED_ACTORS.includes(actorName.toLowerCase())) {
         actorsCont.append(actorName);
       } else {
@@ -326,7 +359,7 @@ function setupModalDetails(back, movie) {
   }
 }
 
-function populateModal(cardElement) {
+function populateModal(cardElement, contextCards = null) {
   const { template, content, modal } = getDom();
   if (!template) return;
   
@@ -334,7 +367,7 @@ function populateModal(cardElement) {
   const cardImg = cardElement.querySelector("img");
   const image_hq = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
 
-  // Crear copia superficial para no mutar el objeto original compartido
+  // Clon superficial para evitar mutaciones cruzadas con la card del grid.
   const movie = { ...cardElement.movieData, image_hq };
 
   const clone = template.cloneNode(true);
@@ -345,6 +378,7 @@ function populateModal(cardElement) {
   if (!modal.classList.contains("is-visible")) modal.classList.remove("hide-arrows");
   
   // Binding de Datos
+  // Almacenamos movieData en el nodo para navegación entre fichas.
   content.movieData = movie;
   content.dataset.movieId = movie.id;
 
@@ -362,7 +396,7 @@ function populateModal(cardElement) {
   // Inicializar interactividad
   updateCardUI(content);
   initializeCard(content);
-  updateNavButtons(movie.id);
+  updateNavButtons(movie.id, contextCards);
 }
 
 // =================================================================
@@ -375,26 +409,26 @@ export function closeModal() {
   
   modal.classList.remove("is-visible");
   overlay.classList.remove("is-visible");
-  document.body.classList.remove("modal-open");
+  document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
   
   // Limpieza
-  setTimeout(() => modal.style.transform = "", 300);
+  setTimeout(resetModalTransform, MODAL_TRANSITION_MS);
   closeAccessibleModal(modal, overlay);
   document.removeEventListener("click", handleOutsideClick);
 }
 
-export function openModal(cardElement) {
+export function openModal(cardElement, contextCards = null) {
   if (!cardElement) return;
   const { modal, overlay, content } = getDom();
   
   unflipAllCards();
-  populateModal(cardElement);
-  document.body.classList.add("modal-open");
+  populateModal(cardElement, contextCards);
+  document.body.classList.add(CSS_CLASSES.MODAL_OPEN);
   
   requestAnimationFrame(() => {
     modal.classList.add("is-visible");
     overlay.classList.add("is-visible");
-    openAccessibleModal(modal, overlay, true);
+    openAccessibleModal(modal, overlay, false); // false = No enfocar contenido automáticamente
     if (content) content.scrollTop = 0;
     setTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
   });
@@ -416,6 +450,7 @@ export function initQuickView() {
   }
 
   // Teclado
+  // Listener global único; initQuickView solo debe llamarse una vez.
   window.addEventListener("keydown", (e) => {
     if (!modal.classList.contains("is-visible")) return;
     if (e.key === "Escape") {

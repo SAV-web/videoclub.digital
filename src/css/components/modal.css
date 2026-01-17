@@ -41,7 +41,13 @@
   z-index: calc(var(--z-index-overlay) + 1);
   display: flex;
   background-color: var(--color-surface);
-  box-shadow: var(--shadow);
+  
+  /* Sombras estratificadas para profundidad realista sobre overlay oscuro */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.15);
+  html.dark-mode & {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+  
   overflow: hidden;
   
   opacity: 0;
@@ -298,6 +304,11 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 
 .modal-nav-btn:hover { transform: translateY(-50%) scale(1.1); background: var(--color-surface); }
 .modal-nav-btn:active { transform: translateY(-50%) scale(0.95); }
+
+/* Estado deshabilitado (oculto) gestionado por CSS */
+.modal-nav-btn:disabled {
+  opacity: 0; pointer-events: none;
+}
 
 .modal-nav-btn--prev { left: 20px; }
 .modal-nav-btn--next { right: 20px; }

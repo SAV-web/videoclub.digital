@@ -70,14 +70,14 @@ let touchState = {
 };
 
 export const openMobileDrawer = () => {
-  document.body.classList.add("sidebar-is-open");
+  document.body.classList.add(CSS_CLASSES.SIDEBAR_OPEN);
   dom.sidebar.style.transform = ''; 
   touchState.currentTranslate = 0;
   updateRewindButtonIcon(true);
 };
 
 export const closeMobileDrawer = () => {
-  document.body.classList.remove("sidebar-is-open");
+  document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
   dom.sidebar.style.transform = ''; 
   touchState.currentTranslate = -DRAWER_WIDTH;
   updateRewindButtonIcon(false);
@@ -92,9 +92,9 @@ function updateDrawerWidth() {
 
 function handleTouchStart(e) {
   if (window.innerWidth > MOBILE_BREAKPOINT) return;
-  if (document.body.classList.contains("modal-open")) return;
+  if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
   
-  const isOpen = document.body.classList.contains("sidebar-is-open");
+  const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
   // Zona de activación: Borde izquierdo (150px) o cualquier parte si ya está abierto
   const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
 
@@ -149,8 +149,8 @@ function handleTouchMove(e) {
     touchState.startY = currentY;
     touchState.startTime = Date.now();
 
-    dom.sidebar.classList.add("is-dragging"); // Quitar transición CSS
-    document.body.classList.add("sidebar-is-dragging"); // Bloquear scroll body
+    dom.sidebar.classList.add(CSS_CLASSES.IS_DRAGGING); // Quitar transición CSS
+    document.body.classList.add(CSS_CLASSES.SIDEBAR_DRAGGING_BODY); // Bloquear scroll body
   }
 
   if (e.cancelable) e.preventDefault(); // Evitar navegación nativa
@@ -181,8 +181,8 @@ function handleTouchEnd(e) {
   touchState.isDragging = false;
   touchState.isHorizontalDrag = false;
 
-  dom.sidebar.classList.remove("is-dragging");
-  document.body.classList.remove("sidebar-is-dragging");
+  dom.sidebar.classList.remove(CSS_CLASSES.IS_DRAGGING);
+  document.body.classList.remove(CSS_CLASSES.SIDEBAR_DRAGGING_BODY);
 
   const duration = Date.now() - touchState.startTime;
   const finalX = e.changedTouches[0].clientX;
@@ -226,7 +226,7 @@ function initTouchGestures() {
   window.addEventListener("resize", () => {
     if (window.innerWidth <= MOBILE_BREAKPOINT) updateDrawerWidth();
     if (window.innerWidth > MOBILE_BREAKPOINT) {
-      document.body.classList.remove("sidebar-is-open");
+      document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
       dom.sidebar.style.transform = "";
       touchState.currentTranslate = -DRAWER_WIDTH;
     }
@@ -241,7 +241,7 @@ function toggleRotationMode(forceState = null) {
   const button = dom.toggleRotationBtn;
   if (!button) return;
 
-  const isCurrentlyDisabled = document.body.classList.contains("rotation-disabled");
+  const isCurrentlyDisabled = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
   const shouldDisable = forceState !== null ? forceState : !isCurrentlyDisabled;
 
   if (isCurrentlyDisabled === shouldDisable) return;
@@ -251,7 +251,7 @@ function toggleRotationMode(forceState = null) {
   closeModal();
 
   const updateState = () => {
-    document.body.classList.toggle("rotation-disabled", shouldDisable);
+    document.body.classList.toggle(CSS_CLASSES.ROTATION_DISABLED, shouldDisable);
     button.innerHTML = shouldDisable ? ICONS.SQUARE_STOP : ICONS.PAUSE;
     button.setAttribute("aria-label", shouldDisable ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
     button.title = shouldDisable ? "Giro automático" : "Vista Rápida";
@@ -274,7 +274,7 @@ function initPinchGestures() {
 
   // FIX: Usar target (wrapper) en lugar de window para limitar el alcance del bloqueo
   target.addEventListener('click', (e) => {
-    if (document.body.dataset.gestureCooldown === "true") {
+    if ("gestureCooldown" in document.body.dataset) {
       if (e.target.closest('.movie-card, .grid-container')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
@@ -508,6 +508,10 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     // Actualizar UI (Slider de años, etc.) para reflejar el reinicio visualmente
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
     
+    // FIX: Limpiar input de búsqueda principal visualmente para coincidir con el reset de estado
+    const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
+    if (mainSearchInput) mainSearchInput.value = "";
+
     renderFilterPills();
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     
@@ -771,11 +775,11 @@ function setupEventListeners() {
       triggerHapticFeedback('light');
       const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
       if (isMobile) {
-        const isOpen = document.body.classList.contains("sidebar-is-open");
+        const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
         isOpen ? closeMobileDrawer() : openMobileDrawer();
       } else {
-        document.body.classList.toggle("sidebar-collapsed");
-        const isNowCollapsed = document.body.classList.contains("sidebar-collapsed");
+        document.body.classList.toggle(CSS_CLASSES.SIDEBAR_COLLAPSED);
+        const isNowCollapsed = document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
         updateRewindButtonIcon(!isNowCollapsed);
       }
     });
@@ -936,7 +940,7 @@ export function initSidebar() {
   else setTimeout(updateDynamicFilters, 500);
   
   if (dom.toggleRotationBtn) {
-    const isRotationDisabled = document.body.classList.contains("rotation-disabled");
+    const isRotationDisabled = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
     dom.toggleRotationBtn.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
     dom.toggleRotationBtn.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";

@@ -42,8 +42,8 @@ let state = structuredClone(initialState);
 export const getState = () => {
   const currentState = {
     ...state,
-    activeFilters: getActiveFilters(), // Reutiliza la lógica de clonado de filtros
-    userMovieData: { ...state.userMovieData }
+    activeFilters: getActiveFilters(),
+    userMovieData: getAllUserMovieData() // Composición de getters: evita duplicar lógica de clonado
   };
 
   // En desarrollo: Congelar para detectar mutaciones accidentales
@@ -80,17 +80,12 @@ export const getCurrentPage = () => state.currentPage;
  * Ignora ordenación y tipo de medio.
  */
 export function hasActiveMeaningfulFilters() {
-  const { activeFilters } = state;
-  // Lista de claves que NO se consideran filtros de contenido
-  const metaKeys = new Set(["mediaType", "sort", "page"]);
+  // 1. Reutilizar lógica de conteo (Maneja exclusiones, rangos de año por defecto y filtros estándar)
+  if (getActiveFilterCount() > 0) return true;
 
-  return Object.keys(activeFilters).some(key => {
-    if (metaKeys.has(key)) return false;
-    
-    const value = activeFilters[key];
-    if (Array.isArray(value)) return value.length > 0;
-    return value !== null && value !== "" && value !== undefined;
-  });
+  // 2. Verificar búsqueda por texto (getActiveFilterCount la ignora explícitamente)
+  const { searchTerm } = state.activeFilters;
+  return !!(searchTerm && searchTerm.trim().length > 0);
 }
 
 /**
@@ -173,8 +168,12 @@ export function setFilter(filterType, value, force = false) {
 
   const currentValue = state.activeFilters[filterType];
   
-  // Solo validamos límites si estamos AÑADIENDO un valor nuevo (no borrando ni cambiando uno existente)
-  const isAddingNewFilter = value !== null && currentValue === null;
+  // 4.2: Optimización - Si el valor no cambia, no hacemos nada (evita invalidar total)
+  if (currentValue === value) return true;
+
+  // 4.1: Detección robusta de "nuevo filtro" (considerando null/undefined/vacío como inactivo)
+  const isEmpty = (v) => v === null || v === undefined || v === "";
+  const isAddingNewFilter = !isEmpty(value) && isEmpty(currentValue);
 
   if (!force && isAddingNewFilter && getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) {
     if (import.meta.env.DEV) {
@@ -184,13 +183,15 @@ export function setFilter(filterType, value, force = false) {
   }
 
   state.activeFilters[filterType] = value;
-  state.totalMovies = 0; // Invalidate total on filter change
+  // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
+  state.totalMovies = 0;
   return true;
 }
 
 export function setSearchTerm(term) {
   state.activeFilters.searchTerm = term;
-  state.totalMovies = 0; // Invalidate total on search
+  // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
+  state.totalMovies = 0;
   let filtersCleared = false;
   
   // Lógica de exclusividad: Si buscamos por texto, limpiamos actor y director
@@ -210,17 +211,21 @@ export function setSort(sortValue) {
 
 export function setMediaType(mediaType) {
   state.activeFilters.mediaType = mediaType;
-  state.totalMovies = 0; // Invalidate total on type change
+  // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
+  state.totalMovies = 0;
 }
 
 /**
  * Alterna un filtro de exclusión (Añadir/Quitar).
  */
 export function toggleExcludedFilter(filterType, value) {
-  // Mapeo dinámico para evitar switch/if
-  const targetList = filterType === "genre" ? state.activeFilters.excludedGenres 
-                   : filterType === "country" ? state.activeFilters.excludedCountries 
-                   : null;
+  // 5) Simplificación: Mapeo literal para mejor legibilidad y extensibilidad
+  const listMap = {
+    genre: state.activeFilters.excludedGenres,
+    country: state.activeFilters.excludedCountries
+  };
+  
+  const targetList = listMap[filterType];
 
   if (!targetList) return false;
 
@@ -229,7 +234,8 @@ export function toggleExcludedFilter(filterType, value) {
   if (index > -1) {
     // Si existe, lo quitamos (siempre permitido)
     targetList.splice(index, 1);
-    state.totalMovies = 0; // Invalidate total
+    // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
+    state.totalMovies = 0;
     return true;
   } else {
     // Si no existe, intentamos añadirlo
@@ -247,7 +253,8 @@ export function toggleExcludedFilter(filterType, value) {
     }
 
     targetList.push(value);
-    state.totalMovies = 0; // Invalidate total
+    // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
+    state.totalMovies = 0;
     return true;
   }
 }
@@ -265,11 +272,19 @@ export function setUserMovieData(data) {
 }
 
 export function updateUserDataForMovie(movieId, data) {
-  if (!state.userMovieData[movieId]) {
-    state.userMovieData[movieId] = { onWatchlist: false, rating: null };
-  }
+  // Inmutabilidad: Reemplazar objeto en lugar de mutarlo con Object.assign
+  const current = state.userMovieData[movieId] || { onWatchlist: false, rating: null };
+  const updated = { ...current, ...data };
   
-  Object.assign(state.userMovieData[movieId], data);
+  // 7.1 Optimización: Evitar eventos si no hay cambios reales
+  if (current.rating === updated.rating && current.onWatchlist === updated.onWatchlist) {
+    return;
+  }
+
+  // En DEV: Congelar la entrada individual para garantizar integridad referencial
+  if (import.meta.env.DEV) Object.freeze(updated);
+  
+  state.userMovieData[movieId] = updated;
 
   // Sistema de eventos para reactividad en la UI sin frameworks
   document.dispatchEvent(

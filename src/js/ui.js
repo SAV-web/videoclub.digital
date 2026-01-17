@@ -19,7 +19,7 @@ const domQueries = {
   sortSelect: () => document.querySelector(SELECTORS.SORT_SELECT),
   themeToggleButton: () => document.querySelector(SELECTORS.THEME_TOGGLE),
   sidebarOverlay: () => document.querySelector(SELECTORS.SIDEBAR_OVERLAY),
-  sidebar: () => document.querySelector(".sidebar"),
+  sidebar: () => document.getElementById("sidebar"),
   typeFilterToggle: () => document.querySelector(SELECTORS.TYPE_FILTER_TOGGLE),
   headerPrevBtn: () => document.querySelector(SELECTORS.HEADER_PREV_BTN),
   headerNextBtn: () => document.querySelector(SELECTORS.HEADER_NEXT_BTN),
@@ -32,12 +32,13 @@ const domQueries = {
   authOverlay: () => document.getElementById("auth-overlay"),
   loginButton: () => document.getElementById("login-button"),
   toastContainer: () => document.querySelector(SELECTORS.TOAST_CONTAINER),
+  mobileSidebarToggle: () => document.getElementById("mobile-sidebar-toggle"),
 };
 
 // Exportamos un Proxy para mantener compatibilidad con el código existente (dom.algo)
 export const dom = new Proxy({}, {
   get: (_, prop) => {
-    // 1. Auto-Invalidación: Si está en caché pero fue eliminado del DOM, lo ignoramos.
+    // 1. Auto-Invalidación: Reutiliza caché solo si el nodo sigue conectado; si no, reconsulta.
     if (domCache[prop] && domCache[prop].isConnected) {
       return domCache[prop];
     }
@@ -70,7 +71,7 @@ export function showToast(message, type = "error") {
   const isSameMessage = message === lastToastMessage;
   const isRecent = (now - lastToastTime) < 2000; // 2 segundos
 
-  if (isSameMessage && isRecent && toastContainer.hasChildNodes()) return;
+  if (isSameMessage && isRecent) return;
 
   lastToastMessage = message;
   lastToastTime = now;
@@ -117,9 +118,9 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
   const fragment = document.createDocumentFragment();
 
   // Helper local para botones
-  const addButton = (page, content, label, isActive = false, isArrow = false) => {
+  const addButton = (page, content, label, isArrow = false) => {
     const btn = createElement("button", {
-      className: `btn btn--pagination${isActive ? " active" : ""} ${isArrow ? "pagination-arrow" : ""}`,
+      className: `btn btn--pagination${isArrow ? " pagination-arrow" : ""}`,
       dataset: { page },
       textContent: content,
       attributes: { "aria-label": label, type: "button" }
@@ -136,7 +137,7 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
 
   // Flecha Anterior
   if (currentPage > 1) {
-    addButton(currentPage - 1, "<", "Página anterior", false, true);
+    addButton(currentPage - 1, "‹", "Página anterior", true);
   }
 
   // Lógica de elipsis (1 ... 4 5 6 ... 10)
@@ -161,7 +162,7 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
 
   // Flecha Siguiente
   if (currentPage < totalPages) {
-    addButton(currentPage + 1, ">", "Página siguiente", false, true);
+    addButton(currentPage + 1, "›", "Página siguiente", true);
   }
 
   paginationContainer.appendChild(fragment);
@@ -188,12 +189,15 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
     fetchMovies(activeFilters, currentPage + 1, CONFIG.ITEMS_PER_PAGE, null, false)
       .catch(() => {});
 
-    // 2. Prefetch página subsiguiente (Estrategia agresiva post-optimización DB)
-    if (currentPage + 1 < totalPages) {
+    // 2. Prefetch página subsiguiente (Condicional)
+    // Simplificación: Solo en Desktop (pointer: fine) para evitar consumo excesivo en móvil
+    const isDesktop = window.matchMedia('(pointer: fine)').matches;
+
+    if (isDesktop && currentPage + 1 < totalPages) {
       setTimeout(() => {
         fetchMovies(activeFilters, currentPage + 2, CONFIG.ITEMS_PER_PAGE, null, false)
           .catch(() => {});
-      }, 1000); // Delay para no competir con recursos críticos
+      }, 1500); // Delay aumentado para asegurar prioridad a la página inmediata
     }
   });
 }
@@ -226,7 +230,7 @@ function handleTrap(e) {
   }
 }
 
-export function openAccessibleModal(modal, overlay, skipFocus = false) {
+export function openAccessibleModal(modal, overlay, focusContent = true) {
   if (!modal) return;
   
   // Accesibilidad: Garantizar atributos críticos si faltan en HTML
@@ -240,7 +244,7 @@ export function openAccessibleModal(modal, overlay, skipFocus = false) {
   // Prevenir scroll brusco al enfocar
   modal.focus({ preventScroll: true });
 
-  if (!skipFocus) {
+  if (focusContent) {
     const firstInput = modal.querySelector(FOCUSABLE_SELECTOR);
     if (firstInput) firstInput.focus();
   }
@@ -305,10 +309,11 @@ export function updateTypeFilterUI(mediaType) {
   
   btn.className = `type-filter-toggle ${current.class}`;
   btn.setAttribute("aria-label", `Filtrar por tipo: ${current.label}`);
-  btn.innerHTML = `
-    <span class="desktop-text">${current.label}</span>
-    <span class="mobile-icon">${current.icon}</span>
-  `;
+  
+  const desktopText = createElement("span", { className: "desktop-text", textContent: current.label });
+  const mobileIcon = createElement("span", { className: "mobile-icon", innerHTML: current.icon });
+
+  btn.replaceChildren(desktopText, mobileIcon);
 }
 
 export function updateTotalResultsUI(total, hasFilters) {

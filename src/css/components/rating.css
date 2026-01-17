@@ -58,14 +58,33 @@
 /* --- Interacciones (Hover) --- */
 @media (hover: hover) and (pointer: fine) {
   .star-rating-container.is-interactive .star-icon:hover {
-    transform: scale(1.35); z-index: 20;
+    transform: scale(1.35); 
+    z-index: 20;
     filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bounce sutil */
   }
 
   .low-rating-star.is-interactive:hover {
     transform: scale(1.2);
     filter: drop-shadow(0 0 4px rgba(255, 189, 7, 0.6));
   }
+}
+
+/* Feedback Táctil (:active) */
+.star-rating-container.is-interactive .star-icon:active {
+  transform: scale(1.15);
+  transition: transform 0.05s ease-out;
+}
+
+/* Efecto de Confirmación (Post-Tap) */
+.star-rating-container.is-interactive .star-icon.just-rated {
+  animation: star-pulse 0.4s ease-out;
+  z-index: 20; /* Asegurar que se vea sobre las otras */
+}
+
+@keyframes star-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); filter: drop-shadow(0 0 8px rgba(255, 189, 7, 0.8)); }
 }
 
 /* --- Accesibilidad Táctil (Áreas expandidas) --- */

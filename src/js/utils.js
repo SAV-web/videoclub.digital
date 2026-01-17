@@ -10,8 +10,13 @@ import flagSpriteUrl from "../flags.svg";
 
 // Cache para Intl.NumberFormat (Es costoso instanciarlo cada vez)
 const compactFormatter = new Intl.NumberFormat('es-ES', { notation: "compact", maximumFractionDigits: 1 });
-const thousandsFormatter = new Intl.NumberFormat('de-DE');
+const thousandsFormatter = new Intl.NumberFormat('de-DE'); // Coherencia de locale (usa puntos para miles igual)
 
+/**
+ * Formatea votos con reglas específicas por plataforma.
+ * @param {number|string} votes
+ * @param {string} [platform] - 'imdb' o 'fa' para aplicar redondeo específico.
+ */
 export const formatVotesUnified = (votes, platform) => {
   // Conversión numérica rápida
   const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes).replace(/\D/g, ""), 10);
@@ -53,7 +58,8 @@ export const formatVotesUnified = (votes, platform) => {
 
 export const formatRuntime = (minutesString, useShortLabel = false) => {
   const minutes = +minutesString; // Conversión unaria rápida
-  if (!minutes) return "";
+  // Validación robusta: Evitar NaN, Infinity o valores <= 0
+  if (!Number.isFinite(minutes) || minutes <= 0) return "";
   
   if (useShortLabel) return `${minutes} min`;
 
@@ -82,7 +88,7 @@ export const highlightAccentInsensitive = (text, searchTerm) => {
   if (index === -1) return document.createTextNode(text);
   
   const fragment = document.createDocumentFragment();
-  fragment.textContent = text.substring(0, index);
+  fragment.appendChild(document.createTextNode(text.substring(0, index)));
   
   const strong = document.createElement("strong");
   strong.textContent = text.substring(index, index + searchTerm.length);
@@ -135,8 +141,6 @@ export function createAbortableRequest(key) {
   const controller = new AbortController();
   requestControllers.set(key, controller);
   
-  // Limpieza automática al terminar (si no se abortó antes)
-  // Nota: Esto es un "nice to have", el recolector de basura se encarga del resto.
   return controller;
 }
 
@@ -221,8 +225,7 @@ export const triggerPopAnimation = (element) => {
 export function preloadLcpImage(movieData) {
   if (!movieData?.image || movieData.image === ".") return;
   
-  const version = movieData.last_synced_at ? new Date(movieData.last_synced_at).getTime() : "1";
-  const imageUrl = `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp?v=${version}`;
+  const imageUrl = `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp`;
 
   // Evitar duplicados
   if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) return;
@@ -280,6 +283,12 @@ export const LocalStore = {
     try {
       const payload = { v: CONFIG.STORAGE_VERSION, d: value };
       localStorage.setItem(key, JSON.stringify(payload));
-    } catch (e) { console.warn("Storage full or disabled", e); }
+    } catch (e) { 
+      if (import.meta.env.DEV) console.warn("Storage full or disabled", e); 
+    }
+  },
+
+  remove(key) {
+    try { localStorage.removeItem(key); } catch (e) { /* Ignorar */ }
   }
 };

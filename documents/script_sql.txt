@@ -323,31 +323,65 @@ ANALYZE public.movies;
 -- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.
 -- OPTIMIZACIÓN: Pasamos a LANGUAGE SQL para permitir inlining y reducir overhead.
 
+-- =================================================================
+-- VISTAS MATERIALIZADAS PARA SUGERENCIAS (Optimización)
+-- =================================================================
+
+-- 1. Actores
+DROP MATERIALIZED VIEW IF EXISTS mv_actor_suggestions CASCADE;
+CREATE MATERIALIZED VIEW mv_actor_suggestions AS
+SELECT a.id, a.name, a.name_norm, COUNT(ma.movie_id) AS movie_count
+FROM public.actors a LEFT JOIN public.movie_actors ma ON a.id = ma.actor_id
+GROUP BY a.id, a.name, a.name_norm;
+
+CREATE UNIQUE INDEX mv_actor_suggestions_id_idx ON mv_actor_suggestions(id);
+CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON mv_actor_suggestions USING gin(name_norm gin_trgm_ops);
+CREATE INDEX mv_actor_suggestions_count_idx ON mv_actor_suggestions(movie_count DESC);
+
+-- 2. Directores
+DROP MATERIALIZED VIEW IF EXISTS mv_director_suggestions CASCADE;
+CREATE MATERIALIZED VIEW mv_director_suggestions AS
+SELECT d.id, d.name, d.name_norm, COUNT(md.movie_id) AS movie_count
+FROM public.directors d LEFT JOIN public.movie_directors md ON d.id = md.director_id
+GROUP BY d.id, d.name, d.name_norm;
+
+CREATE UNIQUE INDEX mv_director_suggestions_id_idx ON mv_director_suggestions(id);
+CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON mv_director_suggestions USING gin(name_norm gin_trgm_ops);
+CREATE INDEX mv_director_suggestions_count_idx ON mv_director_suggestions(movie_count DESC);
+
+-- 3. Títulos (Optimización para Autocompletado)
+DROP MATERIALIZED VIEW IF EXISTS mv_title_suggestions CASCADE;
+CREATE MATERIALIZED VIEW mv_title_suggestions AS
+SELECT title, title_norm, min(relevance) as best_relevance
+FROM public.movies
+GROUP BY title, title_norm;
+
+CREATE UNIQUE INDEX mv_title_suggestions_title_idx ON mv_title_suggestions(title);
+CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON mv_title_suggestions USING gin(title_norm gin_trgm_ops);
+CREATE INDEX mv_title_suggestions_relevance_idx ON mv_title_suggestions(best_relevance ASC);
+
+-- 3. Funciones de Lectura
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
-RETURNS TABLE(suggestion text) 
-LANGUAGE sql 
-STABLE 
-PARALLEL SAFE AS $$
-    SELECT a.name
-    FROM public.actors a
-    JOIN public.movie_actors ma ON a.id = ma.actor_id
-    WHERE a.name_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-    GROUP BY a.name
-    ORDER BY COUNT(ma.movie_id) DESC
+RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
+    SELECT name FROM mv_actor_suggestions
+    WHERE name_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    ORDER BY movie_count DESC
     LIMIT 10;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_director_suggestions(search_term text)
-RETURNS TABLE(suggestion text) 
-LANGUAGE sql 
-STABLE 
-PARALLEL SAFE AS $$
-    SELECT d.name
-    FROM public.directors d
-    JOIN public.movie_directors md ON d.id = md.director_id
-    WHERE d.name_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-    GROUP BY d.name
-    ORDER BY COUNT(md.movie_id) DESC
+RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
+    SELECT name FROM mv_director_suggestions
+    WHERE name_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    ORDER BY movie_count DESC
+    LIMIT 10;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_title_suggestions(search_term text)
+RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
+    SELECT title FROM mv_title_suggestions
+    WHERE title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    ORDER BY best_relevance ASC
     LIMIT 10;
 $$;
 
@@ -578,6 +612,13 @@ BEGIN
         studios_list = ad.studios
     FROM aggregated_data ad
     WHERE m.id = ad.id;
+
+    -- FASE 5: REFRESCO DE VISTAS MATERIALIZADAS
+    -- Se usa CONCURRENTLY para no bloquear lecturas durante la actualización.
+    -- Requiere índices únicos creados en el paso 5.
+    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_actor_suggestions;
+    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_director_suggestions;
+    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_title_suggestions;
 
 END;
 $function$;

@@ -34,6 +34,7 @@ export const CONFIG = Object.freeze({
   // Paginación
   ITEMS_PER_PAGE: 42,
   DYNAMIC_PAGE_SIZE_LIMIT: 56,
+  CARD_BATCH_SIZE: 12, // Renderizado por lotes (divisible por 2,3,4) para evitar bloqueo UI
   
   // Comportamiento
   MAX_ACTIVE_FILTERS: 20,
@@ -66,6 +67,14 @@ export const CSS_CLASSES = Object.freeze({
   IS_SCROLLED: "is-scrolled",
   SHOW: "show",
   SIDEBAR_OPEN: "sidebar-is-open",
+  
+  // Global Body States (Contratos de UI)
+  SIDEBAR_COLLAPSED: "sidebar-collapsed",
+  SIDEBAR_DRAGGING_BODY: "sidebar-is-dragging",
+  ROTATION_DISABLED: "rotation-disabled",
+  MODAL_OPEN: "modal-open",
+  USER_LOGGED_IN: "user-logged-in",
+  IS_DRAGGING: "is-dragging", // Element state (sidebar/modal)
   
   // Componentes
   MOVIE_CARD: "movie-card",

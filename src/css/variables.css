@@ -56,9 +56,9 @@
   --color-bg: #f5f5f5;
   --color-surface: #ffffff;
   
-  --color-text-primary: #333333;
-  --color-text-secondary: #5a5a5a;
-  --color-text-tertiary: #737373;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #4a4a4a;
+  --color-text-tertiary: #666666;
 
   --color-border: #e0e0e0;
   --color-border-soft: rgba(0, 0, 0, 0.07);
@@ -145,6 +145,7 @@ html.dark-mode {
   --color-text-tertiary: #a0a0a0;
   
   --color-border: #2f2f2f;
+  --color-border-soft: rgba(255, 255, 255, 0.1);
   
   --color-accent: #b0bec5;
   --color-accent-darker: #b0bec5;

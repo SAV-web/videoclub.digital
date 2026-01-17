@@ -2,7 +2,7 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS } from "../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
-import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
+import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings } from "./rating.js";
@@ -21,10 +21,13 @@ let currentRenderRequestId = 0;
 
 // Estado de Interacción
 let currentlyFlippedCard = null;
+// Invariant: hoverTimeout solo es válido para currentHoveredCard
 let hoverTimeout;
 let currentHoveredCard = null;
 const HOVER_DELAY = 1000;
+// Nota: INTERACTIVE_SELECTOR solo aplica a hover-delay, no a tap/click logic
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn";
+const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
 
 // =================================================================
 //          0. LAZY LOADING (Modal)
@@ -33,7 +36,7 @@ const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-
 async function loadAndOpenModal(cardElement) {
   const { openModal, initQuickView } = await import("./modal.js");
   // Asegurar inicialización única (idempotente en la práctica, pero seguro)
-  if (!window._quickViewInitialized) { initQuickView(); window._quickViewInitialized = true; }
+  if (!window[QUICK_VIEW_INIT_FLAG]) { initQuickView(); window[QUICK_VIEW_INIT_FLAG] = true; }
   openModal(cardElement);
 }
 
@@ -57,6 +60,7 @@ function resetCardBackState(cardElement) {
 }
 
 export function unflipAllCards() {
+  clearTimeout(hoverTimeout);
   if (currentlyFlippedCard) {
     currentlyFlippedCard.querySelector(".flip-card-inner")?.classList.remove("is-flipped");
     resetCardBackState(currentlyFlippedCard);
@@ -76,7 +80,7 @@ function handleDocumentClick(e) {
 // =================================================================
 
 function startFlipTimer(cardElement) {
-  if (document.body.classList.contains("rotation-disabled")) return;
+  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
   if (cardElement.querySelector(".flip-card-inner").classList.contains("is-flipped")) return;
 
   clearTimeout(hoverTimeout);
@@ -104,6 +108,7 @@ const handleSingleTap = (cardElement) => {
     currentlyFlippedCard = cardElement;
     // Fix: Race condition check. Si la tarjeta se cierra antes de que este timeout se ejecute
     // (por ejemplo, doble tap rápido o renderizado), no debemos añadir el listener.
+    // Se difiere el listener para evitar que el click actual cierre inmediatamente la card.
     setTimeout(() => {
       if (currentlyFlippedCard === cardElement) {
         document.addEventListener("click", handleDocumentClick);
@@ -151,7 +156,7 @@ export function initCardInteractions(gridContainer) {
   // --- Doble Click (Desktop) ---
   gridContainer.addEventListener("dblclick", (e) => {
     const card = e.target.closest(".movie-card");
-    if (card && !document.body.classList.contains("rotation-disabled")) {
+    if (card && !document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       loadAndOpenModal(card);
     }
   });
@@ -173,7 +178,7 @@ export function initCardInteractions(gridContainer) {
     if (e.pointerType === 'mouse') return;
 
     const card = e.target.closest('.movie-card');
-    if (!card || document.body.classList.contains('rotation-disabled') || e.target.closest('[data-action], a, button, .expand-content-btn')) return;
+    if (!card || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || e.target.closest('[data-action], a, button, .expand-content-btn')) return;
 
     // Detectar si fue un tap o un scroll
     if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) return;
@@ -183,7 +188,7 @@ export function initCardInteractions(gridContainer) {
     const currentTime = performance.now();
     const tapLength = currentTime - lastTapTime;
 
-    if (lastTapTime > 0 && tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+    if (lastTapTime > 0 && tapLength < DOUBLE_TAP_DELAY) {
       // Doble Tap -> Modal
       clearTimeout(tapTimeout);
       loadAndOpenModal(card);
@@ -220,7 +225,7 @@ async function toggleWatchlist(movieId, btn, card) {
 }
 
 export function handleCardClick(event) {
-  if (document.body.dataset.gestureCooldown) { event.preventDefault(); event.stopPropagation(); return; }
+  if ("gestureCooldown" in document.body.dataset) { event.preventDefault(); event.stopPropagation(); return; }
 
   const card = this;
   const target = event.target;
@@ -275,18 +280,24 @@ export function handleCardClick(event) {
   // 5. Enlaces Filtros
   const filterLink = target.closest("[data-director-name], [data-actor-name]");
   if (filterLink) {
+    // FIX: Si estamos en el modal, ignoramos este handler para evitar doble dispatch
+    // y permitir que modal.js maneje el cierre del modal.
+    if (card.id === 'quick-view-content') return;
+
     event.preventDefault();
     const type = filterLink.dataset.directorName ? "director" : "actor";
     const value = filterLink.dataset.directorName || filterLink.dataset.actorName;
+    // Evento global: resetea filtros y aplica uno nuevo (usado por sidebar/main).
     document.dispatchEvent(new CustomEvent("filtersReset", { detail: { keepSort: true, newFilter: { type, value } } }));
     return;
   }
 
   // 6. Enlaces Externos
-  if (target.closest("a")?.href && !target.closest("a").href.endsWith("#")) return;
+  const link = target.closest("a");
+  if (link && link.href && link.origin !== location.origin) return;
 
   // 7. Apertura Modal (Modo Muro)
-  if (document.body.classList.contains("rotation-disabled") && card.id !== 'quick-view-content') {
+  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) && card.id !== 'quick-view-content') {
     loadAndOpenModal(card);
   }
 }
@@ -319,8 +330,7 @@ function populateCard(card, movie) {
 
   // --- IMAGEN ---
   const img = card.querySelector("img");
-  const version = movie.last_synced_at ? new Date(movie.last_synced_at).getTime() : "1";
-  const hqPoster = `${CONFIG.POSTER_BASE_URL}${movie.image}.webp?v=${version}`;
+  const hqPoster = `${CONFIG.POSTER_BASE_URL}${movie.image}.webp`;
   
   img.alt = `Póster de ${movie.title}`;
   img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
@@ -369,10 +379,16 @@ function populateCard(card, movie) {
     const codes = [...(movie.studios_list?.split(",") || []), ...(movie.selections_list?.split(",") || [])];
     codes.forEach(code => {
       const conf = STUDIO_DATA[code];
-      if (conf) iconCont.appendChild(createElement('span', {
-        className: `platform-icon ${conf.class || ''}`, title: conf.title,
-        innerHTML: `<svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="${conf.vb || '0 0 24 24'}"><use href="${spriteUrl}#${conf.id}"></use></svg>`
-      }));
+      if (conf) {
+        const span = createElement('span', { className: `platform-icon ${conf.class || ''}`, title: conf.title });
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", conf.w || "24"); svg.setAttribute("height", conf.h || "24");
+        svg.setAttribute("fill", "currentColor"); svg.setAttribute("viewBox", conf.vb || "0 0 24 24");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", `${spriteUrl}#${conf.id}`);
+        svg.appendChild(use); span.appendChild(svg);
+        iconCont.appendChild(span);
+      }
     });
   }
 
@@ -437,7 +453,7 @@ function populateCard(card, movie) {
   actorsEl.textContent = shortActors || "Reparto no disponible";
 
   // Lógica de "Ver más actores"
-  const hasActors = actors.length > 0 && !IGNORED_ACTORS.includes(movie.actors?.toLowerCase());
+  const hasActors = actors.length > 0 && actors.some(a => !IGNORED_ACTORS.includes(a.toLowerCase()));
   const expandBtn = actorsEl.parentElement.querySelector(".actors-expand-btn");
   
   if (hasActors) {
@@ -447,9 +463,11 @@ function populateCard(card, movie) {
     let actorsOverlay = back.querySelector('.actors-scrollable-content');
     if (!actorsOverlay) {
         actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
-        // Poblar lista solo una vez
-        actorsOverlay.innerHTML = `<h4>Reparto</h4><div class="actors-list-text"></div>`;
-        const list = actorsOverlay.querySelector(".actors-list-text");
+        // Poblar lista solo una vez (DOM seguro)
+        const h4 = createElement("h4", { textContent: "Reparto" });
+        const list = createElement("div", { className: "actors-list-text" });
+        actorsOverlay.replaceChildren(h4, list);
+
         actors.forEach(name => {
            if (IGNORED_ACTORS.includes(name.toLowerCase())) {
              list.appendChild(createElement("span", { className: "actor-list-item", textContent: name, style: "cursor:default; pointer-events:none" }));
@@ -490,7 +508,7 @@ export function updateCardUI(card) {
 
 export function initializeCard(card) {
   const starCont = card.querySelector('[data-action="set-rating-estrellas"]');
-  if (starCont) setupRatingListeners(starCont, document.body.classList.contains("user-logged-in"));
+  if (starCont) setupRatingListeners(starCont, document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN));
 }
 
 // =================================================================
@@ -505,7 +523,7 @@ export function renderMovieGrid(container, movies) {
 
   cleanupLazyImages(container);
   container.textContent = "";
-  const BATCH_SIZE = 12;
+  const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12;
   let index = 0;
 
   function renderBatch() {
@@ -570,7 +588,7 @@ export function renderNoResults(container, pagContainer, filters) {
   const div = createElement("div", { className: "no-results", attributes: { role: "status" } });
   div.appendChild(createElement("h3", { textContent: "No se encontraron resultados" }));
   
-  const hasFilters = Object.values(filters).some(v => v && v !== "id,asc" && v !== "all");
+  const hasFilters = hasActiveMeaningfulFilters();
   const msg = filters.searchTerm 
     ? `Prueba a simplificar tu búsqueda para "${filters.searchTerm}".`
     : hasFilters ? "Intenta eliminar algunos filtros." : "";

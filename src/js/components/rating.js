@@ -10,14 +10,20 @@
 
 import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
+import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified } from "../utils.js";
 
 // Mapeo de niveles visuales (1-3 estrellas) a valores de base de datos (1-10)
+// Mapeo UX: 1–3 estrellas → escala IMDb/FA (5/7/9)
+// Diseñado para minimizar fricción y evitar granularidad excesiva
 export const LEVEL_TO_RATING_MAP = [5, 7, 9];
 
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
+// Escalado por raíz cuadrada para comprimir diferencias extremas de votos
+// y mantener barras visualmente comparables
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
+const MIN_STAR_THRESHOLD = 5.5;
 
 // =================================================================
 //          1. LÓGICA DE CÁLCULO (Funciones Puras)
@@ -29,6 +35,8 @@ const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.
  * @returns {number} 0 a 3
  */
 export function calculateUserStars(rating) {
+  // Nota: 0 estrellas puede significar "sin voto" o "suspenso (2)"
+  // La distinción se maneja en la capa de UI
   if (!rating) return 0;
   if (rating >= 9) return 3;
   if (rating >= 7) return 2;
@@ -42,10 +50,10 @@ export function calculateUserStars(rating) {
  * @returns {number}
  */
 export function calculateAverageStars(averageRating) {
-  if (averageRating <= 5.5) return 0;
+  if (averageRating <= MIN_STAR_THRESHOLD) return 0;
   if (averageRating >= 9) return 3;
   // Interpolación lineal entre 5.5 y 9 sobre 3 estrellas
-  return ((averageRating - 5.5) / 3.5) * 3;
+  return ((averageRating - MIN_STAR_THRESHOLD) / 3.5) * 3;
 }
 
 // =================================================================
@@ -59,9 +67,8 @@ export function calculateAverageStars(averageRating) {
  * @param {Object} options - Configuración.
  */
 function renderStars(starContainer, filledAmount, { hideUnfilled = false, snapToInteger = false } = {}) {
-  // Optimizacion: Usamos children si la estructura es plana para evitar querySelectorAll repetitivo
-  // Si la estructura HTML cambia, volver a querySelectorAll(".star-icon")
-  const stars = starContainer.querySelectorAll(".star-icon"); 
+  // Usamos querySelectorAll para robustez frente a cambios en la estructura HTML
+  const stars = starContainer.querySelectorAll(".star-icon");
   
   const effectiveFill = snapToInteger ? Math.round(filledAmount) : filledAmount;
 
@@ -78,16 +85,17 @@ function renderStars(starContainer, filledAmount, { hideUnfilled = false, snapTo
       // ESTADO: Estrella vacía en modo "solo lectura" (Media)
       // Usamos opacity: 0 para mantener el layout y eventos, pero hacerla invisible
       star.style.opacity = "0";
-      star.style.visibility = "visible"; // Importante para que no colapse si se usa visibility en CSS
     } else {
       // ESTADO: Estrella visible (parcial o total)
       star.style.opacity = "1";
-      star.style.visibility = "visible";
       
       // Técnica de recorte para estrellas parciales
       const clipPercentage = (1 - fillValue) * 100;
-      // Optimización: Solo tocar el DOM si el estilo cambia (el navegador suele optimizar esto, pero es buena práctica)
-      filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
+      const newClip = `inset(0 ${clipPercentage}% 0 0)`;
+      // Optimización: Solo tocar el DOM si el estilo cambia
+      if (filledPath.style.clipPath !== newClip) {
+        filledPath.style.clipPath = newClip;
+      }
     }
   }
 }
@@ -125,6 +133,7 @@ function handleRatingMouseMove(event) {
 function handleRatingMouseLeave(event) {
   // Disparamos evento para que 'card.js' refresque la UI con el estado real (store)
   // Esto desacopla rating.js del estado global.
+  // Delegamos la restauración visual a card.js para mantener una única fuente de verdad
   const updateEvent = new CustomEvent("card:requestUpdate", {
     bubbles: true,
     composed: true,
@@ -140,6 +149,7 @@ export function setupRatingListeners(starContainer, isInteractive) {
 
   // Delegación de eventos podría ser mejor si hay muchas estrellas, 
   // pero para 4 elementos, listeners directos son aceptables y más precisos para mouseenter.
+  // 4 estrellas → listeners directos son más claros y baratos que delegación
   const stars = starContainer.querySelectorAll(".star-icon");
   
   stars.forEach((star) => {
@@ -155,8 +165,11 @@ export function setupRatingListeners(starContainer, isInteractive) {
 // =================================================================
 
 async function setRating(movieId, value, card) {
-  const prevState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
-  if (prevState.rating === value) return;
+  // 5.1 Mejora: Guardamos solo el rating anterior para un rollback preciso y robusto.
+  // Usamos '?? null' para normalizar 'undefined' (sin datos) a 'null' (sin voto).
+  const previousRating = getUserDataForMovie(movieId)?.rating ?? null;
+  
+  if (previousRating === value) return;
 
   const newState = { rating: value };
   triggerHapticFeedback("light");
@@ -165,14 +178,20 @@ async function setRating(movieId, value, card) {
 
   try {
     await setUserMovieDataAPI(movieId, newState);
+    // 5.2 Feedback de confirmación solo al establecer voto, no al eliminarlo
     if (value !== null) triggerHapticFeedback("success");
   } catch (err) {
     showToast(err.message, "error");
-    updateUserDataForMovie(movieId, prevState);
+    // Rollback: Restauramos explícitamente el rating anterior
+    updateUserDataForMovie(movieId, { rating: previousRating });
     updateRatingUI(card);
   }
 }
 
+/**
+ * Maneja el clic en elementos de valoración.
+ * @returns {boolean} Devuelve true si el click fue manejado y debe detenerse la propagación.
+ */
 export function handleRatingClick(event, card) {
   const target = event.target;
   const starEl = target.closest(".star-icon[data-rating-level]");
@@ -187,6 +206,10 @@ export function handleRatingClick(event, card) {
     let newRating = null;
 
     if (level === 1) {
+      // Ciclo UX del primer nivel:
+      //  null → 2 (suspenso)
+      //  2 → 5 (primer aprobado)
+      //  5 → null (limpiar voto)
       if (currentRating === 2) newRating = 5;
       else if (currentRating === 5) newRating = null;
       else newRating = 2;
@@ -198,8 +221,13 @@ export function handleRatingClick(event, card) {
     }
 
     setRating(movieId, newRating, card);
+    
+    // Feedback visual post-tap (Animación de pulso)
+    starEl.classList.add('just-rated');
+    setTimeout(() => starEl.classList.remove('just-rated'), 400);
+    
     return true; // Handled
-  } else if (wallRatingEl || (ratingBlock && document.body.classList.contains("rotation-disabled"))) {
+  } else if (wallRatingEl || (ratingBlock && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED))) {
     event.preventDefault(); event.stopPropagation();
     const movieId = parseInt(card.dataset.movieId, 10);
     // Al pulsar el bloque o la nota, iniciamos el voto con "suspenso" (2)
@@ -220,17 +248,24 @@ export function updateRatingUI(card) {
 
   const userData = getUserDataForMovie(movieId);
   const userRating = userData?.rating;
-  const isLoggedIn = document.body.classList.contains("user-logged-in");
+  const isLoggedIn = document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
 
   const starCont = card.querySelector('[data-action="set-rating-estrellas"]');
   const circleEl = card.querySelector('[data-action="set-rating-suspenso"]');
   
   if (!starCont || !circleEl) return;
 
+  // 7.1 Simplificación: Reset inicial para evitar repeticiones en ramas
   circleEl.style.display = "none";
   starCont.style.display = "none";
 
   const hasUserVote = isLoggedIn && typeof userRating === 'number';
+
+  // 7.2 Helper local para evitar duplicidad (Ocultar estrellas 2 y 3)
+  const hideExtraStars = () => {
+    const stars = starCont.querySelectorAll(".star-icon");
+    for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
+  };
 
   if (hasUserVote) {
     starCont.classList.add("has-user-rating");
@@ -239,8 +274,7 @@ export function updateRatingUI(card) {
     if (userRating === 2) {
       starCont.style.display = "flex";
       renderUserStars(starCont, 0, false);
-      const stars = starCont.querySelectorAll(".star-icon");
-      for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
+      hideExtraStars();
     } else if (userRating >= 5) {
       starCont.style.display = "flex";
       renderUserStars(starCont, calculateUserStars(userRating), true);
@@ -251,15 +285,14 @@ export function updateRatingUI(card) {
     
     // Optimización: Usar avg_rating pre-calculado por la base de datos
     const avg = movie.avg_rating;
-    if (avg && avg > 0) {
+    // 7.3 Robustez semántica: Asegurar que es número
+    if (typeof avg === "number" && avg > 0) {
       
-      if (avg <= 5.5) {
+      if (avg <= MIN_STAR_THRESHOLD) {
         if (isLoggedIn) {
-          circleEl.style.display = "none";
           starCont.style.display = "flex";
           renderUserStars(starCont, 0);
-          const stars = starCont.querySelectorAll(".star-icon");
-          for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
+          hideExtraStars();
         } else {
           circleEl.style.display = "block";
         }
@@ -275,10 +308,19 @@ export function setupCardRatings(container, movie) {
   const setup = (key, maxKey) => {
     const link = container.querySelector(`[data-template="${key}-link"]`);
     if (!link) return;
+
+    // 8.2 Mejora: Cachear referencias DOM para evitar queries repetidas y mejorar legibilidad
+    const ratingEl = container.querySelector(`[data-template="${key}-rating"]`);
+    const barCont = container.querySelector(`[data-template="${key}-votes-bar-container"]`);
+    const barEl = container.querySelector(`[data-template="${key}-votes-bar"]`);
+    const countEl = container.querySelector(`[data-template="${key}-votes-count"]`);
+
     const id = movie[`${key}_id`];
     const rating = movie[`${key}_rating`];
     const votes = movie[`${key}_votes`] || 0;
-    if (id && (id.startsWith("http"))) {
+
+    // 8.1 Mejora: Validación estricta de URL (evita falsos positivos como "http-fake")
+    if (id && /^https?:\/\//.test(id)) {
       link.href = id;
       link.classList.remove("disabled");
       link.setAttribute("aria-label", `Nota ${key.toUpperCase()}: ${rating}`);
@@ -286,16 +328,18 @@ export function setupCardRatings(container, movie) {
       link.removeAttribute("href");
       link.classList.add("disabled");
     }
-    container.querySelector(`[data-template="${key}-rating"]`).textContent = rating ? (String(rating).includes(".") ? rating : `${rating}.0`) : "N/A";
-    const barCont = container.querySelector(`[data-template="${key}-votes-bar-container"]`);
-    const countEl = container.querySelector(`[data-template="${key}-votes-count"]`);
-    barCont.style.display = votes > 0 ? "block" : "none";
-    if (votes > 0) {
-      const width = Math.min((Math.sqrt(votes) / SQRT_MAX_VOTES[maxKey]) * 100, 100);
-      container.querySelector(`[data-template="${key}-votes-bar"]`).style.width = `${width}%`;
-      const formattedVotes = formatVotesUnified(votes, key);
-      barCont.dataset.votes = formattedVotes;
-      if (countEl) countEl.textContent = formattedVotes;
+
+    if (ratingEl) ratingEl.textContent = rating ? (String(rating).includes(".") ? rating : `${rating}.0`) : "N/A";
+    
+    if (barCont) {
+      barCont.style.display = votes > 0 ? "block" : "none";
+      if (votes > 0 && barEl) {
+        const width = Math.min((Math.sqrt(votes) / SQRT_MAX_VOTES[maxKey]) * 100, 100);
+        barEl.style.width = `${width}%`;
+        const formattedVotes = formatVotesUnified(votes, key);
+        barCont.dataset.votes = formattedVotes;
+        if (countEl) countEl.textContent = formattedVotes;
+      }
     }
   };
   setup("fa", "FA");

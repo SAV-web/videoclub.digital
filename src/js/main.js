@@ -28,93 +28,90 @@ const URL_PARAM_MAP = {
 };
 const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key]));
 
+// Detección de soporte View Transitions (Constante)
+const SUPPORTS_VIEW_TRANSITIONS = !!document.startViewTransition;
+
 /**
  * Carga y renderiza la rejilla de películas.
  * Gestiona estados de carga, errores y transiciones.
  */
-export async function loadAndRenderMovies(page = 1) {
+export async function loadAndRenderMovies(page = 1, { replaceHistory = false } = {}) {
   const controller = createAbortableRequest('movie-grid-load');
   const signal = controller.signal;
 
   setCurrentPage(page);
   updatePageTitle();
-  updateUrl(); // Sincronizar URL antes de cargar
+  updateUrl({ replace: replaceHistory }); // Sincronizar URL (Push o Replace según contexto)
 
   // Estado de carga visual
   document.body.classList.add('is-fetching');
   dom.gridContainer.classList.add('is-fetching');
   dom.gridContainer.setAttribute("aria-busy", "true");
   
-  // Renderizado optimista: Esqueletos + Paginación conocida
-  renderSkeletons(dom.gridContainer, dom.paginationContainer);
+  // Renderizado de Skeletons diferido (150ms) para evitar parpadeo en cargas rápidas
+  const skeletonTimeout = setTimeout(() => {
+    renderSkeletons(dom.gridContainer, dom.paginationContainer);
+  }, 150);
+
   const currentKnownTotal = getState().totalMovies;
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
-  // Scroll al inicio siempre al cambiar de página
-  window.scrollTo({ top: 0, behavior: "auto" });
+  try {
+    // Primera página carga más elementos para llenar pantallas grandes
+    const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+    
+    // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
+    const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
 
-  const supportsViewTransitions = !!document.startViewTransition;
+    const result = await fetchMovies(
+      getActiveFilters(),
+      page,
+      pageSize,
+      signal,
+      shouldRequestCount
+    );
 
-  const renderLogic = async () => {
-    try {
-      // Primera página carga más elementos para llenar pantallas grandes
-      const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+    // Cancelar skeletons si la respuesta llegó rápido (antes de 150ms)
+    clearTimeout(skeletonTimeout);
+
+    if (result.aborted) return;
+
+    const { items: movies, total: returnedTotal } = result;
+
+    // Precarga LCP (Largest Contentful Paint) para la primera imagen
+    if (movies && movies.length > 0) preloadLcpImage(movies[0]);
       
-      // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
-      const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
-
-      const result = await fetchMovies(
-        getActiveFilters(),
-        page,
-        pageSize,
-        signal,
-        shouldRequestCount
-      );
-
-      if (result.aborted) return;
-
-      const { items: movies, total: returnedTotal } = result;
-
-      // Precarga LCP (Largest Contentful Paint) para la primera imagen
-      if (movies && movies.length > 0) preloadLcpImage(movies[0]);
+    const performRender = () => {
+      // Backend devuelve -1 si no se pidió conteo (get_count=false)
+      const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
+      updateDomWithResults(movies, effectiveTotal);
       
-      const performRender = () => {
-        // Usar total retornado o mantener el conocido si no se pidió actualización
-        // NOTA: El backend devuelve -1 cuando get_count=false para optimizar rendimiento.
-        // En ese caso, confiamos en el estado local (currentKnownTotal).
-        const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
-        updateDomWithResults(movies, effectiveTotal);
-        
-        // FIX MÓVIL: Forzar scroll arriba tras renderizar si el teclado desplazó la vista
-        if (page === 1 && window.innerWidth <= 700) {
-           window.scrollTo({ top: 0, behavior: "auto" });
-        }
-      };
+      // Scroll al top unificado (Paginación + Fix teclado móvil)
+      window.scrollTo({ top: 0, behavior: "auto" });
+    };
 
-      // Usar View Transitions API si está disponible para suavidad nativa
-      if (supportsViewTransitions) document.startViewTransition(performRender);
-      else performRender();
+    // Usar View Transitions API si está disponible para suavidad nativa
+    if (SUPPORTS_VIEW_TRANSITIONS) document.startViewTransition(performRender);
+    else performRender();
 
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      console.error("Error en carga (Main):", error);
-      
-      const msg = getFriendlyErrorMessage(error);
-      if (msg) showToast(msg, "error");
-      renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
-      
-      // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
-      if (msg) throw new Error(msg); 
-    } finally {
-      if (!signal.aborted) {
-        document.body.classList.remove('is-fetching');
-        dom.gridContainer.classList.remove('is-fetching');
-        dom.gridContainer.setAttribute("aria-busy", "false");
-      }
+  } catch (error) {
+    clearTimeout(skeletonTimeout); // Asegurar limpieza en error
+    if (error.name === "AbortError") return;
+    console.error("Error en carga (Main):", error);
+    
+    const msg = getFriendlyErrorMessage(error);
+    if (msg) showToast(msg, "error");
+    renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
+    
+    // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
+    if (msg) throw new Error(msg); 
+  } finally {
+    if (!signal.aborted) {
+      document.body.classList.remove('is-fetching');
+      dom.gridContainer.classList.remove('is-fetching');
+      dom.gridContainer.setAttribute("aria-busy", "false");
     }
-  };
-
-  await renderLogic();
+  }
 }
 
 /**
@@ -126,12 +123,12 @@ function updateDomWithResults(movies, totalMovies) {
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
   
-  const currentState = getState();
+  const { currentPage } = getState();
 
-  if (currentState.totalMovies === 0) {
+  if (totalMovies === 0) {
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
-  } else if (currentState.totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentState.currentPage === 1) {
+  } else if (totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentPage === 1) {
     // Caso: Todos los resultados caben en una página
     renderMovieGrid(dom.gridContainer, movies);
     dom.paginationContainer.textContent = "";
@@ -139,20 +136,21 @@ function updateDomWithResults(movies, totalMovies) {
   } else {
     // Caso: Paginación necesaria
     const limit = CONFIG.ITEMS_PER_PAGE; 
-    const moviesToRender = movies.slice(0, limit); // Recortar exceso de "fetch" dinámico
+    // Slice optimizado: evitar copia de array si no es necesaria
+    const moviesToRender = movies.length > limit ? movies.slice(0, limit) : movies;
     renderMovieGrid(dom.gridContainer, moviesToRender);
     
-    if (currentState.totalMovies > limit) {
-      renderPagination(dom.paginationContainer, currentState.totalMovies, currentState.currentPage);
+    if (totalMovies > limit) {
+      renderPagination(dom.paginationContainer, totalMovies, currentPage);
     } else {
       dom.paginationContainer.textContent = "";
     }
-    updateHeaderPaginationState(currentState.currentPage, currentState.totalMovies);
+    updateHeaderPaginationState(currentPage, totalMovies);
   }
 
   // Precarga inteligente de la siguiente página
-  if (currentState.totalMovies > 0) {
-    prefetchNextPage(currentState.currentPage, currentState.totalMovies, getActiveFilters());
+  if (totalMovies > 0) {
+    prefetchNextPage(currentPage, totalMovies, getActiveFilters());
   }
 }
 
@@ -189,7 +187,8 @@ async function handleSearchInput() {
     }
 
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-    await loadAndRenderMovies(1);
+    // UX: Usar replaceState para búsqueda (evitar ensuciar historial al escribir)
+    await loadAndRenderMovies(1, { replaceHistory: true });
   }
 }
 
@@ -252,7 +251,7 @@ function handleFiltersReset(e) {
   updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   
-  loadAndRenderMovies(1);
+  loadAndRenderMovies(1); // Reset es una acción discreta -> PushState (default)
 }
 
 // --- Configuración de Listeners ---
@@ -270,9 +269,8 @@ function setupHeaderListeners() {
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
 
   // Toggle Sidebar Móvil (Lazy Load)
-  const mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
-  if (mobileSidebarToggle) {
-    mobileSidebarToggle.addEventListener('click', async () => {
+  if (dom.mobileSidebarToggle) {
+    dom.mobileSidebarToggle.addEventListener('click', async () => {
       // Cargar módulo si no existe
       const mod = await loadSidebar();
       if (!mod) return;
@@ -361,7 +359,7 @@ function setupGlobalListeners() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { 
       // Prioridad: Si hay un modal abierto, el sidebar no debe cerrarse (el modal lo hará)
-      if (document.body.classList.contains("modal-open")) return;
+      if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
       
       if (sidebarModule) sidebarModule.closeMobileDrawer();
     }
@@ -381,7 +379,7 @@ function setupAuthSystem() {
   const logoutButton = document.getElementById("logout-button");
   
   async function onLogin(user) {
-    document.body.classList.add("user-logged-in");
+    document.body.classList.add(CSS_CLASSES.USER_LOGGED_IN);
     const userEmail = user.email || "";
     userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
     userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
@@ -393,7 +391,7 @@ function setupAuthSystem() {
   }
   
   function onLogout() {
-    document.body.classList.remove("user-logged-in");
+    document.body.classList.remove(CSS_CLASSES.USER_LOGGED_IN);
     userAvatarInitials.textContent = "";
     userAvatarInitials.title = "";
     clearUserMovieData();
@@ -463,12 +461,12 @@ function readUrlAndSetState() {
   
   // Sincronizar UI
   const activeFilters = getActiveFilters();
-  dom.searchInput.value = activeFilters.searchTerm;
+  if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
   dom.sortSelect.value = activeFilters.sort;
   updateTypeFilterUI(activeFilters.mediaType);
 }
 
-function updateUrl() {
+function updateUrl({ replace = false } = {}) {
   const params = new URLSearchParams();
   const activeFilters = getActiveFilters();
   const currentPage = getCurrentPage();
@@ -492,7 +490,11 @@ function updateUrl() {
   
   const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
   if (newUrl !== `${window.location.pathname}${window.location.search}`) {
-    history.pushState({ path: newUrl }, "", newUrl);
+    if (replace) {
+      history.replaceState({ path: newUrl }, "", newUrl);
+    } else {
+      history.pushState({ path: newUrl }, "", newUrl);
+    }
   }
 }
 
@@ -508,7 +510,7 @@ function init() {
 
   // Restaurar estado de rotación (Modo Muro) antes de renderizar para evitar saltos visuales
   if (LocalStore.get("rotationState") === "disabled") {
-    document.body.classList.add("rotation-disabled");
+    document.body.classList.add(CSS_CLASSES.ROTATION_DISABLED);
   }
 
   if ("serviceWorker" in navigator) {
@@ -524,7 +526,8 @@ function init() {
     
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-    loadAndRenderMovies(getCurrentPage());
+    // Al navegar por historial (Atrás/Adelante), no debemos hacer push, solo reemplazar para normalizar si es necesario
+    loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
   });
   
   // Carga diferida del Sidebar (Desktop necesita filtros, Móvil no tanto)
@@ -532,7 +535,7 @@ function init() {
   const idleLoad = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000));
   idleLoad(() => loadSidebar());
 
-  // initQuickView se elimina de aquí, se llama al abrir la primera ficha en card.js
+  // initQuickView se llama al abrir la primera ficha en card.js
   
   initThemeToggle();
   setupHeaderListeners();
@@ -553,7 +556,13 @@ function init() {
   
   readUrlAndSetState();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-  loadAndRenderMovies(getCurrentPage());
+  // Carga inicial: No ensuciar historial, usar replace
+  loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
 }
 
-document.addEventListener("DOMContentLoaded", init);
+// Optimización WPO: Ejecutar inmediatamente si el DOM ya está interactivo
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}

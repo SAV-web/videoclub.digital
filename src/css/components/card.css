@@ -425,6 +425,7 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   display: flex; align-items: center; justify-content: center;
   transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
   position: relative;
+  isolation: isolate; /* Crear contexto de apilamiento para controlar hit area */
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
   @media (hover: hover) and (pointer: fine) {
@@ -436,6 +437,8 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
     width: 30px; height: 30px;
     fill: transparent; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     transition: fill var(--duration-normal) var(--ease-smooth-out), stroke var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
+    pointer-events: none; /* El click debe registrarse en el botón/área expandida, no en el SVG */
+    position: relative; z-index: 0;
   }
 
   &.is-active {
@@ -469,7 +472,7 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   .card-action-btn::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: var(--tap-target-size); height: var(--tap-target-size); z-index: 10;
+    width: var(--tap-target-size); height: var(--tap-target-size); z-index: 1;
   }
 }
 
