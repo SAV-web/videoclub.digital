@@ -326,7 +326,7 @@ function cleanupLazyImages(container) {
   container.querySelectorAll("img[data-src]").forEach(img => lazyLoadObserver.unobserve(img));
 }
 
-function populateCard(card, movie) {
+function populateCard(card, movie, index) {
   const front = card.querySelector('.movie-summary');
   const back = card.querySelector('.flip-card-back');
 
@@ -335,15 +335,23 @@ function populateCard(card, movie) {
   const hqPoster = `${CONFIG.POSTER_BASE_URL}${movie.image}.webp`;
   
   img.alt = `Póster de ${movie.title}`;
-  img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-  img.dataset.src = hqPoster;
-  img.classList.add(movie.thumbhash_st ? CSS_CLASSES.LAZY_LQIP : "");
-
-  if (renderedCardCount < 4) {
+  
+  // LCP Optimization (Mobile-First): Prioridad máxima a la primera carta
+  if (index === 0) {
+    img.src = hqPoster; // Carga directa sin esperar a JS/Observer
     img.loading = "eager";
     img.setAttribute("fetchpriority", "high");
+    img.decoding = "async";
+    img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+  } else {
+    img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+    img.dataset.src = hqPoster;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.removeAttribute("fetchpriority");
+    img.classList.add(movie.thumbhash_st ? CSS_CLASSES.LAZY_LQIP : "");
+    lazyLoadObserver.observe(img);
   }
-  lazyLoadObserver.observe(img);
 
   // --- TEXTOS BÁSICOS ---
   front.querySelector(SELECTORS.TITLE).textContent = movie.title;
@@ -544,7 +552,7 @@ export function renderMovieGrid(container, movies) {
       if (movie.id) card.style.viewTransitionName = `movie-${movie.id}`;
       card.style.setProperty("--card-index", i); // Para animación staggered
 
-      populateCard(card, movie);
+      populateCard(card, movie, i);
       updateCardUI(card);
       initializeCard(card);
       
