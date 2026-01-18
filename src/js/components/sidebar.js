@@ -78,7 +78,9 @@ function setSidebarState(isOpen) {
   // 2. Iconos y ARIA (Sincronización)
   if (dom.rewindButton) {
     dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
-    dom.rewindButton.setAttribute("aria-label", isOpen ? "Contraer sidebar" : "Expandir sidebar");
+    const label = isOpen ? "Cerrar sidebar" : "Abrir sidebar";
+    dom.rewindButton.setAttribute("aria-label", label);
+    dom.rewindButton.title = label;
     dom.rewindButton.setAttribute("aria-expanded", isOpen);
   }
   if (dom.mobileSidebarToggle) {

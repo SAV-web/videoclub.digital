@@ -377,9 +377,15 @@ function setupGlobalListeners() {
 function setupAuthSystem() {
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
+  const loginButton = document.getElementById("login-button");
+  const userSessionGroup = document.getElementById("user-session-group");
   
   async function onLogin(user) {
     document.body.classList.add(CSS_CLASSES.USER_LOGGED_IN);
+    // Gestión explícita de atributos hidden para anular estilos globales
+    if (loginButton) loginButton.hidden = true;
+    if (userSessionGroup) userSessionGroup.hidden = false;
+
     const userEmail = user.email || "";
     userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
     userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
@@ -392,6 +398,10 @@ function setupAuthSystem() {
   
   function onLogout() {
     document.body.classList.remove(CSS_CLASSES.USER_LOGGED_IN);
+    // Restaurar estado inicial
+    if (loginButton) loginButton.hidden = false;
+    if (userSessionGroup) userSessionGroup.hidden = true;
+
     userAvatarInitials.textContent = "";
     userAvatarInitials.title = "";
     clearUserMovieData();

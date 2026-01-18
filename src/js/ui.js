@@ -332,9 +332,16 @@ export function initThemeToggle() {
   const btn = dom.themeToggleButton;
   if (!btn) return;
 
+  const updateState = (isDark) => {
+    btn.setAttribute("aria-pressed", isDark);
+    const label = isDark ? "Modo claro" : "Modo oscuro";
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+  };
+
   // Sincronización inicial
   const isDark = document.documentElement.classList.contains(CSS_CLASSES.DARK_MODE);
-  btn.setAttribute("aria-pressed", isDark);
+  updateState(isDark);
 
   btn.addEventListener("click", (e) => {
     triggerPopAnimation(e.currentTarget);
@@ -342,7 +349,7 @@ export function initThemeToggle() {
     
     const isNowDark = document.documentElement.classList.toggle(CSS_CLASSES.DARK_MODE);
     localStorage.setItem("theme", isNowDark ? "dark" : "light");
-    btn.setAttribute("aria-pressed", isNowDark);
+    updateState(isNowDark);
   });
 }
 

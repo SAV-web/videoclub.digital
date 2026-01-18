@@ -94,7 +94,8 @@ body.sidebar-is-open .sidebar { transform: translateX(0); }
 /* --- Visibilidad de Contenido Interno (Optimización) --- */
 .sidebar .logo-area,
 .sidebar .sidebar-static-filters,
-.sidebar .sidebar-scrollable-filters {
+.sidebar .sidebar-scrollable-filters,
+.sidebar .profile-container {
   opacity: 0; visibility: hidden;
   transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
 }
@@ -107,7 +108,8 @@ body.sidebar-is-open .sidebar { transform: translateX(0); }
 /* Animación de entrada de contenido al abrir */
 body.sidebar-is-open .sidebar .logo-area,
 body.sidebar-is-open .sidebar .sidebar-static-filters,
-body.sidebar-is-open .sidebar .sidebar-scrollable-filters {
+body.sidebar-is-open .sidebar .sidebar-scrollable-filters,
+body.sidebar-is-open .sidebar .profile-container {
   opacity: 1; visibility: visible;
   transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s;
 }
@@ -132,8 +134,9 @@ body.sidebar-is-open .sidebar .play-button-container {
   /* Restaurar visibilidad */
   .sidebar .logo-area,
   .sidebar .sidebar-static-filters,
-  .sidebar .sidebar-scrollable-filters {
-    display: block; opacity: 1; visibility: visible; transition: none;
+  .sidebar .sidebar-scrollable-filters,
+  .sidebar .profile-container {
+    opacity: 1; visibility: visible; transition: none;
   }
   
   .sidebar .play-button-container {

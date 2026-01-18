@@ -12,6 +12,7 @@
   padding-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
   padding-inline: var(--space-lg); /* Padding normal (24px) */
   
+  min-height: 100%; /* Asegurar que ocupe toda la altura para empujar el perfil al fondo */
   /* Transición de contenido interno (Padding al colapsar) */
   transition: padding 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 
@@ -475,11 +476,10 @@ body.is-fetching .sidebar::before {
 /* =================================================================
    12. PERFIL DE USUARIO
    ================================================================= */
-.profile-container {
+.sidebar .profile-container {
   margin-top: auto; padding-top: var(--space-md);
   display: flex; align-items: center; justify-content: center;
   height: 52px;
-  transition: opacity var(--transition-duration-normal);
 }
 
 .user-session-group { display: none; align-items: center; gap: var(--space-md); }
