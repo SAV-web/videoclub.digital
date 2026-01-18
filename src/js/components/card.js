@@ -309,6 +309,7 @@ export function handleCardClick(event) {
 // =================================================================
 
 // Observer de Lazy Load (Reutilizado)
+const isMobile = window.matchMedia("(max-width: 768px)").matches;
 const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -319,7 +320,7 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
       obs.unobserve(img);
     }
   });
-}, { rootMargin: "800px" });
+}, { rootMargin: isMobile ? "200px" : "800px" });
 
 function cleanupLazyImages(container) {
   if (!container) return;
@@ -344,7 +345,7 @@ function populateCard(card, movie, index) {
     // 2. Configurar atributos ANTES del src para garantizar que el navegador use la prioridad alta
     img.loading = "eager";
     img.setAttribute("fetchpriority", "high");
-    img.decoding = "sync"; // 3. Decodificación síncrona: Pintar inmediatamente, no esperar a hilo secundario
+    img.decoding = "async"; // 3. Decodificación asíncrona: No bloquear hilo principal
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
     img.src = hqPoster; // 4. Disparar la carga al final
   } else {
