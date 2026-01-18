@@ -338,11 +338,15 @@ function populateCard(card, movie, index) {
   
   // LCP Optimization (Mobile-First): Prioridad máxima a la primera carta
   if (index === 0) {
-    img.src = hqPoster; // Carga directa sin esperar a JS/Observer
+    // 1. Anular animación de entrada: La tarjeta debe ser visible en el Frame 0
+    card.style.animation = "none";
+
+    // 2. Configurar atributos ANTES del src para garantizar que el navegador use la prioridad alta
     img.loading = "eager";
     img.setAttribute("fetchpriority", "high");
-    img.decoding = "async";
+    img.decoding = "sync"; // 3. Decodificación síncrona: Pintar inmediatamente, no esperar a hilo secundario
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+    img.src = hqPoster; // 4. Disparar la carga al final
   } else {
     img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     img.dataset.src = hqPoster;
