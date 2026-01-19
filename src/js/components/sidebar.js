@@ -30,6 +30,9 @@ const MOBILE_BREAKPOINT = 768;
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
 let DRAWER_WIDTH = 280;
 
+// Estado de interacción con el filtro de años (para cierre inteligente en móvil)
+let yearInteractionState = { start: false, end: false };
+
 // --- Referencias DOM Centralizadas ---
 const dom = {
   sidebar: document.getElementById("sidebar"),
@@ -73,6 +76,9 @@ function setSidebarState(isOpen) {
     document.body.classList.toggle(CSS_CLASSES.SIDEBAR_OPEN, isOpen);
     dom.sidebar.style.transform = ''; // Limpiar transform inline para que CSS mande (o resetear drag)
     touchState.currentTranslate = isOpen ? 0 : -DRAWER_WIDTH;
+    
+    // Resetear estado de interacción de años al abrir para obligar a elegir ambos antes de cerrar
+    if (isOpen) yearInteractionState = { start: false, end: false };
   }
 
   // 2. Iconos y ARIA (Sincronización)
@@ -605,9 +611,15 @@ export function collapseAllSections() {
 function initYearSlider() {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
+  
+  // Escala logarítmica: Muchos años comprimidos a la izquierda, pocos expandidos a la derecha (recientes)
+  // El 50% del slider se dedica a los últimos 20 años.
+  const pivotYear = Math.max(CONFIG.YEAR_MIN + 1, CONFIG.YEAR_MAX - 20);
+
   const sliderInstance = noUiSlider.create(dom.yearSlider, {
     start: [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX],
-    connect: true, step: 1, range: { min: CONFIG.YEAR_MIN, max: CONFIG.YEAR_MAX },
+    connect: true, step: 1, 
+    range: { 'min': CONFIG.YEAR_MIN, '50%': pivotYear, 'max': CONFIG.YEAR_MAX },
     format: { to: (value) => Math.round(value), from: (value) => Number(value) },
   });
   sliderInstance.on("update", (values, handle) => { yearInputs[handle].value = values[handle]; });
@@ -619,23 +631,37 @@ function initYearSlider() {
     }
     const yearFilter = `${start}-${end}`;
     handleFilterChangeOptimistic("year", yearFilter, true);
-    if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+    
+    // Cierre inteligente en móvil: Solo cerrar si se han modificado AMBOS límites
+    if (window.innerWidth <= MOBILE_BREAKPOINT) {
+      if (yearInteractionState.start && yearInteractionState.end) {
+        closeMobileDrawer();
+      }
+    }
   };
 
   const debouncedUpdate = debounce(updateSliderFilter, 500);
-  sliderInstance.on("set", debouncedUpdate);
+  
+  // Interceptar evento 'set' para rastrear qué manija se movió
+  sliderInstance.on("set", (values, handle) => {
+    const h = Number(handle);
+    if (h === 0) yearInteractionState.start = true;
+    if (h === 1) yearInteractionState.end = true;
+    debouncedUpdate(values, handle);
+  });
   
   yearInputs.forEach((input, index) => {
     input.addEventListener("change", (e) => {
       const newValue = parseFloat(e.target.value);
       const currentValues = sliderInstance.get().map(v => parseFloat(v));
       if (currentValues[0] === currentValues[1]) {
-        if (index === 0 && newValue > currentValues[0]) { sliderInstance.set([newValue, newValue]); return; }
-        if (index === 1 && newValue < currentValues[1]) { sliderInstance.set([newValue, newValue]); return; }
+        // Usar 'true' para disparar eventos 'set' y activar la lógica de filtrado/cierre
+        if (index === 0 && newValue > currentValues[0]) { sliderInstance.set([newValue, newValue], true); return; }
+        if (index === 1 && newValue < currentValues[1]) { sliderInstance.set([newValue, newValue], true); return; }
       }
       const values = [null, null];
       values[index] = e.target.value;
-      sliderInstance.set(values);
+      sliderInstance.set(values, true);
     });
   });
 
