@@ -18,6 +18,7 @@
 
   @media (min-width: 769px) {
     height: 100%;
+    padding-inline: var(--space-md); /* Reducir padding (16px) para ganar espacio en ancho fijo */
 
     /* 🔥 FIX: Ajuste crítico para el modo colapsado (65px) */
     body.sidebar-collapsed & {
@@ -67,8 +68,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-xs); /* Reducir espacio (8px) para evitar desbordamiento en móvil */
   margin-bottom: var(--space-lg);
+  flex-wrap: nowrap; /* REGLA DE ORO: Nunca permitir dos filas */
+
+  /* Ajuste de precisión para Sidebar de escritorio (200px ancho fijo) */
+  @media (min-width: 769px) {
+    gap: 2px; /* Reducir espacio entre iconos */
+    /* Forzar botones más compactos para que quepan 4 en una fila (4x34 + 3x4 = 148px < 152px disponibles) */
+    & .sidebar-control-button { width: 34px !important; height: 34px !important; }
+  }
 }
 
 .sidebar-control-button {

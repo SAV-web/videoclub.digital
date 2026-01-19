@@ -191,11 +191,15 @@ body.sidebar-is-open .sidebar .play-button-container {
     top: 0;
     bottom: auto;
     
-    padding: var(--space-lg) var(--space-xxl) var(--space-md);
+    padding: var(--space-lg) var(--space-lg) var(--space-md);
     gap: var(--space-md) var(--space-lg);
     justify-content: center;
     flex-wrap: wrap;
   }
+}
+
+@media (min-width: 1200px) {
+  .main-header { padding-inline: var(--space-xxl); }
 }
 
 .header-pagination-group { display: flex; gap: 2px; }
@@ -238,8 +242,14 @@ body.rotation-disabled .grid-container {
 
 /* --- DESKTOP TWEAKS --- */
 @media (min-width: 769px) {
-  .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
+  /* Optimización Tablet: Menos padding lateral para ganar espacio (permite 3 columnas en iPad Air) */
+  .content { padding: var(--space-md) var(--space-lg) var(--space-xs); }
   .grid-container { gap: var(--space-lg) var(--space-md); }
+}
+
+/* Pantallas grandes: Restaurar padding amplio */
+@media (min-width: 1200px) {
+  .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
 }
 
 /* Opcional: Ajuste para pantallas Ultra-Wide */

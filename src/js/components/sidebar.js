@@ -879,6 +879,10 @@ function setupEventListeners() {
 export function initSidebar() {
   if (window.innerWidth <= MOBILE_BREAKPOINT) {
     setSidebarState(false); // Estado inicial cerrado en móvil
+  } else if (window.innerWidth <= 1024) {
+    // Tablet/Laptop pequeño: Colapsar por defecto para ganar espacio (ej: 4 columnas en iPad Air)
+    document.body.classList.add(CSS_CLASSES.SIDEBAR_COLLAPSED);
+    setSidebarState(false); // Sincronizar icono a "Abrir"
   }
   
   const populateFilterSection = (filterType) => {

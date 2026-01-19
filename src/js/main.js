@@ -308,7 +308,7 @@ function setupHeaderListeners() {
 
   // Placeholder Responsivo
   const updateSearchPlaceholder = () => {
-    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 700 ? "" : "Título";
+    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
   };
   window.addEventListener("resize", updateSearchPlaceholder);
   updateSearchPlaceholder();

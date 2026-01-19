@@ -274,6 +274,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
     min-width: 100%; height: 100%;
     border: none; background: transparent; color: transparent;
     padding: 0;
+    &::placeholder { color: transparent; }
   }
   .search-form .search-icon { right: 50%; transform: translate(50%, -50%); }
 
@@ -293,6 +294,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
     padding-inline-start: var(--space-md);
     padding-inline-end: var(--space-xxl);
     width: 100%;
+    &::placeholder { color: var(--color-text-secondary); }
   }
   .main-header.is-search-focused .search-icon { 
     right: var(--space-sm); transform: translateY(-50%); 
