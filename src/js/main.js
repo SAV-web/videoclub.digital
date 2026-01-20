@@ -58,7 +58,11 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false } =
   
   try {
     // Primera página carga más elementos para llenar pantallas grandes
-    const pageSize = page === 1 ? CONFIG.DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.ITEMS_PER_PAGE;
+    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+    const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+    const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
+    
+    const pageSize = page === 1 ? firstPageLimit : basePageSize;
     
     // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
     const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
@@ -135,7 +139,8 @@ function updateDomWithResults(movies, totalMovies) {
     updateHeaderPaginationState(1, 1);
   } else {
     // Caso: Paginación necesaria
-    const limit = CONFIG.ITEMS_PER_PAGE; 
+    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+    const limit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     // Slice optimizado: evitar copia de array si no es necesaria
     const moviesToRender = movies.length > limit ? movies.slice(0, limit) : movies;
     renderMovieGrid(dom.gridContainer, moviesToRender);
@@ -283,7 +288,8 @@ function setupHeaderListeners() {
   // Navegación Paginación Header
   const navigatePage = async (direction) => {
     const currentPage = getCurrentPage();
-    const totalPages = Math.ceil(getState().totalMovies / CONFIG.ITEMS_PER_PAGE);
+    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+    const totalPages = Math.ceil(getState().totalMovies / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
     const newPage = currentPage + direction;
     if (newPage > 0 && newPage <= totalPages) {
       document.dispatchEvent(new CustomEvent("uiActionTriggered"));

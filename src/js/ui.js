@@ -58,6 +58,12 @@ export const dom = new Proxy({}, {
 let lastToastMessage = "";
 let lastToastTime = 0;
 
+// Helper para obtener el tamaño de página actual según el modo
+function getCurrentPageSize() {
+  const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+  return isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+}
+
 // =================================================================
 //          1. SISTEMA DE NOTIFICACIONES (TOAST)
 // =================================================================
@@ -112,7 +118,7 @@ export function renderPagination(paginationContainer, totalMovies, currentPage) 
   if (!paginationContainer) return;
 
   paginationContainer.textContent = "";
-  const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalMovies / getCurrentPageSize());
   if (totalPages <= 1) return;
 
   const fragment = document.createDocumentFragment();
@@ -172,13 +178,14 @@ export function updateHeaderPaginationState(currentPage, totalMovies) {
   const { headerPrevBtn, headerNextBtn } = dom;
   if (!headerPrevBtn || !headerNextBtn) return;
 
-  const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalMovies / getCurrentPageSize());
   headerPrevBtn.disabled = currentPage <= 1;
   headerNextBtn.disabled = currentPage >= totalPages || totalPages === 0;
 }
 
 export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
-  const totalPages = Math.ceil(totalMovies / CONFIG.ITEMS_PER_PAGE);
+  const pageSize = getCurrentPageSize();
+  const totalPages = Math.ceil(totalMovies / pageSize);
   if (currentPage >= totalPages) return;
 
   // Usar requestIdleCallback para no bloquear el hilo principal
@@ -186,7 +193,7 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
   
   idleCallback(() => {
     // 1. Prefetch página siguiente (Prioridad)
-    fetchMovies(activeFilters, currentPage + 1, CONFIG.ITEMS_PER_PAGE, null, false)
+    fetchMovies(activeFilters, currentPage + 1, pageSize, null, false)
       .catch(() => {});
 
     // 2. Prefetch página subsiguiente (Condicional)
@@ -195,7 +202,7 @@ export function prefetchNextPage(currentPage, totalMovies, activeFilters) {
 
     if (isDesktop && currentPage + 1 < totalPages) {
       setTimeout(() => {
-        fetchMovies(activeFilters, currentPage + 2, CONFIG.ITEMS_PER_PAGE, null, false)
+        fetchMovies(activeFilters, currentPage + 2, pageSize, null, false)
           .catch(() => {});
       }, 1500); // Delay aumentado para asegurar prioridad a la página inmediata
     }

@@ -201,9 +201,9 @@
   font-size: var(--font-size-sm);
 }
 
-.card-icons-line { display: flex; align-items: center; gap: var(--space-xs); }
+.card-icons-line { display: flex; align-items: center; gap: var(--space-xxs); }
 .platform-icon svg { vertical-align: middle; }
-.year-flag-group { display: flex; align-items: center; gap: var(--space-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); }
+.year-flag-group { display: flex; align-items: center; gap: var(--space-xxs); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); white-space: nowrap; }
 .country-info { display: flex; align-items: center; gap: var(--space-xxs); }
 
 /* Colores de Estudios (Mantenidos igual) */

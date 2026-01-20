@@ -381,8 +381,7 @@
 
 .year-input {
   width: 100%;
-  padding: 0.35rem var(--space-xs);
-  padding-right: 25px !important;
+  padding: 0.35rem 32px; /* Espacio para botones laterales en móvil */
   border: 1px solid var(--color-border); border-radius: var(--radius-sm);
   background-color: var(--color-bg); color: var(--color-text-primary);
   text-align: center; font-size: var(--font-size-xs);
@@ -393,28 +392,41 @@
 
 .year-input-wrapper { position: relative; flex: 1; min-width: 0; }
 
-.year-input-stepper {
-  position: absolute; top: 0; right: 1px; bottom: 0;
-  display: flex; flex-direction: column;
-  width: 20px;
-  background-color: var(--color-surface);
-  border-left: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity var(--transition-duration-fast);
-}
-.year-input-wrapper:hover .year-input-stepper,
-.year-input:focus + .year-input-stepper { opacity: 1; visibility: visible; pointer-events: auto; }
-
 .stepper-btn {
-  flex: 1; width: 100%; padding: 0;
+  position: absolute; top: 0; bottom: 0;
+  width: 30px; padding: 0;
   border: none; background: none;
   color: var(--color-text-secondary);
   cursor: pointer; font-size: var(--font-size-xs); line-height: 1;
   transition: background-color var(--transition-duration-fast);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2;
 }
 .stepper-btn:hover { background-color: var(--color-border-soft); color: var(--color-text-primary); }
 .stepper-btn:active { background-color: var(--color-border); }
-.stepper-btn.stepper-up { border-bottom: 1px solid var(--color-border); }
+
+/* Móvil: Botones a los lados */
+.stepper-down { left: 0; border-right: 1px solid var(--color-border); border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.stepper-up { right: 0; border-left: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+/* Escritorio: Botones apilados a la derecha (Restaurar diseño original) */
+@media (min-width: 769px) {
+  .year-input { padding: 0.35rem var(--space-xs); padding-right: 25px; }
+  
+  .stepper-btn {
+    right: 1px; left: auto;
+    width: 20px; height: 50%;
+    background-color: var(--color-surface);
+    border-left: 1px solid var(--color-border);
+    opacity: 0; visibility: hidden;
+  }
+  
+  .stepper-up { top: 0; bottom: auto; border-bottom: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) 0 0; }
+  .stepper-down { top: auto; bottom: 0; border-right: none; border-radius: 0 0 var(--radius-sm) 0; }
+
+  .year-input-wrapper:hover .stepper-btn,
+  .year-input-wrapper:focus-within .stepper-btn { opacity: 1; visibility: visible; }
+}
 
 /* --- 9. Resultados --- */
 .total-results-container {
@@ -537,7 +549,7 @@ body.sidebar-is-dragging .main-content-wrapper {
 }
 
 .sidebar-platform-icon {
-  height: 24px; width: auto; max-width: 100%;
+  height: 20px; width: auto; max-width: 100%;
   transition: transform var(--transition-duration-fast);
 }
 .filter-link--studio:hover .sidebar-platform-icon { transform: scale(1.1); }

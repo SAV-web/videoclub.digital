@@ -19,7 +19,7 @@ import {
 } from "../api.js";
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
-import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType } from "../state.js";
+import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
@@ -69,6 +69,32 @@ let touchState = {
   isInteractive: false 
 };
 
+function applyPendingYearFilters() {
+  if (!dom.yearStartInput || !dom.yearEndInput) return;
+  
+  const currentStart = parseInt(dom.yearStartInput.value, 10);
+  const currentEnd = parseInt(dom.yearEndInput.value, 10);
+  
+  if (isNaN(currentStart) || isNaN(currentEnd)) return;
+
+  const activeFilters = getActiveFilters();
+  let globalStart = CONFIG.YEAR_MIN;
+  let globalEnd = CONFIG.YEAR_MAX;
+  
+  if (activeFilters.year) {
+      const parts = activeFilters.year.split('-');
+      if (parts.length === 2) {
+          globalStart = parseInt(parts[0], 10);
+          globalEnd = parseInt(parts[1], 10);
+      }
+  }
+  
+  if (currentStart !== globalStart || currentEnd !== globalEnd) {
+      const yearFilter = `${currentStart}-${currentEnd}`;
+      handleFilterChangeOptimistic("year", yearFilter, true);
+  }
+}
+
 // Fuente única de verdad para el estado del sidebar
 function setSidebarState(isOpen) {
   // 1. Clases y Estilos (Solo en móvil gestionamos la clase de drawer para evitar overlay en desktop)
@@ -77,8 +103,13 @@ function setSidebarState(isOpen) {
     dom.sidebar.style.transform = ''; // Limpiar transform inline para que CSS mande (o resetear drag)
     touchState.currentTranslate = isOpen ? 0 : -DRAWER_WIDTH;
     
-    // Resetear estado de interacción de años al abrir para obligar a elegir ambos antes de cerrar
-    if (isOpen) yearInteractionState = { start: false, end: false };
+    // Resetear estado de interacción de años al abrir
+    if (isOpen) {
+      yearInteractionState = { start: false, end: false };
+    } else {
+      // AL CERRAR: Aplicar filtros de año pendientes si han cambiado
+      applyPendingYearFilters();
+    }
   }
 
   // 2. Iconos y ARIA (Sincronización)
@@ -97,6 +128,9 @@ function setSidebarState(isOpen) {
 
 export const openMobileDrawer = () => setSidebarState(true);
 export const closeMobileDrawer = () => setSidebarState(false);
+const tryCloseMobileDrawer = () => {
+  if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+};
 
 function updateDrawerWidth() {
   if (dom.sidebar) {
@@ -259,6 +293,9 @@ function toggleRotationMode(forceState = null) {
     button.title = shouldDisable ? "Giro automático" : "Vista Rápida";
     button.setAttribute("aria-pressed", shouldDisable);
     LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
+    
+    // Recargar grid para ajustar el número de items por página (42 vs 60)
+    loadAndRenderMovies(getCurrentPage());
   };
 
   if (document.startViewTransition) document.startViewTransition(() => updateState());
@@ -597,7 +634,7 @@ function resetFilters() {
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
   document.dispatchEvent(new CustomEvent("filtersReset"));
-  if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+  tryCloseMobileDrawer();
 }
 
 export function collapseAllSections() {
@@ -624,19 +661,22 @@ function initYearSlider() {
   });
   sliderInstance.on("update", (values, handle) => { yearInputs[handle].value = values[handle]; });
 
-  const updateSliderFilter = (values, handle) => {
+  const updateSliderFilter = (values, handle, autoClose = true) => {
     let [start, end] = values.map(Number);
     if (start > end) {
       if (handle === 0) end = start; else start = end;
     }
     const yearFilter = `${start}-${end}`;
-    handleFilterChangeOptimistic("year", yearFilter, true);
     
-    // Cierre inteligente en móvil: Solo cerrar si se han modificado AMBOS límites
+    // Lógica condicional para móvil: Esperar a que el usuario elija ambos límites
     if (window.innerWidth <= MOBILE_BREAKPOINT) {
-      if (yearInteractionState.start && yearInteractionState.end) {
+      // En móvil, diferimos la actualización. Solo cerramos si es slider (autoClose=true) y completo.
+      if (autoClose && yearInteractionState.start && yearInteractionState.end) {
         closeMobileDrawer();
       }
+    } else {
+      // Escritorio: Actualización inmediata
+      handleFilterChangeOptimistic("year", yearFilter, true);
     }
   };
 
@@ -647,21 +687,30 @@ function initYearSlider() {
     const h = Number(handle);
     if (h === 0) yearInteractionState.start = true;
     if (h === 1) yearInteractionState.end = true;
-    debouncedUpdate(values, handle);
+    debouncedUpdate(values, handle, true); // Auto-close activado para el slider
   });
   
   yearInputs.forEach((input, index) => {
     input.addEventListener("change", (e) => {
       const newValue = parseFloat(e.target.value);
       const currentValues = sliderInstance.get().map(v => parseFloat(v));
+      
+      // Helper para actualizar filtro SIN cerrar el sidebar
+      const triggerUpdate = (vals) => {
+        if (index === 0) yearInteractionState.start = true;
+        if (index === 1) yearInteractionState.end = true;
+        debouncedUpdate(vals, index, false); // Auto-close desactivado para inputs
+      };
+
       if (currentValues[0] === currentValues[1]) {
-        // Usar 'true' para disparar eventos 'set' y activar la lógica de filtrado/cierre
-        if (index === 0 && newValue > currentValues[0]) { sliderInstance.set([newValue, newValue], true); return; }
-        if (index === 1 && newValue < currentValues[1]) { sliderInstance.set([newValue, newValue], true); return; }
+        // Usar 'false' para NO disparar evento 'set' del slider (evitar doble llamada)
+        if (index === 0 && newValue > currentValues[0]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
+        if (index === 1 && newValue < currentValues[1]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
       }
       const values = [null, null];
       values[index] = e.target.value;
-      sliderInstance.set(values, true);
+      sliderInstance.set(values, false);
+      triggerUpdate(sliderInstance.get());
     });
   });
 
@@ -681,7 +730,7 @@ function setupYearInputSteppers() {
     const stepperDown = wrapper.querySelector(".stepper-btn.stepper-down");
     if (!input || !stepperUp || !stepperDown) return;
     const updateYearValue = (increment) => {
-      triggerHapticFeedback('light');
+      triggerHapticFeedback('medium'); // Feedback más notable en móvil
       let currentValue = parseInt(input.value, 10);
       if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
       const newValue = Math.min(Math.max(currentValue + increment, CONFIG.YEAR_MIN), CONFIG.YEAR_MAX);
@@ -752,7 +801,7 @@ function setupAutocompleteHandlers() {
         handleFilterChangeOptimistic(filterType, suggestionItem.dataset.value);
         input.value = "";
         clearAllSidebarAutocomplete();
-        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+        tryCloseMobileDrawer();
       }
     });
   });
@@ -785,7 +834,7 @@ function setupEventListeners() {
   if (staticFilters) {
     staticFilters.addEventListener("click", (e) => {
       if (handlePillClick(e)) {
-        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+        tryCloseMobileDrawer();
       }
     });
   }
@@ -810,7 +859,7 @@ function setupEventListeners() {
   if (dom.toggleRotationBtn) {
     dom.toggleRotationBtn.addEventListener("click", (e) => {
       toggleRotationMode();
-      if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+      tryCloseMobileDrawer();
     });
   }
 
@@ -822,12 +871,12 @@ function setupEventListeners() {
         triggerHapticFeedback('medium');
         triggerPopAnimation(excludeBtn);
         handleToggleExcludedFilterOptimistic(excludeBtn.dataset.type, excludeBtn.dataset.value);
-        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+        tryCloseMobileDrawer();
         return;
       }
       
       if (handlePillClick(e)) {
-        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+        tryCloseMobileDrawer();
         return;
       }
 
@@ -836,7 +885,7 @@ function setupEventListeners() {
         triggerHapticFeedback('light');
         triggerPopAnimation(link);
         handleFilterChangeOptimistic(link.dataset.filterType, link.dataset.filterValue);
-        if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+        tryCloseMobileDrawer();
       }
     });
   }

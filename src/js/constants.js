@@ -34,6 +34,8 @@ export const CONFIG = Object.freeze({
   // Paginación
   ITEMS_PER_PAGE: 42,
   DYNAMIC_PAGE_SIZE_LIMIT: 56,
+  WALL_MODE_ITEMS_PER_PAGE: 60,
+  WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 72,
   CARD_BATCH_SIZE: 12, // Renderizado por lotes (divisible por 2,3,4) para evitar bloqueo UI
   
   // Comportamiento
@@ -162,21 +164,21 @@ export const ICONS = Object.freeze({
  * DATOS DE PLATAFORMAS (Streaming / Estudios)
  */
 export const STUDIO_DATA = Object.freeze({
-  N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix" },
-  D: { id: "icon-disney", class: "disney-icon", title: "Disney" },
-  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros." },
-  U: { id: "icon-universal", class: "universal-icon", title: "Universal" },
-  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia" },
-  P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount" },
-  L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate" },
-  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon MGM" },
-  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Century Fox" },
-  2: { id: "icon-a24", class: "a24-icon", title: "A24" },
-  O: { id: "icon-movistar", class: "movistar-icon", title: "Movistar" },
-  X: { id: "icon-miramax", class: "miramax-icon", title: "Miramax" },
-  A: { id: "icon-apple", title: "Apple TV", class: "apple-icon", w: 24, h: 24 },
-  C: { id: "icon-canalplus", title: "Canal+", class: "canalplus-icon", w: 18, h: 18 },
-  B: { id: "icon-bbc", title: "BBC", class: "bbc-icon", w: 24, h: 24 }
+  N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix", w: 20, h: 20 },
+  D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 20, h: 20 },
+  W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 20 },
+  U: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 20, h: 20 },
+  S: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 20, h: 20 },
+  P: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 20, h: 20 },
+  L: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate", w: 20, h: 20 },
+  Z: { id: "icon-amazon", class: "amazon-icon", title: "Amazon MGM", w: 20, h: 20 },
+  F: { id: "icon-twenty", class: "twenty-icon", title: "20th Century Fox", w: 20, h: 20 },
+  2: { id: "icon-a24", class: "a24-icon", title: "A24", w: 20, h: 20 },
+  O: { id: "icon-movistar", class: "movistar-icon", title: "Movistar", w: 20, h: 20 },
+  X: { id: "icon-miramax", class: "miramax-icon", title: "Miramax", w: 20, h: 20 },
+  A: { id: "icon-apple", class: "apple-icon", title: "Apple TV", w: 20, h: 20 },
+  C: { id: "icon-canalplus", class: "canalplus-icon", title: "Canal+", w: 20, h: 20 },
+  B: { id: "icon-bbc", title: "BBC", class: "bbc-icon", w: 20, h: 20 }
 
 });
 
