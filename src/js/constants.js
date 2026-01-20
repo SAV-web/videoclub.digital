@@ -173,7 +173,11 @@ export const STUDIO_DATA = Object.freeze({
   F: { id: "icon-twenty", class: "twenty-icon", title: "20th Century Fox" },
   2: { id: "icon-a24", class: "a24-icon", title: "A24" },
   O: { id: "icon-movistar", class: "movistar-icon", title: "Movistar" },
-  X: { id: "icon-miramax", class: "miramax-icon", title: "Miramax" }
+  X: { id: "icon-miramax", class: "miramax-icon", title: "Miramax" },
+  A: { id: "icon-apple", title: "Apple TV", class: "apple-icon", w: 24, h: 24 },
+  C: { id: "icon-canalplus", title: "Canal+", class: "canalplus-icon", w: 18, h: 18 },
+  B: { id: "icon-bbc", title: "BBC", class: "bbc-icon", w: 24, h: 24 }
+
 });
 
 /**
@@ -214,6 +218,9 @@ export const FILTER_CONFIG = {
       2: "A24",
       O: "Movistar",
       X: "Miramax",
+      A: "Apple TV",
+      C: "Canal+",
+      B: "BBC",
     },
   },
   genre: {

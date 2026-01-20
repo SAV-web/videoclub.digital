@@ -298,11 +298,16 @@ function setupHeaderListeners() {
   if (clearSearchBtn) {
     // FIX: Usar pointerdown para unificar mouse/touch y prevenir blur de forma robusta en Android
     clearSearchBtn.addEventListener('pointerdown', (e) => {
-      e.preventDefault(); // Evita que el input pierda el foco
+      e.preventDefault(); // Gestión manual del foco
       e.stopPropagation();
-      dom.searchInput.value = '';
-      dom.searchInput.focus();
-      handleSearchInput(); 
+      
+      if (dom.searchInput.value) {
+        dom.searchInput.value = '';
+        dom.searchInput.focus();
+        handleSearchInput(); 
+      } else {
+        dom.searchInput.blur();
+      }
     });
   }
 
