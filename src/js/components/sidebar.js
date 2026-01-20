@@ -287,6 +287,15 @@ function toggleRotationMode(forceState = null) {
   closeModal();
 
   const updateState = () => {
+    // Calcular nueva página para mantener la posición aproximada del usuario
+    const currentPage = getCurrentPage();
+    // Si activamos modo muro (shouldDisable=true), venimos de normal (42). Si no, venimos de muro (60).
+    const oldPageSize = shouldDisable ? CONFIG.ITEMS_PER_PAGE : CONFIG.WALL_MODE_ITEMS_PER_PAGE;
+    const newPageSize = shouldDisable ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+    
+    const firstItemIndex = (currentPage - 1) * oldPageSize;
+    const newPage = Math.floor(firstItemIndex / newPageSize) + 1;
+
     document.body.classList.toggle(CSS_CLASSES.ROTATION_DISABLED, shouldDisable);
     button.innerHTML = shouldDisable ? ICONS.SQUARE_STOP : ICONS.PAUSE;
     button.setAttribute("aria-label", shouldDisable ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
@@ -294,8 +303,8 @@ function toggleRotationMode(forceState = null) {
     button.setAttribute("aria-pressed", shouldDisable);
     LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
     
-    // Recargar grid para ajustar el número de items por página (42 vs 60)
-    loadAndRenderMovies(getCurrentPage(), { forceSkeleton: true });
+    // Recargar grid con la nueva página calculada y skeletons forzados
+    loadAndRenderMovies(newPage, { forceSkeleton: true });
   };
 
   if (document.startViewTransition) document.startViewTransition(() => updateState());
