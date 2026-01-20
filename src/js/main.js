@@ -35,7 +35,7 @@ const SUPPORTS_VIEW_TRANSITIONS = !!document.startViewTransition;
  * Carga y renderiza la rejilla de películas.
  * Gestiona estados de carga, errores y transiciones.
  */
-export async function loadAndRenderMovies(page = 1, { replaceHistory = false } = {}) {
+export async function loadAndRenderMovies(page = 1, { replaceHistory = false, forceSkeleton = false } = {}) {
   const controller = createAbortableRequest('movie-grid-load');
   const signal = controller.signal;
 
@@ -49,9 +49,14 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false } =
   dom.gridContainer.setAttribute("aria-busy", "true");
   
   // Renderizado de Skeletons diferido (150ms) para evitar parpadeo en cargas rápidas
-  const skeletonTimeout = setTimeout(() => {
+  let skeletonTimeout;
+  if (forceSkeleton) {
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
-  }, 150);
+  } else {
+    skeletonTimeout = setTimeout(() => {
+      renderSkeletons(dom.gridContainer, dom.paginationContainer);
+    }, 150);
+  }
 
   const currentKnownTotal = getState().totalMovies;
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
@@ -76,7 +81,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false } =
     );
 
     // Cancelar skeletons si la respuesta llegó rápido (antes de 150ms)
-    clearTimeout(skeletonTimeout);
+    if (skeletonTimeout) clearTimeout(skeletonTimeout);
 
     if (result.aborted) return;
 
@@ -99,7 +104,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false } =
     else performRender();
 
   } catch (error) {
-    clearTimeout(skeletonTimeout); // Asegurar limpieza en error
+    if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
     if (error.name === "AbortError") return;
     console.error("Error en carga (Main):", error);
     

@@ -295,7 +295,7 @@ function toggleRotationMode(forceState = null) {
     LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
     
     // Recargar grid para ajustar el número de items por página (42 vs 60)
-    loadAndRenderMovies(getCurrentPage());
+    loadAndRenderMovies(getCurrentPage(), { forceSkeleton: true });
   };
 
   if (document.startViewTransition) document.startViewTransition(() => updateState());
