@@ -391,7 +391,7 @@ function populateCard(card, movie, index) {
   const iconCont = front.querySelector('.card-icons-line');
   if (iconCont) {
     iconCont.innerHTML = ""; // Limpieza rápida
-    const codes = [...(movie.studios_list?.split(",") || []), ...(movie.selections_list?.split(",") || [])];
+    const codes = movie.studios_list?.split(",") || [];
     codes.forEach(code => {
       const conf = STUDIO_DATA[code];
       if (conf) {

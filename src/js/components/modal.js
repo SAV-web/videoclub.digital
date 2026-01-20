@@ -272,7 +272,7 @@ function setupModalHeader(front, movie) {
   const iconsContainer = front.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
-    const codes = [...(movie.studios_list?.split(",") || []), ...(movie.selections_list?.split(",") || [])];
+    const codes = movie.studios_list?.split(",") || [];
     
     codes.forEach(code => {
       const conf = STUDIO_DATA[code];
