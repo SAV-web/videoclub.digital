@@ -237,14 +237,32 @@ body.sidebar-is-open .sidebar .play-button-container {
 /* --- MODO MURO (Compacto) --- */
 body.rotation-disabled .grid-container {
   grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-  gap: var(--space-xs);
+  gap: var(--space-xxs) var(--space-xs);
 }
 
 /* --- DESKTOP TWEAKS --- */
 @media (min-width: 769px) {
   /* Optimización Tablet: Menos padding lateral para ganar espacio (permite 3 columnas en iPad Air) */
-  .content { padding: var(--space-md) var(--space-lg) var(--space-xs); }
+  .content { 
+    padding: var(--space-md) var(--space-lg) var(--space-xs);
+    container-type: inline-size; /* Habilitar Container Queries */
+  }
   .grid-container { gap: var(--space-lg) var(--space-md); }
+
+  /* --- MODO MURO: Columnas controladas (Divisores de 72) --- */
+  /* Forzar 6, 8, 9 o 12 columnas para evitar huecos en la última fila (72 items) */
+  @container (min-width: 660px) {
+    body.rotation-disabled .grid-container { grid-template-columns: repeat(6, 1fr); }
+  }
+  @container (min-width: 880px) {
+    body.rotation-disabled .grid-container { grid-template-columns: repeat(8, 1fr); }
+  }
+  @container (min-width: 1000px) {
+    body.rotation-disabled .grid-container { grid-template-columns: repeat(9, 1fr); }
+  }
+  @container (min-width: 1340px) {
+    body.rotation-disabled .grid-container { grid-template-columns: repeat(12, 1fr); }
+  }
 }
 
 /* Pantallas grandes: Restaurar padding amplio */

@@ -163,7 +163,8 @@ function handleTouchStart(e) {
   // MEJORA: Si es un swipe desde el borde real (< 30px), asumimos intención clara de abrir y bajamos el umbral.
   // Si es más adentro, respetamos las tarjetas para no cancelar sus clics accidentalmente.
   const isEdgeSwipe = !isOpen && touchState.startX < 30;
-  touchState.isInteractive = !isEdgeSwipe && !isOpen && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
+  // FIX: Permitir detección de interactividad también cuando está abierto para proteger el scroll vertical
+  touchState.isInteractive = !isEdgeSwipe && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle, .sidebar-inner-wrapper');
 
   // Passive false para poder cancelar el scroll nativo si es necesario
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
@@ -180,7 +181,7 @@ function handleTouchMove(e) {
   // Detección de intención (Scroll Vertical vs Swipe Horizontal)
   if (!touchState.isHorizontalDrag) {
     // Umbral dinámico: más alto si estamos sobre un elemento interactivo
-    const threshold = touchState.isInteractive ? 15 : 5;
+    const threshold = touchState.isInteractive ? 15 : 10; // Aumentado base a 10px para evitar falsos positivos
     
     // Si no superamos el umbral, esperamos
     if (Math.abs(diffX) < threshold && Math.abs(diffY) < threshold) return;

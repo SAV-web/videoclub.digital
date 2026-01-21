@@ -505,10 +505,13 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 /* Reducir sombra en modo muro para que sea proporcional al tamaño */
 body.rotation-disabled .movie-card:not(.is-quick-view) .flip-card-inner {
   box-shadow: var(--shadow-sm);
+  border: none;
+  background-color: transparent;
 }
 
 /* Ocultar textos */
 body.rotation-disabled .movie-card:not(.is-quick-view) .movie-summary { display: none; }
+body.rotation-disabled .movie-card:not(.is-quick-view) .flip-card-front { background-color: transparent; }
 
 /* Póster domina */
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
@@ -517,6 +520,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
 body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
   height: auto; flex-grow: 1; min-height: 0; object-fit: cover;
   border-radius: var(--radius-xl);
+  border: none;
 }
 
 /* Muesca en el póster para la nota numérica (mejora legibilidad) - Solo si no hay voto de usuario */
@@ -529,13 +533,13 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container:has(.st
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
   position: static; transform: none; bottom: auto; left: auto; right: auto;
   height: auto; justify-content: center;
-  padding: 3px var(--space-xs); background: transparent;
+  padding: 1px var(--space-xs); background: transparent;
   cursor: pointer; pointer-events: auto;
 }
 
 /* Ajuste de posición vertical para elementos de valoración */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block > *:not(.card-action-btn) {
-  transform: translateY(-40%);
+  transform: translateY(calc(-40% + 4px));
 }
 
 /* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
@@ -558,7 +562,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.ha
 }
 
 /* Mostrar nota numérica */
-body.rotation-disabled .movie-card:not(.is-quick-view) .wall-rating-number {
+body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block .wall-rating-number {
   display: block;
   font-weight: var(--font-weight-bold);
   font-size: 1.1rem;
@@ -566,6 +570,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .wall-rating-number {
   font-variant-numeric: tabular-nums; /* Cifras alineadas */
   text-shadow: 0 2px 4px rgba(0,0,0,0.3); /* Legibilidad extra */
   cursor: pointer;
+  transform: translateY(calc(-40% + 6px)); /* Ajuste óptico: 2px más abajo que las estrellas */
 }
 
 /* Ocultar nota numérica si hay voto de usuario (prioridad a estrellas) */

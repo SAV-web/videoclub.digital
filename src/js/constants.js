@@ -36,8 +36,8 @@ export const CONFIG = Object.freeze({
   // Paginación
   ITEMS_PER_PAGE: 42,
   DYNAMIC_PAGE_SIZE_LIMIT: 56,
-  WALL_MODE_ITEMS_PER_PAGE: 60,
-  WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 72,
+  WALL_MODE_ITEMS_PER_PAGE: 72,
+  WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 84,
   CARD_BATCH_SIZE: 12, // Renderizado por lotes (divisible por 2,3,4) para evitar bloqueo UI
   
   // Comportamiento
