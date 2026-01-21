@@ -20,7 +20,7 @@ import {
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage } from "../state.js";
-import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA } from "../constants.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
@@ -441,7 +441,13 @@ function updateAllFilterControls() {
     const isExcluded = (type === "genre" && activeFilters.excludedGenres?.includes(value)) || 
                        (type === "country" && activeFilters.excludedCountries?.includes(value));
     const isActive = activeFilters[type] === value;
-    const shouldHide = isActive || isExcluded;
+    
+    // MOD: Para estudios, no ocultamos, marcamos como activo. Para el resto, ocultamos si está activo.
+    let shouldHide = isActive || isExcluded;
+    if (type === 'studio') {
+      shouldHide = false;
+      link.classList.toggle('active', isActive);
+    }
     
     // Optimización: Usar atributo hidden estándar (delegan layout al CSS)
     if (link.hidden !== shouldHide) link.hidden = shouldHide;
@@ -959,20 +965,32 @@ export function initSidebar() {
     Object.entries(config.items).forEach(([value, text]) => {
       const link = createElement("button", { type: "button", className: "filter-link", dataset: { filterType, filterValue: value } });
       
-      if (filterType === 'studio' && STUDIO_DATA[value]) {
-        const p = STUDIO_DATA[value];
-        link.classList.add("filter-link--studio");
-        link.title = text; 
+      // Detectar si hay configuración de icono (Estudio o Selección)
+      const iconData = (filterType === 'studio' ? STUDIO_DATA[value] : null) || 
+                       (filterType === 'selection' ? SELECTION_DATA?.[value] : null);
+
+      if (iconData) {
+        link.classList.add("filter-link--icon"); // Clase genérica para layout cuadrado
+        link.title = text;
         
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", p.w || "24"); svg.setAttribute("height", p.h || "24");
-        svg.setAttribute("viewBox", p.vb || "0 0 24 24"); svg.setAttribute("class", `sidebar-platform-icon ${p.class || ''}`);
-        svg.setAttribute("fill", "currentColor");
-        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        use.setAttribute("href", `${spriteUrl}#${p.id}`);
-        svg.appendChild(use);
-        
-        link.appendChild(svg);
+        if (iconData.img) {
+          // Opción A: Imagen (PNG/JPG/WebP)
+          const img = createElement("img", { 
+            src: iconData.img, 
+            className: `sidebar-platform-img ${iconData.invertDark ? 'invert-on-dark' : ''}`,
+            alt: text 
+          });
+          link.appendChild(img);
+        } else if (iconData.id) {
+          // Opción B: SVG Sprite (Estudios existentes)
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svg.setAttribute("width", iconData.w || "24"); svg.setAttribute("height", iconData.h || "24");
+          svg.setAttribute("viewBox", iconData.vb || "0 0 24 24"); svg.setAttribute("class", `sidebar-platform-icon ${iconData.class || ''}`);
+          svg.setAttribute("fill", "currentColor");
+          svg.innerHTML = `<use href="${spriteUrl}#${iconData.id}"></use>`;
+          link.appendChild(svg);
+        }
+
         link.appendChild(createElement("span", { className: "sr-only", textContent: text }));
       } else {
         const textWrapper = createElement("span", { textContent: text });

@@ -2,6 +2,8 @@
 // CONSTANTES GLOBALES (Fuente única de verdad. Inmutable y tipada)
 // =================================================================
 
+// Importación de Logos (Vite gestionará las rutas finales)
+
 // --- Validación de Entorno (Explícita para Vite) ---
 // Vite necesita acceder a import.meta.env.NOMBRE_VAR explícitamente para el reemplazo estático.
 const envUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -177,9 +179,17 @@ export const STUDIO_DATA = Object.freeze({
   O: { id: "icon-movistar", class: "movistar-icon", title: "Movistar", w: 20, h: 20 },
   X: { id: "icon-miramax", class: "miramax-icon", title: "Miramax", w: 20, h: 20 },
   A: { id: "icon-apple", class: "apple-icon", title: "Apple TV", w: 20, h: 20 },
-  C: { id: "icon-canalplus", class: "canalplus-icon", title: "Canal+", w: 20, h: 20 },
+  C: { id: "icon-canalplus", class: "canalplus-icon", title: "StudioCanal", w: 20, h: 20 },
   B: { id: "icon-bbc", title: "BBC", class: "bbc-icon", w: 20, h: 20 }
 
+});
+
+/**
+ * DATOS DE SELECCIONES (Iconos PNG/SVG para Sidebar)
+ * Soporta propiedad 'img' para rutas de imagen o 'id' para sprite SVG.
+ * 'invertDark': true invierte colores en modo oscuro (útil para logos negros transparentes).
+ */
+export const SELECTION_DATA = Object.freeze({
 });
 
 /**

@@ -105,6 +105,11 @@
   display: flex; flex-wrap: wrap; gap: var(--space-xs);
   padding: var(--space-xxs) var(--space-xs) 0; 
   min-height: 1px;
+
+  /* Ocultar pills de estudios cuando la sección está abierta (foco en iconos) */
+  .collapsible-section[data-section="studio"].active & {
+    display: none;
+  }
 }
 
 @keyframes pill-pop-in {
@@ -543,21 +548,53 @@ body.sidebar-is-dragging .main-content-wrapper {
 }
 
 /* --- Iconos Estudios --- */
-.filter-link--studio {
+.filter-link--studio,
+.filter-link--icon {
   justify-content: flex-start;
   padding-block: 2px;
+  border: 2px solid transparent; /* Pre-reservar espacio para evitar saltos */
 }
 
 .sidebar-platform-icon {
-  height: 20px; width: auto; max-width: 100%;
+  height: 30px; width: auto; max-width: 100%;
   transition: transform var(--transition-duration-fast);
 }
-.filter-link--studio:hover .sidebar-platform-icon { transform: scale(1.1); }
+.sidebar-platform-img {
+  height: 20px; width: auto; max-width: 100%;
+  object-fit: contain;
+  transition: transform var(--transition-duration-fast), filter 0.3s ease;
+}
+
+/* Utilidad: Invertir color en modo oscuro (para logos negros PNG) */
+html.dark-mode .sidebar-platform-img.invert-on-dark {
+  filter: invert(1) brightness(2);
+}
+
+.filter-link--icon:hover .sidebar-platform-icon,
+.filter-link--icon:hover .sidebar-platform-img { transform: scale(1.1); }
+
+/* Estado Activo para Iconos (Cuadrado) */
+.filter-link--icon.active {
+  background-color: transparent;
+  border-color: var(--color-accent);
+  padding-inline: var(--space-xs); /* Restaurar padding original para centrar */
+  color: var(--color-text-primary);
+  box-shadow: none;
+}
+.filter-link--icon.active::before { content: none; display: none; } /* Ocultar flecha decorativa */
+html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
 
 #studios-list-container {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xs);
 }
-#studios-list-container .filter-link { justify-content: center; }
+
+/* Aplicar grid también a selecciones si tienen iconos */
+#studios-list-container,
+#selections-list-container:has(.filter-link--icon) {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xs);
+}
+#studios-list-container .filter-link,
+#selections-list-container .filter-link--icon { justify-content: center; }
 
 /* =================================================================
    14. AJUSTES RESPONSIVE (MÓVIL)
