@@ -437,7 +437,7 @@ function setupAuthSystem() {
 
 // --- Gestión de URL y Título ---
 function updatePageTitle() {
-  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType } = getActiveFilters();
+  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType, myList } = getActiveFilters();
   
   let baseNoun = "Películas y series";
   if (mediaType === "movies") baseNoun = "Películas";
@@ -447,7 +447,8 @@ function updatePageTitle() {
   const yearSuffix = (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) 
     ? ` (${year.replace("-", " a ")})` : "";
 
-  if (searchTerm) title = `Resultados para "${searchTerm}"`;
+  if (myList) title = `Mi Lista`;
+  else if (searchTerm) title = `Resultados para "${searchTerm}"`;
   else if (selection) {
     const config = FILTER_CONFIG.selection;
     const name = config.titles?.[selection] || config.items[selection];

@@ -49,6 +49,7 @@ const dom = {
   sidebarOverlay: document.getElementById("sidebar-overlay"),
   mobileSidebarToggle: document.getElementById("mobile-sidebar-toggle"),
   mainContent: document.querySelector(".main-content-wrapper"), 
+  myListButton: document.getElementById("my-list-button"),
 };
 
 // Caché para contenedores de secciones (evita querySelector repetido en renderFilterPills)
@@ -543,6 +544,27 @@ function renderFilterPills() {
   updateAllFilterControls();
 }
 
+async function handleMyListToggle() {
+  const currentFilters = getActiveFilters();
+  const isActivating = !currentFilters.myList;
+
+  triggerHapticFeedback('medium');
+  
+  // Resetear filtros pero mantener sort y mediaType
+  resetFiltersState();
+  setSort(currentFilters.sort);
+  setMediaType(currentFilters.mediaType);
+
+  if (isActivating) {
+    setFilter('myList', true);
+    showToast("Mostrando tu lista (votos y pendientes)", "info");
+  }
+
+  document.dispatchEvent(new CustomEvent("updateSidebarUI"));
+  document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+  await loadAndRenderMovies(1);
+}
+
 async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   const previousFilters = getActiveFilters();
   
@@ -556,6 +578,7 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     setSort(currentSort);
     setMediaType(currentMediaType);
     setFilter(type, value, true); // Bypass limit por seguridad tras reset
+    setFilter('myList', false); // Asegurar que myList está off
     
     // Actualizar UI (Slider de años, etc.) para reflejar el reinicio visualmente
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
@@ -586,6 +609,9 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     if (previousFilters.actor) setFilter('actor', null);
     if (previousFilters.director) setFilter('director', null);
   }
+  
+  // Si activamos un filtro normal, desactivamos myList
+  if (newValue) setFilter('myList', false);
 
   // Lógica de País: Si seleccionamos un país, limpiamos las exclusiones de países
   if (newValue && type === 'country') {
@@ -907,6 +933,10 @@ function setupEventListeners() {
   }
   
   if (dom.playButton) dom.playButton.addEventListener("click", resetFilters);
+
+  if (dom.myListButton) {
+    dom.myListButton.addEventListener("click", handleMyListToggle);
+  }
 
   dom.collapsibleSections.forEach((clickedSection) => {
     const header = clickedSection.querySelector(".section-header");

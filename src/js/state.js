@@ -25,6 +25,7 @@ const initialState = {
     mediaType: DEFAULTS.MEDIA_TYPE,
     excludedGenres: [],
     excludedCountries: [],
+    myList: false,
   },
   userMovieData: {},
 };
@@ -131,7 +132,7 @@ export function getActiveFilterCount() {
   // 3. Filtros estándar (Claves dinámicas)
   // Ignoramos claves técnicas o que ya hemos contado
   const ignoredKeys = new Set([
-    "mediaType", "sort", "searchTerm", 
+    "mediaType", "sort", "searchTerm", "myList",
     "excludedGenres", "excludedCountries", "year"
   ]);
 
@@ -180,6 +181,12 @@ export function setFilter(filterType, value, force = false) {
       console.warn(`[State] Filtro '${filterType}' bloqueado. Límite (${CONFIG.MAX_ACTIVE_FILTERS}) alcanzado.`);
     }
     return false;
+  }
+
+  // Lógica de Exclusividad: Si activamos myList, limpiamos otros filtros (excepto sort/mediaType)
+  // Esto se maneja mejor en el controlador (sidebar.js), pero aquí aseguramos consistencia si se llama directo.
+  if (filterType === 'myList' && value === true) {
+     // No limpiamos aquí para evitar efectos secundarios ocultos, el caller debe limpiar.
   }
 
   state.activeFilters[filterType] = value;

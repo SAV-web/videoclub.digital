@@ -12,7 +12,7 @@ import { CONFIG, IGNORED_ACTORS } from "./constants.js";
 import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest } from "./utils.js";
-import { getUserDataForMovie } from "./state.js";
+import { getUserDataForMovie, getAllUserMovieData } from "./state.js";
 
 // Inicialización del cliente Supabase
 // GUARD: Evitar crash en PROD si faltan credenciales.
@@ -148,6 +148,38 @@ const inFlightRequests = new Map();
  * @param {boolean} requestCount - Si se debe pedir el conteo total (caro).
  */
 export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true) {
+  // --- MODO: MI LISTA (Client-Side Pagination de IDs) ---
+  if (activeFilters.myList) {
+    return (async () => {
+      const allUserData = getAllUserMovieData();
+      // Filtrar IDs relevantes: Watchlist=true OR Rating != null
+      const relevantIds = Object.entries(allUserData)
+        .filter(([_, data]) => data.onWatchlist || data.rating !== null)
+        .map(([id]) => parseInt(id, 10))
+        .sort((a, b) => b - a); // Orden por defecto (ID desc ~ recientes) o implementar sort complejo
+
+      const total = relevantIds.length;
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const pageIds = relevantIds.slice(start, end);
+
+      if (pageIds.length === 0) {
+        return { total, items: [] };
+      }
+
+      const { data, error } = await supabase
+        .from('movies')
+        .select('*') // Seleccionar todo para compatibilidad con card.js
+        .in('id', pageIds);
+
+      if (error) throw error;
+      
+      // Reordenar data para que coincida con pageIds (Supabase no garantiza orden en .in)
+      const orderedData = pageIds.map(id => data.find(m => m.id === id)).filter(Boolean);
+      return { total, items: orderedData };
+    })();
+  }
+
   // Incluimos requestCount en la clave porque el resultado varía (total vs -1)
   const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount }, currentPage, pageSize);
 

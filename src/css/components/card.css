@@ -571,6 +571,10 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block .wall-
   transform: translateY(calc(-40% + 6px)); /* Ajuste óptico: 2px más abajo que las estrellas */
 }
 
+body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block .wall-rating-number:hover {
+  transform: translateY(calc(-40% + 6px)) scale(1.15) rotate(10deg);
+}
+
 /* Ocultar nota numérica si hay voto de usuario (prioridad a estrellas) */
 body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.has-user-rating ~ .wall-rating-number {
   display: none;
