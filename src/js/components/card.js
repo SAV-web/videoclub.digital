@@ -210,6 +210,11 @@ async function toggleWatchlist(movieId, btn, card) {
   const newState = { onWatchlist: !wasActive };
   const prevState = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
 
+  // Lógica de exclusividad: Si se añade a watchlist (pendiente), se borra la nota (ya no es "vista")
+  if (newState.onWatchlist) {
+    newState.rating = null;
+  }
+
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newState); // Optimistic Update
   updateCardUI(card);

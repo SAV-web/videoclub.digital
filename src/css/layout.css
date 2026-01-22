@@ -260,8 +260,17 @@ body.rotation-disabled .grid-container {
   @container (min-width: 1000px) {
     body.rotation-disabled .grid-container { grid-template-columns: repeat(9, 1fr); }
   }
-  @container (min-width: 1340px) {
+  @container (min-width: 1200px) {
     body.rotation-disabled .grid-container { grid-template-columns: repeat(12, 1fr); }
+  }
+
+  /* --- MODO EXPLORACIÓN (Flip): Columnas controladas (Divisores de 42) --- */
+  /* Forzar 6 o 7 columnas en cuanto sea posible. Si no cabe, dejar auto-fill (4 o 5) en lugar de forzar 3 */
+  @container (min-width: 940px) {
+    body:not(.rotation-disabled) .grid-container { grid-template-columns: repeat(6, 1fr); }
+  }
+  @container (min-width: 1080px) {
+    body:not(.rotation-disabled) .grid-container { grid-template-columns: repeat(7, 1fr); }
   }
 }
 

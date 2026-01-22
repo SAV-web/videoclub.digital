@@ -76,7 +76,11 @@
   @media (min-width: 769px) {
     gap: 2px; /* Reducir espacio entre iconos */
     /* Forzar botones más compactos para que quepan 4 en una fila (4x34 + 3x4 = 148px < 152px disponibles) */
-    & .sidebar-control-button { width: 34px !important; height: 34px !important; }
+    & .sidebar-control-button { 
+      width: 38px !important; height: 38px !important;
+      /* FIX: Sobrescribir min-width de accesibilidad táctil (48px) para que quepan en sidebar estrecho (200px) */
+      min-width: 38px !important; min-height: 38px !important;
+    }
   }
 }
 
@@ -468,9 +472,6 @@
     min-width: var(--tap-target-size);
     min-height: var(--tap-target-size);
   }
-
-  /* Ajuste de layout: Reducir gap a 12px para que quepan 4 botones de 48px en 280px de ancho */
-  .play-button-container { gap: var(--space-sm); }
 
   /* Enlaces de filtro más altos para facilitar el tap */
   .filter-link { min-height: var(--tap-target-size); align-items: center; }

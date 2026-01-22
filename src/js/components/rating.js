@@ -172,6 +172,12 @@ async function setRating(movieId, value, card) {
   if (previousRating === value) return;
 
   const newState = { rating: value };
+  
+  // Lógica de exclusividad: Si se vota (visto), se quita de watchlist (ya no está pendiente)
+  if (value !== null) {
+    newState.onWatchlist = false;
+  }
+
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newState);
   updateRatingUI(card);
