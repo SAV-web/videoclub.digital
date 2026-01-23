@@ -2,7 +2,7 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } from "../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
-import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters } from "../state.js";
+import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings } from "./rating.js";
@@ -342,17 +342,21 @@ function populateCard(card, movie, index) {
   
   img.alt = `Póster de ${movie.title}`;
   
-  // LCP Optimization (Mobile-First): Prioridad máxima a la primera carta
-  if (index === 0) {
-    // 1. Anular animación de entrada: La tarjeta debe ser visible en el Frame 0
-    card.style.animation = "none";
+  // LCP & Viewport Optimization
+  // En móvil (<=768px) mostramos 6 cartas (aprox 3 filas) eager. En desktop 2.
+  const isMobileViewport = window.innerWidth <= 768;
+  const priorityCount = isMobileViewport ? 6 : 2;
+  const isFirstPage = getCurrentPage() === 1;
 
-    // 2. Configurar atributos ANTES del src para garantizar que el navegador use la prioridad alta
+  if (isFirstPage && index < priorityCount) {
+    // Above the fold: Carga inmediata sin esperar al observer
+    card.style.animation = "none";
     img.loading = "eager";
-    img.setAttribute("fetchpriority", "high");
-    img.decoding = "async"; // 3. Decodificación asíncrona: No bloquear hilo principal
+    img.decoding = "async";
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
-    img.src = hqPoster; // 4. Disparar la carga al final
+    // Solo la primera imagen (LCP candidato) lleva prioridad alta explícita
+    img.setAttribute("fetchpriority", index === 0 ? "high" : "auto");
+    img.src = hqPoster;
   } else {
     img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     img.dataset.src = hqPoster;
