@@ -588,8 +588,11 @@ export function renderSkeletons(container, pagContainer) {
   if (pagContainer) pagContainer.textContent = "";
   if (!container) return;
   
+  const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+  const count = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+
   const frag = document.createDocumentFragment();
-  for (let i = 0; i < CONFIG.ITEMS_PER_PAGE; i++) {
+  for (let i = 0; i < count; i++) {
     frag.appendChild(createElement("div", { className: "skeleton-card" }));
   }
   container.appendChild(frag);
