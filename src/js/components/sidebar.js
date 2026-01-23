@@ -568,6 +568,7 @@ async function handleMyListToggle() {
 
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+  tryCloseMobileDrawer();
   await loadAndRenderMovies(1);
 }
 

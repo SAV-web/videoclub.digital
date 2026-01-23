@@ -76,7 +76,7 @@
   will-change: transform;
   
   /* Gestos Táctiles */
-  touch-action: pan-y; /* Permite scroll vertical, JS maneja horizontal */
+  touch-action: manipulation; /* Permite scroll vertical y zoom, JS maneja swipe horizontal */
 
   transition: 
     transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),

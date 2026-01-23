@@ -2,7 +2,7 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } from "../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
-import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters } from "../state.js";
+import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings } from "./rating.js";
@@ -315,6 +315,10 @@ export function handleCardClick(event) {
 
 // Observer de Lazy Load (Reutilizado)
 const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
+const CRITICAL_POSTERS = isMobile ? 4 : 2; // Móvil 2x2, Desktop 1 o 2
+const HIGH_PRIORITY_POSTERS = isMobile ? 2 : 1; // Prioridad máxima
+
 const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -342,18 +346,24 @@ function populateCard(card, movie, index) {
   
   img.alt = `Póster de ${movie.title}`;
   
-  // LCP Optimization (Mobile-First): Prioridad máxima a la primera carta
-  if (index === 0) {
-    // 1. Anular animación de entrada: La tarjeta debe ser visible en el Frame 0
-    card.style.animation = "none";
+  const page = getCurrentPage();
+  const isCritical = page === 1 && index < CRITICAL_POSTERS;
+  const isHighPriority = page === 1 && index < HIGH_PRIORITY_POSTERS;
 
-    // 2. Configurar atributos ANTES del src para garantizar que el navegador use la prioridad alta
+  if (isCritical) {
+    // Above the fold: Carga inmediata sin esperar al observer
+    if (index === 0) card.style.animation = "none"; // Solo la primera sin fade-in para LCP instantáneo
+
     img.loading = "eager";
-    img.setAttribute("fetchpriority", "high");
-    img.decoding = "async"; // 3. Decodificación asíncrona: No bloquear hilo principal
+    img.decoding = "async";
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
-    img.src = hqPoster; // 4. Disparar la carga al final
+
+    if (isHighPriority) img.setAttribute("fetchpriority", "high");
+    else img.removeAttribute("fetchpriority");
+
+    img.src = hqPoster;
   } else {
+    // Resto: Pipeline estándar (Placeholder + IntersectionObserver)
     img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     img.dataset.src = hqPoster;
     img.loading = "lazy";
