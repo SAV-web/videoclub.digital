@@ -318,6 +318,15 @@ CREATE INDEX IF NOT EXISTS movies_country_fa_rating_idx ON public.movies(country
 CREATE INDEX IF NOT EXISTS movies_country_imdb_rating_idx ON public.movies(country_id, imdb_rating DESC NULLS LAST);
 -- Índice para el nuevo promedio
 CREATE INDEX IF NOT EXISTS movies_avg_rating_idx ON public.movies(avg_rating DESC NULLS LAST);
+
+-- ▼▼▼ OPTIMIZACIÓN FILTROS COMBINADOS (v2) ▼▼▼
+-- Índice compuesto para País + Tipo + Año (Cubre "Películas de España", "Series de EEUU", etc.)
+-- NOTA: No usamos 'WHERE type IS NOT NULL' para incluir películas clásicas (type=NULL)
+CREATE INDEX IF NOT EXISTS movies_country_type_year_idx ON public.movies(country_id, type, year DESC);
+
+-- Índice auxiliar para Studios + Tipo (Optimizado para búsquedas específicas de plataformas)
+CREATE INDEX IF NOT EXISTS movies_studios_type_idx ON public.movies USING GIN(studios_tsv) WHERE type IS NOT NULL;
+
 ANALYZE public.movies;
 
 -- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.

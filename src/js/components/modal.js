@@ -439,8 +439,8 @@ export function initQuickView() {
   if (content) {
     content.addEventListener("click", (e) => {
       handleMetadataClick(e);
-      // Toggle flechas en móvil al tocar póster
-      if (window.innerWidth <= 700 && e.target.closest(".poster-container")) {
+      // Toggle flechas al tocar póster (Móvil/Tablet/Desktop)
+      if (e.target.closest(".poster-container")) {
         modal.classList.toggle("hide-arrows");
       }
     });

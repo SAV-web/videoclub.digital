@@ -40,12 +40,13 @@
   position: fixed;
   z-index: calc(var(--z-index-overlay) + 1);
   display: flex;
-  background-color: var(--color-surface);
+  background-color: var(--color-surface-2);
   
   /* Sombras estratificadas para profundidad realista sobre overlay oscuro */
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.15);
   html.dark-mode & {
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.3);
+    /* Elevación dramática + Borde sutil luminoso */
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
   
   overflow: hidden;
@@ -150,7 +151,7 @@
 
 /* --- Cabecera (Título y Director) --- */
 .quick-view-modal .movie-summary {
-  padding-inline: var(--space-xs);
+  padding-inline: 0;
   padding-top: 0;
 }
 
@@ -183,15 +184,18 @@
 /* --- Iconos de Acción y Valoración (Aumentados) --- */
 .is-quick-view .card-rating-block {
   position: static; transform: none;
-  padding: 1px var(--space-xxl) 2px;
+  padding: 1px 0 2px;
   margin: 0;
   pointer-events: auto;
+  justify-content: center;
+  gap: var(--space-xl);
 }
 
 .is-quick-view .star-rating-container { gap: var(--space-sm); }
 .is-quick-view .star-icon { width: 42px; height: 42px; margin-right: 0; }
 .is-quick-view .low-rating-star { width: 40px; height: 40px; stroke-width: 2.5px; }
 .is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: auto; }
+.is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: 0; }
 .is-quick-view .card-action-btn svg { width: 38px; height: 38px; stroke-width: 2.5px; }
 
 /* --- Metadatos Inferiores --- */
@@ -499,9 +503,6 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     -webkit-backdrop-filter: blur(3px);
     background-color: rgba(0, 0, 0, 0.75);
   }
-
-  /* UX: Ocultar flechas en dispositivos táctiles donde el Swipe es nativo */
-  .modal-nav-btn { display: none; }
 }
 
 /* Optimización: Desactivar efectos costosos si el usuario prefiere rendimiento/simplicidad */

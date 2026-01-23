@@ -78,13 +78,18 @@
 
 /* Efecto de Confirmación (Post-Tap) */
 .star-rating-container.is-interactive .star-icon.just-rated {
-  animation: star-pulse 0.4s ease-out;
+  animation: star-vote-success 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   z-index: 20; /* Asegurar que se vea sobre las otras */
 }
 
-@keyframes star-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.25); filter: drop-shadow(0 0 8px rgba(255, 189, 7, 0.8)); }
+/* Animación "Juice": Rebote elástico con rotación y brillo integrado */
+@keyframes star-vote-success {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255,189,7,0)); }
+  20% { transform: scale(1.4) rotate(-8deg); filter: drop-shadow(0 0 10px rgba(255,189,7,0.6)); }
+  40% { transform: scale(1.2) rotate(8deg); }
+  60% { transform: scale(1.35) rotate(-4deg); filter: drop-shadow(0 0 15px rgba(255,189,7,0.8)); }
+  80% { transform: scale(1.15) rotate(4deg); }
+  100% { transform: scale(1.25); filter: drop-shadow(0 0 4px rgba(255,189,7,0.6)); }
 }
 
 /* --- Accesibilidad Táctil (Áreas expandidas) --- */

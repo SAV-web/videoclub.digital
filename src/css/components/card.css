@@ -22,6 +22,11 @@
   50% { filter: drop-shadow(0 0 10px rgba(255, 189, 7, 0.8)); }
 }
 
+@keyframes bookmark-settle {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-2px); } /* Simula "enganche" físico */
+}
+
 @keyframes fade-in-subtle {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -83,13 +88,19 @@
   height: 100%;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  background-color: var(--color-surface);
+  background-color: var(--color-surface-1);
   border: 1px solid var(--color-surface);
   
   transform-style: preserve-3d; /* Habilita el 3D real */
   transition: transform var(--duration-leisurely) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
 
   &.is-flipped { transform: rotateY(180deg); }
+
+  /* Elevación Material en Dark Mode */
+  html.dark-mode & {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border: none; /* El borde lo maneja el box-shadow */
+  }
 }
 
 /* =================================================================
@@ -106,7 +117,7 @@
   
   backface-visibility: hidden;
   
-  background-color: var(--color-surface);
+  background-color: var(--color-surface-1);
   color: var(--color-text-primary);
   display: flex;
   flex-direction: column;
@@ -442,11 +453,14 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   }
 
   &.is-active {
-    animation: watchlist-pop var(--duration-normal) var(--ease-bounce-in);
+    /* Animación del botón contenedor (Pop) */
+    animation: watchlist-pop 0.3s var(--ease-bounce-in);
     & svg {
       color: #e50914; fill: #e50914; stroke: #e50914;
       --icon-plus-color: var(--color-surface);
-      animation: watchlist-glow 0.6s ease-out;
+      /* Animación del icono: Glow + Settle (encadenadas) */
+      animation: watchlist-glow 0.6s ease-out,
+                 bookmark-settle 0.2s 0.3s ease-out forwards;
     }
   }
 }

@@ -102,6 +102,7 @@ const handleSingleTap = (cardElement) => {
     unflipAllCards();
   }
   
+  triggerHapticFeedback("light");
   inner.classList.toggle("is-flipped");
   
   if (!isFlipped) {
@@ -178,7 +179,11 @@ export function initCardInteractions(gridContainer) {
     if (e.pointerType === 'mouse') return;
 
     const card = e.target.closest('.movie-card');
-    if (!card || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || e.target.closest('[data-action], a, button, .expand-content-btn')) return;
+    
+    // Zona Segura Inteligente: Solo bloquear doble tap en elementos interactivos específicos
+    // Se incluyen botones de actores y expansión para evitar que e.preventDefault() rompa su clic
+    const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item';
+    if (!card || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || e.target.closest(criticalElements)) return;
 
     // Detectar si fue un tap o un scroll
     if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) return;

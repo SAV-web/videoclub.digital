@@ -731,6 +731,7 @@ function initYearSlider() {
   
   // Interceptar evento 'set' para rastrear qué manija se movió
   sliderInstance.on("set", (values, handle) => {
+    triggerHapticFeedback("light");
     const h = Number(handle);
     if (h === 0) yearInteractionState.start = true;
     if (h === 1) yearInteractionState.end = true;
