@@ -54,9 +54,17 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
   if (forceSkeleton) {
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
   } else {
+    // Detectar calidad de red para ajustar el delay (Progressive Enhancement)
+    // Si es lenta, mostramos skeleton antes. Si es rápida, esperamos para evitar parpadeo.
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const effectiveType = connection?.effectiveType || '4g';
+    const skeletonDelay = {
+      'slow-2g': 0, '2g': 50, '3g': 100, '4g': 150
+    }[effectiveType] || 150;
+
     skeletonTimeout = setTimeout(() => {
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
-    }, 150);
+    }, skeletonDelay);
   }
 
   const currentKnownTotal = getState().totalMovies;

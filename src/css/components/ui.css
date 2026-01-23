@@ -50,6 +50,16 @@ html.dark-mode .skeleton::after {
   background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
 }
 
+/* Shimmer optimizado para OLED/Móvil (Menos intenso) */
+@media (max-width: 768px) {
+  .skeleton-card::after, .skeleton::after {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+  }
+  html.dark-mode .skeleton-card::after, html.dark-mode .skeleton::after {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
+  }
+}
+
 /* --- 2. Skeletons Sidebar --- */
 .skeleton-sidebar-header { 
   width: 60%; height: 24px; 
