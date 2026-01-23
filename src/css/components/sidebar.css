@@ -175,8 +175,17 @@
 .sidebar-scrollable-filters {
   padding-top: var(--space-md);
   overflow-x: hidden;
-  touch-action: manipulation;
+  touch-action: pan-y;
   overscroll-behavior-y: contain;
+}
+
+/* Asegurar que los elementos interactivos no bloqueen el gesto de cierre horizontal
+   ni el scroll vertical nativo */
+.sidebar-inner-wrapper button,
+.sidebar-inner-wrapper a,
+.sidebar-inner-wrapper input,
+.sidebar-inner-wrapper select {
+  touch-action: pan-y;
 }
 
 @media (min-width: 769px) {

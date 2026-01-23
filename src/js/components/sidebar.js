@@ -168,7 +168,7 @@ function handleTouchStart(e) {
   touchState.isInteractive = !isEdgeSwipe && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
 
   // Passive false para poder cancelar el scroll nativo si es necesario
-  document.addEventListener("touchmove", handleTouchMove, { passive: false });
+  document.addEventListener("touchmove", handleTouchMove, { passive: true });
 }
 
 function handleTouchMove(e) {
@@ -203,8 +203,6 @@ function handleTouchMove(e) {
     dom.sidebar.classList.add(CSS_CLASSES.IS_DRAGGING); // Quitar transición CSS
     document.body.classList.add(CSS_CLASSES.SIDEBAR_DRAGGING_BODY); // Bloquear scroll body
   }
-
-  if (e.cancelable) e.preventDefault(); // Evitar navegación nativa
 
   let newTranslate = touchState.startTranslate + (currentX - touchState.startX);
 
