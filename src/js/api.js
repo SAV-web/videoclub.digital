@@ -155,28 +155,41 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
       // Filtrar IDs relevantes: Watchlist=true OR Rating != null
       const relevantIds = Object.entries(allUserData)
         .filter(([_, data]) => data.onWatchlist || data.rating !== null)
-        .map(([id]) => parseInt(id, 10))
-        .sort((a, b) => b - a); // Orden por defecto (ID desc ~ recientes) o implementar sort complejo
+        .map(([id]) => parseInt(id, 10));
 
-      const total = relevantIds.length;
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize;
-      const pageIds = relevantIds.slice(start, end);
-
-      if (pageIds.length === 0) {
-        return { total, items: [] };
+      if (relevantIds.length === 0) {
+        return { total: 0, items: [] };
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('movies')
-        .select('*') // Seleccionar todo para compatibilidad con card.js
-        .in('id', pageIds);
+        .select('*', { count: 'exact' })
+        .in('id', relevantIds);
+
+      // Filtro Tipo
+      if (activeFilters.mediaType === 'movies') {
+        query = query.or('type.is.null,type.eq.D,type.eq.A');
+      } else if (activeFilters.mediaType === 'series') {
+        query = query.ilike('type', 'S%');
+      }
+
+      // Ordenación
+      const [sortField, sortDirection] = (activeFilters.sort || "relevance,asc").split(",");
+      if (sortField === 'relevance') {
+        query = query.order('id', { ascending: false });
+      } else {
+        query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
+      }
+
+      // Paginación
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize - 1;
+      
+      const { data, error, count } = await query.range(start, end);
 
       if (error) throw error;
       
-      // Reordenar data para que coincida con pageIds (Supabase no garantiza orden en .in)
-      const orderedData = pageIds.map(id => data.find(m => m.id === id)).filter(Boolean);
-      return { total, items: orderedData };
+      return { total: count || 0, items: data || [] };
     })();
   }
 

@@ -141,7 +141,7 @@ body.sidebar-is-open .sidebar .play-button-container {
   }
   
   .sidebar .play-button-container {
-    display: flex; flex-direction: row; gap: var(--space-md);
+    display: flex; flex-direction: row; gap: var(--space-xxs);
     margin-top: 0; margin-bottom: var(--space-lg);
   }
 

@@ -482,6 +482,12 @@ function updateAllFilterControls() {
         input.placeholder = limitReached ? "Límite de filtros" : `Otro ${input.closest("form").dataset.filterType}...`;
     }
   });
+
+  // 3. Actualizar estado del botón "Mi Lista"
+  if (dom.myListButton) {
+    const isMyListActive = !!activeFilters.myList;
+    dom.myListButton.classList.toggle("active", isMyListActive);
+  }
 }
 
 // Estado local para reconciliación de DOM (evita reflows innecesarios)

@@ -81,6 +81,9 @@ export const getCurrentPage = () => state.currentPage;
  * Ignora ordenación y tipo de medio.
  */
 export function hasActiveMeaningfulFilters() {
+  // 0. Si estamos en "Mi Lista", es un filtro significativo
+  if (state.activeFilters.myList) return true;
+
   // 1. Reutilizar lógica de conteo (Maneja exclusiones, rangos de año por defecto y filtros estándar)
   if (getActiveFilterCount() > 0) return true;
 
@@ -208,6 +211,9 @@ export function setSearchTerm(term) {
     }
     state.activeFilters.actor = null;
     state.activeFilters.director = null;
+    
+    // Si buscamos, salimos de "Mi Lista" para mostrar resultados globales
+    state.activeFilters.myList = false;
   }
   return filtersCleared;
 }

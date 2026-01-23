@@ -36,6 +36,14 @@
   }
 }
 
+/* FIX: Sobrescribir 'touch-action: manipulation' global para evitar que los botones
+   capturen gestos horizontales, permitiendo que el JS gestione el swipe-to-close
+   y el navegador el scroll vertical sin conflictos. */
+.sidebar-inner-wrapper button,
+.sidebar-inner-wrapper a {
+  touch-action: pan-y;
+}
+
 /* Móvil apaisado */
 @media (min-width: 769px) and (max-height: 600px) {
   .sidebar-inner-wrapper { height: auto; }
@@ -68,13 +76,13 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: var(--space-xs); /* Reducir espacio (8px) para evitar desbordamiento en móvil */
+  gap: 6px; /* Reducido un 25% (de 8px a 6px) */
   margin-bottom: var(--space-lg);
   flex-wrap: nowrap; /* REGLA DE ORO: Nunca permitir dos filas */
 
   /* Ajuste de precisión para Sidebar de escritorio (200px ancho fijo) */
   @media (min-width: 769px) {
-    gap: 2px; /* Reducir espacio entre iconos */
+    gap: 1.5px; /* Reducir espacio entre iconos (25% menos de 2px) */
     /* Forzar botones más compactos para que quepan 4 en una fila (4x34 + 3x4 = 148px < 152px disponibles) */
     & .sidebar-control-button { 
       width: 38px !important; height: 38px !important;
@@ -86,6 +94,7 @@
 
 .sidebar-control-button {
   display: flex; align-items: center; justify-content: center;
+  position: relative; /* Contexto para el badge absoluto */
   padding: 0; border: none; background: none;
   color: var(--color-accent);
   cursor: pointer; line-height: 1;
@@ -102,6 +111,13 @@
     width: 24px; height: 24px;
     flex-shrink: 0; 
   }
+}
+
+.sidebar-control-button.active {
+  color: #fff;
+  background-color: var(--color-accent);
+  border-radius: var(--radius-md);
+  html.dark-mode & { color: var(--color-bg); }
 }
 
 /* --- 4. Píldoras de Filtros Activos --- */
@@ -510,6 +526,12 @@ body.is-fetching .sidebar::before {
 }
 
 .user-session-group { display: none; align-items: center; gap: var(--space-md); }
+
+/* Igualar tamaño de botones de sesión al avatar (32px) */
+.user-session-group .sidebar-control-button {
+  width: 32px; height: 32px;
+}
+.user-session-group .sidebar-control-button svg { width: 28px; height: 28px; }
 
 .user-avatar {
   display: flex; align-items: center; justify-content: center;
