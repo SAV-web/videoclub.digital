@@ -55,6 +55,7 @@
   position: fixed;
   inset-block: 0; /* top: 0; bottom: 0; */
   inset-inline-start: 0; /* left: 0; */
+  height: 100dvh; /* Forzar altura dinámica real en móviles (evita cortes por barra URL) */
   width: var(--sidebar-width-mobile); 
   z-index: var(--z-index-sidebar);
   

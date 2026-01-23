@@ -165,7 +165,7 @@ function handleTouchStart(e) {
   // Si es más adentro, respetamos las tarjetas para no cancelar sus clics accidentalmente.
   const isEdgeSwipe = !isOpen && touchState.startX < 30;
   // FIX: Permitir detección de interactividad también cuando está abierto para proteger el scroll vertical
-  touchState.isInteractive = !isEdgeSwipe && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle, .sidebar-inner-wrapper');
+  touchState.isInteractive = !isEdgeSwipe && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
 
   // Passive false para poder cancelar el scroll nativo si es necesario
   document.addEventListener("touchmove", handleTouchMove, { passive: false });
