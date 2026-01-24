@@ -373,8 +373,15 @@ function populateCard(card, movie, index) {
   }
 
   // --- TEXTOS BÁSICOS ---
-  front.querySelector(SELECTORS.TITLE).textContent = movie.title;
-  front.querySelector(SELECTORS.TITLE).title = movie.title; // Tooltip nativo
+  const titleEl = front.querySelector(SELECTORS.TITLE);
+  titleEl.textContent = movie.title;
+  titleEl.title = movie.title; // Tooltip nativo
+
+  // Tipografía Responsiva: Ajustar tracking/peso según longitud
+  const len = movie.title.length;
+  if (len < 20) titleEl.classList.add('title-short');
+  else if (len < 40) titleEl.classList.add('title-long');
+  else titleEl.classList.add('title-xl-long');
 
   // Directores (Fragmento para evitar innerHTML excesivo)
   const dirCont = front.querySelector(SELECTORS.DIRECTOR);

@@ -33,6 +33,9 @@ const initialState = {
 // Inicialización con clonación profunda
 let state = structuredClone(initialState);
 
+// Caché para conteo de filtros (Optimización O(1) en lectura)
+let cachedFilterCount = -1;
+
 // =================================================================
 //          GETTERS (Lectura de Estado)
 // =================================================================
@@ -119,6 +122,8 @@ export const getAllUserMovieData = () => {
  * Dinámico: No requiere hardcodear claves.
  */
 export function getActiveFilterCount() {
+  if (cachedFilterCount !== -1) return cachedFilterCount;
+
   const { activeFilters } = state;
   let count = 0;
 
@@ -145,6 +150,7 @@ export function getActiveFilterCount() {
     }
   });
 
+  cachedFilterCount = count;
   return count;
 }
 
@@ -195,6 +201,7 @@ export function setFilter(filterType, value, force = false) {
   state.activeFilters[filterType] = value;
   // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
   state.totalMovies = 0;
+  cachedFilterCount = -1; // Invalidar caché de conteo
   return true;
 }
 
@@ -249,6 +256,7 @@ export function toggleExcludedFilter(filterType, value) {
     targetList.splice(index, 1);
     // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
     state.totalMovies = 0;
+    cachedFilterCount = -1;
     return true;
   } else {
     // Si no existe, intentamos añadirlo
@@ -268,6 +276,7 @@ export function toggleExcludedFilter(filterType, value) {
     targetList.push(value);
     // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
     state.totalMovies = 0;
+    cachedFilterCount = -1;
     return true;
   }
 }
@@ -276,6 +285,7 @@ export function resetFiltersState() {
   // Reinicio limpio desde el estado inicial
   state.activeFilters = structuredClone(initialState.activeFilters);
   state.totalMovies = 0; // Forzar recálculo visual del total
+  cachedFilterCount = -1;
 }
 
 // --- Gestión de Datos de Usuario ---

@@ -43,6 +43,7 @@ body {
   
   line-height: var(--line-height-normal);
   overflow-x: hidden; /* Evita scroll horizontal accidental */
+  overscroll-behavior-y: contain; /* Desactiva Pull-to-Refresh nativo del navegador */
   
   /* Renderizado de texto */
   -webkit-font-smoothing: antialiased;
