@@ -529,16 +529,37 @@ function renderFilterPills() {
     }
 
     lastPillState[stateKey] = currentState;
-    container.textContent = "";
     
-    // 1. Renderizar Inclusión (si existe)
-    if (incValue) {
-      container.appendChild(createPill(filterType, incValue, false, pillIndex++));
-    }
+    // --- RECONCILIACIÓN (Diffing) ---
+    // 1. Calcular lista deseada
+    const desiredItems = [];
+    if (incValue) desiredItems.push({ value: incValue, excluded: false });
+    excValues.forEach(v => desiredItems.push({ value: v, excluded: true }));
 
-    // 2. Renderizar Exclusiones (si existen)
-    excValues.forEach((value) => {
-      container.appendChild(createPill(filterType, value, true, pillIndex++));
+    const existingPills = Array.from(container.children);
+    const keptPills = new Set();
+
+    // 2. Sincronizar DOM (Añadir/Mover)
+    desiredItems.forEach(item => {
+      // Buscar si ya existe (por valor y tipo)
+      let pill = existingPills.find(p => 
+        p.dataset.filterValue === item.value && 
+        p.classList.contains("filter-pill--exclude") === item.excluded
+      );
+
+      if (pill) {
+        keptPills.add(pill);
+        container.appendChild(pill); // Mover al final (reordenar sin destruir)
+      } else {
+        pill = createPill(filterType, item.value, item.excluded, pillIndex);
+        container.appendChild(pill);
+      }
+      pillIndex++; // Incrementar índice global para animaciones staggered de los nuevos
+    });
+
+    // 3. Limpiar sobrantes
+    existingPills.forEach(p => {
+      if (!keptPills.has(p)) p.remove();
     });
   };
 

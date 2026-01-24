@@ -330,7 +330,9 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
       obs.unobserve(img);
     }
   });
-}, { rootMargin: isMobile ? "200px" : "800px" });
+}, { 
+  rootMargin: "200px" // Margen unificado y conservador para evitar sobrecarga en scroll rápido (especialmente en Modo Muro)
+});
 
 function cleanupLazyImages(container) {
   if (!container) return;

@@ -417,11 +417,9 @@ $$;
 CREATE OR REPLACE FUNCTION public.get_random_top_actors(limit_count int DEFAULT 5)
 RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE AS $$
     WITH top_actors AS (
-        SELECT a.name
-        FROM public.actors a
-        JOIN public.movie_actors ma ON a.id = ma.actor_id
-        GROUP BY a.id, a.name
-        ORDER BY count(ma.movie_id) DESC
+        SELECT name
+        FROM mv_actor_suggestions
+        ORDER BY movie_count DESC
         LIMIT 100
     )
     SELECT name FROM top_actors ORDER BY random() LIMIT limit_count;
@@ -430,11 +428,9 @@ $$;
 CREATE OR REPLACE FUNCTION public.get_random_top_directors(limit_count int DEFAULT 5)
 RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE AS $$
     WITH top_directors AS (
-        SELECT d.name
-        FROM public.directors d
-        JOIN public.movie_directors md ON d.id = md.director_id
-        GROUP BY d.id, d.name
-        ORDER BY count(md.movie_id) DESC
+        SELECT name
+        FROM mv_director_suggestions
+        ORDER BY movie_count DESC
         LIMIT 100
     )
     SELECT name FROM top_directors ORDER BY random() LIMIT limit_count;
@@ -628,6 +624,10 @@ BEGIN
     REFRESH MATERIALIZED VIEW CONCURRENTLY mv_actor_suggestions;
     REFRESH MATERIALIZED VIEW CONCURRENTLY mv_director_suggestions;
     REFRESH MATERIALIZED VIEW CONCURRENTLY mv_title_suggestions;
+
+    -- FASE 6: ACTUALIZACIÓN DE ESTADÍSTICAS
+    -- Crítico para que el planificador use los índices correctamente tras la carga masiva.
+    ANALYZE public.movies;
 
 END;
 $function$;
