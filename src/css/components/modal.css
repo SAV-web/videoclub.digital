@@ -405,6 +405,22 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   .is-quick-view .flip-card-front img {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   }
+
+  /* Ajuste de flechas en móvil: Alinear con el póster */
+  .modal-nav-btn {
+    top: 25%; /* Subir para coincidir con el área del póster */
+  }
+
+  /* Estado por defecto: Póster reducido para mostrar flechas a los lados */
+  .is-quick-view .poster-container {
+    width: 70%; margin-inline: auto;
+    transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Estado Expandido (al tocar): Póster completo */
+  .quick-view-modal.hide-arrows .is-quick-view .poster-container {
+    width: 100%;
+  }
 }
 
 /* --- B) ESCRITORIO (> 701px): MODAL FLOTANTE --- */
