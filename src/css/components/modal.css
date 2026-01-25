@@ -193,9 +193,10 @@
 .is-quick-view .movie-summary h3.title-xl-long { font-size: 1.3rem; }
 
 .is-quick-view .front-director-info {
-  font-size: var(--font-size-base);
+  font-size: calc(var(--font-size-xs) * 1.5); /* Igualar tamaño a lista de actores/detalles */
   color: var(--color-text-secondary);
   margin-bottom: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* --- Iconos de Acción y Valoración (Aumentados) --- */

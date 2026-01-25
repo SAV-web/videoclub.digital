@@ -19,11 +19,6 @@
   @media (min-width: 769px) {
     height: 100%;
     padding-inline: var(--space-md); /* Reducir padding (16px) para ganar espacio en ancho fijo */
-
-    /* 🔥 FIX: Ajuste crítico para el modo colapsado (65px) */
-    body.sidebar-collapsed & {
-      padding-inline: var(--space-xs); 
-    }
   }
 
   /* Estado Compacto (Secciones abiertas) */

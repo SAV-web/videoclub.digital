@@ -9,6 +9,7 @@ import { renderMovieGrid, updateCardUI, handleCardClick, initCardInteractions, r
 
 // --- Lazy Modules State ---
 let sidebarModule = null;
+let isAuthInitialized = false;
 
 async function loadSidebar() {
   if (sidebarModule) return sidebarModule;
@@ -144,6 +145,12 @@ function updateDomWithResults(movies, totalMovies) {
   const { currentPage } = getState();
 
   if (totalMovies === 0) {
+    // FIX: Evitar "No resultados" momentáneo al cargar "Mi Lista" antes de verificar sesión/datos
+    if (getActiveFilters().myList && !isAuthInitialized) {
+      renderSkeletons(dom.gridContainer, dom.paginationContainer);
+      return;
+    }
+
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
   } else if (totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentPage === 1) {
@@ -436,7 +443,13 @@ function setupGlobalListeners() {
   document.addEventListener("card:requestUpdate", (e) => { if (e.detail.cardElement) updateCardUI(e.detail.cardElement); });
   const handleDataRefresh = () => document.querySelectorAll(".movie-card").forEach(updateCardUI);
   document.addEventListener("userMovieDataChanged", handleDataRefresh);
-  document.addEventListener("userDataUpdated", handleDataRefresh);
+  
+  document.addEventListener("userDataUpdated", () => {
+    handleDataRefresh();
+    if (getActiveFilters().myList) {
+      loadAndRenderMovies(getCurrentPage());
+    }
+  });
   document.addEventListener("filtersReset", handleFiltersReset);
 }
 
@@ -461,6 +474,7 @@ function setupAuthSystem() {
       setUserMovieData(data);
       document.dispatchEvent(new CustomEvent("userDataUpdated"));
     } catch (error) { showToast(error.message, "error"); }
+    finally { isAuthInitialized = true; }
   }
   
   function onLogout() {
@@ -473,6 +487,7 @@ function setupAuthSystem() {
     userAvatarInitials.title = "";
     clearUserMovieData();
     document.dispatchEvent(new CustomEvent("userDataUpdated"));
+    isAuthInitialized = true;
   }
   
   async function handleLogout() {

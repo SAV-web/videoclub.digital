@@ -176,7 +176,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
       // Ordenación
       const [sortField, sortDirection] = (activeFilters.sort || "relevance,asc").split(",");
       if (sortField === 'relevance') {
-        query = query.order('id', { ascending: false });
+        query = query.order('relevance', { ascending: true });
       } else {
         query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
       }
