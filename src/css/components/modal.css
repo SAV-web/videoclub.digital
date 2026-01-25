@@ -143,6 +143,14 @@
   pointer-events: auto; /* Reactivar clicks para enlaces */
 }
 
+/* Reordenamiento del contenido en Modal */
+.is-quick-view .back-meta-header { order: 1; }
+.is-quick-view .ratings-container { order: 2; }
+.is-quick-view .back-original-title-wrapper { order: 3; }
+.is-quick-view .details-list { order: 4; }
+.is-quick-view .scrollable-content { order: 5; }
+.is-quick-view .expand-content-btn { order: 6; }
+
 /* =================================================================
    3. QUICK VIEW: ESTILOS "GIGANTE" (Overrides de card.css)
    ================================================================= */
@@ -232,7 +240,7 @@
 
 /* Espaciado de Detalles */
 .is-quick-view .details-list {
-  margin-top: var(--space-xl);
+  margin-top: var(--space-lg);
   margin-bottom: 0; /* Eliminar margen heredado para precisión */
   padding-top: var(--space-md);
   gap: var(--space-md);
@@ -280,7 +288,7 @@
 
 /* --- Título Original (Reverso) --- */
 .is-quick-view .back-original-title-wrapper {
-  min-height: 0; margin-top: 0; margin-bottom: var(--space-md); padding: 0;
+  min-height: 0; margin-top: var(--space-lg); margin-bottom: 0; padding: 0;
   align-items: flex-start; flex-shrink: 0;
   animation: none; /* Eliminar delay de animación heredado de la tarjeta */
 }
@@ -359,7 +367,7 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   .quick-view-modal {
     top: auto; bottom: 0; left: 50%;
     width: 96%;
-    height: 85dvh; max-height: 85dvh;
+    height: 92dvh; max-height: 92dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     
     transform: translate(-50%, 100%); /* Inicial: Abajo */
@@ -386,7 +394,12 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   
   .is-quick-view .flip-card-front {
     padding-top: 30px; /* Espacio para el handle */
+    padding-bottom: var(--space-xs); /* Reducir separación con la parte trasera */
     border-bottom: none;
+  }
+
+  .is-quick-view .flip-card-back {
+    padding-top: 0; /* Pegar a la parte frontal */
   }
   
   .is-quick-view .flip-card-front img {
