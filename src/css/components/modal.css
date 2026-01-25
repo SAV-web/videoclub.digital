@@ -64,6 +64,9 @@
   /* UX: Prevenir scroll del body al tocar el modal */
   touch-action: pan-y;
 
+  /* Eliminar anillo de foco nativo al abrir programáticamente */
+  &:focus, &:focus-visible { outline: none; }
+
   &.is-visible {
     opacity: 1;
     visibility: visible;
@@ -190,8 +193,8 @@
 /* --- Iconos de Acción y Valoración (Aumentados) --- */
 .is-quick-view .card-rating-block {
   position: static; transform: none;
-  padding: 1px 0 2px;
-  margin: 0;
+  padding: 0 0 2px;
+  margin: -8px 0 0; /* Acercar al póster */
   pointer-events: auto;
   justify-content: center;
   gap: var(--space-xl);
@@ -222,13 +225,23 @@
 .is-quick-view .rating-left { font-size: calc(var(--font-size-base) * 1.5); }
 .is-quick-view .details-list,
 .is-quick-view .plot-summary-final,
-.is-quick-view .critic-review { font-size: calc(var(--font-size-xs) * 1.5); }
+.is-quick-view .critic-review { 
+  font-size: calc(var(--font-size-xs) * 1.5); 
+  line-height: 1.5; /* Restaurar legibilidad en modal */
+}
 
 /* Espaciado de Detalles */
 .is-quick-view .details-list {
   margin-top: var(--space-xl);
+  margin-bottom: 0; /* Eliminar margen heredado para precisión */
   padding-top: var(--space-md);
   gap: var(--space-md);
+}
+
+.is-quick-view .plot-summary-final,
+.is-quick-view .critic-review {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
 }
 
 .is-quick-view .detail-label {
@@ -269,12 +282,14 @@
 .is-quick-view .back-original-title-wrapper {
   min-height: 0; margin-top: 0; margin-bottom: var(--space-md); padding: 0;
   align-items: flex-start; flex-shrink: 0;
+  animation: none; /* Eliminar delay de animación heredado de la tarjeta */
 }
 .is-quick-view .back-original-title-wrapper span {
   font-size: 2rem; font-weight: bold; line-height: 1.1;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   margin-top: -0.2em;
 }
+.is-quick-view .back-original-title-wrapper span.title-medium { font-size: 1.8rem; }
 .is-quick-view .back-original-title-wrapper span.title-long { font-size: 1.6rem; }
 .is-quick-view .back-original-title-wrapper span.title-xl-long { font-size: 1.3rem; }
 
@@ -288,7 +303,8 @@
 .is-quick-view .expand-content-btn,
 .is-quick-view .actors-expand-btn { display: none; }
 
-.is-quick-view .detail-item[data-template="actors-container"] {
+.is-quick-view .detail-item[data-template="actors-container"],
+.is-quick-view .detail-item[data-template="genre-container"] {
   -webkit-line-clamp: initial; white-space: normal; display: block;
 }
 
@@ -437,6 +453,8 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 
   /* Safe Area Universal */
   padding-bottom: max(var(--space-md), env(safe-area-inset-bottom));
+
+  &:focus, &:focus-visible { outline: none; }
 }
 
 .auth-box {

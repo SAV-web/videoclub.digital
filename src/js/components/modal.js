@@ -304,7 +304,8 @@ function setupModalDetails(back, movie) {
     span.textContent = movie.original_title;
     span.className = ""; // Reset
     if (movie.original_title.length > 40) span.classList.add("title-xl-long");
-    else if (movie.original_title.length > 20) span.classList.add("title-long");
+    else if (movie.original_title.length > 30) span.classList.add("title-long");
+    else if (movie.original_title.length > 20) span.classList.add("title-medium");
     origTitle.hidden = false;
   } else { origTitle.hidden = true; }
 

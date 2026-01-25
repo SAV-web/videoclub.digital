@@ -194,6 +194,11 @@
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   text-wrap: balance; /* Títulos equilibrados visualmente */
   overflow: hidden; text-overflow: ellipsis;
+
+  /* Tipografía Responsiva (3 niveles) */
+  &.title-medium { font-size: 0.95rem; }
+  &.title-long { font-size: 0.9rem; }
+  &.title-xl-long { font-size: 0.75rem; }
 }
 
 .front-director-info {
@@ -213,6 +218,7 @@
 }
 
 .card-icons-line { display: flex; align-items: center; gap: var(--space-xxs); }
+.card-icons-line.compact .platform-icon svg { width: 16px; height: 16px; } /* Reducción 20% si >= 3 */
 .platform-icon svg { vertical-align: middle; }
 .year-flag-group { display: flex; align-items: center; gap: var(--space-xxs); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); white-space: nowrap; letter-spacing: -0.03em; }
 .country-info { display: flex; align-items: center; gap: var(--space-xxs); }
@@ -245,6 +251,11 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
     text-align: left;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; text-overflow: ellipsis;
+
+    /* Tipografía Responsiva (Reverso) */
+    &.title-medium { font-size: 0.8rem; }
+    &.title-long { font-size: 0.75rem; }
+    &.title-xl-long { font-size: 0.7rem; }
   }
 }
 
@@ -291,12 +302,18 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   display: flex; flex-direction: column; gap: var(--space-xxs);
   margin: 6px 0 4px; padding-top: 4px; /* Compactar márgenes verticales */
   border-top: 1px solid var(--color-border);
-  font-size: var(--font-size-xs); line-height: var(--line-height-normal); color: var(--color-text-secondary);
+  font-size: var(--font-size-xs); line-height: 1.2; color: var(--color-text-secondary);
+}
+.detail-item[data-template="genre-container"] {
+  position: relative; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  padding-right: 10px;
 }
 .detail-item[data-template="actors-container"] {
   position: relative; overflow: hidden; text-overflow: ellipsis;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
   padding-right: 10px;
+  line-height: 1.4;
 }
 
 /* Áreas con Scroll */
@@ -315,14 +332,14 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
 .plot-summary-final, .critic-review {
   padding-top: 4px; border-top: 1px solid var(--color-border);
   opacity: 0.8; font-size: var(--font-size-xs); color: var(--color-text-secondary);
-  font-weight: var(--font-weight-normal); line-height: 1.4; /* Reducir interlineado */
+  font-weight: var(--font-weight-normal); line-height: 1.2; /* Reducir interlineado */
   text-wrap: pretty; /* Evita palabras huérfanas al final */
 }
 .critic-review { margin-top: 6px; }
 
 /* Overlay de Actores */
 .actors-scrollable-content {
-  position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-xl);
+  position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-sm);
   background-color: var(--color-surface);
   -webkit-overflow-scrolling: touch;
   overflow-y: auto; scrollbar-width: none;
@@ -333,13 +350,13 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   pointer-events: auto;
 
   & h4 {
-    margin-top: 0; margin-bottom: var(--space-sm);
+    margin-top: 0; margin-bottom: var(--space-xs); /* Reducir espacio entre título y lista */
     font-family: var(--font-title); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
     border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-xxs);
     color: var(--color-text-primary);
   }
 }
-.actors-list-text { margin: 0; text-align: left; color: var(--color-text-primary); padding-bottom: var(--space-xl); }
+.actors-list-text { margin: 0; text-align: left; color: var(--color-text-primary); padding-bottom: var(--space-xs); } /* Reducir espacio final */
 .actor-list-item {
   background: none; border: none; padding: 0;
   font-family: inherit; font-size: inherit; color: var(--color-text-primary);

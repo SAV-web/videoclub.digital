@@ -378,6 +378,12 @@ function populateCard(card, movie, index) {
   const titleEl = front.querySelector(SELECTORS.TITLE);
   titleEl.textContent = movie.title;
   titleEl.title = movie.title; // Tooltip nativo
+  titleEl.className = ""; // Reset clases
+
+  const tLen = movie.title.length;
+  if (tLen > 40) titleEl.classList.add("title-xl-long");
+  else if (tLen > 25) titleEl.classList.add("title-long");
+  else if (tLen > 15) titleEl.classList.add("title-medium");
 
   // Directores (Fragmento para evitar innerHTML excesivo)
   const dirCont = front.querySelector(SELECTORS.DIRECTOR);
@@ -409,6 +415,10 @@ function populateCard(card, movie, index) {
   if (iconCont) {
     iconCont.innerHTML = ""; // Limpieza rápida
     const codes = movie.studios_list?.split(",") || [];
+    
+    // Si hay 3 o más estudios, aplicar clase compacta (iconos más pequeños)
+    iconCont.classList.toggle('compact', codes.filter(c => STUDIO_DATA[c]).length >= 3);
+
     codes.forEach(code => {
       const conf = STUDIO_DATA[code];
       if (conf) {
@@ -434,7 +444,13 @@ function populateCard(card, movie, index) {
   // Título Original
   const origWrap = back.querySelector('.back-original-title-wrapper');
   if (movie.original_title && movie.original_title.trim()) {
-    origWrap.querySelector('[data-template="original-title"]').textContent = movie.original_title;
+    const origEl = origWrap.querySelector('[data-template="original-title"]');
+    origEl.textContent = movie.original_title;
+    origEl.className = ""; // Reset clases
+    const oLen = movie.original_title.length;
+    if (oLen > 40) origEl.classList.add("title-xl-long");
+    else if (oLen > 30) origEl.classList.add("title-long");
+    else if (oLen > 20) origEl.classList.add("title-medium");
     origWrap.hidden = false;
   } else { origWrap.hidden = true; }
 
