@@ -33,6 +33,9 @@ html {
   /* Scrollbar Firefox */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) var(--color-bg);
+  
+  /* FIX: Evitar salto de layout al abrir modales (reserva espacio de scrollbar) */
+  scrollbar-gutter: stable;
 }
 
 /* 3. Configuración del Body */

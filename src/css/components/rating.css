@@ -117,14 +117,14 @@
    SECCIÓN: RATINGS EXTERNOS (Barras y Puntuaciones)
    ================================================================= */
 
-.ratings-container { display: flex; flex-direction: column; gap: 10px; }
+.ratings-container { display: flex; flex-direction: column; gap: 4px; } /* Reducir gap (de 10px a 4px) */
 .rating-line { 
-  display: flex; align-items: center; gap: var(--space-sm); 
+  display: flex; align-items: center; gap: 6px; /* Reducir gap interno */
   font-variant-numeric: tabular-nums; /* Alineación perfecta de cifras */
 }
 
 .rating-left {
-  display: flex; align-items: center; gap: var(--space-sm); flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
   color: var(--color-text-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
   text-decoration: none; cursor: pointer;
   transition: opacity 0.2s ease, transform 0.2s ease;

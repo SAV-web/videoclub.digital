@@ -61,7 +61,7 @@ export const formatRuntime = (minutesString, useShortLabel = false) => {
   // Validación robusta: Evitar NaN, Infinity o valores <= 0
   if (!Number.isFinite(minutes) || minutes <= 0) return "";
   
-  if (useShortLabel) return `${minutes} min`;
+  if (useShortLabel) return `${minutes}'`;
 
   const h = (minutes / 60) | 0; // Math.floor bitwise (más rápido para enteros positivos)
   const m = minutes % 60;

@@ -379,12 +379,6 @@ function populateCard(card, movie, index) {
   titleEl.textContent = movie.title;
   titleEl.title = movie.title; // Tooltip nativo
 
-  // Tipografía Responsiva: Ajustar tracking/peso según longitud
-  const len = movie.title.length;
-  if (len < 20) titleEl.classList.add('title-short');
-  else if (len < 40) titleEl.classList.add('title-long');
-  else titleEl.classList.add('title-xl-long');
-
   // Directores (Fragmento para evitar innerHTML excesivo)
   const dirCont = front.querySelector(SELECTORS.DIRECTOR);
   dirCont.textContent = "";
@@ -577,7 +571,7 @@ export function renderMovieGrid(container, movies) {
       
       card.dataset.movieId = movie.id;
       card.movieData = movie;
-      if (movie.id) card.style.viewTransitionName = `movie-${movie.id}`;
+      // OPTIMIZACIÓN: view-transition-name se asigna dinámicamente al hacer clic (ver modal.js)
       card.style.setProperty("--card-index", i); // Para animación staggered
 
       populateCard(card, movie, i);

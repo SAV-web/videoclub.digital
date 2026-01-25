@@ -32,6 +32,7 @@ let DRAWER_WIDTH = 280;
 
 // Estado de interacción con el filtro de años (para cierre inteligente en móvil)
 let yearInteractionState = { start: false, end: false };
+let isInitialized = false;
 
 // --- Referencias DOM Centralizadas ---
 const dom = {
@@ -999,6 +1000,9 @@ function setupEventListeners() {
 // =================================================================
 
 export function initSidebar() {
+  if (isInitialized) return;
+  isInitialized = true;
+
   if (window.innerWidth <= MOBILE_BREAKPOINT) {
     setSidebarState(false); // Estado inicial cerrado en móvil
   } else if (window.innerWidth <= 1024) {

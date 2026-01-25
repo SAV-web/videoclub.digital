@@ -42,6 +42,9 @@ const touchState = {
   isHorizontalSwipe: false
 };
 
+// Estado para la transición Hero (Card -> Modal)
+let activeHeroCard = null;
+
 const SWIPE_X_THRESHOLD = 80;
 const SWIPE_Y_CLOSE_THRESHOLD = 120;
 const MODAL_TRANSITION_MS = 300;
@@ -310,7 +313,7 @@ function setupModalDetails(back, movie) {
   back.querySelector('[data-template="duration"]').textContent = formatRuntime(movie.minutes, isSeries);
   
   const epEl = back.querySelector('[data-template="episodes"]');
-  const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
+  const epText = isSeries && movie.episodes ? `${movie.episodes}x` : "";
   epEl.textContent = epText;
   epEl.hidden = !epText;
 
@@ -404,13 +407,38 @@ export function closeModal() {
   const { modal, overlay } = getDom();
   if (!modal.classList.contains("is-visible")) return;
   
-  modal.classList.remove("is-visible");
-  overlay.classList.remove("is-visible");
-  document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
-  
-  // Limpieza
-  setTimeout(resetModalTransform, MODAL_TRANSITION_MS);
-  closeAccessibleModal(modal, overlay);
+  const performClose = () => {
+    modal.classList.remove("is-visible");
+    overlay.classList.remove("is-visible");
+    document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
+    
+    // Limpieza
+    setTimeout(resetModalTransform, MODAL_TRANSITION_MS);
+    closeAccessibleModal(modal, overlay);
+  };
+
+  // View Transition (Hero Reverso: Modal -> Card)
+  if (document.startViewTransition && activeHeroCard) {
+    // 1. Asegurar que el modal tiene el nombre
+    modal.style.viewTransitionName = "hero-expansion";
+    // 2. Asegurar que la tarjeta original tiene el nombre (por si se perdió en virtualización)
+    activeHeroCard.style.viewTransitionName = "hero-expansion";
+
+    const transition = document.startViewTransition(() => {
+      // 3. En el nuevo estado, el modal desaparece y la tarjeta es visible
+      modal.style.viewTransitionName = ""; // Quitar nombre al modal para que el navegador busque la tarjeta
+      performClose();
+    });
+
+    // 4. Limpieza final tras la animación
+    transition.finished.finally(() => {
+      if (activeHeroCard) activeHeroCard.style.viewTransitionName = "";
+      activeHeroCard = null;
+    });
+  } else {
+    performClose();
+  }
+
   document.removeEventListener("click", handleOutsideClick);
 }
 
@@ -418,17 +446,35 @@ export function openModal(cardElement, contextCards = null) {
   if (!cardElement) return;
   const { modal, overlay, content } = getDom();
   
+  // Guardar referencia para el cierre
+  activeHeroCard = cardElement;
+
   unflipAllCards();
   populateModal(cardElement, contextCards);
-  document.body.classList.add(CSS_CLASSES.MODAL_OPEN);
   
-  requestAnimationFrame(() => {
-    modal.classList.add("is-visible");
-    overlay.classList.add("is-visible");
-    openAccessibleModal(modal, overlay, false); // false = No enfocar contenido automáticamente
-    if (content) content.scrollTop = 0;
-    setTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
-  });
+  const performOpen = () => {
+    document.body.classList.add(CSS_CLASSES.MODAL_OPEN);
+    requestAnimationFrame(() => {
+      modal.classList.add("is-visible");
+      overlay.classList.add("is-visible");
+      openAccessibleModal(modal, overlay, false);
+      if (content) content.scrollTop = 0;
+      setTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
+    });
+  };
+
+  // View Transition (Hero: Card -> Modal)
+  if (document.startViewTransition) {
+    cardElement.style.viewTransitionName = "hero-expansion";
+    
+    document.startViewTransition(() => {
+      performOpen();
+      modal.style.viewTransitionName = "hero-expansion"; // El modal adopta la identidad
+      cardElement.style.viewTransitionName = ""; // La tarjeta cede la identidad
+    });
+  } else {
+    performOpen();
+  }
 }
 
 export function initQuickView() {
