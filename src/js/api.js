@@ -154,7 +154,11 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
       const allUserData = getAllUserMovieData();
       // Filtrar IDs relevantes: Watchlist=true OR Rating != null
       const relevantIds = Object.entries(allUserData)
-        .filter(([_, data]) => data.onWatchlist || data.rating !== null)
+        .filter(([_, data]) => {
+          if (activeFilters.myList === 'rated') return data.rating !== null;
+          if (activeFilters.myList === 'watchlist') return data.onWatchlist;
+          return data.onWatchlist || data.rating !== null; // 'mixed'
+        })
         .map(([id]) => parseInt(id, 10));
 
       if (relevantIds.length === 0) {

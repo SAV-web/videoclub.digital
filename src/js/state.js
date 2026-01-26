@@ -25,7 +25,7 @@ const initialState = {
     mediaType: DEFAULTS.MEDIA_TYPE,
     excludedGenres: [],
     excludedCountries: [],
-    myList: false,
+    myList: null, // null | 'rated' | 'watchlist' | 'mixed'
   },
   userMovieData: {},
 };
@@ -194,7 +194,7 @@ export function setFilter(filterType, value, force = false) {
 
   // Lógica de Exclusividad: Si activamos myList, limpiamos otros filtros (excepto sort/mediaType)
   // Esto se maneja mejor en el controlador (sidebar.js), pero aquí aseguramos consistencia si se llama directo.
-  if (filterType === 'myList' && value === true) {
+  if (filterType === 'myList' && value) {
      // No limpiamos aquí para evitar efectos secundarios ocultos, el caller debe limpiar.
   }
 

@@ -533,7 +533,8 @@ body.is-fetching .sidebar::before {
   display: flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; flex-shrink: 0;
   border-radius: var(--radius-round);
-  background-color: var(--color-accent); color: #fff;
+  background-color: transparent; border: 3px solid var(--color-accent);
+  color: var(--color-accent);
   font-size: var(--font-size-base); font-weight: bold;
   cursor: pointer; transition: transform 0.2s ease;
 }

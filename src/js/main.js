@@ -543,7 +543,10 @@ function readUrlAndSetState() {
       else if (stateKey === "sort") setSort(value);
       else if (stateKey === "mediaType") setMediaType(value);
       else if (stateKey === "excludedGenres" || stateKey === "excludedCountries") setFilter(stateKey, value.split(","), true);
-      else if (stateKey === "myList") setFilter(stateKey, value === "true", true);
+      else if (stateKey === "myList") {
+        // Compatibilidad hacia atrás: "true" -> "mixed"
+        setFilter(stateKey, value === "true" ? "mixed" : value, true);
+      }
       else setFilter(stateKey, value, true);
     }
   });
@@ -570,7 +573,7 @@ function updateUrl({ replace = false } = {}) {
     if (!shortKey) return;
     
     if (Array.isArray(value) && value.length > 0) params.set(shortKey, value.join(","));
-    else if (typeof value === "boolean" && value === true) params.set(shortKey, "true");
+    else if (key === "myList" && value) params.set(shortKey, value);
     else if (typeof value === "string" && value.trim() !== "") {
       // Ignorar valores por defecto
       if (key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) return;

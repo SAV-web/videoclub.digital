@@ -484,8 +484,23 @@ function updateAllFilterControls() {
 
   // 3. Actualizar estado del botón "Mi Lista"
   if (dom.myListButton) {
-    const isMyListActive = !!activeFilters.myList;
-    dom.myListButton.classList.toggle("active", isMyListActive);
+    const state = activeFilters.myList;
+    dom.myListButton.classList.toggle("active", !!state);
+    
+    // Actualizar icono y tooltip según estado
+    let iconHtml = ICONS.LIST;
+    let title = "Mi Lista";
+    
+    if (state === 'rated') {
+      iconHtml = ICONS.STAR;
+      title = "Mis Puntuaciones";
+    } else if (state === 'watchlist') {
+      iconHtml = ICONS.WATCHLIST;
+      title = "Pendientes";
+    }
+    
+    dom.myListButton.innerHTML = iconHtml;
+    dom.myListButton.title = title;
   }
 }
 
@@ -572,18 +587,29 @@ function renderFilterPills() {
 
 async function handleMyListToggle() {
   const currentFilters = getActiveFilters();
-  const isActivating = !currentFilters.myList;
+  const current = currentFilters.myList;
+  
+  // Ciclo: Inactivo -> Puntuadas -> Pendientes -> Todo -> Inactivo
+  const cycle = [null, 'rated', 'watchlist', 'mixed'];
+  const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
+  const nextState = cycle[nextIndex];
 
   triggerHapticFeedback('medium');
+  if (dom.myListButton) triggerPopAnimation(dom.myListButton);
   
   // Resetear filtros pero mantener sort y mediaType
   resetFiltersState();
   setSort(currentFilters.sort);
   setMediaType(currentFilters.mediaType);
 
-  if (isActivating) {
-    setFilter('myList', true);
-    showToast("Mostrando tu lista (votos y pendientes)", "info");
+  if (nextState) {
+    setFilter('myList', nextState);
+    const messages = {
+      rated: "Mostrando tus puntuaciones",
+      watchlist: "Mostrando pendientes",
+      mixed: "Mostrando toda tu lista"
+    };
+    showToast(messages[nextState], "info");
   }
 
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
@@ -605,7 +631,7 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     setSort(currentSort);
     setMediaType(currentMediaType);
     setFilter(type, value, true); // Bypass limit por seguridad tras reset
-    setFilter('myList', false); // Asegurar que myList está off
+    setFilter('myList', null); // Asegurar que myList está off
     
     // Actualizar UI (Slider de años, etc.) para reflejar el reinicio visualmente
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
@@ -638,7 +664,7 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   }
   
   // Si activamos un filtro normal, desactivamos myList
-  if (newValue) setFilter('myList', false);
+  if (newValue) setFilter('myList', null);
 
   // Lógica de País: Si seleccionamos un país, limpiamos las exclusiones de países
   if (newValue && type === 'country') {
