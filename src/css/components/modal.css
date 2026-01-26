@@ -232,6 +232,11 @@
 /* Usamos calc() para mantener la proporción respecto a las variables base */
 .is-quick-view .episode-duration-group { font-size: calc(var(--font-size-sm) * 1.5); letter-spacing: 1px; }
 .is-quick-view .rating-left { font-size: calc(var(--font-size-base) * 1.5); }
+
+/* Aumentar separación en líneas de rating (Icono/Nota/Barra/Votos) */
+.is-quick-view .rating-line,
+.is-quick-view .rating-left { gap: 12px; }
+
 .is-quick-view .details-list,
 .is-quick-view .plot-summary-final,
 .is-quick-view .critic-review { 
@@ -267,9 +272,9 @@
 .is-quick-view .rating-votes-count {
   display: flex !important;
   flex-direction: column; justify-content: center;
-  min-width: 5ch; text-align: center;
+  min-width: 5ch; text-align: right;
   font-size: var(--font-size-base); font-weight: bold;
-  margin-right: var(--space-sm); line-height: 1;
+  margin-right: 0; line-height: 1;
 }
 .is-quick-view .rating-votes-count:empty { display: none !important; }
 .is-quick-view .rating-votes-count::after {
@@ -294,13 +299,13 @@
   animation: none; /* Eliminar delay de animación heredado de la tarjeta */
 }
 .is-quick-view .back-original-title-wrapper span {
-  font-size: 2rem; font-weight: bold; line-height: 1.1;
+  font-size: 1.6rem; font-weight: bold; line-height: 1.1;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   margin-top: -0.2em;
 }
-.is-quick-view .back-original-title-wrapper span.title-medium { font-size: 1.8rem; }
-.is-quick-view .back-original-title-wrapper span.title-long { font-size: 1.6rem; }
-.is-quick-view .back-original-title-wrapper span.title-xl-long { font-size: 1.3rem; }
+.is-quick-view .back-original-title-wrapper span.title-medium { font-size: 1.45rem; }
+.is-quick-view .back-original-title-wrapper span.title-long { font-size: 1.3rem; }
+.is-quick-view .back-original-title-wrapper span.title-xl-long { font-size: 1.05rem; }
 
 .is-quick-view .back-meta-header { flex-shrink: 0; margin-bottom: var(--space-lg); }
 
