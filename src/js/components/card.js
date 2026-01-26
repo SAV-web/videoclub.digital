@@ -1,7 +1,7 @@
 // src/js/components/card.js
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
@@ -562,18 +562,16 @@ export function initializeCard(card) {
 //          5. GESTIÓN DE GRID (Renderizado Masivo)
 // =================================================================
 
-export function renderMovieGrid(container, movies) {
+export async function renderMovieGrid(container, movies) {
   const renderId = ++currentRenderRequestId;
   renderedCardCount = 0;
   unflipAllCards();
   if (!container) return;
 
-  cleanupLazyImages(container);
-  container.textContent = "";
-  const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12;
+  const BATCH_SIZE = 6; // Reducido para fluidez (Scheduler)
   let index = 0;
 
-  function renderBatch() {
+  async function renderBatch() {
     if (renderId !== currentRenderRequestId) return; // Cancelado por nueva petición
     if (index >= movies.length || !document.body.contains(container)) return;
 
@@ -581,29 +579,51 @@ export function renderMovieGrid(container, movies) {
     const limit = Math.min(index + BATCH_SIZE, movies.length);
 
     for (let i = index; i < limit; i++) {
-      const movie = movies[i];
-      const clone = cardTemplate.content.cloneNode(true);
-      const card = clone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
-      
-      card.dataset.movieId = movie.id;
-      card.movieData = movie;
-      // OPTIMIZACIÓN: view-transition-name se asigna dinámicamente al hacer clic (ver modal.js)
-      card.style.setProperty("--card-index", i); // Para animación staggered
+      // Verificación extra dentro del bucle por si la cancelación ocurre durante el await
+      if (renderId !== currentRenderRequestId) return;
 
-      populateCard(card, movie, i);
-      updateCardUI(card);
-      initializeCard(card);
+      const cardNode = await scheduleWork(
+        () => createCardElement(movies[i], i),
+        'user-visible'
+      );
       
       renderedCardCount++;
-      fragment.appendChild(clone);
+      fragment.appendChild(cardNode);
+    }
+
+    if (renderId !== currentRenderRequestId) return;
+
+    // Limpiar contenedor solo antes de pintar el primer lote para evitar parpadeo
+    if (index === 0) {
+      cleanupLazyImages(container);
+      container.textContent = "";
     }
 
     container.appendChild(fragment);
     index = limit;
-    if (index < movies.length) requestAnimationFrame(renderBatch);
+    
+    if (index < movies.length) {
+      await scheduleWork(renderBatch, 'background');
+    }
   }
 
   renderBatch();
+}
+
+function createCardElement(movie, index) {
+  const clone = cardTemplate.content.cloneNode(true);
+  const card = clone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
+  
+  card.dataset.movieId = movie.id;
+  card.movieData = movie;
+  // OPTIMIZACIÓN: view-transition-name se asigna dinámicamente al hacer clic (ver modal.js)
+  card.style.setProperty("--card-index", index); // Para animación staggered
+
+  populateCard(card, movie, index);
+  updateCardUI(card);
+  initializeCard(card);
+  
+  return clone;
 }
 
 // Skeletons y Estados Vacíos (Reutilizan createElement optimizado)

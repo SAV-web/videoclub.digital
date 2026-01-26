@@ -292,3 +292,18 @@ export const LocalStore = {
     try { localStorage.removeItem(key); } catch (e) { /* Ignorar */ }
   }
 };
+
+// =================================================================
+//          6. SCHEDULING (Rendimiento)
+// =================================================================
+
+export function scheduleWork(task, priority = 'user-visible') {
+  if ('scheduler' in window && window.scheduler.postTask) {
+    return window.scheduler.postTask(task, { priority });
+  }
+  // Fallback con requestIdleCallback
+  return new Promise(resolve => {
+    const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+    idleCallback(() => resolve(task()), { timeout: 300 });
+  });
+}

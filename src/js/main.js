@@ -5,7 +5,6 @@ import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
-import { renderMovieGrid, updateCardUI, handleCardClick, initCardInteractions, renderSkeletons, renderNoResults, renderErrorState } from "./components/card.js";
 
 // --- Lazy Modules State ---
 let sidebarModule = null;
@@ -33,6 +32,9 @@ const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).m
 // Detección de soporte View Transitions (Constante)
 const SUPPORTS_VIEW_TRANSITIONS = !!document.startViewTransition;
 
+// Helper para Code Splitting (Lazy Load de Card Component)
+const loadCardModule = () => import("./components/card.js");
+
 /**
  * Carga y renderiza la rejilla de películas.
  * Gestiona estados de carga, errores y transiciones.
@@ -49,10 +51,14 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
   document.body.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer.setAttribute("aria-busy", "true");
+
+  // Iniciar carga del módulo de tarjetas en paralelo (Code Splitting)
+  const cardModulePromise = loadCardModule();
   
   // Renderizado de Skeletons diferido (150ms) para evitar parpadeo en cargas rápidas
   let skeletonTimeout;
   if (forceSkeleton) {
+    const { renderSkeletons } = await cardModulePromise;
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
   } else {
     // Detectar calidad de red para ajustar el delay (Progressive Enhancement)
@@ -63,7 +69,8 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       'slow-2g': 0, '2g': 50, '3g': 100, '4g': 150
     }[effectiveType] || 150;
 
-    skeletonTimeout = setTimeout(() => {
+    skeletonTimeout = setTimeout(async () => {
+      const { renderSkeletons } = await cardModulePromise;
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
     }, skeletonDelay);
   }
@@ -100,10 +107,13 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     // Precarga LCP (Largest Contentful Paint) para la primera imagen
     if (movies && movies.length > 0) preloadLcpImage(movies[0]);
       
+    // Asegurar que el módulo de tarjetas esté listo antes de renderizar
+    const cardModule = await cardModulePromise;
+
     const performRender = () => {
       // Backend devuelve -1 si no se pidió conteo (get_count=false)
       const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
-      updateDomWithResults(movies, effectiveTotal);
+      updateDomWithResults(movies, effectiveTotal, cardModule);
       
       // Scroll al top unificado (Paginación + Fix teclado móvil)
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -120,6 +130,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     
     const msg = getFriendlyErrorMessage(error);
     if (msg) showToast(msg, "error");
+    const { renderErrorState } = await cardModulePromise;
     renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
     
     // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
@@ -137,7 +148,8 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
  * Actualiza el DOM con los resultados obtenidos.
  * Gestiona casos de vacío, paginación y precarga.
  */
-function updateDomWithResults(movies, totalMovies) {
+function updateDomWithResults(movies, totalMovies, cardModule) {
+  const { renderMovieGrid, renderNoResults, renderSkeletons } = cardModule;
   // Actualizar siempre el total para asegurar consistencia UI tras invalidación
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
@@ -396,9 +408,13 @@ function setupGlobalListeners() {
   });
 
   // Delegación de eventos Grid (Cards)
-  dom.gridContainer.addEventListener("click", function(e) {
+  dom.gridContainer.addEventListener("click", async function(e) {
     const cardElement = e.target.closest(".movie-card");
-    if (cardElement) { handleCardClick.call(cardElement, e); return; }
+    if (cardElement) { 
+      const { handleCardClick } = await loadCardModule();
+      handleCardClick.call(cardElement, e); 
+      return; 
+    }
     
     // Botón "Limpiar Filtros" en estado vacío
     if (e.target.closest("#clear-filters-from-empty")) {
@@ -407,10 +423,13 @@ function setupGlobalListeners() {
   });
   
   // Interacciones Card (Hover, Tap)
-  initCardInteractions(dom.gridContainer);
+  loadCardModule().then(({ initCardInteractions }) => {
+    initCardInteractions(dom.gridContainer);
+  });
   
   // Quick View Delegation
-  document.getElementById("quick-view-content").addEventListener("click", function(e) { 
+  document.getElementById("quick-view-content").addEventListener("click", async function(e) { 
+    const { handleCardClick } = await loadCardModule();
     handleCardClick.call(this, e); 
   });
   
@@ -440,8 +459,16 @@ function setupGlobalListeners() {
   });
 
   // Eventos Personalizados de la App
-  document.addEventListener("card:requestUpdate", (e) => { if (e.detail.cardElement) updateCardUI(e.detail.cardElement); });
-  const handleDataRefresh = () => document.querySelectorAll(".movie-card").forEach(updateCardUI);
+  document.addEventListener("card:requestUpdate", async (e) => { 
+    if (e.detail.cardElement) {
+      const { updateCardUI } = await loadCardModule();
+      updateCardUI(e.detail.cardElement); 
+    }
+  });
+  const handleDataRefresh = async () => {
+    const { updateCardUI } = await loadCardModule();
+    document.querySelectorAll(".movie-card").forEach(updateCardUI);
+  };
   document.addEventListener("userMovieDataChanged", handleDataRefresh);
   
   document.addEventListener("userDataUpdated", () => {
