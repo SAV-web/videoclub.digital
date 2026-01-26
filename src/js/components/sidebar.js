@@ -732,12 +732,24 @@ function resetFilters() {
   tryCloseMobileDrawer();
 }
 
+// Helper para determinar si hay filtros que fuercen el modo compacto (excluyendo año)
+function hasCompactTriggeringFilters() {
+  const filters = getActiveFilters();
+  const defaultYearRange = `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`;
+  const isYearActive = !!(filters.year && filters.year !== defaultYearRange);
+  const totalCount = getActiveFilterCount();
+  return (isYearActive ? totalCount - 1 : totalCount) > 0;
+}
+
 export function collapseAllSections() {
   dom.collapsibleSections.forEach((section) => {
     section.classList.remove(CSS_CLASSES.ACTIVE);
     section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
   });
-  if (dom.sidebarInnerWrapper) dom.sidebarInnerWrapper.classList.remove("is-compact");
+  
+  if (dom.sidebarInnerWrapper) {
+    dom.sidebarInnerWrapper.classList.toggle("is-compact", hasCompactTriggeringFilters());
+  }
 }
 
 function initYearSlider() {
@@ -748,8 +760,12 @@ function initYearSlider() {
   // El 50% del slider se dedica a los últimos 20 años.
   const pivotYear = Math.max(CONFIG.YEAR_MIN + 1, CONFIG.YEAR_MAX - 20);
 
+  // Obtener estado inicial desde la URL/Store para mantener la selección al refrescar
+  const currentFilters = getActiveFilters();
+  const initialYears = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
+
   const sliderInstance = noUiSlider.create(dom.yearSlider, {
-    start: [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX],
+    start: initialYears,
     connect: true, step: 1, 
     range: { 'min': CONFIG.YEAR_MIN, '50%': pivotYear, 'max': CONFIG.YEAR_MAX },
     format: { to: (value) => Math.round(value), from: (value) => Number(value) },
@@ -1008,7 +1024,8 @@ function setupEventListeners() {
       
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
       header.setAttribute('aria-expanded', isNowActive);
-      dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive);
+      
+      dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive || hasCompactTriggeringFilters());
 
       if (isNowActive) {
         setTimeout(() => {
@@ -1155,4 +1172,9 @@ export function initSidebar() {
 
   // Sincronizar estado visual inicial (Pills) con el estado global (URL) tras carga diferida
   renderFilterPills();
+  
+  // Aplicar estado compacto inicial si hay filtros activos (excluyendo año)
+  if (hasCompactTriggeringFilters() && dom.sidebarInnerWrapper) {
+    dom.sidebarInnerWrapper.classList.add("is-compact");
+  }
 }

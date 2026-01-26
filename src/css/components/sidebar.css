@@ -624,7 +624,7 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
   .collapsible-section .section-header { font-size: var(--font-size-md); }
   .filter-link, .sidebar-autocomplete-item { font-size: var(--font-size-base); }
   .filter-pill { font-size: var(--font-size-sm); }
-  .year-input { font-size: var(--font-size-md); }
+  .year-input { font-size: 1.1rem; }
   .total-results-container { font-size: var(--font-size-base); }
 
   .exclude-filter-btn {

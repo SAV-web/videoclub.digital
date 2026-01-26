@@ -297,6 +297,7 @@ export function handleCardClick(event) {
     if (card.id === 'quick-view-content') return;
 
     event.preventDefault();
+    event.stopPropagation();
     const type = filterLink.dataset.directorName ? "director" : "actor";
     const value = filterLink.dataset.directorName || filterLink.dataset.actorName;
     // Evento global: resetea filtros y aplica uno nuevo (usado por sidebar/main).

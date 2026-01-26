@@ -252,23 +252,3 @@ body.sidebar-is-open .sidebar-overlay {
     min-width: var(--tap-target-size); height: var(--tap-target-size); font-size: 1rem;
   }
 }
-
-/* --- 7. Pull to Refresh --- */
-body.is-pull-refreshing::before {
-  content: "↓";
-  position: fixed;
-  top: calc(var(--mobile-header-height) + 20px); /* Debajo del header si estuviera arriba, o visible */
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 2rem;
-  font-weight: bold;
-  color: var(--color-accent);
-  z-index: var(--z-index-toast);
-  animation: pull-bounce 0.6s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes pull-bounce {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(10px); }
-}

@@ -284,54 +284,12 @@ function handleFiltersReset(e) {
   if (newFilter) setFilter(newFilter.type, newFilter.value);
   
   // Actualizar UI
-  dom.searchInput.value = "";
-  dom.sortSelect.value = currentSort;
+  if (dom.searchInput) dom.searchInput.value = "";
+  if (dom.sortSelect) dom.sortSelect.value = currentSort;
   updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   
-  loadAndRenderMovies(1); // Reset es una acción discreta -> PushState (default)
-}
-
-// --- Pull to Refresh (Mobile) ---
-function initPullToRefresh() {
-  if (window.innerWidth > 768) return;
-
-  let startY = 0;
-  let isPulling = false;
-  const THRESHOLD = 80;
-
-  window.addEventListener('touchstart', (e) => {
-    // Solo activar si estamos arriba del todo
-    if (window.scrollY === 0) {
-      startY = e.touches[0].clientY;
-      isPulling = true;
-    }
-  }, { passive: true });
-  
-  window.addEventListener('touchmove', (e) => {
-    if (!isPulling) return;
-    
-    // Si el usuario baja el scroll, cancelar gesto
-    if (window.scrollY > 0) { isPulling = false; document.body.classList.remove('is-pull-refreshing'); return; }
-
-    const deltaY = e.touches[0].clientY - startY;
-    // Feedback visual al superar umbral
-    if (deltaY > THRESHOLD) document.body.classList.add('is-pull-refreshing');
-    else document.body.classList.remove('is-pull-refreshing');
-  }, { passive: true });
-  
-  window.addEventListener('touchend', async (e) => {
-    if (!isPulling) return;
-    const deltaY = e.changedTouches[0].clientY - startY;
-    
-    if (deltaY > THRESHOLD && window.scrollY === 0) {
-      document.body.classList.remove('is-pull-refreshing');
-      triggerHapticFeedback('success');
-      await loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
-    }
-    document.body.classList.remove('is-pull-refreshing');
-    isPulling = false;
-  });
+  loadAndRenderMovies(1, { forceSkeleton: true }); // Reset es una acción discreta -> PushState (default)
 }
 
 // --- Configuración de Listeners ---
@@ -664,7 +622,6 @@ function init() {
   
   initThemeToggle();
   setupHeaderListeners();
-  initPullToRefresh();
   setupGlobalListeners();
   setupAuthSystem();
   setupAuthModal();
