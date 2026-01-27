@@ -80,7 +80,7 @@
   --color-success-bg: #28a74520;
 
   /* ---- Espaciado y Layout ---- */
-  --sidebar-width-mobile: 280px;
+  --sidebar-width-mobile: 300px;
   --tap-target-size: 48px; /* Mínimo táctil accesible */
 
   --space-xxs: 0.25rem;  /* 4px */

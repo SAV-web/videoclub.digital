@@ -87,9 +87,9 @@
 }
 
 /* Barra de scroll en móvil (Chrome/Safari) */
-.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar { width: 12px; }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
-.sidebar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 8px; }
 
 /* Estado Abierto (Móvil) */
 body.sidebar-is-open .sidebar { transform: translateX(0); }

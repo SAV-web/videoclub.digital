@@ -29,7 +29,7 @@ import spriteUrl from "../../sprite.svg";
 const MOBILE_BREAKPOINT = 768;
 const MOBILE_HEIGHT_LIMIT = 500; // Altura máxima para considerar "móvil landscape"
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
-let DRAWER_WIDTH = 280;
+let DRAWER_WIDTH = 300;
 
 // Estado de interacción con el filtro de años (para cierre inteligente en móvil)
 let yearInteractionState = { start: false, end: false };
