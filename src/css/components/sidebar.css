@@ -16,7 +16,7 @@
   /* Transición de contenido interno (Padding al colapsar) */
   transition: padding 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  @media (min-width: 769px) {
+  @media (min-width: 769px) and (min-height: 501px) {
     height: 100%;
     padding-inline: var(--space-md); /* Reducir padding (16px) para ganar espacio en ancho fijo */
   }
@@ -68,7 +68,7 @@
   flex-wrap: nowrap; /* REGLA DE ORO: Nunca permitir dos filas */
 
   /* Ajuste de precisión para Sidebar de escritorio (200px ancho fijo) */
-  @media (min-width: 769px) {
+  @media (min-width: 769px) and (min-height: 501px) {
     gap: 1.5px; /* Reducir espacio entre iconos (25% menos de 2px) */
     /* Forzar botones más compactos para que quepan 4 en una fila (4x34 + 3x4 = 148px < 152px disponibles) */
     & .sidebar-control-button { 
@@ -431,7 +431,7 @@
 .stepper-up { right: 0; border-left: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 
 /* Escritorio: Botones apilados a la derecha (Restaurar diseño original) */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   .year-input { padding: 0.35rem var(--space-xs); padding-right: 25px; }
   
   .stepper-btn {
@@ -543,7 +543,7 @@ body.is-fetching .sidebar::before {
 body.user-logged-in #login-button { display: none; }
 body.user-logged-in #user-session-group { display: inline-flex; }
 
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   body.sidebar-collapsed .user-avatar { display: none; }
   body.sidebar-collapsed .user-session-group { gap: 0; }
   body.sidebar-collapsed .profile-container { justify-content: center; }
@@ -619,7 +619,7 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
 /* =================================================================
    14. AJUSTES RESPONSIVE (MÓVIL)
    ================================================================= */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 500px) {
   .logo-title { font-size: 1.8rem; }
   .collapsible-section .section-header { font-size: var(--font-size-md); }
   .filter-link, .sidebar-autocomplete-item { font-size: var(--font-size-base); }

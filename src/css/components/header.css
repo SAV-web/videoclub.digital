@@ -20,7 +20,7 @@
     transform 0.3s ease;
 
   /* --- Estilos Desktop (Sticky Superior) --- */
-  @media (min-width: 769px) {
+  @media (min-width: 769px) and (min-height: 501px) {
     border: none;
     border-bottom: 1px solid transparent;
 
@@ -133,7 +133,7 @@
 .mobile-sidebar-toggle:active { transform: scale(0.9); }
 
 /* Ocultar en Desktop (>= 769px) */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   .mobile-sidebar-toggle { display: none; }
 }
 
@@ -212,7 +212,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
 /* =================================================================
    ESTILOS MÓVIL (<= 768px)
    ================================================================= */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 500px) {
   
   /* 1. Unificación de Espaciado */
   .main-header-primary-controls,
@@ -325,7 +325,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
 }
 
 /* Desktop: Ajuste Toggle Texto/Icono */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   .type-filter-toggle .desktop-text { display: block; }
   .type-filter-toggle .mobile-icon { display: none; }
 }

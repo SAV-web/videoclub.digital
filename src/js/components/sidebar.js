@@ -27,6 +27,7 @@ import spriteUrl from "../../sprite.svg";
 
 // --- Constantes Locales ---
 const MOBILE_BREAKPOINT = 768;
+const MOBILE_HEIGHT_LIMIT = 500; // Altura máxima para considerar "móvil landscape"
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
 let DRAWER_WIDTH = 280;
 
@@ -55,6 +56,9 @@ const dom = {
 
 // Caché para contenedores de secciones (evita querySelector repetido en renderFilterPills)
 const sectionContainers = {};
+
+// Helper para detectar layout móvil (Ancho estrecho O Altura reducida)
+const isMobileLayout = () => window.innerWidth <= MOBILE_BREAKPOINT || window.innerHeight <= MOBILE_HEIGHT_LIMIT;
 
 // =================================================================
 //          1. LÓGICA DE GESTOS TÁCTILES (GPU Accelerated)
@@ -100,7 +104,7 @@ function applyPendingYearFilters() {
 // Fuente única de verdad para el estado del sidebar
 function setSidebarState(isOpen) {
   // 1. Clases y Estilos (Solo en móvil gestionamos la clase de drawer para evitar overlay en desktop)
-  if (window.innerWidth <= MOBILE_BREAKPOINT) {
+  if (isMobileLayout()) {
     document.body.classList.toggle(CSS_CLASSES.SIDEBAR_OPEN, isOpen);
     dom.sidebar.style.transform = ''; // Limpiar transform inline para que CSS mande (o resetear drag)
     touchState.currentTranslate = isOpen ? 0 : -DRAWER_WIDTH;
@@ -131,7 +135,7 @@ function setSidebarState(isOpen) {
 export const openMobileDrawer = () => setSidebarState(true);
 export const closeMobileDrawer = () => setSidebarState(false);
 const tryCloseMobileDrawer = () => {
-  if (window.innerWidth <= MOBILE_BREAKPOINT) closeMobileDrawer();
+  if (isMobileLayout()) closeMobileDrawer();
 };
 
 function updateDrawerWidth() {
@@ -142,7 +146,7 @@ function updateDrawerWidth() {
 }
 
 function handleTouchStart(e) {
-  if (window.innerWidth > MOBILE_BREAKPOINT) return;
+  if (!isMobileLayout()) return;
   if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
   
   const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
@@ -261,8 +265,8 @@ function initTouchGestures() {
   document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
 
   window.addEventListener("resize", () => {
-    if (window.innerWidth <= MOBILE_BREAKPOINT) updateDrawerWidth();
-    if (window.innerWidth > MOBILE_BREAKPOINT) {
+    if (isMobileLayout()) updateDrawerWidth();
+    else {
       document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
       dom.sidebar.style.transform = "";
       touchState.currentTranslate = -DRAWER_WIDTH;
@@ -780,7 +784,7 @@ function initYearSlider() {
     const yearFilter = `${start}-${end}`;
     
     // Lógica condicional para móvil: Esperar a que el usuario elija ambos límites
-    if (window.innerWidth <= MOBILE_BREAKPOINT) {
+    if (isMobileLayout()) {
       // En móvil, diferimos la actualización. Solo cerramos si es slider (autoClose=true) y completo.
       if (autoClose && yearInteractionState.start && yearInteractionState.end) {
         closeMobileDrawer();
@@ -954,7 +958,7 @@ function setupEventListeners() {
   if (dom.rewindButton) {
     dom.rewindButton.addEventListener("click", (e) => {
       triggerHapticFeedback('light');
-      const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
+      const isMobile = isMobileLayout();
       if (isMobile) {
         const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
         isOpen ? closeMobileDrawer() : openMobileDrawer();
@@ -1046,9 +1050,9 @@ export function initSidebar() {
   if (isInitialized) return;
   isInitialized = true;
 
-  if (window.innerWidth <= MOBILE_BREAKPOINT) {
+  if (isMobileLayout()) {
     setSidebarState(false); // Estado inicial cerrado en móvil
-  } else if (window.innerWidth <= 1024) {
+  } else if (window.innerWidth <= 1024 && window.innerHeight > MOBILE_HEIGHT_LIMIT) {
     // Tablet/Laptop pequeño: Colapsar por defecto para ganar espacio (ej: 4 columnas en iPad Air)
     document.body.classList.add(CSS_CLASSES.SIDEBAR_COLLAPSED);
     setSidebarState(false); // Sincronizar icono a "Abrir"

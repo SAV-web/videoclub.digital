@@ -243,7 +243,7 @@ function handleGlobalScroll() {
       dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
 
       // 2. Smart Hide (Barra inferior móvil)
-      if (window.innerWidth <= 700) {
+      if (window.innerWidth <= 768 || window.innerHeight <= 500) {
         const isSearchActive = document.activeElement === dom.searchInput;
         // Detectar teclado: si el viewport visual es significativamente menor que la ventana (iOS style)
         const isKeyboardOpen = window.visualViewport && (window.visualViewport.height < window.innerHeight * 0.9);

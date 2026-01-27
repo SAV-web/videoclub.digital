@@ -224,7 +224,7 @@ body.sidebar-is-open .sidebar-overlay {
 }
 
 /* Ajuste Móvil: Toasts elevados y centrados */
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 500px) {
   .toast-container {
     /* UX: Mover a top para evitar conflictos con teclado virtual y header inferior */
     bottom: auto;

@@ -138,7 +138,7 @@
 }
 
 /* Restaurar escala compacta para Escritorio */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   :root {
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;

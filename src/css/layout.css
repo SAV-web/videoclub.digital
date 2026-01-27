@@ -66,7 +66,7 @@
   overflow-y: auto;
   overscroll-behavior: contain; /* Evita arrastrar el body al terminar el scroll */
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: thin; /* Firefox */
   
   /* Estado Inicial: Oculto a la izquierda */
   transform: translateX(-100%); 
@@ -86,8 +86,10 @@
     border-color var(--transition-duration-normal);
 }
 
-/* Ocultar barra de scroll (Chrome/Safari) */
-.sidebar::-webkit-scrollbar { display: none; }
+/* Barra de scroll en móvil (Chrome/Safari) */
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 4px; }
 
 /* Estado Abierto (Móvil) */
 body.sidebar-is-open .sidebar { transform: translateX(0); }
@@ -120,7 +122,7 @@ body.sidebar-is-open .sidebar .play-button-container {
 
 /* --- Estilos Desktop (Sticky) --- */
 /* Breakpoint 769px: Coherencia con JS sidebar.js */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   .sidebar {
     position: sticky;
     transform: none; /* Reset de posición */
@@ -186,7 +188,7 @@ body.sidebar-is-open .sidebar .play-button-container {
 
 /* --- DESKTOP: Sticky Top --- */
 /* Breakpoint 769px: Unificado con Sidebar */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   .main-header {
     position: sticky;
     top: 0;
@@ -242,7 +244,7 @@ body.rotation-disabled .grid-container {
 }
 
 /* --- DESKTOP TWEAKS --- */
-@media (min-width: 769px) {
+@media (min-width: 769px) and (min-height: 501px) {
   /* Optimización Tablet: Menos padding lateral para ganar espacio (permite 3 columnas en iPad Air) */
   .content { 
     padding: var(--space-md) var(--space-lg) var(--space-xs);
