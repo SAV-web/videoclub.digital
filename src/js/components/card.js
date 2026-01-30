@@ -1,7 +1,7 @@
 // src/js/components/card.js
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
@@ -79,6 +79,22 @@ function handleDocumentClick(e) {
 //          2. LÓGICA DE INTERACCIÓN (Pointer Events)
 // =================================================================
 
+function prefetchCardResources(card) {
+  if (card.dataset.prefetched) return;
+  card.dataset.prefetched = "true";
+
+  // 1. Intención de detalle: Cargar lógica del modal
+  import("./modal.js");
+
+  // 2. Intención visual: Cargar imagen HQ
+  const img = card.querySelector("img");
+  if (img && img.dataset.src) {
+    const link = document.createElement("link");
+    link.rel = "preload"; link.as = "image"; link.href = img.dataset.src;
+    document.head.appendChild(link);
+  }
+}
+
 function startFlipTimer(cardElement) {
   if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
   if (cardElement.querySelector(".flip-card-inner").classList.contains("is-flipped")) return;
@@ -87,6 +103,7 @@ function startFlipTimer(cardElement) {
   hoverTimeout = setTimeout(() => {
     if (currentHoveredCard === cardElement) {
       cardElement.classList.add("is-hovered");
+      prefetchCardResources(cardElement); // Señal: Hover prolongado
     }
   }, HOVER_DELAY);
 }
@@ -104,6 +121,7 @@ const handleSingleTap = (cardElement) => {
   
   triggerHapticFeedback("light");
   inner.classList.toggle("is-flipped");
+  prefetchCardResources(cardElement); // Señal: Interacción directa (Flip)
   
   if (!isFlipped) {
     currentlyFlippedCard = cardElement;
@@ -691,4 +709,33 @@ export function renderErrorState(container, pagContainer, message) {
   div.appendChild(createElement("p", { textContent: message }));
   
   container?.appendChild(div);
+}
+
+// =================================================================
+//          6. ONBOARDING (Educación de Usuario)
+// =================================================================
+
+export function runFlipOnboarding(container) {
+  // Estrategia de refuerzo: Mostrar hasta 3 veces para asegurar el aprendizaje
+  const seenCount = LocalStore.get("flipTutorialCount") || 0;
+  const MAX_SHOWS = 3;
+
+  if (seenCount >= MAX_SHOWS || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
+
+  setTimeout(() => {
+    const firstCard = container.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
+    if (!firstCard || !firstCard.isConnected) return;
+
+    const inner = firstCard.querySelector(".flip-card-inner");
+    if (inner && !inner.classList.contains("is-flipped")) {
+      inner.classList.add("is-flipped");
+      
+      setTimeout(() => {
+        if (inner.isConnected && inner.classList.contains("is-flipped")) {
+          inner.classList.remove("is-flipped");
+          LocalStore.set("flipTutorialCount", seenCount + 1);
+        }
+      }, 1200); // Tiempo suficiente para leer "atrás"
+    }
+  }, 1500); // Retraso inicial para no abrumar al cargar
 }

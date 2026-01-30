@@ -149,7 +149,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
  * Gestiona casos de vacío, paginación y precarga.
  */
 function updateDomWithResults(movies, totalMovies, cardModule) {
-  const { renderMovieGrid, renderNoResults, renderSkeletons } = cardModule;
+  const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   // Actualizar siempre el total para asegurar consistencia UI tras invalidación
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
@@ -186,9 +186,9 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
     updateHeaderPaginationState(currentPage, totalMovies);
   }
 
-  // Precarga inteligente de la siguiente página
-  if (totalMovies > 0) {
-    prefetchNextPage(currentPage, totalMovies, getActiveFilters());
+  // Onboarding: Enseñar mecánica de flip en la primera visita (Página 1)
+  if (currentPage === 1 && totalMovies > 0) {
+    runFlipOnboarding(dom.gridContainer);
   }
 }
 
@@ -233,8 +233,29 @@ async function handleSearchInput() {
 // --- Gestión Global de Scroll (Optimizado) ---
 let isTicking = false;
 let lastScrollY = 0;
+let scrollTimer = null;
 
 function handleGlobalScroll() {
+  // 0. Scroll-aware UI: Activar modo rendimiento al empezar a scrollear
+  if (!document.body.classList.contains(CSS_CLASSES.IS_SCROLLING)) {
+    document.body.classList.add(CSS_CLASSES.IS_SCROLLING);
+  }
+  
+  // Debounce: Desactivar modo rendimiento tras 250ms de inactividad
+  if (scrollTimer) clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    document.body.classList.remove(CSS_CLASSES.IS_SCROLLING);
+    
+    // Prefetch Predictivo: Si el usuario se detiene (mira) cerca del final (>70%)
+    const scrollPos = window.scrollY + window.innerHeight;
+    const docHeight = document.documentElement.scrollHeight;
+    
+    if (docHeight > 0 && scrollPos / docHeight > 0.7) {
+      const { currentPage, totalMovies, activeFilters } = getState();
+      prefetchNextPage(currentPage, totalMovies, activeFilters);
+    }
+  }, 250);
+
   if (!isTicking) {
     window.requestAnimationFrame(() => {
       const currentScrollY = window.scrollY;

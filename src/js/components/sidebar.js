@@ -748,6 +748,7 @@ function hasCompactTriggeringFilters() {
 export function collapseAllSections() {
   dom.collapsibleSections.forEach((section) => {
     section.classList.remove(CSS_CLASSES.ACTIVE);
+    section.classList.remove("is-ready");
     section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
   });
   
@@ -1022,10 +1023,15 @@ function setupEventListeners() {
       dom.collapsibleSections.forEach((section) => {
         if (section !== clickedSection) {
           section.classList.remove(CSS_CLASSES.ACTIVE);
+          section.classList.remove("is-ready");
           section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
         }
       });
       
+      if (!isNowActive) {
+        clickedSection.classList.remove("is-ready");
+      }
+
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
       header.setAttribute('aria-expanded', isNowActive);
       
@@ -1034,6 +1040,7 @@ function setupEventListeners() {
       if (isNowActive) {
         setTimeout(() => {
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
+            clickedSection.classList.add("is-ready");
             if (header) header.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
           }
         }, 300);

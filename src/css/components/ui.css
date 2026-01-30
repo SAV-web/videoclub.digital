@@ -10,7 +10,6 @@
   background-color: var(--color-border);
   /* Aislamiento de renderizado para evitar repintados externos */
   contain: paint layout;
-  transform: translateZ(0); /* Forzar capa GPU */
 }
 
 .skeleton-card {
@@ -38,7 +37,6 @@ body.rotation-disabled .skeleton-card { aspect-ratio: 2 / 3.2; }
   );
   
   animation: shimmer 1.5s infinite;
-  will-change: transform;
 }
 
 @keyframes shimmer {
@@ -228,7 +226,7 @@ body.sidebar-is-open .sidebar-overlay {
   .toast-container {
     /* UX: Mover a top para evitar conflictos con teclado virtual y header inferior */
     bottom: auto;
-    top: var(--space-md);
+    top: calc(var(--mobile-header-height) + var(--space-xs)); /* Debajo del header */
     inset-inline: var(--space-md);
     align-items: center;
   }

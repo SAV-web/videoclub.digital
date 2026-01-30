@@ -378,7 +378,6 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     
     transform: translate(-50%, 100%); /* Inicial: Abajo */
     
-    will-change: transform; /* Hint para GPU */
     transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   
@@ -396,7 +395,10 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
   }
   
   /* Sin transición mientras se arrastra con JS */
-  .quick-view-modal.is-dragging { transition: none !important; }
+  .quick-view-modal.is-dragging { 
+    transition: none !important; 
+    will-change: transform;
+  }
   
   .is-quick-view .flip-card-front {
     padding-top: 30px; /* Espacio para el handle */

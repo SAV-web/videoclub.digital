@@ -81,6 +81,7 @@ export const CSS_CLASSES = Object.freeze({
   IS_DRAGGING: "is-dragging", // Element state (sidebar/modal)
   IS_FETCHING: "is-fetching", // Barra de progreso global
   DARK_MODE: "dark-mode",     // Tema (en html)
+  IS_SCROLLING: "is-scrolling", // Optimización de rendimiento
   
   // Componentes
   MOVIE_CARD: "movie-card",

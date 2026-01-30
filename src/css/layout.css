@@ -37,11 +37,11 @@
   max-width: 1440px;
   margin-inline: auto; /* Centrado horizontal lógico */
   
-  /* Padding Base (Móvil) - Cálculo con zona segura */
+  /* Padding Base (Móvil) - Header Arriba: Espacio superior reservado */
   padding: 
+    calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-top)) 
     var(--space-md) 
-    var(--space-md) 
-    calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-bottom));
+    calc(var(--space-md) + env(safe-area-inset-bottom));
   
   transition: padding 0.3s ease;
 }
@@ -66,14 +66,13 @@
   overflow-y: auto;
   overscroll-behavior: contain; /* Evita arrastrar el body al terminar el scroll */
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin; /* Firefox */
+  scrollbar-width: auto; /* Firefox */
   
   /* Estado Inicial: Oculto a la izquierda */
   transform: translateX(-100%); 
   
   /* Rendimiento: Aislar renderizado y preparar animación */
   contain: layout style;
-  will-change: transform;
   
   /* Gestos Táctiles */
   touch-action: pan-y; /* Permite scroll vertical nativo, JS maneja swipe horizontal */
@@ -87,9 +86,14 @@
 }
 
 /* Barra de scroll en móvil (Chrome/Safari) */
-.sidebar::-webkit-scrollbar { width: 12px; }
+.sidebar::-webkit-scrollbar { width: 14px; }
 .sidebar::-webkit-scrollbar-track { background: transparent; }
-.sidebar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 8px; }
+.sidebar::-webkit-scrollbar-thumb { 
+  background-color: var(--color-text-tertiary); 
+  border-radius: 20px; 
+  border: 3px solid transparent; 
+  background-clip: content-box; 
+}
 
 /* Estado Abierto (Móvil) */
 body.sidebar-is-open .sidebar { transform: translateX(0); }
@@ -174,14 +178,14 @@ body.sidebar-is-open .sidebar .play-button-container {
   gap: var(--space-xs);
   z-index: var(--z-index-header);
   
-  /* --- MÓVIL: Bottom Bar --- */
+  /* --- MÓVIL: Top Bar (Sticky Top) --- */
   position: fixed;
-  bottom: 0;
+  top: 0;
+  bottom: auto;
   inset-inline: 0; /* left: 0; right: 0; */
-  top: auto;
   
-  /* Padding ajustado a zona segura inferior */
-  padding: var(--space-xs) var(--space-md) calc(var(--space-xs) + env(safe-area-inset-bottom));
+  /* Padding ajustado a zona segura superior */
+  padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-md) var(--space-xs);
   justify-content: center;
   flex-wrap: nowrap;
 }

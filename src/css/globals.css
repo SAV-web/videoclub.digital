@@ -141,3 +141,22 @@ button, input, select, textarea, a {
 .smooth-scroll {
   scroll-behavior: smooth;
 }
+
+/* =================================================================
+   SCROLL-AWARE UI (Optimización de Rendimiento)
+   ================================================================= */
+/* Cuando el usuario hace scroll, simplificamos la UI para liberar GPU/CPU */
+body.is-scrolling {
+  /* 1. Desactivar interacciones de ratón costosas (Hover) */
+  pointer-events: none;
+}
+
+body.is-scrolling .main-header,
+body.is-scrolling .sidebar,
+body.is-scrolling .quick-view-overlay,
+body.is-scrolling .toast {
+  /* 2. Apagar efectos de cristal y sombras complejas */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
