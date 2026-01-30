@@ -239,8 +239,15 @@ body.sidebar-is-open .sidebar .play-button-container {
 
 /* --- MODO MURO (Compacto) --- */
 body.rotation-disabled .grid-container {
-  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  /* Mobile First: Forzar mínimo 3 columnas */
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-xxs) var(--space-xs);
+}
+
+@media (min-width: 400px) {
+  body.rotation-disabled .grid-container {
+    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  }
 }
 
 /* --- DESKTOP TWEAKS --- */
