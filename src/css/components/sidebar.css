@@ -67,7 +67,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px; /* Reducido un 25% (de 8px a 6px) */
+  gap: 2px; /* Reducido al mínimo para asegurar una línea en móviles estrechos */
   margin-bottom: var(--space-lg);
   flex-wrap: nowrap; /* REGLA DE ORO: Nunca permitir dos filas */
 

@@ -308,6 +308,16 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   }
 }
 
+/* Ajuste para móviles muy estrechos (ej: iPhone SE, Pixel antiguos) */
+@media (max-width: 370px) {
+  .main-header { padding-inline: 4px; gap: 2px; }
+  .main-header-primary-controls,
+  .search-and-theme-group,
+  .header-pagination-group {
+    gap: 2px;
+  }
+}
+
 /* =================================================================
    ESTADOS GLOBALES DE ICONOS
    ================================================================= */
