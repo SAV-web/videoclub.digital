@@ -187,7 +187,7 @@ body.sidebar-is-open .sidebar .play-button-container {
   /* Padding ajustado a zona segura superior */
   padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-md) var(--space-xs);
   justify-content: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 /* --- DESKTOP: Sticky Top --- */

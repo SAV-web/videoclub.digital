@@ -3,7 +3,7 @@ import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
-import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle } from "./ui.js";
+import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
 
 // --- Lazy Modules State ---
@@ -198,6 +198,7 @@ async function handleSortChange(event) {
   triggerPopAnimation(event.target);
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
   setSort(dom.sortSelect.value);
+  updateMobileStatusBar();
   await loadAndRenderMovies(1);
 }
 
@@ -208,6 +209,7 @@ async function handleMediaTypeToggle(event) {
   const cycle = { all: "movies", movies: "series", series: "all" };
   setMediaType(cycle[currentType]);
   updateTypeFilterUI(cycle[currentType]);
+  updateMobileStatusBar();
   await loadAndRenderMovies(1);
 }
 
@@ -308,6 +310,7 @@ function handleFiltersReset(e) {
   if (dom.searchInput) dom.searchInput.value = "";
   if (dom.sortSelect) dom.sortSelect.value = currentSort;
   updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
+  updateMobileStatusBar();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   
   loadAndRenderMovies(1, { forceSkeleton: true }); // Reset es una acción discreta -> PushState (default)
@@ -567,6 +570,7 @@ function readUrlAndSetState() {
   if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
   dom.sortSelect.value = activeFilters.sort;
   updateTypeFilterUI(activeFilters.mediaType);
+  updateMobileStatusBar();
 }
 
 function updateUrl({ replace = false } = {}) {

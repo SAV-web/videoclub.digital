@@ -5,9 +5,10 @@
 // RESPONSABILIDAD: Gestión de componentes UI globales.
 // =================================================================
 
-import { CONFIG, CSS_CLASSES, SELECTORS, ICONS } from "./constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement } from "./utils.js";
+import { getActiveFilters, getState, hasActiveMeaningfulFilters } from "./state.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
 const domCache = {};
@@ -26,13 +27,12 @@ const domQueries = {
   autocompleteResults: () => document.querySelector(SELECTORS.AUTOCOMPLETE_RESULTS),
   mainHeader: () => document.querySelector(".main-header"),
   clearFiltersBtn: () => document.querySelector(SELECTORS.CLEAR_FILTERS_BTN),
-  totalResultsContainer: () => document.getElementById("total-results-container"),
-  totalResultsCount: () => document.getElementById("total-results-count"),
   authModal: () => document.getElementById("auth-modal"),
   authOverlay: () => document.getElementById("auth-overlay"),
   loginButton: () => document.getElementById("login-button"),
   toastContainer: () => document.querySelector(SELECTORS.TOAST_CONTAINER),
   mobileSidebarToggle: () => document.getElementById("mobile-sidebar-toggle"),
+  mobileStatusBar: () => document.getElementById("mobile-status-bar"),
 };
 
 // Exportamos un Proxy para mantener compatibilidad con el código existente (dom.algo)
@@ -323,16 +323,51 @@ export function updateTypeFilterUI(mediaType) {
   btn.replaceChildren(desktopText, mobileIcon);
 }
 
-export function updateTotalResultsUI(total, hasFilters) {
-  const { totalResultsContainer, totalResultsCount } = dom;
-  if (!totalResultsContainer) return;
+// Helper para determinar si se debe mostrar el contador total
+function shouldShowTotalCount() {
+  const { totalMovies } = getState();
+  if (totalMovies <= 0) return false;
+  if (!hasActiveMeaningfulFilters()) return false;
 
-  if (hasFilters && total > 0) {
-    totalResultsCount.textContent = total.toLocaleString("es-ES");
-    totalResultsContainer.hidden = false;
-  } else {
-    totalResultsContainer.hidden = true;
+  const filters = getActiveFilters();
+  
+  // 1. Búsqueda o Listas: Siempre mostrar
+  if ((filters.searchTerm && filters.searchTerm.trim()) || filters.myList) return true;
+
+  // 2. Otros filtros específicos: Siempre mostrar
+  const hasOtherFilters = [
+    filters.genre, filters.country, filters.director, filters.actor, 
+    filters.selection, filters.studio
+  ].some(v => v) || (filters.excludedGenres?.length > 0) || (filters.excludedCountries?.length > 0);
+
+  if (hasOtherFilters) return true;
+
+  // 3. Solo filtro de año: Verificar rango
+  if (filters.year) {
+    const [start, end] = filters.year.split('-').map(Number);
+    if (!isNaN(start) && !isNaN(end)) {
+      // Ocultar si el rango es de 10 años o más
+      return (end - start) < 10;
+    }
   }
+
+  return true;
+}
+
+export function updateTotalResultsUI(total, hasFilters) {
+  const containers = document.querySelectorAll(".total-results-container");
+  const counts = document.querySelectorAll(".total-results-count");
+
+  if (shouldShowTotalCount()) {
+    const text = total.toLocaleString("es-ES");
+    counts.forEach(el => el.textContent = text);
+    containers.forEach(el => el.hidden = false);
+  } else {
+    containers.forEach(el => el.hidden = true);
+  }
+
+  // Actualizar barra de estado móvil con el nuevo total
+  updateMobileStatusBar();
 }
 
 export function initThemeToggle() {
@@ -373,4 +408,44 @@ export function clearAllSidebarAutocomplete(exceptForm = null) {
     if (input) input.removeAttribute("aria-expanded");
     container.remove();
   });
+}
+
+export function updateMobileStatusBar() {
+  const { mobileStatusBar } = dom;
+  if (!mobileStatusBar) return;
+
+  const filters = getActiveFilters();
+  const { totalMovies } = getState();
+  
+  // 1. Tipo
+  const typeMap = {
+    movies: "Películas",
+    series: "Series",
+    all: "Pelis y Series"
+  };
+  let text = typeMap[filters.mediaType] || "Cine y Series";
+
+  // 2. Orden (Si no es el default 'relevance')
+  if (filters.sort !== DEFAULTS.SORT) {
+    const sortMap = {
+      "year,desc": "más recientes",
+      "year,asc": "más antiguas",
+      "fa_rating,desc": "nota FA",
+      "fa_votes,desc": "votos FA",
+      "imdb_rating,desc": "nota IMDb",
+      "imdb_votes,desc": "votos IMDb"
+    };
+    
+    const sortLabel = sortMap[filters.sort];
+    if (sortLabel) {
+      text += ` ordenadas por ${sortLabel}`;
+    }
+  }
+
+  // 3. Total (Usando la lógica unificada de rango de años)
+  if (shouldShowTotalCount()) {
+    text = `${totalMovies.toLocaleString("es-ES")} · ${text}`;
+  }
+
+  mobileStatusBar.textContent = text;
 }

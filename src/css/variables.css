@@ -109,6 +109,7 @@
   --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --ease-smooth-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1); /* Quiet Luxury: Exponencial inversa */
 
   --duration-instant: 100ms;
   --duration-quick: 200ms;

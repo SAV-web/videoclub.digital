@@ -386,18 +386,31 @@ function populateModal(cardElement, contextCards = null) {
   const front = clone.querySelector(".flip-card-front");
   const back = clone.querySelector(".flip-card-back");
 
+  // --- CAPA 1: CRÍTICA (Síncrona) ---
+  // Elementos visuales principales para la primera impresión (Póster, Título, Año)
   setupModalHeader(front, movie);
-  setupModalDetails(back, movie);
-  setupCardRatings(back, movie); // Reutilizado de card.js
 
   // Montaje
   content.textContent = "";
   content.appendChild(clone);
 
-  // Inicializar interactividad
+  // Inicializar interactividad básica
   updateCardUI(content);
   initializeCard(content);
   updateNavButtons(movie.id, contextCards);
+
+  // --- CAPA 2: DETALLES (Asíncrona / Diferida) ---
+  // Texto denso, listas y elementos secundarios.
+  // Se difiere para permitir que el navegador priorice la animación de apertura (Paint).
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      // Guard clause: Asegurar que seguimos en la misma película
+      if (content.dataset.movieId !== String(movie.id)) return;
+      
+      setupModalDetails(back, movie);
+      setupCardRatings(back, movie); // Reutilizado de card.js
+    });
+  });
 }
 
 // =================================================================

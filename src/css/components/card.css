@@ -62,7 +62,8 @@
   @media (hover: hover) and (pointer: fine) {
     &:not(.is-flipped):hover {
       will-change: transform; /* Optimización: Solo reservar memoria al interactuar */
-      transform: translateY(-6px) scale(1.02);
+      /* Quiet Luxury: Elevación mínima (respiro) */
+      transform: translateY(-4px) scale(1.01);
       z-index: 10; /* Elevar sobre hermanos */
 
       & .flip-card-inner {
@@ -465,9 +466,9 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
     &:hover { transform: scale(1.15) rotate(10deg); }
   }
   &:active { 
-    transform: scale(0.92);
+    transform: scale(0.96);
     filter: brightness(0.95);
-    transition: transform 50ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 50ms var(--ease-luxury);
   }
 
   & svg {
