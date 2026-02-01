@@ -340,6 +340,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   padding-top: 4px;
   order: 10; /* Asegurar que va al final */
   font-weight: var(--font-weight-medium);
+  padding-bottom: 2px;
 }
 
 @media (max-width: 768px), (max-height: 500px) {
