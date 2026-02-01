@@ -218,7 +218,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .main-header-primary-controls,
   .search-and-theme-group,
   .header-pagination-group {
-    gap: var(--space-sm);
+    gap: 6px; /* Compactado para asegurar que quepa en viewports de 360px */
   }
 
   /* 2. Unificación de Estilo de Botones (DRY - Código limpio) */
@@ -305,16 +305,6 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
     width: 48px; height: 48px;
     padding: 12px; /* 12px padding + 24px icono + 12px padding = 48px total */
     right: 0; /* Alinear al borde para ocupar exactamente el padding-end del input */
-  }
-}
-
-/* Ajuste para móviles muy estrechos (ej: iPhone SE, Pixel antiguos) */
-@media (max-width: 370px) {
-  .main-header { padding-inline: 4px; gap: 2px; }
-  .main-header-primary-controls,
-  .search-and-theme-group,
-  .header-pagination-group {
-    gap: 2px;
   }
 }
 

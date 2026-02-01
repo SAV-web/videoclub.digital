@@ -185,7 +185,7 @@ body.sidebar-is-open .sidebar .play-button-container {
   inset-inline: 0; /* left: 0; right: 0; */
   
   /* Padding ajustado a zona segura superior */
-  padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-md) var(--space-xs);
+  padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-xs) var(--space-xs);
   justify-content: center;
   flex-wrap: wrap;
 }
