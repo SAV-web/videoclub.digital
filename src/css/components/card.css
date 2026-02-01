@@ -433,7 +433,7 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   position: absolute; bottom: 1px; left: 0; right: 0;
   transform: translateY(66.66%); z-index: 5;
   display: flex; justify-content: space-between; align-items: center;
-  padding-inline: var(--space-lg);
+  padding-inline: var(--space-md);
   pointer-events: none;
 
   /* Efecto Aura */
@@ -624,7 +624,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.ha
 /* Watchlist junto a la nota (Modo Muro) */
 body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
   position: absolute;
-  right: var(--space-xs);
+  right: var(--space-xxs);
   width: auto; height: auto;
   padding: 0;
   margin-left: 0;
