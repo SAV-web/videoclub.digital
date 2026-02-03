@@ -5,6 +5,7 @@ import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
+import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 
 // --- Lazy Modules State ---
 let sidebarModule = null;
@@ -154,6 +155,15 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
   
+  // SEO: Actualizar datos estructurados (JSON-LD) para carruseles
+  updateStructuredData(movies, totalMovies);
+
+  // SEO: Breadcrumbs para reflejar jerarquía de navegación
+  updateBreadcrumbData(getActiveFilters());
+
+  // SEO: Enriquecer descripción con títulos reales para mejorar CTR
+  updatePageTitle(movies);
+
   const { currentPage } = getState();
 
   if (totalMovies === 0) {
@@ -508,36 +518,6 @@ function setupAuthSystem() {
   supabase.auth.onAuthStateChange((_event, session) => {
     if (session?.user) onLogin(session.user); else onLogout();
   });
-}
-
-// --- Gestión de URL y Título ---
-function updatePageTitle() {
-  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType, myList } = getActiveFilters();
-  
-  let baseNoun = "Películas y series";
-  if (mediaType === "movies") baseNoun = "Películas";
-  else if (mediaType === "series") baseNoun = "Series";
-
-  let title = baseNoun;
-  const yearSuffix = (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) 
-    ? ` (${year.replace("-", " a ")})` : "";
-
-  if (myList) title = `Mi Lista`;
-  else if (searchTerm) title = `Resultados para "${searchTerm}"`;
-  else if (selection) {
-    const config = FILTER_CONFIG.selection;
-    const name = config.titles?.[selection] || config.items[selection];
-    if (name) title = name + yearSuffix;
-  } else if (studio) {
-    title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
-  }
-  else if (genre) title = `${baseNoun} de ${genre}`;
-  else if (director) title = `${baseNoun} de ${director}`;
-  else if (actor) title = `${baseNoun} con ${actor}`;
-  else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `${baseNoun} de ${year.replace("-", " a ")}`;
-  else if (country) title = `${baseNoun} de ${country}`;
-  
-  document.title = `${title} | videoclub.digital`;
 }
 
 function readUrlAndSetState() {
