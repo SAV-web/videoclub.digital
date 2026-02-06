@@ -1,6 +1,7 @@
 // src/js/seo.js
 import { CONFIG, FILTER_CONFIG, STUDIO_DATA } from "./constants.js";
 import { getActiveFilters } from "./state.js";
+import { capitalizeWords } from "./utils.js";
 
 // --- Gestión de Título y Metadatos ---
 
@@ -24,11 +25,11 @@ export function updatePageTitle(movies = []) {
   } else if (studio) {
     title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
   }
-  else if (genre) title = `${baseNoun} de ${genre}`;
-  else if (director) title = `${baseNoun} de ${director}`;
-  else if (actor) title = `${baseNoun} con ${actor}`;
+  else if (genre) title = `${baseNoun} de ${capitalizeWords(genre)}`;
+  else if (director) title = `${baseNoun} de ${capitalizeWords(director)}`;
+  else if (actor) title = `${baseNoun} con ${capitalizeWords(actor)}`;
   else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `${baseNoun} de ${year.replace("-", " a ")}`;
-  else if (country) title = `${baseNoun} de ${country}`;
+  else if (country) title = `${baseNoun} de ${capitalizeWords(country)}`;
   
   document.title = `${title} | videoclub.digital`;
 

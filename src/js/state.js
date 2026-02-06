@@ -215,12 +215,13 @@ export function setSearchTerm(term) {
   if (term && term.length > 0) {
     if (state.activeFilters.actor || state.activeFilters.director) {
       filtersCleared = true;
+      cachedFilterCount = -1;
     }
     state.activeFilters.actor = null;
     state.activeFilters.director = null;
     
     // Si buscamos, salimos de "Mi Lista" para mostrar resultados globales
-    state.activeFilters.myList = false;
+    state.activeFilters.myList = null;
   }
   return filtersCleared;
 }

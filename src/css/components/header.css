@@ -286,7 +286,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   }
 
   .main-header.is-search-focused .search-and-theme-group { flex-grow: 1; justify-content: center; }
-  .main-header.is-search-focused .search-form { width: 100%; max-width: 400px; }
+  .main-header.is-search-focused .search-form { width: 70%; max-width: 400px; }
 
   /* Restaurar aspecto de input al escribir */
   .main-header.is-search-focused .search-form input {
@@ -365,3 +365,10 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
 }
 
 .total-results-count { color: var(--color-text-primary); font-family: var(--font-title); }
+
+/* Ajuste para pantallas muy pequeñas: Flechas de paginación compactas */
+@media (max-width: 400px) {
+  .header-pagination-group .btn {
+    width: calc(var(--tap-target-size) / 1.5);
+  }
+}
