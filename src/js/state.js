@@ -262,6 +262,12 @@ export function toggleExcludedFilter(filterType, value) {
   } else {
     // Si no existe, intentamos añadirlo
     
+    // Lógica específica: Máximo 1 exclusión de género (Reemplazo automático)
+    if (filterType === 'genre' && targetList.length > 0) {
+      targetList.length = 0;
+      cachedFilterCount = -1;
+    }
+
     // Validación 1: Límite específico de exclusiones
     if (targetList.length >= CONFIG.MAX_EXCLUDED_FILTERS) {
       if (import.meta.env.DEV) console.warn(`[State] Límite de exclusiones para ${filterType} alcanzado.`);

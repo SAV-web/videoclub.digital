@@ -56,6 +56,20 @@ export const CONFIG = Object.freeze({
 // Listas estáticas
 export const IGNORED_ACTORS = Object.freeze(["(a)", "animación", "animacion", "documental"]);
 
+// Regiones Geopolíticas (Virtuales)
+export const REGIONAL_GROUPS = Object.freeze({
+  NORDICS: {
+    label: "Nordic",
+    value: "nordic",
+    codes: ["DK", "FI", "IS", "NO", "SE"]
+  },
+  LATAM: {
+    label: "Latam",
+    value: "latam",
+    codes: ["AR", "MX", "BR", "CL", "CO", "PE", "UY", "VE", "CU", "PY", "BO", "EC", "CR", "GT", "DO"]
+  }
+});
+
 export const DEFAULTS = Object.freeze({
   SORT: "relevance,asc",
   MEDIA_TYPE: "all",
@@ -244,6 +258,8 @@ export const FILTER_CONFIG = {
     items: {
       Drama: "Drama",
       Comedia: "Comedia",
+      "Sci-Fi": "Sci-Fi",
+      Terror: "Terror",
       Thriller: "Thriller",
       Acción: "Acción",
       Animación: "Animación",
@@ -261,7 +277,7 @@ export const FILTER_CONFIG = {
       Japón: "Japón",
       Italia: "Italia",
     },
-    excludable: ["EEUU"],
+    excludable: ["EEUU", "España"],
   },
   director: {
     label: "Directores",

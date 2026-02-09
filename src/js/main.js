@@ -166,6 +166,13 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
 
   const { currentPage } = getState();
 
+  // FIX: Detectar inconsistencia de API (Total > 0 pero items vacíos)
+  if (totalMovies > 0 && movies.length === 0 && currentPage === 1) {
+    console.warn("[Main] Inconsistencia: Total > 0 pero no hay items. Posible error de paginación API.");
+    renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
+    return;
+  }
+
   if (totalMovies === 0) {
     // FIX: Evitar "No resultados" momentáneo al cargar "Mi Lista" antes de verificar sesión/datos
     if (getActiveFilters().myList && !isAuthInitialized) {

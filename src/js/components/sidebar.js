@@ -12,7 +12,7 @@
 import noUiSlider from 'nouislider';
 import 'nouislider/dist/nouislider.css'; 
 import { CONFIG } from "../constants.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore } from "../utils.js";
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
   fetchRandomTopActors, fetchRandomTopDirectors
@@ -20,7 +20,7 @@ import {
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage } from "../state.js";
-import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA } from "../constants.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
@@ -445,13 +445,20 @@ function updateAllFilterControls() {
     // A. Visibilidad: Ocultar si ya está activo o excluido
     const isExcluded = (type === "genre" && activeFilters.excludedGenres?.includes(value)) || 
                        (type === "country" && activeFilters.excludedCountries?.includes(value));
-    const isActive = activeFilters[type] === value;
     
-    // MOD: Para estudios, no ocultamos, marcamos como activo. Para el resto, ocultamos si está activo.
+    let isActive = false;
+    if (type === 'genre') {
+      isActive = normalizeGenreText(activeFilters[type]) === normalizeGenreText(value);
+    } else {
+      isActive = normalizeText(activeFilters[type]) === normalizeText(value);
+    }
+    
+    // MOD: Para estudios y géneros (Bento), no ocultamos, marcamos como activo.
     let shouldHide = isActive || isExcluded;
-    if (type === 'studio') {
+    if (type === 'studio' || type === 'genre' || type === 'country') {
       shouldHide = false;
       link.classList.toggle('active', isActive);
+      link.classList.toggle('is-excluded', isExcluded);
     }
     
     // Optimización: Usar atributo hidden estándar (delegan layout al CSS)
@@ -467,14 +474,6 @@ function updateAllFilterControls() {
             link.style.pointerEvents = shouldDisable ? "none" : "auto";
             link.style.opacity = shouldDisable ? "0.5" : "1";
         }
-    }
-
-    // C. Visibilidad de Botones de Exclusión
-    const excludeBtn = link.querySelector(".exclude-filter-btn");
-    if (excludeBtn) {
-        // Solo mostrar botón excluir si NO hay un país activo (para evitar conflictos)
-        const shouldHideExclude = (type === 'country' && activeFilters.country);
-        if (excludeBtn.hidden !== !!shouldHideExclude) excludeBtn.hidden = !!shouldHideExclude;
     }
   });
 
@@ -518,7 +517,14 @@ function renderFilterPills() {
   const createPill = (type, value, isExcluded = false, index = 0) => {
     const pill = createElement("div", { className: `filter-pill ${isExcluded ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: value } });
     pill.style.setProperty("--pill-index", index);
-    const text = FILTER_CONFIG[type]?.items[value] || value;
+    
+    let text = FILTER_CONFIG[type]?.items[value];
+    if (!text && type === 'country') {
+      const region = Object.values(REGIONAL_GROUPS).find(r => r.value === value);
+      if (region) text = region.label;
+    }
+    text = text || value;
+
     pill.appendChild(createElement("span", { textContent: text }));
     pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: isExcluded ? ICONS.PAUSE_SMALL : "×", attributes: { "aria-hidden": "true" } }));
     return pill;
@@ -675,6 +681,15 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     setFilter('excludedCountries', [], true);
   }
 
+  // Lógica de Género: Si seleccionamos un género, aseguramos que no esté excluido
+  if (newValue && type === 'genre') {
+    const currentExcluded = previousFilters.excludedGenres || [];
+    if (currentExcluded.includes(newValue)) {
+       const newExcluded = currentExcluded.filter(g => g !== newValue);
+       setFilter('excludedGenres', newExcluded, true);
+    }
+  }
+
   if (!setFilter(type, newValue)) {
     showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, "error");
     // Restaurar estado si falló el setFilter (por límite)
@@ -698,6 +713,7 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     setFilter('actor', previousFilters.actor);
     setFilter('director', previousFilters.director);
     setFilter('excludedCountries', previousFilters.excludedCountries, true);
+    setFilter('excludedGenres', previousFilters.excludedGenres, true);
     setFilter(type, previousFilters[type]);
     renderFilterPills();
   }
@@ -711,10 +727,26 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
     return;
   }
 
+  // Lógica de exclusividad Género: Si excluimos el género activo, lo deseleccionamos
+  if (type === 'genre' && previousState.genre === value) {
+    setFilter('genre', null);
+  }
+
   if (!toggleExcludedFilter(type, value)) {
     showToast(`Límite de filtros alcanzado.`, "error");
     return;
   }
+
+  // Feedback visual explícito al excluir (Confirmación)
+  const newState = getActiveFilters();
+  const isNowExcluded = (type === 'genre' && newState.excludedGenres.includes(value)) ||
+                        (type === 'country' && newState.excludedCountries.includes(value));
+
+  if (isNowExcluded) {
+    const label = FILTER_CONFIG[type]?.items[value] || value;
+    showToast(`Excluido: ${label}`, "info");
+  }
+
   renderFilterPills();
   document.dispatchEvent(new CustomEvent("uiActionTriggered"));
   try { 
@@ -981,6 +1013,18 @@ function setupEventListeners() {
   }
 
   if (dom.sidebarScrollable) {
+    // Accesibilidad: Soporte de teclado para los filtros (ahora son divs)
+    dom.sidebarScrollable.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        if (e.target.tagName === "BUTTON") return; // Dejar que los botones nativos (papelera) actúen
+        const link = e.target.closest(".filter-link");
+        if (link) {
+          e.preventDefault();
+          link.click();
+        }
+      }
+    });
+
     dom.sidebarScrollable.addEventListener("click", (e) => {
       const excludeBtn = e.target.closest(".exclude-filter-btn");
       if (excludeBtn) {
@@ -1078,8 +1122,14 @@ export function initSidebar() {
 
     listContainer.textContent = "";
     const fragment = document.createDocumentFragment();
+
     Object.entries(config.items).forEach(([value, text]) => {
-      const link = createElement("button", { type: "button", className: "filter-link", dataset: { filterType, filterValue: value } });
+      // FIX: Usar 'div' en lugar de 'button' para permitir anidamiento de botones (papelera)
+      const link = createElement("div", { 
+        className: "filter-link", 
+        dataset: { filterType, filterValue: value },
+        attributes: { role: "button", tabindex: "0" }
+      });
       
       // Detectar si hay configuración de icono (Estudio o Selección)
       const iconData = (filterType === 'studio' ? STUDIO_DATA[value] : null) || 
@@ -1124,6 +1174,23 @@ export function initSidebar() {
       }
       fragment.appendChild(link);
     });
+
+    // --- INYECCIÓN DE REGIONES (Solo para Países) - AL FINAL ---
+    if (filterType === 'country') {
+      Object.values(REGIONAL_GROUPS).forEach(region => {
+        const link = createElement("div", { 
+          className: "filter-link", 
+          dataset: { filterType, filterValue: region.value },
+          attributes: { role: "button", tabindex: "0" }
+        });
+        
+        const text = createElement("span", { textContent: region.label });
+        
+        link.append(text);
+        fragment.appendChild(link);
+      });
+    }
+
     listContainer.appendChild(fragment);
   };
 

@@ -73,7 +73,70 @@ export const formatRuntime = (minutesString, useShortLabel = false) => {
 // Normalización de texto (Memoización opcional si se llamara mucho, por ahora simple)
 export const normalizeText = (text) => {
   if (!text) return "";
-  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // Eliminamos reemplazos específicos de género para evitar efectos secundarios en nombres (ej: "Juan Negro" -> "Juan Noir")
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+};
+
+// Normalización ESPECÍFICA para Géneros (Sinónimos y Mapeos)
+export const normalizeGenreText = (text) => {
+  if (!text) return "";
+  let norm = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // Lista de reemplazos (Ordenada por especificidad)
+  const replacements = [
+    // Sci-Fi
+    { p: /ciencia[\s-]?ficcion|futurista|distopia|scifi|sci-fi/g, r: "scifi" },
+    // Noir
+    { p: /cine negro|neo[\s-]?noir|filmnoir|negro/g, r: "noir" },
+    // Action
+    { p: /adrenalina|adrenalinico|action/g, r: "accion" },
+    // Adventure
+    { p: /odisea|epico|exploracion|adventure/g, r: "aventuras" },
+    // Animation
+    { p: /animado|dibujos|cgi|animation/g, r: "animacion" },
+    // Biography
+    { p: /biografico|biopic|vida real|biography/g, r: "biografia" },
+    // Comedy
+    { p: /humor|comico|satira|farsa|comedy/g, r: "comedia" },
+    // Crime
+    { p: /policiaco|criminal|delito|mafia|crime/g, r: "crimen" },
+    // Documentary
+    { p: /reportaje|documentary/g, r: "documental" },
+    // Drama
+    { p: /dramatico/g, r: "drama" },
+    // Family
+    { p: /family/g, r: "familiar" },
+    // Fantasy
+    { p: /fantastico|imaginario|fantasy/g, r: "fantasia" },
+    // History
+    { p: /epoca|history/g, r: "historico" },
+    // Horror
+    { p: /miedo|horror/g, r: "terror" },
+    // Music (Cuidado con 'musical')
+    { p: /music\b/g, r: "musica" }, 
+    // Musical
+    { p: /canciones/g, r: "musical" },
+    // Mystery
+    { p: /misterio|enigma|investigacion|mystery/g, r: "intriga" },
+    // Romance
+    { p: /romantico|amor|romance/g, r: "romance" },
+    // Short
+    { p: /cortometraje|short/g, r: "corto" },
+    // Sport
+    { p: /competicion|sport/g, r: "deporte" },
+    // Thriller
+    { p: /suspense|psicologico|tension|thriller/g, r: "thriller" },
+    // War
+    { p: /guerra|war/g, r: "belico" },
+    // Western
+    { p: /lejano oeste|oeste|western/g, r: "western" }
+  ];
+
+  for (const { p, r } of replacements) {
+    norm = norm.replace(p, r);
+  }
+
+  return norm.trim();
 };
 
 // Resaltado de texto (Optimizado con DocumentFragment)

@@ -8,10 +8,10 @@
 // - Deduplicación de peticiones en vuelo (Race Conditions).
 // =================================================================
 
-import { CONFIG, IGNORED_ACTORS } from "./constants.js";
+import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
 import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest } from "./utils.js";
+import { createAbortableRequest, normalizeText, normalizeGenreText } from "./utils.js";
 import { getUserDataForMovie, getAllUserMovieData } from "./state.js";
 
 // Inicialización del cliente Supabase
@@ -115,12 +115,24 @@ function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
   const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
   const offset = (currentPage - 1) * pageSize;
 
+  // Lógica de Regiones Virtuales
+  let countryParam = activeFilters.country;
+  let countryCodesParam = null;
+
+  // Lógica simplificada: Búsqueda exacta por valor (nordic, latam)
+  const region = Object.values(REGIONAL_GROUPS).find(r => r.value === countryParam);
+  if (region) {
+    countryParam = null; // Limpiamos el nombre para que SQL use los códigos
+    countryCodesParam = region.codes;
+  }
+
   return {
     search_term: activeFilters.searchTerm || null,
     genre_name: activeFilters.genre || null,
     p_year_start: yearStart,
     p_year_end: yearEnd,
-    country_name: activeFilters.country || null,
+    country_name: countryParam,
+    p_country_codes: countryCodesParam, // Nuevo parámetro RPC
     director_name: activeFilters.director || null,
     actor_name: activeFilters.actor || null,
     media_type: activeFilters.mediaType || "all",
@@ -130,8 +142,8 @@ function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
     excluded_countries: activeFilters.excludedCountries?.length > 0 ? activeFilters.excludedCountries : null,
     sort_field: sortField,
     sort_direction: sortDirection,
-    page_limit: pageSize,
-    page_offset: offset,
+    page_limit: (pageSize && pageSize > 0) ? pageSize : 42,
+    page_offset: offset || 0,
     get_count: requestCount // Optimización: false para no recalcular el total en paginación
   };
 }

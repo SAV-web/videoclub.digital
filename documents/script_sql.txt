@@ -34,6 +34,58 @@ CREATE OR REPLACE FUNCTION public.to_real_safe(v_input TEXT)
 RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$
 BEGIN RETURN v_input::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 
+-- Función de normalización de géneros (Sinónimos)
+CREATE OR REPLACE FUNCTION public.normalize_genre_text(input_text text)
+RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$
+    SELECT regexp_replace(
+      regexp_replace(
+        regexp_replace(
+          regexp_replace(
+            regexp_replace(
+              regexp_replace(
+                regexp_replace(
+                  regexp_replace(
+                    regexp_replace(
+                      regexp_replace(
+                        regexp_replace(
+                          regexp_replace(
+                            regexp_replace(
+                              regexp_replace(
+                                regexp_replace(
+                                  regexp_replace(
+                                    regexp_replace(
+                                      regexp_replace(
+                                        regexp_replace(
+                                          regexp_replace(
+                                            regexp_replace(
+                                              regexp_replace(
+                                                regexp_replace(
+                                                public.unaccent_immutable(lower(input_text)),
+                                                'ciencia[\s-]?ficcion|futurista|distopia|scifi|sci-fi', 'scifi', 'g'),
+                                              'cine negro|neo[\s-]?noir|filmnoir|negro', 'noir', 'g'),
+                                            'adrenalina|adrenalinico|action', 'accion', 'g'),
+                                          'odisea|epico|exploracion|adventure', 'aventuras', 'g'),
+                                        'animado|dibujos|cgi|animation', 'animacion', 'g'),
+                                      'biografico|biopic|vida real|biography', 'biografia', 'g'),
+                                    'humor|comico|satira|farsa|comedy', 'comedia', 'g'),
+                                  'policiaco|criminal|delito|mafia|crime', 'crimen', 'g'),
+                                'reportaje|documentary', 'documental', 'g'),
+                              'dramatico', 'drama', 'g'),
+                            'family', 'familiar', 'g'),
+                          'fantastico|imaginario|fantasy', 'fantasia', 'g'),
+                        'epoca|history', 'historico', 'g'),
+                      'miedo|horror', 'terror', 'g'),
+                    'music\y', 'musica', 'g'),
+                  'canciones', 'musical', 'g'),
+                'misterio|enigma|investigacion|mystery', 'intriga', 'g'),
+              'romantico|amor', 'romance', 'g'),
+            'cortometraje|short', 'corto', 'g'),
+          'competicion|sport', 'deporte', 'g'),
+        'suspense|psicologico|tension|thriller', 'thriller', 'g'),
+      'guerra|war', 'belico', 'g'),
+    'lejano oeste|oeste|western', 'western', 'g');
+$$;
+
 -- =================================================================
 -- 2.1. GARANTÍA DE COLUMNAS GENERADAS (Fix Crítico ETL)
 -- =================================================================
@@ -43,7 +95,7 @@ BEGIN RETURN v_input::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 -- Nota: Al recrearlas como STORED, Postgres recalculará los datos existentes.
 
 ALTER TABLE public.movies DROP COLUMN IF EXISTS genres_tsv;
-ALTER TABLE public.movies ADD COLUMN genres_tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', public.unaccent_immutable(genres_list))) STORED;
+ALTER TABLE public.movies ADD COLUMN genres_tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', public.normalize_genre_text(genres_list))) STORED;
 
 ALTER TABLE public.movies DROP COLUMN IF EXISTS directors_tsv;
 ALTER TABLE public.movies ADD COLUMN directors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(directors_list))) STORED;
@@ -69,15 +121,30 @@ ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
     END
 ) STORED;
 
+-- 2.3. CORRECCIÓN DE GÉNEROS (Sci-Fi -> scifi)
+-- Redefinimos la columna generada para que normalice automáticamente 'Sci-Fi' a 'scifi'
+-- Usamos CASCADE para eliminar índices dependientes (se recrearán en el PASO 5)
+ALTER TABLE public.genres DROP COLUMN IF EXISTS name_norm CASCADE;
+ALTER TABLE public.genres ADD COLUMN name_norm text GENERATED ALWAYS AS (public.normalize_genre_text(name)) STORED;
+
 -- =================================================================
 -- FUNCIÓN DE BÚSQUEDA OPTIMIZADA (v3.0 - Smart Counting)
 -- =================================================================
+-- Limpieza de versiones anteriores (por firma específica para evitar error de ambigüedad)
+-- 1. Versión antigua (sin country_codes ni get_count)
+DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text, text, text, text, text, text[], text[], text, text, integer, integer);
+-- 2. Versión intermedia (con country_codes, sin get_count)
+DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer);
+-- 3. Versión actual (con todo)
+DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean);
+
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
     search_term text,
     genre_name text,
     p_year_start integer,
     p_year_end integer,
     country_name text,
+    p_country_codes text[], -- NUEVO: Array de códigos ISO para regiones
     director_name text,
     actor_name text,
     media_type text,
@@ -99,10 +166,12 @@ DECLARE
     v_count_cte TEXT;
     v_count_select TEXT;
     v_json_result JSON;
-    v_country_id INT;
+    v_country_ids INT[]; -- CAMBIO: Ahora es un array de IDs
     v_excluded_country_ids INT[];
     v_safe_sort_direction TEXT;
     v_safe_sort_field TEXT;
+    v_limit INT;
+    v_offset INT;
 BEGIN
     -- FASE 1: VALIDACIÓN (Igual que antes)
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
@@ -126,10 +195,32 @@ BEGIN
         ELSE 'ORDER BY m.relevance ASC'
     END;
 
+    -- Validación de Paginación (Blindaje)
+    v_limit := COALESCE(page_limit, 50);
+    v_offset := COALESCE(page_offset, 0);
+
     -- FASE 2: PRE-PROCESAMIENTO (Igual que antes)
-    IF country_name IS NOT NULL AND country_name != '' THEN
-        SELECT c.id INTO v_country_id FROM public.countries c WHERE c.name_norm = public.unaccent_immutable(lower(country_name)) LIMIT 1;
+    -- Lógica de Regiones (Prioridad Alta: Búsqueda exacta por código)
+    IF p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0 THEN
+        -- FIX: Búsqueda insensible a mayúsculas/minúsculas para robustez
+        SELECT array_agg(c.id) INTO v_country_ids FROM public.countries c WHERE lower(c.code) = ANY(SELECT lower(x) FROM unnest(p_country_codes) x);
+        IF v_country_ids IS NULL THEN v_country_ids := '{}'; END IF;
+
+    -- Lógica de Nombre (Legacy/Búsqueda texto)
+    ELSIF country_name IS NOT NULL AND country_name != '' THEN
+        -- CAMBIO: Soporte para múltiples países (Nombre O Código)
+        SELECT array_agg(c.id) INTO v_country_ids FROM public.countries c 
+        WHERE c.name_norm = ANY(SELECT public.unaccent_immutable(lower(x)) FROM unnest(string_to_array(country_name, ',')) x)
+           OR c.code = ANY(SELECT upper(x) FROM unnest(string_to_array(country_name, ',')) x);
+           
+        -- FIX CRÍTICO: Si no hay coincidencias, array_agg devuelve NULL.
+        -- Si v_country_ids es NULL, el filtro ($5 IS NULL) se evalúa a TRUE y devuelve TODO.
+        -- Forzamos un array vacío para que el filtro (m.country_id = ANY('{}')) devuelva 0 resultados.
+        IF v_country_ids IS NULL THEN
+            v_country_ids := '{}';
+        END IF;
     END IF;
+
     IF excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 0 THEN
         SELECT array_agg(c.id) INTO v_excluded_country_ids FROM public.countries c WHERE c.name_norm = ANY(
             SELECT public.unaccent_immutable(lower(x)) FROM unnest(excluded_countries) x
@@ -153,10 +244,10 @@ BEGIN
             FROM public.movies m
             WHERE
                 ($1 IS NULL OR $1 = '''' OR m.title_norm LIKE ''%'' || public.unaccent_immutable(lower($1)) || ''%'')
-                AND ($2 IS NULL OR $2 = '''' OR m.genres_tsv @@ to_tsquery(''spanish'', regexp_replace(trim(public.unaccent_immutable($2)), ''\s+'', '':*&'', ''g'') || '':*''))
+                AND ($2 IS NULL OR $2 = '''' OR m.genres_tsv @@ to_tsquery(''spanish'', regexp_replace(public.normalize_genre_text($2), ''[^a-zA-Z0-9]+'', '':*&'', ''g'') || '':*''))
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
-                AND ($5 IS NULL OR m.country_id = $5)
+                AND ($5 IS NULL OR m.country_id = ANY($5)) -- CAMBIO: Comparación con array (ANY)
                 AND ($6 IS NULL OR m.directors_tsv @@ phraseto_tsquery(''simple'', public.unaccent_immutable($6)))
                 AND ($7 IS NULL OR m.actors_tsv @@ phraseto_tsquery(''simple'', public.unaccent_immutable($7)))
                 AND ($8 IS NULL OR $8 = ''all''
@@ -203,8 +294,8 @@ BEGIN
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id
                         ' || v_order_clause || '
-                        LIMIT $13
-                        OFFSET $14
+                        LIMIT ' || v_limit || '
+                        OFFSET ' || v_offset || '
                     ) as rows
                 ),
                 ''[]''::json
@@ -216,9 +307,9 @@ BEGIN
     EXECUTE v_query
     INTO v_json_result
     USING
-        search_term, genre_name, p_year_start, p_year_end, v_country_id, -- $1..$5
+        search_term, genre_name, p_year_start, p_year_end, v_country_ids, -- $5 es v_country_ids (calculado arriba)
         director_name, actor_name, media_type, p_selection_code, p_studio_code, -- $6..$10
-        excluded_genres, v_excluded_country_ids, page_limit, page_offset; -- $11..$14
+        excluded_genres, v_excluded_country_ids; -- $11..$12 (Eliminados limit/offset de USING)
         
     RETURN v_json_result;
 END;
@@ -397,8 +488,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.get_genre_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE AS $$
     SELECT name FROM public.genres
-    WHERE similarity(name_norm, public.unaccent_immutable(lower(search_term))) > 0.2
-    ORDER BY similarity(name_norm, public.unaccent_immutable(lower(search_term))) DESC
+    WHERE similarity(name_norm, public.normalize_genre_text(search_term)) > 0.2
+    ORDER BY similarity(name_norm, public.normalize_genre_text(search_term)) DESC
     LIMIT 5;
 $$;
 
