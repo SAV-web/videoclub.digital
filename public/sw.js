@@ -2,7 +2,7 @@
 //              SERVICE WORKER OPTIMIZADO (v2.1)
 // =================================================================
 
-const VERSION = "v7"; // Incrementado para invalidar cachés anteriores
+const VERSION = "v8"; // Incrementado para invalidar cachés anteriores
 const CACHE_STATIC = `videoclub-static-${VERSION}`;
 const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 const CACHE_API = `videoclub-api-${VERSION}`;

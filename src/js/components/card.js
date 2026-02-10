@@ -389,7 +389,7 @@ function populateCard(card, movie, index) {
     img.loading = "lazy";
     img.decoding = "async";
     img.removeAttribute("fetchpriority");
-    img.classList.add(movie.thumbhash_st ? CSS_CLASSES.LAZY_LQIP : "");
+    if (movie.thumbhash_st) img.classList.add(CSS_CLASSES.LAZY_LQIP);
     lazyLoadObserver.observe(img);
   }
 
