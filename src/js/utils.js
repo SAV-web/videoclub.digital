@@ -85,51 +85,51 @@ export const normalizeGenreText = (text) => {
   // Lista de reemplazos (Ordenada por especificidad)
   const replacements = [
     // Sci-Fi
-    { p: /ciencia[\s-]?ficcion|futurista|distopia|scifi|sci-fi/g, r: "scifi" },
+    { p: /scifi|ciencia[\s-]?ficcion|futurista|distopia/g, r: "scifi" },
     // Noir
-    { p: /cine negro|neo[\s-]?noir|filmnoir|negro/g, r: "noir" },
+    { p: /filmnoir|negro|neo[\s-]?noir/g, r: "noir" },
     // Action
-    { p: /adrenalina|adrenalinico|action/g, r: "accion" },
+    { p: /action|adrenalina/g, r: "accion" },
     // Adventure
-    { p: /odisea|epico|exploracion|adventure/g, r: "aventuras" },
+    { p: /adventure|epico/g, r: "aventuras" },
     // Animation
-    { p: /animado|dibujos|cgi|animation/g, r: "animacion" },
+    { p: /animation|animado|dibujos|cgi/g, r: "animacion" },
     // Biography
-    { p: /biografico|biopic|vida real|biography/g, r: "biografia" },
+    { p: /biography|biografico|biopic/g, r: "biografia" },
     // Comedy
-    { p: /humor|comico|satira|farsa|comedy/g, r: "comedia" },
+    { p: /comedy|humor|comico/g, r: "comedia" },
     // Crime
-    { p: /policiaco|criminal|delito|mafia|crime/g, r: "crimen" },
+    { p: /crime|policiaco|policial|criminal|delito|mafia/g, r: "crimen" },
     // Documentary
-    { p: /reportaje|documentary/g, r: "documental" },
+    { p: /documentary/g, r: "documental" },
     // Drama
     { p: /dramatico/g, r: "drama" },
     // Family
     { p: /family/g, r: "familiar" },
     // Fantasy
-    { p: /fantastico|imaginario|fantasy/g, r: "fantasia" },
+    { p: /fantasy|fantastico/g, r: "fantasia" },
     // History
-    { p: /epoca|history/g, r: "historico" },
+    { p: /history|epoca/g, r: "historico" },
     // Horror
-    { p: /miedo|horror/g, r: "terror" },
+    { p: /horror|miedo/g, r: "terror" },
     // Music (Cuidado con 'musical')
     { p: /music\b/g, r: "musica" }, 
     // Musical
     { p: /canciones/g, r: "musical" },
     // Mystery
-    { p: /misterio|enigma|investigacion|mystery/g, r: "intriga" },
+    { p: /mystery|misterio|enigma|investigacion/g, r: "intriga" },
     // Romance
-    { p: /romantico|amor|romance/g, r: "romance" },
+    { p: /love|romantico|amor/g, r: "romance" },
     // Short
-    { p: /cortometraje|short/g, r: "corto" },
+    { p: /short|cortometraje/g, r: "corto" },
     // Sport
-    { p: /competicion|sport/g, r: "deporte" },
+    { p: /sport/g, r: "deporte" },
     // Thriller
-    { p: /suspense|psicologico|tension|thriller/g, r: "thriller" },
+    { p: /suspense|psicologico|tension/g, r: "thriller" },
     // War
-    { p: /guerra|war/g, r: "belico" },
+    { p: /war|guerra/g, r: "belico" },
     // Western
-    { p: /lejano oeste|oeste|western/g, r: "western" }
+    { p: /oeste|vaqueros/g, r: "western" }
   ];
 
   for (const { p, r } of replacements) {

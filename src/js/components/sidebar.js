@@ -932,13 +932,25 @@ function setupAutocompleteHandlers() {
          if (index >= 0 && items[index]) {
            items[index].classList.add("is-active");
            input.setAttribute("aria-activedescendant", items[index].id);
+           items[index].scrollIntoView({ block: 'nearest' });
          } else { input.removeAttribute("aria-activedescendant"); }
        };
 
        switch (e.key) {
-        case "ArrowDown": e.preventDefault(); activeIndex = Math.min(activeIndex + 1, items.length - 1); updateActiveSuggestion(activeIndex); break;
-        case "ArrowUp": e.preventDefault(); activeIndex = Math.max(activeIndex - 1, -1); updateActiveSuggestion(activeIndex); break;
-        case "Enter": e.preventDefault(); if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].click(); break;
+        case "ArrowDown": e.preventDefault(); activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : -1; updateActiveSuggestion(activeIndex); break;
+        case "ArrowUp": e.preventDefault(); activeIndex = activeIndex > -1 ? activeIndex - 1 : items.length - 1; updateActiveSuggestion(activeIndex); break;
+        case "Enter": 
+          e.preventDefault(); 
+          if (activeIndex >= 0 && items[activeIndex]) {
+            items[activeIndex].click(); 
+          } else {
+            // Selección inteligente por coincidencia de texto (soporta sinónimos en géneros)
+            const normalizer = filterType === 'genre' ? normalizeGenreText : normalizeText;
+            const term = normalizer(input.value);
+            const match = items.find(item => normalizer(item.dataset.value) === term);
+            if (match) match.click();
+          }
+          break;
         case "Escape": e.preventDefault(); clearAllSidebarAutocomplete(); break;
       }
     });
