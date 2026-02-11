@@ -645,36 +645,44 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
 }
 
 /* =================================================================
-   15. BENTO GRID PARA GÉNEROS
+   15. SISTEMA BENTO GRID (Unificado)
    ================================================================= */
-#genres-list-container {
+.bento-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-xs);
   padding-bottom: var(--space-xs);
+  width: 96%;
+  margin: 0 auto;
 }
 
-#genres-list-container .filter-link {
+/* Estilo base de los botones Bento */
+.bento-grid .filter-link,
+.bento-input {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  justify-content: center;
-  text-align: center;
-  min-height: 34px; /* Reducido ~30% */
+  text-align: left;
+  min-height: 34px;
   padding: var(--space-xs);
   font-weight: var(--font-weight-semibold);
   box-shadow: var(--shadow-sm);
   width: 96%;
+  display: block; /* Para inputs */
+  justify-content: flex-start;
   margin: 0 auto;
-  transition: transform 0.1s, background-color 0.2s, border-color 0.2s, color 0.2s;
+  transition: transform 0.1s, background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
-#genres-list-container .filter-link:active {
+/* Ajuste específico para links (flex) vs inputs (block) */
+.bento-grid .filter-link { display: flex; width: 100%; }
+
+.bento-grid .filter-link:active {
   transform: scale(0.96);
 }
 
-/* Estado Activo (Override de estilo lista) */
-#genres-list-container .filter-link.active {
+/* Estado Activo */
+.bento-grid .filter-link.active {
   background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
   background-color: var(--color-accent);
   color: #fff;
@@ -682,162 +690,54 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
   padding-left: var(--space-xs); /* Reset padding de lista */
 }
 
-#genres-list-container .filter-link.active::before {
-  display: none; /* Quitar flecha decorativa de lista */
-}
+.bento-grid .filter-link.active::before { display: none; }
 
-/* Estado Excluido (Bento) */
-#genres-list-container .filter-link.is-excluded {
+/* Estado Excluido */
+.bento-grid .filter-link.is-excluded {
   background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
   background-color: var(--color-accent-exclude);
   color: #fff;
   border-color: transparent;
-  padding-left: var(--space-xs);
+  padding-left: var(--space-xs); /* Reset padding de lista */
 }
 
 /* Dark mode adjustments */
-html.dark-mode #genres-list-container .filter-link {
+html.dark-mode .bento-grid .filter-link,
+html.dark-mode .bento-input {
   background-color: rgba(255, 255, 255, 0.03);
   border-color: var(--color-border);
+  color: var(--color-text-primary);
 }
-html.dark-mode #genres-list-container .filter-link.active {
-  color: var(--color-bg);
-}
+html.dark-mode .bento-grid .filter-link.active { color: var(--color-bg); }
 
 /* Elementos de ancho completo (Excluibles) */
-#genres-list-container .filter-link[data-filter-value="Animación"],
-#genres-list-container .filter-link[data-filter-value="Documental"] {
+.bento-grid .filter-link[data-filter-value="Animación"],
+.bento-grid .filter-link[data-filter-value="Documental"],
+.bento-grid .filter-link[data-filter-value="EEUU"],
+.bento-grid .filter-link[data-filter-value="España"] {
   grid-column: 1 / -1;
   justify-content: space-between; /* Texto izq, papelera der */
-  padding-inline: var(--space-md);
+  padding-inline: var(--space-xs);
   padding-block: 2px; /* Reducir padding vertical para compensar el botón */
 }
 
 /* Ajuste para el botón de excluir dentro del grid */
-#genres-list-container .exclude-filter-btn {
+.bento-grid .exclude-filter-btn {
   margin-left: 0;
   background-color: rgba(0,0,0,0.05);
   width: 30px; height: 30px; /* Ajustado para encajar en 34px (30+2+2) */
   border-radius: 50%;
 }
 
-#genres-list-container .exclude-filter-btn svg {
+.bento-grid .exclude-filter-btn svg {
   width: 20px; height: 20px;
 }
 
-html.dark-mode #genres-list-container .exclude-filter-btn {
+html.dark-mode .bento-grid .exclude-filter-btn {
   background-color: rgba(255,255,255,0.1);
 }
 
-/* =================================================================
-   16. BENTO GRID PARA PAÍSES
-   ================================================================= */
-#countries-list-container {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-xs);
-  padding-bottom: var(--space-xs);
-}
-
-#countries-list-container .filter-link {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  justify-content: center;
-  text-align: center;
-  min-height: 34px;
-  padding: var(--space-xs);
-  font-weight: var(--font-weight-semibold);
-  box-shadow: var(--shadow-sm);
-  width: 96%;
-  margin: 0 auto;
-  transition: transform 0.1s, background-color 0.2s, border-color 0.2s, color 0.2s;
-}
-
-#countries-list-container .filter-link:active {
-  transform: scale(0.96);
-}
-
-/* Estado Activo */
-#countries-list-container .filter-link.active {
-  background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
-  background-color: var(--color-accent);
-  color: #fff;
-  border-color: transparent;
-  padding-left: var(--space-xs);
-}
-
-#countries-list-container .filter-link.active::before { display: none; }
-
-/* Estado Excluido */
-#countries-list-container .filter-link.is-excluded {
-  background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
-  background-color: var(--color-accent-exclude);
-  color: #fff;
-  border-color: transparent;
-  padding-left: var(--space-xs);
-}
-
-/* Dark mode adjustments */
-html.dark-mode #countries-list-container .filter-link {
-  background-color: rgba(255, 255, 255, 0.03);
-  border-color: var(--color-border);
-}
-html.dark-mode #countries-list-container .filter-link.active { color: var(--color-bg); }
-
-/* Elementos de ancho completo (Excluibles: EEUU, España) */
-#countries-list-container .filter-link[data-filter-value="EEUU"],
-#countries-list-container .filter-link[data-filter-value="España"] {
-  grid-column: 1 / -1;
-  justify-content: space-between;
-  padding-inline: var(--space-md);
-  padding-block: 2px;
-}
-
-/* Ajuste para el botón de excluir dentro del grid */
-#countries-list-container .exclude-filter-btn {
-  margin-left: 0;
-  background-color: rgba(0,0,0,0.05);
-  width: 30px; height: 30px;
-  border-radius: 50%;
-}
-
-#countries-list-container .exclude-filter-btn svg {
-  width: 20px; height: 20px;
-}
-
-html.dark-mode #countries-list-container .exclude-filter-btn {
-  background-color: rgba(255,255,255,0.1);
-}
-
-/* =================================================================
-   17. ESTILOS INPUT BENTO (Géneros y Países)
-   ================================================================= */
-.collapsible-section[data-section="genre"] .sidebar-filter-input,
-.collapsible-section[data-section="country"] .sidebar-filter-input {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  text-align: center;
-  min-height: 34px;
-  padding: var(--space-xs);
-  font-weight: var(--font-weight-semibold);
-  box-shadow: var(--shadow-sm);
-  width: 96%;
-  display: block;
-  margin: 0 auto;
-  transition: transform 0.1s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
-}
-
-/* Dark mode adjustments */
-html.dark-mode .collapsible-section[data-section="genre"] .sidebar-filter-input,
-html.dark-mode .collapsible-section[data-section="country"] .sidebar-filter-input {
-  background-color: rgba(255, 255, 255, 0.03);
-  border-color: var(--color-border);
-  color: var(--color-text-primary);
-}
-
-.collapsible-section[data-section="genre"] .sidebar-filter-form,
-.collapsible-section[data-section="country"] .sidebar-filter-form {
+/* Ajuste de margen para formularios que contienen inputs bento */
+.collapsible-section:has(.bento-input) .sidebar-filter-form {
   margin-top: 0;
 }
