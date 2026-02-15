@@ -75,6 +75,9 @@ let touchState = {
   isInteractive: false 
 };
 
+/**
+ * Aplica filtros de año pendientes si el usuario ha modificado los inputs manuales.
+ */
 function applyPendingYearFilters() {
   if (!dom.yearStartInput || !dom.yearEndInput) return;
   
@@ -101,7 +104,10 @@ function applyPendingYearFilters() {
   }
 }
 
-// Fuente única de verdad para el estado del sidebar
+/**
+ * Gestiona el estado visual y lógico del sidebar (abierto/cerrado).
+ * @param {boolean} isOpen - Estado deseado.
+ */
 function setSidebarState(isOpen) {
   // 1. Clases y Estilos (Solo en móvil gestionamos la clase de drawer para evitar overlay en desktop)
   if (isMobileLayout()) {
@@ -145,6 +151,10 @@ function updateDrawerWidth() {
   }
 }
 
+/**
+ * Inicia el gesto de arrastre (Swipe) en móviles.
+ * @param {TouchEvent} e 
+ */
 function handleTouchStart(e) {
   if (!isMobileLayout()) return;
   if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
@@ -176,6 +186,10 @@ function handleTouchStart(e) {
   document.addEventListener("touchmove", handleTouchMove, { passive: true });
 }
 
+/**
+ * Procesa el movimiento del dedo durante el gesto.
+ * @param {TouchEvent} e 
+ */
 function handleTouchMove(e) {
   if (!touchState.isDragging) return;
 
@@ -223,6 +237,10 @@ function handleTouchMove(e) {
   dom.sidebar.style.transform = `translateX(${touchState.currentTranslate}px)`;
 }
 
+/**
+ * Finaliza el gesto y decide si abrir o cerrar el sidebar basándose en velocidad y posición.
+ * @param {TouchEvent} e 
+ */
 function handleTouchEnd(e) {
   if (!touchState.isDragging) return;
   document.removeEventListener("touchmove", handleTouchMove);
@@ -278,6 +296,10 @@ function initTouchGestures() {
 //          LOGICA DE ROTACIÓN Y GESTOS (Pinch-to-Zoom)
 // =================================================================
 
+/**
+ * Alterna el modo "Muro" (Rotation Disabled).
+ * @param {boolean|null} forceState - Forzar un estado específico (opcional).
+ */
 function toggleRotationMode(forceState = null) {
   const button = dom.toggleRotationBtn;
   if (!button) return;
@@ -321,6 +343,9 @@ function toggleRotationMode(forceState = null) {
 // Estado del gesto de pellizco (Pinch)
 let pinchInited = false;
 
+/**
+ * Inicializa gestos de pellizco para entrar/salir del modo muro.
+ */
 function initPinchGestures() {
   if (pinchInited) return;
   const target = document.querySelector('.main-content-wrapper');
@@ -388,6 +413,12 @@ function initPinchGestures() {
 //          2. GESTIÓN DE FILTROS Y UI
 // =================================================================
 
+/**
+ * Renderiza la lista de sugerencias de autocompletado.
+ * @param {HTMLElement} formElement - Formulario contenedor.
+ * @param {string[]} suggestions - Lista de sugerencias.
+ * @param {string} searchTerm - Término buscado (para resaltar).
+ */
 function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
   const input = formElement.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
   let resultsContainer = formElement.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
@@ -429,7 +460,6 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
 
 /**
  * Actualiza el estado visual (visible/deshabilitado) de TODOS los controles de filtro.
- * Optimización: Unifica dos bucles anteriores en uno solo.
  */
 function updateAllFilterControls() {
   const activeFilters = getActiveFilters();
@@ -447,11 +477,11 @@ function updateAllFilterControls() {
                        (type === "country" && activeFilters.excludedCountries?.includes(value));
     
     let isActive = false;
-    if (type === 'genre') {
-      isActive = normalizeGenreText(activeFilters[type]) === normalizeGenreText(value);
-    } else {
-      isActive = normalizeText(activeFilters[type]) === normalizeText(value);
-    }
+    // Normalización condicional para comparación robusta
+    const currentFilterVal = activeFilters[type];
+    isActive = type === 'genre' 
+      ? normalizeGenreText(currentFilterVal) === normalizeGenreText(value)
+      : normalizeText(currentFilterVal) === normalizeText(value);
     
     // MOD: Para estudios y géneros (Bento), no ocultamos, marcamos como activo.
     let shouldHide = isActive || isExcluded;
@@ -510,6 +540,9 @@ function updateAllFilterControls() {
 // Estado local para reconciliación de DOM (evita reflows innecesarios)
 let lastPillState = {};
 
+/**
+ * Renderiza las píldoras (tags) de filtros activos en el sidebar.
+ */
 function renderFilterPills() {
   const activeFilters = getActiveFilters();
   let pillIndex = 0;
@@ -595,6 +628,9 @@ function renderFilterPills() {
   updateAllFilterControls();
 }
 
+/**
+ * Maneja el toggle del botón "Mi Lista" (ciclo de estados).
+ */
 async function handleMyListToggle() {
   const currentFilters = getActiveFilters();
   const current = currentFilters.myList;
@@ -628,6 +664,12 @@ async function handleMyListToggle() {
   await loadAndRenderMovies(1);
 }
 
+/**
+ * Aplica un filtro de manera optimista (actualiza UI antes de confirmar datos).
+ * @param {string} type - Tipo de filtro.
+ * @param {string|null} value - Valor del filtro.
+ * @param {boolean} forceSet - Forzar aplicación (ignorar toggle).
+ */
 async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   const previousFilters = getActiveFilters();
   
@@ -719,6 +761,11 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   }
 }
 
+/**
+ * Alterna el estado de exclusión de un filtro.
+ * @param {string} type - Tipo de filtro.
+ * @param {string} value - Valor a excluir.
+ */
 async function handleToggleExcludedFilterOptimistic(type, value) {
   const previousState = getActiveFilters();
   
@@ -761,6 +808,9 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
   }
 }
 
+/**
+ * Resetea todos los filtros a su estado inicial.
+ */
 function resetFilters() {
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
@@ -777,6 +827,9 @@ function hasCompactTriggeringFilters() {
   return (isYearActive ? totalCount - 1 : totalCount) > 0;
 }
 
+/**
+ * Colapsa todas las secciones del acordeón del sidebar.
+ */
 export function collapseAllSections() {
   dom.collapsibleSections.forEach((section) => {
     section.classList.remove(CSS_CLASSES.ACTIVE);
@@ -789,6 +842,9 @@ export function collapseAllSections() {
   }
 }
 
+/**
+ * Inicializa el slider de rango de años (noUiSlider).
+ */
 function initYearSlider() {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
@@ -872,6 +928,9 @@ function initYearSlider() {
   });
 }
 
+/**
+ * Configura los botones +/- para los inputs de año.
+ */
 function setupYearInputSteppers() {
   document.querySelectorAll(".year-input-wrapper").forEach((wrapper) => {
     const input = wrapper.querySelector(".year-input");
@@ -893,11 +952,17 @@ function setupYearInputSteppers() {
 
 const suggestionFetchers = { genre: fetchGenreSuggestions, director: fetchDirectorSuggestions, actor: fetchActorSuggestions, country: fetchCountrySuggestions };
 
+/**
+ * Escapa caracteres especiales para búsquedas SQL seguras.
+ */
 function sanitizeSearchTerm(term) {
   // Escapar % y _ para que ILIKE los trate como literales y no como comodines
   return term.replace(/%/g, '\\%').replace(/_/g, '\\_');
 }
 
+/**
+ * Configura los inputs de búsqueda dentro del sidebar (autocompletado).
+ */
 function setupAutocompleteHandlers() {
   dom.sidebarFilterForms.forEach((form) => {
     const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -968,6 +1033,9 @@ function setupAutocompleteHandlers() {
   });
 }
 
+/**
+ * Maneja el clic en una píldora de filtro (para eliminarla).
+ */
 function handlePillClick(e) {
   const pill = e.target.closest(".filter-pill");
   if (!pill) return false;
@@ -984,6 +1052,9 @@ function handlePillClick(e) {
   return true;
 }
 
+/**
+ * Configura los listeners generales del sidebar.
+ */
 function setupEventListeners() {
   document.querySelectorAll(".collapsible-section .section-header").forEach((header) => {
     const iconWrapper = document.createElement('div');
@@ -1109,6 +1180,9 @@ function setupEventListeners() {
 //          INICIALIZACIÓN PRINCIPAL
 // =================================================================
 
+/**
+ * Inicializa el componente Sidebar completo.
+ */
 export function initSidebar() {
   if (isInitialized) return;
   isInitialized = true;

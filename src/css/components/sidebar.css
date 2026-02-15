@@ -671,6 +671,7 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
   display: block; /* Para inputs */
   justify-content: flex-start;
   margin: 0 auto;
+  /* Transiciones unificadas para hover y foco */
   transition: transform 0.1s, background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
@@ -717,7 +718,7 @@ html.dark-mode .bento-grid .filter-link.active { color: var(--color-bg); }
 .bento-grid .filter-link[data-filter-value="España"] {
   grid-column: 1 / -1;
   justify-content: space-between; /* Texto izq, papelera der */
-  padding-inline: var(--space-xs);
+  padding-inline: var(--space-xs); /* Alineación consistente con el resto de la lista */
   padding-block: 2px; /* Reducir padding vertical para compensar el botón */
 }
 

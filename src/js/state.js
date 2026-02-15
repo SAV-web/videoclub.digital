@@ -211,17 +211,25 @@ export function setSearchTerm(term) {
   state.totalMovies = 0;
   let filtersCleared = false;
   
-  // Lógica de exclusividad: Si buscamos por texto, limpiamos actor y director
+  // Lógica de exclusividad: Si buscamos por texto, limpiamos TODOS los filtros del sidebar
   if (term && term.length > 0) {
-    if (state.activeFilters.actor || state.activeFilters.director) {
+    const filtersToReset = [
+      'genre', 'year', 'country', 'director', 'actor', 
+      'selection', 'studio', 'myList'
+    ];
+    const arraysToReset = ['excludedGenres', 'excludedCountries'];
+
+    const hadActiveFilters = 
+      filtersToReset.some(key => state.activeFilters[key]) ||
+      arraysToReset.some(key => state.activeFilters[key]?.length > 0);
+
+    if (hadActiveFilters) {
       filtersCleared = true;
       cachedFilterCount = -1;
+      
+      filtersToReset.forEach(key => state.activeFilters[key] = null);
+      arraysToReset.forEach(key => state.activeFilters[key] = []);
     }
-    state.activeFilters.actor = null;
-    state.activeFilters.director = null;
-    
-    // Si buscamos, salimos de "Mi Lista" para mostrar resultados globales
-    state.activeFilters.myList = null;
   }
   return filtersCleared;
 }

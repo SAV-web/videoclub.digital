@@ -240,7 +240,7 @@ async function handleSearchInput() {
     
     const filtersCleared = setSearchTerm(searchTerm);
     if (filtersCleared) {
-      showToast("Filtros de Actor/Director limpiados", "info");
+      showToast("Filtros limpiados para la búsqueda", "info");
     }
 
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));

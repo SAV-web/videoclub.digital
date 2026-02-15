@@ -60,6 +60,7 @@
     opacity 0.4s var(--ease-snap), 
     transform 0.4s var(--ease-snap), 
     visibility 0s linear 0.4s;
+  will-change: transform, opacity; /* Optimización: Promueve a capa GPU */
     
   /* UX: Prevenir scroll del body al tocar el modal */
   touch-action: pan-y;
@@ -212,8 +213,7 @@
 .is-quick-view .star-rating-container { gap: var(--space-sm); }
 .is-quick-view .star-icon { width: 42px; height: 42px; margin-right: 0; }
 .is-quick-view .low-rating-star { width: 40px; height: 40px; stroke-width: 2.5px; }
-.is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: auto; }
-.is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: 0; }
+.is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: 0; } /* Unificado */
 .is-quick-view .card-action-btn svg { width: 38px; height: 38px; stroke-width: 2.5px; }
 
 /* --- Metadatos Inferiores --- */

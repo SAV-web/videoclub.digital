@@ -26,7 +26,9 @@ const getDom = () => ({
   nextBtn: document.getElementById("modal-next-btn"),
 });
 
-// 4.3. Helper para limpiar transformaciones (DRY)
+/**
+ * Resetea las transformaciones CSS aplicadas por gestos táctiles.
+ */
 const resetModalTransform = () => {
   const { modal } = getDom();
   if (modal) modal.style.transform = "";
@@ -53,6 +55,10 @@ const MODAL_TRANSITION_MS = 300;
 //          1. GESTIÓN DE EVENTOS (Navegación y Cierre)
 // =================================================================
 
+/**
+ * Cierra el modal si se hace clic fuera del contenido.
+ * @param {MouseEvent} event 
+ */
 function handleOutsideClick(event) {
   const { modal } = getDom();
   // No cerramos si se hace click en una card del grid para permitir navegación directa.
@@ -63,6 +69,10 @@ function handleOutsideClick(event) {
   }
 }
 
+/**
+ * Maneja clics en metadatos (Director/Actor) para filtrar.
+ * @param {MouseEvent} event 
+ */
 function handleMetadataClick(event) {
   const directorLink = event.target.closest(".front-director-info a[data-director-name]");
   const actorLink = event.target.closest('[data-template="actors"] a[data-actor-name]');
@@ -88,6 +98,10 @@ function handleMetadataClick(event) {
 //          2. LÓGICA DE GESTOS (Swipe to Dismiss / Navigate)
 // =================================================================
 
+/**
+ * Inicia el seguimiento del gesto táctil.
+ * @param {TouchEvent} e 
+ */
 function handleTouchStart(e) {
   const { modal } = getDom();
   touchState.startY = e.touches[0].clientY;
@@ -98,6 +112,10 @@ function handleTouchStart(e) {
   modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS si estaba desactivada
 }
 
+/**
+ * Procesa el movimiento del dedo (Arrastre vertical o Swipe horizontal).
+ * @param {TouchEvent} e 
+ */
 function handleTouchMove(e) {
   // Salir rápido si no es un gesto válido o ya está cancelado
   // 4.2. Si otro handler ya capturó el gesto, no interferimos.
@@ -145,6 +163,10 @@ function handleTouchMove(e) {
   }
 }
 
+/**
+ * Finaliza el gesto y decide la acción (Cerrar, Navegar o Resetear).
+ * @param {TouchEvent} e 
+ */
 function handleTouchEnd(e) {
   const { modal } = getDom();
 
@@ -177,13 +199,20 @@ function handleTouchEnd(e) {
 //          3. NAVEGACIÓN ENTRE FICHAS
 // =================================================================
 
-// Helper para obtener la lista limpia de tarjetas del grid (ignorando la del modal)
+/**
+ * Obtiene la lista de tarjetas visibles en el grid principal.
+ * @returns {HTMLElement[]}
+ */
 function getGridCards() {
   const grid = document.getElementById("grid-container");
   if (!grid) return [];
   return Array.from(grid.querySelectorAll(".movie-card"));
 }
 
+/**
+ * Navega a la tarjeta anterior o siguiente.
+ * @param {number} direction - -1 (Anterior) o 1 (Siguiente).
+ */
 function navigateToSibling(direction) {
   const { content } = getDom();
   const currentId = content.dataset.movieId;
@@ -200,6 +229,11 @@ function navigateToSibling(direction) {
   }
 }
 
+/**
+ * Actualiza el estado (habilitado/deshabilitado) de los botones de navegación.
+ * @param {number|string} currentId 
+ * @param {HTMLElement[]|null} contextCards 
+ */
 function updateNavButtons(currentId, contextCards = null) {
   const { prevBtn, nextBtn } = getDom();
   const strId = String(currentId); // Asegurar tipo para comparación
@@ -229,6 +263,11 @@ const createLink = (text, type) => createElement("a", {
   textContent: text, href: "#", dataset: { [type === 'director' ? 'directorName' : 'actorName']: text } 
 });
 
+/**
+ * Configura la cabecera del modal (Póster, Título, Info básica).
+ * @param {HTMLElement} front - Cara frontal de la tarjeta.
+ * @param {Object} movie - Datos de la película.
+ */
 function setupModalHeader(front, movie) {
   // Imagen
   const frontImg = front.querySelector("img");
@@ -293,6 +332,11 @@ function setupModalHeader(front, movie) {
   }
 }
 
+/**
+ * Configura los detalles extendidos del modal (Sinopsis, Reparto, etc.).
+ * @param {HTMLElement} back - Cara trasera de la tarjeta.
+ * @param {Object} movie - Datos de la película.
+ */
 function setupModalDetails(back, movie) {
   // Título Original
   const origTitle = back.querySelector('.back-original-title-wrapper');
@@ -360,6 +404,11 @@ function setupModalDetails(back, movie) {
   }
 }
 
+/**
+ * Puebla el contenido del modal clonando la plantilla y asignando datos.
+ * @param {HTMLElement} cardElement - Tarjeta original del grid.
+ * @param {HTMLElement[]|null} contextCards - Contexto de navegación.
+ */
 function populateModal(cardElement, contextCards = null) {
   const { template, content, modal } = getDom();
   if (!template) return;
@@ -374,6 +423,11 @@ function populateModal(cardElement, contextCards = null) {
   const clone = template.cloneNode(true);
   const cardClone = clone.querySelector('.movie-card');
   cardClone.classList.add('is-quick-view');
+
+  // FIX CRÍTICO: Asignar ID y datos a la tarjeta clonada.
+  // Esto permite que 'updateCardUI' (llamado por rating.js al salir del hover) encuentre la tarjeta y sus datos.
+  cardClone.dataset.movieId = movie.id;
+  cardClone.movieData = movie;
 
   // Reset UI
   if (!modal.classList.contains("is-visible")) modal.classList.remove("hide-arrows");
@@ -417,6 +471,9 @@ function populateModal(cardElement, contextCards = null) {
 //          5. API PÚBLICA
 // =================================================================
 
+/**
+ * Cierra el modal con animación y limpieza.
+ */
 export function closeModal() {
   const { modal, overlay } = getDom();
   if (!modal.classList.contains("is-visible")) return;
@@ -456,6 +513,11 @@ export function closeModal() {
   document.removeEventListener("click", handleOutsideClick);
 }
 
+/**
+ * Abre el modal para una tarjeta específica.
+ * @param {HTMLElement} cardElement 
+ * @param {HTMLElement[]|null} contextCards 
+ */
 export function openModal(cardElement, contextCards = null) {
   if (!cardElement) return;
   const { modal, overlay, content } = getDom();
@@ -491,6 +553,9 @@ export function openModal(cardElement, contextCards = null) {
   }
 }
 
+/**
+ * Inicializa los listeners globales del modal (Teclado, Gestos).
+ */
 export function initQuickView() {
   const { modal, content, prevBtn, nextBtn } = getDom();
   if (!modal) return;
