@@ -120,7 +120,8 @@
   /* Ocultar pills de estudios cuando la sección está abierta (foco en iconos) */
   .collapsible-section[data-section="studio"].active &,
   .collapsible-section[data-section="genre"].active &,
-  .collapsible-section[data-section="country"].active & {
+  .collapsible-section[data-section="country"].active &,
+  .collapsible-section[data-section="selection"].active & {
     display: none;
   }
 }
@@ -620,12 +621,10 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
 }
 
 /* Aplicar grid también a selecciones si tienen iconos */
-#studios-list-container,
-#selections-list-container:has(.filter-link--icon) {
+#studios-list-container {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xs);
 }
-#studios-list-container .filter-link,
-#selections-list-container .filter-link--icon { justify-content: center; }
+#studios-list-container .filter-link { justify-content: center; }
 
 /* =================================================================
    14. AJUSTES RESPONSIVE (MÓVIL)
@@ -676,7 +675,12 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
 }
 
 /* Ajuste específico para links (flex) vs inputs (block) */
-.bento-grid .filter-link { display: flex; width: 100%; }
+.bento-grid .filter-link { 
+  display: flex; width: 100%;
+  font-size: var(--font-size-xs);
+  line-height: 1.15;
+  padding: var(--space-xxs) var(--space-xs);
+}
 
 .bento-grid .filter-link:active {
   transform: scale(0.96);

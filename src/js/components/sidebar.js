@@ -485,7 +485,7 @@ function updateAllFilterControls() {
     
     // MOD: Para estudios y géneros (Bento), no ocultamos, marcamos como activo.
     let shouldHide = isActive || isExcluded;
-    if (type === 'studio' || type === 'genre' || type === 'country') {
+    if (type === 'studio' || type === 'genre' || type === 'country' || type === 'selection') {
       shouldHide = false;
       link.classList.toggle('active', isActive);
       link.classList.toggle('is-excluded', isExcluded);
