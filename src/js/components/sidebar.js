@@ -19,7 +19,7 @@ import {
 } from "../api.js";
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
-import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage } from "../state.js";
+import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
@@ -718,6 +718,13 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   // Si activamos un filtro normal, desactivamos myList
   if (newValue) setFilter('myList', null);
 
+  // Si activamos un filtro, limpiamos la búsqueda de texto
+  if (newValue && previousFilters.searchTerm) {
+    setSearchTerm("");
+    const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
+    if (mainSearchInput) mainSearchInput.value = "";
+  }
+
   // Lógica de País: Si seleccionamos un país, limpiamos las exclusiones de países
   if (newValue && type === 'country') {
     setFilter('excludedCountries', [], true);
@@ -777,6 +784,13 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
   // Lógica de exclusividad Género: Si excluimos el género activo, lo deseleccionamos
   if (type === 'genre' && previousState.genre === value) {
     setFilter('genre', null);
+  }
+
+  // Si excluimos algo, limpiamos el término de búsqueda
+  if (previousState.searchTerm) {
+    setSearchTerm("");
+    const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
+    if (mainSearchInput) mainSearchInput.value = "";
   }
 
   if (!toggleExcludedFilter(type, value)) {
