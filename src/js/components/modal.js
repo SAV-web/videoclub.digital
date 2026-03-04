@@ -78,6 +78,9 @@ function handleMetadataClick(event) {
   const actorLink = event.target.closest('[data-template="actors"] a[data-actor-name]');
 
   if (directorLink || actorLink) {
+    // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
+
     event.preventDefault();
     closeModal();
     
@@ -259,9 +262,14 @@ function updateNavButtons(currentId, contextCards = null) {
 // =================================================================
 
 // Helpers de Renderizado
-const createLink = (text, type) => createElement("a", { 
-  textContent: text, href: "#", dataset: { [type === 'director' ? 'directorName' : 'actorName']: text } 
-});
+const createLink = (text, type) => {
+  const param = type === 'director' ? 'dir' : 'actor';
+  return createElement("a", { 
+    textContent: text, 
+    href: `/?${param}=${encodeURIComponent(text)}`, 
+    dataset: { [type === 'director' ? 'directorName' : 'actorName']: text } 
+  });
+};
 
 /**
  * Configura la cabecera del modal (Póster, Título, Info básica).

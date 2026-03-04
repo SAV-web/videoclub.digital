@@ -314,6 +314,9 @@ export function handleCardClick(event) {
     // y permitir que modal.js maneje el cierre del modal.
     if (card.id === 'quick-view-content') return;
 
+    // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
+
     event.preventDefault();
     event.stopPropagation();
     const type = filterLink.dataset.directorName ? "director" : "actor";
@@ -409,7 +412,11 @@ function populateCard(card, movie, index) {
   dirCont.textContent = "";
   if (movie.directors) {
     movie.directors.split(", ").forEach((name, i, arr) => {
-      const link = createElement("a", { textContent: name.trim(), href: "#", dataset: { directorName: name.trim() } });
+      const link = createElement("a", { 
+        textContent: name.trim(), 
+        href: `/?dir=${encodeURIComponent(name.trim())}`, 
+        dataset: { directorName: name.trim() } 
+      });
       dirCont.append(link, i < arr.length - 1 ? ", " : "");
     });
   }
