@@ -280,7 +280,7 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
 
   /* --- Estado: Búsqueda Expandida (Foco) --- */
   .main-header.is-search-focused {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .main-header.is-search-focused .sort-control,
