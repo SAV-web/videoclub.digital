@@ -83,7 +83,15 @@
   </style>
 
 <!-- === 6. ANTI-FLICKER === -->
-    <script>(function () { try { if (localStorage.getItem("theme") === "dark") { document.documentElement.classList.add("dark-mode"); } } catch (e) {} })(); </script>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var system = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (stored === "dark" || (!stored && system)) { document.documentElement.classList.add("dark-mode"); }
+        } catch (e) {}
+      })();
+    </script>
 
 <!-- === 7. ESTILOS EXTERNOS === -->
     <!-- CSS inyectado automáticamente por Vite via main.js -->

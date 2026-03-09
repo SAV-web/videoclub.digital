@@ -155,7 +155,7 @@
     text-transform: capitalize;
   }
 
-.filter-pill--exclude {
+&.filter-pill--exclude {
   background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
 }
 
@@ -620,10 +620,6 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xs);
 }
 
-/* Aplicar grid también a selecciones si tienen iconos */
-#studios-list-container {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xs);
-}
 #studios-list-container .filter-link { justify-content: center; }
 
 /* =================================================================

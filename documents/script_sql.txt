@@ -61,13 +61,11 @@ ALTER TABLE public.movies DROP COLUMN IF EXISTS studios_tsv;
 ALTER TABLE public.movies ADD COLUMN studios_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(studios_list))) STORED;
 
 -- 2.2. COLUMNA DE PROMEDIO CALCULADO (NUEVO)
--- Calcula automáticamente la nota media usando la lógica de negocio (+/- 0.3).
+-- Calcula automáticamente la nota media usando la lógica de negocio
 ALTER TABLE public.movies DROP COLUMN IF EXISTS avg_rating;
 ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
     CASE
-        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.3) + (imdb_rating - 0.3)) / 2.0
-        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) THEN fa_rating + 0.3
-        WHEN (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN imdb_rating - 0.3
+        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.5) + (imdb_rating - 0.3)) / 2.0
         ELSE NULL
     END
 ) STORED;
@@ -206,6 +204,12 @@ BEGIN
     v_limit := COALESCE(page_limit, 50);
     v_offset := COALESCE(page_offset, 0);
 
+    -- FASE 1.5: VALIDACIÓN DE TÉRMINO DE BÚSQUEDA (Protección GIN)
+    -- Los índices trigrama requieren al menos 3 caracteres. Evitamos Seq Scan devolviendo vacío.
+    IF search_term IS NOT NULL AND length(TRIM(search_term)) > 0 AND length(TRIM(search_term)) < 3 THEN
+        RETURN json_build_object('total', 0, 'items', '[]'::json);
+    END IF;
+
     -- FASE 2: PRE-PROCESAMIENTO (Igual que antes)
     -- Lógica de Regiones (Prioridad Alta: Búsqueda exacta por código)
     IF p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0 THEN
@@ -267,8 +271,8 @@ BEGIN
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
                 AND ($5 IS NULL OR m.country_id = ANY($5)) -- CAMBIO: Comparación con array (ANY)
-                AND ($6 IS NULL OR m.directors_tsv @@ phraseto_tsquery(''simple'', public.unaccent_immutable($6)))
-                AND ($7 IS NULL OR m.actors_tsv @@ phraseto_tsquery(''simple'', public.unaccent_immutable($7)))
+                AND ($6 IS NULL OR m.directors_tsv @@ websearch_to_tsquery(''simple'', public.unaccent_immutable($6)))
+                AND ($7 IS NULL OR m.actors_tsv @@ websearch_to_tsquery(''simple'', public.unaccent_immutable($7)))
                 AND ($8 IS NULL OR $8 = ''all''
                      OR ($8 = ''movies'' AND (m.type IS NULL OR m.type IN (''D'', ''A'')))
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))

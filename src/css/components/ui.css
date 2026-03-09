@@ -221,6 +221,15 @@ body.sidebar-is-open .sidebar-overlay {
   to { transform: translateX(100%); opacity: 0; }
 }
 
+@keyframes toast-in-mobile-top {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes toast-out-mobile-top {
+  to { transform: translateY(-20px); opacity: 0; }
+}
+
 /* Ajuste Móvil: Toasts elevados y centrados */
 @media (max-width: 768px), (max-height: 500px) {
   .toast-container {
@@ -234,15 +243,6 @@ body.sidebar-is-open .sidebar-overlay {
   .toast {
     width: 100%; justify-content: center;
     animation-name: toast-in-mobile-top, toast-out-mobile-top;
-  }
-
-  @keyframes toast-in-mobile-top {
-    from { transform: translateY(-20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  
-  @keyframes toast-out-mobile-top {
-    to { transform: translateY(-20px); opacity: 0; }
   }
 
   .btn--pagination,
