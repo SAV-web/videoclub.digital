@@ -279,18 +279,14 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .search-form .search-icon { right: 50%; transform: translate(50%, -50%); }
 
   /* --- Estado: Búsqueda Expandida (Foco) --- */
-  .main-header.is-search-focused {
-    flex-wrap: wrap;
-  }
-
   .main-header.is-search-focused .sort-control,
   .main-header.is-search-focused .type-filter-toggle,
   .main-header.is-search-focused .header-pagination-group {
     display: none;
   }
 
-  .main-header.is-search-focused .search-and-theme-group { flex-grow: 1; }
-  .main-header.is-search-focused .search-form { width: 100%; max-width: none; }
+  .main-header.is-search-focused .search-and-theme-group { flex-grow: 1; justify-content: center; }
+  .main-header.is-search-focused .search-form { width: 70%; max-width: 400px; }
 
   /* Restaurar aspecto de input al escribir */
   .main-header.is-search-focused .search-form input {
