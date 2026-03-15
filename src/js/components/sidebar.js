@@ -1021,13 +1021,10 @@ function setupAutocompleteHandlers() {
         case "Enter": 
           e.preventDefault(); 
           if (activeIndex >= 0 && items[activeIndex]) {
-            items[activeIndex].click(); 
-          } else {
-            // Selección inteligente por coincidencia de texto (soporta sinónimos en géneros)
-            const normalizer = filterType === 'genre' ? normalizeGenreText : normalizeText;
-            const term = normalizer(input.value);
-            const match = items.find(item => normalizer(item.dataset.value) === term);
-            if (match) match.click();
+            items[activeIndex].click();
+          } else if (items.length > 0) {
+            // Si no hay nada seleccionado con las flechas, pero hay resultados, seleccionamos el primero.
+            items[0].click();
           }
           break;
         case "Escape": e.preventDefault(); clearAllSidebarAutocomplete(); break;
@@ -1182,7 +1179,16 @@ function setupEventListeners() {
         setTimeout(() => {
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
             clickedSection.classList.add("is-ready");
-            if (header) header.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+            
+            const inputField = clickedSection.querySelector('.sidebar-filter-input');
+            if (inputField) {
+              inputField.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              if (!isMobileLayout()) {
+                inputField.focus({ preventScroll: true });
+              }
+            } else if (header) {
+              header.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+            }
           }
         }, 300);
       }

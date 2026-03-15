@@ -37,7 +37,7 @@ async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
     // Guardamos copia fresca
-    cacheResponse(CACHE_STATIC, request, networkResponse);
+    cacheResponse(CACHE_STATIC, request, networkResponse.clone());
     return networkResponse;
   } catch (error) {
     const cachedResponse = await caches.match(request);

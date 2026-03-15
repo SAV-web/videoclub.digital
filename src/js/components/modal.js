@@ -348,25 +348,23 @@ function setupModalHeader(front, movie) {
 function setupModalDetails(back, movie) {
   // Título Original
   const origTitle = back.querySelector('.back-original-title-wrapper');
-  const hasOrig = movie.original_title && movie.original_title.trim() && 
-                  movie.original_title.toLowerCase() !== movie.title.toLowerCase();
+  // Usamos el título original si existe; si no, el título traducido (ya que la API lo omite si son iguales)
+  const actualOriginalTitle = (movie.original_title && movie.original_title.trim()) ? movie.original_title : movie.title;
   
-  if (hasOrig) {
-    const span = origTitle.querySelector('span');
-    span.textContent = movie.original_title;
-    span.className = ""; // Reset
-    if (movie.original_title.length > 40) span.classList.add("title-xl-long");
-    else if (movie.original_title.length > 30) span.classList.add("title-long");
-    else if (movie.original_title.length > 20) span.classList.add("title-medium");
-    origTitle.hidden = false;
-  } else { origTitle.hidden = true; }
+  const span = origTitle.querySelector('span');
+  span.textContent = actualOriginalTitle;
+  span.className = ""; // Reset
+  if (actualOriginalTitle.length > 40) span.classList.add("title-xl-long");
+  else if (actualOriginalTitle.length > 30) span.classList.add("title-long");
+  else if (actualOriginalTitle.length > 20) span.classList.add("title-medium");
+  origTitle.hidden = false; // Siempre visible
 
   // Duración y Episodios
   const isSeries = movie.type?.toUpperCase().startsWith("S.");
   back.querySelector('[data-template="duration"]').textContent = formatRuntime(movie.minutes, isSeries);
   
   const epEl = back.querySelector('[data-template="episodes"]');
-  const epText = isSeries && movie.episodes ? `${movie.episodes}x` : "";
+  const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
   epEl.textContent = epText;
   epEl.hidden = !epText;
 
@@ -451,6 +449,13 @@ function populateModal(cardElement, contextCards = null) {
   // --- CAPA 1: CRÍTICA (Síncrona) ---
   // Elementos visuales principales para la primera impresión (Póster, Título, Año)
   setupModalHeader(front, movie);
+
+  // Mover el director a la sección de detalles (back) justo después del título original
+  const dirEl = front.querySelector('[data-template="director"]');
+  const origTitleWrap = back.querySelector('.back-original-title-wrapper');
+  if (dirEl && origTitleWrap) {
+    origTitleWrap.insertAdjacentElement('afterend', dirEl);
+  }
 
   // Montaje
   content.textContent = "";

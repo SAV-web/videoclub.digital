@@ -271,8 +271,8 @@ BEGIN
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
                 AND ($5 IS NULL OR m.country_id = ANY($5)) -- CAMBIO: Comparación con array (ANY)
-                AND ($6 IS NULL OR m.directors_tsv @@ websearch_to_tsquery(''simple'', public.unaccent_immutable($6)))
-                AND ($7 IS NULL OR m.actors_tsv @@ websearch_to_tsquery(''simple'', public.unaccent_immutable($7)))
+                AND ($6 IS NULL OR m.directors_tsv @@ websearch_to_tsquery(''simple'', ''"'' || public.unaccent_immutable($6) || ''"''))
+                AND ($7 IS NULL OR m.actors_tsv @@ websearch_to_tsquery(''simple'', ''"'' || public.unaccent_immutable($7) || ''"''))
                 AND ($8 IS NULL OR $8 = ''all''
                      OR ($8 = ''movies'' AND (m.type IS NULL OR m.type IN (''D'', ''A'')))
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))
@@ -311,7 +311,7 @@ BEGIN
                             EXTRACT(EPOCH FROM m.last_synced_at)::INT as last_synced_at,
                             -- Optimización: Solo enviar episodios si es serie
                             CASE WHEN m.type ILIKE ''S%'' THEN m.episodes ELSE NULL END as episodes,
-                            m.wikipedia, 
+                            m.wikipedia,
                             m.selections_list, m.studios_list, m.justwatch
                         FROM filtered_movies fm
                         JOIN public.movies m ON fm.id = m.id

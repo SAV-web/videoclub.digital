@@ -411,11 +411,22 @@ function populateCard(card, movie, index) {
   const dirCont = front.querySelector(SELECTORS.DIRECTOR);
   dirCont.textContent = "";
   if (movie.directors) {
-    movie.directors.split(", ").forEach((name, i, arr) => {
+    const directorsArr = movie.directors.split(", ");
+    const showOnlyLastName = directorsArr.length > 2;
+    
+    directorsArr.forEach((name, i, arr) => {
+      const fullName = name.trim();
+      let displayText = fullName;
+      
+      if (showOnlyLastName) {
+        const nameParts = fullName.split(" ");
+        if (nameParts.length > 1) displayText = nameParts.pop(); // Toma solo la última palabra (apellido)
+      }
+      
       const link = createElement("a", { 
-        textContent: name.trim(), 
-        href: `/?dir=${encodeURIComponent(name.trim())}`, 
-        dataset: { directorName: name.trim() } 
+        textContent: displayText, 
+        href: `/?dir=${encodeURIComponent(fullName)}`, 
+        dataset: { directorName: fullName } 
       });
       dirCont.append(link, i < arr.length - 1 ? ", " : "");
     });

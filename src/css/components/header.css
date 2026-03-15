@@ -279,9 +279,8 @@ html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1)
   .search-form .search-icon { right: 50%; transform: translate(50%, -50%); }
 
   /* --- Estado: Búsqueda Expandida (Foco) --- */
-  .main-header.is-search-focused .sort-control,
-  .main-header.is-search-focused .type-filter-toggle,
-  .main-header.is-search-focused .header-pagination-group {
+  .main-header.is-search-focused .main-header-primary-controls,
+  .main-header.is-search-focused .mobile-status-bar {
     display: none;
   }
 

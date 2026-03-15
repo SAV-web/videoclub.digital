@@ -148,9 +148,10 @@
 .is-quick-view .back-meta-header { order: 1; }
 .is-quick-view .ratings-container { order: 2; }
 .is-quick-view .back-original-title-wrapper { order: 3; }
-.is-quick-view .details-list { order: 4; }
-.is-quick-view .scrollable-content { order: 5; }
-.is-quick-view .expand-content-btn { order: 6; }
+.is-quick-view .front-director-info { order: 4; }
+.is-quick-view .details-list { order: 5; }
+.is-quick-view .scrollable-content { order: 6; }
+.is-quick-view .expand-content-btn { order: 7; }
 
 /* =================================================================
    3. QUICK VIEW: ESTILOS "GIGANTE" (Overrides de card.css)
@@ -196,8 +197,16 @@
 .is-quick-view .front-director-info {
   font-size: calc(var(--font-size-xs) * 1.5); /* Igualar tamaño a lista de actores/detalles */
   color: var(--color-text-secondary);
-  margin-bottom: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 4px;
+  margin-bottom: var(--space-md);
+  line-height: 1.4;
+  white-space: normal; /* Permitir múltiples líneas */
+  display: block; /* FIX: Evita que el contenedor colapse al ser un flex-item */
+  width: 100%;
+  flex-shrink: 0; /* CRÍTICO: Evita que flexbox colapse su altura a 0 en el modo escritorio con scroll */
+}
+.is-quick-view .front-director-info:empty {
+  display: none;
 }
 
 /* --- Iconos de Acción y Valoración (Aumentados) --- */
