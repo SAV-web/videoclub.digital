@@ -425,7 +425,7 @@ function populateCard(card, movie, index) {
       
       const link = createElement("a", { 
         textContent: displayText, 
-        href: `/?dir=${encodeURIComponent(fullName)}`, 
+        href: `?dir=${encodeURIComponent(fullName)}`, 
         dataset: { directorName: fullName } 
       });
       dirCont.append(link, i < arr.length - 1 ? ", " : "");

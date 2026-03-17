@@ -266,7 +266,7 @@ const createLink = (text, type) => {
   const param = type === 'director' ? 'dir' : 'actor';
   return createElement("a", { 
     textContent: text, 
-    href: `/?${param}=${encodeURIComponent(text)}`, 
+    href: `?${param}=${encodeURIComponent(text)}`, 
     dataset: { [type === 'director' ? 'directorName' : 'actorName']: text } 
   });
 };

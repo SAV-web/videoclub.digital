@@ -410,6 +410,12 @@ function setupGlobalListeners() {
   dom.gridContainer.addEventListener("click", async function(e) {
     const cardElement = e.target.closest(".movie-card");
     if (cardElement) { 
+      // FIX: Prevenir navegación nativa de forma síncrona antes de cargar el módulo (evita recarga en móvil)
+      const filterLink = e.target.closest("[data-director-name], [data-actor-name]");
+      if (filterLink && !(e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)) {
+        e.preventDefault();
+      }
+
       const { handleCardClick } = await loadCardModule();
       handleCardClick.call(cardElement, e); 
       return; 
