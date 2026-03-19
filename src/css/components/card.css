@@ -174,7 +174,7 @@
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  padding: calc(var(--space-sm) + 4px) var(--space-xxs) var(--space-xs);
+  padding: calc(var(--space-sm) + 3px) var(--space-xxs) var(--space-xs);
   overflow: hidden;
 }
 
@@ -183,7 +183,6 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 0; /* Permite comprimir si hay desbordamiento en casos extremos */
 }
 
 .movie-summary h3 {
@@ -224,7 +223,6 @@
   display: flex; justify-content: space-between; align-items: center;
   min-height: 24px;
   font-size: var(--font-size-sm);
-  flex-shrink: 0; /* Protege la barra de banderas para que nunca colapse ni se salga */
 }
 
 .card-icons-line { display: flex; align-items: center; gap: var(--space-xxs); }
