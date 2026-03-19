@@ -405,7 +405,7 @@ function populateCard(card, movie, index) {
   const tLen = movie.title.length;
   if (tLen > 40) titleEl.classList.add("title-xl-long");
   else if (tLen > 25) titleEl.classList.add("title-long");
-  else if (tLen > 15) titleEl.classList.add("title-medium");
+  else if (tLen > 12) titleEl.classList.add("title-medium");
 
   // Directores (Fragmento para evitar innerHTML excesivo)
   const dirCont = front.querySelector(SELECTORS.DIRECTOR);
