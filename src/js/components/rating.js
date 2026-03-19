@@ -14,19 +14,68 @@ import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified } from "../utils.js";
 
-// Mapeo de niveles visuales (1-3 estrellas) a valores de base de datos (1-10)
-// Mapeo UX: 1–3 estrellas → escala IMDb/FA (5/7/9)
-// Diseñado para minimizar fricción y evitar granularidad excesiva
-export const LEVEL_TO_RATING_MAP = [5, 7, 9];
-
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
-// Escalado por raíz cuadrada para comprimir diferencias extremas de votos
-// y mantener barras visualmente comparables
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
-const MIN_STAR_THRESHOLD = 5.5;
 
 // =================================================================
-//          1. LÓGICA DE CÁLCULO (Funciones Puras)
+//          1. REGLAS DE NEGOCIO (Domain Logic / State Helpers)
+// =================================================================
+
+export const LEVEL_TO_RATING_MAP = [5, 7, 9];
+const MIN_STAR_THRESHOLD = 5.5;
+
+/**
+ * Resuelve cuál será la siguiente nota al hacer clic en una estrella.
+ * Implementa el ciclo de UX para el nivel 1 (suspenso -> aprobado -> limpiar) y toggles simples.
+ */
+export function resolveNextRating(currentRating, clickedLevel) {
+  if (clickedLevel === 1) {
+    if (currentRating === 2) return 5;
+    if (currentRating === 5) return null;
+    return 2;
+  }
+  const potentialRating = LEVEL_TO_RATING_MAP[clickedLevel - 1];
+  const currentVisualStars = calculateUserStars(currentRating);
+  
+  if (clickedLevel === currentVisualStars) return null; // Toggle off
+  return potentialRating;
+}
+
+/**
+ * Reglas de exclusividad mutua entre Watchlist y Rating.
+ */
+export function resolveWatchlistMutationOnRate(newRating) {
+  if (newRating !== null) return false; // Si la marcamos como vista, ya no está en pendientes
+  return undefined; // No mutar
+}
+
+export function resolveRatingMutationOnWatchlist(isOnWatchlist) {
+  if (isOnWatchlist) return null; // Si la añadimos a pendientes, borramos la nota
+  return undefined; // No mutar
+}
+
+/**
+ * Helpers para decidir qué estado visual renderizar de forma determinista.
+ */
+export function getRatingPresentationState(movie, userData, isLoggedIn) {
+  const userRating = userData?.rating;
+  const hasUserVote = isLoggedIn && typeof userRating === 'number';
+  const avg = movie?.avg_rating;
+  const hasValidAverage = typeof avg === "number" && avg > 0;
+
+  return {
+    showUserRating: hasUserVote,
+    showAverageRating: !hasUserVote && hasValidAverage && avg > MIN_STAR_THRESHOLD,
+    showEmptyAverage: !hasUserVote && hasValidAverage && avg <= MIN_STAR_THRESHOLD,
+    userRatingValue: userRating,
+    averageRatingValue: avg,
+    visualUserStars: calculateUserStars(userRating),
+    visualAverageStars: calculateAverageStars(avg)
+  };
+}
+
+// =================================================================
+//          2. LÓGICA DE CÁLCULO VISUAL (Funciones Puras)
 // =================================================================
 
 /**
@@ -172,10 +221,10 @@ async function setRating(movieId, value, card) {
   if (previousRating === value) return;
 
   const newState = { rating: value };
-  
-  // Lógica de exclusividad: Si se vota (visto), se quita de watchlist (ya no está pendiente)
-  if (value !== null) {
-    newState.onWatchlist = false;
+
+  const watchlistMutation = resolveWatchlistMutationOnRate(value);
+  if (watchlistMutation !== undefined) {
+    newState.onWatchlist = watchlistMutation;
   }
 
   triggerHapticFeedback("light");
@@ -209,22 +258,8 @@ export function handleRatingClick(event, card) {
     const movieId = parseInt(card.dataset.movieId, 10);
     const currentRating = getUserDataForMovie(movieId)?.rating;
     const level = parseInt(starEl.dataset.ratingLevel, 10);
-    let newRating = null;
 
-    if (level === 1) {
-      // Ciclo UX del primer nivel:
-      //  null → 2 (suspenso)
-      //  2 → 5 (primer aprobado)
-      //  5 → null (limpiar voto)
-      if (currentRating === 2) newRating = 5;
-      else if (currentRating === 5) newRating = null;
-      else newRating = 2;
-    } else {
-      const potential = LEVEL_TO_RATING_MAP[level - 1];
-      const currentVisualStars = calculateUserStars(currentRating);
-      if (level === currentVisualStars) newRating = null;
-      else newRating = potential;
-    }
+    const newRating = resolveNextRating(currentRating, level);
 
     setRating(movieId, newRating, card);
     
@@ -261,51 +296,42 @@ export function updateRatingUI(card) {
   
   if (!starCont || !circleEl) return;
 
-  // 7.1 Simplificación: Reset inicial para evitar repeticiones en ramas
   circleEl.style.display = "none";
   starCont.style.display = "none";
 
-  const hasUserVote = isLoggedIn && typeof userRating === 'number';
+  const state = getRatingPresentationState(movie, userData, isLoggedIn);
 
-  // 7.2 Helper local para evitar duplicidad (Ocultar estrellas 2 y 3)
   const hideExtraStars = () => {
     const stars = starCont.querySelectorAll(".star-icon");
     for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
   };
 
-  if (hasUserVote) {
+  if (state.showUserRating) {
     starCont.classList.add("has-user-rating");
     circleEl.classList.add("has-user-rating");
     
-    if (userRating === 2) {
-      starCont.style.display = "flex";
+    starCont.style.display = "flex";
+    if (state.userRatingValue === 2) {
       renderUserStars(starCont, 0, false);
       hideExtraStars();
-    } else if (userRating >= 5) {
-      starCont.style.display = "flex";
-      renderUserStars(starCont, calculateUserStars(userRating), true);
+    } else {
+      renderUserStars(starCont, state.visualUserStars, true);
     }
   } else {
     starCont.classList.remove("has-user-rating");
     circleEl.classList.remove("has-user-rating");
     
-    // Optimización: Usar avg_rating pre-calculado por la base de datos
-    const avg = movie.avg_rating;
-    // 7.3 Robustez semántica: Asegurar que es número
-    if (typeof avg === "number" && avg > 0) {
-      
-      if (avg <= MIN_STAR_THRESHOLD) {
-        if (isLoggedIn) {
-          starCont.style.display = "flex";
-          renderUserStars(starCont, 0);
-          hideExtraStars();
-        } else {
-          circleEl.style.display = "block";
-        }
-      } else {
+    if (state.showEmptyAverage) {
+      if (isLoggedIn) {
         starCont.style.display = "flex";
-        renderAverageStars(starCont, calculateAverageStars(avg));
+        renderUserStars(starCont, 0);
+        hideExtraStars();
+      } else {
+        circleEl.style.display = "block";
       }
+    } else if (state.showAverageRating) {
+      starCont.style.display = "flex";
+      renderAverageStars(starCont, state.visualAverageStars);
     }
   }
 }

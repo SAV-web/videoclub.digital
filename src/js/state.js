@@ -7,6 +7,7 @@
 // =================================================================
 
 import { DEFAULTS, CONFIG } from "./constants.js";
+import { normalizeText } from "./utils.js";
 
 // Estado Inicial
 const initialState = {
@@ -35,6 +36,80 @@ let state = structuredClone(initialState);
 
 // Caché para conteo de filtros (Optimización O(1) en lectura)
 let cachedFilterCount = -1;
+
+// =================================================================
+//          SERIALIZACIÓN (URL & ROUTING)
+// =================================================================
+
+export const URL_PARAM_MAP = {
+  q: "searchTerm", genre: "genre", year: "year", country: "country",
+  dir: "director", actor: "actor", sel: "selection", stu: "studio",
+  sort: "sort", type: "mediaType", p: "page",
+  exg: "excludedGenres", exc: "excludedCountries",
+  list: "myList"
+};
+export const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key]));
+
+export function stateToUrlParams(activeFilters, currentPage) {
+  const params = new URLSearchParams();
+
+  Object.entries(activeFilters).forEach(([key, value]) => {
+    const shortKey = REVERSE_URL_PARAM_MAP[key];
+    if (!shortKey) return;
+    
+    if (Array.isArray(value) && value.length > 0) params.set(shortKey, value.join(","));
+    else if (key === "myList" && value) params.set(shortKey, value);
+    else if (typeof value === "string" && value.trim() !== "") {
+      // Ignorar valores por defecto para no ensuciar la URL
+      if (key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) return;
+      if (key === "sort" && value === DEFAULTS.SORT) return;
+      if (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) return;
+      
+      let valToSet = value;
+      if (['director', 'actor', 'genre', 'country'].includes(key)) {
+        valToSet = normalizeText(value);
+      }
+      params.set(shortKey, valToSet);
+    }
+  });
+  
+  if (currentPage > 1) params.set(REVERSE_URL_PARAM_MAP.page, currentPage);
+  
+  return params;
+}
+
+export function urlParamsToState(queryString) {
+  const params = new URLSearchParams(queryString);
+  const parsedState = { page: parseInt(params.get(REVERSE_URL_PARAM_MAP.page), 10) || 1, filters: {} };
+
+  Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
+    if (stateKey === "page") return;
+    const value = params.get(shortKey);
+    if (value !== null) {
+      if (stateKey === "excludedGenres" || stateKey === "excludedCountries") parsedState.filters[stateKey] = value.split(",");
+      else if (stateKey === "myList") parsedState.filters[stateKey] = value === "true" ? "mixed" : value; // Compatibilidad legacy
+      else parsedState.filters[stateKey] = value;
+    }
+  });
+
+  return parsedState;
+}
+
+export function syncStateWithUrlParams(queryString) {
+  resetFiltersState();
+  const { page, filters } = urlParamsToState(queryString);
+  
+  setCurrentPage(page);
+  Object.entries(filters).forEach(([key, value]) => {
+    if (key === "searchTerm") setSearchTerm(value);
+    else if (key === "sort") setSort(value);
+    else if (key === "mediaType") setMediaType(value);
+    else setFilter(key, value, true);
+  });
+  
+  if (!state.activeFilters.sort) setSort(DEFAULTS.SORT);
+  if (!state.activeFilters.mediaType) setMediaType(DEFAULTS.MEDIA_TYPE);
+}
 
 // =================================================================
 //          GETTERS (Lectura de Estado)

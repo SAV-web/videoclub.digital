@@ -146,10 +146,13 @@ button, input, select, textarea, a {
    SCROLL-AWARE UI (Optimización de Rendimiento)
    ================================================================= */
 /* Cuando el usuario hace scroll, simplificamos la UI para liberar GPU/CPU */
-body.is-scrolling .movie-card,
-body.is-scrolling .sidebar-inner-wrapper {
-  /* 1. Desactivar interacciones de ratón costosas (Hover) en elementos pesados */
-  pointer-events: none;
+@media (hover: hover) and (pointer: fine) {
+  body.is-scrolling .movie-card,
+  body.is-scrolling .sidebar-inner-wrapper {
+    /* 1. Desactivar interacciones de ratón costosas (Hover) en elementos pesados */
+    /* Restringido a escritorio: en móvil "absorbía" los taps rápidos al terminar de deslizar */
+    pointer-events: none;
+  }
 }
 
 body.is-scrolling .main-header,

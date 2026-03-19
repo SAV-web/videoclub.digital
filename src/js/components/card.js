@@ -1,11 +1,11 @@
 // src/js/components/card.js
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, isMovieSeries, formatYearRange, getHqPosterUrl } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast } from "../ui.js";
-import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings } from "./rating.js";
+import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import spriteUrl from "../../sprite.svg";
 
 // =================================================================
@@ -233,9 +233,9 @@ async function toggleWatchlist(movieId, btn, card) {
   const newState = { onWatchlist: !wasActive };
   const prevState = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
 
-  // Lógica de exclusividad: Si se añade a watchlist (pendiente), se borra la nota (ya no es "vista")
-  if (newState.onWatchlist) {
-    newState.rating = null;
+  const ratingMutation = resolveRatingMutationOnWatchlist(newState.onWatchlist);
+  if (ratingMutation !== undefined) {
+    newState.rating = ratingMutation;
   }
 
   triggerHapticFeedback("light");
@@ -367,7 +367,7 @@ function populateCard(card, movie, index) {
 
   // --- IMAGEN ---
   const img = card.querySelector("img");
-  const hqPoster = `${CONFIG.POSTER_BASE_URL}${movie.image}.webp`;
+  const hqPoster = getHqPosterUrl(movie.image);
   
   img.alt = `Póster de ${movie.title}`;
   
@@ -433,12 +433,8 @@ function populateCard(card, movie, index) {
   }
 
   // Año y País
-  const isSeries = movie.type?.toUpperCase().startsWith("S.");
-  let yearText = movie.year || "N/A";
-  if (isSeries && movie.year_end) {
-    yearText += movie.year_end === "M" ? " (M)" : (movie.year_end === "-" ? "-" : `-${movie.year_end.toString().slice(-2)}`);
-  }
-  front.querySelector(SELECTORS.YEAR).textContent = yearText;
+  const isSeries = isMovieSeries(movie.type);
+  front.querySelector(SELECTORS.YEAR).textContent = formatYearRange(movie.year, movie.year_end, isSeries, "N/A");
   
   renderCountryFlag(
     front.querySelector(SELECTORS.COUNTRY_CONTAINER),

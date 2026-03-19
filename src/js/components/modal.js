@@ -280,9 +280,7 @@ function setupModalHeader(front, movie) {
   // Imagen
   const frontImg = front.querySelector("img");
   if (frontImg) {
-    // Usar imagen HQ (dataset.src) si está disponible
-    // FIX: movie.image es solo el ID. Usamos image_hq (URL real) o placeholder.
-    frontImg.src = movie.image_hq || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+    frontImg.src = movie.image_hq || movie.posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     frontImg.alt = `Póster de ${movie.title}`;
   }
 
@@ -297,20 +295,15 @@ function setupModalHeader(front, movie) {
   // Director
   const dirContainer = front.querySelector('[data-template="director"]');
   dirContainer.textContent = "";
-  if (movie.directors) {
-    movie.directors.split(", ").forEach((name, i, arr) => {
-      dirContainer.appendChild(createLink(name.trim(), 'director'));
+  if (movie.parsedDirectors.length > 0) {
+    movie.parsedDirectors.forEach((name, i, arr) => {
+      dirContainer.appendChild(createLink(name, 'director'));
       if (i < arr.length - 1) dirContainer.append(", ");
     });
   }
 
   // Año y País
-  const isSeries = movie.type?.toUpperCase().startsWith("S.");
-  let yearText = movie.year || "";
-  if (isSeries && movie.year_end) {
-    yearText += movie.year_end === "M" ? " (M)" : (movie.year_end === "-" ? "-" : `-${movie.year_end.toString().slice(-2)}`);
-  }
-  front.querySelector('[data-template="year"]').textContent = yearText;
+  front.querySelector('[data-template="year"]').textContent = movie.displayYear;
   renderCountryFlag(
     front.querySelector('[data-template="country-container"]'),
     front.querySelector('[data-template="country-flag"]'),
@@ -322,7 +315,7 @@ function setupModalHeader(front, movie) {
   const iconsContainer = front.querySelector('.card-icons-line');
   if (iconsContainer) {
     iconsContainer.innerHTML = "";
-    const codes = movie.studios_list?.split(",") || [];
+    const codes = movie.studioList;
     
     codes.forEach(code => {
       const conf = STUDIO_DATA[code];
@@ -348,8 +341,7 @@ function setupModalHeader(front, movie) {
 function setupModalDetails(back, movie) {
   // Título Original
   const origTitle = back.querySelector('.back-original-title-wrapper');
-  // Usamos el título original si existe; si no, el título traducido (ya que la API lo omite si son iguales)
-  const actualOriginalTitle = (movie.original_title && movie.original_title.trim()) ? movie.original_title : movie.title;
+  const actualOriginalTitle = movie.displayOriginalTitle;
   
   const span = origTitle.querySelector('span');
   span.textContent = actualOriginalTitle;
@@ -360,13 +352,11 @@ function setupModalDetails(back, movie) {
   origTitle.hidden = false; // Siempre visible
 
   // Duración y Episodios
-  const isSeries = movie.type?.toUpperCase().startsWith("S.");
-  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movie.minutes, isSeries);
+  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movie.minutes, movie.isSeries);
   
   const epEl = back.querySelector('[data-template="episodes"]');
-  const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
-  epEl.textContent = epText;
-  epEl.hidden = !epText;
+  epEl.textContent = movie.displayEpisodes;
+  epEl.hidden = !movie.displayEpisodes;
 
   // Links Externos
   const setupLink = (key, url) => {
@@ -386,7 +376,7 @@ function setupModalDetails(back, movie) {
   back.querySelector('[data-template="synopsis"]').textContent = movie.synopsis || "N/A";
   
   const critic = back.querySelector('[data-template="critic-container"]');
-  if (movie.critic?.trim()) {
+  if (movie.hasCritic) {
     critic.querySelector('[data-template="critic"]').textContent = movie.critic;
     critic.hidden = false;
   } else { critic.hidden = true; }
@@ -394,9 +384,9 @@ function setupModalDetails(back, movie) {
   // Actores
   const actorsCont = back.querySelector('[data-template="actors"]');
   actorsCont.textContent = "";
-  if (movie.actors) {
-    movie.actors.split(",").forEach((name, i, arr) => {
-      const actorName = name.trim();
+  if (movie.parsedActors.length > 0) {
+    movie.parsedActors.forEach((name, i, arr) => {
+      const actorName = name;
       // Regla duplicada con card.js: actores ignorados no son clicables.
       if (IGNORED_ACTORS.includes(actorName.toLowerCase())) {
         actorsCont.append(actorName);

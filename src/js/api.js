@@ -11,7 +11,7 @@
 import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
 import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest, normalizeText, normalizeGenreText } from "./utils.js";
+import { createAbortableRequest, normalizeText, normalizeGenreText, mapMoviePayload } from "./utils.js";
 import { getUserDataForMovie, getAllUserMovieData } from "./state.js";
 
 // Inicialización del cliente Supabase
@@ -109,7 +109,7 @@ function createCanonicalCacheKey(filters, page, pageSize) {
 /**
  * Mapea los filtros del frontend a los parámetros esperados por la función RPC de PostgreSQL.
  */
-function buildRpcParams(activeFilters, currentPage, pageSize, requestCount) {
+function stateToRpcParams(activeFilters, currentPage, pageSize, requestCount) {
   const { start: yearStart, end: yearEnd } = parseYearRange(activeFilters.year);
 
   const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
@@ -179,7 +179,15 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
 
       let query = supabase
         .from('movies')
-        .select('*', { count: 'exact' })
+        .select(`
+          id, title, original_title, year, year_end, type, 
+          genres:genres_list, directors:directors_list, actors:actors_list, 
+          minutes, image, fa_id, fa_rating, fa_votes, 
+          imdb_id, imdb_rating, imdb_votes, avg_rating, 
+          synopsis, thumbhash_st, critic, last_synced_at, 
+          episodes, wikipedia, selections_list, studios_list, justwatch,
+          countries(name, code)
+        `, { count: 'exact' })
         .in('id', relevantIds);
 
       // Filtro Tipo
@@ -205,7 +213,22 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
 
       if (error) throw error;
       
-      return { total: count || 0, items: data || [] };
+      const items = (data || []).map(m => {
+        const isSeries = m.type && String(m.type).toLowerCase().startsWith('s');
+        const item = {
+          ...m,
+          original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
+          year_end: isSeries ? m.year_end : null,
+          episodes: isSeries ? m.episodes : null,
+          country: m.countries?.name || null,
+          country_code: m.countries?.code || null,
+          last_synced_at: m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null
+        };
+        delete item.countries;
+        return mapMoviePayload(item);
+      });
+
+      return { total: count || 0, items };
     })();
   }
 
@@ -223,7 +246,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
 
   const promise = (async () => {
     try {
-      const rpcParams = buildRpcParams(activeFilters, currentPage, pageSize, requestCount);
+      const rpcParams = stateToRpcParams(activeFilters, currentPage, pageSize, requestCount);
       
       let query = supabase.rpc("search_movies_offset", rpcParams);
       if (signal) {
@@ -240,7 +263,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
         throw new Error("Error de base de datos al obtener películas.");
       }
 
-      const result = { total: data?.total ?? -1, items: data?.items || [] };
+      const result = { total: data?.total ?? -1, items: (data?.items || []).map(mapMoviePayload) };
       
       if (!signal?.aborted) {
         queryCache.set(queryKey, result);

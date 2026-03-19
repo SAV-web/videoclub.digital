@@ -5,6 +5,45 @@ import { CONFIG } from "./constants.js";
 import flagSpriteUrl from "../flags.svg";
 
 // =================================================================
+//          REGLAS DE NEGOCIO (Domain Logic / Contracts)
+// =================================================================
+
+export const isMovieSeries = (type) => Boolean(type && String(type).toUpperCase().startsWith("S"));
+
+export const formatYearRange = (year, yearEnd, isSeries, fallback = "N/A") => {
+  let text = year ? String(year) : fallback;
+  if (isSeries && yearEnd) {
+    text += yearEnd === "M" ? " (M)" : (yearEnd === "-" ? "-" : `-${String(yearEnd).slice(-2)}`);
+  }
+  return text;
+};
+
+export const getHqPosterUrl = (imagePath) => {
+  if (!imagePath || imagePath === ".") return "";
+  return `${CONFIG.POSTER_BASE_URL}${imagePath}.webp`;
+};
+
+export function mapMoviePayload(movie) {
+  if (!movie) return movie;
+  const isSeries = isMovieSeries(movie.type);
+  const actualOriginalTitle = (movie.original_title && movie.original_title.trim() && movie.original_title.toLowerCase() !== movie.title.toLowerCase()) ? movie.original_title : movie.title;
+  
+  return {
+    ...movie,
+    isSeries,
+    displayYear: formatYearRange(movie.year, movie.year_end, isSeries, "N/A"),
+    posterUrl: getHqPosterUrl(movie.image),
+    displayOriginalTitle: actualOriginalTitle,
+    hasOriginalTitle: actualOriginalTitle !== movie.title,
+    hasCritic: Boolean(movie.critic && movie.critic.trim()),
+    displayEpisodes: isSeries && movie.episodes ? `${movie.episodes} x` : "",
+    parsedActors: movie.actors ? movie.actors.split(",").map(a => a.trim()) : [],
+    parsedDirectors: movie.directors ? movie.directors.split(",").map(d => d.trim()) : [],
+    studioList: movie.studios_list ? movie.studios_list.split(",") : []
+  };
+}
+
+// =================================================================
 //          1. FORMATO DE DATOS (High Performance)
 // =================================================================
 
@@ -286,9 +325,10 @@ export const triggerPopAnimation = (element) => {
 
 // Lazy Loading Prioritario (LCP)
 export function preloadLcpImage(movieData) {
-  if (!movieData?.image || movieData.image === ".") return;
+  if (!movieData) return;
   
-  const imageUrl = `${CONFIG.POSTER_BASE_URL}${movieData.image}.webp`;
+  const imageUrl = movieData.posterUrl || getHqPosterUrl(movieData.image);
+  if (!imageUrl) return;
 
   // Evitar duplicados
   if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) return;

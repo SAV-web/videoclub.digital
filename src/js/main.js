@@ -4,7 +4,7 @@ import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } 
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore, normalizeText } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
-import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData } from "./state.js";
+import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData, syncStateWithUrlParams, stateToUrlParams } from "./state.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 
 // --- Lazy Modules State ---
@@ -19,16 +19,6 @@ async function loadSidebar() {
     return sidebarModule;
   } catch (e) { console.error("Error loading sidebar", e); }
 }
-
-// Mapeo de parámetros URL a Estado interno
-const URL_PARAM_MAP = { 
-  q: "searchTerm", genre: "genre", year: "year", country: "country", 
-  dir: "director", actor: "actor", sel: "selection", stu: "studio", 
-  sort: "sort", type: "mediaType", p: "page",
-  exg: "excludedGenres", exc: "excludedCountries",
-  list: "myList"
-};
-const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key]));
 
 // Detección de soporte View Transitions (Constante)
 const SUPPORTS_VIEW_TRANSITIONS = !!document.startViewTransition;
@@ -534,29 +524,7 @@ function setupAuthSystem() {
 }
 
 function readUrlAndSetState() {
-  resetFiltersState();
-  const params = new URLSearchParams(window.location.search);
-  
-  Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
-    const value = params.get(shortKey);
-    if (value !== null) {
-      if (stateKey === "page") setCurrentPage(parseInt(value, 10) || 1);
-      else if (stateKey === "searchTerm") setSearchTerm(value);
-      else if (stateKey === "sort") setSort(value);
-      else if (stateKey === "mediaType") setMediaType(value);
-      else if (stateKey === "excludedGenres" || stateKey === "excludedCountries") setFilter(stateKey, value.split(","), true);
-      else if (stateKey === "myList") {
-        // Compatibilidad hacia atrás: "true" -> "mixed"
-        setFilter(stateKey, value === "true" ? "mixed" : value, true);
-      }
-      else setFilter(stateKey, value, true);
-    }
-  });
-  
-  // Defaults si no hay params
-  if (!params.has(REVERSE_URL_PARAM_MAP.sort)) setSort(DEFAULTS.SORT);
-  if (!params.has(REVERSE_URL_PARAM_MAP.mediaType)) setMediaType(DEFAULTS.MEDIA_TYPE);
-  if (!params.has(REVERSE_URL_PARAM_MAP.page)) setCurrentPage(1);
+  syncStateWithUrlParams(window.location.search);
   
   // Sincronizar UI
   const activeFilters = getActiveFilters();
@@ -567,31 +535,7 @@ function readUrlAndSetState() {
 }
 
 function updateUrl({ replace = false } = {}) {
-  const params = new URLSearchParams();
-  const activeFilters = getActiveFilters();
-  const currentPage = getCurrentPage();
-  
-  Object.entries(activeFilters).forEach(([key, value]) => {
-    const shortKey = REVERSE_URL_PARAM_MAP[key];
-    if (!shortKey) return;
-    
-    if (Array.isArray(value) && value.length > 0) params.set(shortKey, value.join(","));
-    else if (key === "myList" && value) params.set(shortKey, value);
-    else if (typeof value === "string" && value.trim() !== "") {
-      // Ignorar valores por defecto
-      if (key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) return;
-      if (key === "sort" && value === DEFAULTS.SORT) return;
-      if (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) return;
-      
-      let valToSet = value;
-      if (key === 'director' || key === 'actor' || key === 'genre' || key === 'country') {
-        valToSet = normalizeText(value);
-      }
-      params.set(shortKey, valToSet);
-    }
-  });
-  
-  if (currentPage > 1) params.set(REVERSE_URL_PARAM_MAP.page, currentPage);
+  const params = stateToUrlParams(getActiveFilters(), getCurrentPage());
   
   const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
   if (newUrl !== `${window.location.pathname}${window.location.search}`) {

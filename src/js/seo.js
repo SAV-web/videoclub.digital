@@ -3,10 +3,12 @@ import { CONFIG, FILTER_CONFIG, STUDIO_DATA } from "./constants.js";
 import { getActiveFilters } from "./state.js";
 import { capitalizeWords } from "./utils.js";
 
-// --- Gestión de Título y Metadatos ---
+// =================================================================
+//          1. BUILDERS (Funciones Puras - Lógica de Negocio)
+// =================================================================
 
-export function updatePageTitle(movies = []) {
-  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType, myList } = getActiveFilters();
+export function buildSeoTitle(filters) {
+  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType, myList } = filters;
   
   let baseNoun = "Películas y series";
   if (mediaType === "movies") baseNoun = "Películas";
@@ -31,14 +33,14 @@ export function updatePageTitle(movies = []) {
   else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `${baseNoun} de ${year.replace("-", " a ")}`;
   else if (country) title = `${baseNoun} de ${capitalizeWords(country)}`;
   
-  document.title = `${title} | videoclub.digital`;
-
-  // Actualización de Metadatos
-  updatePageMetadata(title, baseNoun, getActiveFilters(), movies);
+  return {
+    pageTitle: `${title} | videoclub.digital`,
+    ogTitle: title,
+    baseNoun
+  };
 }
 
-function updatePageMetadata(title, noun, filters, movies = []) {
-  // 1. Generar Descripción Contextual
+export function buildSeoDescription(noun, filters, movies = []) {
   let desc = `Explora y descubre ${noun.toLowerCase()} en videoclub.digital.`;
   
   if (filters.myList) {
@@ -60,69 +62,38 @@ function updatePageMetadata(title, noun, filters, movies = []) {
     }
   }
 
-  // 3. Enriquecimiento con Títulos (CTR Booster)
   if (movies && movies.length > 0 && !filters.myList) {
     const titles = movies.slice(0, 3).map(m => m.title).join(", ");
     desc += ` Destacadas: ${titles}.`;
   }
 
-  // 4. Truncado SEO (160 caracteres) para evitar cortes abruptos en SERP
   if (desc.length > 160) {
     desc = desc.substring(0, 157) + "...";
   }
-
-  // 2. Actualizar DOM (Meta Tags)
-  const setMeta = (selector, content) => {
-    const el = document.querySelector(selector);
-    if (el) el.setAttribute("content", content);
-  };
-
-  setMeta('meta[name="description"]', desc);
-  setMeta('meta[property="og:title"]', title);
-  setMeta('meta[property="og:description"]', desc);
-  setMeta('meta[property="og:url"]', window.location.href);
-  
-  // Canonical URL (Evita contenido duplicado)
-  let canonical = document.querySelector("link[rel='canonical']");
-  if (canonical) canonical.href = window.location.href;
+  return desc;
 }
 
-// --- Datos Estructurados (JSON-LD) ---
-
-export function updateStructuredData(movies, totalMovies) {
-  const scriptId = "dynamic-json-ld";
-  let script = document.getElementById(scriptId);
+export function buildItemListSchema(movies, totalMovies, currentUrl) {
+  if (!movies || movies.length === 0) return null;
   
-  if (!script) {
-    script = document.createElement("script");
-    script.id = scriptId;
-    script.type = "application/ld+json";
-    document.head.appendChild(script);
-  }
-
-  if (!movies || movies.length === 0) {
-    script.textContent = "";
-    return;
-  }
-
   // Optimización SEO: Truncar a 20 elementos para evitar payloads JSON-LD excesivos.
   const limitedMovies = movies.slice(0, 20);
 
-  const schema = {
+  return {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "mainEntityOfPage": window.location.href,
+    "mainEntityOfPage": currentUrl,
     "numberOfItems": totalMovies,
     "itemListElement": limitedMovies.map((movie, index) => ({
       "@type": "ListItem",
       "position": index + 1,
       "item": {
-        "@type": movie.type && String(movie.type).startsWith("S") ? "TVSeries" : "Movie",
+        "@type": movie.isSeries ? "TVSeries" : "Movie",
         "name": movie.title,
-        "image": `${CONFIG.POSTER_BASE_URL}${movie.image}.webp`,
+        "image": movie.posterUrl,
         "dateCreated": movie.year ? String(movie.year) : undefined,
-        "director": movie.directors ? movie.directors.split(",").map(d => ({ "@type": "Person", "name": d.trim() })) : undefined,
-        "actor": movie.actors ? movie.actors.split(",").map(a => ({ "@type": "Person", "name": a.trim() })) : undefined,
+        "director": movie.parsedDirectors?.length ? movie.parsedDirectors.map(d => ({ "@type": "Person", "name": d })) : undefined,
+        "actor": movie.parsedActors?.length ? movie.parsedActors.map(a => ({ "@type": "Person", "name": a })) : undefined,
         "aggregateRating": movie.avg_rating ? {
           "@type": "AggregateRating",
           "ratingValue": movie.avg_rating.toFixed(1),
@@ -133,24 +104,9 @@ export function updateStructuredData(movies, totalMovies) {
       }
     }))
   };
-
-  script.textContent = JSON.stringify(schema);
 }
 
-export function updateBreadcrumbData(filters) {
-  const scriptId = "dynamic-breadcrumbs-json-ld";
-  let script = document.getElementById(scriptId);
-
-  if (!script) {
-    script = document.createElement("script");
-    script.id = scriptId;
-    script.type = "application/ld+json";
-    document.head.appendChild(script);
-  }
-
-  // Base URL (sin query params) para construir los enlaces
-  const baseUrl = window.location.origin + window.location.pathname;
-
+export function buildBreadcrumbSchema(filters, baseUrl) {
   const items = [
     {
       "@type": "ListItem",
@@ -224,11 +180,66 @@ export function updateBreadcrumbData(filters) {
     });
   }
 
-  const schema = {
+  return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": items
   };
+}
 
-  script.textContent = JSON.stringify(schema);
+// =================================================================
+//          2. INJECTORS (Manipulación del DOM)
+// =================================================================
+
+const setMeta = (selector, content) => {
+  const el = document.querySelector(selector);
+  if (el) el.setAttribute("content", content);
+};
+
+const injectJsonLd = (scriptId, schema) => {
+  let script = document.getElementById(scriptId);
+  if (!script) {
+    script = document.createElement("script");
+    script.id = scriptId;
+    script.type = "application/ld+json";
+    document.head.appendChild(script);
+  }
+  script.textContent = schema ? JSON.stringify(schema) : "";
+};
+
+// =================================================================
+//          3. ORQUESTADORES PÚBLICOS
+// =================================================================
+
+export function updatePageTitle(movies = []) {
+  const filters = getActiveFilters();
+  const currentUrl = window.location.href;
+  
+  const { pageTitle, ogTitle, baseNoun } = buildSeoTitle(filters);
+  const description = buildSeoDescription(baseNoun, filters, movies);
+  
+  document.title = pageTitle;
+  setMeta('meta[name="description"]', description);
+  setMeta('meta[property="og:title"]', ogTitle);
+  setMeta('meta[property="og:description"]', description);
+  setMeta('meta[property="og:url"]', currentUrl);
+  
+  let canonical = document.querySelector("link[rel='canonical']");
+  if (!canonical) {
+    canonical = document.createElement("link");
+    canonical.rel = "canonical";
+    document.head.appendChild(canonical);
+  }
+  canonical.href = currentUrl;
+}
+
+export function updateStructuredData(movies, totalMovies) {
+  const schema = buildItemListSchema(movies, totalMovies, window.location.href);
+  injectJsonLd("dynamic-json-ld", schema);
+}
+
+export function updateBreadcrumbData(filters) {
+  const baseUrl = window.location.origin + window.location.pathname;
+  const schema = buildBreadcrumbSchema(filters, baseUrl);
+  injectJsonLd("dynamic-breadcrumbs-json-ld", schema);
 }
