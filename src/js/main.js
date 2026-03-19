@@ -395,7 +395,7 @@ function setupHeaderListeners() {
   const updateSearchPlaceholder = () => {
     if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
   };
-  window.addEventListener("resize", updateSearchPlaceholder);
+  window.addEventListener("resize", debounce(updateSearchPlaceholder, 250));
   updateSearchPlaceholder();
 }
 

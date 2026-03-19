@@ -15,7 +15,7 @@
 .skeleton-card {
   height: auto;
   aspect-ratio: 500 / 950;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: none; 
 }
 

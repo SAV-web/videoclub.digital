@@ -162,7 +162,7 @@
   height: auto; width: 100%; border: none;
 }
 .is-quick-view .poster-container img {
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-xxl);
   box-shadow: var(--shadow);
   border: none;
   margin-bottom: 0;
@@ -383,7 +383,7 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     top: auto; bottom: 0; left: 50%;
     width: 96%;
     height: 92dvh; max-height: 92dvh;
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     
     transform: translate(-50%, 100%); /* Inicial: Abajo */
     
@@ -446,7 +446,7 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     top: 50%; left: 50%;
     width: 90%; max-width: 720px;
     max-height: 92vh; height: auto;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     
     transform: translate(-50%, -50%) scale(0.95); /* Inicial */
   }

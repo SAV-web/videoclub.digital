@@ -282,14 +282,23 @@ function initTouchGestures() {
   document.addEventListener("touchend", handleTouchEnd, { passive: true });
   document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
 
-  window.addEventListener("resize", () => {
+  const handleResize = debounce(() => {
     if (isMobileLayout()) updateDrawerWidth();
     else {
       document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
       dom.sidebar.style.transform = "";
       touchState.currentTranslate = -DRAWER_WIDTH;
     }
-  });
+  }, 250);
+
+  window.addEventListener("resize", handleResize);
+  
+  // Detectar cambios de orientación específicos (Moderna API y Legacy fallback)
+  if (screen?.orientation) {
+    screen.orientation.addEventListener("change", handleResize);
+  } else {
+    window.addEventListener("orientationchange", handleResize);
+  }
 }
 
 // =================================================================

@@ -33,6 +33,11 @@ CREATE OR REPLACE FUNCTION public.to_real_safe(v_input TEXT)
 RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$ BEGIN RETURN v_input::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 
 -- =================================================================
+-- 2.0. MODIFICACIONES DE ESQUEMA (Soporte de orden para directores)
+-- =================================================================
+ALTER TABLE public.movie_directors ADD COLUMN IF NOT EXISTS ordinality smallint;
+
+-- =================================================================
 -- 2.1. GARANTÍA DE COLUMNAS GENERADAS (Fix Crítico ETL)
 -- =================================================================
 -- Aseguramos que los vectores de búsqueda (_tsv) sean columnas generadas
@@ -697,10 +702,11 @@ BEGIN
     CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS genre_name(name) JOIN public.genres g ON g.name = TRIM(genre_name.name)
     WHERE m.id = ANY(affected_movie_ids) ON CONFLICT DO NOTHING;
 
-    INSERT INTO public.movie_directors (movie_id, director_id)
-    SELECT m.id, d.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) AS director_name(name) JOIN public.directors d ON d.name = TRIM(director_name.name)
-    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, director_id) DO NOTHING;
+    INSERT INTO public.movie_directors (movie_id, director_id, ordinality)
+    SELECT DISTINCT ON (m.id, d.id) m.id, d.id, director_name.ordinality FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) WITH ORDINALITY AS director_name(name, ordinality) JOIN public.directors d ON d.name = TRIM(director_name.name)
+    WHERE m.id = ANY(affected_movie_ids)
+    ORDER BY m.id, d.id, director_name.ordinality ASC ON CONFLICT (movie_id, director_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
 
     INSERT INTO public.movie_actors (movie_id, actor_id, ordinality)
     SELECT DISTINCT ON (m.id, a.id) m.id, a.id, actor_name.ordinality FROM public.movies_staging s
@@ -726,7 +732,16 @@ BEGIN
         SELECT
             m.id,
             STRING_AGG(DISTINCT g.name, ', ' ORDER BY g.name) AS genres,
-            STRING_AGG(DISTINCT d.name, ', ' ORDER BY d.name) AS directors,
+            (
+                SELECT STRING_AGG(director_name, ', ' ORDER BY ordinality)
+                FROM (
+                    SELECT DISTINCT ON (d.name) d.name as director_name, md.ordinality
+                    FROM public.movie_directors md
+                    JOIN public.directors d ON md.director_id = d.id
+                    WHERE md.movie_id = m.id
+                    ORDER BY d.name, md.ordinality
+                ) AS unique_directors
+            ) AS directors,
             STRING_AGG(DISTINCT sel.code, ',') AS selections,
             STRING_AGG(DISTINCT stu.code, ',') AS studios,
             (

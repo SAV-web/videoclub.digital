@@ -186,7 +186,6 @@
   padding-top: var(--space-xxl);
   overflow-x: hidden;
   touch-action: pan-y;
-  overscroll-behavior-y: contain;
 }
 
 /* Asegurar que los elementos interactivos no bloqueen el gesto de cierre horizontal
@@ -205,6 +204,7 @@
     min-height: 0;
     padding-right: 0;
     scrollbar-width: none;
+    overscroll-behavior-y: contain;
   }
   .sidebar-scrollable-filters::-webkit-scrollbar { display: none; }
 }
@@ -555,9 +555,8 @@ body.user-logged-in #login-button { display: none; }
 body.user-logged-in #user-session-group { display: inline-flex; }
 
 @media (min-width: 769px) and (min-height: 501px) {
-  body.sidebar-collapsed .user-avatar { display: none; }
-  body.sidebar-collapsed .user-session-group { gap: 0; }
-  body.sidebar-collapsed .profile-container { justify-content: center; }
+  body.sidebar-collapsed .profile-container { justify-content: center; height: auto; }
+  body.sidebar-collapsed .user-session-group { flex-direction: column; gap: var(--space-md); }
 }
 
 /* =================================================================
