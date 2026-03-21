@@ -1,10 +1,10 @@
 // src/js/main.js
 import "../css/main.css";
-import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore, normalizeText, executeViewTransition } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
-import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData, syncStateWithUrlParams, stateToUrlParams } from "./state.js";
+import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, setUserMovieData, clearUserMovieData, syncStateWithUrlParams, stateToUrlParams } from "./state.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 
 // --- Lazy Modules State ---
@@ -139,7 +139,7 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   // Actualizar siempre el total para asegurar consistencia UI tras invalidación
   setTotalMovies(totalMovies);
-  updateTotalResultsUI(totalMovies, hasActiveMeaningfulFilters());
+      updateTotalResultsUI(totalMovies);
   
   // SEO: Actualizar datos estructurados (JSON-LD) para carruseles
   updateStructuredData(movies, totalMovies);
@@ -152,7 +152,7 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
 
   const { currentPage } = getState();
 
-  // FIX: Detectar inconsistencia de API (Total > 0 pero items vacíos)
+  // Detectar posible error de la API (Total > 0 pero items vacíos)
   if (totalMovies > 0 && movies.length === 0 && currentPage === 1) {
     console.warn("[Main] Inconsistencia: Total > 0 pero no hay items. Posible error de paginación API.");
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
@@ -160,7 +160,7 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
   }
 
   if (totalMovies === 0) {
-    // FIX: Evitar "No resultados" momentáneo al cargar "Mi Lista" antes de verificar sesión/datos
+    // Evitar parpadeo de "No resultados" en "Mi Lista" antes de verificar la sesión
     if (getActiveFilters().myList && !isAuthInitialized) {
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
       return;
@@ -362,7 +362,7 @@ function setupHeaderListeners() {
   // Botón "X" Limpiar Búsqueda
   const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
   if (clearSearchBtn) {
-    // FIX: Usar pointerdown para unificar mouse/touch y prevenir blur de forma robusta en Android
+    // Usar pointerdown para prevenir blur en Android
     clearSearchBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault(); // Gestión manual del foco
       e.stopPropagation();
@@ -396,7 +396,7 @@ function setupGlobalListeners() {
   dom.gridContainer.addEventListener("click", async function(e) {
     const cardElement = e.target.closest(".movie-card");
     if (cardElement) { 
-      // FIX: Prevenir navegación nativa de forma síncrona antes de cargar el módulo (evita recarga en móvil)
+      // Prevenir navegación nativa antes de cargar el módulo
       const filterLink = e.target.closest("[data-director-name], [data-actor-name]");
       if (filterLink && !(e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)) {
         e.preventDefault();
@@ -605,7 +605,7 @@ function init() {
   loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
 }
 
-// Optimización WPO: Ejecutar inmediatamente si el DOM ya está interactivo
+// Ejecutar inmediatamente si el DOM ya está interactivo
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
 } else {

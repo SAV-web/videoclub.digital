@@ -72,7 +72,7 @@ export function showToast(message, type = "error") {
   const { toastContainer } = dom;
   if (!toastContainer) return;
 
-  // 1. Anti-Spam (Debounce): Evitar repetición del mismo mensaje en corto tiempo
+  // Evitar repetición del mismo mensaje en corto tiempo
   const now = Date.now();
   const isSameMessage = message === lastToastMessage;
   const isRecent = (now - lastToastTime) < 2000; // 2 segundos
@@ -82,7 +82,7 @@ export function showToast(message, type = "error") {
   lastToastMessage = message;
   lastToastTime = now;
 
-  // 2. Anti-Apilamiento: Limpiar contenedor para mostrar solo uno
+  // Limpiar contenedor para mostrar solo uno a la vez
   toastContainer.replaceChildren();
 
   const toastElement = createElement("div", {
@@ -99,7 +99,7 @@ export function showToast(message, type = "error") {
     }
   });
 
-  // Fallback de seguridad: Si la animación falla o el CSS cambia, eliminar tras 8s
+  // Fallback: Eliminar tras 8s si falla la animación
   setTimeout(() => {
     if (toastElement.isConnected) toastElement.remove();
   }, 8000);
@@ -354,7 +354,7 @@ function shouldShowTotalCount() {
   return true;
 }
 
-export function updateTotalResultsUI(total, hasFilters) {
+export function updateTotalResultsUI(total) {
   const containers = document.querySelectorAll(".total-results-container");
   const counts = document.querySelectorAll(".total-results-count");
 

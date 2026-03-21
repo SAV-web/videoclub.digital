@@ -21,7 +21,7 @@ const getDom = () => ({
   overlay: document.getElementById("quick-view-overlay"),
   modal: document.getElementById("quick-view-modal"),
   content: document.getElementById("quick-view-content"),
-  template: document.getElementById("movie-card-template")?.content,
+  template: document.getElementById("quick-view-template")?.content,
   prevBtn: document.getElementById("modal-prev-btn"),
   nextBtn: document.getElementById("modal-next-btn"),
 });
@@ -275,49 +275,64 @@ const createLink = (text, type) => {
 };
 
 /**
+ * Mapea los nodos del modal mediante sus contratos de datos (data-template)
+ * para no depender de la estructura jerárquica exacta del DOM.
+ * @param {HTMLElement} root 
+ */
+function getModalNodes(root) {
+  const nodes = {};
+  root.querySelectorAll('[data-template]').forEach(el => {
+    nodes[el.dataset.template] = el;
+  });
+  nodes.img = root.querySelector("img");
+  nodes.iconsContainer = root.querySelector(".card-icons-line");
+  nodes.origTitleWrap = root.querySelector(".back-original-title-wrapper");
+  return nodes;
+}
+
+/**
  * Configura la cabecera del modal (Póster, Título, Info básica).
- * @param {HTMLElement} front - Cara frontal de la tarjeta.
+ * @param {Object} nodes - Diccionario de nodos UI referenciados.
  * @param {Object} movie - Datos de la película.
  */
-function setupModalHeader(front, movie) {
+function setupModalHeader(nodes, movie) {
   // Imagen
-  const frontImg = front.querySelector("img");
-  if (frontImg) {
-    frontImg.src = movie.image_hq || movie.posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-    frontImg.alt = `Póster de ${movie.title}`;
+  if (nodes.img) {
+    nodes.img.src = movie.image_hq || movie.posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+    nodes.img.alt = `Póster de ${movie.title}`;
   }
 
   // Título
-  const titleEl = front.querySelector('[data-template="title"]');
-  titleEl.textContent = movie.title;
-  titleEl.id = "quick-view-title"; // Conectar con aria-labelledby del contenedor
-  titleEl.className = ""; // Reset clases
-  if (movie.title.length > 45) titleEl.classList.add("title-xl-long");
-  else if (movie.title.length > 25) titleEl.classList.add("title-long");
+  if (nodes.title) {
+    nodes.title.textContent = movie.title;
+    nodes.title.className = ""; // Reset clases
+    if (movie.title.length > 45) nodes.title.classList.add("title-xl-long");
+    else if (movie.title.length > 25) nodes.title.classList.add("title-long");
+  }
 
   // Director
-  const dirContainer = front.querySelector('[data-template="director"]');
-  dirContainer.textContent = "";
-  if (movie.parsedDirectors.length > 0) {
-    movie.parsedDirectors.forEach((name, i, arr) => {
-      dirContainer.appendChild(createLink(name, 'director'));
-      if (i < arr.length - 1) dirContainer.append(", ");
-    });
+  if (nodes.director) {
+    nodes.director.textContent = "";
+    if (movie.parsedDirectors.length > 0) {
+      movie.parsedDirectors.forEach((name, i, arr) => {
+        nodes.director.appendChild(createLink(name, 'director'));
+        if (i < arr.length - 1) nodes.director.append(", ");
+      });
+    }
   }
 
   // Año y País
-  front.querySelector('[data-template="year"]').textContent = movie.displayYear;
+  if (nodes.year) nodes.year.textContent = movie.displayYear;
   renderCountryFlag(
-    front.querySelector('[data-template="country-container"]'),
-    front.querySelector('[data-template="country-flag"]'),
+    nodes["country-container"],
+    nodes["country-flag"],
     movie.country_code,
     movie.country
   );
 
   // Iconos Plataforma
-  const iconsContainer = front.querySelector('.card-icons-line');
-  if (iconsContainer) {
-    iconsContainer.innerHTML = "";
+  if (nodes.iconsContainer) {
+    nodes.iconsContainer.innerHTML = "";
     const codes = movie.studioList;
     
     codes.forEach(code => {
@@ -330,7 +345,7 @@ function setupModalHeader(front, movie) {
         const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
         use.setAttribute("href", `${spriteUrl}#${conf.id}`);
         svg.appendChild(use); span.appendChild(svg);
-        iconsContainer.appendChild(span);
+        nodes.iconsContainer.appendChild(span);
       }
     });
   }
@@ -338,32 +353,33 @@ function setupModalHeader(front, movie) {
 
 /**
  * Configura los detalles extendidos del modal (Sinopsis, Reparto, etc.).
- * @param {HTMLElement} back - Cara trasera de la tarjeta.
+ * @param {Object} nodes - Diccionario de nodos UI referenciados.
  * @param {Object} movie - Datos de la película.
  */
-function setupModalDetails(back, movie) {
+function setupModalDetails(nodes, movie) {
   // Título Original
-  const origTitle = back.querySelector('.back-original-title-wrapper');
-  const actualOriginalTitle = movie.displayOriginalTitle;
-  
-  const span = origTitle.querySelector('span');
-  span.textContent = actualOriginalTitle;
-  span.className = ""; // Reset
-  if (actualOriginalTitle.length > 40) span.classList.add("title-xl-long");
-  else if (actualOriginalTitle.length > 30) span.classList.add("title-long");
-  else if (actualOriginalTitle.length > 20) span.classList.add("title-medium");
-  origTitle.hidden = false; // Siempre visible
+  if (nodes.origTitleWrap && nodes["original-title"]) {
+    const actualOriginalTitle = movie.displayOriginalTitle;
+    nodes["original-title"].textContent = actualOriginalTitle;
+    nodes["original-title"].className = ""; // Reset
+    if (actualOriginalTitle.length > 40) nodes["original-title"].classList.add("title-xl-long");
+    else if (actualOriginalTitle.length > 30) nodes["original-title"].classList.add("title-long");
+    else if (actualOriginalTitle.length > 20) nodes["original-title"].classList.add("title-medium");
+    nodes.origTitleWrap.hidden = false; // Siempre visible
+  }
 
   // Duración y Episodios
-  back.querySelector('[data-template="duration"]').textContent = formatRuntime(movie.minutes, movie.isSeries);
+  if (nodes.duration) nodes.duration.textContent = formatRuntime(movie.minutes, movie.isSeries);
   
-  const epEl = back.querySelector('[data-template="episodes"]');
-  epEl.textContent = movie.displayEpisodes;
-  epEl.hidden = !movie.displayEpisodes;
+  if (nodes.episodes) {
+    nodes.episodes.textContent = movie.displayEpisodes;
+    nodes.episodes.hidden = !movie.displayEpisodes;
+  }
 
   // Links Externos
   const setupLink = (key, url) => {
-    const el = back.querySelector(`[data-template="${key}-link"]`);
+    const el = nodes[`${key}-link`];
+    if (!el) return;
     if (url) {
       el.href = url; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
     } else {
@@ -375,31 +391,33 @@ function setupModalDetails(back, movie) {
   setupLink('wikipedia', movie.wikipedia);
 
   // Textos Largos
-  back.querySelector('[data-template="genre"]').textContent = movie.genres || "N/A";
-  back.querySelector('[data-template="synopsis"]').textContent = movie.synopsis || "N/A";
+  if (nodes.genre) nodes.genre.textContent = movie.genres || "N/A";
+  if (nodes.synopsis) nodes.synopsis.textContent = movie.synopsis || "N/A";
   
-  const critic = back.querySelector('[data-template="critic-container"]');
-  if (movie.hasCritic) {
-    critic.querySelector('[data-template="critic"]').textContent = movie.critic;
-    critic.hidden = false;
-  } else { critic.hidden = true; }
+  if (nodes["critic-container"] && nodes.critic) {
+    if (movie.hasCritic) {
+      nodes.critic.textContent = movie.critic;
+      nodes["critic-container"].hidden = false;
+    } else { 
+      nodes["critic-container"].hidden = true; 
+    }
+  }
 
   // Actores
-  const actorsCont = back.querySelector('[data-template="actors"]');
-  actorsCont.textContent = "";
-  if (movie.parsedActors.length > 0) {
-    movie.parsedActors.forEach((name, i, arr) => {
-      const actorName = name;
-      // Regla duplicada con card.js: actores ignorados no son clicables.
-      if (IGNORED_ACTORS.includes(actorName.toLowerCase())) {
-        actorsCont.append(actorName);
-      } else {
-        actorsCont.appendChild(createLink(actorName, 'actor'));
-      }
-      if (i < arr.length - 1) actorsCont.append(", ");
-    });
-  } else {
-    actorsCont.textContent = "N/A";
+  if (nodes.actors) {
+    nodes.actors.textContent = "";
+    if (movie.parsedActors.length > 0) {
+      movie.parsedActors.forEach((name, i, arr) => {
+        if (IGNORED_ACTORS.includes(name.toLowerCase())) {
+          nodes.actors.append(name);
+        } else {
+          nodes.actors.appendChild(createLink(name, 'actor'));
+        }
+        if (i < arr.length - 1) nodes.actors.append(", ");
+      });
+    } else {
+      nodes.actors.textContent = "N/A";
+    }
   }
 }
 
@@ -421,7 +439,6 @@ function populateModal(cardElement, contextCards = null) {
 
   const clone = template.cloneNode(true);
   const cardClone = clone.querySelector('.movie-card');
-  cardClone.classList.add('is-quick-view');
 
   // FIX CRÍTICO: Asignar ID y datos a la tarjeta clonada.
   // Esto permite que 'updateCardUI' (llamado por rating.js al salir del hover) encuentre la tarjeta y sus datos.
@@ -436,19 +453,12 @@ function populateModal(cardElement, contextCards = null) {
   content.movieData = movie;
   content.dataset.movieId = movie.id;
 
-  const front = clone.querySelector(".flip-card-front");
-  const back = clone.querySelector(".flip-card-back");
+  // Obtener referencias planas usando el helper
+  const nodes = getModalNodes(cardClone);
 
   // --- CAPA 1: CRÍTICA (Síncrona) ---
   // Elementos visuales principales para la primera impresión (Póster, Título, Año)
-  setupModalHeader(front, movie);
-
-  // Mover el director a la sección de detalles (back) justo después del título original
-  const dirEl = front.querySelector('[data-template="director"]');
-  const origTitleWrap = back.querySelector('.back-original-title-wrapper');
-  if (dirEl && origTitleWrap) {
-    origTitleWrap.insertAdjacentElement('afterend', dirEl);
-  }
+  setupModalHeader(nodes, movie);
 
   // Montaje
   content.textContent = "";
@@ -467,8 +477,8 @@ function populateModal(cardElement, contextCards = null) {
       // Guard clause: Asegurar que seguimos en la misma película
       if (content.dataset.movieId !== String(movie.id)) return;
       
-      setupModalDetails(back, movie);
-      setupCardRatings(back, movie); // Reutilizado de card.js
+      setupModalDetails(nodes, movie);
+      setupCardRatings(cardClone, movie); // Reutilizado de rating.js buscando en toda la tarjeta
     });
   });
 }
