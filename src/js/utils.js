@@ -410,3 +410,24 @@ export function scheduleWork(task, priority = 'user-visible') {
     idleCallback(() => resolve(task()), { timeout: 300 });
   });
 }
+
+// =================================================================
+//          7. ANIMACIONES Y TRANSICIONES (View Transitions API)
+// =================================================================
+
+/**
+ * Ejecuta un cambio de DOM con View Transitions si el navegador lo soporta
+ * y el usuario no tiene activada la preferencia de movimiento reducido (a11y).
+ */
+export function executeViewTransition(updateDomCallback) {
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  
+  if (!document.startViewTransition || prefersReducedMotion) {
+    updateDomCallback();
+    // Retornamos un "mock" de la API para que los métodos .finished y .ready no rompan el código
+    const resolved = Promise.resolve();
+    return { finished: resolved, ready: resolved, updateCallbackDone: resolved };
+  }
+  
+  return document.startViewTransition(updateDomCallback);
+}

@@ -8,7 +8,7 @@
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { setupCardRatings } from "./rating.js";
-import { formatRuntime, createElement, renderCountryFlag } from "../utils.js"; 
+import { formatRuntime, createElement, renderCountryFlag, executeViewTransition } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 
@@ -49,7 +49,10 @@ let activeHeroCard = null;
 
 const SWIPE_X_THRESHOLD = 80;
 const SWIPE_Y_CLOSE_THRESHOLD = 120;
-const MODAL_TRANSITION_MS = 300;
+const MODAL_TRANSITION_MS = 400;
+
+// Contador para evitar race conditions al modificar el view-transition del header
+let modalTransitionCount = 0;
 
 // =================================================================
 //          1. GESTIÓN DE EVENTOS (Navegación y Cierre)
@@ -481,6 +484,11 @@ export function closeModal() {
   const { modal, overlay } = getDom();
   if (!modal.classList.contains("is-visible")) return;
   
+  // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
+  const header = document.querySelector(".main-header");
+  modalTransitionCount++;
+  if (header) header.style.viewTransitionName = "none";
+
   const performClose = () => {
     modal.classList.remove("is-visible");
     overlay.classList.remove("is-visible");
@@ -491,26 +499,28 @@ export function closeModal() {
     closeAccessibleModal(modal, overlay);
   };
 
-  // View Transition (Hero Reverso: Modal -> Card)
-  if (document.startViewTransition && activeHeroCard) {
-    // 1. Asegurar que el modal tiene el nombre
+  // View Transition (Hero Reverso: Modal -> Card). El helper maneja el fallback y el a11y.
+  if (activeHeroCard) {
     modal.style.viewTransitionName = "hero-expansion";
-    // 2. Asegurar que la tarjeta original tiene el nombre (por si se perdió en virtualización)
     activeHeroCard.style.viewTransitionName = "hero-expansion";
 
-    const transition = document.startViewTransition(() => {
-      // 3. En el nuevo estado, el modal desaparece y la tarjeta es visible
-      modal.style.viewTransitionName = ""; // Quitar nombre al modal para que el navegador busque la tarjeta
+    const transition = executeViewTransition(() => {
+      modal.style.viewTransitionName = ""; 
       performClose();
     });
 
-    // 4. Limpieza final tras la animación
     transition.finished.finally(() => {
       if (activeHeroCard) activeHeroCard.style.viewTransitionName = "";
       activeHeroCard = null;
+      
+      modalTransitionCount--;
+      if (modalTransitionCount === 0 && header) header.style.viewTransitionName = "";
     });
   } else {
-    performClose();
+    executeViewTransition(performClose).finished.finally(() => {
+      modalTransitionCount--;
+      if (modalTransitionCount === 0 && header) header.style.viewTransitionName = "";
+    });
   }
 
   document.removeEventListener("click", handleOutsideClick);
@@ -525,6 +535,11 @@ export function openModal(cardElement, contextCards = null) {
   if (!cardElement) return;
   const { modal, overlay, content } = getDom();
   
+  // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
+  const header = document.querySelector(".main-header");
+  modalTransitionCount++;
+  if (header) header.style.viewTransitionName = "none";
+
   // Guardar referencia para el cierre
   activeHeroCard = cardElement;
 
@@ -542,18 +557,18 @@ export function openModal(cardElement, contextCards = null) {
     });
   };
 
-  // View Transition (Hero: Card -> Modal)
-  if (document.startViewTransition) {
-    cardElement.style.viewTransitionName = "hero-expansion";
-    
-    document.startViewTransition(() => {
-      performOpen();
-      modal.style.viewTransitionName = "hero-expansion"; // El modal adopta la identidad
-      cardElement.style.viewTransitionName = ""; // La tarjeta cede la identidad
-    });
-  } else {
+  cardElement.style.viewTransitionName = "hero-expansion";
+  
+  const transition = executeViewTransition(() => {
     performOpen();
-  }
+    modal.style.viewTransitionName = "hero-expansion"; 
+    cardElement.style.viewTransitionName = ""; 
+  });
+
+  transition.finished.finally(() => {
+    modalTransitionCount--;
+    if (modalTransitionCount === 0 && header) header.style.viewTransitionName = "";
+  });
 }
 
 /**

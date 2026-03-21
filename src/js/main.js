@@ -1,7 +1,7 @@
 // src/js/main.js
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, STUDIO_DATA, FILTER_CONFIG } from "./constants.js";
-import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore, normalizeText } from "./utils.js";
+import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore, normalizeText, executeViewTransition } from "./utils.js";
 import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, hasActiveMeaningfulFilters, setUserMovieData, clearUserMovieData, syncStateWithUrlParams, stateToUrlParams } from "./state.js";
@@ -19,9 +19,6 @@ async function loadSidebar() {
     return sidebarModule;
   } catch (e) { console.error("Error loading sidebar", e); }
 }
-
-// Detección de soporte View Transitions (Constante)
-const SUPPORTS_VIEW_TRANSITIONS = !!document.startViewTransition;
 
 // Helper para Code Splitting (Lazy Load de Card Component)
 const loadCardModule = () => import("./components/card.js");
@@ -110,9 +107,8 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       window.scrollTo({ top: 0, behavior: "auto" });
     };
 
-    // Usar View Transitions API si está disponible para suavidad nativa
-    if (SUPPORTS_VIEW_TRANSITIONS) document.startViewTransition(performRender);
-    else performRender();
+    // Usar API de View Transitions (con fallback seguro y soporte a11y)
+    executeViewTransition(performRender);
 
   } catch (error) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error

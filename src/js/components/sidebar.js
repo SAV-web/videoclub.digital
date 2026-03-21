@@ -12,7 +12,7 @@
 import noUiSlider from 'nouislider';
 import 'nouislider/dist/nouislider.css'; 
 import { CONFIG } from "../constants.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText } from "../utils.js";
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
   fetchRandomTopActors, fetchRandomTopDirectors
@@ -21,7 +21,7 @@ import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS } from "../constants.js";
-import { showToast, clearAllSidebarAutocomplete } from "../ui.js"; 
+import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
 
@@ -343,8 +343,7 @@ function toggleRotationMode(forceState = null) {
     loadAndRenderMovies(newPage, { forceSkeleton: true });
   };
 
-  if (document.startViewTransition) document.startViewTransition(() => updateState());
-  else updateState();
+  executeViewTransition(updateState);
 
   triggerPopAnimation(button);
 }
@@ -362,7 +361,7 @@ function initPinchGestures() {
 
   // FIX: Usar target (wrapper) en lugar de window para limitar el alcance del bloqueo
   target.addEventListener('click', (e) => {
-    if ("gestureCooldown" in document.body.dataset) {
+    if (areInteractionsLocked()) {
       if (e.target.closest('.movie-card, .grid-container')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
@@ -376,12 +375,7 @@ function initPinchGestures() {
 
   // Owner del cooldown global: Sidebar gestiona la creación del estado de bloqueo
   const activateCooldown = () => {
-    document.body.dataset.gestureCooldown = "true";
-    if (cooldownTimer) clearTimeout(cooldownTimer);
-    cooldownTimer = setTimeout(() => {
-      delete document.body.dataset.gestureCooldown;
-      cooldownTimer = null;
-    }, 800); 
+    lockGlobalInteractions(800);
   };
 
   target.addEventListener('touchstart', (e) => {

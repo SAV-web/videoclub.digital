@@ -449,3 +449,27 @@ export function updateMobileStatusBar() {
 
   mobileStatusBar.textContent = text;
 }
+
+// =================================================================
+//          5. GESTIÓN DE INTERACCIONES GLOBALES (UX STATE)
+// =================================================================
+
+let interactionsLocked = false;
+let interactionLockTimer = null;
+
+/**
+ * Bloquea temporalmente las interacciones globales (clics, taps).
+ * Útil durante gestos complejos (como pinch-to-zoom) para evitar clics accidentales.
+ */
+export function lockGlobalInteractions(duration = 800) {
+  interactionsLocked = true;
+  if (interactionLockTimer) clearTimeout(interactionLockTimer);
+  interactionLockTimer = setTimeout(() => {
+    interactionsLocked = false;
+    interactionLockTimer = null;
+  }, duration);
+}
+
+export function areInteractionsLocked() {
+  return interactionsLocked;
+}

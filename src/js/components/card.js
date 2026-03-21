@@ -4,7 +4,7 @@ import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } fr
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, isMovieSeries, formatYearRange, getHqPosterUrl } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
-import { showToast } from "../ui.js";
+import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import spriteUrl from "../../sprite.svg";
 
@@ -253,9 +253,9 @@ async function toggleWatchlist(movieId, btn, card) {
 }
 
 export function handleCardClick(event) {
-  // Contrato Global: Respetar el cooldown de gestos gestionado por sidebar.js
+  // Contrato Global: Respetar el cooldown de gestos
   // (Evita clicks accidentales durante pinch-to-zoom o swipes globales)
-  if ("gestureCooldown" in document.body.dataset) { event.preventDefault(); event.stopPropagation(); return; }
+  if (areInteractionsLocked()) { event.preventDefault(); event.stopPropagation(); return; }
 
   const card = this;
   const target = event.target;

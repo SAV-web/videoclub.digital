@@ -14,18 +14,18 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-index-overlay);
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.42);
   
   /* Efecto Frost: Nota - Puede ser costoso en móviles gama baja */
-  backdrop-filter: blur(10px) saturate(50%);
-  -webkit-backdrop-filter: blur(10px) saturate(50%);
+  backdrop-filter: blur(6px) saturate(85%);
+  -webkit-backdrop-filter: blur(6px) saturate(85%);
   
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   
   /* Optimización: Transición suave solo de propiedades visuales */
-  transition: opacity 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
+  transition: opacity 0.4s ease, visibility 0s linear 0.4s;
 
   &.is-visible {
     opacity: 1;
@@ -43,7 +43,7 @@
   background-color: var(--color-surface-2);
   
   /* Sombras estratificadas para profundidad realista sobre overlay oscuro */
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.1);
   html.dark-mode & {
     /* Elevación dramática + Borde sutil luminoso */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
@@ -57,8 +57,8 @@
   
   /* Transición unificada */
   transition: 
-    opacity 0.4s var(--ease-snap), 
-    transform 0.4s var(--ease-snap), 
+    opacity 0.35s ease, 
+    transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), 
     visibility 0s linear 0.4s;
   will-change: transform, opacity; /* Optimización: Promueve a capa GPU */
     
@@ -79,7 +79,7 @@
 /* --- View Transition: Hero Effect --- */
 ::view-transition-group(hero-expansion) {
   animation-duration: 0.4s;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* =================================================================
@@ -375,8 +375,8 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
 @media (max-width: 700px) {
   /* Reducir blur para rendimiento */
   .quick-view-overlay {
-    backdrop-filter: blur(6px) saturate(50%);
-    -webkit-backdrop-filter: blur(6px) saturate(50%);
+    backdrop-filter: blur(4px) saturate(85%);
+    -webkit-backdrop-filter: blur(4px) saturate(85%);
   }
 
   .quick-view-modal {
@@ -385,12 +385,13 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     height: 92dvh; max-height: 92dvh;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     
-    transform: translate(-50%, 100%); /* Inicial: Abajo */
+    /* Móvil: Empieza más pequeño (lejos) y ligeramente abajo */
+    transform: translate(-50%, 30px) scale(0.94);
     
-    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: opacity 0.35s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   
-  .quick-view-modal.is-visible { transform: translate(-50%, 0); }
+  .quick-view-modal.is-visible { transform: translate(-50%, 0) scale(1); }
   
   .is-quick-view .flip-card-inner { flex-direction: column; }
   
@@ -448,7 +449,8 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     max-height: 92vh; height: auto;
     border-radius: var(--radius-xl);
     
-    transform: translate(-50%, -50%) scale(0.95); /* Inicial */
+    /* Escritorio: Emerge claramente desde el fondo (escala 0.92) y un poco abajo */
+    transform: translate(-50%, calc(-50% + 15px)) scale(0.92);
   }
   
   .quick-view-modal.is-visible { transform: translate(-50%, -50%) scale(1); }
@@ -571,7 +573,7 @@ html.dark-mode .modal-nav-btn { background: rgba(40, 40, 40, 0.9); }
     /* Menos blur para rendimiento en móviles, compensado con más opacidad */
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
-    background-color: rgba(0, 0, 0, 0.75);
+    background-color: rgba(0, 0, 0, 0.5);
   }
 }
 

@@ -187,7 +187,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
           synopsis, thumbhash_st, critic, last_synced_at, 
           episodes, wikipedia, selections_list, studios_list, justwatch,
           countries(name, code)
-        `, { count: 'exact' })
+        `, requestCount ? { count: 'exact' } : {})
         .in('id', relevantIds);
 
       // Filtro Tipo
@@ -228,7 +228,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
         return mapMoviePayload(item);
       });
 
-      return { total: count || 0, items };
+      return { total: requestCount ? (count || 0) : -1, items };
     })();
   }
 
