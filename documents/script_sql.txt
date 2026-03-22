@@ -119,7 +119,8 @@ BEGIN
             wikipedia = NEW.wikipedia,
             relevance = NEW.relevance,
             studio = NEW.studio,
-            justwatch = NEW.justwatch
+            justwatch = NEW.justwatch,
+            show = NEW.show
         WHERE image = NEW.image;
         
         -- Retornamos NULL para cancelar la inserción original y evitar el error de PK
@@ -646,7 +647,7 @@ BEGIN
             s.genre, s.directors, s.actors, s.collection, s.studio
         FROM public.movies_staging s
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
-        WHERE s.image IS NOT NULL AND TRIM(s.image) <> ''
+        WHERE s.image IS NOT NULL AND TRIM(s.image) <> '' AND s.show = 'S'
         ON CONFLICT (image) DO UPDATE SET
             relevance = EXCLUDED.relevance, title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,

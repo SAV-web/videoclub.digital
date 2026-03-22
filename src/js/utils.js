@@ -8,8 +8,21 @@ import flagSpriteUrl from "../flags.svg";
 //          REGLAS DE NEGOCIO (Domain Logic / Contracts)
 // =================================================================
 
+/**
+ * Comprueba si el tipo de medio corresponde a una serie.
+ * @param {string} type - Tipo de medio (ej. 'S', 'S-MINI')
+ * @returns {boolean}
+ */
 export const isMovieSeries = (type) => Boolean(type && String(type).toUpperCase().startsWith("S"));
 
+/**
+ * Formatea el rango de años de una obra.
+ * @param {string|number} year - Año de inicio
+ * @param {string|number} yearEnd - Año de fin (para series)
+ * @param {boolean} isSeries - Si es serie o película
+ * @param {string} fallback - Texto a mostrar si no hay año
+ * @returns {string} Rango formateado (ej. "2010-15")
+ */
 export const formatYearRange = (year, yearEnd, isSeries, fallback = "N/A") => {
   let text = year ? String(year) : fallback;
   if (isSeries && yearEnd) {
@@ -18,11 +31,21 @@ export const formatYearRange = (year, yearEnd, isSeries, fallback = "N/A") => {
   return text;
 };
 
+/**
+ * Genera la URL completa hacia el póster en alta calidad en Supabase.
+ * @param {string} imagePath - Identificador de la imagen
+ * @returns {string}
+ */
 export const getHqPosterUrl = (imagePath) => {
   if (!imagePath || imagePath === ".") return "";
   return `${CONFIG.POSTER_BASE_URL}${imagePath}.webp`;
 };
 
+/**
+ * Mapea el payload crudo de la API a un objeto enriquecido para el Frontend.
+ * @param {Object} movie - Objeto crudo de la base de datos
+ * @returns {Object} Objeto enriquecido y formateado
+ */
 export function mapMoviePayload(movie) {
   if (!movie) return movie;
   const isSeries = isMovieSeries(movie.type);
@@ -52,7 +75,7 @@ const compactFormatter = new Intl.NumberFormat('es-ES', { notation: "compact", m
 const thousandsFormatter = new Intl.NumberFormat('de-DE'); // Coherencia de locale (usa puntos para miles igual)
 
 /**
- * Formatea votos con reglas específicas por plataforma.
+ * Formatea votos con reglas específicas por plataforma para UI (Ej: 1,5 M, 251 k).
  * @param {number|string} votes
  * @param {string} [platform] - 'imdb' o 'fa' para aplicar redondeo específico.
  */
@@ -95,6 +118,12 @@ export const formatVotesUnified = (votes, platform) => {
   return thousandsFormatter.format(numVotes);
 };
 
+/**
+ * Convierte los minutos a un formato de horas y minutos amigable.
+ * @param {string|number} minutesString 
+ * @param {boolean} useShortLabel - Si es true devuelve "120'"
+ * @returns {string} Ej: "2h 30min"
+ */
 export const formatRuntime = (minutesString, useShortLabel = false) => {
   const minutes = +minutesString; // Conversión unaria rápida
   // Validación robusta: Evitar NaN, Infinity o valores <= 0
@@ -109,14 +138,23 @@ export const formatRuntime = (minutesString, useShortLabel = false) => {
   return h > 0 ? `${h}h ${m}min` : `${m}min`;
 };
 
-// Normalización de texto (Memoización opcional si se llamara mucho, por ahora simple)
+/**
+ * Normaliza texto eliminando acentos y mayúsculas para búsquedas y comparaciones.
+ * @param {string} text 
+ * @returns {string}
+ */
 export const normalizeText = (text) => {
   if (!text) return "";
   // Eliminamos reemplazos específicos de género para evitar efectos secundarios en nombres (ej: "Juan Negro" -> "Juan Noir")
   return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 };
 
-// Normalización ESPECÍFICA para Géneros (Sinónimos y Mapeos)
+/**
+ * Normalización ESPECÍFICA para Géneros.
+ * Mapea sinónimos comunes hacia un slug único (ej: "ciencia ficcion" -> "scifi").
+ * @param {string} text 
+ * @returns {string}
+ */
 export const normalizeGenreText = (text) => {
   if (!text) return "";
   let norm = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -178,7 +216,13 @@ export const normalizeGenreText = (text) => {
   return norm.trim();
 };
 
-// Resaltado de texto (Optimizado con DocumentFragment)
+/**
+ * Resalta de forma insensible a mayúsculas y acentos un término de búsqueda.
+ * Utiliza un DocumentFragment para máximo rendimiento en renderizado.
+ * @param {string} text - Texto original
+ * @param {string} searchTerm - Término a buscar
+ * @returns {Node} Nodo de texto o Fragmento con el término resaltado en <strong>
+ */
 export const highlightAccentInsensitive = (text, searchTerm) => {
   if (!text) return document.createTextNode("");
   if (!searchTerm) return document.createTextNode(text);
@@ -201,6 +245,10 @@ export const highlightAccentInsensitive = (text, searchTerm) => {
   return fragment;
 };
 
+/**
+ * Capitaliza la primera letra de cada palabra.
+ * @param {string} str 
+ */
 export const capitalizeWords = (str) => {
   if (!str) return "";
   return str.replace(/\b\w/g, l => l.toUpperCase());
@@ -210,7 +258,13 @@ export const capitalizeWords = (str) => {
 //          2. CONTROL DE FLUJO Y RED
 // =================================================================
 
-// Debounce mejorado con método .cancel()
+/**
+ * Limita la frecuencia de ejecución de una función.
+ * Incluye un método .cancel() para abortar ejecuciones pendientes.
+ * @param {Function} func - Función a ejecutar
+ * @param {number} delay - Retraso en milisegundos
+ * @returns {Function} Función debounced
+ */
 export const debounce = (func, delay) => {
   let timeout;
   const debounced = function (...args) {
@@ -222,6 +276,11 @@ export const debounce = (func, delay) => {
   return debounced;
 };
 
+/**
+ * Transforma un error técnico en un mensaje amigable para el usuario.
+ * @param {Error} error 
+ * @returns {string|null}
+ */
 export function getFriendlyErrorMessage(error) {
   if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
     return "Error de conexión. Comprueba tu internet.";
@@ -233,6 +292,11 @@ export function getFriendlyErrorMessage(error) {
 // Gestor de Peticiones (Request Manager)
 const requestControllers = new Map();
 
+/**
+ * Crea o reinicia un AbortController para cancelar peticiones previas redundantes.
+ * @param {string} key - Identificador de la petición
+ * @returns {AbortController}
+ */
 export function createAbortableRequest(key) {
   const existing = requestControllers.get(key);
   if (existing) {
@@ -250,7 +314,13 @@ export function createAbortableRequest(key) {
 //          3. MANIPULACIÓN DEL DOM (OPTIMIZADA)
 // =================================================================
 
-// Renderizado de Banderas (SVG Sprite)
+/**
+ * Inyecta el SVG de la bandera de un país de forma segura mediante sprites.
+ * @param {HTMLElement} container - Contenedor a mostrar/ocultar
+ * @param {HTMLElement} flagSpan - Elemento donde inyectar el SVG
+ * @param {string} countryCode - Código ISO del país
+ * @param {string} countryName - Nombre para el atributo title (accesibilidad)
+ */
 export function renderCountryFlag(container, flagSpan, countryCode, countryName = "") {
   if (!container || !flagSpan) return;
   
@@ -274,39 +344,41 @@ export function renderCountryFlag(container, flagSpan, countryCode, countryName 
   }
 }
 
-// Creador de elementos (Optimizado)
-export function createElement(tag, options = {}) {
+/**
+ * Creador de elementos DOM hiper-optimizado.
+ * Destructura las propiedades especiales para poder hacer asignación directa del resto.
+ * @param {string} tag - Etiqueta HTML (div, span, etc.)
+ * @param {Object} options - Propiedades, atributos y dataset
+ * @returns {HTMLElement}
+ */
+export function createElement(tag, { dataset, attributes, style, ...props } = {}) {
   const element = document.createElement(tag);
   
-  // Asignación directa es más rápida que Object.entries para propiedades conocidas
-  if (options.className) element.className = options.className;
-  if (options.textContent) element.textContent = options.textContent;
-  if (options.innerHTML) element.innerHTML = options.innerHTML;
-  
-  // Dataset y Atributos (si existen)
-  if (options.dataset) {
-    const keys = Object.keys(options.dataset);
-    for (let i = 0; i < keys.length; i++) {
-      element.dataset[keys[i]] = options.dataset[keys[i]];
-    }
+  // Asignación ultra-rápida de propiedades nativas (className, textContent, id, etc.)
+  for (const key in props) {
+    element[key] = props[key];
   }
   
-  if (options.attributes) {
-    const keys = Object.keys(options.attributes);
-    for (let i = 0; i < keys.length; i++) {
-      element.setAttribute(keys[i], options.attributes[keys[i]]);
-    }
+  // Corrección: Soporte seguro para estilos inline pasados como string
+  if (style) element.style.cssText = style;
+  
+  // Dataset (data-*)
+  if (dataset) {
+    for (const key in dataset) element.dataset[key] = dataset[key];
   }
   
-  // Resto de propiedades (eventos, id, etc.)
-  if (options.id) element.id = options.id;
-  if (options.type) element.type = options.type;
-  if (options.href) element.href = options.href;
-  if (options.src) element.src = options.src;
+  // Atributos genéricos (role, aria-*, etc.)
+  if (attributes) {
+    for (const key in attributes) element.setAttribute(key, attributes[key]);
+  }
   
   return element;
 }
 
+/**
+ * Dispara una animación de 'pop' CSS forzando un reflow si es necesario.
+ * @param {HTMLElement} element 
+ */
 export const triggerPopAnimation = (element) => {
   if (!element) return;
   
@@ -323,7 +395,11 @@ export const triggerPopAnimation = (element) => {
   element.addEventListener("animationend", () => element.classList.remove("pop-animation"), { once: true });
 };
 
-// Lazy Loading Prioritario (LCP)
+/**
+ * Inyecta un `<link rel="preload">` dinámico para la imagen principal (LCP).
+ * Mejora radicalmente las métricas de Core Web Vitals.
+ * @param {Object} movieData 
+ */
 export function preloadLcpImage(movieData) {
   if (!movieData) return;
   
@@ -348,6 +424,11 @@ export function preloadLcpImage(movieData) {
 
 const canVibrate = "vibrate" in navigator;
 
+/**
+ * Dispara vibraciones hápticas nativas en móviles.
+ * Respeta la configuración de accesibilidad del usuario.
+ * @param {string} style - Intensidad ('light', 'medium', 'success')
+ */
 export function triggerHapticFeedback(style = "light") {
   if (!canVibrate) return;
   
@@ -367,6 +448,10 @@ export function triggerHapticFeedback(style = "light") {
 //          5. STORAGE SEGURO (VERSIONADO)
 // =================================================================
 
+/**
+ * Envoltorio seguro para localStorage con control de versiones.
+ * Previene errores de parseo y vacía cachés incompatibles automáticamente.
+ */
 export const LocalStore = {
   get(key) {
     try {
@@ -400,6 +485,13 @@ export const LocalStore = {
 //          6. SCHEDULING (Rendimiento)
 // =================================================================
 
+/**
+ * Programa una tarea pesada dividiendo la carga de trabajo en el hilo principal.
+ * Usa la moderna API Scheduler si está disponible, con fallback a requestIdleCallback.
+ * @param {Function} task - Tarea a ejecutar
+ * @param {string} priority - Prioridad ('user-visible', 'background', etc.)
+ * @returns {Promise}
+ */
 export function scheduleWork(task, priority = 'user-visible') {
   if ('scheduler' in window && window.scheduler.postTask) {
     return window.scheduler.postTask(task, { priority });

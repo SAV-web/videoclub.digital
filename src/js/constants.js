@@ -53,10 +53,14 @@ export const CONFIG = Object.freeze({
   STORAGE_VERSION: 1, 
 });
 
-// Listas estáticas
+/**
+ * Listas estáticas globales
+ */
 export const IGNORED_ACTORS = Object.freeze(["(a)", "animación", "animacion", "documental"]);
 
-// Regiones Geopolíticas (Virtuales)
+/**
+ * Regiones Geopolíticas (Virtuales para filtrado compuesto)
+ */
 export const REGIONAL_GROUPS = Object.freeze({
   NORDICS: {
     label: "Nordic",
@@ -81,9 +85,7 @@ export const DEFAULTS = Object.freeze({
 export const CSS_CLASSES = Object.freeze({
   ACTIVE: "active",
   DISABLED: "disabled",
-  IS_FLIPPED: "is-flipped",
   IS_SCROLLED: "is-scrolled",
-  SHOW: "show",
   SIDEBAR_OPEN: "sidebar-is-open",
   
   // Global Body States (Contratos de UI)
@@ -101,7 +103,6 @@ export const CSS_CLASSES = Object.freeze({
   MOVIE_CARD: "movie-card",
   FILTER_PILL_REMOVE_BTN: "remove-filter-btn",
   SIDEBAR_AUTOCOMPLETE_ITEM: "sidebar-autocomplete-item",
-  AUTOCOMPLETE_ITEM: "autocomplete-item",
   
   // Tipos
   TYPE_FILTER_MOVIES: "type-filter--movies",
