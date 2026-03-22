@@ -11,7 +11,7 @@
 import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
 import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest, normalizeText, normalizeGenreText, mapMoviePayload } from "./utils.js";
+import { createAbortableRequest, mapMoviePayload } from "./utils.js";
 import { getUserDataForMovie, getAllUserMovieData } from "./state.js";
 
 // Inicialización del cliente Supabase
@@ -20,6 +20,9 @@ import { getUserDataForMovie, getAllUserMovieData } from "./state.js";
 // Si no (PROD sin config), usamos un Mock que falla controladamente al usarse.
 const sbUrl = CONFIG.SUPABASE_URL;
 const sbKey = CONFIG.SUPABASE_ANON_KEY;
+
+// Set estático para normalizar caché (Campos de texto libre)
+const CANONICAL_TEXT_FIELDS = new Set(['searchTerm', 'genre', 'country', 'director', 'actor', 'excludedGenres', 'excludedCountries']);
 
 // Helper para error de configuración (Mock unificado)
 const notConfiguredError = () => Promise.reject(new Error("Supabase no configurado (Faltan credenciales)"));
@@ -80,8 +83,6 @@ const isAbort = (error, signal) =>
  */
 function createCanonicalCacheKey(filters, page, pageSize) {
   const normalizedFilters = {};
-  // Solo normalizar campos de texto libre donde el casing no importa
-  const textFields = new Set(['searchTerm', 'genre', 'country', 'director', 'actor', 'excludedGenres', 'excludedCountries']);
 
   Object.keys(filters).sort().forEach((key) => {
       const value = filters[key];
@@ -90,7 +91,7 @@ function createCanonicalCacheKey(filters, page, pageSize) {
       const isNonEmptyArray = Array.isArray(value) && value.length > 0;
       
       if (hasValue && (!Array.isArray(value) || isNonEmptyArray)) {
-        if (textFields.has(key)) {
+        if (CANONICAL_TEXT_FIELDS.has(key)) {
           // Normalización segura (Trim + Lowercase) solo para texto
           if (typeof value === 'string') {
             normalizedFilters[key] = value.trim().toLowerCase();
@@ -160,115 +161,98 @@ const inFlightRequests = new Map();
  * @param {boolean} requestCount - Si se debe pedir el conteo total (caro).
  */
 export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true) {
-  // --- MODO: MI LISTA (Client-Side Pagination de IDs) ---
-  if (activeFilters.myList) {
-    return (async () => {
-      const allUserData = getAllUserMovieData();
-      // Filtrar IDs relevantes: Watchlist=true OR Rating != null
-      const relevantIds = Object.entries(allUserData)
-        .filter(([_, data]) => {
-          if (activeFilters.myList === 'rated') return data.rating !== null;
-          if (activeFilters.myList === 'watchlist') return data.onWatchlist;
-          return data.onWatchlist || data.rating !== null; // 'mixed'
-        })
-        .map(([id]) => parseInt(id, 10));
-
-      if (relevantIds.length === 0) {
-        return { total: 0, items: [] };
-      }
-
-      let query = supabase
-        .from('movies')
-        .select(`
-          id, title, original_title, year, year_end, type, 
-          genres:genres_list, directors:directors_list, actors:actors_list, 
-          minutes, image, fa_id, fa_rating, fa_votes, 
-          imdb_id, imdb_rating, imdb_votes, avg_rating, 
-          synopsis, thumbhash_st, critic, last_synced_at, 
-          episodes, wikipedia, selections_list, studios_list, justwatch,
-          countries(name, code)
-        `, requestCount ? { count: 'exact' } : {})
-        .in('id', relevantIds);
-
-      // Filtro Tipo
-      if (activeFilters.mediaType === 'movies') {
-        query = query.or('type.is.null,type.eq.D,type.eq.A');
-      } else if (activeFilters.mediaType === 'series') {
-        query = query.ilike('type', 'S%');
-      }
-
-      // Ordenación
-      const [sortField, sortDirection] = (activeFilters.sort || "relevance,asc").split(",");
-      if (sortField === 'relevance') {
-        query = query.order('relevance', { ascending: true });
-      } else {
-        query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
-      }
-
-      // Paginación
-      const start = (currentPage - 1) * pageSize;
-      const end = start + pageSize - 1;
-      
-      const { data, error, count } = await query.range(start, end);
-
-      if (error) throw error;
-      
-      const items = (data || []).map(m => {
-        const isSeries = m.type && String(m.type).toLowerCase().startsWith('s');
-        const item = {
-          ...m,
-          original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
-          year_end: isSeries ? m.year_end : null,
-          episodes: isSeries ? m.episodes : null,
-          country: m.countries?.name || null,
-          country_code: m.countries?.code || null,
-          last_synced_at: m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null
-        };
-        delete item.countries;
-        return mapMoviePayload(item);
-      });
-
-      return { total: requestCount ? (count || 0) : -1, items };
-    })();
-  }
-
   // Incluimos requestCount en la clave porque el resultado varía (total vs -1)
   const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount }, currentPage, pageSize);
 
-  const cached = queryCache.get(queryKey);
-  if (cached) {
-    return Promise.resolve(cached);
+  // Caché: Solo para catálogo general. 'Mi Lista' depende de datos mutables locales y no se cachea aquí.
+  if (!activeFilters.myList) {
+    const cached = queryCache.get(queryKey);
+    if (cached) return Promise.resolve(cached);
   }
 
-  // Deduplicación: Si ya hay una petición idéntica en curso, reutilizamos su promesa
+  // Deduplicación (Race Condition Safety): Unificada para todos los modos
   const inFlightPromise = inFlightRequests.get(queryKey);
   if (inFlightPromise) return inFlightPromise;
 
   const promise = (async () => {
     try {
-      const rpcParams = stateToRpcParams(activeFilters, currentPage, pageSize, requestCount);
-      
-      let query = supabase.rpc("search_movies_offset", rpcParams);
-      if (signal) {
-        query = query.abortSignal(signal);
+      // --- MODO 1: MI LISTA (Filtrado de IDs locales) ---
+      if (activeFilters.myList) {
+        const allUserData = getAllUserMovieData();
+        const relevantIds = Object.entries(allUserData)
+          .filter(([_, data]) => {
+            if (activeFilters.myList === 'rated') return data.rating !== null;
+            if (activeFilters.myList === 'watchlist') return data.onWatchlist;
+            return data.onWatchlist || data.rating !== null;
+          })
+          .map(([id]) => parseInt(id, 10));
+
+        if (relevantIds.length === 0) return { total: 0, items: [] };
+
+        let query = supabase
+          .from('movies')
+          .select(`
+            id, title, original_title, year, year_end, type, 
+            genres:genres_list, directors:directors_list, actors:actors_list, 
+            minutes, image, fa_id, fa_rating, fa_votes, 
+            imdb_id, imdb_rating, imdb_votes, avg_rating, 
+            synopsis, thumbhash_st, critic, last_synced_at, 
+            episodes, wikipedia, selections_list, studios_list, justwatch,
+            countries(name, code)
+          `, requestCount ? { count: 'exact' } : {})
+          .in('id', relevantIds);
+
+        // Soporte completo de AbortController para evitar promesas colgadas al cambiar de vista
+        if (signal) query = query.abortSignal(signal);
+
+        if (activeFilters.mediaType === 'movies') query = query.or('type.is.null,type.eq.D,type.eq.A');
+        else if (activeFilters.mediaType === 'series') query = query.ilike('type', 'S%');
+
+        const [sortField, sortDirection] = (activeFilters.sort || "relevance,asc").split(",");
+        if (sortField === 'relevance') query = query.order('relevance', { ascending: true });
+        else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
+
+        const start = (currentPage - 1) * pageSize;
+        const { data, error, count } = await query.range(start, start + pageSize - 1);
+
+        if (error) {
+          if (isAbort(error, signal)) return { aborted: true, items: [], total: -1 };
+          throw error;
+        }
+
+        const items = (data || []).map(m => {
+          const isSeries = m.type && String(m.type).toLowerCase().startsWith('s');
+          const item = {
+            ...m,
+            original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
+            year_end: isSeries ? m.year_end : null,
+            episodes: isSeries ? m.episodes : null,
+            country: m.countries?.name || null,
+            country_code: m.countries?.code || null,
+            last_synced_at: m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null
+          };
+          delete item.countries;
+          return mapMoviePayload(item);
+        });
+
+        return { total: requestCount ? (count || 0) : -1, items };
       }
+      
+      // --- MODO 2: CATÁLOGO GENERAL (RPC) ---
+      const rpcParams = stateToRpcParams(activeFilters, currentPage, pageSize, requestCount);
+      let query = supabase.rpc("search_movies_offset", rpcParams);
+      if (signal) query = query.abortSignal(signal);
 
       const { data, error } = await query;
 
       if (error) {
-        if (isAbort(error, signal)) {
-            return { aborted: true, items: [], total: -1 };
-        }
+        if (isAbort(error, signal)) return { aborted: true, items: [], total: -1 };
         console.error("[API] Error RPC Supabase:", error);
         throw new Error("Error de base de datos al obtener películas.");
       }
 
       const result = { total: data?.total ?? -1, items: (data?.items || []).map(mapMoviePayload) };
-      
-      if (!signal?.aborted) {
-        queryCache.set(queryKey, result);
-      }
-      
+      if (!signal?.aborted) queryCache.set(queryKey, result);
       return result;
 
     } catch (error) {

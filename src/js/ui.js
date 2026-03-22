@@ -12,51 +12,63 @@ import { getActiveFilters, getState, hasActiveMeaningfulFilters } from "./state.
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
 const domCache = {};
-const domQueries = {
-  gridContainer: () => document.querySelector(SELECTORS.GRID_CONTAINER),
-  paginationContainer: () => document.querySelector(SELECTORS.PAGINATION_CONTAINER),
-  searchForm: () => document.querySelector(SELECTORS.SEARCH_FORM),
-  searchInput: () => document.querySelector(SELECTORS.SEARCH_INPUT),
-  sortSelect: () => document.querySelector(SELECTORS.SORT_SELECT),
-  themeToggleButton: () => document.querySelector(SELECTORS.THEME_TOGGLE),
-  sidebarOverlay: () => document.querySelector(SELECTORS.SIDEBAR_OVERLAY),
-  sidebar: () => document.getElementById("sidebar"),
-  typeFilterToggle: () => document.querySelector(SELECTORS.TYPE_FILTER_TOGGLE),
-  headerPrevBtn: () => document.querySelector(SELECTORS.HEADER_PREV_BTN),
-  headerNextBtn: () => document.querySelector(SELECTORS.HEADER_NEXT_BTN),
-  autocompleteResults: () => document.querySelector(SELECTORS.AUTOCOMPLETE_RESULTS),
-  mainHeader: () => document.querySelector(".main-header"),
-  clearFiltersBtn: () => document.querySelector(SELECTORS.CLEAR_FILTERS_BTN),
-  authModal: () => document.getElementById("auth-modal"),
-  authOverlay: () => document.getElementById("auth-overlay"),
-  loginButton: () => document.getElementById("login-button"),
-  toastContainer: () => document.querySelector(SELECTORS.TOAST_CONTAINER),
-  mobileSidebarToggle: () => document.getElementById("mobile-sidebar-toggle"),
-  mobileStatusBar: () => document.getElementById("mobile-status-bar"),
+/**
+ * Mapa de selectores para el Proxy del DOM.
+ * Almacena strings en lugar de funciones para ahorrar memoria (sin closures).
+ */
+const domSelectors = {
+  gridContainer: SELECTORS.GRID_CONTAINER,
+  paginationContainer: SELECTORS.PAGINATION_CONTAINER,
+  searchForm: SELECTORS.SEARCH_FORM,
+  searchInput: SELECTORS.SEARCH_INPUT,
+  sortSelect: SELECTORS.SORT_SELECT,
+  themeToggleButton: SELECTORS.THEME_TOGGLE,
+  sidebarOverlay: SELECTORS.SIDEBAR_OVERLAY,
+  sidebar: "#sidebar",
+  typeFilterToggle: SELECTORS.TYPE_FILTER_TOGGLE,
+  headerPrevBtn: SELECTORS.HEADER_PREV_BTN,
+  headerNextBtn: SELECTORS.HEADER_NEXT_BTN,
+  autocompleteResults: SELECTORS.AUTOCOMPLETE_RESULTS,
+  mainHeader: ".main-header",
+  clearFiltersBtn: SELECTORS.CLEAR_FILTERS_BTN,
+  authModal: "#auth-modal",
+  authOverlay: "#auth-overlay",
+  loginButton: "#login-button",
+  toastContainer: SELECTORS.TOAST_CONTAINER,
+  mobileSidebarToggle: "#mobile-sidebar-toggle",
+  mobileStatusBar: "#mobile-status-bar",
 };
 
 // Exportamos un Proxy para mantener compatibilidad con el código existente (dom.algo)
 export const dom = new Proxy({}, {
-  get: (_, prop) => {
+  get: (target, prop) => {
+    // Seguridad: Ignorar símbolos internos de JS o propiedades que no existan en nuestro mapa
+    if (typeof prop !== "string" || !domSelectors[prop]) return Reflect.get(target, prop);
+
     // 1. Auto-Invalidación: Reutiliza caché solo si el nodo sigue conectado; si no, reconsulta.
     if (domCache[prop] && domCache[prop].isConnected) {
       return domCache[prop];
     }
 
-    // 2. Búsqueda (Lazy)
-    const query = domQueries[prop];
-    if (query) {
-      const el = query();
-      if (el) domCache[prop] = el; // Solo cacheamos si existe
-      else delete domCache[prop];  // Limpiamos referencia si dejó de existir
-      return el;
-    }
+    // 2. Búsqueda (Lazy) y "Fast-Path" para IDs
+    const selector = domSelectors[prop];
+    const isSimpleId = selector.startsWith("#") && !selector.includes(" ") && !selector.includes(".");
+    
+    const el = isSimpleId 
+      ? document.getElementById(selector.slice(1)) 
+      : document.querySelector(selector);
+
+    if (el) domCache[prop] = el; 
+    else delete domCache[prop];
+    
+    return el;
   }
 });
 
 // Estado para debounce de notificaciones
 let lastToastMessage = "";
 let lastToastTime = 0;
+let toastFallbackTimer = null;
 
 // Helper para obtener el tamaño de página actual según el modo
 function getCurrentPageSize() {
@@ -82,13 +94,22 @@ export function showToast(message, type = "error") {
   lastToastMessage = message;
   lastToastTime = now;
 
+  // Limpiar el temporizador fantasma del toast anterior si existía
+  if (toastFallbackTimer) clearTimeout(toastFallbackTimer);
+
   // Limpiar contenedor para mostrar solo uno a la vez
   toastContainer.replaceChildren();
+
+  // Accesibilidad dinámica: Alertas para errores, Status para información
+  const isError = type === "error";
 
   const toastElement = createElement("div", {
     className: `toast toast--${type}`,
     textContent: message,
-    attributes: { role: "alert" }
+    attributes: { 
+      role: isError ? "alert" : "status",
+      "aria-live": isError ? "assertive" : "polite"
+    }
   });
 
   // Limpieza automática basada en animación CSS (más preciso que setTimeout)
@@ -100,12 +121,15 @@ export function showToast(message, type = "error") {
   });
 
   // Fallback: Eliminar tras 8s si falla la animación
-  setTimeout(() => {
+  toastFallbackTimer = setTimeout(() => {
     if (toastElement.isConnected) toastElement.remove();
   }, 8000);
 
   // Clic para cerrar inmediatamente
-  toastElement.addEventListener("click", () => toastElement.remove());
+  toastElement.addEventListener("click", () => {
+    toastElement.remove();
+    if (toastFallbackTimer) clearTimeout(toastFallbackTimer);
+  });
 
   toastContainer.appendChild(toastElement);
 }

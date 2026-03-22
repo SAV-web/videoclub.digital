@@ -40,6 +40,7 @@ const touchState = {
   startY: 0,
   startX: 0,
   currentY: 0,
+  startTime: 0,
   isDragging: false,
   isHorizontalSwipe: false
 };
@@ -114,6 +115,7 @@ function handleTouchStart(e) {
   touchState.startX = e.touches[0].clientX;
   touchState.isDragging = false;
   touchState.isHorizontalSwipe = false;
+  touchState.startTime = Date.now();
   
   modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS si estaba desactivada
 }
@@ -175,11 +177,13 @@ function handleTouchMove(e) {
  */
 function handleTouchEnd(e) {
   const { modal } = getDom();
+  const duration = Date.now() - touchState.startTime;
 
   // A. Navegación Horizontal
   if (touchState.isHorizontalSwipe) {
     const deltaX = e.changedTouches[0].clientX - touchState.startX;
-    if (Math.abs(deltaX) > SWIPE_X_THRESHOLD) { // Umbral de swipe
+    const velocityX = Math.abs(deltaX) / (duration || 1);
+    if (Math.abs(deltaX) > SWIPE_X_THRESHOLD || velocityX > 0.4) { // Distancia O "Flick" rápido
       navigateToSibling(deltaX < 0 ? 1 : -1);
     }
     touchState.isHorizontalSwipe = false;
@@ -191,7 +195,8 @@ function handleTouchEnd(e) {
   
   modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS
 
-  if (touchState.currentY > SWIPE_Y_CLOSE_THRESHOLD) { // Umbral de cierre
+  const velocityY = touchState.currentY / (duration || 1);
+  if (touchState.currentY > SWIPE_Y_CLOSE_THRESHOLD || velocityY > 0.5) { // Distancia O Inercia hacia abajo
     closeModal();
   } else {
     resetModalTransform(); // Rebote elástico

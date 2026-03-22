@@ -16,7 +16,6 @@ import spriteUrl from "../../sprite.svg";
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
 
 // Estado de Renderizado
-let renderedCardCount = 0;
 let currentRenderRequestId = 0;
 
 // Estado de Interacción
@@ -278,6 +277,26 @@ export function handleCardClick(event) {
   const actorsExpandBtn = target.closest(".actors-expand-btn");
 
   if (actorsExpandBtn) {
+    // Optimización JIT (Just In Time): Renderizado Perezoso del listado de actores.
+    // Ahorramos cientos de nodos DOM al no construir esta lista hasta que se pulsa el botón.
+    let actorsOverlay = flipBack.querySelector('.actors-scrollable-content');
+    if (!actorsOverlay) {
+      actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
+      const h4 = createElement("h4", { textContent: "Reparto" });
+      const list = createElement("div", { className: "actors-list-text" });
+      actorsOverlay.replaceChildren(h4, list);
+
+      const actors = card.movieData?.parsedActors || [];
+      actors.forEach(name => {
+        if (IGNORED_ACTORS.includes(name.toLowerCase())) {
+          list.appendChild(createElement("span", { className: "actor-list-item", textContent: name, style: "cursor:default; pointer-events:none" }));
+        } else {
+          list.appendChild(createElement("button", { type: "button", className: "actor-list-item", textContent: name, dataset: { actorName: name } }));
+        }
+      });
+      flipBack.insertBefore(actorsOverlay, flipBack.querySelector(".expand-content-btn"));
+    }
+
     event.stopPropagation();
     flipBack.classList.add("is-expanded", "show-actors");
     const bottomBtn = flipBack.querySelector(".expand-content-btn");
@@ -410,23 +429,21 @@ function populateCard(card, movie, index) {
   // Directores (Fragmento para evitar innerHTML excesivo)
   const dirCont = front.querySelector(SELECTORS.DIRECTOR);
   dirCont.textContent = "";
-  if (movie.directors) {
-    const directorsArr = movie.directors.split(", ");
-    const showOnlyLastName = directorsArr.length > 2;
+  if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
+    const showOnlyLastName = movie.parsedDirectors.length > 2;
     
-    directorsArr.forEach((name, i, arr) => {
-      const fullName = name.trim();
-      let displayText = fullName;
+    movie.parsedDirectors.forEach((name, i, arr) => {
+      let displayText = name;
       
       if (showOnlyLastName) {
-        const nameParts = fullName.split(" ");
+        const nameParts = name.split(" ");
         if (nameParts.length > 1) displayText = nameParts.pop(); // Toma solo la última palabra (apellido)
       }
       
       const link = createElement("a", { 
         textContent: displayText, 
-        href: `?dir=${encodeURIComponent(fullName)}`, 
-        dataset: { directorName: fullName } 
+        href: `?dir=${encodeURIComponent(name)}`, 
+        dataset: { directorName: name } 
       });
       dirCont.append(link, i < arr.length - 1 ? ", " : "");
     });
@@ -523,7 +540,7 @@ function populateCard(card, movie, index) {
 
   // Actores
   const actorsEl = back.querySelector(SELECTORS.ACTORS);
-  const actors = movie.actors ? movie.actors.split(",").map(a => a.trim()) : [];
+  const actors = movie.parsedActors || [];
   
   // Truncado simple
   let shortActors = actors.slice(0, 4).join(", ");
@@ -538,25 +555,6 @@ function populateCard(card, movie, index) {
   
   if (hasActors) {
     if (!expandBtn) actorsEl.parentElement.appendChild(createElement("button", { className: "actors-expand-btn", textContent: "+", attributes: { "aria-label": "Ver reparto" } }));
-    
-    // Lazy creation del overlay de actores (solo si se necesita)
-    let actorsOverlay = back.querySelector('.actors-scrollable-content');
-    if (!actorsOverlay) {
-        actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
-        // Poblar lista solo una vez (DOM seguro)
-        const h4 = createElement("h4", { textContent: "Reparto" });
-        const list = createElement("div", { className: "actors-list-text" });
-        actorsOverlay.replaceChildren(h4, list);
-
-        actors.forEach(name => {
-           if (IGNORED_ACTORS.includes(name.toLowerCase())) {
-             list.appendChild(createElement("span", { className: "actor-list-item", textContent: name, style: "cursor:default; pointer-events:none" }));
-           } else {
-             list.appendChild(createElement("button", { type: "button", className: "actor-list-item", textContent: name, dataset: { actorName: name } }));
-           }
-        });
-        back.insertBefore(actorsOverlay, back.querySelector(".expand-content-btn"));
-    }
   } else {
     expandBtn?.remove();
     back.querySelector('.actors-scrollable-content')?.remove();
@@ -597,11 +595,10 @@ export function initializeCard(card) {
 
 export async function renderMovieGrid(container, movies) {
   const renderId = ++currentRenderRequestId;
-  renderedCardCount = 0;
   unflipAllCards();
   if (!container) return;
 
-  const BATCH_SIZE = 6; // Reducido para fluidez (Scheduler)
+  const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12; // Configurado globalmente para fluidez
   let index = 0;
 
   async function renderBatch() {
@@ -620,7 +617,6 @@ export async function renderMovieGrid(container, movies) {
         'user-visible'
       );
       
-      renderedCardCount++;
       fragment.appendChild(cardNode);
     }
 

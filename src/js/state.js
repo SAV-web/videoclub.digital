@@ -34,9 +34,6 @@ const initialState = {
 // Inicialización con clonación profunda
 let state = structuredClone(initialState);
 
-// Caché para conteo de filtros (Optimización O(1) en lectura)
-let cachedFilterCount = -1;
-
 // =================================================================
 //          SERIALIZACIÓN (URL & ROUTING)
 // =================================================================
@@ -193,27 +190,21 @@ export const getAllUserMovieData = () => {
 // =================================================================
 
 /**
- * Cuenta cuántos filtros "reales" están aplicados.
- * Dinámico: No requiere hardcodear claves.
+ * Cuenta de forma determinista y sin estado caché cuántos filtros "reales" están aplicados.
+ * Es lo suficientemente rápido O(1) como para no requerir caché manual (evita bugs de sincronización).
  */
 export function getActiveFilterCount() {
-  if (cachedFilterCount !== -1) return cachedFilterCount;
-
   const { activeFilters } = state;
   let count = 0;
 
-  // 1. Filtros de exclusión (Arrays)
   if (activeFilters.excludedGenres.length > 0) count++;
   if (activeFilters.excludedCountries.length > 0) count++;
 
-  // 2. Filtro de Año (lógica especial de rango)
   const defaultYearRange = `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`;
   if (activeFilters.year && activeFilters.year !== defaultYearRange) {
     count++;
   }
 
-  // 3. Filtros estándar (Claves dinámicas)
-  // Ignoramos claves técnicas o que ya hemos contado
   const ignoredKeys = new Set([
     "mediaType", "sort", "searchTerm", "myList",
     "excludedGenres", "excludedCountries", "year"
@@ -225,7 +216,6 @@ export function getActiveFilterCount() {
     }
   });
 
-  cachedFilterCount = count;
   return count;
 }
 
@@ -276,7 +266,6 @@ export function setFilter(filterType, value, force = false) {
   state.activeFilters[filterType] = value;
   // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
   state.totalMovies = 0;
-  cachedFilterCount = -1; // Invalidar caché de conteo
   return true;
 }
 
@@ -300,7 +289,6 @@ export function setSearchTerm(term) {
 
     if (hadActiveFilters) {
       filtersCleared = true;
-      cachedFilterCount = -1;
       
       filtersToReset.forEach(key => state.activeFilters[key] = null);
       arraysToReset.forEach(key => state.activeFilters[key] = []);
@@ -338,9 +326,7 @@ export function toggleExcludedFilter(filterType, value) {
   if (index > -1) {
     // Si existe, lo quitamos (siempre permitido)
     targetList.splice(index, 1);
-    // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
     state.totalMovies = 0;
-    cachedFilterCount = -1;
     return true;
   } else {
     // Si no existe, intentamos añadirlo
@@ -348,7 +334,6 @@ export function toggleExcludedFilter(filterType, value) {
     // Lógica específica: Máximo 1 exclusión de género (Reemplazo automático)
     if (filterType === 'genre' && targetList.length > 0) {
       targetList.length = 0;
-      cachedFilterCount = -1;
     }
 
     // Validación 1: Límite específico de exclusiones
@@ -366,7 +351,6 @@ export function toggleExcludedFilter(filterType, value) {
     targetList.push(value);
     // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
     state.totalMovies = 0;
-    cachedFilterCount = -1;
     return true;
   }
 }
@@ -375,7 +359,6 @@ export function resetFiltersState() {
   // Reinicio limpio desde el estado inicial
   state.activeFilters = structuredClone(initialState.activeFilters);
   state.totalMovies = 0; // Forzar recálculo visual del total
-  cachedFilterCount = -1;
 }
 
 // --- Gestión de Datos de Usuario ---
