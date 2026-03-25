@@ -378,7 +378,7 @@ function shouldShowTotalCount() {
   return true;
 }
 
-export function updateTotalResultsUI(total) {
+export function updateTotalResultsUI(total, movies = null) {
   const containers = document.querySelectorAll(".total-results-container");
   const counts = document.querySelectorAll(".total-results-count");
 
@@ -391,7 +391,7 @@ export function updateTotalResultsUI(total) {
   }
 
   // Actualizar barra de estado móvil con el nuevo total
-  updateMobileStatusBar();
+  updateMobileStatusBar(movies);
 }
 
 export function initThemeToggle() {
@@ -434,22 +434,31 @@ export function clearAllSidebarAutocomplete(exceptForm = null) {
   });
 }
 
-export function updateMobileStatusBar() {
+export function updateMobileStatusBar(movies = null) {
   const { mobileStatusBar } = dom;
   if (!mobileStatusBar) return;
 
   const filters = getActiveFilters();
   const { totalMovies } = getState();
   
-  // 1. Tipo
-  const typeMap = {
-    movies: "Películas",
-    series: "Series",
-    all: "Pelis y Series"
-  };
-  let text = typeMap[filters.mediaType] || "Cine y Series";
+  // 1. Tipo dinámico basado en resultados
+  let typeText = totalMovies === 1 ? "peli o serie" : "pelis y series";
+
+  if (filters.mediaType === "movies") {
+    typeText = totalMovies === 1 ? "película" : "películas";
+  } else if (filters.mediaType === "series") {
+    typeText = totalMovies === 1 ? "serie" : "series";
+  } else if (movies && movies.length > 0) {
+    // Analizar la muestra actual de resultados si el filtro es "all"
+    const hasMovies = movies.some(m => !m.isSeries);
+    const hasSeries = movies.some(m => m.isSeries);
+    
+    if (hasMovies && !hasSeries) typeText = totalMovies === 1 ? "película" : "películas";
+    else if (hasSeries && !hasMovies) typeText = totalMovies === 1 ? "serie" : "series";
+  }
 
   // 2. Orden (Si no es el default 'relevance')
+  let text = typeText;
   if (filters.sort !== DEFAULTS.SORT) {
     const sortMap = {
       "year,desc": "más recientes",
@@ -462,13 +471,15 @@ export function updateMobileStatusBar() {
     
     const sortLabel = sortMap[filters.sort];
     if (sortLabel) {
-      text += ` ordenadas por ${sortLabel}`;
+      text += `, orden: ${sortLabel}`;
     }
   }
 
   // 3. Total (Usando la lógica unificada de rango de años)
   if (shouldShowTotalCount()) {
-    text = `${totalMovies.toLocaleString("es-ES")} · ${text}`;
+    text = `${totalMovies.toLocaleString("es-ES")} ${text}`;
+  } else {
+    text = text.charAt(0).toUpperCase() + text.slice(1);
   }
 
   mobileStatusBar.textContent = text;

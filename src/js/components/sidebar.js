@@ -50,7 +50,6 @@ const dom = {
   yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
   sidebarOverlay: document.getElementById("sidebar-overlay"),
   mobileSidebarToggle: document.getElementById("mobile-sidebar-toggle"),
-  mainContent: document.querySelector(".main-content-wrapper"), 
   myListButton: document.getElementById("my-list-button"),
 };
 
@@ -448,17 +447,22 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
 
   const fragment = document.createDocumentFragment();
   suggestions.forEach((suggestion, index) => {
+    const isActive = index === 0; // Seleccionar automáticamente la primera opción
     const item = createElement("div", {
-      className: CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM,
+      className: `${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}${isActive ? ' is-active' : ''}`,
       dataset: { value: suggestion },
       id: `suggestion-item-${formElement.dataset.filterType}-${index}`,
-      attributes: { role: "option" },
+      attributes: { role: "option", "aria-selected": isActive ? "true" : "false" },
     });
     item.appendChild(highlightAccentInsensitive(suggestion, searchTerm));
     fragment.appendChild(item);
   });
 
   resultsContainer.appendChild(fragment);
+
+  if (suggestions.length > 0) {
+    input.setAttribute("aria-activedescendant", `suggestion-item-${formElement.dataset.filterType}-0`);
+  }
 }
 
 /**
@@ -470,8 +474,10 @@ function updateAllFilterControls() {
   const limitReached = activeCount >= CONFIG.MAX_ACTIVE_FILTERS;
 
   // 1. Actualizar enlaces de filtro (Links)
-  // Simplificación: Consultar DOM directamente para evitar caché obsoleta tras renderizado dinámico
-  document.querySelectorAll(".filter-link").forEach(link => {
+  // Optimización: Usar HTMLCollection (live) es exponencialmente más rápido que querySelectorAll
+  const filterLinks = document.getElementsByClassName("filter-link");
+  for (let i = 0; i < filterLinks.length; i++) {
+    const link = filterLinks[i];
     const type = link.dataset.filterType;
     const value = link.dataset.filterValue;
     
@@ -508,15 +514,17 @@ function updateAllFilterControls() {
             link.style.opacity = shouldDisable ? "0.5" : "1";
         }
     }
-  });
+  }
 
   // 2. Actualizar Inputs de texto (Autocompletado)
-  document.querySelectorAll(".sidebar-filter-input").forEach((input) => {
+  const filterInputs = document.getElementsByClassName("sidebar-filter-input");
+  for (let i = 0; i < filterInputs.length; i++) {
+    const input = filterInputs[i];
     if (input.disabled !== limitReached) {
         input.disabled = limitReached;
         input.placeholder = limitReached ? "Límite de filtros" : `Otro ${input.closest("form").dataset.filterType}...`;
     }
-  });
+  }
 
   // 3. Actualizar estado del botón "Mi Lista"
   if (dom.myListButton) {
@@ -990,6 +998,18 @@ function setupAutocompleteHandlers() {
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
     
+    // Prevenir submit nativo (clic en 'Ir' / 'Buscar' del teclado móvil)
+    // Solo aceptar la selección si hay resultados visibles en la lista.
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+      if (resultsContainer && resultsContainer.children.length > 0) {
+        const items = Array.from(resultsContainer.children);
+        const activeItem = items.find(i => i.classList.contains('is-active')) || items[0];
+        if (activeItem) activeItem.click();
+      }
+    });
+
     const debouncedFetch = debounce(async () => {
       const rawTerm = input.value.trim();
       // FIX: Limpiar TODO (incluido este formulario) si el término es corto
@@ -1004,15 +1024,22 @@ function setupAutocompleteHandlers() {
     input.addEventListener("input", debouncedFetch);
     
     input.addEventListener("keydown", (e) => {
+       // Prevenir recarga de página al pulsar Enter en cualquier momento
+       if (e.key === "Enter") e.preventDefault();
+
        const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
        if (!resultsContainer || resultsContainer.children.length === 0) return;
        const items = Array.from(resultsContainer.children);
        let activeIndex = items.findIndex(i => i.classList.contains('is-active'));
        
        const updateActiveSuggestion = (index) => {
-         items.forEach(item => item.classList.remove("is-active"));
+         items.forEach(item => {
+           item.classList.remove("is-active");
+           item.setAttribute("aria-selected", "false");
+         });
          if (index >= 0 && items[index]) {
            items[index].classList.add("is-active");
+           items[index].setAttribute("aria-selected", "true");
            input.setAttribute("aria-activedescendant", items[index].id);
            items[index].scrollIntoView({ block: 'nearest' });
          } else { input.removeAttribute("aria-activedescendant"); }
@@ -1022,7 +1049,6 @@ function setupAutocompleteHandlers() {
         case "ArrowDown": e.preventDefault(); activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : -1; updateActiveSuggestion(activeIndex); break;
         case "ArrowUp": e.preventDefault(); activeIndex = activeIndex > -1 ? activeIndex - 1 : items.length - 1; updateActiveSuggestion(activeIndex); break;
         case "Enter": 
-          e.preventDefault(); 
           if (activeIndex >= 0 && items[activeIndex]) {
             items[activeIndex].click();
           } else if (items.length > 0) {

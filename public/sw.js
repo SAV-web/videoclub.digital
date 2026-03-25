@@ -19,6 +19,19 @@ const CRITICAL_ASSETS = [
 // --- 2. HELPERS DE ESTRATEGIAS ---
 
 /**
+ * Limita el tamaño de la caché para evitar exceder la cuota del navegador (FIFO).
+ */
+const limitCacheSize = async (cacheName, maxItems) => {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  if (keys.length > maxItems) {
+    // Borramos el exceso (los más antiguos primero) de una sola vez
+    const itemsToDelete = keys.slice(0, keys.length - maxItems);
+    await Promise.all(itemsToDelete.map(key => cache.delete(key)));
+  }
+};
+
+/**
  * Helper para guardar en caché asíncronamente sin bloquear la respuesta
  */
 const cacheResponse = async (cacheName, request, response) => {
@@ -56,7 +69,12 @@ async function staleWhileRevalidate(request, cacheName = CACHE_DYNAMIC) {
   
   const networkFetch = fetch(request).then(response => {
     if (response.ok) {
-      cache.put(request, response.clone());
+      cache.put(request, response.clone()).then(() => {
+        // Protección de Cuota: Limitar imágenes almacenadas dinámicamente
+        if (request.destination === 'image' || request.url.includes('/storage/v1/object/public/')) {
+          limitCacheSize(cacheName, 200); // Mantiene aprox. los últimos 200 pósters
+        }
+      });
     }
     return response;
   });

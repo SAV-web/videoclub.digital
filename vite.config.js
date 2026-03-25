@@ -1,15 +1,8 @@
 import { defineConfig } from 'vite';
-import { createHtmlPlugin } from 'vite-plugin-html';
 
 export default defineConfig({
   // Base relativa para que los assets carguen correctamente en subdirectorios (GitHub Pages)
   base: './',
-  
-  plugins: [
-    createHtmlPlugin({
-      minify: true, // Minifica el HTML eliminando espacios, comentarios, etc.
-    }),
-  ],
   
   build: {
     target: 'es2022', // Asume navegadores modernos, reduciendo código basura (polyfills)

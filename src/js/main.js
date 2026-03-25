@@ -139,7 +139,7 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   // Actualizar siempre el total para asegurar consistencia UI tras invalidación
   setTotalMovies(totalMovies);
-      updateTotalResultsUI(totalMovies);
+  updateTotalResultsUI(totalMovies, movies);
   
   // SEO: Actualizar datos estructurados (JSON-LD) para carruseles
   updateStructuredData(movies, totalMovies);
