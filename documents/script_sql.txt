@@ -280,7 +280,7 @@ BEGIN
                 AND ($6 IS NULL OR m.directors_tsv @@ websearch_to_tsquery(''simple'', ''"'' || public.unaccent_immutable($6) || ''"''))
                 AND ($7 IS NULL OR m.actors_tsv @@ websearch_to_tsquery(''simple'', ''"'' || public.unaccent_immutable($7) || ''"''))
                 AND ($8 IS NULL OR $8 = ''all''
-                     OR ($8 = ''movies'' AND (m.type IS NULL OR m.type IN (''D'', ''A'')))
+                     OR ($8 = ''movies'' AND (m.type IS NULL OR m.type NOT ILIKE ''S%''))
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))
                 AND ($9 IS NULL OR m.selections_tsv @@ plainto_tsquery(''simple'', $9))
                 AND ($10 IS NULL OR m.studios_tsv @@ plainto_tsquery(''simple'', $10))
@@ -639,7 +639,7 @@ BEGIN
             genres_list, directors_list, actors_list, selections_list, studios_list
         )
         SELECT
-            s.relevance, TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
+            public.to_integer_safe(s.relevance::TEXT), TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
@@ -813,8 +813,7 @@ UPDATE public.genres SET synonyms = ARRAY['fantasy', 'fantastico'] WHERE name = 
 UPDATE public.genres SET synonyms = ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro'] WHERE name = 'Noir';
 UPDATE public.genres SET synonyms = ARRAY['history', 'epoca'] WHERE name = 'Histórico';
 UPDATE public.genres SET synonyms = ARRAY['horror', 'miedo'] WHERE name = 'Terror';
-UPDATE public.genres SET synonyms = ARRAY['music'] WHERE name = 'Música';
-UPDATE public.genres SET synonyms = ARRAY['canciones'] WHERE name = 'Musical';
+UPDATE public.genres SET synonyms = ARRAY['music', 'canciones'] WHERE name = 'Música';
 UPDATE public.genres SET synonyms = ARRAY['mystery', 'misterio', 'enigma', 'investigacion'] WHERE name = 'Intriga';
 UPDATE public.genres SET synonyms = ARRAY['love', 'romantico', 'amor'] WHERE name = 'Romance';
 UPDATE public.genres SET synonyms = ARRAY['scifi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'] WHERE name = 'Sci-Fi';

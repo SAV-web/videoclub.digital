@@ -218,20 +218,25 @@ async function handleMediaTypeToggle(event) {
 
 async function handleSearchInput() {
   const searchTerm = dom.searchInput.value.trim();
-  if (searchTerm === getState().activeFilters.searchTerm) return;
+  const currentSearchTerm = getState().activeFilters.searchTerm;
+  
+  if (searchTerm === currentSearchTerm) return;
   
   // Buscar solo si hay 3+ caracteres o se borró todo
   if (searchTerm.length >= 3 || searchTerm.length === 0) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     
+    // Si pasamos de no tener búsqueda a tenerla, añadimos una entrada al historial (pushState)
+    // para que el usuario pueda usar el botón "Atrás" y recuperar sus filtros previos del sidebar.
+    const isContinuingSearch = !!currentSearchTerm;
+
     const filtersCleared = setSearchTerm(searchTerm);
     if (filtersCleared) {
       showToast("Filtros limpiados para la búsqueda", "info");
     }
 
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-    // UX: Usar replaceState para búsqueda (evitar ensuciar historial al escribir)
-    await loadAndRenderMovies(1, { replaceHistory: true });
+    await loadAndRenderMovies(1, { replaceHistory: isContinuingSearch });
   }
 }
 

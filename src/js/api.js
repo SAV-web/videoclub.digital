@@ -205,7 +205,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
         // Soporte completo de AbortController para evitar promesas colgadas al cambiar de vista
         if (signal) query = query.abortSignal(signal);
 
-        if (activeFilters.mediaType === 'movies') query = query.or('type.is.null,type.eq.D,type.eq.A');
+        if (activeFilters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
         else if (activeFilters.mediaType === 'series') query = query.ilike('type', 'S%');
 
         const [sortField, sortDirection] = (activeFilters.sort || "relevance,asc").split(",");
