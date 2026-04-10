@@ -27,10 +27,10 @@ RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE AS
 $$ SELECT public.unaccent('public.unaccent', $1); $$;
 -- Función para convertir texto a INTEGER de forma segura, devolviendo NULL en caso de error.
 CREATE OR REPLACE FUNCTION public.to_integer_safe(v_input TEXT)
-RETURNS INTEGER LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$ BEGIN RETURN v_input::INTEGER; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
+RETURNS INTEGER LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$ BEGIN RETURN regexp_replace(v_input, '[^0-9-]', '', 'g')::INTEGER; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 -- Función para convertir texto a REAL de forma segura, devolviendo NULL en caso de error.
 CREATE OR REPLACE FUNCTION public.to_real_safe(v_input TEXT)
-RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$ BEGIN RETURN v_input::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
+RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE AS $$ BEGIN RETURN replace(v_input, ',', '.')::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 
 -- =================================================================
 -- 2.0. MODIFICACIONES DE ESQUEMA (Soporte de orden para directores)
