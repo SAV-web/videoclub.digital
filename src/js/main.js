@@ -2,7 +2,7 @@
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore, normalizeText, executeViewTransition } from "./utils.js";
-import { fetchMovies, supabase, fetchUserMovieData } from "./api.js";
+import { fetchMovies, supabase, fetchUserMovieData, fetchPersonDetails } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, setUserMovieData, clearUserMovieData, syncStateWithUrlParams, stateToUrlParams } from "./state.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
@@ -64,6 +64,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
   }
 
   const currentKnownTotal = getState().totalMovies;
+  const activeFilters = getActiveFilters();
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
   try {
@@ -76,9 +77,16 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     
     // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
     const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
+    
+    // Detección de VIP: Si estamos en página 1 filtrando por una persona específica, traemos su tarjeta.
+    let personData = null;
+    if (page === 1 && !activeFilters.myList && !activeFilters.searchTerm) {
+      if (activeFilters.director) personData = await fetchPersonDetails('director', activeFilters.director);
+      else if (activeFilters.actor) personData = await fetchPersonDetails('actor', activeFilters.actor);
+    }
 
     const result = await fetchMovies(
-      getActiveFilters(),
+      activeFilters,
       page,
       pageSize,
       signal,
@@ -101,7 +109,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     const performRender = () => {
       // Backend devuelve -1 si no se pidió conteo (get_count=false)
       const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
-      updateDomWithResults(movies, effectiveTotal, cardModule);
+      updateDomWithResults(movies, effectiveTotal, cardModule, personData);
       
       // Scroll al top unificado (Paginación + Fix teclado móvil)
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -135,7 +143,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
  * Actualiza el DOM con los resultados obtenidos.
  * Gestiona casos de vacío, paginación y precarga.
  */
-function updateDomWithResults(movies, totalMovies, cardModule) {
+function updateDomWithResults(movies, totalMovies, cardModule, personData = null) {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   // Actualizar siempre el total para asegurar consistencia UI tras invalidación
   setTotalMovies(totalMovies);
@@ -170,7 +178,7 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
     updateHeaderPaginationState(1, 0);
   } else if (totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentPage === 1) {
     // Caso: Todos los resultados caben en una página
-    renderMovieGrid(dom.gridContainer, movies);
+    renderMovieGrid(dom.gridContainer, movies, personData);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
   } else {
@@ -179,7 +187,7 @@ function updateDomWithResults(movies, totalMovies, cardModule) {
     const limit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     // Slice optimizado: evitar copia de array si no es necesaria
     const moviesToRender = movies.length > limit ? movies.slice(0, limit) : movies;
-    renderMovieGrid(dom.gridContainer, moviesToRender);
+    renderMovieGrid(dom.gridContainer, moviesToRender, personData);
     
     if (totalMovies > limit) {
       renderPagination(dom.paginationContainer, totalMovies, currentPage);

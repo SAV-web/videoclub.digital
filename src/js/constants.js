@@ -32,6 +32,7 @@ export const CONFIG = Object.freeze({
   SUPABASE_ANON_KEY: supabaseKey,
   // Usamos la URL directa para evitar errores de concatenación
   POSTER_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/",
+  PROFILE_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/vips/",
   
   // Paginación
   ITEMS_PER_PAGE: 42,
@@ -137,6 +138,7 @@ export const SELECTORS = Object.freeze({
   YEAR_END_INPUT: "#year-end-input",
   TOAST_CONTAINER: "#toast-container",
   MOVIE_CARD_TEMPLATE: "#movie-card-template",
+  PERSON_CARD_TEMPLATE: "#person-card-template",
 
   // Dinámicos (Clases/Atributos)
   TITLE: '[data-template="title"]',

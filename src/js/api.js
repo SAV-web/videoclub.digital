@@ -11,7 +11,7 @@
 import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
 import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest, mapMoviePayload } from "./utils.js";
+import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
 import { getUserDataForMovie, getAllUserMovieData } from "./state.js";
 
 // Inicialización del cliente Supabase
@@ -287,6 +287,25 @@ export async function fetchUserMovieData() {
     });
   }
   return userMap;
+}
+
+/**
+ * Obtiene los detalles de un artista VIP desde la BD
+ */
+export async function fetchPersonDetails(type, name) {
+  if (!name) return null;
+  const table = type === 'director' ? 'directors' : 'actors';
+  
+  try {
+    const { data, error } = await supabase
+      .from(table)
+      .select('id, name, profile_path, photo, birthday, deathday, place_of_birth, countries(name, code)')
+      .eq('name_norm', normalizeText(name))
+      .single();
+      
+    if (error || !data) return null;
+    return data;
+  } catch(e) { return null; }
 }
 
 /**

@@ -5,7 +5,14 @@ CREATE TABLE public.actors (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
-  CONSTRAINT actors_pkey PRIMARY KEY (id)
+  profile_path text,
+  birthday date,
+  deathday date,
+  place_of_birth text,
+  country_id bigint,
+  photo text,
+  CONSTRAINT actors_pkey PRIMARY KEY (id),
+  CONSTRAINT actors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
 CREATE TABLE public.countries (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -18,7 +25,14 @@ CREATE TABLE public.directors (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
-  CONSTRAINT directors_pkey PRIMARY KEY (id)
+  profile_path text,
+  birthday date,
+  deathday date,
+  place_of_birth text,
+  country_id bigint,
+  photo text,
+  CONSTRAINT directors_pkey PRIMARY KEY (id),
+  CONSTRAINT directors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
 CREATE TABLE public.genres (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,

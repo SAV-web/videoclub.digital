@@ -647,4 +647,125 @@
   <path fill="#FFCD00" d="M18 8l2.5 8h8l-6.5 4.5 2.5 8-6.5-5-6.5 5 2.5-8-6.5-4.5h8z"/>
 </symbol>
 
+<!-- Bolivia (BO) -->
+<symbol id="flag-bo" viewBox="0 0 36 36">
+  <path fill="#DA291C" d="M0 0h36v12H0z"/>
+  <path fill="#F4E400" d="M0 12h36v12H0z"/>
+  <path fill="#007A33" d="M0 24h36v12H0z"/>
+</symbol>
+
+<!-- Costa Rica (CR) -->
+<symbol id="flag-cr" viewBox="0 0 36 36">
+  <path fill="#002B7F" d="M0 0h36v6H0zm0 30h36v6H0z"/>
+  <path fill="#FFF" d="M0 6h36v6H0zm0 18h36v6H0z"/>
+  <path fill="#CE1126" d="M0 12h36v12H0z"/>
+</symbol>
+
+<!-- República Dominicana (DO) -->
+<symbol id="flag-do" viewBox="0 0 36 36">
+  <path fill="#002D62" d="M0 0h15v15H0zm21 21h15v15H21z"/>
+  <path fill="#CE1126" d="M21 0h15v15H21zM0 21h15v15H0z"/>
+  <path fill="#FFF" d="M15 0h6v36h-6zM0 15h36v6H0z"/>
+</symbol>
+
+<!-- Puerto Rico (PR) -->
+<symbol id="flag-pr" viewBox="0 0 36 36">
+  <path fill="#ED0000" d="M0 0h36v7.2H0zm0 14.4h36v7.2H0zm0 14.4h36v7.2H0z"/>
+  <path fill="#FFF" d="M0 7.2h36v7.2H0zm0 14.4h36v7.2H0z"/>
+  <path fill="#0050F0" d="M0 0l18 18L0 36z"/>
+  <path fill="#FFF" d="M9 13l-4 6h8z"/>
+</symbol>
+
+<!-- El Salvador (SV) -->
+<symbol id="flag-sv" viewBox="0 0 36 36">
+  <path fill="#0047AB" d="M0 0h36v12H0zm0 24h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <circle fill="#0047AB" cx="18" cy="18" r="3"/>
+</symbol>
+
+<!-- Honduras (HN) -->
+<symbol id="flag-hn" viewBox="0 0 36 36">
+  <path fill="#0073CF" d="M0 0h36v12H0zm0 24h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <circle fill="#0073CF" cx="18" cy="18" r="1.5"/><circle fill="#0073CF" cx="13" cy="15" r="1.5"/>
+  <circle fill="#0073CF" cx="23" cy="15" r="1.5"/><circle fill="#0073CF" cx="13" cy="21" r="1.5"/>
+  <circle fill="#0073CF" cx="23" cy="21" r="1.5"/>
+</symbol>
+
+<!-- Nicaragua (NI) -->
+<symbol id="flag-ni" viewBox="0 0 36 36">
+  <path fill="#0067C6" d="M0 0h36v12H0zm0 24h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <polygon fill="#0067C6" points="18,14 14,20 22,20"/>
+</symbol>
+
+<!-- Filipinas (PH) -->
+<symbol id="flag-ph" viewBox="0 0 36 36">
+  <path fill="#0038A8" d="M0 0h36v18H0z"/>
+  <path fill="#CE1126" d="M0 18h36v18H0z"/>
+  <path fill="#FFF" d="M0 0l18 18L0 36z"/>
+  <circle fill="#FCD116" cx="6" cy="18" r="3"/>
+</symbol>
+
+<!-- Jamaica (JM) -->
+<symbol id="flag-jm" viewBox="0 0 36 36">
+  <path fill="#007749" d="M0 0h36v36H0z"/>
+  <path fill="#000" d="M18 18L0 0v36l18-18zm0 0L36 0v36L18 18z"/>
+  <path fill="none" stroke="#FFB81C" stroke-width="4" d="M0 0l36 36M0 36L36 0"/>
+</symbol>
+
+<!-- Lesotho (LS) -->
+<symbol id="flag-ls" viewBox="0 0 36 36">
+  <path fill="#00209F" d="M0 0h36v11H0z"/>
+  <path fill="#FFF" d="M0 11h36v14H0z"/>
+  <path fill="#009543" d="M0 25h36v11H0z"/>
+  <path fill="#000" d="M18 12c-2 0-3 2-3 4v4h6v-4c0-2-1-4-3-4z"/>
+</symbol>
+
+<!-- Túnez (TN) -->
+<symbol id="flag-tn" viewBox="0 0 36 36">
+  <path fill="#E70013" d="M0 0h36v36H0z"/>
+  <circle fill="#FFF" cx="18" cy="18" r="8"/>
+  <path fill="#E70013" d="M19 13a5 5 0 1 0 0 10 6 6 0 1 1 0-10z"/>
+</symbol>
+
+<!-- Irak (IQ) -->
+<symbol id="flag-iq" viewBox="0 0 36 36">
+  <path fill="#CE1126" d="M0 0h36v12H0z"/>
+  <path fill="#FFF" d="M0 12h36v12H0z"/>
+  <path fill="#000" d="M0 24h36v12H0z"/>
+  <!-- Texto Kufi verde simplificado -->
+  <path fill="#007A3D" d="M12 16h2v3h-2zm5 0h2v3h-2zm5 0h2v3h-2z"/>
+</symbol>
+
+<!-- Lituania (LT) -->
+<symbol id="flag-lt" viewBox="0 0 36 36">
+  <path fill="#FDB913" d="M0 0h36v12H0z"/>
+  <path fill="#006A44" d="M0 12h36v12H0z"/>
+  <path fill="#C1272D" d="M0 24h36v12H0z"/>
+</symbol>
+
+<!-- Malasia (MY) -->
+<symbol id="flag-my" viewBox="0 0 36 36">
+  <path fill="#CC0000" d="M0 0h36v36H0z"/>
+  <path fill="#FFF" d="M0 3h36v3H0zm0 6h36v3H0zm0 6h36v3H0zm0 6h36v3H0zm0 6h36v3H0z"/>
+  <path fill="#000066" d="M0 0h18v18H0z"/>
+  <circle fill="#FFCC00" cx="8" cy="9" r="5"/>
+  <circle fill="#000066" cx="10" cy="8" r="4.5"/>
+</symbol>
+
+<!-- Nigeria (NG) -->
+<symbol id="flag-ng" viewBox="0 0 36 36">
+  <path fill="#008751" d="M0 0h12v36H0zm24 0h12v36H24z"/>
+  <path fill="#FFF" d="M12 0h12v36H12z"/>
+</symbol>
+
+<!-- Eslovenia (SI) -->
+<symbol id="flag-si" viewBox="0 0 36 36">
+  <path fill="#FFF" d="M0 0h36v12H0z"/>
+  <path fill="#005CE6" d="M0 12h36v12H0z"/>
+  <path fill="#ED1C24" d="M0 24h36v12H0z"/>
+  <path fill="#005CE6" stroke="#ED1C24" stroke-width="1" d="M8 6h6v5c0 3-3 4-3 4s-3-1-3-4V6z"/>
+</symbol>
+
 </svg>

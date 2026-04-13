@@ -544,116 +544,91 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   transition: transform var(--duration-quick) ease;
   /* Ajuste de estimación de tamaño para evitar saltos de scroll en modo compacto */
   contain-intrinsic-size: 85px 128px; /* Reducido para seguridad en zoom/densidad alta */
-}
 
-/* Reducir sombra en modo muro para que sea proporcional al tamaño */
-body.rotation-disabled .movie-card:not(.is-quick-view) .flip-card-inner {
-  box-shadow: var(--shadow-sm);
-  border: none;
-  background-color: transparent;
-}
+  /* Reducir sombra en modo muro para que sea proporcional al tamaño */
+  & .flip-card-inner {
+    box-shadow: var(--shadow-sm);
+    border: none;
+    background-color: transparent;
+  }
 
-/* Ocultar textos */
-body.rotation-disabled .movie-card:not(.is-quick-view) .movie-summary { display: none; }
-body.rotation-disabled .movie-card:not(.is-quick-view) .flip-card-front { background-color: transparent; }
+  /* Ocultar textos y limpiar fondos */
+  & .movie-summary { display: none; }
+  & .flip-card-front { background-color: transparent; }
 
-/* Póster domina */
-body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container {
-  height: 100%; display: flex; flex-direction: column;
-}
-body.rotation-disabled .movie-card:not(.is-quick-view) .poster-container img {
-  height: auto; flex-grow: 1; min-height: 0; object-fit: cover;
-  border-radius: var(--radius-xxl);
-  border: none;
-}
+  /* Póster domina */
+  & .poster-container {
+    height: 100%; display: flex; flex-direction: column;
+    & img {
+      height: auto; flex-grow: 1; min-height: 0; object-fit: cover;
+      border-radius: var(--radius-xxl);
+      border: none;
+    }
+  }
 
-/* Bloque valoración inferior */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
-  position: relative; transform: none; bottom: auto; left: auto; right: auto;
-  height: auto; justify-content: center;
-  padding: 1px var(--space-xs); background: transparent;
-  cursor: pointer; pointer-events: auto;
-}
+  /* Bloque valoración inferior */
+  & .card-rating-block {
+    position: relative; transform: none; bottom: auto; left: auto; right: auto;
+    height: auto; justify-content: center;
+    padding: 1px var(--space-xs); background: transparent;
+    cursor: pointer; pointer-events: auto;
 
-/* Ajuste de posición vertical para elementos de valoración */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block > *:not(.card-action-btn) {
-  transform: translateY(calc(-40% + 4px));
-}
+    /* Ajuste de posición vertical para elementos de valoración */
+    & > *:not(.card-action-btn) {
+      transform: translateY(calc(-40% + 4px));
+    }
 
-/* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
-/* 1. Ocultar elementos por defecto */
-body.rotation-disabled .movie-card:not(.is-quick-view) .low-rating-star,
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container:not(.has-user-rating) {
-  display: none !important; /* !important necesario para sobrescribir estilos inline de JS */
-}
+    /* Nota numérica para el muro */
+    & .wall-rating-number {
+      display: block;
+      flex-grow: 0;
+      text-align: center;
+      font-weight: var(--font-weight-bold);
+      font-size: 1.1rem;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      text-shadow: none;
+      filter: none; /* Eliminar aura circular */
+      cursor: pointer;
+      transform: translateY(calc(-40% + 6px)); /* Ajuste óptico: 2px más abajo que las estrellas */
+      
+      &:hover {
+        transform: translateY(calc(-40% + 6px)) scale(1.15) rotate(10deg);
+      }
+    }
+  }
 
-/* Mostrar estrellas SOLO si hay voto de usuario */
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.has-user-rating {
-  display: flex !important;
-  gap: 4px;
-  flex-grow: 0;
-  justify-content: center;
-}
+  /* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
+  /* 1. Ocultar elementos por defecto */
+  & .low-rating-star,
+  & .star-rating-container:not(.has-user-rating) {
+    display: none !important;
+  }
 
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.has-user-rating .star-icon {
-  display: block !important;
-  width: 24px; height: 24px;
-}
+  /* Mostrar estrellas SOLO si hay voto de usuario */
+  & .star-rating-container.has-user-rating {
+    display: flex !important; gap: 4px; flex-grow: 0; justify-content: center;
+    & .star-icon { display: block !important; width: 24px; height: 24px; }
+  }
 
-/* Mostrar nota numérica */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block .wall-rating-number {
-  display: block;
-  flex-grow: 0;
-  text-align: center;
-  font-weight: var(--font-weight-bold);
-  font-size: 1.1rem;
-  color: var(--color-text-primary);
-  font-variant-numeric: tabular-nums; /* Cifras alineadas */
-  text-shadow: none;
-  filter: none; /* Eliminar aura circular */
-  cursor: pointer;
-  transform: translateY(calc(-40% + 6px)); /* Ajuste óptico: 2px más abajo que las estrellas */
-}
+  /* Ocultar nota numérica si hay voto de usuario (prioridad a estrellas) */
+  & .star-rating-container.has-user-rating ~ .wall-rating-number {
+    display: none;
+  }
 
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block .wall-rating-number:hover {
-  transform: translateY(calc(-40% + 6px)) scale(1.15) rotate(10deg);
-}
+  /* Watchlist junto a la nota (Modo Muro) */
+  & .card-action-btn {
+    position: absolute; right: var(--space-xxs); width: auto; height: auto; padding: 0; margin-left: 0;
+    background: transparent; backdrop-filter: none; color: var(--color-text-primary);
+    opacity: 0; transform: translateY(calc(-40% + 4px));
+    
+    &:hover { transform: translateY(-40%) scale(1.15) rotate(10deg); }
+    & svg { width: 25px; height: 25px; }
+    &.is-active, &:focus-visible { opacity: 1; }
+  }
 
-/* Ocultar nota numérica si hay voto de usuario (prioridad a estrellas) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.has-user-rating ~ .wall-rating-number {
-  display: none;
-}
-
-/* Watchlist junto a la nota (Modo Muro) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn {
-  position: absolute;
-  right: var(--space-xxs);
-  width: auto; height: auto;
-  padding: 0;
-  margin-left: 0;
-  background: transparent; backdrop-filter: none;
-  color: var(--color-text-primary);
-  opacity: 0; /* Oculto por defecto (invisible pero pulsable) */
-  transform: translateY(calc(-40% + 4px)); /* Alinear con la nota */
-}
-
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn:hover {
-  transform: translateY(-40%) scale(1.15) rotate(10deg);
-}
-
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn svg {
-  width: 25px; height: 25px;
-}
-
-/* Mostrar watchlist si está activo o tiene foco (feedback visual necesario) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn.is-active,
-body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn:focus-visible {
-  opacity: 1;
-}
-
-/* Ocultar watchlist si hay voto de usuario (prioridad a estrellas) */
-body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.has-user-rating ~ .card-action-btn {
-  display: none;
+  /* Ocultar watchlist si hay voto de usuario (prioridad a estrellas) */
+  & .star-rating-container.has-user-rating ~ .card-action-btn { display: none; }
 }
 
 /* En móvil desactivar interacción en elementos pequeños del muro */
@@ -662,4 +637,66 @@ body.rotation-disabled .movie-card:not(.is-quick-view) .star-rating-container.ha
     pointer-events: none;
   }
   body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn { pointer-events: auto; }
+}
+
+/* =================================================================
+   12. TARJETA DE PERSONA (Director/Actor VIP)
+   ================================================================= */
+
+.person-card .flip-card-inner {
+  transform: none !important; /* Desactiva el giro */
+  cursor: default;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Elevación estática elegante */
+}
+.person-card .flip-card-back { display: none; }
+.person-card .poster-container img {
+  object-position: top center; /* CRÍTICO: Evita cortar cabezas en recortes verticales (TMDB son 2:3) */
+  /* Forzamos el borde para que envuelva SOLO a la imagen, incluso en Modo Muro */
+  border: 3px solid var(--color-accent) !important; 
+}
+
+/* Alinear Edad, Años y Bandera a la derecha con mayor separación */
+.person-card .year-flag-group {
+  width: 100%;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+.person-card .card-icons-line { display: none; }
+.person-card .year-country-line { width: 100%; }
+
+/* Línea sutil e incompleta debajo de la foto */
+.person-card .poster-container::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-text-tertiary), transparent);
+  opacity: 0.4;
+}
+
+/* Ajuste VIP en Modo Muro: Nombre en la parte inferior */
+.movie-card.person-card .card-rating-block {
+  display: none; /* Oculto en modo normal (ya tiene la info abajo) */
+}
+body.rotation-disabled .movie-card.person-card .card-rating-block {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 26px; /* Iguala la altura de las estrellas para que la foto no crezca ni un milímetro */
+  width: 100%;
+  pointer-events: none !important; /* Bloquea clics accidentales (error de votos) y efectos hover */
+}
+body.rotation-disabled .movie-card.person-card .wall-person-name {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2; /* Permite espacio para los descendentes (g, q, y, j) */
+  padding-bottom: 2px; /* Margen de seguridad inferior */
+  transform: translateY(-4px) !important; /* Ajuste óptico: subida estática para igualar el solapamiento de la nota */
 }

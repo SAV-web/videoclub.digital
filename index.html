@@ -420,6 +420,33 @@
     </div>
   </template>
 
+  <template id="person-card-template">
+    <div class="movie-card person-card">
+      <div class="flip-card-inner">
+        <div class="flip-card-front">
+          <div class="poster-container">
+            <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" class="lazy-image" width="400" height="496" decoding="async" />
+            <div class="card-rating-block">
+              <span class="wall-person-name" data-template="wall-name"></span>
+            </div>
+          </div>
+
+          <div class="movie-info movie-summary">
+            <div class="title-director-block">
+              <h3 data-template="title"></h3>
+              <div class="front-director-info" data-template="birthplace"></div>
+            </div>
+            <div class="movie-meta">
+              <div class="card-icons-line"></div> 
+              <div class="year-country-line"><div class="year-flag-group"><span class="person-age" data-template="age"></span><span class="person-dates" data-template="dates"></span><span class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
   <template id="sidebar-skeleton-template">
     <div class="collapsible-section">
       <div class="skeleton skeleton-sidebar-header"></div>
@@ -453,7 +480,8 @@
             </div>
             <div class="movie-meta">
               <div class="card-icons-line"></div> 
-              <div class="year-country-line"><div class="year-flag-group"><span data-template="year"></span><span class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></span></div></div>
+              <div class="year-country-line"><div class="year-flag-group"><span data-template="year"></span><span class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></span></div>
+              </div>
             </div>
           </div>
         </div>

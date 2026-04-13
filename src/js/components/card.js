@@ -14,6 +14,7 @@ import spriteUrl from "../../sprite.svg";
 
 // Cachear template una sola vez
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
+const personTemplate = document.querySelector(SELECTORS.PERSON_CARD_TEMPLATE);
 
 // Estado de Renderizado
 let currentRenderRequestId = 0;
@@ -257,6 +258,14 @@ export function handleCardClick(event) {
   if (areInteractionsLocked()) { event.preventDefault(); event.stopPropagation(); return; }
 
   const card = this;
+  
+  // Bloqueo estricto: Las tarjetas VIP no tienen votaciones ni abren modales
+  if (card.classList.contains('person-card')) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
   const target = event.target;
   const movieId = parseInt(card.dataset.movieId, 10);
 
@@ -593,7 +602,7 @@ export function initializeCard(card) {
 //          5. GESTIÓN DE GRID (Renderizado Masivo)
 // =================================================================
 
-export async function renderMovieGrid(container, movies) {
+export async function renderMovieGrid(container, movies, personData = null) {
   const renderId = ++currentRenderRequestId;
   unflipAllCards();
   if (!container) return;
@@ -626,6 +635,12 @@ export async function renderMovieGrid(container, movies) {
     if (index === 0) {
       cleanupLazyImages(container);
       container.textContent = "";
+      
+      // Inyección VIP: Añadir la tarjeta de persona como primer elemento si existe
+      const hasPhoto = personData && ((personData.photo && personData.photo !== 'NOT_FOUND') || (personData.profile_path && personData.profile_path !== 'NOT_FOUND'));
+      if (hasPhoto) {
+        container.appendChild(createPersonCardElement(personData));
+      }
     }
 
     container.appendChild(fragment);
@@ -651,6 +666,81 @@ function createCardElement(movie, index) {
   populateCard(card, movie, index);
   updateCardUI(card);
   initializeCard(card);
+  
+  return clone;
+}
+
+function createPersonCardElement(person) {
+  const clone = personTemplate.content.cloneNode(true);
+  const card = clone.querySelector('.person-card');
+  
+  const img = card.querySelector('img');
+  
+  // Lógica Híbrida: Supabase Storage (photo) -> TMDB (profile_path)
+  if (person.photo && person.photo !== 'NOT_FOUND') {
+    let photoName = person.photo;
+    // Forzar siempre a .webp (reemplazar antigua extensión si existe)
+    if (/\.(jpg|jpeg|png)$/i.test(photoName)) {
+      photoName = photoName.replace(/\.(jpg|jpeg|png)$/i, ".webp");
+    } else if (!photoName.endsWith(".webp")) {
+      photoName += ".webp";
+    }
+    img.src = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
+  } else if (person.profile_path && person.profile_path.startsWith('/')) {
+    img.src = `https://image.tmdb.org/t/p/w400${person.profile_path}`;
+  }
+  
+  img.alt = `Foto de ${person.name}`;
+  img.loading = "eager"; // Prioridad de red crítica (Above the fold)
+  img.decoding = "async";
+  img.setAttribute("fetchpriority", "high");
+  
+  const titleEl = card.querySelector('[data-template="title"]');
+  titleEl.textContent = person.name;
+  const tLen = person.name.length;
+  if (tLen > 40) titleEl.classList.add("title-xl-long");
+  else if (tLen > 25) titleEl.classList.add("title-long");
+  else if (tLen > 12) titleEl.classList.add("title-medium");
+  
+  card.querySelector('[data-template="birthplace"]').textContent = person.place_of_birth || "";
+  
+  const getYear = (dateStr) => dateStr ? dateStr.split('-')[0] : '';
+  const bYear = getYear(person.birthday);
+  const dYear = getYear(person.deathday);
+  
+  let ageStr = "";
+  let wallAgeStr = "";
+  if (person.birthday) {
+    const bDate = new Date(person.birthday);
+    const eDate = person.deathday ? new Date(person.deathday) : new Date();
+    let age = eDate.getFullYear() - bDate.getFullYear();
+    const m = eDate.getMonth() - bDate.getMonth();
+    if (m < 0 || (m === 0 && eDate.getDate() < bDate.getDate())) age--;
+    ageStr = person.deathday ? `(${age} ✝)` : `(${age})`;
+    wallAgeStr = person.deathday ? `${age} ✝` : `${age}`;
+  }
+  
+  card.querySelector('[data-template="age"]').textContent = ageStr;
+  card.querySelector('[data-template="dates"]').textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
+  
+  // Lógica de nombre corto para el Modo Muro
+  let wallName = person.name;
+  if (wallName.length > 14) {
+    const parts = wallName.split(" ");
+    if (parts.length >= 2) {
+      wallName = `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
+    }
+  }
+  
+  const wallNameEl = card.querySelector('[data-template="wall-name"]');
+  if (wallNameEl) wallNameEl.textContent = wallName;
+
+  renderCountryFlag(
+    card.querySelector(SELECTORS.COUNTRY_CONTAINER),
+    card.querySelector(SELECTORS.COUNTRY_FLAG),
+    person.countries?.code,
+    person.countries?.name
+  );
   
   return clone;
 }
