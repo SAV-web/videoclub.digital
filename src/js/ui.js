@@ -368,7 +368,9 @@ function shouldShowTotalCount() {
 
   // 3. Solo filtro de año: Verificar rango
   if (filters.year) {
-    const [start, end] = filters.year.split('-').map(Number);
+    const parts = filters.year.split('-').map(Number);
+    const start = parts[0];
+    const end = parts.length > 1 ? parts[1] : parts[0];
     if (!isNaN(start) && !isNaN(end)) {
       // Ocultar si el rango es de 10 años o más
       return (end - start) < 10;

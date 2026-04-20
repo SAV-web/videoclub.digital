@@ -95,7 +95,14 @@ export const formatVotesUnified = (votes, platform) => {
     return `${Math.floor(numVotes / 1000)} k`;
   }
 
-  // 3. Menores de 100k
+  // 3. Menores de 1000
+  if (numVotes < 1000) {
+    // Redondeo a la decena
+    const rounded = Math.round(numVotes / 10) * 10;
+    return thousandsFormatter.format(rounded);
+  }
+
+  // 4. Menores de 3000
   if (numVotes < 3000) {
     // Redondeo a centena
     const rounded = Math.ceil(numVotes / 100) * 100;

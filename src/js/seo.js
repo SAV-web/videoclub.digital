@@ -53,7 +53,9 @@ export function buildSeoDescription(noun, filters, movies = []) {
     if (filters.country) parts.push(`de ${filters.country}`);
     if (filters.director) parts.push(`dirigidas por ${filters.director}`);
     if (filters.actor) parts.push(`con ${filters.actor}`);
-    if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) parts.push(`del periodo ${filters.year}`);
+    if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
+      parts.push(filters.year.includes("-") ? `del periodo ${filters.year.replace("-", " a ")}` : `del año ${filters.year}`);
+    }
     
     if (parts.length > 0) {
       desc = `Catálogo de ${noun.toLowerCase()} ${parts.join(", ")}. Descubre las mejores obras según tus gustos.`;

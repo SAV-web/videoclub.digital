@@ -75,7 +75,7 @@ let touchState = {
 };
 
 /**
- * Aplica filtros de año pendientes si el usuario ha modificado los inputs manuales.
+ * Aplica fi      if (currentStart !== globalStart || currentEnd !ltros de año pendientes si el usuario ha modificado los inputs manuales.
  */
 function applyPendingYearFilters() {
   if (!dom.yearStartInput || !dom.yearEndInput) return;
@@ -94,11 +94,14 @@ function applyPendingYearFilters() {
       if (parts.length === 2) {
           globalStart = parseInt(parts[0], 10);
           globalEnd = parseInt(parts[1], 10);
-      }
+        } else if (parts.length === 1) {
+            globalStart = parseInt(parts[0], 10);
+            globalEnd = parseInt(parts[0], 10);
+        }
   }
   
   if (currentStart !== globalStart || currentEnd !== globalEnd) {
-      const yearFilter = `${currentStart}-${currentEnd}`;
+      const yearFilter = currentStart === currentEnd ? `${currentStart}` : `${currentStart}-${currentEnd}`;
       handleFilterChangeOptimistic("year", yearFilter, true);
   }
 }
@@ -880,7 +883,8 @@ function initYearSlider() {
 
   // Obtener estado inicial desde la URL/Store para mantener la selección al refrescar
   const currentFilters = getActiveFilters();
-  const initialYears = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
+  let initialYears = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
+  if (initialYears.length === 1) initialYears = [initialYears[0], initialYears[0]];
 
   const sliderInstance = noUiSlider.create(dom.yearSlider, {
     start: initialYears,
@@ -895,7 +899,7 @@ function initYearSlider() {
     if (start > end) {
       if (handle === 0) end = start; else start = end;
     }
-    const yearFilter = `${start}-${end}`;
+    const yearFilter = start === end ? `${start}` : `${start}-${end}`;
     
     // Lógica condicional para móvil: Esperar a que el usuario elija ambos límites
     if (isMobileLayout()) {
@@ -948,7 +952,8 @@ function initYearSlider() {
   document.addEventListener("updateSidebarUI", () => {
     debouncedUpdate.cancel(); // Cancelar cualquier actualización pendiente del usuario
     const currentFilters = getActiveFilters();
-    const years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
+    let years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
+    if (years.length === 1) years = [years[0], years[0]];
     sliderInstance.set(years, false); // false = no disparar eventos 'set'
   });
 }

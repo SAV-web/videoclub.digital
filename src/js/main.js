@@ -276,10 +276,11 @@ function handleGlobalScroll() {
 
   if (!isTicking) {
     window.requestAnimationFrame(() => {
-      const currentScrollY = window.scrollY;
+      // Evitar rebotes negativos en iOS (Elastic Scroll) que causan bugs matemáticos
+      const currentScrollY = Math.max(0, window.scrollY);
       
       // 1. Efecto Sombra/Borde en Header
-      dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 10);
+      dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 20);
 
       // 2. Smart Hide (Barra inferior móvil)
       if (window.innerWidth <= 768 || window.innerHeight <= 500) {
@@ -289,22 +290,26 @@ function handleGlobalScroll() {
 
         if (isSearchActive || dom.mainHeader.classList.contains("is-search-focused") || isKeyboardOpen) {
           dom.mainHeader.classList.remove('is-hidden-mobile');
+          lastScrollY = currentScrollY; // Reset ancla
         } else {
-          const isScrollingDown = currentScrollY > lastScrollY;
           const scrollDifference = Math.abs(currentScrollY - lastScrollY);
           const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
 
           if (isAtBottom) {
             // Siempre mostrar al llegar al final
             dom.mainHeader.classList.remove('is-hidden-mobile');
-          } else if (scrollDifference > 5) {
+            lastScrollY = currentScrollY; // Reset ancla
+          } else if (scrollDifference > 12) { // Acumular umbral antes de decidir dirección
+            const isScrollingDown = currentScrollY > lastScrollY;
             // Ocultar al bajar, mostrar al subir
             dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
+            lastScrollY = currentScrollY; // Mover ancla SOLO si superamos el umbral
           }
         }
+      } else {
+        lastScrollY = currentScrollY; // En desktop, mantener sincronizado
       }
 
-      lastScrollY = currentScrollY;
       isTicking = false;
     });
     isTicking = true;

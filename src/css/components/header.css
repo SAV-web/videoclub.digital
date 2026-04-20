@@ -18,6 +18,7 @@
     box-shadow 0.3s ease,
     border-color var(--transition-duration-normal),
     transform 0.3s ease;
+  will-change: transform; /* Aceleración por hardware para evitar temblores */
 
   /* --- Estilos Desktop (Sticky Superior) --- */
   @media (min-width: 769px) and (min-height: 501px) {

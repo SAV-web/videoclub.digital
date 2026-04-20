@@ -336,7 +336,7 @@ export function handleCardClick(event) {
   }
 
   // 5. Enlaces Filtros
-  const filterLink = target.closest("[data-director-name], [data-actor-name]");
+  const filterLink = target.closest("[data-director-name], [data-actor-name], [data-year-value]");
   if (filterLink) {
     // FIX: Si estamos en el modal, ignoramos este handler para evitar doble dispatch
     // y permitir que modal.js maneje el cierre del modal.
@@ -347,8 +347,11 @@ export function handleCardClick(event) {
 
     event.preventDefault();
     event.stopPropagation();
-    const type = filterLink.dataset.directorName ? "director" : "actor";
-    const value = filterLink.dataset.directorName || filterLink.dataset.actorName;
+    let type, value;
+    if (filterLink.dataset.directorName) { type = "director"; value = filterLink.dataset.directorName; }
+    else if (filterLink.dataset.actorName) { type = "actor"; value = filterLink.dataset.actorName; }
+    else if (filterLink.dataset.yearValue) { type = "year"; value = filterLink.dataset.yearValue; }
+
     // Evento global: resetea filtros y aplica uno nuevo (usado por sidebar/main).
     document.dispatchEvent(new CustomEvent("filtersReset", { detail: { keepSort: true, newFilter: { type, value } } }));
     return;
@@ -460,7 +463,19 @@ function populateCard(card, movie, index) {
 
   // Año y País
   const isSeries = isMovieSeries(movie.type);
-  front.querySelector(SELECTORS.YEAR).textContent = formatYearRange(movie.year, movie.year_end, isSeries, "N/A");
+  const yearContainer = front.querySelector(SELECTORS.YEAR);
+  yearContainer.textContent = "";
+  const displayYear = formatYearRange(movie.year, movie.year_end, isSeries, "N/A");
+  if (movie.year) {
+    yearContainer.appendChild(createElement("a", {
+      textContent: displayYear,
+      href: `?year=${movie.year}`,
+      className: "year-link",
+      dataset: { yearValue: `${movie.year}` }
+    }));
+  } else {
+    yearContainer.textContent = displayYear;
+  }
   
   renderCountryFlag(
     front.querySelector(SELECTORS.COUNTRY_CONTAINER),

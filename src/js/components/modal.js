@@ -80,16 +80,19 @@ function handleOutsideClick(event) {
 function handleMetadataClick(event) {
   const directorLink = event.target.closest(".front-director-info a[data-director-name]");
   const actorLink = event.target.closest('[data-template="actors"] a[data-actor-name]');
+  const yearLink = event.target.closest("a[data-year-value]");
 
-  if (directorLink || actorLink) {
+  if (directorLink || actorLink || yearLink) {
     // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
     event.preventDefault();
     closeModal();
     
-    const filterType = directorLink ? "director" : "actor";
-    const filterValue = directorLink ? directorLink.dataset.directorName : actorLink.dataset.actorName;
+    let filterType, filterValue;
+    if (directorLink) { filterType = "director"; filterValue = directorLink.dataset.directorName; }
+    else if (actorLink) { filterType = "actor"; filterValue = actorLink.dataset.actorName; }
+    else if (yearLink) { filterType = "year"; filterValue = yearLink.dataset.yearValue; }
 
     // Evento global de integración:
     // - reset de filtros
@@ -327,7 +330,19 @@ function setupModalHeader(nodes, movie) {
   }
 
   // Año y País
-  if (nodes.year) nodes.year.textContent = movie.displayYear;
+  if (nodes.year) {
+    nodes.year.textContent = "";
+    if (movie.year) {
+      nodes.year.appendChild(createElement("a", {
+        textContent: movie.displayYear,
+        href: `?year=${movie.year}`,
+        className: "year-link",
+        dataset: { yearValue: `${movie.year}` }
+      }));
+    } else {
+      nodes.year.textContent = movie.displayYear;
+    }
+  }
   renderCountryFlag(
     nodes["country-container"],
     nodes["country-flag"],

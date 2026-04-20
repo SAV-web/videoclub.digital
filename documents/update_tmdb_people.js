@@ -77,45 +77,63 @@ async function loadCountries() {
 /**
  * Procesa una tabla (actors o directors)
  */
-async function processTable(tableName) {
+async function processTable(tableName, vipNames = null) {
   console.log(`\n--- Iniciando procesamiento de la tabla: ${tableName} ---`);
   
-  const viewName = tableName === 'actors' ? 'mv_actor_suggestions' : 'mv_director_suggestions';
-  const minMovies = tableName === 'directors' ? 3 : 5;
+  let peopleToProcess = [];
 
-  // 1. Obtener los IDs que superan el mínimo de películas usando las vistas materializadas
-  const { data: topPeople, error: topError } = await supabase
-    .from(viewName)
-    .select('id')
-    .gt('movie_count', minMovies);
+  if (vipNames) {
+    // Modo VIP: Extraer lista exacta, ignorando filtros para forzar actualización
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('id, name')
+      .in('name', vipNames);
 
-  if (topError) {
-    console.error(`Error obteniendo datos de ${viewName}:`, topError);
-    return;
+    if (error) {
+      console.error(`Error obteniendo VIPs en ${tableName}:`, error);
+      return;
+    }
+    peopleToProcess = data;
+  } else {
+    // Modo normal (por conteo de películas y que no tengan profile_path)
+    const viewName = tableName === 'actors' ? 'mv_actor_suggestions' : 'mv_director_suggestions';
+    const minMovies = tableName === 'directors' ? 3 : 5;
+
+    // 1. Obtener los IDs que superan el mínimo de películas usando las vistas materializadas
+    const { data: topPeople, error: topError } = await supabase
+      .from(viewName)
+      .select('id')
+      .gt('movie_count', minMovies);
+
+    if (topError) {
+      console.error(`Error obteniendo datos de ${viewName}:`, topError);
+      return;
+    }
+
+    const topIds = topPeople.map(p => p.id);
+    if (topIds.length === 0) {
+      console.log(`No hay registros con más de ${minMovies} películas en ${tableName}.`);
+      return;
+    }
+
+    // 2. Obtener registros filtrados que no han sido procesados aún (profile_path es null)
+    const { data: people, error } = await supabase
+      .from(tableName)
+      .select('id, name')
+      .in('id', topIds)
+      .is('profile_path', null);
+
+    if (error) {
+      console.error(`Error obteniendo ${tableName}:`, error);
+      return;
+    }
+    peopleToProcess = people;
   }
 
-  const topIds = topPeople.map(p => p.id);
-  if (topIds.length === 0) {
-    console.log(`No hay registros con más de ${minMovies} películas en ${tableName}.`);
-    return;
-  }
-
-  // 2. Obtener registros filtrados que no han sido procesados aún (profile_path es null)
-  const { data: people, error } = await supabase
-    .from(tableName)
-    .select('id, name')
-    .in('id', topIds)
-    .is('profile_path', null);
-
-  if (error) {
-    console.error(`Error obteniendo ${tableName}:`, error);
-    return;
-  }
-
-  console.log(`Encontrados ${people.length} registros sin datos en ${tableName}. Procesando...`);
+  console.log(`Encontrados ${peopleToProcess.length} registros a procesar en ${tableName}. Procesando...`);
 
   let count = 0;
-  for (const person of people) {
+  for (const person of peopleToProcess) {
     count++;
     const details = await fetchPersonDetailsFromTMDB(person.name);
     
@@ -159,10 +177,10 @@ async function processTable(tableName) {
       .eq('id', person.id);
 
     if (updateError) {
-      console.error(`[${count}/${people.length}] Error actualizando ${person.name}:`, updateError.message);
+      console.error(`[${count}/${peopleToProcess.length}] Error actualizando ${person.name}:`, updateError.message);
     } else {
       const status = details?.profile_path ? "✅ Encontrado" : "❌ No encontrado";
-      console.log(`[${count}/${people.length}] ${status} -> ${person.name}`);
+      console.log(`[${count}/${peopleToProcess.length}] ${status} -> ${person.name}`);
     }
 
     await sleep(DELAY_MS); // Respetar rate limits de TMDB
@@ -173,9 +191,20 @@ async function processTable(tableName) {
 
 async function main() {
   await loadCountries();
-  // Primero directores, luego actores (o los dos a la vez si corres el script repetidas veces)
-  await processTable('directors');
-  await processTable('actors');
+
+  const VIP_DIRECTORS = [
+    "Mario Bava", "Ettore Scola", "Marco Bellocchio", "Mario Monicelli",
+    "Francesco Rosi", "Nanni Moretti", "Sergio Corbucci", "Dino Risi",
+    "Enzo Barboni", "Ferzan Ozpetek", "Matteo Garrone", "Ermanno Olmi",
+    "Gillo Pontecorvo", "Marco Tullio Giordana", "Paolo Virzì", "Pietro Germi",
+    "Alice Rohrwacher", "Enzo G. Castellari", "Franco Zeffirelli",
+    "Gabriele Muccino", "Gabriele Salvatores", "Hermanos Taviani",
+    "Marco Ferreri", "Michele Soavi", "Roberto Benigni"
+  ];
+
+  // Ejecutar forzando la actualización solo de esta lista de directores VIP
+  await processTable('directors', VIP_DIRECTORS);
+  
   console.log("\nProceso finalizado.");
 }
 

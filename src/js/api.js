@@ -69,6 +69,9 @@ function parseYearRange(yearStr) {
   if (parts.length === 2 && !parts.some(isNaN)) {
     return { start: parts[0], end: parts[1] };
   }
+  if (parts.length === 1 && !isNaN(parts[0])) {
+    return { start: parts[0], end: parts[0] };
+  }
   return { start: null, end: null };
 }
 
