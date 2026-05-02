@@ -790,7 +790,7 @@ function createCollectionCardElement(selectionCode, totalMovies) {
   else if (fullName.length > 25) titleEl.classList.add("title-long");
   else if (fullName.length > 12) titleEl.classList.add("title-medium");
   
-  card.querySelector('[data-template="subtitle"]').textContent = "Colección / Saga";
+  card.querySelector('[data-template="subtitle"]').textContent = "Selección / Saga";
   card.querySelector('[data-template="count"]').textContent = `${totalMovies} títulos`;
   
   const wallNameEl = card.querySelector('[data-template="wall-name"]');

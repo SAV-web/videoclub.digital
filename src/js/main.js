@@ -79,8 +79,12 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       if (vipType && vipName) {
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
-          hasVip = true;
-          if (page === 1) vipData = { type: 'person', data: personData };
+          const hasPhoto = (personData.photo && personData.photo !== 'NOT_FOUND') || 
+                           (personData.profile_path && personData.profile_path !== 'NOT_FOUND');
+          if (hasPhoto) {
+            hasVip = true;
+            if (page === 1) vipData = { type: 'person', data: personData };
+          }
         }
       } else if (activeFilters.selection) {
         if (page === 1) vipData = { type: 'collection', code: activeFilters.selection };
