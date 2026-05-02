@@ -83,6 +83,7 @@
     opacity: 0;
     visibility: hidden;
   }
+  .site-footer[data-loading] { opacity: 0; visibility: hidden; }
   </style>
 
 <!-- === 6. ANTI-FLICKER === -->
@@ -219,6 +220,18 @@
         <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
         <div id="grid-container" class="grid-container" aria-live="polite"></div>
         <nav id="pagination-container" class="pagination-container" aria-label="Navegación de páginas"></nav>
+        
+        <footer class="site-footer" data-loading>
+          <ul class="footer-links">
+            <li class="footer-brand">videoclub.digital</li>
+            <li><a href="#">Quiénes somos</a></li>
+            <li><a href="#">Contacto</a></li>
+            <li><a href="#">Aviso legal</a></li>
+            <li><a href="#">Privacidad</a></li>
+            <li><a href="#">Cookies</a></li>
+            <li class="footer-copy">2025-2026 © Copyright.</li>
+          </ul>
+        </footer>
       </section>
     </main>
   </div>

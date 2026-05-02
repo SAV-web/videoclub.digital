@@ -193,13 +193,9 @@ async function main() {
   await loadCountries();
 
   const VIP_DIRECTORS = [
-    "Mario Bava", "Ettore Scola", "Marco Bellocchio", "Mario Monicelli",
-    "Francesco Rosi", "Nanni Moretti", "Sergio Corbucci", "Dino Risi",
-    "Enzo Barboni", "Ferzan Ozpetek", "Matteo Garrone", "Ermanno Olmi",
-    "Gillo Pontecorvo", "Marco Tullio Giordana", "Paolo Virzì", "Pietro Germi",
-    "Alice Rohrwacher", "Enzo G. Castellari", "Franco Zeffirelli",
-    "Gabriele Muccino", "Gabriele Salvatores", "Hermanos Taviani",
-    "Marco Ferreri", "Michele Soavi", "Roberto Benigni"
+    "Shôhei Imamura", "Ishirô Honda", "Mikio Naruse", "Seijun Suzuki",
+    "Yasuzô Masumura", "Mamoru Oshii", "Yôji Yamada", "Sion Sono",
+    "Naomi Kawase", "Takashi Shimizu", "Tetsuya Nakashima", "Tetsurō Araki"
   ];
 
   // Ejecutar forzando la actualización solo de esta lista de directores VIP

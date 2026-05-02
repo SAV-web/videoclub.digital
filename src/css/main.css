@@ -33,7 +33,8 @@
 */
 
 /* Estado Inicial (Cargando) */
-[data-loading] > * {
+[data-loading] > *,
+.site-footer[data-loading] {
   opacity: 0;
   visibility: hidden;
 }
@@ -41,7 +42,8 @@
 /* Transición de Entrada (Al quitar el atributo en JS)
    Se aplica a los elementos estructurales principales para un fade-in suave. */
 .sidebar > *,
-.main-header > * {
+.main-header > *,
+.site-footer {
   /* La transición ocurre cuando el elemento vuelve a su estado natural (opacity: 1) */
   transition: opacity 0.3s ease-out, visibility 0s linear;
 }

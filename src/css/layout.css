@@ -44,6 +44,10 @@
     calc(var(--space-md) + env(safe-area-inset-bottom));
   
   transition: padding 0.3s ease;
+  
+  /* Flexbox para Footer al fondo */
+  display: flex;
+  flex-direction: column;
 }
 
 /* =================================================================
@@ -349,3 +353,39 @@ body.rotation-disabled .grid-container {
 ::view-transition-group(movie-*) { animation-duration: 0.5s; animation-timing-function: ease; }
 ::view-transition-new(movie-*) { animation-name: card-enter-animation; }
 ::view-transition-old(movie-*) { animation-name: fade-out; }
+
+/* =================================================================
+   7. FOOTER MINIMALISTA
+   ================================================================= */
+
+.site-footer {
+  margin-top: auto;
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-sm);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.footer-links li { display: flex; align-items: center; white-space: nowrap; }
+.footer-links li:not(:last-child)::after {
+  content: "|"; margin-left: var(--space-sm); color: var(--color-border);
+}
+.footer-links a { color: inherit; text-decoration: none; transition: color var(--duration-fast); }
+
+@media (hover: hover) and (pointer: fine) {
+  .footer-links a:hover { color: var(--color-text-primary); text-decoration: underline; }
+}
+
+.footer-brand { font-family: var(--font-title); font-weight: var(--font-weight-bold); color: var(--color-text-primary); }

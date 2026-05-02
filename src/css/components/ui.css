@@ -82,6 +82,7 @@ html.dark-mode .skeleton::after {
   flex-wrap: wrap;
   gap: var(--space-xs);
   margin-top: var(--space-md);
+  margin-bottom: var(--space-lg); /* Garantiza distancia mínima con el footer */
   padding: var(--space-xs);
 }
 
