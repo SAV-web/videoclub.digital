@@ -665,6 +665,9 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   border: 3px solid var(--color-accent) !important; 
 }
 
+/* Las colecciones usan el centro de la imagen (suelen ser logos o collages) */
+.collection-card .poster-container img { object-position: center center; }
+
 /* Alinear Edad, Años y Bandera a la derecha con mayor separación */
 .person-card .year-flag-group {
   width: 100%;

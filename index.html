@@ -460,6 +460,31 @@
     </div>
   </template>
 
+  <template id="collection-card-template">
+    <div class="movie-card person-card collection-card">
+      <div class="flip-card-inner">
+        <div class="flip-card-front">
+          <div class="poster-container">
+            <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" class="lazy-image" width="400" height="496" decoding="async" />
+            <div class="card-rating-block">
+              <span class="wall-person-name" data-template="wall-name"></span>
+            </div>
+          </div>
+          <div class="movie-info movie-summary">
+            <div class="title-director-block">
+              <h3 data-template="title"></h3>
+              <div class="front-director-info" data-template="subtitle"></div>
+            </div>
+            <div class="movie-meta">
+              <div class="card-icons-line"></div> 
+              <div class="year-country-line"><div class="year-flag-group"><span data-template="count"></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
   <template id="sidebar-skeleton-template">
     <div class="collapsible-section">
       <div class="skeleton skeleton-sidebar-header"></div>

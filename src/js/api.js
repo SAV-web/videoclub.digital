@@ -113,11 +113,11 @@ function createCanonicalCacheKey(filters, page, pageSize) {
 /**
  * Mapea los filtros del frontend a los parámetros esperados por la función RPC de PostgreSQL.
  */
-function stateToRpcParams(activeFilters, currentPage, pageSize, requestCount) {
+function stateToRpcParams(activeFilters, currentPage, pageSize, requestCount, explicitOffset) {
   const { start: yearStart, end: yearEnd } = parseYearRange(activeFilters.year);
 
   const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
-  const offset = (currentPage - 1) * pageSize;
+  const offset = explicitOffset !== null ? explicitOffset : (currentPage - 1) * pageSize;
 
   // Lógica de Regiones Virtuales
   let countryParam = activeFilters.country;
@@ -147,7 +147,7 @@ function stateToRpcParams(activeFilters, currentPage, pageSize, requestCount) {
     sort_field: sortField,
     sort_direction: sortDirection,
     page_limit: (pageSize && pageSize > 0) ? pageSize : 42,
-    page_offset: offset || 0,
+    page_offset: offset,
     get_count: requestCount // Optimización: false para no recalcular el total en paginación
   };
 }
@@ -162,10 +162,11 @@ const inFlightRequests = new Map();
  * @param {number} pageSize - Tamaño de página.
  * @param {AbortSignal} signal - Señal para cancelar la petición.
  * @param {boolean} requestCount - Si se debe pedir el conteo total (caro).
+ * @param {number|null} explicitOffset - Offset forzado para la consulta.
  */
-export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true) {
+export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true, explicitOffset = null) {
   // Incluimos requestCount en la clave porque el resultado varía (total vs -1)
-  const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount }, currentPage, pageSize);
+  const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount, explicitOffset }, currentPage, pageSize);
 
   // Caché: Solo para catálogo general. 'Mi Lista' depende de datos mutables locales y no se cachea aquí.
   if (!activeFilters.myList) {
@@ -242,7 +243,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
       }
       
       // --- MODO 2: CATÁLOGO GENERAL (RPC) ---
-      const rpcParams = stateToRpcParams(activeFilters, currentPage, pageSize, requestCount);
+      const rpcParams = stateToRpcParams(activeFilters, currentPage, pageSize, requestCount, explicitOffset);
       let query = supabase.rpc("search_movies_offset", rpcParams);
       if (signal) query = query.abortSignal(signal);
 
@@ -292,11 +293,16 @@ export async function fetchUserMovieData() {
   return userMap;
 }
 
+const personCache = new Map();
+
 /**
  * Obtiene los detalles de un artista VIP desde la BD
  */
 export async function fetchPersonDetails(type, name) {
   if (!name) return null;
+  const key = `${type}:${name}`;
+  if (personCache.has(key)) return personCache.get(key);
+  
   const table = type === 'director' ? 'directors' : 'actors';
   
   try {
@@ -306,7 +312,8 @@ export async function fetchPersonDetails(type, name) {
       .eq('name_norm', normalizeText(name))
       .single();
       
-    if (error || !data) return null;
+    if (error || !data) { personCache.set(key, null); return null; }
+    personCache.set(key, data);
     return data;
   } catch(e) { return null; }
 }

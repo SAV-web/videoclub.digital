@@ -1,7 +1,7 @@
 // src/js/components/card.js
 
-import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, isMovieSeries, formatYearRange, getHqPosterUrl } from "../utils.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, isMovieSeries, formatYearRange, getHqPosterUrl, debounce } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
@@ -15,6 +15,7 @@ import spriteUrl from "../../sprite.svg";
 // Cachear template una sola vez
 const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
 const personTemplate = document.querySelector(SELECTORS.PERSON_CARD_TEMPLATE);
+const collectionTemplate = document.querySelector("#collection-card-template");
 
 // Estado de Renderizado
 let currentRenderRequestId = 0;
@@ -28,6 +29,10 @@ const HOVER_DELAY = 1000;
 // Nota: INTERACTIVE_SELECTOR solo aplica a hover-delay, no a tap/click logic
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn";
 const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
+
+// Caché del Viewport para evitar Layout Thrashing (Forced Synchronous Layout) en renderizados masivos
+let cachedIsMobileViewport = window.innerWidth <= 768;
+window.addEventListener('resize', debounce(() => { cachedIsMobileViewport = window.innerWidth <= 768; }, 250));
 
 // =================================================================
 //          0. LAZY LOADING (Modal)
@@ -371,8 +376,7 @@ export function handleCardClick(event) {
 //          4. RENDERIZADO (Builders)
 // =================================================================
 
-// Observer de Lazy Load (Reutilizado)
-const isMobile = window.matchMedia("(max-width: 768px)").matches;
+// Observer de Lazy Load
 const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -403,9 +407,8 @@ function populateCard(card, movie, index) {
   img.alt = `Póster de ${movie.title}`;
   
   // LCP & Viewport Optimization
-  // En móvil (<=768px) mostramos 6 cartas (aprox 3 filas) eager. En desktop 2.
-  const isMobileViewport = window.innerWidth <= 768;
-  const priorityCount = isMobileViewport ? 6 : 2;
+  // Usamos el viewport cacheado para no forzar reflows costosos en el DOM
+  const priorityCount = cachedIsMobileViewport ? 6 : 2;
   const isFirstPage = getCurrentPage() === 1;
 
   if (isFirstPage && index < priorityCount) {
@@ -617,7 +620,7 @@ export function initializeCard(card) {
 //          5. GESTIÓN DE GRID (Renderizado Masivo)
 // =================================================================
 
-export async function renderMovieGrid(container, movies, personData = null) {
+export async function renderMovieGrid(container, movies, vipData = null) {
   const renderId = ++currentRenderRequestId;
   unflipAllCards();
   if (!container) return;
@@ -651,10 +654,13 @@ export async function renderMovieGrid(container, movies, personData = null) {
       cleanupLazyImages(container);
       container.textContent = "";
       
-      // Inyección VIP: Añadir la tarjeta de persona como primer elemento si existe
-      const hasPhoto = personData && ((personData.photo && personData.photo !== 'NOT_FOUND') || (personData.profile_path && personData.profile_path !== 'NOT_FOUND'));
-      if (hasPhoto) {
-        container.appendChild(createPersonCardElement(personData));
+      // Inyección VIP: Añadir la tarjeta VIP como primer elemento si existe
+      if (vipData) {
+        if (vipData.type === 'person' && vipData.data) {
+          container.appendChild(createPersonCardElement(vipData.data));
+        } else if (vipData.type === 'collection') {
+          container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
+        }
       }
     }
 
@@ -703,12 +709,16 @@ function createPersonCardElement(person) {
     img.src = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
   } else if (person.profile_path && person.profile_path.startsWith('/')) {
     img.src = `https://image.tmdb.org/t/p/w400${person.profile_path}`;
+  } else {
+    // Fallback si no hay foto en TMDB ni en local
+    img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
   }
   
   img.alt = `Foto de ${person.name}`;
   img.loading = "eager"; // Prioridad de red crítica (Above the fold)
   img.decoding = "async";
   img.setAttribute("fetchpriority", "high");
+  img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
   
   const titleEl = card.querySelector('[data-template="title"]');
   titleEl.textContent = person.name;
@@ -724,7 +734,6 @@ function createPersonCardElement(person) {
   const dYear = getYear(person.deathday);
   
   let ageStr = "";
-  let wallAgeStr = "";
   if (person.birthday) {
     const bDate = new Date(person.birthday);
     const eDate = person.deathday ? new Date(person.deathday) : new Date();
@@ -732,7 +741,6 @@ function createPersonCardElement(person) {
     const m = eDate.getMonth() - bDate.getMonth();
     if (m < 0 || (m === 0 && eDate.getDate() < bDate.getDate())) age--;
     ageStr = person.deathday ? `(${age} ✝)` : `(${age})`;
-    wallAgeStr = person.deathday ? `${age} ✝` : `${age}`;
   }
   
   card.querySelector('[data-template="age"]').textContent = ageStr;
@@ -757,6 +765,37 @@ function createPersonCardElement(person) {
     person.countries?.name
   );
   
+  return clone;
+}
+
+function createCollectionCardElement(selectionCode, totalMovies) {
+  const clone = collectionTemplate.content.cloneNode(true);
+  const card = clone.querySelector('.collection-card');
+  
+  const img = card.querySelector('img');
+  const config = FILTER_CONFIG.selection;
+  const fullName = config.titles?.[selectionCode] || config.items[selectionCode] || selectionCode;
+  const shortName = config.items[selectionCode] || fullName;
+  
+  img.src = `${CONFIG.PROFILE_BASE_URL}collection_${selectionCode.toLowerCase()}.webp`;
+  img.alt = `Colección ${fullName}`;
+  img.loading = "eager";
+  img.decoding = "async";
+  img.setAttribute("fetchpriority", "high");
+  img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+  
+  const titleEl = card.querySelector('[data-template="title"]');
+  titleEl.textContent = fullName;
+  if (fullName.length > 40) titleEl.classList.add("title-xl-long");
+  else if (fullName.length > 25) titleEl.classList.add("title-long");
+  else if (fullName.length > 12) titleEl.classList.add("title-medium");
+  
+  card.querySelector('[data-template="subtitle"]').textContent = "Colección / Saga";
+  card.querySelector('[data-template="count"]').textContent = `${totalMovies} títulos`;
+  
+  const wallNameEl = card.querySelector('[data-template="wall-name"]');
+  if (wallNameEl) wallNameEl.textContent = shortName;
+
   return clone;
 }
 

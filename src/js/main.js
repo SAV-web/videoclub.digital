@@ -68,29 +68,60 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
   try {
+    let vipData = null;
+    let hasVip = false;
+    
+    // Detección de VIP: Lo evaluamos siempre para calcular bien los offsets de las páginas siguientes
+    if (!activeFilters.myList && !activeFilters.searchTerm) {
+      const vipType = activeFilters.director ? 'director' : (activeFilters.actor ? 'actor' : null);
+      const vipName = activeFilters.director || activeFilters.actor;
+
+      if (vipType && vipName) {
+        const personData = await fetchPersonDetails(vipType, vipName);
+        if (personData) {
+          hasVip = true;
+          if (page === 1) vipData = { type: 'person', data: personData };
+        }
+      } else if (activeFilters.selection) {
+        if (page === 1) vipData = { type: 'collection', code: activeFilters.selection };
+        hasVip = true;
+      }
+    }
+
     // Primera página carga más elementos para llenar pantallas grandes
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
     
-    const pageSize = page === 1 ? firstPageLimit : basePageSize;
+    // Lógica de Cuadrícula Perfecta (Anti-Huérfanas)
+    let fetchLimit = basePageSize;
+    let fetchOffset = (page - 1) * basePageSize;
+
+    if (hasVip) {
+      if (page === 1) {
+        fetchLimit = basePageSize - 1;
+        fetchOffset = 0;
+      } else {
+        fetchLimit = basePageSize;
+        fetchOffset = ((page - 1) * basePageSize) - 1;
+      }
+    } else {
+      // Extensión dinámica de la primera página para evitar paginaciones inútiles (Solo si no hay VIP)
+      if (page === 1) {
+        fetchLimit = firstPageLimit;
+      }
+    }
     
     // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
     const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
-    
-    // Detección de VIP: Si estamos en página 1 filtrando por una persona específica, traemos su tarjeta.
-    let personData = null;
-    if (page === 1 && !activeFilters.myList && !activeFilters.searchTerm) {
-      if (activeFilters.director) personData = await fetchPersonDetails('director', activeFilters.director);
-      else if (activeFilters.actor) personData = await fetchPersonDetails('actor', activeFilters.actor);
-    }
 
     const result = await fetchMovies(
       activeFilters,
       page,
-      pageSize,
+      fetchLimit,
       signal,
-      shouldRequestCount
+      shouldRequestCount,
+      fetchOffset
     );
 
     // Cancelar skeletons si la respuesta llegó rápido (antes de 150ms)
@@ -100,6 +131,13 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
 
     const { items: movies, total: returnedTotal } = result;
 
+    // Backend devuelve -1 si no se pidió conteo (get_count=false)
+    const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
+
+    if (vipData && vipData.type === 'collection') {
+      vipData.total = effectiveTotal;
+    }
+
     // Precarga LCP (Largest Contentful Paint) para la primera imagen
     if (movies && movies.length > 0) preloadLcpImage(movies[0]);
       
@@ -107,9 +145,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     const cardModule = await cardModulePromise;
 
     const performRender = () => {
-      // Backend devuelve -1 si no se pidió conteo (get_count=false)
-      const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
-      updateDomWithResults(movies, effectiveTotal, cardModule, personData);
+      updateDomWithResults(movies, effectiveTotal, cardModule, vipData, hasVip);
       
       // Scroll al top unificado (Paginación + Fix teclado móvil)
       window.scrollTo({ top: 0, behavior: "auto" });
@@ -143,7 +179,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
  * Actualiza el DOM con los resultados obtenidos.
  * Gestiona casos de vacío, paginación y precarga.
  */
-function updateDomWithResults(movies, totalMovies, cardModule, personData = null) {
+function updateDomWithResults(movies, totalMovies, cardModule, vipData = null, hasVip = false) {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   // Actualizar siempre el total para asegurar consistencia UI tras invalidación
   setTotalMovies(totalMovies);
@@ -167,6 +203,9 @@ function updateDomWithResults(movies, totalMovies, cardModule, personData = null
     return;
   }
 
+  // Ajuste matemático: Si hay VIP, la cuadrícula tiene un item más (la propia tarjeta)
+  const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
+
   if (totalMovies === 0) {
     // Evitar parpadeo de "No resultados" en "Mi Lista" antes de verificar la sesión
     if (getActiveFilters().myList && !isAuthInitialized) {
@@ -176,25 +215,30 @@ function updateDomWithResults(movies, totalMovies, cardModule, personData = null
 
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
-  } else if (totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentPage === 1) {
+  } else if (!hasVip && totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentPage === 1) {
     // Caso: Todos los resultados caben en una página
-    renderMovieGrid(dom.gridContainer, movies, personData);
+    renderMovieGrid(dom.gridContainer, movies, vipData);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
   } else {
     // Caso: Paginación necesaria
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const limit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-    // Slice optimizado: evitar copia de array si no es necesaria
-    const moviesToRender = movies.length > limit ? movies.slice(0, limit) : movies;
-    renderMovieGrid(dom.gridContainer, moviesToRender, personData);
+    const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     
-    if (totalMovies > limit) {
-      renderPagination(dom.paginationContainer, totalMovies, currentPage);
+    // Ajuste de Cuadrícula: Si hay tarjeta VIP, restamos 1 al límite para que el total 
+    // (VIP + Películas) sea un múltiplo perfecto y no deje "huérfanas" en la última fila.
+    const currentLimit = (hasVip && currentPage === 1) ? baseLimit - 1 : baseLimit;
+    
+    // Slice optimizado: evitar copia de array si no es necesaria
+    const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
+    renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
+    
+    if (gridTotalItems > baseLimit) {
+      renderPagination(dom.paginationContainer, gridTotalItems, currentPage);
     } else {
       dom.paginationContainer.textContent = "";
     }
-    updateHeaderPaginationState(currentPage, totalMovies);
+    updateHeaderPaginationState(currentPage, gridTotalItems);
   }
 
   // Onboarding: Enseñar mecánica de flip en la primera visita (Página 1)
