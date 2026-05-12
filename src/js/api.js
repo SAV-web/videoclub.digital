@@ -12,7 +12,7 @@ import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
 import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
-import { getUserDataForMovie, getAllUserMovieData } from "./state.js";
+import { getUserDataForMovie } from "./state.js";
 
 // Inicialización del cliente Supabase
 // GUARD: Evitar crash en PROD si faltan credenciales.
@@ -180,19 +180,12 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
 
   const promise = (async () => {
     try {
-      // --- MODO 1: MI LISTA (Filtrado de IDs locales) ---
+      // --- MODO 1: MI LISTA (Join directo en base de datos) ---
       if (activeFilters.myList) {
-        const allUserData = getAllUserMovieData();
-        const relevantIds = Object.entries(allUserData)
-          .filter(([_, data]) => {
-            if (activeFilters.myList === 'rated') return data.rating !== null;
-            if (activeFilters.myList === 'watchlist') return data.onWatchlist;
-            return data.onWatchlist || data.rating !== null;
-          })
-          .map(([id]) => parseInt(id, 10));
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return { total: 0, items: [] };
 
-        if (relevantIds.length === 0) return { total: 0, items: [] };
-
+        // Realizamos un INNER JOIN para filtrar sin pasar miles de IDs por la URL
         let query = supabase
           .from('movies')
           .select(`
@@ -202,12 +195,22 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
             imdb_id, imdb_rating, imdb_votes, avg_rating, 
             synopsis, thumbhash_st, critic, last_synced_at, 
             episodes, wikipedia, selections_list, studios_list, justwatch,
-            countries(name, code)
+            countries(name, code),
+            user_movie_entries!inner(user_id, rating, on_watchlist)
           `, requestCount ? { count: 'exact' } : {})
-          .in('id', relevantIds);
+          .eq('user_movie_entries.user_id', session.user.id);
 
         // Soporte completo de AbortController para evitar promesas colgadas al cambiar de vista
         if (signal) query = query.abortSignal(signal);
+
+        // Aplicar el filtro correcto según la pestaña seleccionada en el JOIN
+        if (activeFilters.myList === 'rated') {
+          query = query.not('user_movie_entries.rating', 'is', null);
+        } else if (activeFilters.myList === 'watchlist') {
+          query = query.eq('user_movie_entries.on_watchlist', true);
+        } else {
+          query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
+        }
 
         if (activeFilters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
         else if (activeFilters.mediaType === 'series') query = query.ilike('type', 'S%');
@@ -236,6 +239,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
             last_synced_at: m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null
           };
           delete item.countries;
+          delete item.user_movie_entries; // Limpiamos el join para el frontend
           return mapMoviePayload(item);
         });
 
@@ -281,15 +285,32 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
  * Se llama al iniciar sesión.
  */
 export async function fetchUserMovieData() {
-  const { data, error } = await supabase.from('user_movie_entries').select('movie_id, rating, on_watchlist');
-  if (error) throw new Error("No se pudieron cargar tus datos.");
+  let allData = [];
+  let hasMore = true;
+  let from = 0;
+  const step = 1000; // Límite por defecto de seguridad de Supabase
   
-  const userMap = {};
-  if (data) {
-    data.forEach(item => {
-      userMap[item.movie_id] = { rating: item.rating, onWatchlist: item.on_watchlist };
-    });
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('user_movie_entries')
+      .select('movie_id, rating, on_watchlist')
+      .range(from, from + step - 1);
+      
+    if (error) throw new Error("No se pudieron cargar tus datos.");
+    
+    if (data && data.length > 0) {
+      allData.push(...data);
+      from += step;
+      if (data.length < step) hasMore = false;
+    } else {
+      hasMore = false;
+    }
   }
+
+  const userMap = {};
+  allData.forEach(item => {
+    userMap[item.movie_id] = { rating: item.rating, onWatchlist: item.on_watchlist };
+  });
   return userMap;
 }
 

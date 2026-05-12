@@ -660,6 +660,8 @@ export async function renderMovieGrid(container, movies, vipData = null) {
           container.appendChild(createPersonCardElement(vipData.data));
         } else if (vipData.type === 'collection') {
           container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
+        } else if (vipData.type === 'studio') {
+          container.appendChild(createStudioCardElement(vipData.code, vipData.total));
         }
       }
     }
@@ -795,6 +797,36 @@ function createCollectionCardElement(selectionCode, totalMovies) {
   
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = shortName;
+
+  return clone;
+}
+
+function createStudioCardElement(studioCode, totalMovies) {
+  const clone = collectionTemplate.content.cloneNode(true);
+  const card = clone.querySelector('.collection-card');
+  
+  const img = card.querySelector('img');
+  const config = STUDIO_DATA[studioCode];
+  const fullName = config ? config.title : studioCode;
+  
+  img.src = `${CONFIG.PROFILE_BASE_URL}studio_${studioCode.toLowerCase()}.webp`;
+  img.alt = `Estudio ${fullName}`;
+  img.loading = "eager";
+  img.decoding = "async";
+  img.setAttribute("fetchpriority", "high");
+  img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+  
+  const titleEl = card.querySelector('[data-template="title"]');
+  titleEl.textContent = fullName;
+  if (fullName.length > 40) titleEl.classList.add("title-xl-long");
+  else if (fullName.length > 25) titleEl.classList.add("title-long");
+  else if (fullName.length > 12) titleEl.classList.add("title-medium");
+  
+  card.querySelector('[data-template="subtitle"]').textContent = "Estudio / Productora";
+  card.querySelector('[data-template="count"]').textContent = `${totalMovies} títulos`;
+  
+  const wallNameEl = card.querySelector('[data-template="wall-name"]');
+  if (wallNameEl) wallNameEl.textContent = fullName;
 
   return clone;
 }

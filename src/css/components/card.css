@@ -43,9 +43,6 @@
   aspect-ratio: 500 / 950;
   border-radius: var(--radius-xl);
   
-  /* Renderizado optimizado: Omitir renderizado fuera de pantalla */
-  content-visibility: auto;
-  contain-intrinsic-size: 130px 200px; /* Reducido para evitar desbordamiento en columnas densas */
   /* Aislamiento para evitar repintados en el resto de la página */
   contain: layout paint style; 
 
@@ -74,11 +71,6 @@
         box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
       }
     }
-  }
-
-  /* FIX SAFARI: Desactivar content-visibility para evitar bugs de renderizado con 3D */
-  @supports (-webkit-touch-callout: none) {
-    content-visibility: visible;
   }
 }
 
@@ -552,8 +544,6 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
 body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
   transition: transform var(--duration-quick) ease;
-  /* Ajuste de estimación de tamaño para evitar saltos de scroll en modo compacto */
-  contain-intrinsic-size: 85px 128px; /* Reducido para seguridad en zoom/densidad alta */
 
   /* Reducir sombra en modo muro para que sea proporcional al tamaño */
   & .flip-card-inner {

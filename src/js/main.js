@@ -89,6 +89,9 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       } else if (activeFilters.selection) {
         if (page === 1) vipData = { type: 'collection', code: activeFilters.selection };
         hasVip = true;
+      } else if (activeFilters.studio) {
+        if (page === 1) vipData = { type: 'studio', code: activeFilters.studio };
+        hasVip = true;
       }
     }
 
@@ -138,7 +141,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     // Backend devuelve -1 si no se pidió conteo (get_count=false)
     const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
 
-    if (vipData && vipData.type === 'collection') {
+    if (vipData && (vipData.type === 'collection' || vipData.type === 'studio')) {
       vipData.total = effectiveTotal;
     }
 
@@ -302,16 +305,8 @@ let lastScrollY = 0;
 let scrollTimer = null;
 
 function handleGlobalScroll() {
-  // 0. Scroll-aware UI: Activar modo rendimiento al empezar a scrollear
-  if (!document.body.classList.contains(CSS_CLASSES.IS_SCROLLING)) {
-    document.body.classList.add(CSS_CLASSES.IS_SCROLLING);
-  }
-  
-  // Debounce: Desactivar modo rendimiento tras 250ms de inactividad
   if (scrollTimer) clearTimeout(scrollTimer);
   scrollTimer = setTimeout(() => {
-    document.body.classList.remove(CSS_CLASSES.IS_SCROLLING);
-    
     // Prefetch Predictivo: Si el usuario se detiene (mira) cerca del final (>70%)
     const scrollPos = window.scrollY + window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
