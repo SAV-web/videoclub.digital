@@ -164,6 +164,14 @@
   box-shadow: var(--shadow);
   border: none;
   margin-bottom: 0;
+  
+  /* Asegura un fundido suave ("degradado") del cartel entero al abrir la modal */
+  animation: modal-poster-fade-in 0.5s ease-out backwards;
+}
+
+@keyframes modal-poster-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* --- Cabecera (Título y Director) --- */
@@ -245,8 +253,7 @@
 .is-quick-view .rating-left { gap: 12px; }
 
 .is-quick-view .details-list,
-.is-quick-view .plot-summary-final,
-.is-quick-view .critic-review { 
+.is-quick-view .plot-summary-final { 
   font-size: calc(var(--font-size-xs) * 1.5); 
   line-height: 1.5; /* Restaurar legibilidad en modal */
 }
@@ -259,8 +266,7 @@
   gap: var(--space-md);
 }
 
-.is-quick-view .plot-summary-final,
-.is-quick-view .critic-review {
+.is-quick-view .plot-summary-final {
   margin-top: var(--space-xl);
   padding-top: var(--space-md);
 }

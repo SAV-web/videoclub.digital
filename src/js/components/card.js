@@ -470,12 +470,17 @@ function populateCard(card, movie, index) {
   yearContainer.textContent = "";
   const displayYear = formatYearRange(movie.year, movie.year_end, isSeries, "N/A");
   if (movie.year) {
-    yearContainer.appendChild(createElement("a", {
-      textContent: displayYear,
+    const yearLink = createElement("a", {
+      textContent: movie.year,
       href: `?year=${movie.year}`,
       className: "year-link",
       dataset: { yearValue: `${movie.year}` }
-    }));
+    });
+    yearContainer.appendChild(yearLink);
+    if (displayYear.length > String(movie.year).length) {
+      const suffix = displayYear.substring(String(movie.year).length);
+      yearContainer.appendChild(document.createTextNode(suffix));
+    }
   } else {
     yearContainer.textContent = displayYear;
   }
@@ -559,12 +564,6 @@ function populateCard(card, movie, index) {
   back.querySelector(SELECTORS.GENRE).textContent = movie.genres || "Género no disponible";
   back.querySelector(SELECTORS.SYNOPSIS).textContent = movie.synopsis || "Sinopsis no disponible.";
   
-  const criticEl = back.querySelector('[data-template="critic-container"]');
-  if (movie.critic?.trim()) {
-    criticEl.querySelector('[data-template="critic"]').textContent = movie.critic;
-    criticEl.hidden = false;
-  } else { criticEl.hidden = true; }
-
   // Actores
   const actorsEl = back.querySelector(SELECTORS.ACTORS);
   const actors = movie.parsedActors || [];

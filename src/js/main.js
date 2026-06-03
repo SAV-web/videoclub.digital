@@ -281,8 +281,14 @@ async function handleSearchInput() {
   
   if (searchTerm === currentSearchTerm) return;
   
-  // Buscar solo si hay 3+ caracteres o se borró todo
-  if (searchTerm.length >= 3 || searchTerm.length === 0) {
+  // CASO 1: Se ha borrado la búsqueda (X o Backspace) y antes había una búsqueda activa.
+  if (searchTerm.length === 0 && currentSearchTerm.length > 0) {
+    history.back();
+    return;
+  }
+  
+  // CASO 2: Buscar solo si hay 3+ caracteres
+  if (searchTerm.length >= 3) {
     document.dispatchEvent(new CustomEvent("uiActionTriggered"));
     
     // Si pasamos de no tener búsqueda a tenerla, añadimos una entrada al historial (pushState)
@@ -390,6 +396,21 @@ function setupHeaderListeners() {
   // UX Búsqueda Móvil (Expandir/Colapsar)
   dom.searchInput.addEventListener("focus", () => dom.mainHeader.classList.add("is-search-focused"));
   dom.searchInput.addEventListener("blur", () => dom.mainHeader.classList.remove("is-search-focused"));
+
+  // Listener para la tecla Escape en el buscador
+  dom.searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      const currentSearchTerm = getState().activeFilters.searchTerm;
+      // Si había una búsqueda activa, volvemos atrás en el historial.
+      if (currentSearchTerm) {
+        history.back();
+      } else {
+        // Si no, simplemente quitamos el foco.
+        dom.searchInput.blur();
+      }
+    }
+  });
 
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);

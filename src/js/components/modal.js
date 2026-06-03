@@ -220,7 +220,8 @@ function handleTouchEnd(e) {
 function getGridCards() {
   const grid = document.getElementById("grid-container");
   if (!grid) return [];
-  return Array.from(grid.querySelectorAll(".movie-card"));
+  // Filtramos estrictamente las tarjetas que son películas reales (ignora VIPs/Skeletons)
+  return Array.from(grid.querySelectorAll(".movie-card[data-movie-id]"));
 }
 
 /**
@@ -304,10 +305,32 @@ function getModalNodes(root) {
  * @param {Object} movie - Datos de la película.
  */
 function setupModalHeader(nodes, movie) {
-  // Imagen
+  // Imagen (Efecto LQIP suave)
   if (nodes.img) {
-    nodes.img.src = movie.image_hq || movie.posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+    const hqUrl = movie.image_hq || movie.posterUrl;
     nodes.img.alt = `Póster de ${movie.title}`;
+
+    if (movie.thumbhash_st && hqUrl) {
+      nodes.img.classList.remove(CSS_CLASSES.LOADED);
+      nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
+      nodes.img.src = movie.thumbhash_st;
+
+          // Retraso estratégico de 150ms para que el navegador pinte el estado difuminado (LQIP)
+          // en la versión móvil antes de cargar la HQ, garantizando la transición CSS suave.
+          setTimeout(() => {
+            const tempImg = new Image();
+            tempImg.onload = () => {
+              nodes.img.src = hqUrl;
+              requestAnimationFrame(() => {
+                nodes.img.classList.add(CSS_CLASSES.LOADED);
+              });
+            };
+            tempImg.src = hqUrl;
+          }, 150);
+    } else {
+      nodes.img.src = hqUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+      nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+    }
   }
 
   // Título
@@ -333,12 +356,17 @@ function setupModalHeader(nodes, movie) {
   if (nodes.year) {
     nodes.year.textContent = "";
     if (movie.year) {
-      nodes.year.appendChild(createElement("a", {
-        textContent: movie.displayYear,
+      const yearLink = createElement("a", {
+        textContent: movie.year,
         href: `?year=${movie.year}`,
         className: "year-link",
         dataset: { yearValue: `${movie.year}` }
-      }));
+      });
+      nodes.year.appendChild(yearLink);
+      if (movie.displayYear.length > String(movie.year).length) {
+        const suffix = movie.displayYear.substring(String(movie.year).length);
+        nodes.year.appendChild(document.createTextNode(suffix));
+      }
     } else {
       nodes.year.textContent = movie.displayYear;
     }
@@ -414,15 +442,6 @@ function setupModalDetails(nodes, movie) {
   if (nodes.genre) nodes.genre.textContent = movie.genres || "N/A";
   if (nodes.synopsis) nodes.synopsis.textContent = movie.synopsis || "N/A";
   
-  if (nodes["critic-container"] && nodes.critic) {
-    if (movie.hasCritic) {
-      nodes.critic.textContent = movie.critic;
-      nodes["critic-container"].hidden = false;
-    } else { 
-      nodes["critic-container"].hidden = true; 
-    }
-  }
-
   // Actores
   if (nodes.actors) {
     nodes.actors.textContent = "";

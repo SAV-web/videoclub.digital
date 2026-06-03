@@ -58,7 +58,6 @@ export function mapMoviePayload(movie) {
     posterUrl: getHqPosterUrl(movie.image),
     displayOriginalTitle: actualOriginalTitle,
     hasOriginalTitle: actualOriginalTitle !== movie.title,
-    hasCritic: Boolean(movie.critic && movie.critic.trim()),
     displayEpisodes: isSeries && movie.episodes ? `${movie.episodes} x` : "",
     parsedActors: movie.actors ? movie.actors.split(",").map(a => a.trim()) : [],
     parsedDirectors: movie.directors ? movie.directors.split(",").map(d => d.trim()) : [],

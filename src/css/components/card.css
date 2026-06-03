@@ -339,13 +339,12 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   .flip-card-back.is-expanded &::after { opacity: 0; }
 }
 
-.plot-summary-final, .critic-review {
+.plot-summary-final {
   padding-top: 4px; border-top: 1px solid var(--color-border);
   opacity: 0.8; font-size: var(--font-size-xs); color: var(--color-text-secondary);
   font-weight: var(--font-weight-normal); line-height: 1.2; /* Reducir interlineado */
   text-wrap: pretty; /* Evita palabras huérfanas al final */
 }
-.critic-review { margin-top: 6px; }
 
 /* Overlay de Actores */
 .actors-scrollable-content {
@@ -425,6 +424,16 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
   overflow-y: auto; scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   pointer-events: auto; z-index: 15;
+}
+
+/* Sinopsis expandida: Misma tipografía que el listado de actores */
+.flip-card-back.is-expanded .plot-summary-final {
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  opacity: 1;
+  border-top: none;
+  padding-top: 0;
 }
 
 .flip-card-back.is-expanded.show-actors .actors-scrollable-content {
