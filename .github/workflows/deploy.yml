@@ -3,6 +3,12 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ] # Se ejecuta cada vez que subes cambios a la rama main
+  workflow_dispatch: # Permite ejecutar el despliegue manualmente desde la web de GitHub
+
+# Cancela despliegues anteriores en curso si haces varios push rápidos seguidos
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 # Permisos necesarios para que la acción pueda escribir en Pages
 permissions:
