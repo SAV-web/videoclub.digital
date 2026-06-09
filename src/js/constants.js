@@ -1,36 +1,38 @@
 // =================================================================
-// CONSTANTES GLOBALES (Fuente única de verdad. Inmutable y tipada)
+// CONSTANTES GLOBALES (La "Caja Fuerte" de la configuración)
+// Este archivo guarda todos los textos, límites y configuraciones de la app.
+// Al tenerlos todos aquí, si algún día queremos cambiar un texto o un límite,
+// solo tenemos que editar este archivo sin buscar por todo el código.
 // =================================================================
 
-// Importación de Logos (Vite gestionará las rutas finales)
-
-// --- Validación de Entorno (Explícita para Vite) ---
-// Vite necesita acceder a import.meta.env.NOMBRE_VAR explícitamente para el reemplazo estático.
+// --- Variables de Entorno (Contraseñas y URLs secretas) ---
+// 'import.meta.env' es la forma en la que Vite lee el archivo oculto '.env' de tu ordenador.
 const envUrl = import.meta.env.VITE_SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Avisamos en la consola si al desarrollador se le olvidó crear el archivo .env
 if (!envUrl || !envKey) {
   const msg = "[Config] Faltan variables de entorno VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.";
   console.error(msg);
 }
 
-// Lógica de Fallback Unificada:
-// - En DEV: Usamos placeholder para evitar crash inicial si no hay .env.
-// - En PROD: Dejamos vacío para detectar errores de configuración explícitamente.
+// Lógica de seguridad por si faltan las claves:
+// - Si estamos programando (DEV), ponemos texto falso para que la web no explote.
+// - Si estamos en Internet (PROD), lo dejamos vacío para darnos cuenta del error.
 const usePlaceholder = import.meta.env.DEV && (!envUrl || !envKey);
 
 const supabaseUrl = usePlaceholder ? "https://placeholder.supabase.co" : (envUrl || "");
 const supabaseKey = usePlaceholder ? "placeholder" : (envKey || "");
 
 /**
- * CONFIGURACIÓN TÉCNICA
- * Object.freeze asegura que nadie modifique esto en tiempo de ejecución.
+ * CONFIGURACIÓN PRINCIPAL DE LA WEB
+ * Usamos 'Object.freeze' para "congelar" este objeto. Es como ponerle un candado.
+ * Así evitamos que otro trozo de código cambie estos valores por accidente (ej: CONFIG.ITEMS_PER_PAGE = 0).
  */
 export const CONFIG = Object.freeze({
   // API
   SUPABASE_URL: supabaseUrl,
   SUPABASE_ANON_KEY: supabaseKey,
-  // Usamos la URL directa para evitar errores de concatenación
   POSTER_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/",
   PROFILE_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/vips/",
   
@@ -39,28 +41,31 @@ export const CONFIG = Object.freeze({
   DYNAMIC_PAGE_SIZE_LIMIT: 56,
   WALL_MODE_ITEMS_PER_PAGE: 72,
   WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 84,
-  CARD_BATCH_SIZE: 12, // Renderizado por lotes (divisible por 2,3,4) para evitar bloqueo UI
+  // Renderizamos de 12 en 12 para que el móvil no se quede "congelado" pintando 70 de golpe
+  CARD_BATCH_SIZE: 12, 
   
   // Comportamiento
   MAX_ACTIVE_FILTERS: 20,
   MAX_EXCLUDED_FILTERS: 20,
-  SEARCH_DEBOUNCE_DELAY: 400, // ms
+  SEARCH_DEBOUNCE_DELAY: 400, // Tiempo de espera tras teclear antes de buscar (milisegundos)
   
   // Límites de Datos
   YEAR_MIN: 1926,
   YEAR_MAX: new Date().getFullYear(),
   
   // Sistema
-  STORAGE_VERSION: 1, 
+  STORAGE_VERSION: 1, // Si cambiamos esto, obligamos al navegador a borrar la caché vieja
 });
 
 /**
- * Listas estáticas globales
+ * LISTAS DE EXCLUSIÓN
+ * Actores que en realidad son etiquetas o grupos y no queremos que salgan sugeridos.
  */
 export const IGNORED_ACTORS = Object.freeze(["(a)", "animación", "animacion", "documental"]);
 
 /**
  * Regiones Geopolíticas (Virtuales para filtrado compuesto)
+ * Agrupan varios códigos de país bajo un solo nombre para el usuario.
  */
 export const REGIONAL_GROUPS = Object.freeze({
   NORDICS: {
@@ -81,7 +86,10 @@ export const DEFAULTS = Object.freeze({
 });
 
 /**
- * CLASES CSS (Mapeo Estado -> Clase)
+ * DICCIONARIO DE CLASES CSS
+ * Guardar las clases aquí evita errores tipográficos. Si en el código escribes
+ * CSS_CLASSES.ACTIVE, JavaScript te avisará si te equivocas. Si escribes "active" a mano
+ * por todas partes y te equivocas escribiendo "ative", el navegador no te avisará.
  */
 export const CSS_CLASSES = Object.freeze({
   ACTIVE: "active",
@@ -115,7 +123,8 @@ export const CSS_CLASSES = Object.freeze({
 });
 
 /**
- * SELECTORES DOM (Centralizados)
+ * DICCIONARIO DE SELECTORES HTML
+ * Igual que las clases, los guardamos aquí para no repetir textos (strings) en el código.
  */
 export const SELECTORS = Object.freeze({
   // Globales (IDs)
@@ -163,9 +172,9 @@ export const SELECTORS = Object.freeze({
 });
 
 /**
- * RECURSOS SVG (Iconos Inline)
- * NOTA DE SEGURIDAD: Estos strings son contenido de confianza.
- * Se permite su uso con innerHTML exclusivamente porque son constantes estáticas.
+ * ALMACÉN DE ICONOS
+ * Guardamos el código de los iconos directamente aquí para no tener que cargar
+ * archivos de imagen externos, lo que hace que la web cargue instantáneamente.
  */
 export const ICONS = Object.freeze({
   PAUSE: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,
@@ -223,7 +232,8 @@ export const FILTER_CONFIG = {
       M: "1001 Movies",
       P: "TSPDT",
       C: "Criterion",
-      K: "Kino Lorber",      S: "Top TV",
+      K: "Kino Lorber",
+      S: "Top TV",
       H: "Series HBO",
       T: "A Contra+",
       A: "Arrow",
@@ -291,22 +301,12 @@ export const FILTER_CONFIG = {
   },
   director: {
     label: "Directores",
-    items: {
-      "Woody Allen": "Woody Allen",
-      "Alfred Hitchcock": "Hitchcock",
-      "Steven Spielberg": "Spielberg",
-      "Martin Scorsese": "Scorsese",
-      "Pedro Almodóvar": "Almodóvar",
-    },
+    // Se puebla dinámicamente al cargar el sidebar (ver updateDynamicFilters en sidebar.js)
+    items: {},
   },
   actor: {
     label: "Actores",
-    items: {
-      "Tom Cruise": "Tom Cruise",
-      "Robert De Niro": "De Niro",
-      "Brad Pitt": "Brad Pitt",
-      "Helen Mirren": "Helen Mirren",
-      "Javier Bardem": "Javier Bardem",
-    },
+    // Se puebla dinámicamente al cargar el sidebar (ver updateDynamicFilters en sidebar.js)
+    items: {},
   },
 };

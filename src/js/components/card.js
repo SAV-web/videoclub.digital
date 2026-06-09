@@ -296,18 +296,18 @@ export function handleCardClick(event) {
     let actorsOverlay = flipBack.querySelector('.actors-scrollable-content');
     if (!actorsOverlay) {
       actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
-      const h4 = createElement("h4", { textContent: "Reparto" });
-      const list = createElement("div", { className: "actors-list-text" });
-      actorsOverlay.replaceChildren(h4, list);
 
       const actors = card.movieData?.parsedActors || [];
+      let html = `<h4>Reparto</h4><div class="actors-list-text">`;
       actors.forEach(name => {
         if (IGNORED_ACTORS.includes(name.toLowerCase())) {
-          list.appendChild(createElement("span", { className: "actor-list-item", textContent: name, style: "cursor:default; pointer-events:none" }));
+          html += `<span class="actor-list-item" style="cursor:default; pointer-events:none">${name}</span>`;
         } else {
-          list.appendChild(createElement("button", { type: "button", className: "actor-list-item", textContent: name, dataset: { actorName: name } }));
+          html += `<button type="button" class="actor-list-item" data-actor-name="${name}">${name}</button>`;
         }
       });
+      html += `</div>`;
+      actorsOverlay.innerHTML = html;
       flipBack.insertBefore(actorsOverlay, flipBack.querySelector(".expand-content-btn"));
     }
 
@@ -465,10 +465,10 @@ function populateCard(card, movie, index) {
   }
 
   // Año y País
-  const isSeries = isMovieSeries(movie.type);
+  const isSeries = movie.isSeries; // OPTIMIZACIÓN: Ya se calcula en la API (mapMoviePayload)
   const yearContainer = front.querySelector(SELECTORS.YEAR);
   yearContainer.textContent = "";
-  const displayYear = formatYearRange(movie.year, movie.year_end, isSeries, "N/A");
+  const displayYear = movie.displayYear || "N/A";
   if (movie.year) {
     const yearLink = createElement("a", {
       textContent: movie.year,
@@ -501,19 +501,18 @@ function populateCard(card, movie, index) {
     // Si hay 3 o más estudios, aplicar clase compacta (iconos más pequeños)
     iconCont.classList.toggle('compact', codes.filter(c => STUDIO_DATA[c]).length >= 3);
 
+    let iconsHtml = "";
     codes.forEach(code => {
       const conf = STUDIO_DATA[code];
       if (conf) {
-        const span = createElement('span', { className: `platform-icon ${conf.class || ''}`, title: conf.title });
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", conf.w || "24"); svg.setAttribute("height", conf.h || "24");
-        svg.setAttribute("fill", "currentColor"); svg.setAttribute("viewBox", conf.vb || "0 0 24 24");
-        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        use.setAttribute("href", `${spriteUrl}#${conf.id}`);
-        svg.appendChild(use); span.appendChild(svg);
-        iconCont.appendChild(span);
+        iconsHtml += `<span class="platform-icon ${conf.class || ''}" title="${conf.title}">
+          <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="${conf.vb || "0 0 24 24"}">
+            <use href="${spriteUrl}#${conf.id}"></use>
+          </svg>
+        </span>`;
       }
     });
+    iconCont.innerHTML = iconsHtml;
   }
 
   // Nota numérica para modo muro
@@ -627,50 +626,45 @@ export async function renderMovieGrid(container, movies, vipData = null) {
   const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12; // Configurado globalmente para fluidez
   let index = 0;
 
-  async function renderBatch() {
+  function renderBatch() {
     if (renderId !== currentRenderRequestId) return; // Cancelado por nueva petición
     if (index >= movies.length || !document.body.contains(container)) return;
 
-    const fragment = document.createDocumentFragment();
     const limit = Math.min(index + BATCH_SIZE, movies.length);
+    const isFirstBatch = index === 0;
 
-    for (let i = index; i < limit; i++) {
-      // Verificación extra dentro del bucle por si la cancelación ocurre durante el await
+    // Programamos el lote ENTERO como una sola tarea para evitar micro-pausas (yielding excesivo)
+    scheduleWork(() => {
       if (renderId !== currentRenderRequestId) return;
+      const fragment = document.createDocumentFragment();
 
-      const cardNode = await scheduleWork(
-        () => createCardElement(movies[i], i),
-        'user-visible'
-      );
-      
-      fragment.appendChild(cardNode);
-    }
+      for (let i = index; i < limit; i++) {
+        fragment.appendChild(createCardElement(movies[i], i));
+      }
 
-    if (renderId !== currentRenderRequestId) return;
-
-    // Limpiar contenedor solo antes de pintar el primer lote para evitar parpadeo
-    if (index === 0) {
-      cleanupLazyImages(container);
-      container.textContent = "";
-      
-      // Inyección VIP: Añadir la tarjeta VIP como primer elemento si existe
-      if (vipData) {
-        if (vipData.type === 'person' && vipData.data) {
-          container.appendChild(createPersonCardElement(vipData.data));
-        } else if (vipData.type === 'collection') {
-          container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
-        } else if (vipData.type === 'studio') {
-          container.appendChild(createStudioCardElement(vipData.code, vipData.total));
+      // Limpiar contenedor solo antes de pintar el primer lote
+      if (isFirstBatch) {
+        cleanupLazyImages(container);
+        container.textContent = "";
+        
+        if (vipData) {
+          if (vipData.type === 'person' && vipData.data) {
+            container.appendChild(createPersonCardElement(vipData.data));
+          } else if (vipData.type === 'collection') {
+            container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
+          } else if (vipData.type === 'studio') {
+            container.appendChild(createStudioCardElement(vipData.code, vipData.total));
+          }
         }
       }
-    }
 
-    container.appendChild(fragment);
-    index = limit;
-    
-    if (index < movies.length) {
-      await scheduleWork(renderBatch, 'background');
-    }
+      container.appendChild(fragment);
+      index = limit;
+      
+      if (index < movies.length) {
+        renderBatch(); // Nos auto-llamamos para el siguiente lote (generando un yield natural)
+      }
+    }, isFirstBatch ? 'user-visible' : 'background');
   }
 
   renderBatch();
@@ -683,7 +677,8 @@ function createCardElement(movie, index) {
   card.dataset.movieId = movie.id;
   card.movieData = movie;
   // OPTIMIZACIÓN: view-transition-name se asigna dinámicamente al hacer clic (ver modal.js)
-  card.style.setProperty("--card-index", index); // Para animación staggered
+  // LIMITAMOS el índice a 20 para evitar que, en páginas grandes (ej. 72), las últimas tarjetas tarden casi 3 segundos en mostrarse.
+  card.style.setProperty("--card-index", Math.min(index, 20)); // Para animación staggered
 
   populateCard(card, movie, index);
   updateCardUI(card);
@@ -698,7 +693,7 @@ function createPersonCardElement(person) {
   
   const img = card.querySelector('img');
   
-  // Lógica Híbrida: Supabase Storage (photo) -> TMDB (profile_path)
+  // Lógica Exclusiva: Supabase Storage (photo)
   if (person.photo && person.photo !== 'NOT_FOUND') {
     let photoName = person.photo;
     // Forzar siempre a .webp (reemplazar antigua extensión si existe)
@@ -708,10 +703,8 @@ function createPersonCardElement(person) {
       photoName += ".webp";
     }
     img.src = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
-  } else if (person.profile_path && person.profile_path.startsWith('/')) {
-    img.src = `https://image.tmdb.org/t/p/w400${person.profile_path}`;
   } else {
-    // Fallback si no hay foto en TMDB ni en local
+    // Fallback por seguridad si falta la foto
     img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
   }
   

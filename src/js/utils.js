@@ -1,6 +1,11 @@
 // =================================================================
-//                      FUNCIONES DE UTILIDAD (OPTIMIZADO)
+// FUNCIONES DE UTILIDAD (NUESTRAS HERRAMIENTAS PURAS)
+// Este archivo es como una caja de herramientas. Contiene funciones que hacen
+// una sola tarea (formatear fechas, quitar acentos, crear botones...).
+// Como se usan miles de veces por segundo, están escritas con trucos avanzados 
+// de JavaScript para consumir el mínimo de memoria y batería en los móviles.
 // =================================================================
+
 import { CONFIG } from "./constants.js";
 import flagSpriteUrl from "../flags.svg";
 
@@ -13,7 +18,9 @@ import flagSpriteUrl from "../flags.svg";
  * @param {string} type - Tipo de medio (ej. 'S', 'S-MINI')
  * @returns {boolean}
  */
-export const isMovieSeries = (type) => Boolean(type && String(type).toUpperCase().startsWith("S"));
+// TRUCO: En lugar de convertir todo el texto a mayúsculas (lo que gasta memoria extra),
+// miramos directamente la primera letra (posición [0]) para ver si es una 's' o 'S'.
+export const isMovieSeries = (type) => Boolean(type && (type[0] === 'S' || type[0] === 's'));
 
 /**
  * Formatea el rango de años de una obra.
@@ -69,17 +76,18 @@ export function mapMoviePayload(movie) {
 //          1. FORMATO DE DATOS (High Performance)
 // =================================================================
 
-// Cache para Intl.NumberFormat (Es costoso instanciarlo cada vez)
+// TRUCO: Construir un formateador de números es un proceso muy lento para el navegador.
+// Lo construimos una sola vez aquí fuera y lo reutilizamos, en lugar de crearlo en cada tarjeta.
 const compactFormatter = new Intl.NumberFormat('es-ES', { notation: "compact", maximumFractionDigits: 1 });
-const thousandsFormatter = new Intl.NumberFormat('de-DE'); // Coherencia de locale (usa puntos para miles igual)
+const thousandsFormatter = new Intl.NumberFormat('de-DE'); // Usamos 'de-DE' porque usa puntos en los miles (1.000)
 
 /**
- * Formatea votos con reglas específicas por plataforma para UI (Ej: 1,5 M, 251 k).
+ * Convierte números largos en textos legibles (Ej: 1500000 -> "1,5 M", o 251000 -> "251 k").
  * @param {number|string} votes
  * @param {string} [platform] - 'imdb' o 'fa' para aplicar redondeo específico.
  */
 export const formatVotesUnified = (votes, platform) => {
-  // Conversión numérica rápida
+  // Convertimos el texto a número. Si trae letras mezcladas, las borramos primero.
   const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes).replace(/\D/g, ""), 10);
   
   if (!numVotes || isNaN(numVotes)) return "";
@@ -131,18 +139,51 @@ export const formatVotesUnified = (votes, platform) => {
  * @returns {string} Ej: "2h 30min"
  */
 export const formatRuntime = (minutesString, useShortLabel = false) => {
-  const minutes = +minutesString; // Conversión unaria rápida
-  // Validación robusta: Evitar NaN, Infinity o valores <= 0
+  const minutes = +minutesString; // El signo "+" convierte un texto a número de forma hiper-rápida.
+  
+  // Validamos que el número tenga sentido (no sea 0, negativo o texto inválido)
   if (!Number.isFinite(minutes) || minutes <= 0) return "";
   
   if (useShortLabel) return `${minutes}'`;
 
-  const h = (minutes / 60) | 0; // Math.floor bitwise (más rápido para enteros positivos)
+  // TRUCO BITWISE: El "| 0" al final hace exactamente lo mismo que Math.floor() 
+  // (quitar los decimales), pero hablando directamente con el procesador. ¡Es mucho más rápido!
+  const h = (minutes / 60) | 0; 
   const m = minutes % 60;
 
   if (h > 0 && m === 0) return `${h}h`; 
   return h > 0 ? `${h}h ${m}min` : `${m}min`;
 };
+
+// Expresión regular que detecta cualquier símbolo "flotante" (tildes, diéresis, etc.)
+const DIACRITICS_REGEX = /[\u0300-\u036f]/g;
+
+// Diccionario para que el buscador encuentre géneros aunque se escriban de otra forma
+const GENRE_REPLACEMENTS = [
+  { p: /scifi|ciencia[\s-]?ficcion|futurista|distopia/g, r: "scifi" },
+  { p: /filmnoir|negro|neo[\s-]?noir/g, r: "noir" },
+  { p: /action|adrenalina/g, r: "accion" },
+  { p: /adventure|epico/g, r: "aventuras" },
+  { p: /animation|animado|dibujos|cgi/g, r: "animacion" },
+  { p: /biography|biografico|biopic/g, r: "biografia" },
+  { p: /comedy|humor|comico/g, r: "comedia" },
+  { p: /crime|policiaco|policial|criminal|delito|mafia/g, r: "crimen" },
+  { p: /documentary/g, r: "documental" },
+  { p: /dramatico/g, r: "drama" },
+  { p: /family/g, r: "familiar" },
+  { p: /fantasy|fantastico/g, r: "fantasia" },
+  { p: /history|epoca/g, r: "historico" },
+  { p: /horror|miedo/g, r: "terror" },
+  { p: /music\b/g, r: "musica" }, 
+  { p: /canciones/g, r: "musical" },
+  { p: /mystery|misterio|enigma|investigacion/g, r: "intriga" },
+  { p: /love|romantico|amor/g, r: "romance" },
+  { p: /short|cortometraje/g, r: "corto" },
+  { p: /sport/g, r: "deporte" },
+  { p: /suspense|psicologico|tension/g, r: "thriller" },
+  { p: /war|guerra/g, r: "belico" },
+  { p: /oeste|vaqueros/g, r: "western" }
+];
 
 /**
  * Normaliza texto eliminando acentos y mayúsculas para búsquedas y comparaciones.
@@ -151,71 +192,23 @@ export const formatRuntime = (minutesString, useShortLabel = false) => {
  */
 export const normalizeText = (text) => {
   if (!text) return "";
-  // Eliminamos reemplazos específicos de género para evitar efectos secundarios en nombres (ej: "Juan Negro" -> "Juan Noir")
-  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  // MAGIA ANTI-ACENTOS:
+  // 1. normalize("NFD") separa la letra de su tilde (la 'á' pasa a ser una 'a' + '´').
+  // 2. replace(...) borra todas las tildes flotantes que hemos separado usando la regla de arriba.
+  return text.toLowerCase().normalize("NFD").replace(DIACRITICS_REGEX, "").trim();
 };
 
 /**
  * Normalización ESPECÍFICA para Géneros.
- * Mapea sinónimos comunes hacia un slug único (ej: "ciencia ficcion" -> "scifi").
+ * Borra acentos y, además, traduce sinónimos ("ciencia ficcion" -> "scifi").
  * @param {string} text 
  * @returns {string}
  */
 export const normalizeGenreText = (text) => {
   if (!text) return "";
-  let norm = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let norm = text.toLowerCase().normalize("NFD").replace(DIACRITICS_REGEX, "");
 
-  // Lista de reemplazos (Ordenada por especificidad)
-  const replacements = [
-    // Sci-Fi
-    { p: /scifi|ciencia[\s-]?ficcion|futurista|distopia/g, r: "scifi" },
-    // Noir
-    { p: /filmnoir|negro|neo[\s-]?noir/g, r: "noir" },
-    // Action
-    { p: /action|adrenalina/g, r: "accion" },
-    // Adventure
-    { p: /adventure|epico/g, r: "aventuras" },
-    // Animation
-    { p: /animation|animado|dibujos|cgi/g, r: "animacion" },
-    // Biography
-    { p: /biography|biografico|biopic/g, r: "biografia" },
-    // Comedy
-    { p: /comedy|humor|comico/g, r: "comedia" },
-    // Crime
-    { p: /crime|policiaco|policial|criminal|delito|mafia/g, r: "crimen" },
-    // Documentary
-    { p: /documentary/g, r: "documental" },
-    // Drama
-    { p: /dramatico/g, r: "drama" },
-    // Family
-    { p: /family/g, r: "familiar" },
-    // Fantasy
-    { p: /fantasy|fantastico/g, r: "fantasia" },
-    // History
-    { p: /history|epoca/g, r: "historico" },
-    // Horror
-    { p: /horror|miedo/g, r: "terror" },
-    // Music (Cuidado con 'musical')
-    { p: /music\b/g, r: "musica" }, 
-    // Musical
-    { p: /canciones/g, r: "musical" },
-    // Mystery
-    { p: /mystery|misterio|enigma|investigacion/g, r: "intriga" },
-    // Romance
-    { p: /love|romantico|amor/g, r: "romance" },
-    // Short
-    { p: /short|cortometraje/g, r: "corto" },
-    // Sport
-    { p: /sport/g, r: "deporte" },
-    // Thriller
-    { p: /suspense|psicologico|tension/g, r: "thriller" },
-    // War
-    { p: /war|guerra/g, r: "belico" },
-    // Western
-    { p: /oeste|vaqueros/g, r: "western" }
-  ];
-
-  for (const { p, r } of replacements) {
+  for (const { p, r } of GENRE_REPLACEMENTS) {
     norm = norm.replace(p, r);
   }
 
@@ -227,7 +220,7 @@ export const normalizeGenreText = (text) => {
  * Utiliza un DocumentFragment para máximo rendimiento en renderizado.
  * @param {string} text - Texto original
  * @param {string} searchTerm - Término a buscar
- * @returns {Node} Nodo de texto o Fragmento con el término resaltado en <strong>
+ * @returns {Node} Fragmento de HTML con el término resaltado en <strong>
  */
 export const highlightAccentInsensitive = (text, searchTerm) => {
   if (!text) return document.createTextNode("");
@@ -239,6 +232,8 @@ export const highlightAccentInsensitive = (text, searchTerm) => {
   
   if (index === -1) return document.createTextNode(text);
   
+  // TRUCO: DocumentFragment es como una "bolsa invisible" donde preparamos HTML.
+  // Al meter la bolsa entera en la página de golpe, el navegador pinta todo a la vez (mucho más rápido).
   const fragment = document.createDocumentFragment();
   fragment.appendChild(document.createTextNode(text.substring(0, index)));
   
@@ -251,13 +246,15 @@ export const highlightAccentInsensitive = (text, searchTerm) => {
   return fragment;
 };
 
+const CAPITALIZE_REGEX = /\b\w/g;
+
 /**
  * Capitaliza la primera letra de cada palabra.
  * @param {string} str 
  */
 export const capitalizeWords = (str) => {
   if (!str) return "";
-  return str.replace(/\b\w/g, l => l.toUpperCase());
+  return str.replace(CAPITALIZE_REGEX, l => l.toUpperCase());
 };
 
 // =================================================================
@@ -265,11 +262,11 @@ export const capitalizeWords = (str) => {
 // =================================================================
 
 /**
- * Limita la frecuencia de ejecución de una función.
- * Incluye un método .cancel() para abortar ejecuciones pendientes.
+ * Función DEBOUNCE (Filtro anti-ametralladora).
+ * Si el usuario teclea muy rápido, no queremos hacer una búsqueda en la base de datos por cada letra.
+ * Esta función "espera" a que el usuario deje de teclear durante unos milisegundos antes de actuar.
  * @param {Function} func - Función a ejecutar
  * @param {number} delay - Retraso en milisegundos
- * @returns {Function} Función debounced
  */
 export const debounce = (func, delay) => {
   let timeout;
@@ -295,11 +292,13 @@ export function getFriendlyErrorMessage(error) {
   return "Ha ocurrido un error inesperado. Inténtalo más tarde.";
 }
 
-// Gestor de Peticiones (Request Manager)
+// Almacén de "mandos a distancia" para cancelar peticiones.
 const requestControllers = new Map();
 
 /**
  * Crea o reinicia un AbortController para cancelar peticiones previas redundantes.
+ * Si pedimos cargar la página 2 y, antes de que llegue, pedimos la página 3, 
+ * usamos esto para decirle al navegador: "Olvida la 2, ya no la quiero".
  * @param {string} key - Identificador de la petición
  * @returns {AbortController}
  */
@@ -321,10 +320,10 @@ export function createAbortableRequest(key) {
 // =================================================================
 
 /**
- * Inyecta el SVG de la bandera de un país de forma segura mediante sprites.
+ * Inyecta el icono de la bandera de un país.
  * @param {HTMLElement} container - Contenedor a mostrar/ocultar
  * @param {HTMLElement} flagSpan - Elemento donde inyectar el SVG
- * @param {string} countryCode - Código ISO del país
+ * @param {string} countryCode - Código del país (ej: 'es', 'us')
  * @param {string} countryName - Nombre para el atributo title (accesibilidad)
  */
 export function renderCountryFlag(container, flagSpan, countryCode, countryName = "") {
@@ -360,39 +359,38 @@ export function renderCountryFlag(container, flagSpan, countryCode, countryName 
 export function createElement(tag, { dataset, attributes, style, ...props } = {}) {
   const element = document.createElement(tag);
   
-  // Asignación ultra-rápida de propiedades nativas (className, textContent, id, etc.)
-  for (const key in props) {
-    element[key] = props[key];
-  }
+  // TRUCO: Object.assign no usa JavaScript, le pasa el trabajo directamente al lenguaje base
+  // del navegador (C++), copiando todas las propiedades del tirón. Es rapidísimo.
+  Object.assign(element, props);
   
-  // Corrección: Soporte seguro para estilos inline pasados como string
   if (style) element.style.cssText = style;
   
   // Dataset (data-*)
-  if (dataset) {
-    for (const key in dataset) element.dataset[key] = dataset[key];
-  }
+  if (dataset) Object.assign(element.dataset, dataset);
   
   // Atributos genéricos (role, aria-*, etc.)
   if (attributes) {
-    for (const key in attributes) element.setAttribute(key, attributes[key]);
+    for (const key of Object.keys(attributes)) {
+      element.setAttribute(key, attributes[key]);
+    }
   }
   
   return element;
 }
 
 /**
- * Dispara una animación de 'pop' CSS forzando un reflow si es necesario.
+ * Hace que un botón dé un pequeño "saltito" (Pop) al pulsarlo.
  * @param {HTMLElement} element 
  */
 export const triggerPopAnimation = (element) => {
   if (!element) return;
   
-  // Optimización: Evitar reflow (layout thrashing) si no es estrictamente necesario.
-  // Solo forzamos el reinicio (remove -> reflow -> add) si la animación ya está corriendo.
+  // TRUCO (REFLOW): Si pulsas el botón dos veces muy rápido, la animación no se reiniciaría.
+  // Al consultar 'element.offsetWidth', estamos obligando al navegador a "mirar" la pantalla 
+  // de forma forzada, lo que interrumpe la animación anterior y nos permite empezar de cero.
   if (element.classList.contains("pop-animation")) {
     element.classList.remove("pop-animation");
-    void element.offsetWidth; // Forzar Reflow
+    void element.offsetWidth; 
   }
   
   element.classList.add("pop-animation");
@@ -455,8 +453,9 @@ export function triggerHapticFeedback(style = "light") {
 // =================================================================
 
 /**
- * Envoltorio seguro para localStorage con control de versiones.
- * Previene errores de parseo y vacía cachés incompatibles automáticamente.
+ * Gestor seguro de almacenamiento en el móvil del usuario.
+ * Usamos "try/catch" en todas partes porque, si el usuario está en "Navegación Privada",
+ * el navegador a veces bloquea el almacenamiento y, sin esto, la web se colgaría.
  */
 export const LocalStore = {
   get(key) {
@@ -465,7 +464,8 @@ export const LocalStore = {
       if (!item) return null;
       
       const parsed = JSON.parse(item);
-      // Verificación estricta de estructura y versión
+      // Solo cargamos los datos si la versión que guardamos (ej: 1) coincide con la de la web actual.
+      // Así, si actualizamos la web y cambiamos cómo se guardan los datos, la caché antigua se descarta sola.
       if (parsed && typeof parsed === 'object' && parsed.v === CONFIG.STORAGE_VERSION && 'd' in parsed) {
         return parsed.d;
       }
@@ -492,11 +492,12 @@ export const LocalStore = {
 // =================================================================
 
 /**
- * Programa una tarea pesada dividiendo la carga de trabajo en el hilo principal.
- * Usa la moderna API Scheduler si está disponible, con fallback a requestIdleCallback.
+ * Creador de Tareas Inteligente (Para que el móvil no se "congele").
+ * Si le mandamos pintar 100 pósters de golpe, el móvil se trabará durante 1 segundo.
+ * Esta función usa requestIdleCallback, que le dice al navegador: "Ve pintando pósters
+ * poco a poco, pero solo cuando el procesador esté libre y el usuario no esté tocando la pantalla".
  * @param {Function} task - Tarea a ejecutar
  * @param {string} priority - Prioridad ('user-visible', 'background', etc.)
- * @returns {Promise}
  */
 export function scheduleWork(task, priority = 'user-visible') {
   if ('scheduler' in window && window.scheduler.postTask) {

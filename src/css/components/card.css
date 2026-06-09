@@ -45,6 +45,8 @@
   
   /* Aislamiento para evitar repintados en el resto de la página */
   contain: layout paint style; 
+  /* Renderizado perezoso hiper-optimizado (Chromium) */
+  content-visibility: auto;
 
   /* Animación de entrada escalonada (Staggered) */
   animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;

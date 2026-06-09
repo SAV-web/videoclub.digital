@@ -189,6 +189,11 @@ export const getAllUserMovieData = () => {
 //          LOGICA DE NEGOCIO (Helpers)
 // =================================================================
 
+const IGNORED_FILTER_KEYS = new Set([
+  "mediaType", "sort", "searchTerm", "myList",
+  "excludedGenres", "excludedCountries", "year"
+]);
+
 /**
  * Cuenta de forma determinista y sin estado caché cuántos filtros "reales" están aplicados.
  * Es lo suficientemente rápido O(1) como para no requerir caché manual (evita bugs de sincronización).
@@ -205,16 +210,12 @@ export function getActiveFilterCount() {
     count++;
   }
 
-  const ignoredKeys = new Set([
-    "mediaType", "sort", "searchTerm", "myList",
-    "excludedGenres", "excludedCountries", "year"
-  ]);
-
-  Object.entries(activeFilters).forEach(([key, value]) => {
-    if (!ignoredKeys.has(key) && value) {
+  // OPTIMIZACIÓN: for...in navega directamente por el objeto sin crear Arrays pesados en memoria
+  for (const key in activeFilters) {
+    if (!IGNORED_FILTER_KEYS.has(key) && activeFilters[key]) {
       count++;
     }
-  });
+  }
 
   return count;
 }
@@ -262,7 +263,7 @@ export function setFilter(filterType, value, force = false) {
   if (filterType === 'myList' && value) {
      // No limpiamos aquí para evitar efectos secundarios ocultos, el caller debe limpiar.
   }
-
+ 
   state.activeFilters[filterType] = value;
   // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
   state.totalMovies = 0;

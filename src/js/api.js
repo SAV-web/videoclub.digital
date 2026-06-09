@@ -87,7 +87,10 @@ const isAbort = (error, signal) =>
 function createCanonicalCacheKey(filters, page, pageSize) {
   const normalizedFilters = {};
 
-  Object.keys(filters).sort().forEach((key) => {
+  // OPTIMIZACIÓN: Evitamos .forEach() para no generar contextos de memoria (Closures) en cada iteración
+  const keys = Object.keys(filters).sort();
+  for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
       const value = filters[key];
       // Ignorar valores nulos o vacíos para normalizar la clave
       const hasValue = value !== null && value !== undefined && value !== "";
@@ -106,7 +109,7 @@ function createCanonicalCacheKey(filters, page, pageSize) {
           normalizedFilters[key] = Array.isArray(value) ? [...value].sort() : value;
         }
       }
-    });
+    }
   return JSON.stringify({ filters: normalizedFilters, page, pageSize });
 }
 
@@ -314,7 +317,12 @@ export async function fetchUserMovieData() {
   return userMap;
 }
 
-const personCache = new Map();
+// OPTIMIZACIÓN (Memory Leak Fix): Un Map() normal crece hasta colapsar la RAM. 
+// LRUCache mantendrá solo a los 50 últimos VIPs visualizados, borrándolos automáticamente tras una hora.
+const personCache = new LRUCache({
+  max: 50,
+  ttl: 1000 * 60 * 60, // 1 hora
+});
 
 /**
  * Obtiene los detalles de un artista VIP desde la BD

@@ -83,6 +83,23 @@ async function staleWhileRevalidate(request, cacheName = CACHE_DYNAMIC) {
 }
 
 /**
+ * ESTRATEGIA: Cache First (Prioridad Caché, fallback Red)
+ * Ideal para imágenes estáticas (Pósters) que nunca cambian.
+ * Ahorra ancho de banda al evitar validaciones en segundo plano.
+ */
+async function cacheFirst(request, cacheName = CACHE_DYNAMIC) {
+  const cache = await caches.open(cacheName);
+  const cachedResponse = await cache.match(request);
+  if (cachedResponse) return cachedResponse;
+  
+  const networkResponse = await fetch(request);
+  if (networkResponse.ok) {
+    cache.put(request, networkResponse.clone()).then(() => limitCacheSize(cacheName, 200));
+  }
+  return networkResponse;
+}
+
+/**
  * ESTRATEGIA: API con Ventana de Frescura (Lógica personalizada)
  * - Si la caché tiene < 30s: Retorna caché (muy rápido).
  * - Si es vieja o no existe: Retorna caché (si hay) Y actualiza en background, o espera red.
@@ -188,9 +205,9 @@ self.addEventListener("fetch", (event) => {
   }
 
   // 5. ESTRATEGIA: Imágenes de Supabase Storage (Posters)
-  // Las tratamos como assets dinámicos con caché agresiva
+  // Usamos Cache First puro porque los pósters no cambian, ahorrando ancho de banda.
   if (url.pathname.includes("/storage/v1/object/public/")) {
-    event.respondWith(staleWhileRevalidate(request, CACHE_DYNAMIC));
+    event.respondWith(cacheFirst(request, CACHE_DYNAMIC));
     return;
   }
 

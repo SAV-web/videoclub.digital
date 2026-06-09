@@ -278,7 +278,8 @@ BEGIN
     -- FASE 4: CONSTRUCCIÓN DE CONSULTA
     v_query := '
         WITH filtered_movies AS (
-            SELECT m.id
+            -- OPTIMIZACIÓN LATE ROW LOOKUP: Extraemos temporalmente lo necesario para ordenar
+            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance
             FROM public.movies m
             WHERE
                 ($1 IS NULL OR $1 = '''' OR m.title_norm LIKE ''%'' || public.unaccent_immutable(lower($1)) || ''%'')
@@ -297,7 +298,14 @@ BEGIN
                     SELECT string_agg(plainto_tsquery(''spanish'', public.unaccent_immutable(g))::text, '' | '')::tsquery FROM unnest($11) g
                 ))
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
-        )' || v_count_cte || '
+        )' || v_count_cte || ',
+        paged_ids AS (
+            -- ORDENAMOS EN MEMORIA SOLO LOS REGISTROS LIGEROS ANTES DEL JOIN
+            SELECT m.id 
+            FROM filtered_movies m
+            ' || v_order_clause || '
+            LIMIT ' || v_limit || ' OFFSET ' || v_offset || '
+        )
         SELECT json_build_object(
             ''total'', ' || v_count_select || ',
             ''items'', COALESCE(
@@ -328,12 +336,10 @@ BEGIN
                             CASE WHEN m.type ILIKE ''S%'' THEN m.episodes ELSE NULL END as episodes,
                             m.wikipedia,
                             m.selections_list, m.studios_list, m.justwatch
-                        FROM filtered_movies fm
+                        FROM paged_ids fm
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id
                         ' || v_order_clause || '
-                        LIMIT ' || v_limit || '
-                        OFFSET ' || v_offset || '
                     ) as rows
                 ),
                 ''[]''::json
@@ -507,7 +513,8 @@ CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
 SECURITY DEFINER SET search_path = public, extensions AS $$
     SELECT name FROM mv_actor_suggestions
-    WHERE name_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    -- OPTIMIZACIÓN: name_norm ya está en minúsculas en la MV. LIKE es mucho más rápido que ILIKE
+    WHERE name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ORDER BY movie_count DESC
     LIMIT 10;
 $$;
@@ -516,7 +523,7 @@ CREATE OR REPLACE FUNCTION public.get_director_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
 SECURITY DEFINER SET search_path = public, extensions AS $$
     SELECT name FROM mv_director_suggestions
-    WHERE name_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    WHERE name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ORDER BY movie_count DESC
     LIMIT 10;
 $$;
@@ -525,7 +532,7 @@ CREATE OR REPLACE FUNCTION public.get_title_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
 SECURITY DEFINER SET search_path = public, extensions AS $$
     SELECT title FROM mv_title_suggestions
-    WHERE title_norm ILIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    WHERE title_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ORDER BY best_relevance ASC
     LIMIT 10;
 $$;
@@ -561,7 +568,7 @@ SECURITY DEFINER SET search_path = public, extensions AS $$
         SELECT name
         FROM mv_actor_suggestions
         ORDER BY movie_count DESC
-        LIMIT 100
+            LIMIT 200
     )
     SELECT name FROM top_actors ORDER BY random() LIMIT limit_count;
 $$;
@@ -573,7 +580,7 @@ SECURITY DEFINER SET search_path = public, extensions AS $$
         SELECT name
         FROM mv_director_suggestions
         ORDER BY movie_count DESC
-        LIMIT 100
+            LIMIT 200
     )
     SELECT name FROM top_directors ORDER BY random() LIMIT limit_count;
 $$;

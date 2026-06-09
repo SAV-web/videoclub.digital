@@ -446,14 +446,18 @@ function setupModalDetails(nodes, movie) {
   if (nodes.actors) {
     nodes.actors.textContent = "";
     if (movie.parsedActors.length > 0) {
+      // OPTIMIZACIÓN: Como esta lista se inyecta cuando la modal ya está en pantalla, 
+      // usamos DocumentFragment para no provocar repintados (Reflows) por cada actor.
+      const frag = document.createDocumentFragment();
       movie.parsedActors.forEach((name, i, arr) => {
         if (IGNORED_ACTORS.includes(name.toLowerCase())) {
-          nodes.actors.append(name);
+          frag.append(name);
         } else {
-          nodes.actors.appendChild(createLink(name, 'actor'));
+          frag.appendChild(createLink(name, 'actor'));
         }
-        if (i < arr.length - 1) nodes.actors.append(", ");
+        if (i < arr.length - 1) frag.append(", ");
       });
+      nodes.actors.appendChild(frag);
     } else {
       nodes.actors.textContent = "N/A";
     }
