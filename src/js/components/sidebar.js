@@ -476,6 +476,17 @@ function updateAllFilterControls() {
   const activeCount = getActiveFilterCount();
   const limitReached = activeCount >= CONFIG.MAX_ACTIVE_FILTERS;
 
+  // OPTIMIZACIÓN 1: Búsqueda O(1) para exclusiones en lugar de iterar arrays (Evita la "O(N^2)")
+  const excludedGenresSet = new Set(activeFilters.excludedGenres || []);
+  const excludedCountriesSet = new Set(activeFilters.excludedCountries || []);
+
+  // OPTIMIZACIÓN 2: Pre-normalizar los filtros globales una sola vez, no en cada vuelta del bucle
+  const normActiveFilters = {};
+  for (const k in activeFilters) {
+    if (!activeFilters[k]) continue;
+    normActiveFilters[k] = k === 'genre' ? normalizeGenreText(activeFilters[k]) : normalizeText(activeFilters[k]);
+  }
+
   // 1. Actualizar enlaces de filtro (Links)
   // Optimización: Usar HTMLCollection (live) es exponencialmente más rápido que querySelectorAll
   const filterLinks = document.getElementsByClassName("filter-link");
@@ -485,15 +496,19 @@ function updateAllFilterControls() {
     const value = link.dataset.filterValue;
     
     // A. Visibilidad: Ocultar si ya está activo o excluido
-    const isExcluded = (type === "genre" && activeFilters.excludedGenres?.includes(value)) || 
-                       (type === "country" && activeFilters.excludedCountries?.includes(value));
+    const isExcluded = (type === "genre" && excludedGenresSet.has(value)) || 
+                       (type === "country" && excludedCountriesSet.has(value));
     
     let isActive = false;
-    // Normalización condicional para comparación robusta
-    const currentFilterVal = activeFilters[type];
-    isActive = type === 'genre' 
-      ? normalizeGenreText(currentFilterVal) === normalizeGenreText(value)
-      : normalizeText(currentFilterVal) === normalizeText(value);
+    // OPTIMIZACIÓN 3: Guardar el valor normalizado en la memoria del propio nodo HTML
+    // Evitamos ejecutar las costosas expresiones regulares cientos de veces por clic
+    let normValue = link._normValue;
+    if (normValue === undefined) {
+      normValue = type === 'genre' ? normalizeGenreText(value) : normalizeText(value);
+      link._normValue = normValue;
+    }
+    
+    isActive = normActiveFilters[type] === normValue;
     
     // MOD: Para estudios y géneros (Bento), no ocultamos, marcamos como activo.
     let shouldHide = isActive || isExcluded;
@@ -1034,14 +1049,19 @@ function setupAutocompleteHandlers() {
 
        const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
        if (!resultsContainer || resultsContainer.children.length === 0) return;
-       const items = Array.from(resultsContainer.children);
-       let activeIndex = items.findIndex(i => i.classList.contains('is-active'));
+       
+       // OPTIMIZACIÓN 4: Evitar crear Arrays en cada pulsación de tecla para no saturar al Garbage Collector
+       const items = resultsContainer.children;
+       let activeIndex = -1;
+       for (let i = 0; i < items.length; i++) {
+         if (items[i].classList.contains('is-active')) { activeIndex = i; break; }
+       }
        
        const updateActiveSuggestion = (index) => {
-         items.forEach(item => {
-           item.classList.remove("is-active");
-           item.setAttribute("aria-selected", "false");
-         });
+         for (let i = 0; i < items.length; i++) {
+           items[i].classList.remove("is-active");
+           items[i].setAttribute("aria-selected", "false");
+         }
          if (index >= 0 && items[index]) {
            items[index].classList.add("is-active");
            items[index].setAttribute("aria-selected", "true");
