@@ -116,32 +116,28 @@ export function calculateAverageStars(averageRating) {
  * @param {Object} options - Configuración.
  */
 function renderStars(starContainer, filledAmount, { hideUnfilled = false, snapToInteger = false } = {}) {
-  // Usamos querySelectorAll para robustez frente a cambios en la estructura HTML
-  const stars = starContainer.querySelectorAll(".star-icon");
+  // OPTIMIZACIÓN: starContainer.children es una colección instantánea O(1), mucho más rápida que querySelectorAll
+  const stars = starContainer.children;
   
   const effectiveFill = snapToInteger ? Math.round(filledAmount) : filledAmount;
 
-  // Bucle imperativo para máximo rendimiento en animaciones
   for (let i = 0; i < stars.length; i++) {
     const star = stars[i];
     // Calcular cuánto se llena esta estrella específica (0 a 1)
     const fillValue = Math.max(0, Math.min(1, effectiveFill - i));
     
-    // Búsqueda del path de relleno (scopeado al elemento actual)
-    const filledPath = star.querySelector(".star-icon-path--filled");
+    // OPTIMIZACIÓN: Accedemos directamente al último hijo (el path relleno) sin buscar en el DOM
+    const filledPath = star.lastElementChild;
 
     if (hideUnfilled && fillValue === 0) {
-      // ESTADO: Estrella vacía en modo "solo lectura" (Media)
-      // Usamos opacity: 0 para mantener el layout y eventos, pero hacerla invisible
-      star.style.opacity = "0";
+      // OPTIMIZACIÓN: Solo escribimos en el DOM si el valor realmente cambió
+      if (star.style.opacity !== "0") star.style.opacity = "0";
     } else {
-      // ESTADO: Estrella visible (parcial o total)
-      star.style.opacity = "1";
+      if (star.style.opacity !== "1") star.style.opacity = "1";
       
       // Técnica de recorte para estrellas parciales
       const clipPercentage = (1 - fillValue) * 100;
       const newClip = `inset(0 ${clipPercentage}% 0 0)`;
-      // Optimización: Solo tocar el DOM si el estilo cambia
       if (filledPath.style.clipPath !== newClip) {
         filledPath.style.clipPath = newClip;
       }
@@ -163,11 +159,11 @@ export const renderUserStars = (container, value, hideHollow = false) =>
  * Maneja el hover sobre las estrellas (Feedback visual inmediato).
  */
 function handleRatingMouseMove(event) {
-  // Usamos currentTarget para asegurar que tenemos el elemento con el listener
-  const starIcon = event.currentTarget; 
-  const starContainer = starIcon.parentElement; // Asumimos estructura directa
+  // Delegación de eventos: Buscamos si el ratón está sobre una estrella
+  const starIcon = event.target.closest(".star-icon");
+  if (!starIcon) return;
   
-  if (!starContainer) return;
+  const starContainer = event.currentTarget;
 
   const hoverLevel = parseInt(starIcon.dataset.ratingLevel, 10);
   
@@ -196,14 +192,9 @@ function handleRatingMouseLeave(event) {
 export function setupRatingListeners(starContainer, isInteractive) {
   if (!isInteractive) return;
 
-  // Delegación de eventos podría ser mejor si hay muchas estrellas, 
-  // pero para 4 elementos, listeners directos son aceptables y más precisos para mouseenter.
-  // 4 estrellas → listeners directos son más claros y baratos que delegación
-  const stars = starContainer.querySelectorAll(".star-icon");
-  
-  stars.forEach((star) => {
-    star.addEventListener("mouseenter", handleRatingMouseMove, { passive: true });
-  });
+  // OPTIMIZACIÓN: Usamos 'mouseover' en el contenedor (burbujea) en lugar de 'mouseenter' en cada estrella.
+  // Pasamos de tener 3 listeners por tarjeta a solo 1 (y sin usar querySelectorAll).
+  starContainer.addEventListener("mouseover", handleRatingMouseMove, { passive: true });
 
   // Listener en el contenedor para detectar cuando salimos del área de votación
   starContainer.addEventListener("mouseleave", handleRatingMouseLeave, { passive: true });
@@ -296,21 +287,23 @@ export function updateRatingUI(card) {
   
   if (!starCont || !circleEl) return;
 
-  circleEl.style.display = "none";
-  starCont.style.display = "none";
-
   const state = getRatingPresentationState(movie, userData, isLoggedIn);
 
   const hideExtraStars = () => {
-    const stars = starCont.querySelectorAll(".star-icon");
-    for (let i = 1; i < stars.length; i++) stars[i].style.opacity = "0";
+    const stars = starCont.children; // Opt: Acceso directo sin querySelectorAll
+    for (let i = 1; i < stars.length; i++) {
+      if (stars[i].style.opacity !== "0") stars[i].style.opacity = "0";
+    }
   };
 
+  let starDisplay = "none";
+  let circleDisplay = "none";
+  let hasUserRatingClass = false;
+
   if (state.showUserRating) {
-    starCont.classList.add("has-user-rating");
-    circleEl.classList.add("has-user-rating");
+    hasUserRatingClass = true;
     
-    starCont.style.display = "flex";
+    starDisplay = "flex";
     if (state.userRatingValue === 2) {
       renderUserStars(starCont, 0, false);
       hideExtraStars();
@@ -318,22 +311,26 @@ export function updateRatingUI(card) {
       renderUserStars(starCont, state.visualUserStars, true);
     }
   } else {
-    starCont.classList.remove("has-user-rating");
-    circleEl.classList.remove("has-user-rating");
-    
     if (state.showEmptyAverage) {
       if (isLoggedIn) {
-        starCont.style.display = "flex";
+        starDisplay = "flex";
         renderUserStars(starCont, 0);
         hideExtraStars();
       } else {
-        circleEl.style.display = "block";
+        circleDisplay = "block";
       }
     } else if (state.showAverageRating) {
-      starCont.style.display = "flex";
+      starDisplay = "flex";
       renderAverageStars(starCont, state.visualAverageStars);
     }
   }
+
+  // OPTIMIZACIÓN (Layout Thrashing): Escribir en el DOM de golpe al final.
+  starCont.classList.toggle("has-user-rating", hasUserRatingClass);
+  circleEl.classList.toggle("has-user-rating", hasUserRatingClass);
+
+  if (circleEl.style.display !== circleDisplay) circleEl.style.display = circleDisplay;
+  if (starCont.style.display !== starDisplay) starCont.style.display = starDisplay;
 }
 
 export function setupCardRatings(container, movie) {
