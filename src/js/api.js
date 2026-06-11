@@ -337,7 +337,7 @@ export async function fetchPersonDetails(type, name) {
   try {
     const { data, error } = await supabase
       .from(table)
-      .select('id, name, profile_path, photo, birthday, deathday, place_of_birth, countries(name, code)')
+      .select('id, name, photo, birthday, deathday, place_of_birth, countries(name, code)')
       .eq('name_norm', normalizeText(name))
       .single();
       

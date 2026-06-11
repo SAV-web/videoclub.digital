@@ -36,6 +36,9 @@ html {
   
   /* FIX: Evitar salto de layout al abrir modales (reserva espacio de scrollbar) */
   scrollbar-gutter: stable;
+
+  /* OPTIMIZACIÓN: Al ser heredable, ponerlo aquí evita usar el costoso selector universal (*) */
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* 3. Configuración del Body */
@@ -51,7 +54,7 @@ body {
   /* Renderizado de texto */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  /* text-rendering: optimizeLegibility; ELIMINADO: Destruye los FPS en móviles al hacer scroll masivo */
   font-feature-settings: "cv05", "calt", "case", "liga", "kern";
 
   /* Transición de tema suave (Solo colores base) */
@@ -124,17 +127,13 @@ body.sidebar-is-open {
 }
 .pop-animation {
   animation: pop-effect 0.3s var(--transition-timing-function);
+  will-change: transform; /* Promueve el elemento a la GPU antes de animarlo */
 }
 
 /* 10. Optimizaciones Táctiles (Mobile App Feel) */
 button, input, select, textarea, a {
   /* Elimina delay de 300ms y zoom de doble toque */
   touch-action: manipulation; 
-}
-
-/* Elimina el resaltado gris al tocar en iOS/Android */
-* {
-  -webkit-tap-highlight-color: transparent; 
 }
 
 /* 11. Utilidad: Scroll Suave (Opcional para contenedores específicos) */

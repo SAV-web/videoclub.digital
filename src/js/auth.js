@@ -2,16 +2,23 @@
 import { supabase } from "./api.js";
 import { closeAuthModal, showToast } from "./ui.js";
 
-// Referencias DOM (Lazy getter para evitar errores de carga)
-const getDom = () => ({
-  loginView: document.getElementById("login-view"),
-  registerView: document.getElementById("register-view"),
-  loginForm: document.getElementById("login-form"),
-  registerForm: document.getElementById("register-form"),
-  showRegisterBtn: document.getElementById("show-register-view"),
-  showLoginBtn: document.getElementById("show-login-view"),
-  authMessage: document.getElementById("auth-message"),
-});
+// --- Referencias DOM (Caché Lazy) ---
+// Evitamos buscar en el DOM repetidamente durante los cambios de vista o envíos de formulario.
+let domCache = null;
+const getDom = () => {
+  if (!domCache) {
+    domCache = {
+      loginView: document.getElementById("login-view"),
+      registerView: document.getElementById("register-view"),
+      loginForm: document.getElementById("login-form"),
+      registerForm: document.getElementById("register-form"),
+      showRegisterBtn: document.getElementById("show-register-view"),
+      showLoginBtn: document.getElementById("show-login-view"),
+      authMessage: document.getElementById("auth-message"),
+    };
+  }
+  return domCache;
+};
 
 // =================================================================
 //          HELPERS DE UI Y ERRORES

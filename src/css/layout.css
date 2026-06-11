@@ -43,6 +43,9 @@
     var(--space-md) 
     calc(var(--space-md) + env(safe-area-inset-bottom));
   
+  /* OPTIMIZACIÓN: Aísla el cálculo de anchura del resto de la página en todos los dispositivos */
+  container-type: inline-size;
+
   transition: padding 0.3s ease;
   
   /* Flexbox para Footer al fondo */
@@ -77,14 +80,15 @@
   
   /* Rendimiento: Aislar renderizado y preparar animación */
   contain: layout style;
+  will-change: transform;
   
   /* Gestos Táctiles */
   touch-action: pan-y; /* Permite scroll vertical nativo, JS maneja swipe horizontal */
 
+  /* OPTIMIZACIÓN: En móvil solo animamos Transform (GPU). 
+     Animar width/flex-basis causaría Layout Thrashing constante */
   transition: 
     transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-    flex-basis 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
     background-color var(--transition-duration-normal),
     border-color var(--transition-duration-normal);
 }
@@ -140,6 +144,14 @@ body.sidebar-is-open .sidebar .play-button-container {
     /* En desktop bloqueamos scroll general, usamos scroll interno */
     overflow: hidden; 
     border-inline-end: 2px solid var(--color-border);
+
+    /* OPTIMIZACIÓN: En desktop sí animamos el ancho, así que lo activamos aquí */
+    will-change: width, flex-basis;
+    transition: 
+      width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      flex-basis 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+      background-color var(--transition-duration-normal),
+      border-color var(--transition-duration-normal);
   }
 
   /* Restaurar visibilidad */
@@ -226,6 +238,9 @@ body.sidebar-is-open .sidebar .play-button-container {
   
   /* Estrategia Mobile-First: < 400px = 2 columnas forzadas */
   grid-template-columns: repeat(2, 1fr);
+
+  /* OPTIMIZACIÓN: Evita que el recálculo interno de la grilla afecte a los nodos padres */
+  contain: layout;
 }
 
 /* Estado de Carga (Feedback visual) */
@@ -263,7 +278,6 @@ body.rotation-disabled .grid-container {
   /* Optimización Tablet: Menos padding lateral para ganar espacio (permite 3 columnas en iPad Air) */
   .content { 
     padding: var(--space-md) var(--space-lg) var(--space-xs);
-    container-type: inline-size; /* Habilitar Container Queries */
   }
   .grid-container { gap: var(--space-lg) var(--space-md); }
 

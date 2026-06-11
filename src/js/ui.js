@@ -242,6 +242,9 @@ let focusTrapListener = null;
 let lastFocusedElement = null;
 
 function isVisible(el) {
+  // OPTIMIZACIÓN: checkVisibility es una API moderna ultrarrápida. 
+  // offsetWidth es el fallback, pero su uso fuerza un Reflow en el DOM.
+  if (el.checkVisibility) return el.checkVisibility();
   return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 }
 

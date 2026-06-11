@@ -483,8 +483,10 @@ function updateAllFilterControls() {
   // OPTIMIZACIÓN 2: Pre-normalizar los filtros globales una sola vez, no en cada vuelta del bucle
   const normActiveFilters = {};
   for (const k in activeFilters) {
-    if (!activeFilters[k]) continue;
-    normActiveFilters[k] = k === 'genre' ? normalizeGenreText(activeFilters[k]) : normalizeText(activeFilters[k]);
+    const val = activeFilters[k];
+    // FIX CRÍTICO: Evitar pasar Arrays (como excludedGenres) a normalizeText para que no explote el JS.
+    if (!val || Array.isArray(val)) continue;
+    normActiveFilters[k] = k === 'genre' ? normalizeGenreText(val) : normalizeText(val);
   }
 
   // 1. Actualizar enlaces de filtro (Links)

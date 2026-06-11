@@ -79,8 +79,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       if (vipType && vipName) {
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
-          const hasPhoto = (personData.photo && personData.photo !== 'NOT_FOUND') || 
-                           (personData.profile_path && personData.profile_path !== 'NOT_FOUND');
+          const hasPhoto = personData.photo && personData.photo !== 'NOT_FOUND';
           if (hasPhoto) {
             hasVip = true;
             if (page === 1) vipData = { type: 'person', data: personData };
@@ -325,32 +324,36 @@ function handleGlobalScroll() {
 
   if (!isTicking) {
     window.requestAnimationFrame(() => {
-      // Evitar rebotes negativos en iOS (Elastic Scroll) que causan bugs matemáticos
+      // FASE 1: LECTURAS EN LOTE (Batched Reads)
+      // Leemos todas las dimensiones primero para no forzar al navegador a recalcular el diseño
       const currentScrollY = Math.max(0, window.scrollY);
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+      const visualHeight = window.visualViewport ? window.visualViewport.height : viewportHeight;
       
-      // 1. Efecto Sombra/Borde en Header
+      const isMobileLayout = viewportWidth <= 768 || viewportHeight <= 500;
+      const isSearchActive = document.activeElement === dom.searchInput;
+      const isKeyboardOpen = visualHeight < (viewportHeight * 0.9);
+      const isAtBottom = (viewportHeight + currentScrollY) >= (docHeight - 50);
+      const isSearchFocused = dom.mainHeader.classList.contains("is-search-focused");
+
+      // FASE 2: ESCRITURAS EN LOTE (Batched Writes)
+      // Una vez recopiladas las métricas, aplicamos las clases CSS de golpe
       dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 20);
 
-      // 2. Smart Hide (Barra inferior móvil)
-      if (window.innerWidth <= 768 || window.innerHeight <= 500) {
-        const isSearchActive = document.activeElement === dom.searchInput;
-        // Detectar teclado: si el viewport visual es significativamente menor que la ventana (iOS style)
-        const isKeyboardOpen = window.visualViewport && (window.visualViewport.height < window.innerHeight * 0.9);
-
-        if (isSearchActive || dom.mainHeader.classList.contains("is-search-focused") || isKeyboardOpen) {
+      if (isMobileLayout) {
+        if (isSearchActive || isSearchFocused || isKeyboardOpen) {
           dom.mainHeader.classList.remove('is-hidden-mobile');
           lastScrollY = currentScrollY; // Reset ancla
         } else {
           const scrollDifference = Math.abs(currentScrollY - lastScrollY);
-          const isAtBottom = (window.innerHeight + currentScrollY) >= (document.documentElement.scrollHeight - 50);
 
           if (isAtBottom) {
-            // Siempre mostrar al llegar al final
             dom.mainHeader.classList.remove('is-hidden-mobile');
             lastScrollY = currentScrollY; // Reset ancla
-          } else if (scrollDifference > 12) { // Acumular umbral antes de decidir dirección
+          } else if (scrollDifference > 12) {
             const isScrollingDown = currentScrollY > lastScrollY;
-            // Ocultar al bajar, mostrar al subir
             dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
             lastScrollY = currentScrollY; // Mover ancla SOLO si superamos el umbral
           }
@@ -658,17 +661,20 @@ function init() {
   });
   
   // Carga diferida del Sidebar (Desktop necesita filtros, Móvil no tanto)
-  // Usamos requestIdleCallback para no bloquear el renderizado inicial de la grid
+  // OPTIMIZACIÓN: Mover la inicialización de Supabase Auth aquí libera el Main Thread
+  // y permite que las películas se pinten mucho más rápido (Mejora el LCP).
   const idleLoad = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000));
-  idleLoad(() => loadSidebar());
+  idleLoad(() => {
+    loadSidebar();
+    setupAuthSystem();
+    setupAuthModal();
+  });
 
   // initQuickView se llama al abrir la primera ficha en card.js
   
   initThemeToggle();
   setupHeaderListeners();
   setupGlobalListeners();
-  setupAuthSystem();
-  setupAuthModal();
   
   // Carga diferida de lógica de autenticación (Solo si el usuario intenta entrar)
   const loginBtn = document.getElementById("login-button");

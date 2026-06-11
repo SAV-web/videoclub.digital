@@ -195,7 +195,9 @@ export function buildBreadcrumbSchema(filters, baseUrl) {
 
 const setMeta = (selector, content) => {
   const el = document.querySelector(selector);
-  if (el) el.setAttribute("content", content);
+  // OPTIMIZACIÓN: Solo actualizamos el DOM si el contenido realmente cambia.
+  // Evitamos que las extensiones del navegador y el motor de renderizado trabajen sin motivo.
+  if (el && el.getAttribute("content") !== content) el.setAttribute("content", content);
 };
 
 const injectJsonLd = (scriptId, schema) => {
@@ -206,7 +208,8 @@ const injectJsonLd = (scriptId, schema) => {
     script.type = "application/ld+json";
     document.head.appendChild(script);
   }
-  script.textContent = schema ? JSON.stringify(schema) : "";
+  const newContent = schema ? JSON.stringify(schema) : "";
+  if (script.textContent !== newContent) script.textContent = newContent;
 };
 
 // =================================================================
@@ -232,7 +235,7 @@ export function updatePageTitle(movies = []) {
     canonical.rel = "canonical";
     document.head.appendChild(canonical);
   }
-  canonical.href = currentUrl;
+  if (canonical.href !== currentUrl) canonical.href = currentUrl;
 }
 
 export function updateStructuredData(movies, totalMovies) {
