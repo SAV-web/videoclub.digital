@@ -1,372 +1,172 @@
-/* ================================================================= */
-/* Componente: Header (Estilos Visuales y Comportamiento)
-/* ================================================================= */
+/* =================================================================
+ *                 LA CABECERA (Header)
+ * =================================================================
+ * Controla la barra superior: Buscador, filtros rápidos, botones 
+ * de paginación y la adaptación elástica para móviles.
+ * ================================================================= */
 
+/* --- 1. LA BARRA PRINCIPAL --- */
 .main-header {
   background-color: var(--color-bg);
-  
-  /* Bordes base (Móvil: Borde inferior) */
   border-block-end: 1px solid var(--color-border);
-  
-  /* View Transitions API */
   view-transition-name: main-header;
+  will-change: transform;
+  transition: background-color var(--transition-duration-normal), box-shadow 0.3s ease, border-color var(--transition-duration-normal), transform 0.3s ease;
 
-  /* Transiciones unificadas para cambio de tema y scroll */
-  transition: 
-    background-color var(--transition-duration-normal),
-    box-shadow 0.3s ease,
-    border-color var(--transition-duration-normal),
-    transform 0.3s ease;
-  will-change: transform; /* Aceleración por hardware para evitar temblores */
-
-  /* --- Estilos Desktop (Sticky Superior) --- */
   @media (min-width: 769px) and (min-height: 501px) {
-    border: none;
-    border-bottom: 1px solid transparent;
-
-    /* Estado Scrolled: Reducción de padding y sombra */
+    border: none; border-bottom: 1px solid transparent;
     &.is-scrolled {
       border-bottom-color: var(--color-border);
       background-color: var(--color-surface);
       box-shadow: var(--shadow);
     }
   }
-
-  /* Smart Hide (Scroll Down) - Se esconde hacia arriba */
+  
   &.is-hidden-mobile { transform: translateY(-100%); }
 }
 
-/* =================================================================
-   ELEMENTOS INTERNOS
-   ================================================================= */
+.main-header-primary-controls, .search-and-theme-group { flex-wrap: nowrap; }
 
-/* --- Layout de Grupos --- */
-.main-header-primary-controls,
-.search-and-theme-group {
-  flex-wrap: nowrap;
-}
-
-/* --- Input de Búsqueda --- */
-.search-form input {
-  height: 40px;
-  /* padding-inline define izquierda y derecha automáticamente */
-  padding-inline: var(--space-md) var(--space-xl);
-  padding-block: 0;
-  
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  min-width: 130px;
-  transition: min-width var(--transition-duration-normal) ease-in-out;
-
-  &::placeholder { color: var(--color-text-secondary); }
-
-  &:focus {
-    min-width: 160px;
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-focus);
+/* --- 2. EL BUSCADOR Y SELECTORES --- */
+.search-form {
+  & input {
+    height: 40px; padding: 0 var(--space-xl) 0 var(--space-md);
+    border-radius: var(--radius-md); border: 1px solid var(--color-border);
+    background: var(--color-surface); color: var(--color-text-primary);
+    min-width: 130px; transition: min-width var(--transition-duration-normal) ease-in-out;
+    
+    &::placeholder { color: var(--color-text-secondary); }
+    &:focus { min-width: 160px; outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus); }
+    &::-webkit-search-decoration, &::-webkit-search-cancel-button, &::-webkit-search-results-button, &::-webkit-search-results-decoration { display: none; -webkit-appearance: none; }
   }
 }
 
-/* Reset de estilos nativos de búsqueda (Webkit) */
-.search-form input::-webkit-search-decoration,
-.search-form input::-webkit-search-cancel-button,
-.search-form input::-webkit-search-results-button,
-.search-form input::-webkit-search-results-decoration {
-  display: none;
-  -webkit-appearance: none;
+.sort-control { 
+  position: relative; 
+  &::after { content: ""; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 0.6em; height: 0.4em; background-color: var(--color-text-primary); clip-path: polygon(100% 0%, 0 0%, 50% 100%); pointer-events: none; }
 }
-
-/* --- Selector de Ordenación --- */
-.sort-control { position: relative; }
-
 #sort-select {
-  height: 40px;
-  width: 130px;
-  color: var(--color-text-primary);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding-inline: var(--space-sm) 1.8em;
-  padding-block: 0;
-  
-  -moz-appearance: none;
-  -webkit-appearance: none;
-  appearance: none;
-  cursor: pointer;
-  font-family: inherit;
+  height: 40px; width: 130px; padding: 0 1.8em 0 var(--space-sm);
+  color: var(--color-text-primary); background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  appearance: none; cursor: pointer; font-family: inherit;
   &:focus-visible { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus); }
 }
-
-/* Triángulo CSS puro para el select */
-.sort-control::after {
-  content: "";
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0.6em; height: 0.4em;
-  background-color: var(--color-text-primary);
-  clip-path: polygon(100% 0%, 0 0%, 50% 100%);
-  pointer-events: none;
-}
-
-/* Icono de ordenación (Visible solo en móvil) */
 .sort-icon { display: none; pointer-events: none; }
 
-/* --- Botón Hamburguesa (Móvil) --- */
+/* --- 3. BOTONERA (Menú, Cine/TV, Tema, Limpiar) --- */
 .mobile-sidebar-toggle {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; padding: 0;
-  border: none; background: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: transform 0.2s ease, color 0.2s ease;
+  display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: none; background: none;
+  color: var(--color-text-secondary); cursor: pointer; transition: transform 0.2s ease, color 0.2s ease;
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-md); }
-}
-@media (hover: hover) and (pointer: fine) {
-  .mobile-sidebar-toggle:hover { color: var(--color-text-primary); }
-}
-.mobile-sidebar-toggle:active { transform: scale(0.9); }
-
-/* Ocultar en Desktop (>= 769px) */
-@media (min-width: 769px) and (min-height: 501px) {
-  .mobile-sidebar-toggle { display: none; }
+  @media (hover: hover) and (pointer: fine) { &:hover { color: var(--color-text-primary); } }
+  &:active { transform: scale(0.9); }
+  @media (min-width: 769px) and (min-height: 501px) { display: none; }
 }
 
-/* --- Toggle de Filtro (Tipo) --- */
 .type-filter-toggle {
-  height: 40px;
-  padding-inline: var(--space-sm);
-  border: none; border-radius: var(--radius-md);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
+  height: 40px; padding-inline: var(--space-sm); border: none; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1), 0 1px 1px rgba(0, 0, 0, 0.08);
+  background-color: var(--color-surface); color: var(--color-text-primary);
   transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out, background-color 0.1s ease-in-out, color 0.1s ease-in-out;
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
   & .desktop-text { display: none; }
   & .mobile-icon { display: flex; align-items: center; }
+  @media (min-width: 769px) and (min-height: 501px) { & .desktop-text { display: block; } & .mobile-icon { display: none; } }
 
-  @media (hover: hover) and (pointer: fine) {
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08);
-    }
-  }
-  &:active {
-    transform: translateY(1px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-  }
-
-  /* Variantes de Color */
+  @media (hover: hover) and (pointer: fine) { &:hover { transform: translateY(-1px); box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.08); } }
+  &:active { transform: translateY(1px); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
+  
   &.type-filter--movies { background-color: var(--color-accent); color: #fff; }
   &.type-filter--series { background-color: var(--color-accent-exclude); color: #fff; }
 }
 
-/* --- Toggle de Tema --- */
 .theme-toggle {
-  position: relative;
-  width: 24px; height: 24px;
-  background: none; border: none; padding: 0;
-  cursor: pointer;
+  position: relative; width: 24px; height: 24px; background: none; border: none; padding: 0; cursor: pointer;
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-round); }
+  @media (hover: hover) and (pointer: fine) { &:hover { transform: scale(1.1); } }
+  &:active { transform: scale(0.9); }
 }
-/* Reset específico para sidebar */
 .sidebar-control-button.theme-toggle { font-size: initial; }
 
-@media (hover: hover) and (pointer: fine) {
-  .theme-toggle:hover { transform: scale(1.1); }
-}
-.theme-toggle:active { transform: scale(0.9); }
-
-.theme-icon {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  transition: opacity 0.4s ease-in-out, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Lógica Sol/Luna */
+.theme-icon { position: absolute; top: 50%; left: 50%; transition: opacity 0.4s ease-in-out, transform 0.4s var(--ease-smooth); }
 .moon-icon { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 .sun-icon { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(-90deg); }
+:where(html.dark-mode) .moon-icon { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(90deg); }
+:where(html.dark-mode) .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 
-html.dark-mode .moon-icon { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(90deg); }
-html.dark-mode .sun-icon { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
-
-/* --- Accesibilidad Táctil (Inputs Grandes) --- */
-@media (hover: none) and (pointer: coarse) {
-  .search-form input,
-  #sort-select,
-  .type-filter-toggle {
-    height: var(--tap-target-size);
-    font-size: 1rem;
-  }
+/* Gestor de iconos dentro del input de búsqueda */
+.search-icon { transition: opacity 0.2s ease, transform 0.2s ease, right 0.2s ease; background: none; border: none; padding: 0; }
+.search-icon--clear { opacity: 0; pointer-events: none; }
+.main-header.is-search-focused {
+  & .search-icon--idle { opacity: 0; pointer-events: none; }
+  & .search-icon--clear { opacity: 1; pointer-events: auto; cursor: pointer; color: var(--color-text-primary); }
 }
 
-/* =================================================================
-   ESTILOS MÓVIL (<= 768px)
-   ================================================================= */
-@media (max-width: 768px), (max-height: 500px) {
-  
-  /* 1. Unificación de Espaciado */
-  .main-header-primary-controls,
-  .search-and-theme-group,
-  .header-pagination-group {
-    gap: 6px; /* Compactado para asegurar que quepa en viewports de 360px */
-  }
+/* --- 4. ACCESIBILIDAD Y ADAPTACIÓN MÓVIL (Magia Elástica) --- */
 
-  /* 2. Unificación de Estilo de Botones (DRY - Código limpio) */
-  /* Aplicamos el estilo de "botón cuadrado enmarcado" a todos los controles */
-  .mobile-sidebar-toggle,
-  .sort-control,
-  .type-filter-toggle,
-  .header-pagination-group .btn,
-  .search-form {
-    width: var(--tap-target-size);
-    height: var(--tap-target-size);
-    padding: 0;
-    
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; position: relative;
-    
-    border: 1px solid var(--color-border);
-    background-color: var(--color-surface);
-    border-radius: var(--radius-md);
+@media (hover: none) and (pointer: coarse) {
+  :is(.search-form input, #sort-select, .type-filter-toggle) { height: var(--tap-target-size); font-size: 1rem; }
+}
+
+@media (max-width: 768px), (max-height: 500px) {
+  .main-header-primary-controls, .search-and-theme-group, .header-pagination-group { gap: 6px; }
+
+  /* Botones Mágicos: Convertimos los controles a cuadrados perfectos */
+  :is(.mobile-sidebar-toggle, .sort-control, .type-filter-toggle, .header-pagination-group .btn, .search-form) {
+    width: var(--tap-target-size); height: var(--tap-target-size); padding: 0;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative;
+    border: 1px solid var(--color-border); background-color: var(--color-surface); border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
-    
     transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
   }
 
-  /* Contraste Dark Mode */
-  html.dark-mode .mobile-sidebar-toggle,
-  html.dark-mode .sort-control,
-  html.dark-mode .type-filter-toggle,
-  html.dark-mode .header-pagination-group .btn,
-  html.dark-mode .search-form {
+  :where(html.dark-mode) :is(.mobile-sidebar-toggle, .sort-control, .type-filter-toggle, .header-pagination-group .btn, .search-form) {
     border-color: rgba(255, 255, 255, 0.2);
     background-color: rgba(255, 255, 255, 0.08);
   }
 
-  /* 3. Ajustes Específicos */
   .mobile-sidebar-toggle { color: var(--color-text-primary); }
   .type-filter-toggle { font-size: 0.8rem; }
   .type-filter-toggle .mobile-icon svg { width: 20px; height: 20px; }
-
-  /* --- Modificaciones de Controles para Móvil --- */
   
-  /* Sort: Icono SVG visible, Select invisible encima */
+  /* Escondemos el texto de ordenar, dejamos solo el icono, pero el input invisible funciona encima */
   .sort-control::after { display: none; }
   .sort-icon { display: block; color: var(--color-text-primary); }
-  #sort-select {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    opacity: 0; z-index: 2;
-  }
+  #sort-select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; z-index: 2; }
 
-  /* Búsqueda: Estado colapsado (lupa) */
-  .search-form input { 
-    min-width: 100%; height: 100%;
-    border: none; background: transparent; color: transparent;
-    padding: 0;
-    &::placeholder { color: transparent; }
-  }
+  /* Buscador contraído: Aparenta ser un simple botón con lupa */
+  .search-form input { min-width: 100%; height: 100%; border: none; background: transparent; color: transparent; padding: 0; &::placeholder { color: transparent; } }
   .search-form .search-icon { right: 50%; transform: translate(50%, -50%); }
 
-  /* --- Estado: Búsqueda Expandida (Foco) --- */
-  .main-header.is-search-focused .main-header-primary-controls,
-  .main-header.is-search-focused .mobile-status-bar {
-    display: none;
-  }
-
-  .main-header.is-search-focused .search-and-theme-group { flex-grow: 1; justify-content: center; }
-  .main-header.is-search-focused .search-form { width: 70%; max-width: 400px; }
-
-  /* Restaurar aspecto de input al escribir */
-  .main-header.is-search-focused .search-form input {
-    color: var(--color-text-primary);
-    padding-inline-start: var(--space-md);
-    padding-inline-end: var(--space-xxl);
-    width: 100%;
-    &::placeholder { color: var(--color-text-secondary); }
-  }
-  .main-header.is-search-focused .search-icon { 
-    right: var(--space-sm); transform: translateY(-50%); 
-  }
-
-  /* MEJORA: Botón de limpiar con área táctil de 48px */
-  .main-header.is-search-focused .search-icon--clear {
-    width: 48px; height: 48px;
-    padding: 12px; /* 12px padding + 24px icono + 12px padding = 48px total */
-    right: 0; /* Alinear al borde para ocupar exactamente el padding-end del input */
+  /* Buscador expandido: Cuando pinchas, desaparece el resto de controles para dejarte escribir a gusto */
+  .main-header.is-search-focused {
+    & .main-header-primary-controls, & .mobile-status-bar { display: none; }
+    & .search-and-theme-group { flex-grow: 1; justify-content: center; }
+    & .search-form { width: 70%; max-width: 400px; }
+    & .search-form input { color: var(--color-text-primary); padding: 0 var(--space-xxl) 0 var(--space-md); width: 100%; &::placeholder { color: var(--color-text-secondary); } }
+    & .search-icon { right: var(--space-sm); transform: translateY(-50%); }
+    & .search-icon--clear { width: 48px; height: 48px; padding: 12px; right: 0; }
   }
 }
 
-/* =================================================================
-   ESTADOS GLOBALES DE ICONOS
-   ================================================================= */
+@media (max-width: 400px) { .header-pagination-group .btn { width: calc(var(--tap-target-size) / 1.5); } }
 
-.search-icon { 
-  transition: opacity 0.2s ease, transform 0.2s ease, right 0.2s ease;
-  /* Reset para cuando es un botón */
-  background: none; border: none; padding: 0;
-}
-.search-icon--clear { opacity: 0; pointer-events: none; }
-
-.main-header.is-search-focused .search-icon--idle { opacity: 0; pointer-events: none; }
-.main-header.is-search-focused .search-icon--clear { 
-  opacity: 1; pointer-events: auto; cursor: pointer; color: var(--color-text-primary);
-}
-
-/* Desktop: Ajuste Toggle Texto/Icono */
-@media (min-width: 769px) and (min-height: 501px) {
-  .type-filter-toggle .desktop-text { display: block; }
-  .type-filter-toggle .mobile-icon { display: none; }
-}
-
-/* Status Bar (Móvil) */
+/* --- 5. BARRAS DE ESTADO Y CONTADORES --- */
 .mobile-status-bar {
-  display: none;
-  width: 100%;
-  text-align: center;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  padding-top: 4px;
-  order: 10; /* Asegurar que va al final */
-  font-weight: var(--font-weight-medium);
-  padding-bottom: 2px;
+  display: none; width: 100%; text-align: center; font-size: var(--font-size-xs); color: var(--color-text-secondary); padding-top: 4px; order: 10; font-weight: var(--font-weight-medium); padding-bottom: 2px; 
 }
-
 @media (max-width: 768px), (max-height: 500px) {
   .mobile-status-bar { display: block; }
 }
 
-/* Total Results (Header - Desktop) */
 #total-results-header {
-  display: none; /* Oculto por defecto (Móvil) */
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-  align-items: center;
-  gap: 4px;
+  display: none; font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-text-secondary); white-space: nowrap; align-items: center; gap: 4px;
 }
-
 @media (min-width: 769px) and (min-height: 501px) {
   #total-results-header:not([hidden]) {
     display: flex;
   }
 }
-
 .total-results-count { color: var(--color-text-primary); font-family: var(--font-title); }
-
-/* Ajuste para pantallas muy pequeñas: Flechas de paginación compactas */
-@media (max-width: 400px) {
-  .header-pagination-group .btn {
-    width: calc(var(--tap-target-size) / 1.5);
-  }
-}

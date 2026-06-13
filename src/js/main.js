@@ -1,16 +1,21 @@
-// src/js/main.js
+// =================================================================
+//             EL DIRECTOR DE ORQUESTA (main.js)
+// =================================================================
+// Lee la URL, pide datos a la API, pinta resultados y vigila el scroll.
+// =================================================================
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
 import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore, normalizeText, executeViewTransition } from "./utils.js";
-import { fetchMovies, supabase, fetchUserMovieData, fetchPersonDetails } from "./api.js";
+import { fetchMovies, getSupabase, fetchUserMovieData, fetchPersonDetails } from "./api.js";
 import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
 import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, setUserMovieData, clearUserMovieData, syncStateWithUrlParams, stateToUrlParams } from "./state.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 
-// --- Lazy Modules State ---
+// Módulos que cargamos más tarde para que la web arranque al instante
 let sidebarModule = null;
 let isAuthInitialized = false;
 
+// Carga la barra lateral (filtros) bajo demanda
 async function loadSidebar() {
   if (sidebarModule) return sidebarModule;
   try {
@@ -20,42 +25,29 @@ async function loadSidebar() {
   } catch (e) { console.error("Error loading sidebar", e); }
 }
 
-// Helper para Code Splitting (Lazy Load de Card Component)
 const loadCardModule = () => import("./components/card.js");
 
-/**
- * Carga y renderiza la rejilla de películas.
- * Gestiona estados de carga, errores y transiciones.
- */
+// --- 1. MOTOR PRINCIPAL (Cargar y Pintar Películas) ---
 export async function loadAndRenderMovies(page = 1, { replaceHistory = false, forceSkeleton = false } = {}) {
-  const controller = createAbortableRequest('movie-grid-load');
-  const signal = controller.signal;
+  const signal = createAbortableRequest('movie-grid-load').signal;
 
   setCurrentPage(page);
   updatePageTitle();
-  updateUrl({ replace: replaceHistory }); // Sincronizar URL (Push o Replace según contexto)
+  updateUrl({ replace: replaceHistory }); 
 
-  // Estado de carga visual
   document.body.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer.setAttribute("aria-busy", "true");
 
-  // Iniciar carga del módulo de tarjetas en paralelo (Code Splitting)
   const cardModulePromise = loadCardModule();
   
-  // Renderizado de Skeletons diferido (150ms) para evitar parpadeo en cargas rápidas
   let skeletonTimeout;
   if (forceSkeleton) {
     const { renderSkeletons } = await cardModulePromise;
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
   } else {
-    // Detectar calidad de red para ajustar el delay (Progressive Enhancement)
-    // Si es lenta, mostramos skeleton antes. Si es rápida, esperamos para evitar parpadeo.
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    const effectiveType = connection?.effectiveType || '4g';
-    const skeletonDelay = {
-      'slow-2g': 0, '2g': 50, '3g': 100, '4g': 150
-    }[effectiveType] || 150;
+    const skeletonDelay = { 'slow-2g': 0, '2g': 50, '3g': 100 }[connection?.effectiveType] || 150;
 
     skeletonTimeout = setTimeout(async () => {
       const { renderSkeletons } = await cardModulePromise;
@@ -71,7 +63,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     let vipData = null;
     let hasVip = false;
     
-    // Detección de VIP: Lo evaluamos siempre para calcular bien los offsets de las páginas siguientes
+    // Si buscamos por un VIP (Tarantino), cargamos su cara grande primero
     if (!activeFilters.myList && !activeFilters.searchTerm) {
       const vipType = activeFilters.director ? 'director' : (activeFilters.actor ? 'actor' : null);
       const vipName = activeFilters.director || activeFilters.actor;
@@ -94,31 +86,20 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       }
     }
 
-    // Primera página carga más elementos para llenar pantallas grandes
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
     
-    // Lógica de Cuadrícula Perfecta (Anti-Huérfanas)
     let fetchLimit = basePageSize;
     let fetchOffset = (page - 1) * basePageSize;
 
     if (hasVip) {
-      if (page === 1) {
-        fetchLimit = basePageSize - 1;
-        fetchOffset = 0;
-      } else {
-        fetchLimit = basePageSize;
-        fetchOffset = ((page - 1) * basePageSize) - 1;
-      }
+      if (page === 1) { fetchLimit = basePageSize - 1; fetchOffset = 0; } 
+      else { fetchOffset = ((page - 1) * basePageSize) - 1; }
     } else {
-      // Extensión dinámica de la primera página para evitar paginaciones inútiles (Solo si no hay VIP)
-      if (page === 1) {
-        fetchLimit = firstPageLimit;
-      }
+      if (page === 1) fetchLimit = firstPageLimit; // Extender pág 1 para llenar pantallas enormes
     }
     
-    // Smart Count: Solo pedir total si no lo tenemos o es la primera página (para refrescar)
     const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
 
     const result = await fetchMovies(
@@ -130,40 +111,31 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       fetchOffset
     );
 
-    // Cancelar skeletons si la respuesta llegó rápido (antes de 150ms)
     if (skeletonTimeout) clearTimeout(skeletonTimeout);
 
     if (result.aborted) return;
 
     const { items: movies, total: returnedTotal } = result;
 
-    // Backend devuelve -1 si no se pidió conteo (get_count=false)
     const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
 
     if (vipData && (vipData.type === 'collection' || vipData.type === 'studio')) {
       vipData.total = effectiveTotal;
     }
 
-    // Precarga LCP (Largest Contentful Paint) para la primera imagen
     if (movies && movies.length > 0) preloadLcpImage(movies[0]);
       
-    // Asegurar que el módulo de tarjetas esté listo antes de renderizar
     const cardModule = await cardModulePromise;
 
-    const performRender = () => {
+    // Pinta con efecto cine
+    executeViewTransition(() => {
       updateDomWithResults(movies, effectiveTotal, cardModule, vipData, hasVip);
-      
-      // Scroll al top unificado (Paginación + Fix teclado móvil)
-      window.scrollTo({ top: 0, behavior: "auto" });
-    };
-
-    // Usar API de View Transitions (con fallback seguro y soporte a11y)
-    executeViewTransition(performRender);
+      window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
+    });
 
   } catch (error) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
     if (error.name === "AbortError") return;
-    console.error("Error en carga (Main):", error);
     
     const msg = getFriendlyErrorMessage(error);
     if (msg) showToast(msg, "error");
@@ -181,39 +153,26 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
   }
 }
 
-/**
- * Actualiza el DOM con los resultados obtenidos.
- * Gestiona casos de vacío, paginación y precarga.
- */
+// Ayudante: Pone las pelis en pantalla y actualiza las miguitas de pan (SEO)
 function updateDomWithResults(movies, totalMovies, cardModule, vipData = null, hasVip = false) {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
-  // Actualizar siempre el total para asegurar consistencia UI tras invalidación
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, movies);
   
-  // SEO: Actualizar datos estructurados (JSON-LD) para carruseles
   updateStructuredData(movies, totalMovies);
-
-  // SEO: Breadcrumbs para reflejar jerarquía de navegación
   updateBreadcrumbData(getActiveFilters());
-
-  // SEO: Enriquecer descripción con títulos reales para mejorar CTR
   updatePageTitle(movies);
 
   const { currentPage } = getState();
 
-  // Detectar posible error de la API (Total > 0 pero items vacíos)
   if (totalMovies > 0 && movies.length === 0 && currentPage === 1) {
-    console.warn("[Main] Inconsistencia: Total > 0 pero no hay items. Posible error de paginación API.");
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     return;
   }
 
-  // Ajuste matemático: Si hay VIP, la cuadrícula tiene un item más (la propia tarjeta)
   const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
 
   if (totalMovies === 0) {
-    // Evitar parpadeo de "No resultados" en "Mi Lista" antes de verificar la sesión
     if (getActiveFilters().myList && !isAuthInitialized) {
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
       return;
@@ -222,20 +181,15 @@ function updateDomWithResults(movies, totalMovies, cardModule, vipData = null, h
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
   } else if (!hasVip && totalMovies <= CONFIG.DYNAMIC_PAGE_SIZE_LIMIT && currentPage === 1) {
-    // Caso: Todos los resultados caben en una página
     renderMovieGrid(dom.gridContainer, movies, vipData);
     dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
   } else {
-    // Caso: Paginación necesaria
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     
-    // Ajuste de Cuadrícula: Si hay tarjeta VIP, restamos 1 al límite para que el total 
-    // (VIP + Películas) sea un múltiplo perfecto y no deje "huérfanas" en la última fila.
     const currentLimit = (hasVip && currentPage === 1) ? baseLimit - 1 : baseLimit;
     
-    // Slice optimizado: evitar copia de array si no es necesaria
     const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
     renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
     
@@ -245,19 +199,17 @@ function updateDomWithResults(movies, totalMovies, cardModule, vipData = null, h
       dom.paginationContainer.textContent = "";
     }
     updateHeaderPaginationState(currentPage, gridTotalItems);
-  }
+    }
 
-  // Onboarding: Enseñar mecánica de flip en la primera visita (Página 1)
   if (currentPage === 1 && totalMovies > 0) {
     runFlipOnboarding(dom.gridContainer);
   }
 }
 
-// --- Manejadores de Eventos de UI ---
+// --- 2. MANEJADORES DE UI (Clícs, Teclado) ---
 
 async function handleSortChange(event) {
   triggerPopAnimation(event.target);
-  document.dispatchEvent(new CustomEvent("uiActionTriggered"));
   setSort(dom.sortSelect.value);
   updateMobileStatusBar();
   await loadAndRenderMovies(1);
@@ -280,18 +232,12 @@ async function handleSearchInput() {
   
   if (searchTerm === currentSearchTerm) return;
   
-  // CASO 1: Se ha borrado la búsqueda (X o Backspace) y antes había una búsqueda activa.
   if (searchTerm.length === 0 && currentSearchTerm.length > 0) {
     history.back();
     return;
   }
   
-  // CASO 2: Buscar solo si hay 3+ caracteres
   if (searchTerm.length >= 3) {
-    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
-    
-    // Si pasamos de no tener búsqueda a tenerla, añadimos una entrada al historial (pushState)
-    // para que el usuario pueda usar el botón "Atrás" y recuperar sus filtros previos del sidebar.
     const isContinuingSearch = !!currentSearchTerm;
 
     const filtersCleared = setSearchTerm(searchTerm);
@@ -304,7 +250,7 @@ async function handleSearchInput() {
   }
 }
 
-// --- Gestión Global de Scroll (Optimizado) ---
+// --- 3. VIGILANTE DE SCROLL (Muy optimizado) ---
 let isTicking = false;
 let lastScrollY = 0;
 let scrollTimer = null;
@@ -324,22 +270,16 @@ function handleGlobalScroll() {
 
   if (!isTicking) {
     window.requestAnimationFrame(() => {
-      // FASE 1: LECTURAS EN LOTE (Batched Reads)
-      // Leemos todas las dimensiones primero para no forzar al navegador a recalcular el diseño
       const currentScrollY = Math.max(0, window.scrollY);
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
-      const visualHeight = window.visualViewport ? window.visualViewport.height : viewportHeight;
+      const vHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
       
-      const isMobileLayout = viewportWidth <= 768 || viewportHeight <= 500;
+      const isMobileLayout = window.innerWidth <= 768 || window.innerHeight <= 500;
       const isSearchActive = document.activeElement === dom.searchInput;
-      const isKeyboardOpen = visualHeight < (viewportHeight * 0.9);
-      const isAtBottom = (viewportHeight + currentScrollY) >= (docHeight - 50);
+      const isKeyboardOpen = vHeight < (window.innerHeight * 0.9);
+      const isAtBottom = (window.innerHeight + currentScrollY) >= (docHeight - 50);
       const isSearchFocused = dom.mainHeader.classList.contains("is-search-focused");
 
-      // FASE 2: ESCRITURAS EN LOTE (Batched Writes)
-      // Una vez recopiladas las métricas, aplicamos las clases CSS de golpe
       dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 20);
 
       if (isMobileLayout) {
@@ -351,11 +291,11 @@ function handleGlobalScroll() {
 
           if (isAtBottom) {
             dom.mainHeader.classList.remove('is-hidden-mobile');
-            lastScrollY = currentScrollY; // Reset ancla
+            lastScrollY = currentScrollY;
           } else if (scrollDifference > 12) {
             const isScrollingDown = currentScrollY > lastScrollY;
             dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
-            lastScrollY = currentScrollY; // Mover ancla SOLO si superamos el umbral
+            lastScrollY = currentScrollY; 
           }
         }
       } else {
@@ -368,7 +308,7 @@ function handleGlobalScroll() {
   }
 }
 
-// --- Reset de Filtros ---
+// Limpia todo (Botón Play o Atrás completo)
 function handleFiltersReset(e) {
   const { keepSort, newFilter } = e.detail || {};
   const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
@@ -376,40 +316,33 @@ function handleFiltersReset(e) {
   resetFiltersState();
   setSort(currentSort);
   
-  // Aplicar nuevo filtro si viene en el evento (ej: click en director)
   if (newFilter) setFilter(newFilter.type, newFilter.value);
   
-  // Actualizar UI
   if (dom.searchInput) dom.searchInput.value = "";
   if (dom.sortSelect) dom.sortSelect.value = currentSort;
   updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   updateMobileStatusBar();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
   
-  loadAndRenderMovies(1, { forceSkeleton: true }); // Reset es una acción discreta -> PushState (default)
+  loadAndRenderMovies(1, { forceSkeleton: true }); 
 }
 
-// --- Configuración de Listeners ---
+// --- 4. PREPARATIVOS AL ARRANCAR (Cableado) ---
 
 function setupHeaderListeners() {
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
   dom.searchInput.addEventListener("input", debouncedSearch);
   dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
   
-  // UX Búsqueda Móvil (Expandir/Colapsar)
   dom.searchInput.addEventListener("focus", () => dom.mainHeader.classList.add("is-search-focused"));
   dom.searchInput.addEventListener("blur", () => dom.mainHeader.classList.remove("is-search-focused"));
 
-  // Listener para la tecla Escape en el buscador
   dom.searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      const currentSearchTerm = getState().activeFilters.searchTerm;
-      // Si había una búsqueda activa, volvemos atrás en el historial.
-      if (currentSearchTerm) {
+      if (getState().activeFilters.searchTerm) {
         history.back();
       } else {
-        // Si no, simplemente quitamos el foco.
         dom.searchInput.blur();
       }
     }
@@ -418,10 +351,8 @@ function setupHeaderListeners() {
   dom.sortSelect.addEventListener("change", handleSortChange);
   dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
 
-  // Toggle Sidebar Móvil (Lazy Load)
   if (dom.mobileSidebarToggle) {
     dom.mobileSidebarToggle.addEventListener('click', async () => {
-      // Cargar módulo si no existe
       const mod = await loadSidebar();
       if (!mod) return;
       triggerHapticFeedback('light');
@@ -430,7 +361,6 @@ function setupHeaderListeners() {
     });
   }
 
-  // Navegación Paginación Header
   const navigatePage = async (direction) => {
     const currentPage = getCurrentPage();
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
@@ -444,10 +374,8 @@ function setupHeaderListeners() {
   dom.headerPrevBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(-1); });
   dom.headerNextBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(1); });
 
-  // Botón "X" Limpiar Búsqueda
   const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
   if (clearSearchBtn) {
-    // Usar pointerdown para prevenir blur en Android
     clearSearchBtn.addEventListener('pointerdown', (e) => {
       e.preventDefault(); // Gestión manual del foco
       e.stopPropagation();
@@ -462,7 +390,6 @@ function setupHeaderListeners() {
     });
   }
 
-  // Placeholder Responsivo
   const updateSearchPlaceholder = () => {
     if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
   };
@@ -471,13 +398,11 @@ function setupHeaderListeners() {
 }
 
 function setupGlobalListeners() {
-  // Cierres al hacer click fuera
   document.addEventListener("click", (e) => {
     if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
     if (!e.target.closest(".sidebar") && sidebarModule) sidebarModule.collapseAllSections();
   });
 
-  // Delegación de eventos Grid (Cards)
   dom.gridContainer.addEventListener("click", async function(e) {
     const cardElement = e.target.closest(".movie-card");
     if (cardElement) { 
@@ -492,7 +417,6 @@ function setupGlobalListeners() {
       return; 
     }
     
-    // Botón "Limpiar Filtros" en estado vacío
     if (e.target.closest("#clear-filters-from-empty")) {
       document.dispatchEvent(new CustomEvent("filtersReset"));
     }
@@ -503,13 +427,11 @@ function setupGlobalListeners() {
     initCardInteractions(dom.gridContainer);
   });
   
-  // Quick View Delegation
   document.getElementById("quick-view-content").addEventListener("click", async function(e) { 
     const { handleCardClick } = await loadCardModule();
     handleCardClick.call(this, e); 
   });
   
-  // Paginación Footer
   dom.paginationContainer.addEventListener("click", async (e) => {
     const button = e.target.closest(".btn[data-page]");
     if (button) {
@@ -520,16 +442,12 @@ function setupGlobalListeners() {
     }
   });
 
-  // Scroll Global Unificado
   lastScrollY = window.scrollY;
   window.addEventListener("scroll", handleGlobalScroll, { passive: true });
   
-  // Teclado
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { 
-      // Prioridad: Si hay un modal abierto, el sidebar no debe cerrarse (el modal lo hará)
       if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
-      
       if (sidebarModule) sidebarModule.closeMobileDrawer();
     }
   });
@@ -556,7 +474,7 @@ function setupGlobalListeners() {
   document.addEventListener("filtersReset", handleFiltersReset);
 }
 
-// --- Autenticación ---
+// --- 5. ENCHUFAR LA AUTENTICACIÓN ---
 function setupAuthSystem() {
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
@@ -565,7 +483,6 @@ function setupAuthSystem() {
   
   async function onLogin(user) {
     document.body.classList.add(CSS_CLASSES.USER_LOGGED_IN);
-    // Gestión explícita de atributos hidden para anular estilos globales
     if (loginButton) loginButton.hidden = true;
     if (userSessionGroup) userSessionGroup.hidden = false;
 
@@ -582,7 +499,6 @@ function setupAuthSystem() {
   
   function onLogout() {
     document.body.classList.remove(CSS_CLASSES.USER_LOGGED_IN);
-    // Restaurar estado inicial
     if (loginButton) loginButton.hidden = false;
     if (userSessionGroup) userSessionGroup.hidden = true;
 
@@ -594,20 +510,23 @@ function setupAuthSystem() {
   }
   
   async function handleLogout() {
+    const supabase = await getSupabase();
     const { error } = await supabase.auth.signOut();
     if (error) { console.error("Logout error:", error); showToast("Error al cerrar sesión.", "error"); }
   }
   
   if (logoutButton) logoutButton.addEventListener("click", handleLogout);
-  supabase.auth.onAuthStateChange((_event, session) => {
-    if (session?.user) onLogin(session.user); else onLogout();
+  
+  getSupabase().then(supabase => {
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) onLogin(session.user); else onLogout();
+    });
   });
 }
 
 function readUrlAndSetState() {
   syncStateWithUrlParams(window.location.search);
   
-  // Sincronizar UI
   const activeFilters = getActiveFilters();
   if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
   dom.sortSelect.value = activeFilters.sort;
@@ -628,10 +547,8 @@ function updateUrl({ replace = false } = {}) {
   }
 }
 
-// --- Inicialización ---
+// --- 6. ARRANQUE GLOBAL DE LA WEB ---
 function init() {
-  // GESTIÓN ANTI-FOUC GENÉRICA
-  // Elimina atributo data-loading para activar transiciones CSS
   requestAnimationFrame(() => {
     document.querySelectorAll('[data-loading]').forEach(el => {
       el.removeAttribute('data-loading');
@@ -650,19 +567,14 @@ function init() {
   }
   
   window.addEventListener("popstate", async () => {
-    // Import dinámico para cerrar modal (si está cargado es instantáneo)
     const { closeModal } = await import("./components/modal.js");
     closeModal();
     
     readUrlAndSetState();
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-    // Al navegar por historial (Atrás/Adelante), no debemos hacer push, solo reemplazar para normalizar si es necesario
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
   });
   
-  // Carga diferida del Sidebar (Desktop necesita filtros, Móvil no tanto)
-  // OPTIMIZACIÓN: Mover la inicialización de Supabase Auth aquí libera el Main Thread
-  // y permite que las películas se pinten mucho más rápido (Mejora el LCP).
   const idleLoad = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000));
   idleLoad(() => {
     loadSidebar();
@@ -670,13 +582,10 @@ function init() {
     setupAuthModal();
   });
 
-  // initQuickView se llama al abrir la primera ficha en card.js
-  
   initThemeToggle();
   setupHeaderListeners();
   setupGlobalListeners();
   
-  // Carga diferida de lógica de autenticación (Solo si el usuario intenta entrar)
   const loginBtn = document.getElementById("login-button");
   if (loginBtn) {
     loginBtn.addEventListener("click", async () => {
@@ -689,11 +598,9 @@ function init() {
   
   readUrlAndSetState();
   document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-  // Carga inicial: No ensuciar historial, usar replace
   loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
 }
 
-// Ejecutar inmediatamente si el DOM ya está interactivo
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
 } else {

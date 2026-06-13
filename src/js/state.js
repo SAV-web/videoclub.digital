@@ -1,15 +1,14 @@
 // =================================================================
-//                      MÓDULO DE ESTADO (v4.0 - Optimizado)
+//                      MÓDULO DE ESTADO (El "Cerebro")
 // =================================================================
-// - Gestión centralizada del estado de la aplicación.
-// - Implementa inmutabilidad defensiva en desarrollo.
-// - Lógica de negocio para límites de filtros y conteo dinámico.
+// - Guarda los datos importantes (filtros, página actual, etc.).
+// - Usa un "vigilante" (Proxy) para avisar al instante cuando algo cambia.
 // =================================================================
 
 import { DEFAULTS, CONFIG } from "./constants.js";
 import { normalizeText } from "./utils.js";
 
-// Estado Inicial
+// 1. Estado inicial: La configuración por defecto al entrar a la web.
 const initialState = {
   currentPage: 1,
   totalMovies: 0,
@@ -31,11 +30,34 @@ const initialState = {
   userMovieData: {},
 };
 
-// Inicialización con clonación profunda
-let state = structuredClone(initialState);
+// 2. El Vigilante (Proxy): Envuelve un objeto y reacciona cuando cambia un dato.
+function makeReactive(obj, namespace) {
+  return new Proxy(obj, {
+    set(target, property, value) {
+      const oldValue = target[property];
+      target[property] = value; // Aplicamos el cambio real
+      
+      // Si el valor realmente cambió y es de datos de usuario, avisamos a la web
+      if (oldValue !== value && namespace === "userMovieData") {
+        document.dispatchEvent(new CustomEvent("userMovieDataChanged", {
+          detail: { movieId: parseInt(property, 10) }
+        }));
+      }
+      return true; // Asignación exitosa
+    }
+  });
+}
+
+// Creamos nuestro estado global vigilado
+let state = makeReactive({
+  currentPage: initialState.currentPage,
+  totalMovies: initialState.totalMovies,
+  activeFilters: makeReactive(structuredClone(initialState.activeFilters), "activeFilters"),
+  userMovieData: makeReactive({}, "userMovieData")
+}, "root");
 
 // =================================================================
-//          SERIALIZACIÓN (URL & ROUTING)
+//          TRADUCTOR DE URL (Para poder compartir enlaces)
 // =================================================================
 
 export const URL_PARAM_MAP = {
@@ -47,6 +69,7 @@ export const URL_PARAM_MAP = {
 };
 export const REVERSE_URL_PARAM_MAP = Object.fromEntries(Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key]));
 
+// Convierte el estado actual en texto para la URL (?genre=Accion&p=2)
 export function stateToUrlParams(activeFilters, currentPage) {
   const params = new URLSearchParams();
 
@@ -57,51 +80,38 @@ export function stateToUrlParams(activeFilters, currentPage) {
     if (Array.isArray(value) && value.length > 0) params.set(shortKey, value.join(","));
     else if (key === "myList" && value) params.set(shortKey, value);
     else if (typeof value === "string" && value.trim() !== "") {
-      // Ignorar valores por defecto para no ensuciar la URL
-      if (key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) return;
-      if (key === "sort" && value === DEFAULTS.SORT) return;
-      if (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) return;
+      // No ponemos en la URL los valores por defecto
+      if ((key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) ||
+          (key === "sort" && value === DEFAULTS.SORT) ||
+          (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`)) return;
       
-      let valToSet = value;
-      if (['director', 'actor', 'genre', 'country'].includes(key)) {
-        valToSet = normalizeText(value);
-      }
+      const valToSet = ['director', 'actor', 'genre', 'country'].includes(key) ? normalizeText(value) : value;
       params.set(shortKey, valToSet);
     }
   });
   
-  if (currentPage > 1) params.set(REVERSE_URL_PARAM_MAP.page, currentPage);
-  
+  if (currentPage > 1) params.set("p", currentPage);
   return params;
 }
 
-export function urlParamsToState(queryString) {
+// Lee la URL y actualiza el estado
+export function syncStateWithUrlParams(queryString) {
+  resetFiltersState();
   const params = new URLSearchParams(queryString);
-  const parsedState = { page: parseInt(params.get(REVERSE_URL_PARAM_MAP.page), 10) || 1, filters: {} };
+  
+  setCurrentPage(parseInt(params.get("p"), 10) || 1);
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
     if (stateKey === "page") return;
-    const value = params.get(shortKey);
-    if (value !== null) {
-      if (stateKey === "excludedGenres" || stateKey === "excludedCountries") parsedState.filters[stateKey] = value.split(",");
-      else if (stateKey === "myList") parsedState.filters[stateKey] = value === "true" ? "mixed" : value; // Compatibilidad legacy
-      else parsedState.filters[stateKey] = value;
+    const val = params.get(shortKey);
+    if (val !== null) {
+      if (["excludedGenres", "excludedCountries"].includes(stateKey)) setFilter(stateKey, val.split(","), true);
+      else if (stateKey === "myList") setFilter(stateKey, val === "true" ? "mixed" : val, true);
+      else if (stateKey === "searchTerm") setSearchTerm(val);
+      else if (stateKey === "sort") setSort(val);
+      else if (stateKey === "mediaType") setMediaType(val);
+      else setFilter(stateKey, val, true);
     }
-  });
-
-  return parsedState;
-}
-
-export function syncStateWithUrlParams(queryString) {
-  resetFiltersState();
-  const { page, filters } = urlParamsToState(queryString);
-  
-  setCurrentPage(page);
-  Object.entries(filters).forEach(([key, value]) => {
-    if (key === "searchTerm") setSearchTerm(value);
-    else if (key === "sort") setSort(value);
-    else if (key === "mediaType") setMediaType(value);
-    else setFilter(key, value, true);
   });
   
   if (!state.activeFilters.sort) setSort(DEFAULTS.SORT);
@@ -113,284 +123,133 @@ export function syncStateWithUrlParams(queryString) {
 // =================================================================
 
 /**
- * Devuelve una instantánea inmutable del estado completo.
+ * Obtiene una copia segura de todo el estado
  */
-export const getState = () => {
-  const currentState = {
-    ...state,
-    activeFilters: getActiveFilters(),
-    userMovieData: getAllUserMovieData() // Composición de getters: evita duplicar lógica de clonado
-  };
+export const getState = () => ({ ...state, activeFilters: getActiveFilters(), userMovieData: getAllUserMovieData() });
 
-  // En desarrollo: Congelar para detectar mutaciones accidentales
-  if (import.meta.env.DEV) {
-    Object.freeze(currentState);
-  }
-  
-  return currentState;
-};
-
-/**
- * Devuelve los filtros activos asegurando copias de los arrays internos.
- */
-export const getActiveFilters = () => {
-  const filters = { 
-    ...state.activeFilters,
-    excludedGenres: [...state.activeFilters.excludedGenres],
-    excludedCountries: [...state.activeFilters.excludedCountries]
-  };
-
-  if (import.meta.env.DEV) {
-    Object.freeze(filters);
-    Object.freeze(filters.excludedGenres);
-    Object.freeze(filters.excludedCountries);
-  }
-  
-  return filters;
-};
+// Obtiene los filtros actuales creando copias de las listas para evitar modificaciones accidentales
+export const getActiveFilters = () => ({
+  ...state.activeFilters,
+  excludedGenres: [...state.activeFilters.excludedGenres],
+  excludedCountries: [...state.activeFilters.excludedCountries]
+});
 
 export const getCurrentPage = () => state.currentPage;
+export const setCurrentPage = (page) => { state.currentPage = page; };
+export const getUserDataForMovie = (id) => state.userMovieData[id] ? { ...state.userMovieData[id] } : undefined;
+export const getAllUserMovieData = () => ({ ...state.userMovieData });
 
 /**
- * Comprueba si hay filtros aplicados que requieran una petición filtrada.
- * Ignora ordenación y tipo de medio.
+ * ¿Hay algún filtro importante aplicado?
  */
 export function hasActiveMeaningfulFilters() {
-  // 0. Si estamos en "Mi Lista", es un filtro significativo
-  if (state.activeFilters.myList) return true;
-
-  // 1. Reutilizar lógica de conteo (Maneja exclusiones, rangos de año por defecto y filtros estándar)
-  if (getActiveFilterCount() > 0) return true;
-
-  // 2. Verificar búsqueda por texto (getActiveFilterCount la ignora explícitamente)
-  const { searchTerm } = state.activeFilters;
-  return !!(searchTerm && searchTerm.trim().length > 0);
+  if (state.activeFilters.myList || getActiveFilterCount() > 0) return true;
+  return !!state.activeFilters.searchTerm?.trim();
 }
-
-/**
- * Obtiene datos de usuario (votos/watchlist) para una película específica.
- */
-export const getUserDataForMovie = (movieId) => {
-  const userData = state.userMovieData[movieId] 
-    ? { ...state.userMovieData[movieId] } 
-    : undefined;
-
-  if (import.meta.env.DEV && userData) Object.freeze(userData);
-  return userData;
-};
-
-export const getAllUserMovieData = () => {
-  const allData = { ...state.userMovieData };
-  if (import.meta.env.DEV) Object.freeze(allData); // Shallow freeze es suficiente aquí si las entradas se congelan al crearse
-  return allData;
-};
 
 // =================================================================
 //          LOGICA DE NEGOCIO (Helpers)
 // =================================================================
 
-const IGNORED_FILTER_KEYS = new Set([
-  "mediaType", "sort", "searchTerm", "myList",
-  "excludedGenres", "excludedCountries", "year"
-]);
-
-/**
- * Cuenta de forma determinista y sin estado caché cuántos filtros "reales" están aplicados.
- * Es lo suficientemente rápido O(1) como para no requerir caché manual (evita bugs de sincronización).
- */
+// Cuenta cuántos filtros "reales" hay activos
 export function getActiveFilterCount() {
-  const { activeFilters } = state;
-  let count = 0;
+  let count = state.activeFilters.excludedGenres.length + state.activeFilters.excludedCountries.length;
+  if (state.activeFilters.year && state.activeFilters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) count++;
 
-  if (activeFilters.excludedGenres.length > 0) count++;
-  if (activeFilters.excludedCountries.length > 0) count++;
-
-  const defaultYearRange = `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`;
-  if (activeFilters.year && activeFilters.year !== defaultYearRange) {
-    count++;
-  }
-
-  // OPTIMIZACIÓN: for...in navega directamente por el objeto sin crear Arrays pesados en memoria
-  for (const key in activeFilters) {
-    if (!IGNORED_FILTER_KEYS.has(key) && activeFilters[key]) {
+  for (const key in state.activeFilters) {
+    if (!["mediaType", "sort", "searchTerm", "myList", "excludedGenres", "excludedCountries", "year"].includes(key) && state.activeFilters[key]) {
       count++;
     }
   }
-
   return count;
 }
 
-// =================================================================
-//          SETTERS (Mutación controlada)
-// =================================================================
+export function setTotalMovies(total) { state.totalMovies = total; }
+export const setSort = (sort) => { state.activeFilters.sort = sort; };
+export const setMediaType = (type) => { state.activeFilters.mediaType = type; state.totalMovies = 0; };
 
-export function setCurrentPage(page) {
-  state.currentPage = page;
+// Aplica un filtro (ej: país = 'España')
+export function setFilter(type, value, force = false) {
+  if (!(type in state.activeFilters)) return false;
+  if (state.activeFilters[type] === value) return true; // Nada cambia
+
+  const isNew = value && !state.activeFilters[type];
+  if (!force && isNew && getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) return false;
+
+  state.activeFilters[type] = value;
+  state.totalMovies = 0; // Obligamos a recalcular resultados
+  return true;
 }
 
-export function setTotalMovies(total) {
-  state.totalMovies = total;
-}
-
-/**
- * Aplica un filtro simple.
- * @param {string} filterType - Clave del filtro (genre, country, etc.)
- * @param {string|null} value - Valor a aplicar o null para limpiar.
- * @param {boolean} [force=false] - Si true, ignora el límite máximo de filtros (útil para sliders).
- * @returns {boolean} True si se aplicó, False si se bloqueó por límites.
- */
-export function setFilter(filterType, value, force = false) {
-  if (!(filterType in state.activeFilters)) return false;
-
-  const currentValue = state.activeFilters[filterType];
+// Guarda lo que escribe el usuario en el buscador y limpia el resto de filtros
+export function setSearchTerm(term) {
+  state.activeFilters.searchTerm = term;
+  state.totalMovies = 0;
   
-  // 4.2: Optimización - Si el valor no cambia, no hacemos nada (evita invalidar total)
-  if (currentValue === value) return true;
-
-  // 4.1: Detección robusta de "nuevo filtro" (considerando null/undefined/vacío como inactivo)
-  const isEmpty = (v) => v === null || v === undefined || v === "";
-  const isAddingNewFilter = !isEmpty(value) && isEmpty(currentValue);
-
-  if (!force && isAddingNewFilter && getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) {
-    if (import.meta.env.DEV) {
-      console.warn(`[State] Filtro '${filterType}' bloqueado. Límite (${CONFIG.MAX_ACTIVE_FILTERS}) alcanzado.`);
+  if (term?.length > 0) {
+    const toClear = ['genre', 'year', 'country', 'director', 'actor', 'selection', 'studio', 'myList'];
+    const arraysToClear = ['excludedGenres', 'excludedCountries'];
+    
+    const hadFilters = toClear.some(k => state.activeFilters[k]) || arraysToClear.some(k => state.activeFilters[k]?.length > 0);
+    
+    if (hadFilters) {
+      toClear.forEach(k => state.activeFilters[k] = null);
+      arraysToClear.forEach(k => state.activeFilters[k] = []);
+      return true; // Avisa que se han limpiado cosas
     }
-    return false;
   }
+  return false;
+}
 
-  // Lógica de Exclusividad: Si activamos myList, limpiamos otros filtros (excepto sort/mediaType)
-  // Esto se maneja mejor en el controlador (sidebar.js), pero aquí aseguramos consistencia si se llama directo.
-  if (filterType === 'myList' && value) {
-     // No limpiamos aquí para evitar efectos secundarios ocultos, el caller debe limpiar.
+// Excluye un filtro (Botón papelera / pausa)
+export function toggleExcludedFilter(type, value) {
+  const listKey = type === 'genre' ? 'excludedGenres' : 'excludedCountries';
+  const list = state.activeFilters[listKey];
+  const index = list.indexOf(value);
+
+  if (index > -1) {
+    // Si ya está excluido, lo quitamos de la lista
+    const newList = [...list];
+    newList.splice(index, 1);
+    state.activeFilters[listKey] = newList;
+  } else {
+    if (type === 'genre') {
+      // Si es género, reemplazamos por el nuevo (máximo 1). Al asignar, activamos el Proxy.
+      state.activeFilters[listKey] = [value];
+    } else {
+      // Si no está excluido, lo añadimos (respetando límites)
+      if (list.length >= CONFIG.MAX_EXCLUDED_FILTERS || getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) return false;
+      state.activeFilters[listKey] = [...list, value];
+    }
   }
- 
-  state.activeFilters[filterType] = value;
-  // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
   state.totalMovies = 0;
   return true;
 }
 
-export function setSearchTerm(term) {
-  state.activeFilters.searchTerm = term;
-  // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
-  state.totalMovies = 0;
-  let filtersCleared = false;
-  
-  // Lógica de exclusividad: Si buscamos por texto, limpiamos TODOS los filtros del sidebar
-  if (term && term.length > 0) {
-    const filtersToReset = [
-      'genre', 'year', 'country', 'director', 'actor', 
-      'selection', 'studio', 'myList'
-    ];
-    const arraysToReset = ['excludedGenres', 'excludedCountries'];
-
-    const hadActiveFilters = 
-      filtersToReset.some(key => state.activeFilters[key]) ||
-      arraysToReset.some(key => state.activeFilters[key]?.length > 0);
-
-    if (hadActiveFilters) {
-      filtersCleared = true;
-      
-      filtersToReset.forEach(key => state.activeFilters[key] = null);
-      arraysToReset.forEach(key => state.activeFilters[key] = []);
-    }
-  }
-  return filtersCleared;
-}
-
-export function setSort(sortValue) {
-  state.activeFilters.sort = sortValue;
-}
-
-export function setMediaType(mediaType) {
-  state.activeFilters.mediaType = mediaType;
-  // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
-  state.totalMovies = 0;
-}
-
-/**
- * Alterna un filtro de exclusión (Añadir/Quitar).
- */
-export function toggleExcludedFilter(filterType, value) {
-  // 5) Simplificación: Mapeo literal para mejor legibilidad y extensibilidad
-  const listMap = {
-    genre: state.activeFilters.excludedGenres,
-    country: state.activeFilters.excludedCountries
-  };
-  
-  const targetList = listMap[filterType];
-
-  if (!targetList) return false;
-
-  const index = targetList.indexOf(value);
-
-  if (index > -1) {
-    // Si existe, lo quitamos (siempre permitido)
-    targetList.splice(index, 1);
-    state.totalMovies = 0;
-    return true;
-  } else {
-    // Si no existe, intentamos añadirlo
-    
-    // Lógica específica: Máximo 1 exclusión de género (Reemplazo automático)
-    if (filterType === 'genre' && targetList.length > 0) {
-      targetList.length = 0;
-    }
-
-    // Validación 1: Límite específico de exclusiones
-    if (targetList.length >= CONFIG.MAX_EXCLUDED_FILTERS) {
-      if (import.meta.env.DEV) console.warn(`[State] Límite de exclusiones para ${filterType} alcanzado.`);
-      return false;
-    }
-    
-    // Validación 2: Límite global de filtros
-    if (getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) {
-      if (import.meta.env.DEV) console.warn(`[State] Límite global de filtros alcanzado.`);
-      return false;
-    }
-
-    targetList.push(value);
-    // Invalidate total: el total depende de filtros, y se recalcula sólo en page 1 (smart count).
-    state.totalMovies = 0;
-    return true;
-  }
-}
-
+// Devuelve todos los filtros a cero
 export function resetFiltersState() {
-  // Reinicio limpio desde el estado inicial
-  state.activeFilters = structuredClone(initialState.activeFilters);
-  state.totalMovies = 0; // Forzar recálculo visual del total
+  state.activeFilters = makeReactive(structuredClone(initialState.activeFilters), "activeFilters");
+  state.totalMovies = 0; 
 }
 
 // --- Gestión de Datos de Usuario ---
 
+// Guarda en bloque las películas del usuario (al hacer login)
 export function setUserMovieData(data) {
-  state.userMovieData = data || {};
+  state.userMovieData = makeReactive(data || {}, "userMovieData");
 }
 
+// Actualiza si el usuario vota o añade a 'Mi Lista' una sola peli
 export function updateUserDataForMovie(movieId, data) {
-  // Inmutabilidad: Reemplazar objeto en lugar de mutarlo con Object.assign
   const current = state.userMovieData[movieId] || { onWatchlist: false, rating: null };
   const updated = { ...current, ...data };
   
-  // 7.1 Optimización: Evitar eventos si no hay cambios reales
-  if (current.rating === updated.rating && current.onWatchlist === updated.onWatchlist) {
-    return;
-  }
-
-  // En DEV: Congelar la entrada individual para garantizar integridad referencial
-  if (import.meta.env.DEV) Object.freeze(updated);
+  if (current.rating === updated.rating && current.onWatchlist === updated.onWatchlist) return;
   
-  state.userMovieData[movieId] = updated;
-
-  // Sistema de eventos para reactividad en la UI sin frameworks
-  document.dispatchEvent(
-    new CustomEvent("userMovieDataChanged", {
-      detail: { movieId },
-    })
-  );
+  state.userMovieData[movieId] = updated; // Esto dispara automáticamente el evento en makeReactive
 }
 
+// Borra datos de usuario (al hacer logout)
 export function clearUserMovieData() {
-  state.userMovieData = {};
+  state.userMovieData = makeReactive({}, "userMovieData");
 }

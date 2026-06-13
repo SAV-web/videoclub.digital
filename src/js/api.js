@@ -1,49 +1,47 @@
 // =================================================================
-//          MÓDULO DE API (Supabase + Caché + Deduplicación)
+//          EL MENSAJERO (API, Base de Datos y Caché)
 // =================================================================
-// FICHERO: src/js/api.js
-// RESPONSABILIDAD:
-// - Comunicación con Supabase (RPC y Tablas).
-// - Gestión de Caché (LRU) para evitar peticiones redundantes.
-// - Deduplicación de peticiones en vuelo (Race Conditions).
+// Pide los datos a Supabase, pero usa memoria (Caché LRU) para 
+// recordar lo que ya ha descargado y no pedirlo dos veces.
+// También corta peticiones si tecleas demasiado rápido.
 // =================================================================
 
 import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
-import { createClient } from "@supabase/supabase-js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
 import { getUserDataForMovie } from "./state.js";
 
-// Inicialización del cliente Supabase
-// GUARD: Evitar crash en PROD si faltan credenciales.
-// Si hay URL/Key (real o placeholder de dev), iniciamos cliente.
-// Si no (PROD sin config), usamos un Mock que falla controladamente al usarse.
-const sbUrl = CONFIG.SUPABASE_URL;
-const sbKey = CONFIG.SUPABASE_ANON_KEY;
-
 // Set estático para normalizar caché (Campos de texto libre)
 const CANONICAL_TEXT_FIELDS = new Set(['searchTerm', 'genre', 'country', 'director', 'actor', 'excludedGenres', 'excludedCountries']);
 
-// Helper para error de configuración (Mock unificado)
 const notConfiguredError = () => Promise.reject(new Error("Supabase no configurado (Faltan credenciales)"));
+let supabasePromise = null;
 
-export const supabase = (sbUrl && sbKey) 
-  ? createClient(sbUrl, sbKey)
-  : {
-      // Mock de seguridad: Permite que la app cargue, pero falla al pedir datos
-      rpc: notConfiguredError,
-      from: () => ({ 
-        select: notConfiguredError,
-        upsert: notConfiguredError
-      }),
-      auth: {
-        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-        signInWithPassword: notConfiguredError,
-        signOut: notConfiguredError,
-        signUp: notConfiguredError
+// 1. CARGA DIFERIDA DE LA BASE DE DATOS (Solo descarga Supabase cuando hace falta)
+export function getSupabase() {
+  if (!supabasePromise) {
+    supabasePromise = (async () => {
+      const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = CONFIG;
+
+      if (url && key) {
+        const { createClient } = await import("@supabase/supabase-js");
+        return createClient(url, key);
+      } else {
+        return {
+          // Mock falso para que la web arranque aunque no haya claves de BD puestas
+          rpc: notConfiguredError,
+          from: () => ({ select: notConfiguredError, upsert: notConfiguredError }),
+          auth: {
+            getSession: () => Promise.resolve({ data: { session: null } }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+            signInWithPassword: notConfiguredError, signOut: notConfiguredError, signUp: notConfiguredError
+          }
+        };
       }
-    };
+    })();
+  }
+  return supabasePromise;
+}
 
 // --- SISTEMA DE CACHÉ ---
 
@@ -61,85 +59,49 @@ const suggestionsCache = new LRUCache({
   ttl: 1000 * 60 * 5,
 });
 
-// --- HELPERS INTERNOS ---
+// --- 3. PREPARAR DATOS Y LLAVES ---
 
-function parseYearRange(yearStr) {
-  if (!yearStr) return { start: null, end: null };
-  const parts = yearStr.split("-").map(Number);
-  if (parts.length === 2 && !parts.some(isNaN)) {
-    return { start: parts[0], end: parts[1] };
-  }
-  if (parts.length === 1 && !isNaN(parts[0])) {
-    return { start: parts[0], end: parts[0] };
-  }
-  return { start: null, end: null };
-}
+// Saca el principio y fin de un texto como "2010-2020"
+const parseYearRange = (y) => {
+  if (!y) return { start: null, end: null };
+  const p = y.split("-").map(Number);
+  return { start: p[0] || null, end: (p.length > 1 ? p[1] : p[0]) || null };
+};
 
-const isAbort = (error, signal) => 
-  error?.name === "AbortError" || 
-  signal?.aborted || 
-  (error?.message && error.message.toLowerCase().includes("abort"));
+// ¿El usuario canceló la petición?
+const isAbort = (e, s) => e?.name === "AbortError" || s?.aborted || e?.message?.toLowerCase().includes("abort");
 
-/**
- * Genera una clave única y determinista para la caché basada en los filtros.
- * Ordena las claves y los arrays para que {a:1, b:2} sea igual a {b:2, a:1}.
- */
-function createCanonicalCacheKey(filters, page, pageSize) {
-  const normalizedFilters = {};
-
-  // OPTIMIZACIÓN: Evitamos .forEach() para no generar contextos de memoria (Closures) en cada iteración
-  const keys = Object.keys(filters).sort();
-  for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      const value = filters[key];
-      // Ignorar valores nulos o vacíos para normalizar la clave
-      const hasValue = value !== null && value !== undefined && value !== "";
-      const isNonEmptyArray = Array.isArray(value) && value.length > 0;
-      
-      if (hasValue && (!Array.isArray(value) || isNonEmptyArray)) {
-        if (CANONICAL_TEXT_FIELDS.has(key)) {
-          // Normalización segura (Trim + Lowercase) solo para texto
-          if (typeof value === 'string') {
-            normalizedFilters[key] = value.trim().toLowerCase();
-          } else if (Array.isArray(value)) {
-            normalizedFilters[key] = value.map(v => (typeof v === 'string' ? v.trim().toLowerCase() : v)).sort();
-          }
-        } else {
-          // Para códigos (IDs, Sort, etc) conservar casing, pero ordenar arrays
-          normalizedFilters[key] = Array.isArray(value) ? [...value].sort() : value;
-        }
-      }
+// Crea una firma única para recordar una búsqueda exacta (Ej: "accion-pagina-2")
+const createCanonicalCacheKey = (filters, page, pageSize) => {
+  const norm = {};
+  Object.keys(filters).sort().forEach(k => {
+    const v = filters[k];
+    if (v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return;
+    
+    if (CANONICAL_TEXT_FIELDS.has(k)) {
+      norm[k] = Array.isArray(v) ? v.map(x => String(x).trim().toLowerCase()).sort() : String(v).trim().toLowerCase();
+    } else {
+      norm[k] = Array.isArray(v) ? [...v].sort() : v;
     }
-  return JSON.stringify({ filters: normalizedFilters, page, pageSize });
-}
+  });
+  return JSON.stringify({ filters: norm, page, pageSize });
+};
 
-/**
- * Mapea los filtros del frontend a los parámetros esperados por la función RPC de PostgreSQL.
- */
+// Traduce lo que pide el usuario al idioma que entiende el servidor SQL
 function stateToRpcParams(activeFilters, currentPage, pageSize, requestCount, explicitOffset) {
   const { start: yearStart, end: yearEnd } = parseYearRange(activeFilters.year);
-
   const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
   const offset = explicitOffset !== null ? explicitOffset : (currentPage - 1) * pageSize;
 
-  // Lógica de Regiones Virtuales
-  let countryParam = activeFilters.country;
-  let countryCodesParam = null;
-
-  // Lógica simplificada: Búsqueda exacta por valor (nordic, latam)
-  const region = Object.values(REGIONAL_GROUPS).find(r => r.value === countryParam);
-  if (region) {
-    countryParam = null; // Limpiamos el nombre para que SQL use los códigos
-    countryCodesParam = region.codes;
-  }
+  const region = Object.values(REGIONAL_GROUPS).find(r => r.value === activeFilters.country);
 
   return {
     search_term: activeFilters.searchTerm || null,
     genre_name: activeFilters.genre || null,
     p_year_start: yearStart,
     p_year_end: yearEnd,
-    country_name: countryParam,
-    p_country_codes: countryCodesParam, // Nuevo parámetro RPC
+    country_name: region ? null : activeFilters.country,
+    p_country_codes: region ? region.codes : null,
     director_name: activeFilters.director || null,
     actor_name: activeFilters.actor || null,
     media_type: activeFilters.mediaType || "all",
@@ -151,44 +113,34 @@ function stateToRpcParams(activeFilters, currentPage, pageSize, requestCount, ex
     sort_direction: sortDirection,
     page_limit: (pageSize && pageSize > 0) ? pageSize : 42,
     page_offset: offset,
-    get_count: requestCount // Optimización: false para no recalcular el total en paginación
+    get_count: requestCount
   };
 }
 
-// Mapa para deduplicación de peticiones en vuelo
+// Evita que pidamos exactamente los mismos datos a la BD dos veces al mismo tiempo
 const inFlightRequests = new Map();
 
-/**
- * Obtiene películas desde Supabase con caché y deduplicación.
- * @param {Object} activeFilters - Filtros actuales.
- * @param {number} currentPage - Página actual.
- * @param {number} pageSize - Tamaño de página.
- * @param {AbortSignal} signal - Señal para cancelar la petición.
- * @param {boolean} requestCount - Si se debe pedir el conteo total (caro).
- * @param {number|null} explicitOffset - Offset forzado para la consulta.
- */
+// Trae las películas principales para pintar el muro
 export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true, explicitOffset = null) {
-  // Incluimos requestCount en la clave porque el resultado varía (total vs -1)
   const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount, explicitOffset }, currentPage, pageSize);
 
-  // Caché: Solo para catálogo general. 'Mi Lista' depende de datos mutables locales y no se cachea aquí.
   if (!activeFilters.myList) {
     const cached = queryCache.get(queryKey);
     if (cached) return Promise.resolve(cached);
   }
 
-  // Deduplicación (Race Condition Safety): Unificada para todos los modos
   const inFlightPromise = inFlightRequests.get(queryKey);
   if (inFlightPromise) return inFlightPromise;
 
   const promise = (async () => {
+    const supabase = await getSupabase();
+    
     try {
-      // --- MODO 1: MI LISTA (Join directo en base de datos) ---
+      // MODO A: MI LISTA (Películas privadas del usuario)
       if (activeFilters.myList) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return { total: 0, items: [] };
 
-        // Realizamos un INNER JOIN para filtrar sin pasar miles de IDs por la URL
         let query = supabase
           .from('movies')
           .select(`
@@ -203,17 +155,11 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
           `, requestCount ? { count: 'exact' } : {})
           .eq('user_movie_entries.user_id', session.user.id);
 
-        // Soporte completo de AbortController para evitar promesas colgadas al cambiar de vista
         if (signal) query = query.abortSignal(signal);
 
-        // Aplicar el filtro correcto según la pestaña seleccionada en el JOIN
-        if (activeFilters.myList === 'rated') {
-          query = query.not('user_movie_entries.rating', 'is', null);
-        } else if (activeFilters.myList === 'watchlist') {
-          query = query.eq('user_movie_entries.on_watchlist', true);
-        } else {
-          query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
-        }
+        if (activeFilters.myList === 'rated') query = query.not('user_movie_entries.rating', 'is', null);
+        else if (activeFilters.myList === 'watchlist') query = query.eq('user_movie_entries.on_watchlist', true);
+        else query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
 
         if (activeFilters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
         else if (activeFilters.mediaType === 'series') query = query.ilike('type', 'S%');
@@ -225,10 +171,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
         const start = (currentPage - 1) * pageSize;
         const { data, error, count } = await query.range(start, start + pageSize - 1);
 
-        if (error) {
-          if (isAbort(error, signal)) return { aborted: true, items: [], total: -1 };
-          throw error;
-        }
+        if (error) throw (isAbort(error, signal) ? { name: "AbortError" } : error);
 
         const items = (data || []).map(m => {
           const isSeries = m.type && String(m.type).toLowerCase().startsWith('s');
@@ -249,33 +192,24 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
         return { total: requestCount ? (count || 0) : -1, items };
       }
       
-      // --- MODO 2: CATÁLOGO GENERAL (RPC) ---
+      // MODO B: CATÁLOGO PÚBLICO (Motor potente)
       const rpcParams = stateToRpcParams(activeFilters, currentPage, pageSize, requestCount, explicitOffset);
       let query = supabase.rpc("search_movies_offset", rpcParams);
       if (signal) query = query.abortSignal(signal);
 
       const { data, error } = await query;
 
-      if (error) {
-        if (isAbort(error, signal)) return { aborted: true, items: [], total: -1 };
-        console.error("[API] Error RPC Supabase:", error);
-        throw new Error("Error de base de datos al obtener películas.");
-      }
+      if (error) throw (isAbort(error, signal) ? { name: "AbortError" } : new Error("Fallo en la BD"));
 
       const result = { total: data?.total ?? -1, items: (data?.items || []).map(mapMoviePayload) };
       if (!signal?.aborted) queryCache.set(queryKey, result);
       return result;
 
     } catch (error) {
-      if (isAbort(error, signal)) {
-          return { aborted: true, items: [], total: -1 };
-      }
+      if (isAbort(error, signal)) return { aborted: true, items: [], total: -1 };
       throw error;
     } finally {
-      // Limpieza: Solo borrar si somos la petición activa (race condition safety)
-      if (inFlightRequests.get(queryKey) === promise) {
-        inFlightRequests.delete(queryKey);
-      }
+      if (inFlightRequests.get(queryKey) === promise) inFlightRequests.delete(queryKey);
     }
   })();
 
@@ -283,16 +217,14 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
   return promise;
 }
 
-/**
- * Carga los datos de usuario (votos, watchlist) para TODAS las películas.
- * Se llama al iniciar sesión.
- */
+// Descarga todas las pelis que ha votado el usuario (Para pintarle las estrellas rosas al abrir la web)
 export async function fetchUserMovieData() {
   let allData = [];
   let hasMore = true;
-  let from = 0;
-  const step = 1000; // Límite por defecto de seguridad de Supabase
+  let from = 0, step = 1000; 
   
+  const supabase = await getSupabase();
+
   while (hasMore) {
     const { data, error } = await supabase
       .from('user_movie_entries')
@@ -301,32 +233,27 @@ export async function fetchUserMovieData() {
       
     if (error) throw new Error("No se pudieron cargar tus datos.");
     
-    if (data && data.length > 0) {
+    if (data?.length > 0) {
       allData.push(...data);
       from += step;
-      if (data.length < step) hasMore = false;
+      hasMore = data.length === step;
     } else {
       hasMore = false;
     }
   }
 
   const userMap = {};
-  allData.forEach(item => {
-    userMap[item.movie_id] = { rating: item.rating, onWatchlist: item.on_watchlist };
-  });
+  allData.forEach(i => userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist });
   return userMap;
 }
 
-// OPTIMIZACIÓN (Memory Leak Fix): Un Map() normal crece hasta colapsar la RAM. 
-// LRUCache mantendrá solo a los 50 últimos VIPs visualizados, borrándolos automáticamente tras una hora.
+// Memoria para los VIPs (Actores/Directores). Máximo 50 a la vez para no ahogar el móvil.
 const personCache = new LRUCache({
   max: 50,
-  ttl: 1000 * 60 * 60, // 1 hora
+  ttl: 1000 * 60 * 60, 
 });
 
-/**
- * Obtiene los detalles de un artista VIP desde la BD
- */
+// Saca la foto y la fecha de nacimiento de un VIP cuando le clicas
 export async function fetchPersonDetails(type, name) {
   if (!name) return null;
   const key = `${type}:${name}`;
@@ -335,6 +262,8 @@ export async function fetchPersonDetails(type, name) {
   const table = type === 'director' ? 'directors' : 'actors';
   
   try {
+    const supabase = await getSupabase();
+
     const { data, error } = await supabase
       .from(table)
       .select('id, name, photo, birthday, deathday, place_of_birth, countries(name, code)')
@@ -347,20 +276,18 @@ export async function fetchPersonDetails(type, name) {
   } catch(e) { return null; }
 }
 
-/**
- * Guarda o actualiza la interacción del usuario con una película.
- */
+// Guarda en BD que le has puesto 5 estrellas o la has metido en pendientes
 export async function setUserMovieDataAPI(movieId, partialData) {
+  const supabase = await getSupabase();
+  
   const { data: { session } } = await supabase.auth.getSession();
   if (!session || !session.user) throw new Error("Debes iniciar sesión.");
   
-  const userId = session.user.id;
-  // Merge optimista con el estado actual para no perder datos
   const currentState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
   const mergedData = { ...currentState, ...partialData };
   
   const payload = {
-    user_id: userId, 
+    user_id: session.user.id, 
     movie_id: movieId, 
     rating: mergedData.rating, 
     on_watchlist: mergedData.onWatchlist, 
@@ -377,21 +304,18 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
   if (!searchTerm || searchTerm.length < 2) return [];
   
   const cacheKey = `suggest:${rpcName}:${searchTerm.toLowerCase()}`;
-  if (suggestionsCache.has(cacheKey)) {
-    return suggestionsCache.get(cacheKey);
-  }
+  if (suggestionsCache.has(cacheKey)) return suggestionsCache.get(cacheKey);
 
-  // Debounce de red: createAbortableRequest cancela automáticamente la petición anterior
-  const requestKey = `suggestion-${rpcName}`;
-  const controller = createAbortableRequest(requestKey);
+  // Evitar solapamientos si el usuario escribe muy rápido
+  const controller = createAbortableRequest(`suggestion-${rpcName}`);
   
   try {
+    const supabase = await getSupabase();
+    
     const { data, error } = await supabase.rpc(rpcName, { search_term: searchTerm }).abortSignal(controller.signal);
     
     if (error) {
       if (error.name === "AbortError") return []; // Ignorar cancelaciones
-      // Diagnóstico en desarrollo: Avisar si falla el RPC
-      if (import.meta.env.DEV) console.warn(`[API] Error en sugerencias (${rpcName}):`, error);
       return [];
     }
     
@@ -414,12 +338,16 @@ export const fetchActorSuggestions = async (term) => {
 // --- DATOS ALEATORIOS (Discovery) ---
 
 export const fetchRandomTopActors = async () => {
+  const supabase = await getSupabase();
+  
   const { data, error } = await supabase.rpc("get_random_top_actors", { limit_count: 5 });
   if (error) return [];
   return data.map(d => d.name).filter(name => !IGNORED_ACTORS.includes(name.trim().toLowerCase()));
 };
 
 export const fetchRandomTopDirectors = async () => {
+  const supabase = await getSupabase();
+  
   const { data, error } = await supabase.rpc("get_random_top_directors", { limit_count: 5 });
   if (error) return [];
   return data.map(d => d.name);

@@ -1,326 +1,132 @@
 /* =================================================================
- *          LAYOUT MAESTRO (Estructura y Adaptabilidad)
+ *                 EL ESQUELETO (Layout Maestro)
  * =================================================================
- *  FICHERO: src/css/layout.css
- *  ESTRATEGIA: Mobile-First, Propiedades Lógicas y View Transitions.
+ * Define la estructura general de la web (El contenedor principal,
+ * el menú lateral, la rejilla de películas y el pie de página).
  * ================================================================= */
 
 :root {
   --mobile-header-height: 88px;
 }
 
-/* =================================================================
-   1. ESTRUCTURA MACRO (Wrappers)
-   ================================================================= */
+/* --- 1. EL MARCO DE LA WEB (Estructura base) --- */
+.main-layout { display: flex; width: 100%; min-height: 100dvh; }
 
-/* Contenedor Flex Principal */
-.main-layout {
-  display: flex;
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh; /* Soporte robusto para móviles (barras dinámicas) */
-}
+.main-content-wrapper { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; min-height: 100dvh; }
 
-/* Columna Derecha (Header + Grid) */
-.main-content-wrapper {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0; /* Previene desbordamientos en Flexbox (CSS Grid blowout fix) */
-  min-height: 100dvh;
-}
-
-/* Contenedor interno */
 .content {
-  flex-grow: 1;
-  width: 100%;
-  max-width: 1440px;
-  margin-inline: auto; /* Centrado horizontal lógico */
+  flex-grow: 1; width: 100%; max-width: 1440px; margin-inline: auto; display: flex; flex-direction: column;
   
-  /* Padding Base (Móvil) - Header Arriba: Espacio superior reservado */
-  padding: 
-    calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-top)) 
-    var(--space-md) 
-    calc(var(--space-md) + env(safe-area-inset-bottom));
-  
-  /* OPTIMIZACIÓN: Aísla el cálculo de anchura del resto de la página en todos los dispositivos */
+  /* Aísla el cálculo de anchura del resto de la página (Súper rápido) */
   container-type: inline-size;
-
   transition: padding 0.3s ease;
-  
-  /* Flexbox para Footer al fondo */
-  display: flex;
-  flex-direction: column;
+  padding: calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-top)) var(--space-md) calc(var(--space-md) + env(safe-area-inset-bottom));
+
+  @media (min-width: 1200px) { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
+  @media (min-width: 1600px) { max-width: 1800px; }
 }
 
-/* =================================================================
-   2. SIDEBAR (Cajón de Navegación)
-   ================================================================= */
+/* --- 2. EL MENÚ LATERAL (Filtros) --- */
 
-/* --- Estilos Base y Móvil (Drawer Flotante) --- */
 .sidebar {
-  position: fixed;
-  inset-block: 0; /* top: 0; bottom: 0; */
-  inset-inline-start: 0; /* left: 0; */
-  height: 100dvh; /* Forzar altura dinámica real en móviles (evita cortes por barra URL) */
-  width: var(--sidebar-width-mobile); 
-  z-index: var(--z-index-sidebar);
+  position: fixed; inset: 0 auto 0 0; width: var(--sidebar-width-mobile); height: 100dvh; z-index: var(--z-index-sidebar);
+  background-color: var(--color-surface); border-inline-end: 2px solid var(--color-border);
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: auto;
+  transform: translateX(-100%); touch-action: pan-y;
+  contain: layout style; will-change: transform;
+  /* En móvil animamos Transform (GPU) porque ancho/flex reventarían el rendimiento */
+  transition: transform 0.5s var(--ease-smooth-out), background-color var(--duration-normal), border-color var(--duration-normal);
   
-  background-color: var(--color-surface);
-  border-inline-end: 2px solid var(--color-border); /* Borde derecho lógico */
-  
-  /* Scroll y UX */
-  overflow-y: auto;
-  overscroll-behavior: contain; /* Evita arrastrar el body al terminar el scroll */
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: auto; /* Firefox */
-  
-  /* Estado Inicial: Oculto a la izquierda */
-  transform: translateX(-100%); 
-  
-  /* Rendimiento: Aislar renderizado y preparar animación */
-  contain: layout style;
-  will-change: transform;
-  
-  /* Gestos Táctiles */
-  touch-action: pan-y; /* Permite scroll vertical nativo, JS maneja swipe horizontal */
+  &::-webkit-scrollbar { width: 14px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background-color: var(--color-text-tertiary); border-radius: 20px; border: 3px solid transparent; background-clip: content-box; }
 
-  /* OPTIMIZACIÓN: En móvil solo animamos Transform (GPU). 
-     Animar width/flex-basis causaría Layout Thrashing constante */
-  transition: 
-    transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-    background-color var(--transition-duration-normal),
-    border-color var(--transition-duration-normal);
+  /* Oculto por defecto para poder animarlo al abrir */
+  & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters, & .profile-container { opacity: 0; visibility: hidden; transition: opacity 0.2s ease-out, visibility 0s linear 0.2s; }
+  & .play-button-container { display: none; flex-direction: column; gap: var(--space-md); margin-top: var(--space-xs); }
 }
 
-/* Barra de scroll en móvil (Chrome/Safari) */
-.sidebar::-webkit-scrollbar { width: 14px; }
-.sidebar::-webkit-scrollbar-track { background: transparent; }
-.sidebar::-webkit-scrollbar-thumb { 
-  background-color: var(--color-text-tertiary); 
-  border-radius: 20px; 
-  border: 3px solid transparent; 
-  background-clip: content-box; 
+/* Menú Abierto en Móvil */
+body.sidebar-is-open .sidebar {
+  transform: translateX(0);
+  & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters, & .profile-container { opacity: 1; visibility: visible; transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s; }
+  & .play-button-container { display: flex; flex-direction: row; margin-top: 0; }
 }
 
-/* Estado Abierto (Móvil) */
-body.sidebar-is-open .sidebar { transform: translateX(0); }
-
-/* --- Visibilidad de Contenido Interno (Optimización) --- */
-.sidebar .logo-area,
-.sidebar .sidebar-static-filters,
-.sidebar .sidebar-scrollable-filters,
-.sidebar .profile-container {
-  opacity: 0; visibility: hidden;
-  transition: opacity 0.2s ease-out, visibility 0s linear 0.2s;
-}
-
-.sidebar .play-button-container {
-  display: none; 
-  flex-direction: column; gap: var(--space-md); margin-top: var(--space-xs);
-}
-
-/* Animación de entrada de contenido al abrir */
-body.sidebar-is-open .sidebar .logo-area,
-body.sidebar-is-open .sidebar .sidebar-static-filters,
-body.sidebar-is-open .sidebar .sidebar-scrollable-filters,
-body.sidebar-is-open .sidebar .profile-container {
-  opacity: 1; visibility: visible;
-  transition: opacity 0.3s ease-in-out 0.15s, visibility 0s linear 0s;
-}
-body.sidebar-is-open .sidebar .play-button-container {
-  display: flex; flex-direction: row; margin-top: 0;
-}
-
-/* --- Estilos Desktop (Sticky) --- */
-/* Breakpoint 769px: Coherencia con JS sidebar.js */
+/* Menú en Ordenador (Pantallas grandes) */
 @media (min-width: 769px) and (min-height: 501px) {
   .sidebar {
-    position: sticky;
-    transform: none; /* Reset de posición */
-    width: 200px;
-    flex-basis: 200px; /* Flexbox sizing */
+    position: sticky; transform: none; width: 200px; flex-basis: 200px; overflow: hidden;
+    will-change: width, flex-basis; transition: width 0.5s var(--ease-smooth-out), flex-basis 0.5s var(--ease-smooth-out), background-color var(--duration-normal), border-color var(--duration-normal);
     
-    /* En desktop bloqueamos scroll general, usamos scroll interno */
-    overflow: hidden; 
-    border-inline-end: 2px solid var(--color-border);
-
-    /* OPTIMIZACIÓN: En desktop sí animamos el ancho, así que lo activamos aquí */
-    will-change: width, flex-basis;
-    transition: 
-      width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-      flex-basis 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-      background-color var(--transition-duration-normal),
-      border-color var(--transition-duration-normal);
-  }
-
-  /* Restaurar visibilidad */
-  .sidebar .logo-area,
-  .sidebar .sidebar-static-filters,
-  .sidebar .sidebar-scrollable-filters,
-  .sidebar .profile-container {
-    opacity: 1; visibility: visible; transition: none;
+    & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters, & .profile-container { opacity: 1; visibility: visible; transition: none; }
+    & .play-button-container { display: flex; flex-direction: row; gap: var(--space-xxs); margin-top: 0; margin-bottom: var(--space-lg); }
   }
   
-  .sidebar .play-button-container {
-    display: flex; flex-direction: row; gap: var(--space-xxs);
-    margin-top: 0; margin-bottom: var(--space-lg);
-  }
-
-  /* Estado Colapsado (Desktop Only) */
-  body.sidebar-collapsed .sidebar { flex-basis: 65px; width: 65px; } /* width explícito necesario para transiciones */
-  
-  body.sidebar-collapsed .logo-area,
-  body.sidebar-collapsed .sidebar-static-filters,
-  body.sidebar-collapsed .sidebar-scrollable-filters { display: none; }
-  
-  body.sidebar-collapsed .play-button-container { 
-    flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); 
+  /* Menú Contraído (Solo iconos) */
+  body.sidebar-collapsed .sidebar {
+    flex-basis: 65px; width: 65px; 
+    & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
+    & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
   }
 }
 
-/* Excepción: Móvil Landscape (Poca altura) */
-@media (min-width: 769px) and (max-height: 600px) {
-  .sidebar { overflow-y: auto; }
-}
+/* Móvil tumbado (Poca altura) */
+@media (min-width: 769px) and (max-height: 600px) { .sidebar { overflow-y: auto; } }
 
-/* =================================================================
-   3. HEADER PRINCIPAL
-   ================================================================= */
+/* --- 3. LA CABECERA (Buscador y Controles) --- */
 
 .main-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  z-index: var(--z-index-header);
-  
-  /* --- MÓVIL: Top Bar (Sticky Top) --- */
-  position: fixed;
-  top: 0;
-  bottom: auto;
-  inset-inline: 0; /* left: 0; right: 0; */
-  
-  /* Padding ajustado a zona segura superior */
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-xs);
+  position: fixed; top: 0; inset-inline: 0; z-index: var(--z-index-header);
   padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-xs) var(--space-xs);
-  justify-content: center;
-  flex-wrap: wrap;
-}
 
-/* --- DESKTOP: Sticky Top --- */
-/* Breakpoint 769px: Unificado con Sidebar */
-@media (min-width: 769px) and (min-height: 501px) {
-  .main-header {
-    position: sticky;
-    top: 0;
-    bottom: auto;
-    
-    padding: var(--space-lg) var(--space-lg) var(--space-md);
-    gap: var(--space-md) var(--space-lg);
-    justify-content: center;
-    flex-wrap: wrap;
+  @media (min-width: 769px) and (min-height: 501px) {
+    position: sticky; padding: var(--space-lg); gap: var(--space-md) var(--space-lg);
   }
-}
-
-@media (min-width: 1200px) {
-  .main-header { padding-inline: var(--space-xxl); }
+  @media (min-width: 1200px) { padding-inline: var(--space-xxl); }
 }
 
 .header-pagination-group { display: flex; gap: 2px; }
 
-/* =================================================================
-   4. SISTEMA DE REJILLA (GRID)
-   ================================================================= */
+/* --- 4. LA CUADRÍCULA (El muro de películas) --- */
 
 .grid-container {
-  display: grid;
-  justify-content: center;
-  gap: var(--space-sm);
+  display: grid; justify-content: center; gap: var(--space-sm);
+  contain: layout; /* Evita que el navegador recalcule todo si algo cambia dentro */
+  grid-template-columns: repeat(2, 1fr); /* Móvil por defecto: 2 columnas */
+
+  &.is-fetching { opacity: 0.6; pointer-events: none; cursor: wait; transition: opacity 0.2s ease-out; }
   
-  /* Estrategia Mobile-First: < 400px = 2 columnas forzadas */
-  grid-template-columns: repeat(2, 1fr);
-
-  /* OPTIMIZACIÓN: Evita que el recálculo interno de la grilla afecte a los nodos padres */
-  contain: layout;
+  @media (min-width: 400px) { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: var(--space-md); }
 }
 
-/* Estado de Carga (Feedback visual) */
-.grid-container.is-fetching {
-  opacity: 0.6;
-  pointer-events: none;
-  cursor: wait;
-  transition: opacity 0.2s ease-out;
+/* Modo Muro (Tarjetas pequeñas que no giran) */
+:where(body.rotation-disabled) .grid-container {
+  grid-template-columns: repeat(3, 1fr); gap: calc(var(--space-xxs) + 3px) calc(var(--space-xs) + 3px);
+  @media (min-width: 400px) { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); }
 }
 
-/* --- ADAPTATIVO (>= 400px) --- */
-/* El navegador calcula automáticamente cuántas columnas caben */
-@media (min-width: 400px) {
-  .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
-    gap: var(--space-md);
-  }
-}
-
-/* --- MODO MURO (Compacto) --- */
-body.rotation-disabled .grid-container {
-  /* Mobile First: Forzar mínimo 3 columnas */
-  grid-template-columns: repeat(3, 1fr);
-  gap: calc(var(--space-xxs) + 3px) calc(var(--space-xs) + 3px);
-}
-
-@media (min-width: 400px) {
-  body.rotation-disabled .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-  }
-}
-
-/* --- DESKTOP TWEAKS --- */
+/* Ajustes para ordenador: No dejar huecos "huérfanos" forzando un número fijo de columnas */
 @media (min-width: 769px) and (min-height: 501px) {
-  /* Optimización Tablet: Menos padding lateral para ganar espacio (permite 3 columnas en iPad Air) */
   .content { 
     padding: var(--space-md) var(--space-lg) var(--space-xs);
   }
   .grid-container { gap: var(--space-lg) var(--space-md); }
 
-  /* --- MODO MURO: Columnas controladas (Divisores de 72) --- */
-  /* Forzar 6, 8, 9 o 12 columnas para evitar huecos en la última fila (72 items) */
-  @container (min-width: 660px) {
-    body.rotation-disabled .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  }
-  @container (min-width: 880px) {
-    body.rotation-disabled .grid-container { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-  }
-  @container (min-width: 1000px) {
-    body.rotation-disabled .grid-container { grid-template-columns: repeat(9, minmax(0, 1fr)); }
-  }
-  @container (min-width: 1200px) {
-    body.rotation-disabled .grid-container { grid-template-columns: repeat(12, minmax(0, 1fr)); }
-  }
+  /* Divisores de 72 (Modo Muro) */
+  @container (min-width: 660px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  @container (min-width: 880px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @container (min-width: 1000px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(9, minmax(0, 1fr)); } }
+  @container (min-width: 1200px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
 
-  /* --- MODO EXPLORACIÓN (Flip): Columnas controladas (Divisores de 42) --- */
-  /* Forzar 6 o 7 columnas en cuanto sea posible. Si no cabe, dejar auto-fill (4 o 5) en lugar de forzar 3 */
-  @container (min-width: 940px) {
-    body:not(.rotation-disabled) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  }
-  @container (min-width: 1080px) {
-    body:not(.rotation-disabled) .grid-container { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-  }
+  /* Divisores de 42 (Modo Exploración con Flip) */
+  @container (min-width: 940px) { :where(body:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  @container (min-width: 1080px) { :where(body:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 }
 
-/* Pantallas grandes: Restaurar padding amplio */
-@media (min-width: 1200px) {
-  .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
-}
+/* --- 5. TAMAÑOS DINÁMICOS Y ACCESIBILIDAD TÁCTIL --- */
 
-/* Opcional: Ajuste para pantallas Ultra-Wide */
-@media (min-width: 1600px) {
-  .content { max-width: 1800px; }
-}
-
-/* =================================================================
-   5. TIPOGRAFÍA FLUIDA & ACCESIBILIDAD
-   ================================================================= */
-
-/* Escala fluida */
 @media (min-width: 48em) {
   :root { --font-size-md: 1.25rem; --font-size-lg: 1.5rem; --font-size-xl: 1.75rem; --font-size-xxl: 2.25rem; }
 }
@@ -328,74 +134,43 @@ body.rotation-disabled .grid-container {
   :root { --font-size-md: 1.5rem; --font-size-lg: 1.75rem; --font-size-xl: 2.25rem; --font-size-xxl: 3rem; }
 }
 
-/* UX Puntero Grueso (Dedos) */
+/* Hacemos los botones más altos en móviles para no fallar con el dedo gordo */
 @media (hover: none) and (pointer: coarse) {
   #sort-select, .search-form input {
     height: 44px;
-    font-size: 1rem; /* Previene zoom automático en iOS */
+    font-size: 1rem; /* Importante: 1rem evita que Safari iOS haga zoom automático al tocar */
   }
   
-  .pagination-container > .btn,
-  .pagination-container > .pagination-current {
-    --btn-height: 36px;
-  }
+  .pagination-container > .btn, .pagination-container > .pagination-current { --btn-height: 36px; }
 }
 
-/* =================================================================
-   6. VIEW TRANSITIONS (Animaciones entre páginas)
-   ================================================================= */
+/* --- 6. ANIMACIONES DE PANTALLA (Magia de Hollywood) --- */
 
-@keyframes card-enter-animation {
-  from { opacity: 0; transform: translateY(20px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
+@keyframes card-enter-animation { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
 
-/* Animación global */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.25s; animation-timing-function: ease-in-out; }
 ::view-transition-old(root) { animation-name: fade-out; }
 ::view-transition-new(root) { animation-name: fade-in; }
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.25s; animation-timing-function: ease-in-out;
-}
-
-/* Aislamiento del header durante la transición */
 ::view-transition-group(main-header) { z-index: 100; }
-
-/* Animación granular de tarjetas */
 ::view-transition-group(movie-*) { animation-duration: 0.5s; animation-timing-function: ease; }
 ::view-transition-new(movie-*) { animation-name: card-enter-animation; }
 ::view-transition-old(movie-*) { animation-name: fade-out; }
 
-/* =================================================================
-   7. FOOTER MINIMALISTA
-   ================================================================= */
+/* --- 7. EL PIE DE PÁGINA --- */
 
 .site-footer {
-  margin-top: auto;
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-border);
-  text-align: center;
+  margin-top: auto; padding-top: var(--space-lg); border-top: 1px solid var(--color-border); text-align: center;
 }
 
 .footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-sm);
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--space-sm);
+  list-style: none; padding: 0; margin: 0; font-size: var(--font-size-xs); color: var(--color-text-secondary);
 }
 
 .footer-links li { display: flex; align-items: center; white-space: nowrap; }
-.footer-links li:not(:last-child)::after {
-  content: "|"; margin-left: var(--space-sm); color: var(--color-border);
-}
+.footer-links li:not(:last-child)::after { content: "|"; margin-left: var(--space-sm); color: var(--color-border); }
 .footer-links a { color: inherit; text-decoration: none; transition: color var(--duration-fast); }
 
 @media (hover: hover) and (pointer: fine) {

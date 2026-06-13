@@ -1,28 +1,21 @@
-/* src/css/components/sidebar.css */
-
 /* =================================================================
- *          COMPONENTE: Sidebar (Filtros y Contenido Interno)
+ *                 LA CAJONERA (Menú Lateral / Sidebar)
+ * =================================================================
+ * Contiene el logo, los botones principales, las píldoras de 
+ * filtros activos, el acordeón de opciones y el perfil de usuario.
  * ================================================================= */
 
-/* --- 1. Contenedor Interno --- */
+/* --- 1. EL ENVOLTORIO (Espaciado interior) --- */
 .sidebar-inner-wrapper {
-  display: flex;
-  flex-direction: column;
-  padding-block: var(--space-xl);
-  padding-bottom: calc(var(--space-lg) + env(safe-area-inset-bottom)); /* Reducido 50% para bajar perfil */
-  padding-inline-start: var(--space-lg); 
-  padding-inline-end: calc(var(--space-lg) + 8px); /* Extra espacio para evitar solapamiento de scrollbar */
-  
-  min-height: 100dvh; /* Usar dvh para asegurar que empuja el perfil al fondo real */
-  /* Transición de contenido interno (Padding al colapsar) */
+  display: flex; flex-direction: column; min-height: 100dvh;
+  padding: var(--space-xl) var(--space-lg) calc(var(--space-lg) + env(safe-area-inset-bottom));
+  padding-inline-end: calc(var(--space-lg) + 8px); 
   transition: padding 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 
   @media (min-width: 769px) and (min-height: 501px) {
-    height: 100%;
-    padding-inline: var(--space-md); /* Reducir padding (16px) para ganar espacio en ancho fijo */
+    height: 100%; padding-inline: var(--space-md); 
   }
 
-  /* Estado Compacto (Secciones abiertas) */
   &.is-compact {
     padding-top: var(--space-md);
     & .logo-area { margin-bottom: var(--space-xs); }
@@ -32,210 +25,114 @@
   }
 }
 
-/* --- 2. Área de Logo --- */
-.logo-area {
-  margin-bottom: var(--space-xl);
-  text-align: center;
-  /* Transición de layout (Margen) */
-  transition: margin-bottom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
+/* --- 2. EL LOGOTIPO --- */
+.logo-area { margin-bottom: var(--space-xl); text-align: center; transition: margin-bottom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .logo-title {
-  margin: 0;
-  font-family: var(--font-title);
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.03em;
-  /* Transición de tipografía (Tamaño) */
+  margin: 0; font-family: var(--font-title); font-size: var(--font-size-xl); font-weight: 700; line-height: 1.2; letter-spacing: -0.03em;
   transition: font-size 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-
-  /* Ajuste Escritorio: Reducción 20% relativa (1.75rem -> 1.4rem) */
-  @media (min-width: 769px) and (min-height: 501px) {
-    font-size: calc(var(--font-size-xl) * 0.8);
-  }
+  @media (min-width: 769px) and (min-height: 501px) { font-size: calc(var(--font-size-xl) * 0.8); }
 }
-.sidebar-inner-wrapper.is-compact .logo-title { 
-  font-size: var(--font-size-lg); 
+.sidebar-inner-wrapper.is-compact .logo-title {
+  font-size: var(--font-size-lg);
   @media (min-width: 769px) and (min-height: 501px) { font-size: calc(var(--font-size-lg) * 0.8); }
 }
-
 .logo-line-1, .logo-line-2 { display: block; }
 
-/* --- 3. Controles Superiores --- */
+/* --- 3. BOTONERA SUPERIOR (Play, Pausa, Tema...) --- */
 .play-button-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px; /* Reducido un 25% (de 8px a 6px) */
-  margin-bottom: var(--space-lg);
-  flex-wrap: nowrap; /* REGLA DE ORO: Nunca permitir dos filas */
-
-  /* Ajuste de precisión para Sidebar de escritorio (200px ancho fijo) */
+  display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: nowrap; margin-bottom: var(--space-lg);
   @media (min-width: 769px) and (min-height: 501px) {
-    gap: 1.5px; /* Reducir espacio entre iconos (25% menos de 2px) */
-    /* Forzar botones más compactos para que quepan 4 en una fila (4x34 + 3x4 = 148px < 152px disponibles) */
+    gap: 1.5px; 
     & .sidebar-control-button { 
       width: 38px !important; height: 38px !important;
-      /* FIX: Sobrescribir min-width de accesibilidad táctil (48px) para que quepan en sidebar estrecho (200px) */
       min-width: 38px !important; min-height: 38px !important;
     }
   }
 }
-
 .sidebar-control-button {
-  display: flex; align-items: center; justify-content: center;
-  position: relative; /* Contexto para el badge absoluto */
-  padding: 0; border: none; background: none;
-  color: var(--color-accent);
-  cursor: pointer; line-height: 1;
+  display: flex; align-items: center; justify-content: center; position: relative; padding: 0; border: none; background: none;
+  color: var(--color-accent); cursor: pointer; line-height: 1;
   transition: transform var(--transition-duration-fast) ease;
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-md); }
-
-  @media (hover: hover) and (pointer: fine) {
-    &:hover { transform: scale(1.1); }
-  }
+  @media (hover: hover) and (pointer: fine) { &:hover { transform: scale(1.1); } }
   &:active { transform: scale(0.95); transition-duration: 0.1s; }
-
-  & .sidebar-icon,
-  & .theme-icon {
-    width: 24px; height: 24px;
-    flex-shrink: 0; 
-  }
+  & .sidebar-icon, & .theme-icon { width: 24px; height: 24px; flex-shrink: 0; }
+  &.active { color: #fff; background-color: var(--color-accent); border-radius: var(--radius-md); }
+  :where(html.dark-mode) &.active { color: var(--color-bg); }
 }
 
-.sidebar-control-button.active {
-  color: #fff;
-  background-color: var(--color-accent);
-  border-radius: var(--radius-md);
-  html.dark-mode & { color: var(--color-bg); }
-}
-
-/* --- 4. Píldoras de Filtros Activos --- */
+/* --- 4. LAS PÍLDORAS (Filtros Activos) --- */
 .active-filters-list {
   display: flex; flex-wrap: wrap; gap: var(--space-xs);
-  padding: var(--space-xxs) var(--space-xs) 0; 
-  min-height: 1px;
-
-  /* Ocultar pills de estudios cuando la sección está abierta (foco en iconos) */
-  .collapsible-section[data-section="studio"].active &,
-  .collapsible-section[data-section="genre"].active &,
-  .collapsible-section[data-section="country"].active &,
-  .collapsible-section[data-section="selection"].active & {
-    display: none;
-  }
+  padding: var(--space-xxs) var(--space-xs) 0; min-height: 1px;
+  /* Ocultar pills si la sección está abierta para no duplicar info visual */
+  :where(.collapsible-section.active) & { display: none; }
 }
 
-@keyframes pill-pop-in {
-  from { opacity: 0; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1); }
-}
+@keyframes pill-pop-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes fadeOutPill { to { opacity: 0; transform: scale(0.8); } }
 
 .filter-pill {
-  display: flex; align-items: center;
-  height: 30px;
-  padding-inline: var(--space-sm);
+  display: flex; align-items: center; height: 30px; padding-inline: var(--space-sm);
   border-radius: var(--radius-pill);
   background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  color: #fff;
-  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); color: #fff; cursor: pointer;
   font-size: var(--font-size-xs); font-weight: bold; line-height: 1.1;
   animation: pill-pop-in 0.3s var(--transition-timing-function);
 
-  /* Micro-interacción Squish */
-  &:active {
-    transform: scale(0.96);
-    filter: brightness(0.95);
-    transition: transform 50ms var(--ease-luxury);
-  }
-
+  &:active { transform: scale(0.96); filter: brightness(0.95); transition: transform 50ms var(--ease-luxury); }
   & > span:first-child {
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     text-transform: capitalize;
   }
-
-&.filter-pill--exclude {
-  background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
-}
+  &.filter-pill--exclude { background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude)); }
+  &.is-removing { animation: fadeOutPill 0.2s ease-out forwards; }
+  
+  :where(html.dark-mode) & { color: var(--color-bg); }
+  :where(html.dark-mode) &.filter-pill--exclude { color: #fff; }
 
   & .remove-filter-btn {
-    margin-left: var(--space-xs);
-    padding: 0; border: none; background: none;
-    color: currentColor;
-    opacity: 0.7;
-    display: flex; align-items: center; height: 100%;
+    margin-left: var(--space-xs); padding: 0; border: none; background: none; color: currentColor; opacity: 0.7; display: flex; align-items: center; height: 100%;
     transition: opacity var(--transition-duration-fast), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    @media (hover: hover) and (pointer: fine) {
-      &:hover { opacity: 1; transform: scale(1.2); }
-    }
+    @media (hover: hover) and (pointer: fine) { &:hover { opacity: 1; transform: scale(1.2); } }
     &:active { transform: scale(0.9); }
   }
-
-  &.is-removing { animation: fadeOutPill 0.2s ease-out forwards; }
-
-  html.dark-mode & { color: var(--color-bg); }
-  html.dark-mode &.filter-pill--exclude { color: #fff; }
 }
 
-@keyframes fadeOutPill { to { opacity: 0; transform: scale(0.8); } }
-
-/* --- 5. Área de Scroll y Secciones --- */
-.sidebar-scrollable-filters {
-  padding-top: var(--space-xxl);
-  overflow-x: hidden;
-  touch-action: pan-y;
-}
-
-/* Asegurar que los elementos interactivos no bloqueen el gesto de cierre horizontal
-   ni el scroll vertical nativo */
-.sidebar-inner-wrapper button,
-.sidebar-inner-wrapper a,
-.sidebar-inner-wrapper input,
-.sidebar-inner-wrapper select {
-  touch-action: pan-y;
-}
+/* --- 5. EL ACORDEÓN (Área de scroll y secciones) --- */
+.sidebar-scrollable-filters { padding-top: var(--space-xxl); overflow-x: hidden; touch-action: pan-y; }
+/* Protege gestos nativos de táctil en elementos interactivos */
+.sidebar-inner-wrapper :is(button, a, input, select) { touch-action: pan-y; }
 
 @media (min-width: 769px) and (min-height: 501px) {
-  .sidebar-scrollable-filters {
-    overflow-y: auto;
-    flex-grow: 1;
-    min-height: 0;
-    padding-right: 0;
-    scrollbar-width: none;
-    overscroll-behavior-y: contain;
-  }
+  .sidebar-scrollable-filters { overflow-y: auto; flex-grow: 1; min-height: 0; padding-right: 0; scrollbar-width: none; overscroll-behavior-y: contain; }
   .sidebar-scrollable-filters::-webkit-scrollbar { display: none; }
 }
 
-.collapsible-section {
-  display: flex; flex-direction: column;
-  margin-bottom: var(--space-md);
-}
-
-.collapsible-section .section-header {
-  display: flex; justify-content: space-between; align-items: center;
-  width: 100%;
-  padding: var(--space-xxs) var(--space-xs);
+.collapsible-section { display: flex; flex-direction: column; margin-bottom: var(--space-md); }
+.section-header {
+  display: flex; justify-content: space-between; align-items: center; width: 100%; padding: var(--space-xxs) var(--space-xs);
   border: none; border-radius: var(--radius-md);
   background-color: transparent; color: var(--color-text-primary);
   cursor: pointer; text-align: left;
   font-family: var(--font-title); font-size: var(--font-size-base); font-weight: bold;
   transition: background-color var(--transition-duration-fast);
-
-  @media (hover: hover) and (pointer: fine) {
-    &:hover { background-color: var(--color-bg); }
-  }
+  
+  @media (hover: hover) and (pointer: fine) { &:hover { background-color: var(--color-bg); } }
   &:active { transform: scale(0.99); transition-duration: 0.1s; }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 }
-
-.chevron-icon {
-  stroke: var(--color-text-secondary);
-  transition: transform var(--transition-duration-normal);
-  .collapsible-section.active & { transform: rotate(90deg); }
+/* Menú Contraído (Solo iconos) */
+body.sidebar-collapsed .sidebar {
+  flex-basis: 65px; width: 65px; 
+  & .sidebar-inner-wrapper { padding-inline: 0; }
+  & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
+  & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
+  & .profile-container { height: auto; padding-bottom: var(--space-xs); }
+  & .user-session-group { flex-direction: column; gap: var(--space-md); }
 }
+.chevron-icon { stroke: var(--color-text-secondary); transition: transform var(--transition-duration-normal); }
+.collapsible-section.active .chevron-icon { transform: rotate(90deg); }
 
 .section-content {
   display: flex; flex-direction: column; gap: 1px;
@@ -243,24 +140,12 @@
   max-height: 0; opacity: 0; transform: translateY(-10px);
   overflow: hidden; visibility: hidden;
   position: relative; z-index: 1;
-  transition:
-    max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.2s ease-in-out,
-    transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    visibility 0s linear 0.25s;
-
-  .collapsible-section.active & {
-    max-height: 40rem; opacity: 1; transform: translateY(0);
-    visibility: visible; z-index: 10;
-    transition-delay: 0s;
-  }
-
-  .collapsible-section.active.is-ready & {
-    overflow: visible;
-  }
+  transition: max-height 0.25s ease, opacity 0.2s ease-in-out, transform 0.25s ease, visibility 0s linear 0.25s;
 }
+.collapsible-section.active .section-content { max-height: 40rem; opacity: 1; transform: translateY(0); visibility: visible; z-index: 10; transition-delay: 0s; }
+.collapsible-section.active.is-ready .section-content { overflow: visible; }
 
-/* --- 6. Enlaces de Filtro --- */
+/* --- 6. LOS ENLACES DE FILTRO (Botones de cada género/país) --- */
 .filter-link {
   display: flex; justify-content: space-between; align-items: center;
   padding: 2px var(--space-xs);
@@ -268,20 +153,10 @@
   color: var(--color-text-secondary);
   cursor: pointer; text-align: left; text-decoration: none;
   font: inherit; font-size: var(--font-size-sm); font-weight: bold;
-  min-height: 34px; /* Equilibrar altura con items que tienen botón de exclusión (30px + 4px) */
+  min-height: 34px;
   transition: color var(--transition-duration-fast), background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
-
   &:active { transform: scale(0.98); transition-duration: 0.1s; }
-
-  @media (hover: hover) and (pointer: fine) {
-    /* Opción A: Desplazamiento dinámico en lugar de fondo */
-    &:hover { 
-      color: var(--color-text-primary); 
-      transform: translateX(2px);
-    }
-    /* Combinar desplazamiento y escala al hacer clic para evitar saltos */
-    &:hover:active { transform: translateX(2px) scale(0.99); }
-  }
+  @media (hover: hover) and (pointer: fine) { &:hover { color: var(--color-text-primary); transform: translateX(2px); } &:hover:active { transform: translateX(2px) scale(0.99); } }
   
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); background-color: var(--color-bg); }
 
@@ -290,7 +165,7 @@
     padding-left: var(--space-sm);
     background-color: var(--color-accent); color: #fff;
     
-    html.dark-mode & { color: var(--color-bg); }
+    :where(html.dark-mode) & { color: var(--color-bg); }
 
     &::before {
       content: "▶";
@@ -310,34 +185,18 @@
   opacity: 0;
   transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  .filter-link:hover &,
-  .filter-link:focus-visible &,
-  .filter-link.is-excluded &,
-  &:focus-visible { opacity: 1; }
-
-  @media (hover: hover) and (pointer: fine) {
-    &:hover { 
-      background-color: var(--color-border-soft); color: var(--color-accent-exclude);
-      transform: scale(1.15); /* Feedback táctil visual */
-    }
-  }
-  /* UX Táctil: Visible siempre (pero discreto) en dispositivos sin hover (Móviles/Tablets) */
-  @media (hover: none) and (pointer: coarse) {
-    opacity: 1;
-    color: var(--color-text-tertiary);
-  }
+  .filter-link:hover &, .filter-link:focus-visible &, .filter-link.is-excluded &, &:focus-visible { opacity: 1; }
+  @media (hover: hover) and (pointer: fine) { &:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); transform: scale(1.15); } }
+  @media (hover: none) and (pointer: coarse) { opacity: 1; color: var(--color-text-tertiary); }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
   .filter-link.active &,
   .filter-link.is-excluded & { color: #fff; }
-
   & svg { width: 22px; height: 22px; stroke-width: 2; }
 }
 
-
-/* --- 7. Inputs y Autocompletado --- */
+/* --- 7. AUTOCOMPLETADO (Buscadores internos) --- */
 .sidebar-filter-form { position: relative; margin-top: var(--space-xxs); }
-
 .sidebar-filter-input {
   width: 100%;
   padding: var(--space-xxs) var(--space-xs);
@@ -345,12 +204,10 @@
   background-color: transparent; color: var(--color-text-primary);
   font-size: var(--font-size-sm);
   transition: border-color var(--transition-duration-fast);
-
   &:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus); }
   &:focus::placeholder { color: transparent; }
   &::placeholder { color: var(--color-text-secondary); opacity: 0.8; }
 }
-
 .sidebar-autocomplete-results {
   position: absolute; bottom: 100%; left: 0; right: 0;
   z-index: var(--z-index-autocomplete);
@@ -359,26 +216,19 @@
   background-color: var(--color-surface);
   box-shadow: var(--shadow);
   overflow-y: auto;
-  overscroll-behavior: contain; /* Evita que el scroll se propague al sidebar */
+  overscroll-behavior: contain; 
   &:empty { display: none; }
-
-  /* UX: En pantallas con poca altura (móvil landscape), reducir altura para evitar que se salga por arriba */
-  @media (max-height: 500px) {
-    max-height: 100px;
-  }
+  @media (max-height: 500px) { max-height: 100px; }
 }
-
 .sidebar-autocomplete-item {
   padding: var(--space-sm);
   cursor: pointer; font-size: var(--font-size-sm);
   transition: background-color var(--transition-duration-fast);
-
-  &.is-active,
-  &:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
+  &.is-active, &:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
   & strong { color: var(--color-accent); }
 }
 
-/* --- 8. Slider de Años --- */
+/* --- 8. LÍNEA DEL TIEMPO (Slider de Años) --- */
 #year-slider-container {
   display: flex; flex-direction: column; align-items: center; gap: var(--space-md);
   padding-top: 0;
@@ -392,7 +242,6 @@
   background: var(--color-border); box-shadow: none;
 }
 #year-slider .noUi-connect { background: var(--color-accent); }
-
 #year-slider .noUi-handle {
   width: 20px; height: 20px;
   top: -8px; right: -10px;
@@ -401,35 +250,25 @@
   box-shadow: var(--shadow);
   cursor: grab;
   transition: transform 0.2s ease;
-}
-
-/* Ocultar líneas decorativas por defecto de noUiSlider (::before) */
-#year-slider .noUi-handle::before { display: none; }
-
-/* Usar ::after para expandir el área táctil (Hit Area) sin afectar visualmente */
-#year-slider .noUi-handle::after {
-  content: ""; position: absolute; inset: -12px; display: block; width: auto; height: auto; background: none;
-}
-
-#year-slider .noUi-handle:focus { outline: none; }
-#year-slider .noUi-handle:active { cursor: grabbing; }
-@media (hover: hover) and (pointer: fine) {
-  #year-slider .noUi-handle:hover { transform: scale(1.1); }
+  &::before { display: none; }
+  &::after { content: ""; position: absolute; inset: -12px; display: block; width: auto; height: auto; background: none; }
+  &:focus { outline: none; }
+  &:active { cursor: grabbing; }
+  @media (hover: hover) and (pointer: fine) { &:hover { transform: scale(1.1); } }
 }
 
 .year-input {
   width: 100%;
-  padding: 0.35rem 32px; /* Espacio para botones laterales en móvil */
+  padding: 0.35rem 32px; 
   border: 1px solid var(--color-border); border-radius: var(--radius-sm);
   background-color: var(--color-bg); color: var(--color-text-primary);
   text-align: center; font-size: var(--font-size-xs);
   -moz-appearance: textfield;
+  &:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus); }
+  &::-webkit-outer-spin-button, &::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 }
-.year-input:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus); }
-.year-input::-webkit-outer-spin-button, .year-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .year-input-wrapper { position: relative; flex: 1; min-width: 0; }
-
 .stepper-btn {
   position: absolute; top: 0; bottom: 0;
   width: 30px; padding: 0;
@@ -439,15 +278,13 @@
   transition: background-color var(--transition-duration-fast);
   display: flex; align-items: center; justify-content: center;
   z-index: 2;
+  &:hover { background-color: var(--color-border-soft); color: var(--color-text-primary); }
+  &:active { background-color: var(--color-border); }
 }
-.stepper-btn:hover { background-color: var(--color-border-soft); color: var(--color-text-primary); }
-.stepper-btn:active { background-color: var(--color-border); }
 
-/* Móvil: Botones a los lados */
 .stepper-down { left: 0; border-right: 1px solid var(--color-border); border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
 .stepper-up { right: 0; border-left: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 
-/* Escritorio: Botones apilados a la derecha (Restaurar diseño original) */
 @media (min-width: 769px) and (min-height: 501px) {
   .year-input { padding: 0.35rem var(--space-xs); padding-right: 25px; }
   
@@ -461,46 +298,13 @@
   
   .stepper-up { top: 0; bottom: auto; border-bottom: 1px solid var(--color-border); border-radius: 0 var(--radius-sm) 0 0; }
   .stepper-down { top: auto; bottom: 0; border-right: none; border-radius: 0 0 var(--radius-sm) 0; }
-
   .year-input-wrapper:hover .stepper-btn,
   .year-input-wrapper:focus-within .stepper-btn { opacity: 1; visibility: visible; }
 }
 
-/* --- 9. Resultados --- */
-/* Oculto permanentemente (reemplazado por Header en Desktop y StatusBar en Móvil) */
 #total-results-sidebar { display: none !important; }
 
-/* --- 10. Accesibilidad Táctil --- */
-@media (hover: none) and (pointer: coarse) {
-  .filter-pill { padding-inline: var(--space-md); }
-  
-  .filter-pill .remove-filter-btn {
-    padding: 0 8px; font-size: 1.2rem; position: relative;
-  }
-  
-  .filter-pill .remove-filter-btn::after {
-    content: ""; position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 44px; height: 44px;
-  }
-
-  .sidebar-autocomplete-item:active,
-  .collapsible-section .section-header:active {
-    transform: scale(0.98);
-  }
-
-  /* MEJORA: Áreas táctiles expandidas (48px) para precisión */
-  .sidebar-control-button,
-  .exclude-filter-btn {
-    min-width: var(--tap-target-size);
-    min-height: var(--tap-target-size);
-  }
-
-  /* Enlaces de filtro más altos para facilitar el tap */
-  .filter-link { min-height: var(--tap-target-size); align-items: center; }
-}
-
-/* --- 11. Indicador de Progreso --- */
+/* --- 9. INDICADOR DE PROGRESO DE CARGA --- */
 .sidebar::before {
   content: '';
   position: absolute; top: 0; left: 0; width: 100%; height: 3px;
@@ -511,35 +315,17 @@
   transform: translateX(-100%);
   transition: opacity 0.3s ease;
 }
+:where(body.is-fetching) .sidebar::before { opacity: 1; animation: indeterminate-loading-gpu 1.5s infinite var(--ease-smooth); }
+@keyframes indeterminate-loading-gpu { 0% { transform: translateX(-100%); } 50% { transform: translateX(0%); } 100% { transform: translateX(100%); } }
 
-body.is-fetching .sidebar::before {
-  opacity: 1;
-  animation: indeterminate-loading-gpu 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes indeterminate-loading-gpu {
-  0% { transform: translateX(-100%); }
-  50% { transform: translateX(0%); }
-  100% { transform: translateX(100%); }
-}
-
-/* =================================================================
-   12. PERFIL DE USUARIO
-   ================================================================= */
+/* --- 10. PERFIL DE USUARIO --- */
 .sidebar .profile-container {
   margin-top: auto; padding-top: var(--space-md);
   display: flex; align-items: center; justify-content: center;
   height: 52px;
 }
-
 .user-session-group { display: none; align-items: center; gap: var(--space-md); }
-
-/* Igualar tamaño de botones de sesión al avatar (32px) */
-.user-session-group .sidebar-control-button {
-  width: 32px; height: 32px;
-}
-.user-session-group .sidebar-control-button svg { width: 28px; height: 28px; }
-
+.user-session-group .sidebar-control-button { width: 32px; height: 32px; & svg { width: 28px; height: 28px; } }
 .user-avatar {
   display: flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; flex-shrink: 0;
@@ -548,44 +334,27 @@ body.is-fetching .sidebar::before {
   color: var(--color-accent);
   font-size: var(--font-size-base); font-weight: bold;
   cursor: pointer; transition: transform 0.2s ease;
+  &:hover { transform: scale(1.1); }
 }
-.user-avatar:hover { transform: scale(1.1); }
+:where(body.user-logged-in) #login-button { display: none; }
+:where(body.user-logged-in) #user-session-group { display: inline-flex; }
 
-body.user-logged-in #login-button { display: none; }
-body.user-logged-in #user-session-group { display: inline-flex; }
-
-@media (min-width: 769px) and (min-height: 501px) {
-  body.sidebar-collapsed .profile-container { justify-content: center; height: auto; }
-  body.sidebar-collapsed .user-session-group { flex-direction: column; gap: var(--space-md); }
-}
-
-/* =================================================================
-   13. OPTIMIZACIÓN GESTOS TÁCTILES
-   ================================================================= */
+/* --- 11. GESTOS TÁCTILES GLOBALES --- */
 .sidebar.is-dragging {
   transition: none !important; 
   cursor: grabbing;
   will-change: transform;
 }
+:where(body.sidebar-is-dragging) { overflow: hidden; user-select: none; -webkit-user-select: none; }
+:where(body.sidebar-is-dragging) .main-content-wrapper { pointer-events: none; filter: grayscale(0.5); transition: filter 0.2s ease; }
 
-body.sidebar-is-dragging {
-  overflow: hidden; user-select: none; -webkit-user-select: none;
-}
-
-body.sidebar-is-dragging .main-content-wrapper {
-  pointer-events: none;
-  filter: grayscale(0.5);
-  transition: filter 0.2s ease;
-}
-
-/* --- Iconos Estudios --- */
+/* --- 12. LOGOS DE ESTUDIOS Y PLATAFORMAS --- */
 .filter-link--studio,
 .filter-link--icon {
   justify-content: flex-start;
   padding-block: 2px;
-  border: 2px solid transparent; /* Pre-reservar espacio para evitar saltos */
+  border: 2px solid transparent; 
 }
-
 .sidebar-platform-icon {
   height: 30px; width: auto; max-width: 100%;
   transition: transform var(--transition-duration-fast);
@@ -595,35 +364,25 @@ body.sidebar-is-dragging .main-content-wrapper {
   object-fit: contain;
   transition: transform var(--transition-duration-fast), filter 0.3s ease;
 }
+:where(html.dark-mode) .sidebar-platform-img.invert-on-dark { filter: invert(1) brightness(2); }
+.filter-link--icon:hover :is(.sidebar-platform-icon, .sidebar-platform-img) { transform: scale(1.1); }
 
-/* Utilidad: Invertir color en modo oscuro (para logos negros PNG) */
-html.dark-mode .sidebar-platform-img.invert-on-dark {
-  filter: invert(1) brightness(2);
-}
-
-.filter-link--icon:hover .sidebar-platform-icon,
-.filter-link--icon:hover .sidebar-platform-img { transform: scale(1.1); }
-
-/* Estado Activo para Iconos (Cuadrado) */
 .filter-link--icon.active {
   background-color: transparent;
   border-color: var(--color-accent);
-  padding-inline: var(--space-xs); /* Restaurar padding original para centrar */
+  padding-inline: var(--space-xs); 
   color: var(--color-text-primary);
   box-shadow: none;
 }
-.filter-link--icon.active::before { content: none; display: none; } /* Ocultar flecha decorativa */
-html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
+.filter-link--icon.active::before { content: none; display: none; } 
+:where(html.dark-mode) .filter-link--icon.active { color: var(--color-text-primary); }
 
 #studios-list-container {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xs);
 }
-
 #studios-list-container .filter-link { justify-content: center; }
 
-/* =================================================================
-   14. AJUSTES RESPONSIVE (MÓVIL)
-   ================================================================= */
+/* --- 13. ACCESIBILIDAD Y RESPONSIVE (Móviles y Tap Areas) --- */
 @media (max-width: 768px), (max-height: 500px) {
   .logo-title { font-size: 1.8rem; }
   .collapsible-section .section-header { font-size: var(--font-size-md); }
@@ -631,16 +390,22 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
   .filter-pill { font-size: var(--font-size-sm); }
   .year-input { font-size: 1.1rem; }
   .total-results-container { font-size: var(--font-size-base); }
-
   .exclude-filter-btn {
     width: 32px; height: 32px; opacity: 1;
+    & svg { width: 22px; height: 22px; stroke-width: 2; }
   }
-  .exclude-filter-btn svg { width: 22px; height: 22px; stroke-width: 2; }
 }
 
-/* =================================================================
-   15. SISTEMA BENTO GRID (Unificado)
-   ================================================================= */
+@media (hover: none) and (pointer: coarse) {
+  .filter-pill { padding-inline: var(--space-md); }
+  .filter-pill .remove-filter-btn { padding: 0 8px; font-size: 1.2rem; position: relative; }
+  .filter-pill .remove-filter-btn::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
+  .sidebar-autocomplete-item:active, .collapsible-section .section-header:active { transform: scale(0.98); }
+  .sidebar-control-button, .exclude-filter-btn { min-width: var(--tap-target-size); min-height: var(--tap-target-size); }
+  .filter-link { min-height: var(--tap-target-size); align-items: center; }
+}
+
+/* --- 14. SISTEMA BENTO GRID (Géneros y Países) --- */
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -650,7 +415,6 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
   margin: 0 auto;
 }
 
-/* Estilo base de los botones Bento */
 .bento-grid .filter-link,
 .bento-input {
   background-color: var(--color-surface);
@@ -662,82 +426,70 @@ html.dark-mode .filter-link--icon.active { color: var(--color-text-primary); }
   font-weight: var(--font-weight-semibold);
   box-shadow: var(--shadow-sm);
   width: 96%;
-  display: block; /* Para inputs */
+  display: block; 
   justify-content: flex-start;
   margin: 0 auto;
-  /* Transiciones unificadas para hover y foco */
   transition: transform 0.1s, background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
-/* Ajuste específico para links (flex) vs inputs (block) */
 .bento-grid .filter-link { 
   display: flex; width: 100%;
   font-size: var(--font-size-xs);
   line-height: 1.15;
   padding: var(--space-xxs) var(--space-xs);
 }
-
 .bento-grid .filter-link:active {
   transform: scale(0.96);
 }
 
-/* Estado Activo */
 .bento-grid .filter-link.active {
   background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
   background-color: var(--color-accent);
   color: #fff;
   border-color: transparent;
-  padding-left: var(--space-xs); /* Reset padding de lista */
+  padding-left: var(--space-xs); 
 }
-
 .bento-grid .filter-link.active::before { display: none; }
-
-/* Estado Excluido */
 .bento-grid .filter-link.is-excluded {
   background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
   background-color: var(--color-accent-exclude);
   color: #fff;
   border-color: transparent;
-  padding-left: var(--space-xs); /* Reset padding de lista */
+  padding-left: var(--space-xs); 
 }
 
-/* Dark mode adjustments */
-html.dark-mode .bento-grid .filter-link,
-html.dark-mode .bento-input {
+:where(html.dark-mode) .bento-grid .filter-link,
+:where(html.dark-mode) .bento-input {
   background-color: rgba(255, 255, 255, 0.03);
   border-color: var(--color-border);
   color: var(--color-text-primary);
 }
-html.dark-mode .bento-grid .filter-link.active { color: var(--color-bg); }
+:where(html.dark-mode) .bento-grid .filter-link.active { color: var(--color-bg); }
 
-/* Elementos de ancho completo (Excluibles) */
+/* Excepciones de ancho completo */
 .bento-grid .filter-link[data-filter-value="Animación"],
 .bento-grid .filter-link[data-filter-value="Documental"],
 .bento-grid .filter-link[data-filter-value="EEUU"],
 .bento-grid .filter-link[data-filter-value="España"] {
   grid-column: 1 / -1;
-  justify-content: space-between; /* Texto izq, papelera der */
-  padding-inline: var(--space-xs); /* Alineación consistente con el resto de la lista */
-  padding-block: 2px; /* Reducir padding vertical para compensar el botón */
+  justify-content: space-between; 
+  padding-inline: var(--space-xs); 
+  padding-block: 2px; 
 }
 
-/* Ajuste para el botón de excluir dentro del grid */
 .bento-grid .exclude-filter-btn {
   margin-left: 0;
   background-color: rgba(0,0,0,0.05);
-  width: 30px; height: 30px; /* Ajustado para encajar en 34px (30+2+2) */
+  width: 30px; height: 30px; 
   border-radius: 50%;
 }
-
 .bento-grid .exclude-filter-btn svg {
   width: 20px; height: 20px;
 }
-
-html.dark-mode .bento-grid .exclude-filter-btn {
+:where(html.dark-mode) .bento-grid .exclude-filter-btn {
   background-color: rgba(255,255,255,0.1);
 }
 
-/* Ajuste de margen para formularios que contienen inputs bento */
 .collapsible-section:has(.bento-input) .sidebar-filter-form {
   margin-top: 0;
 }

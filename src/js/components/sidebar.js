@@ -1,12 +1,8 @@
 // =================================================================
-//          COMPONENTE: Sidebar (Filtros + Gestos Táctiles)
+//                 LA CAJONERA (Menú Lateral y Filtros)
 // =================================================================
-// FICHERO: src/js/components/sidebar.js
-// RESPONSABILIDAD:
-// - Gestión de la barra lateral y sus estados (abierto/cerrado).
-// - Lógica de filtros (renderizado, selección, exclusión).
-// - Gestos táctiles (Swipe) para móvil.
-// - Integración con Slider de años y Autocompletado.
+// Controla el menú izquierdo, los filtros, las etiquetas (píldoras),
+// y los gestos táctiles (deslizar para abrir, pellizcar para muro).
 // =================================================================
 
 import noUiSlider from 'nouislider';
@@ -27,15 +23,13 @@ import spriteUrl from "../../sprite.svg";
 
 // --- Constantes Locales ---
 const MOBILE_BREAKPOINT = 768;
-const MOBILE_HEIGHT_LIMIT = 500; // Altura máxima para considerar "móvil landscape"
+const MOBILE_HEIGHT_LIMIT = 500; 
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
 let DRAWER_WIDTH = 300;
 
-// Estado de interacción con el filtro de años (para cierre inteligente en móvil)
 let yearInteractionState = { start: false, end: false };
 let isInitialized = false;
 
-// --- Referencias DOM Centralizadas ---
 const dom = {
   sidebar: document.getElementById("sidebar"),
   sidebarInnerWrapper: document.querySelector(".sidebar-inner-wrapper"),
@@ -53,30 +47,20 @@ const dom = {
   myListButton: document.getElementById("my-list-button"),
 };
 
-// Caché para contenedores de secciones (evita querySelector repetido en renderFilterPills)
 const sectionContainers = {};
-
-// Helper para detectar layout móvil (Ancho estrecho O Altura reducida)
 const isMobileLayout = () => window.innerWidth <= MOBILE_BREAKPOINT || window.innerHeight <= MOBILE_HEIGHT_LIMIT;
 
 // =================================================================
-//          1. LÓGICA DE GESTOS TÁCTILES (GPU Accelerated)
+//          1. GESTOS TÁCTILES (El dedo manda)
 // =================================================================
 
 let touchState = {
-  isDragging: false,
-  isHorizontalDrag: false,
-  startX: 0,
-  startY: 0,
-  startTime: 0,
-  currentTranslate: 0,
-  startTranslate: 0,
-  isInteractive: false 
+  isDragging: false, isHorizontalDrag: false,
+  startX: 0, startY: 0, startTime: 0,
+  currentTranslate: 0, startTranslate: 0, isInteractive: false 
 };
 
-/**
- * Aplica fi      if (currentStart !== globalStart || currentEnd !ltros de año pendientes si el usuario ha modificado los inputs manuales.
- */
+// Guarda el año si has tocado las casillas manuales
 function applyPendingYearFilters() {
   if (!dom.yearStartInput || !dom.yearEndInput) return;
   
@@ -86,65 +70,42 @@ function applyPendingYearFilters() {
   if (isNaN(currentStart) || isNaN(currentEnd)) return;
 
   const activeFilters = getActiveFilters();
-  let globalStart = CONFIG.YEAR_MIN;
-  let globalEnd = CONFIG.YEAR_MAX;
-  
-  if (activeFilters.year) {
-      const parts = activeFilters.year.split('-');
-      if (parts.length === 2) {
-          globalStart = parseInt(parts[0], 10);
-          globalEnd = parseInt(parts[1], 10);
-        } else if (parts.length === 1) {
-            globalStart = parseInt(parts[0], 10);
-            globalEnd = parseInt(parts[0], 10);
-        }
-  }
-  
+  let [globalStart, globalEnd] = (activeFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split('-').map(Number);
+  if (!globalEnd) globalEnd = globalStart;
+
   if (currentStart !== globalStart || currentEnd !== globalEnd) {
-      const yearFilter = currentStart === currentEnd ? `${currentStart}` : `${currentStart}-${currentEnd}`;
-      handleFilterChangeOptimistic("year", yearFilter, true);
+    handleFilterChangeOptimistic("year", currentStart === currentEnd ? `${currentStart}` : `${currentStart}-${currentEnd}`, true);
   }
 }
 
-/**
- * Gestiona el estado visual y lógico del sidebar (abierto/cerrado).
- * @param {boolean} isOpen - Estado deseado.
- */
+// Abre o cierra el cajón izquierdo
 function setSidebarState(isOpen) {
-  // 1. Clases y Estilos (Solo en móvil gestionamos la clase de drawer para evitar overlay en desktop)
   if (isMobileLayout()) {
     document.body.classList.toggle(CSS_CLASSES.SIDEBAR_OPEN, isOpen);
-    dom.sidebar.style.transform = ''; // Limpiar transform inline para que CSS mande (o resetear drag)
+    dom.sidebar.style.transform = ''; 
     touchState.currentTranslate = isOpen ? 0 : -DRAWER_WIDTH;
     
-    // Resetear estado de interacción de años al abrir
     if (isOpen) {
       yearInteractionState = { start: false, end: false };
     } else {
-      // AL CERRAR: Aplicar filtros de año pendientes si han cambiado
       applyPendingYearFilters();
     }
   }
 
-  // 2. Iconos y ARIA (Sincronización)
   if (dom.rewindButton) {
     dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
-    const label = isOpen ? "Cerrar sidebar" : "Abrir sidebar";
-    dom.rewindButton.setAttribute("aria-label", label);
-    dom.rewindButton.title = label;
-    dom.rewindButton.setAttribute("aria-expanded", isOpen);
+    const label = isOpen ? "Cerrar menú" : "Abrir menú";
+    Object.assign(dom.rewindButton, { title: label, ariaLabel: label, ariaExpanded: isOpen });
   }
   if (dom.mobileSidebarToggle) {
-    dom.mobileSidebarToggle.setAttribute('aria-expanded', String(isOpen));
-    dom.mobileSidebarToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú de filtros' : 'Abrir menú de filtros');
+    dom.mobileSidebarToggle.setAttribute('aria-expanded', isOpen);
+    dom.mobileSidebarToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
   }
 }
 
 export const openMobileDrawer = () => setSidebarState(true);
 export const closeMobileDrawer = () => setSidebarState(false);
-const tryCloseMobileDrawer = () => {
-  if (isMobileLayout()) closeMobileDrawer();
-};
+const tryCloseMobileDrawer = () => { if (isMobileLayout()) closeMobileDrawer(); };
 
 function updateDrawerWidth() {
   if (dom.sidebar) {
@@ -153,16 +114,12 @@ function updateDrawerWidth() {
   }
 }
 
-/**
- * Inicia el gesto de arrastre (Swipe) en móviles.
- * @param {TouchEvent} e 
- */
+// Cuando pones el dedo en la pantalla
 function handleTouchStart(e) {
   if (!isMobileLayout()) return;
   if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
   
   const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
-  // Zona de activación: Borde izquierdo (150px) o cualquier parte si ya está abierto
   const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
 
   if (!canStartDrag) {
@@ -177,21 +134,13 @@ function handleTouchStart(e) {
   touchState.startTime = Date.now();
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
   
-  // Detección de elementos interactivos para no robarles el clic
-  // MEJORA: Si es un swipe desde el borde real (< 30px), asumimos intención clara de abrir y bajamos el umbral.
-  // Si es más adentro, respetamos las tarjetas para no cancelar sus clics accidentalmente.
   const isEdgeSwipe = !isOpen && touchState.startX < 30;
-  // FIX: Permitir detección de interactividad también cuando está abierto para proteger el scroll vertical
   touchState.isInteractive = !isEdgeSwipe && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
 
-  // Passive false para poder cancelar el scroll nativo si es necesario
   document.addEventListener("touchmove", handleTouchMove, { passive: true });
 }
 
-/**
- * Procesa el movimiento del dedo durante el gesto.
- * @param {TouchEvent} e 
- */
+// Cuando mueves el dedo
 function handleTouchMove(e) {
   if (!touchState.isDragging) return;
 
@@ -200,34 +149,29 @@ function handleTouchMove(e) {
   const diffX = currentX - touchState.startX;
   const diffY = currentY - touchState.startY;
 
-  // Detección de intención (Scroll Vertical vs Swipe Horizontal)
   if (!touchState.isHorizontalDrag) {
-    // Umbral dinámico: más alto si estamos sobre un elemento interactivo
-    const threshold = touchState.isInteractive ? 15 : 10; // Aumentado base a 10px para evitar falsos positivos
+    const threshold = touchState.isInteractive ? 15 : 10; 
     
-    // Si no superamos el umbral, esperamos
     if (Math.abs(diffX) < threshold && Math.abs(diffY) < threshold) return;
 
-    // Si es scroll vertical, cancelamos el swipe del sidebar
     if (Math.abs(diffY) > Math.abs(diffX)) {
       touchState.isDragging = false;
       document.removeEventListener("touchmove", handleTouchMove);
       return;
     }
     
-    // Confirmado: Es swipe horizontal
     touchState.isHorizontalDrag = true;
-    touchState.startX = currentX; // Resetear origen para evitar salto visual
+    touchState.startX = currentX; 
     touchState.startY = currentY;
     touchState.startTime = Date.now();
 
-    dom.sidebar.classList.add(CSS_CLASSES.IS_DRAGGING); // Quitar transición CSS
-    document.body.classList.add(CSS_CLASSES.SIDEBAR_DRAGGING_BODY); // Bloquear scroll body
+    dom.sidebar.classList.add(CSS_CLASSES.IS_DRAGGING); 
+    document.body.classList.add(CSS_CLASSES.SIDEBAR_DRAGGING_BODY); 
   }
 
   let newTranslate = touchState.startTranslate + (currentX - touchState.startX);
 
-  // Física de límites (Rubber Banding)
+  // Efecto goma elástica al chocar con los bordes
   if (newTranslate > 0) {
     newTranslate *= 0.2; 
   } else if (newTranslate < -DRAWER_WIDTH) {
@@ -239,10 +183,7 @@ function handleTouchMove(e) {
   dom.sidebar.style.transform = `translateX(${touchState.currentTranslate}px)`;
 }
 
-/**
- * Finaliza el gesto y decide si abrir o cerrar el sidebar basándose en velocidad y posición.
- * @param {TouchEvent} e 
- */
+// Al levantar el dedo, decidimos qué hacer
 function handleTouchEnd(e) {
   if (!touchState.isDragging) return;
   document.removeEventListener("touchmove", handleTouchMove);
@@ -263,14 +204,13 @@ function handleTouchEnd(e) {
   const distance = finalX - touchState.startX;
   const velocity = duration > 0 ? distance / duration : 0;
 
-  // Lógica de decisión: Flick rápido o posición
   let shouldOpen;
   if (velocity > SWIPE_VELOCITY_THRESHOLD) {
-    shouldOpen = true; // Flick derecha -> Abrir
+    shouldOpen = true; 
   } else if (velocity < -SWIPE_VELOCITY_THRESHOLD) {
-    shouldOpen = false; // Flick izquierda -> Cerrar
+    shouldOpen = false; 
   } else {
-    shouldOpen = touchState.currentTranslate > -DRAWER_WIDTH * 0.5; // Posición > 50%
+    shouldOpen = touchState.currentTranslate > -DRAWER_WIDTH * 0.5; 
   }
 
   if (shouldOpen) openMobileDrawer();
@@ -295,7 +235,6 @@ function initTouchGestures() {
 
   window.addEventListener("resize", handleResize);
   
-  // Detectar cambios de orientación específicos (Moderna API y Legacy fallback)
   if (screen?.orientation) {
     screen.orientation.addEventListener("change", handleResize);
   } else {
@@ -304,13 +243,9 @@ function initTouchGestures() {
 }
 
 // =================================================================
-//          LOGICA DE ROTACIÓN Y GESTOS (Pinch-to-Zoom)
+//          2. PELLIZCO MÁGICO (Pinch to zoom para el Modo Muro)
 // =================================================================
 
-/**
- * Alterna el modo "Muro" (Rotation Disabled).
- * @param {boolean|null} forceState - Forzar un estado específico (opcional).
- */
 function toggleRotationMode(forceState = null) {
   const button = dom.toggleRotationBtn;
   if (!button) return;
@@ -325,9 +260,7 @@ function toggleRotationMode(forceState = null) {
   closeModal();
 
   const updateState = () => {
-    // Calcular nueva página para mantener la posición aproximada del usuario
     const currentPage = getCurrentPage();
-    // Si activamos modo muro (shouldDisable=true), venimos de normal (42). Si no, venimos de muro (60).
     const oldPageSize = shouldDisable ? CONFIG.ITEMS_PER_PAGE : CONFIG.WALL_MODE_ITEMS_PER_PAGE;
     const newPageSize = shouldDisable ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     
@@ -341,7 +274,6 @@ function toggleRotationMode(forceState = null) {
     button.setAttribute("aria-pressed", shouldDisable);
     LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
     
-    // Recargar grid con la nueva página calculada y skeletons forzados
     loadAndRenderMovies(newPage, { forceSkeleton: true });
   };
 
@@ -350,18 +282,12 @@ function toggleRotationMode(forceState = null) {
   triggerPopAnimation(button);
 }
 
-// Estado del gesto de pellizco (Pinch)
 let pinchInited = false;
-
-/**
- * Inicializa gestos de pellizco para entrar/salir del modo muro.
- */
 function initPinchGestures() {
   if (pinchInited) return;
   const target = document.querySelector('.main-content-wrapper');
   if (!target) return;
 
-  // FIX: Usar target (wrapper) en lugar de window para limitar el alcance del bloqueo
   target.addEventListener('click', (e) => {
     if (areInteractionsLocked()) {
       if (e.target.closest('.movie-card, .grid-container')) {
@@ -375,7 +301,6 @@ function initPinchGestures() {
   let hasTriggered = false;
   let cooldownTimer = null;
 
-  // Owner del cooldown global: Sidebar gestiona la creación del estado de bloqueo
   const activateCooldown = () => {
     lockGlobalInteractions(800);
   };
@@ -396,9 +321,8 @@ function initPinchGestures() {
     const diff = currentDistance - initialDistance;
 
     if (Math.abs(diff) > 60) {
-      // Solo "Pellizcar hacia adentro" (Zoom Out) -> Activar modo muro
       if (diff < 0) {
-         toggleRotationMode(); // Toggle
+         toggleRotationMode(); 
          activateCooldown();
          hasTriggered = true;
       } 
@@ -415,15 +339,9 @@ function initPinchGestures() {
 }
 
 // =================================================================
-//          2. GESTIÓN DE FILTROS Y UI
+//          3. EL BUSCADOR INTERNO (Autocompletar)
 // =================================================================
 
-/**
- * Renderiza la lista de sugerencias de autocompletado.
- * @param {HTMLElement} formElement - Formulario contenedor.
- * @param {string[]} suggestions - Lista de sugerencias.
- * @param {string} searchTerm - Término buscado (para resaltar).
- */
 function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
   const input = formElement.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
   let resultsContainer = formElement.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
@@ -450,7 +368,7 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
 
   const fragment = document.createDocumentFragment();
   suggestions.forEach((suggestion, index) => {
-    const isActive = index === 0; // Seleccionar automáticamente la primera opción
+    const isActive = index === 0; 
     const item = createElement("div", {
       className: `${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}${isActive ? ' is-active' : ''}`,
       dataset: { value: suggestion },
@@ -468,42 +386,31 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
   }
 }
 
-/**
- * Actualiza el estado visual (visible/deshabilitado) de TODOS los controles de filtro.
- */
+// Enciende o apaga botones si llegas al límite de filtros
 function updateAllFilterControls() {
   const activeFilters = getActiveFilters();
-  const activeCount = getActiveFilterCount();
-  const limitReached = activeCount >= CONFIG.MAX_ACTIVE_FILTERS;
+  const limitReached = getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS;
 
-  // OPTIMIZACIÓN 1: Búsqueda O(1) para exclusiones en lugar de iterar arrays (Evita la "O(N^2)")
   const excludedGenresSet = new Set(activeFilters.excludedGenres || []);
   const excludedCountriesSet = new Set(activeFilters.excludedCountries || []);
 
-  // OPTIMIZACIÓN 2: Pre-normalizar los filtros globales una sola vez, no en cada vuelta del bucle
   const normActiveFilters = {};
   for (const k in activeFilters) {
     const val = activeFilters[k];
-    // FIX CRÍTICO: Evitar pasar Arrays (como excludedGenres) a normalizeText para que no explote el JS.
     if (!val || Array.isArray(val)) continue;
     normActiveFilters[k] = k === 'genre' ? normalizeGenreText(val) : normalizeText(val);
   }
 
-  // 1. Actualizar enlaces de filtro (Links)
-  // Optimización: Usar HTMLCollection (live) es exponencialmente más rápido que querySelectorAll
   const filterLinks = document.getElementsByClassName("filter-link");
   for (let i = 0; i < filterLinks.length; i++) {
     const link = filterLinks[i];
     const type = link.dataset.filterType;
     const value = link.dataset.filterValue;
     
-    // A. Visibilidad: Ocultar si ya está activo o excluido
     const isExcluded = (type === "genre" && excludedGenresSet.has(value)) || 
                        (type === "country" && excludedCountriesSet.has(value));
     
     let isActive = false;
-    // OPTIMIZACIÓN 3: Guardar el valor normalizado en la memoria del propio nodo HTML
-    // Evitamos ejecutar las costosas expresiones regulares cientos de veces por clic
     let normValue = link._normValue;
     if (normValue === undefined) {
       normValue = type === 'genre' ? normalizeGenreText(value) : normalizeText(value);
@@ -512,7 +419,6 @@ function updateAllFilterControls() {
     
     isActive = normActiveFilters[type] === normValue;
     
-    // MOD: Para estudios y géneros (Bento), no ocultamos, marcamos como activo.
     let shouldHide = isActive || isExcluded;
     if (type === 'studio' || type === 'genre' || type === 'country' || type === 'selection') {
       shouldHide = false;
@@ -520,23 +426,19 @@ function updateAllFilterControls() {
       link.classList.toggle('is-excluded', isExcluded);
     }
     
-    // Optimización: Usar atributo hidden estándar (delegan layout al CSS)
     if (link.hidden !== shouldHide) link.hidden = shouldHide;
 
-    // B. Disponibilidad: Deshabilitar si límite alcanzado (y no está oculto)
     if (!shouldHide) {
         const shouldDisable = limitReached;
-        // Comprobación simple de atributo para evitar repintados
         if (link.hasAttribute("disabled") !== shouldDisable) {
             link.toggleAttribute("disabled", shouldDisable);
-            link.setAttribute("aria-disabled", String(shouldDisable)); // Semántica explícita
+            link.setAttribute("aria-disabled", String(shouldDisable)); 
             link.style.pointerEvents = shouldDisable ? "none" : "auto";
             link.style.opacity = shouldDisable ? "0.5" : "1";
         }
     }
   }
 
-  // 2. Actualizar Inputs de texto (Autocompletado)
   const filterInputs = document.getElementsByClassName("sidebar-filter-input");
   for (let i = 0; i < filterInputs.length; i++) {
     const input = filterInputs[i];
@@ -546,7 +448,6 @@ function updateAllFilterControls() {
     }
   }
 
-  // 3. Actualizar estado del botón "Mi Lista"
   if (dom.myListButton) {
     const state = activeFilters.myList;
     dom.myListButton.classList.toggle("active", !!state);
@@ -568,100 +469,61 @@ function updateAllFilterControls() {
   }
 }
 
-// Estado local para reconciliación de DOM (evita reflows innecesarios)
 let lastPillState = {};
 
-/**
- * Renderiza las píldoras (tags) de filtros activos en el sidebar.
- */
+// Pinta los filtros como etiquetas de colores ("píldoras")
 function renderFilterPills() {
   const activeFilters = getActiveFilters();
   let pillIndex = 0;
 
-  const createPill = (type, value, isExcluded = false, index = 0) => {
-    const pill = createElement("div", { className: `filter-pill ${isExcluded ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: value } });
-    pill.style.setProperty("--pill-index", index);
+  Object.keys(FILTER_CONFIG).forEach(type => {
+    const cont = sectionContainers[type];
+    if (!cont) return;
+
+    const inc = activeFilters[type];
+    const exc = type === 'genre' ? (activeFilters.excludedGenres || []) : type === 'country' ? (activeFilters.excludedCountries || []) : [];
+    const stateKey = `${type}-combined`;
+    const currState = `${inc || ""}|${exc.join(",")}`;
     
-    let text = FILTER_CONFIG[type]?.items[value];
-    if (!text && type === 'country') {
-      const region = Object.values(REGIONAL_GROUPS).find(r => r.value === value);
-      if (region) text = region.label;
-    }
-    text = text || value;
-
-    pill.appendChild(createElement("span", { textContent: text }));
-    pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: isExcluded ? ICONS.PAUSE_SMALL : "×", attributes: { "aria-hidden": "true" } }));
-    return pill;
-  };
-
-  const renderPillsForSection = (filterType) => {
-    // Optimización: Usar caché de contenedores en lugar de buscar en el DOM
-    const container = sectionContainers[filterType];
-    if (!container) return;
-
-    // Obtener valores de inclusión y exclusión
-    const incValue = activeFilters[filterType];
-    let excValues = [];
-    if (filterType === 'genre') excValues = activeFilters.excludedGenres || [];
-    else if (filterType === 'country') excValues = activeFilters.excludedCountries || [];
-
-    // RECONCILIACIÓN SIMPLE: Comprobar si los datos han cambiado antes de tocar el DOM
-    // Usamos una clave combinada para evitar que la exclusión borre a la inclusión
-    const stateKey = `${filterType}-combined`;
-    // Optimización: Concatenación simple en lugar de JSON.stringify para reducir GC
-    const currentState = `${incValue || ""}|${excValues.join(",")}`;
-    
-    if (lastPillState[stateKey] === currentState) {
-      // Solo incrementamos el índice para mantener la coherencia de animaciones
-      if (incValue) pillIndex++;
-      pillIndex += excValues.length;
+    if (lastPillState[stateKey] === currState) {
+      if (inc) pillIndex++;
+      pillIndex += exc.length;
       return;
     }
-
-    lastPillState[stateKey] = currentState;
+    lastPillState[stateKey] = currState;
     
-    // --- RECONCILIACIÓN (Diffing) ---
-    // 1. Calcular lista deseada
-    const desiredItems = [];
-    if (incValue) desiredItems.push({ value: incValue, excluded: false });
-    excValues.forEach(v => desiredItems.push({ value: v, excluded: true }));
+    const desired = [];
+    if (inc) desired.push({ val: inc, exc: false });
+    exc.forEach(v => desired.push({ val: v, exc: true }));
 
-    const existingPills = Array.from(container.children);
-    const keptPills = new Set();
+    const exist = Array.from(cont.children);
+    const kept = new Set();
 
-    // 2. Sincronizar DOM (Añadir/Mover)
-    desiredItems.forEach(item => {
-      // Buscar si ya existe (por valor y tipo)
-      let pill = existingPills.find(p => 
-        p.dataset.filterValue === item.value && 
-        p.classList.contains("filter-pill--exclude") === item.excluded
-      );
-
-      if (pill) {
-        keptPills.add(pill);
-        container.appendChild(pill); // Mover al final (reordenar sin destruir)
-      } else {
-        pill = createPill(filterType, item.value, item.excluded, pillIndex);
-        container.appendChild(pill);
+    desired.forEach(item => {
+      let pill = exist.find(p => p.dataset.filterValue === item.val && p.classList.contains("filter-pill--exclude") === item.exc);
+      if (pill) { kept.add(pill); cont.appendChild(pill); }
+      else {
+        pill = createElement("div", { className: `filter-pill ${item.exc ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: item.val } });
+        pill.style.setProperty("--pill-index", pillIndex);
+        
+        let text = FILTER_CONFIG[type]?.items[item.val];
+        if (!text && type === 'country') text = Object.values(REGIONAL_GROUPS).find(r => r.value === item.val)?.label;
+        
+        pill.appendChild(createElement("span", { textContent: text || item.val }));
+        pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: item.exc ? ICONS.PAUSE_SMALL : "×", attributes: { "aria-hidden": "true" } }));
+        cont.appendChild(pill);
       }
-      pillIndex++; // Incrementar índice global para animaciones staggered de los nuevos
+      pillIndex++;
     });
 
-    // 3. Limpiar sobrantes
-    existingPills.forEach(p => {
-      if (!keptPills.has(p)) p.remove();
-    });
-  };
-
-  // Iterar sobre todas las secciones definidas en la configuración
-  Object.keys(FILTER_CONFIG).forEach(type => renderPillsForSection(type));
+    exist.forEach(p => { if (!kept.has(p)) p.remove(); });
+  });
 
   updateAllFilterControls();
 }
 
-/**
- * Maneja el toggle del botón "Mi Lista" (ciclo de estados).
- */
+// --- 4. ACCIONES (Clics en botones de filtros) ---
+
 async function handleMyListToggle() {
   const currentFilters = getActiveFilters();
   const current = currentFilters.myList;
@@ -695,17 +557,9 @@ async function handleMyListToggle() {
   await loadAndRenderMovies(1);
 }
 
-/**
- * Aplica un filtro de manera optimista (actualiza UI antes de confirmar datos).
- * @param {string} type - Tipo de filtro.
- * @param {string|null} value - Valor del filtro.
- * @param {boolean} forceSet - Forzar aplicación (ignorar toggle).
- */
 async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   const previousFilters = getActiveFilters();
   
-  // Lógica de Exclusividad: Si seleccionamos Actor o Director, limpiamos el resto
-  // para enfocar la búsqueda en su filmografía, manteniendo solo las vistas.
   if (value && (type === 'actor' || type === 'director')) {
     const currentSort = previousFilters.sort;
     const currentMediaType = previousFilters.mediaType;
@@ -713,13 +567,11 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     resetFiltersState();
     setSort(currentSort);
     setMediaType(currentMediaType);
-    setFilter(type, value, true); // Bypass limit por seguridad tras reset
-    setFilter('myList', null); // Asegurar que myList está off
+    setFilter(type, value, true); 
+    setFilter('myList', null); 
     
-    // Actualizar UI (Slider de años, etc.) para reflejar el reinicio visualmente
     document.dispatchEvent(new CustomEvent("updateSidebarUI"));
     
-    // FIX: Limpiar input de búsqueda principal visualmente para coincidir con el reset de estado
     const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
     if (mainSearchInput) mainSearchInput.value = "";
 
@@ -740,13 +592,11 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   const isActivating = forceSet || previousFilters[type] !== value;
   const newValue = isActivating ? value : null;
   
-  // Lógica de Exclusividad Inversa: Si activamos cualquier otro filtro, limpiamos Actor/Director
   if (newValue && type !== 'actor' && type !== 'director') {
     if (previousFilters.actor) setFilter('actor', null);
     if (previousFilters.director) setFilter('director', null);
   }
   
-  // Si activamos un filtro normal, desactivamos myList
   if (newValue) setFilter('myList', null);
 
   // Si activamos un filtro, limpiamos la búsqueda de texto
@@ -756,12 +606,10 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     if (mainSearchInput) mainSearchInput.value = "";
   }
 
-  // Lógica de País: Si seleccionamos un país, limpiamos las exclusiones de países
   if (newValue && type === 'country') {
     setFilter('excludedCountries', [], true);
   }
 
-  // Lógica de Género: Si seleccionamos un género, aseguramos que no esté excluido
   if (newValue && type === 'genre') {
     const currentExcluded = previousFilters.excludedGenres || [];
     if (currentExcluded.includes(newValue)) {
@@ -772,7 +620,6 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
 
   if (!setFilter(type, newValue)) {
     showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, "error");
-    // Restaurar estado si falló el setFilter (por límite)
     if (type === 'selection' && previousFilters.studio) setFilter('studio', previousFilters.studio);
     if (type === 'studio' && previousFilters.selection) setFilter('selection', previousFilters.selection);
     return;
@@ -787,7 +634,6 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     if (error.name === "AbortError") return;
     console.error("Fallo al aplicar filtro:", error);
     showToast(`No se pudo aplicar el filtro.`, "error");
-    // Rollback completo
     setFilter('selection', previousFilters.selection);
     setFilter('studio', previousFilters.studio);
     setFilter('actor', previousFilters.actor);
@@ -799,25 +645,17 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   }
 }
 
-/**
- * Alterna el estado de exclusión de un filtro.
- * @param {string} type - Tipo de filtro.
- * @param {string} value - Valor a excluir.
- */
 async function handleToggleExcludedFilterOptimistic(type, value) {
   const previousState = getActiveFilters();
   
-  // Guard: No permitir exclusión de país si ya hay uno seleccionado
   if (type === 'country' && previousState.country) {
     return;
   }
 
-  // Lógica de exclusividad Género: Si excluimos el género activo, lo deseleccionamos
   if (type === 'genre' && previousState.genre === value) {
     setFilter('genre', null);
   }
 
-  // Si excluimos algo, limpiamos el término de búsqueda
   if (previousState.searchTerm) {
     setSearchTerm("");
     const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
@@ -829,7 +667,6 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
     return;
   }
 
-  // Feedback visual explícito al excluir (Confirmación)
   const newState = getActiveFilters();
   const isNowExcluded = (type === 'genre' && newState.excludedGenres.includes(value)) ||
                         (type === 'country' && newState.excludedCountries.includes(value));
@@ -846,16 +683,13 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
   } catch (error) {
     if (error.name === "AbortError") return;
     showToast(`No se pudo aplicar el filtro de exclusión.`, "error");
-    toggleExcludedFilter(type, value); // Revertir toggle
-    setFilter("country", previousState.country); // Restaurar posibles efectos colaterales
+    toggleExcludedFilter(type, value); 
+    setFilter("country", previousState.country); 
     setFilter("genre", previousState.genre);
     renderFilterPills();
   }
 }
 
-/**
- * Resetea todos los filtros a su estado inicial.
- */
 function resetFilters() {
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
@@ -863,7 +697,6 @@ function resetFilters() {
   tryCloseMobileDrawer();
 }
 
-// Helper para determinar si hay filtros que fuercen el modo compacto (excluyendo año)
 function hasCompactTriggeringFilters() {
   const filters = getActiveFilters();
   const defaultYearRange = `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`;
@@ -872,9 +705,6 @@ function hasCompactTriggeringFilters() {
   return (isYearActive ? totalCount - 1 : totalCount) > 0;
 }
 
-/**
- * Colapsa todas las secciones del acordeón del sidebar.
- */
 export function collapseAllSections() {
   dom.collapsibleSections.forEach((section) => {
     section.classList.remove(CSS_CLASSES.ACTIVE);
@@ -887,18 +717,14 @@ export function collapseAllSections() {
   }
 }
 
-/**
- * Inicializa el slider de rango de años (noUiSlider).
- */
+// --- 5. LA LÍNEA DEL TIEMPO (Slider de años) ---
+
 function initYearSlider() {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
   
-  // Escala logarítmica: Muchos años comprimidos a la izquierda, pocos expandidos a la derecha (recientes)
-  // El 50% del slider se dedica a los últimos 20 años.
   const pivotYear = Math.max(CONFIG.YEAR_MIN + 1, CONFIG.YEAR_MAX - 20);
 
-  // Obtener estado inicial desde la URL/Store para mantener la selección al refrescar
   const currentFilters = getActiveFilters();
   let initialYears = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
   if (initialYears.length === 1) initialYears = [initialYears[0], initialYears[0]];
@@ -918,27 +744,23 @@ function initYearSlider() {
     }
     const yearFilter = start === end ? `${start}` : `${start}-${end}`;
     
-    // Lógica condicional para móvil: Esperar a que el usuario elija ambos límites
     if (isMobileLayout()) {
-      // En móvil, diferimos la actualización. Solo cerramos si es slider (autoClose=true) y completo.
       if (autoClose && yearInteractionState.start && yearInteractionState.end) {
         closeMobileDrawer();
       }
     } else {
-      // Escritorio: Actualización inmediata
       handleFilterChangeOptimistic("year", yearFilter, true);
     }
   };
 
   const debouncedUpdate = debounce(updateSliderFilter, 500);
   
-  // Interceptar evento 'set' para rastrear qué manija se movió
   sliderInstance.on("set", (values, handle) => {
     triggerHapticFeedback("light");
     const h = Number(handle);
     if (h === 0) yearInteractionState.start = true;
     if (h === 1) yearInteractionState.end = true;
-    debouncedUpdate(values, handle, true); // Auto-close activado para el slider
+    debouncedUpdate(values, handle, true); 
   });
   
   yearInputs.forEach((input, index) => {
@@ -946,15 +768,13 @@ function initYearSlider() {
       const newValue = parseFloat(e.target.value);
       const currentValues = sliderInstance.get().map(v => parseFloat(v));
       
-      // Helper para actualizar filtro SIN cerrar el sidebar
       const triggerUpdate = (vals) => {
         if (index === 0) yearInteractionState.start = true;
         if (index === 1) yearInteractionState.end = true;
-        debouncedUpdate(vals, index, false); // Auto-close desactivado para inputs
+        debouncedUpdate(vals, index, false); 
       };
 
       if (currentValues[0] === currentValues[1]) {
-        // Usar 'false' para NO disparar evento 'set' del slider (evitar doble llamada)
         if (index === 0 && newValue > currentValues[0]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
         if (index === 1 && newValue < currentValues[1]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
       }
@@ -965,19 +785,15 @@ function initYearSlider() {
     });
   });
 
-  // FIX: Escuchar actualizaciones externas para cancelar debounce pendiente y actualizar UI
   document.addEventListener("updateSidebarUI", () => {
-    debouncedUpdate.cancel(); // Cancelar cualquier actualización pendiente del usuario
+    debouncedUpdate.cancel(); 
     const currentFilters = getActiveFilters();
     let years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
     if (years.length === 1) years = [years[0], years[0]];
-    sliderInstance.set(years, false); // false = no disparar eventos 'set'
+    sliderInstance.set(years, false); 
   });
 }
 
-/**
- * Configura los botones +/- para los inputs de año.
- */
 function setupYearInputSteppers() {
   document.querySelectorAll(".year-input-wrapper").forEach((wrapper) => {
     const input = wrapper.querySelector(".year-input");
@@ -985,7 +801,7 @@ function setupYearInputSteppers() {
     const stepperDown = wrapper.querySelector(".stepper-btn.stepper-down");
     if (!input || !stepperUp || !stepperDown) return;
     const updateYearValue = (increment) => {
-      triggerHapticFeedback('medium'); // Feedback más notable en móvil
+      triggerHapticFeedback('medium'); 
       let currentValue = parseInt(input.value, 10);
       if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
       const newValue = Math.min(Math.max(currentValue + increment, CONFIG.YEAR_MIN), CONFIG.YEAR_MAX);
@@ -999,17 +815,8 @@ function setupYearInputSteppers() {
 
 const suggestionFetchers = { genre: fetchGenreSuggestions, director: fetchDirectorSuggestions, actor: fetchActorSuggestions, country: fetchCountrySuggestions };
 
-/**
- * Escapa caracteres especiales para búsquedas SQL seguras.
- */
-function sanitizeSearchTerm(term) {
-  // Escapar % y _ para que ILIKE los trate como literales y no como comodines
-  return term.replace(/%/g, '\\%').replace(/_/g, '\\_');
-}
+const sanitizeSearchTerm = term => term.replace(/%/g, '\\%').replace(/_/g, '\\_');
 
-/**
- * Configura los inputs de búsqueda dentro del sidebar (autocompletado).
- */
 function setupAutocompleteHandlers() {
   dom.sidebarFilterForms.forEach((form) => {
     const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
@@ -1020,8 +827,6 @@ function setupAutocompleteHandlers() {
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
     
-    // Prevenir submit nativo (clic en 'Ir' / 'Buscar' del teclado móvil)
-    // Solo aceptar la selección si hay resultados visibles en la lista.
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
@@ -1034,10 +839,8 @@ function setupAutocompleteHandlers() {
 
     const debouncedFetch = debounce(async () => {
       const rawTerm = input.value.trim();
-      // FIX: Limpiar TODO (incluido este formulario) si el término es corto
       if (rawTerm.length < 3) { clearAllSidebarAutocomplete(); return; }
       
-      // Sanitizar para la API (evitar comodines indeseados), pero usar raw para el resaltado UI
       const apiTerm = sanitizeSearchTerm(rawTerm);
       const suggestions = await fetcher(apiTerm);
       renderSidebarAutocomplete(form, suggestions, rawTerm);
@@ -1046,13 +849,11 @@ function setupAutocompleteHandlers() {
     input.addEventListener("input", debouncedFetch);
     
     input.addEventListener("keydown", (e) => {
-       // Prevenir recarga de página al pulsar Enter en cualquier momento
        if (e.key === "Enter") e.preventDefault();
 
        const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
        if (!resultsContainer || resultsContainer.children.length === 0) return;
        
-       // OPTIMIZACIÓN 4: Evitar crear Arrays en cada pulsación de tecla para no saturar al Garbage Collector
        const items = resultsContainer.children;
        let activeIndex = -1;
        for (let i = 0; i < items.length; i++) {
@@ -1079,7 +880,6 @@ function setupAutocompleteHandlers() {
           if (activeIndex >= 0 && items[activeIndex]) {
             items[activeIndex].click();
           } else if (items.length > 0) {
-            // Si no hay nada seleccionado con las flechas, pero hay resultados, seleccionamos el primero.
             items[0].click();
           }
           break;
@@ -1100,9 +900,6 @@ function setupAutocompleteHandlers() {
   });
 }
 
-/**
- * Maneja el clic en una píldora de filtro (para eliminarla).
- */
 function handlePillClick(e) {
   const pill = e.target.closest(".filter-pill");
   if (!pill) return false;
@@ -1119,9 +916,6 @@ function handlePillClick(e) {
   return true;
 }
 
-/**
- * Configura los listeners generales del sidebar.
- */
 function setupEventListeners() {
   document.querySelectorAll(".collapsible-section .section-header").forEach((header) => {
     const iconWrapper = document.createElement('div');
@@ -1148,7 +942,7 @@ function setupEventListeners() {
       } else {
         document.body.classList.toggle(CSS_CLASSES.SIDEBAR_COLLAPSED);
         const isNowCollapsed = document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
-        setSidebarState(!isNowCollapsed); // Reutilizamos la lógica de iconos
+        setSidebarState(!isNowCollapsed); 
       }
     });
   }
@@ -1163,10 +957,9 @@ function setupEventListeners() {
   }
 
   if (dom.sidebarScrollable) {
-    // Accesibilidad: Soporte de teclado para los filtros (ahora son divs)
     dom.sidebarScrollable.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
-        if (e.target.tagName === "BUTTON") return; // Dejar que los botones nativos (papelera) actúen
+        if (e.target.tagName === "BUTTON") return; 
         const link = e.target.closest(".filter-link");
         if (link) {
           e.preventDefault();
@@ -1253,22 +1046,18 @@ function setupEventListeners() {
 }
 
 // =================================================================
-//          INICIALIZACIÓN PRINCIPAL
+//          ARRANQUE DEL COMPONENTE
 // =================================================================
 
-/**
- * Inicializa el componente Sidebar completo.
- */
 export function initSidebar() {
   if (isInitialized) return;
   isInitialized = true;
 
   if (isMobileLayout()) {
-    setSidebarState(false); // Estado inicial cerrado en móvil
+    setSidebarState(false); 
   } else if (window.innerWidth <= 1024 && window.innerHeight > MOBILE_HEIGHT_LIMIT) {
-    // Tablet/Laptop pequeño: Colapsar por defecto para ganar espacio (ej: 4 columnas en iPad Air)
     document.body.classList.add(CSS_CLASSES.SIDEBAR_COLLAPSED);
-    setSidebarState(false); // Sincronizar icono a "Abrir"
+    setSidebarState(false); 
   }
   
   const populateFilterSection = (filterType) => {
@@ -1278,7 +1067,6 @@ export function initSidebar() {
     const listContainer = document.querySelector(`#${contentId} > div:first-child`);
     if (!listContainer) return;
     
-    // Cachear el contenedor de píldoras para esta sección
     const pillsContainer = listContainer.closest('.collapsible-section').querySelector('.active-filters-list');
     if (pillsContainer) sectionContainers[filterType] = pillsContainer;
 
@@ -1286,23 +1074,20 @@ export function initSidebar() {
     const fragment = document.createDocumentFragment();
 
     Object.entries(config.items).forEach(([value, text]) => {
-      // FIX: Usar 'div' en lugar de 'button' para permitir anidamiento de botones (papelera)
       const link = createElement("div", { 
         className: "filter-link", 
         dataset: { filterType, filterValue: value },
         attributes: { role: "button", tabindex: "0" }
       });
       
-      // Detectar si hay configuración de icono (Estudio o Selección)
       const iconData = (filterType === 'studio' ? STUDIO_DATA[value] : null) || 
                        (filterType === 'selection' ? SELECTION_DATA?.[value] : null);
 
       if (iconData) {
-        link.classList.add("filter-link--icon"); // Clase genérica para layout cuadrado
+        link.classList.add("filter-link--icon"); 
         link.title = text;
         
         if (iconData.img) {
-          // Opción A: Imagen (PNG/JPG/WebP)
           const img = createElement("img", { 
             src: iconData.img, 
             className: `sidebar-platform-img ${iconData.invertDark ? 'invert-on-dark' : ''}`,
@@ -1310,7 +1095,6 @@ export function initSidebar() {
           });
           link.appendChild(img);
         } else if (iconData.id) {
-          // Opción B: SVG Sprite (Estudios existentes)
           const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
           svg.setAttribute("width", iconData.w || "24"); svg.setAttribute("height", iconData.h || "24");
           svg.setAttribute("viewBox", iconData.vb || "0 0 24 24"); svg.setAttribute("class", `sidebar-platform-icon ${iconData.class || ''}`);
@@ -1337,7 +1121,6 @@ export function initSidebar() {
       fragment.appendChild(link);
     });
 
-    // --- INYECCIÓN DE REGIONES (Solo para Países) - AL FINAL ---
     if (filterType === 'country') {
       Object.values(REGIONAL_GROUPS).forEach(region => {
         const link = createElement("div", { 
@@ -1374,7 +1157,7 @@ export function initSidebar() {
         FILTER_CONFIG.director.items = directors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
         populateFilterSection('director');
       }
-    } catch (e) { /* Fallback silencioso a estáticos */ }
+    } catch (e) {}
   };
 
   if ("requestIdleCallback" in window) requestIdleCallback(updateDynamicFilters);
@@ -1400,7 +1183,6 @@ export function initSidebar() {
       const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
       if (input) input.value = "";
     });
-    // La actualización del slider se maneja ahora dentro de initYearSlider para gestionar el debounce
     
     requestAnimationFrame(() => {
       renderFilterPills();
@@ -1410,10 +1192,8 @@ export function initSidebar() {
   document.addEventListener("filtersReset", collapseAllSections);
   document.addEventListener("uiActionTriggered", collapseAllSections);
 
-  // Sincronizar estado visual inicial (Pills) con el estado global (URL) tras carga diferida
   renderFilterPills();
   
-  // Aplicar estado compacto inicial si hay filtros activos (excluyendo año)
   if (hasCompactTriggeringFilters() && dom.sidebarInnerWrapper) {
     dom.sidebarInnerWrapper.classList.add("is-compact");
   }
