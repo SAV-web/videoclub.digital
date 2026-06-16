@@ -1,91 +1,195 @@
 /* =================================================================
- *                 LA TARJETA (El corazón visual)
- * =================================================================
- * Aquí vive el diseño de las películas: el 3D, el modo muro,
- * las animaciones al girar y los botones de nota/lista.
+ *          COMPONENTE: TARJETA DE PELÍCULA (Card System)
  * ================================================================= */
 
-/* --- 1. ANIMACIONES (Efectos visuales) --- */
-@keyframes card-appear { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes watchlist-pop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.3) rotate(-5deg); } }
-@keyframes watchlist-glow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 189, 7, 0)); } 50% { filter: drop-shadow(0 0 10px rgba(255, 189, 7, 0.8)); } }
-@keyframes bookmark-settle { to { transform: translateY(-2px); } } /* Simula enganche físico */
-@keyframes fade-in-subtle { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+/* =================================================================
+   1. ANIMACIONES Y KEYFRAMES
+   ================================================================= */
 
-/* --- 2. EL ESCENARIO 3D (Estructura base) --- */
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes watchlist-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3) rotate(-5deg); }
+  100% { transform: scale(1); }
+}
+
+@keyframes watchlist-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 189, 7, 0)); }
+  50% { filter: drop-shadow(0 0 10px rgba(255, 189, 7, 0.8)); }
+}
+
+@keyframes bookmark-settle {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-2px); } /* Simula "enganche" físico */
+}
+
+@keyframes fade-in-subtle {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =================================================================
+   2. ESTRUCTURA BASE (Contenedor 3D)
+   ================================================================= */
 
 .movie-card {
-  position: relative; perspective: 1000px; z-index: 1; aspect-ratio: 500 / 950; border-radius: var(--radius-xl);
+  position: relative;
+  perspective: 1000px; /* Profundidad 3D */
+  z-index: 1; /* Contexto de apilamiento local */
+  aspect-ratio: 500 / 950;
+  border-radius: var(--radius-xl);
   
-  /* Truco: Aísla la tarjeta para que moverla no recalcule todo el muro. Ultra rápido. */
-  contain: layout paint style; content-visibility: auto; touch-action: manipulation;
-  animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
-  animation-delay: calc(var(--card-index, 0) * 40ms); /* Efecto dominó de entrada */
-  transition: transform var(--duration-quick) var(--ease-spring);
+  /* Aislamiento para evitar repintados en el resto de la página */
+  contain: layout paint style; 
+  /* Renderizado perezoso hiper-optimizado (Chromium) */
+  content-visibility: auto;
 
+  /* Animación de entrada escalonada (Staggered) */
+  animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
+  animation-delay: calc(var(--card-index, 0) * 40ms);
+  
+  transition: transform var(--duration-quick) var(--ease-spring);
+  
+  /* UX TÁCTIL: Permite pan/zoom, deshabilita "doble tap para zoom" y delay */
+  touch-action: manipulation;
+
+  /* Interacciones Desktop */
   @media (hover: hover) and (pointer: fine) {
     &:not(.is-flipped):hover {
-      will-change: transform; transform: translateY(-4px) scale(1.01); z-index: 10;
-      & .flip-card-inner { box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15); }
-      :where(html.dark-mode) & .flip-card-inner { box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4); }
+      will-change: transform; /* Optimización: Solo reservar memoria al interactuar */
+      /* Quiet Luxury: Elevación mínima (respiro) */
+      transform: translateY(-4px) scale(1.01);
+      z-index: 10; /* Elevar sobre hermanos */
+
+      & .flip-card-inner {
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+      }
+
+      html.dark-mode & .flip-card-inner {
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+      }
     }
   }
 }
 
-/* El "cartón" interior que gira sobre sí mismo */
+/* El "papel" que gira (Contenedor de caras) */
 .flip-card-inner {
-  position: relative; width: 100%; height: 100%; border-radius: var(--radius-xl);
-  box-shadow: var(--shadow); background-color: var(--color-surface-1); border: 1px solid var(--color-surface);
-  transform-style: preserve-3d; /* Activa la física de caras 3D */
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  background-color: var(--color-surface-1);
+  border: 1px solid var(--color-surface);
+  
+  transform-style: preserve-3d; /* Habilita el 3D real */
   transition: transform var(--duration-leisurely) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
 
   &.is-flipped { transform: rotateY(180deg); }
-  :where(html.dark-mode) & { box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05); border: none; }
+
+  /* Elevación Material en Dark Mode */
+  html.dark-mode & {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    border: none; /* El borde lo maneja el box-shadow */
+  }
 }
 
-/* Las dos caras (El póster y la sinopsis) */
+/* =================================================================
+   3. CARAS DE LA TARJETA (Front & Back)
+   ================================================================= */
+
 .flip-card-front, .flip-card-back {
-  position: absolute; inset: 0; border-radius: var(--radius-xl); overflow: hidden; backface-visibility: hidden;
-  background-color: var(--color-surface-1); color: var(--color-text-primary); display: flex; flex-direction: column;
+  position: absolute;
+  inset: 0; /* Reemplaza top/left/width/height */
+  border-radius: var(--radius-xl);
+  
+  /* Fix para bordes redondeados en Safari durante animación */
+  overflow: hidden;
+  
+  backface-visibility: hidden;
+  
+  background-color: var(--color-surface-1);
+  color: var(--color-text-primary);
+  display: flex;
+  flex-direction: column;
 }
 
+/* --- Cara Frontal --- */
+.flip-card-front {
+  z-index: 2;
+  pointer-events: auto; /* Interactuable por defecto */
+}
+
+/* --- Cara Trasera --- */
 .flip-card-back {
-  transform: rotateY(180deg); padding: var(--space-xs); line-height: var(--line-height-normal); z-index: 1; pointer-events: none;
+  transform: rotateY(180deg); /* Pre-girada */
+  padding: var(--space-xs); /* Reducir padding lateral (de 12px a 8px) */
+  line-height: var(--line-height-normal);
+  z-index: 1;
+  pointer-events: none;
+
+  /* Gestión de Interactividad al girar */
   .flip-card-inner.is-flipped & { pointer-events: auto; z-index: 2; }
 }
-
-.flip-card-front { z-index: 2; pointer-events: auto; }
-/* Al girar, apagamos los clics de la cara delantera */
 .flip-card-inner.is-flipped .flip-card-front { pointer-events: none; z-index: 1; }
 
-/* --- 3. CARA FRONTAL (Póster, Título, Info) --- */
+/* =================================================================
+   4. CONTENIDO FRONTAL (Póster y Resumen)
+   ================================================================= */
 
 .poster-container {
-  position: relative; width: 100%; height: 66%; flex-shrink: 0;
+  position: relative;
+  width: 100%;
+  height: 66%;
+  flex-shrink: 0;
+
   & img {
-    width: 100%; height: 100%; object-fit: cover;
-    border: var(--space-xxs) solid var(--color-surface); border-radius: var(--radius-xxl);
+    width: 100%;
+    height: 100%;
+    border: var(--space-xxs) solid var(--color-surface);
+    border-radius: var(--radius-xxl);
+    object-fit: cover;
   }
 }
 
 /* Efecto carga LQIP (Blur) */
 .flip-card-front img.lazy-lqip {
-  filter: blur(10px); transform: scale(1.1);
+  filter: blur(10px);
+  transform: scale(1.1);
   transition: filter var(--duration-normal) ease-in-out, transform var(--duration-normal) ease-in-out;
   &.loaded { filter: blur(0); transform: scale(1); }
 }
 
 .movie-summary {
-  flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
   padding: calc(var(--space-sm) + 3px) var(--space-xxs) var(--space-xs);
+  overflow: hidden;
 }
 
-.title-director-block { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+.title-director-block {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 
 .movie-summary h3 {
-  margin-bottom: 0; line-height: 1.1; font-family: var(--font-title); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
-  letter-spacing: -0.01em; text-wrap: balance; overflow: hidden; text-overflow: ellipsis;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; 
+  margin-bottom: 0;
+  line-height: 1.1;
+  font-family: var(--font-title);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.01em; /* Base más relajada */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  text-wrap: balance; /* Títulos equilibrados visualmente */
+  overflow: hidden; text-overflow: ellipsis;
+
   /* Tipografía Responsiva (3 niveles) */
   &.title-medium { font-size: 0.95rem; }
   &.title-long { font-size: 0.9rem; }
@@ -93,48 +197,73 @@
 }
 
 .front-director-info {
-  font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal); /* Igualar peso a actores */
+  color: var(--color-text-secondary); /* Igualar color a actores */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   & a { 
     color: inherit; text-decoration: none; transition: color var(--duration-fast);
-    @media (hover: hover) and (pointer: fine) { &:hover { text-decoration: underline; color: var(--color-text-primary); } }
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        text-decoration: underline; color: var(--color-text-primary);
+      }
+    }
   }
 }
 
+/* Metadatos Frontales */
 .movie-meta {
+  padding-top: 1px; /* Reducir distancia con la línea superior */
   display: flex; justify-content: space-between; align-items: center;
-  padding-top: 1px; min-height: 24px; font-size: var(--font-size-sm);
+  min-height: 24px;
+  font-size: var(--font-size-sm);
 }
 
 .card-icons-line { display: flex; align-items: center; gap: var(--space-xxs); }
 .card-icons-line.compact .platform-icon svg { width: 16px; height: 16px; } /* Reducción 20% si >= 3 */
 .platform-icon svg { vertical-align: middle; }
-
 .year-flag-group { 
-  display: flex; align-items: center; gap: var(--space-xxs); font-weight: var(--font-weight-semibold); 
-  color: var(--color-text-secondary); white-space: nowrap; letter-spacing: -0.03em; 
+  display: flex; align-items: center; gap: var(--space-xxs); 
+  font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); 
+  white-space: nowrap; letter-spacing: -0.03em; 
   & a { 
     color: inherit; text-decoration: none; transition: color var(--duration-fast);
-    @media (hover: hover) and (pointer: fine) { &:hover { text-decoration: underline; color: var(--color-text-primary); } }
+    @media (hover: hover) and (pointer: fine) {
+      &:hover { text-decoration: underline; color: var(--color-text-primary); }
+    }
   }
 }
-.country-info { display: flex; align-items: center; gap: var(--space-xxs); } .country-flag-icon svg { width: 14px; height: 14px; }
+.country-info { display: flex; align-items: center; gap: var(--space-xxs); }
 
-/* Colores de las plataformas y estudios */
+.country-flag-icon svg {
+  width: 14px; height: 14px;
+}
+
+/* Colores de Estudios (Mantenidos igual) */
 .netflix-icon { color: #e50914; } .disney-icon { color: #990000; } .wb-icon { color: #000b6c; } .universal-icon { color: #444444; } .sony-icon { color: #004098; } .paramount-icon { color: #0063ff; } .lionsgate-icon { color: #CC7722; } .amazon-icon { color: #f6a61f; } .twenty-icon { color: #000b6c; } .a24-icon { color: #000; } .movistar-icon { color: #00a9e0; } .miramax-icon { color: #005596; } .apple-icon { color: #000; } .canalplus-icon { color: #000; } .bbc-icon { color: #000; }
-:where(html.dark-mode) .disney-icon { color: #D9534F; } :where(html.dark-mode) .wb-icon { color: #4da4f2; } :where(html.dark-mode) .universal-icon { color: #BBBBBB; } :where(html.dark-mode) .sony-icon { color: #3182ce; } :where(html.dark-mode) .paramount-icon { color: #E0E0E0; } :where(html.dark-mode) .lionsgate-icon { color: #f9d7b5; } :where(html.dark-mode) .twenty-icon { color: #E0E0E0; } :where(html.dark-mode) .a24-icon { color: #fff; } :where(html.dark-mode) .miramax-icon { color: #4da4f2; } :where(html.dark-mode) .apple-icon { color: #fff; } :where(html.dark-mode) .canalplus-icon { color: #fff; } :where(html.dark-mode) .bbc-icon { color: #fff; }
 
-/* --- 4. CARA TRASERA (Sinopsis, Notas, Enlaces) --- */
+/* Ajustes Dark Mode Estudios */
+html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color: #4da4f2; } html.dark-mode .universal-icon { color: #BBBBBB; } html.dark-mode .sony-icon { color: #3182ce; } html.dark-mode .paramount-icon { color: #E0E0E0; } html.dark-mode .lionsgate-icon { color: #f9d7b5; } html.dark-mode .twenty-icon { color: #E0E0E0; } html.dark-mode .a24-icon { color: #fff; } html.dark-mode .miramax-icon { color: #4da4f2; } html.dark-mode .apple-icon { color: #fff; } html.dark-mode .canalplus-icon { color: #fff; } html.dark-mode .bbc-icon { color: #fff; }
+
+/* =================================================================
+   5. CONTENIDO TRASERO (Detalles y Links)
+   ================================================================= */
 
 .back-original-title-wrapper {
-  display: flex; justify-content: flex-start; align-items: center; width: 100%; min-height: 0;
-  margin-top: var(--space-xs); margin-bottom: var(--space-md); padding-inline: 0; 
+  display: flex; justify-content: flex-start; align-items: center;
+  margin-top: var(--space-xs); margin-bottom: var(--space-md); padding-inline: 0;
+  width: 100%;
+  min-height: 0; /* Eliminar altura mínima forzada para ahorrar espacio */
   animation: fade-in-subtle 0.5s var(--ease-smooth-out) 0.2s backwards;
 
   & span {
     font-family: var(--font-title); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
-    color: var(--color-text-primary); line-height: var(--line-height-tight); letter-spacing: -0.01em; text-align: left;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;
+    color: var(--color-text-primary); line-height: var(--line-height-tight);
+    letter-spacing: -0.01em;
+    text-align: left;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; text-overflow: ellipsis;
+
     /* Tipografía Responsiva (Reverso) */
     &.title-medium { font-size: 0.8rem; }
     &.title-long { font-size: 0.75rem; }
@@ -143,100 +272,146 @@
 }
 
 .back-meta-header {
-  display: flex; justify-content: flex-end; align-items: center; width: 100%; margin-bottom: 2px; font-size: var(--font-size-sm);
+  display: flex; justify-content: flex-end; align-items: center;
+  width: 100%; margin-bottom: 2px; /* Pegar a la línea de ratings */
+  font-size: var(--font-size-sm);
 }
 
 .episode-duration-group {
-  display: flex; align-items: center; gap: 4px; font-weight: var(--font-weight-medium); 
-  color: var(--color-text-secondary); white-space: nowrap; letter-spacing: -0.03em;
+  display: flex; align-items: center; gap: 4px;
+  font-weight: var(--font-weight-medium); color: var(--color-text-secondary);
+  white-space: nowrap;
+  letter-spacing: -0.03em;
 }
 
 /* Enlaces Externos (Wiki/JustWatch) */
-[data-template="wikipedia-link"], [data-template="justwatch-link"] {
+[data-template="wikipedia-link"],
+[data-template="justwatch-link"] {
   display: flex; align-items: center; text-decoration: none;
-  transition: transform var(--duration-fast), filter var(--duration-fast); margin-left: var(--space-xs); pointer-events: auto; 
+  transition: transform var(--duration-fast), filter var(--duration-fast);
+  margin-left: var(--space-xs);
+  pointer-events: auto; 
 
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-sm); }
-  @media (hover: hover) and (pointer: fine) { &:hover { transform: scale(1.15); } }
+  
+  @media (hover: hover) and (pointer: fine) {
+    &:hover { transform: scale(1.15); }
+  }
   
   /* Glow Effect de Marca */
   &[data-template="justwatch-link"]:hover svg { filter: drop-shadow(0 0 6px rgba(154, 20, 133, 0.6)); }
   &[data-template="wikipedia-link"]:hover svg { filter: drop-shadow(0 0 6px rgba(179, 64, 74, 0.6)); }
 
   &.disabled {
-    opacity: 0.3; pointer-events: none; filter: grayscale(100%); cursor: default; 
-    :where(html.dark-mode) & { filter: grayscale(100%) brightness(5); }
+    opacity: 0.3; pointer-events: none; filter: grayscale(100%); cursor: default;
+    
+    html.dark-mode & { filter: grayscale(100%) brightness(5); }
   }
 }
-[data-template="wikipedia-link"] .rating-icon, [data-template="justwatch-link"] .rating-icon { width: 1.5em; height: 1.5em; transform: translateY(-1px); }
 
 /* Listas de Detalles */
 .details-list {
-  display: flex; flex-direction: column; gap: var(--space-xxs); margin: 6px 0 4px; padding-top: 4px;
-  border-top: 1px solid var(--color-border); 
+  display: flex; flex-direction: column; gap: var(--space-xxs);
+  margin: 6px 0 4px; padding-top: 4px; /* Compactar márgenes verticales */
+  border-top: 1px solid var(--color-border);
   font-size: var(--font-size-xs); line-height: 1.2; color: var(--color-text-secondary);
 }
-.detail-item[data-template="genre-container"], .detail-item[data-template="actors-container"] {
-  position: relative; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-box-orient: vertical; padding-right: 10px;
+.detail-item[data-template="genre-container"] {
+  position: relative; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  padding-right: 10px;
 }
-.detail-item[data-template="genre-container"] { -webkit-line-clamp: 2; }
-.detail-item[data-template="actors-container"] { -webkit-line-clamp: 3; line-height: 1.4; }
+.detail-item[data-template="actors-container"] {
+  position: relative; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  padding-right: 10px;
+  line-height: 1.4;
+}
 
 /* Áreas con Scroll */
 .scrollable-content {
-  position: relative; overflow: hidden; flex-grow: 1;
+  position: relative; overflow: hidden;
   transition: opacity var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
 
   &::after {
-    content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 40px; pointer-events: none;
-    background: linear-gradient(to bottom, transparent, var(--color-surface)); 
+    content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 40px;
+    background: linear-gradient(to bottom, transparent, var(--color-surface));
+    pointer-events: none;
   }
   .flip-card-back.is-expanded &::after { opacity: 0; }
 }
 
 .plot-summary-final {
-  padding-top: 4px; border-top: 1px solid var(--color-border); opacity: 0.8; 
-  font-size: var(--font-size-xs); color: var(--color-text-secondary); font-weight: var(--font-weight-normal); line-height: 1.2; text-wrap: pretty; 
+  padding-top: 4px; border-top: 1px solid var(--color-border);
+  opacity: 0.8; font-size: var(--font-size-xs); color: var(--color-text-secondary);
+  font-weight: var(--font-weight-normal); line-height: 1.2; /* Reducir interlineado */
+  text-wrap: pretty; /* Evita palabras huérfanas al final */
 }
 
 /* Overlay de Actores */
 .actors-scrollable-content {
   position: absolute; inset: 0; padding: var(--space-md); padding-top: var(--space-sm);
-  background-color: var(--color-surface); -webkit-overflow-scrolling: touch; overflow-y: auto; scrollbar-width: none;
+  background-color: var(--color-surface);
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto; scrollbar-width: none;
   opacity: 0; visibility: hidden; transform: translateY(100%);
   transition: opacity var(--duration-normal) var(--ease-smooth-out), visibility var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
-  z-index: 5; font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary); pointer-events: auto;
+  z-index: 5;
+  font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary);
+  pointer-events: auto;
 
   & h4 {
-    margin-top: 0; margin-bottom: var(--space-xs); font-family: var(--font-title); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
-    border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-xxs); color: var(--color-text-primary);
+    margin-top: 0; margin-bottom: var(--space-xs); /* Reducir espacio entre título y lista */
+    font-family: var(--font-title); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
+    border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-xxs);
+    color: var(--color-text-primary);
   }
 }
-.actors-list-text { margin: 0; text-align: left; color: var(--color-text-primary); padding-bottom: var(--space-xs); } 
+.actors-list-text { margin: 0; text-align: left; color: var(--color-text-primary); padding-bottom: var(--space-xs); } /* Reducir espacio final */
 .actor-list-item {
-  background: none; border: none; padding: 0; font-family: inherit; font-size: inherit; color: var(--color-text-primary);
-  text-align: left; cursor: pointer; display: block; width: 100%; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: none; border: none; padding: 0;
+  font-family: inherit; font-size: inherit; color: var(--color-text-primary);
+  text-align: left; cursor: pointer; display: block; width: 100%; line-height: 1.6;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); border-radius: var(--radius-sm); }
   transition: color var(--transition-duration-fast);
   &:hover { color: var(--color-accent); text-decoration: underline; }
 }
 
-/* --- 5. BOTONES DE ACCIÓN (Expandir, Rating, Watchlist) --- */
+/* =================================================================
+   6. BOTONES DE EXPANSIÓN Y LOGICA
+   ================================================================= */
 
 .expand-content-btn, .actors-expand-btn {
-  position: absolute; width: 18px; height: 18px; border-radius: 50%; border: none;
-  background-color: var(--color-accent); color: var(--color-surface); font-size: 1rem; font-weight: 400; line-height: 1;
-  display: flex; align-items: center; justify-content: center; padding-bottom: 1px; cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-  transition: transform var(--duration-quick) ease-out, background-color var(--duration-quick) ease-out; z-index: var(--z-index-card-content); pointer-events: auto;
+  position: absolute;
+  width: 18px; height: 18px; /* Reducir tamaño (de 22px a 18px) */
+  border-radius: 50%; border: none;
+  background-color: var(--color-accent); color: var(--color-surface);
+  font-size: 1rem; font-weight: 400; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding-bottom: 1px;
+  cursor: pointer; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: transform var(--duration-quick) ease-out, background-color var(--duration-quick) ease-out;
+  z-index: var(--z-index-card-content);
+  pointer-events: auto;
 
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
-  @media (hover: hover) and (pointer: fine) { &:hover { transform: scale(1.15); background-color: var(--color-text-primary); } }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: scale(1.15); background-color: var(--color-text-primary);
+    }
+  }
   &:active { transform: scale(0.9); }
-  
-  &::after { content: ""; position: absolute; inset: -12px; } /* Área táctil gigante invisible */
+
+  /* MEJORA: Área táctil expandida (Hit Area) */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -12px; /* Expande 12px por cada lado: 22 + 24 = 46px */
+  }
 }
-.actors-expand-btn { bottom: 0; right: 0; } 
-.expand-content-btn { bottom: 6px; right: 6px; } 
+.actors-expand-btn { bottom: 0; right: 0; } /* Pegar al borde */
+.expand-content-btn { bottom: 6px; right: 6px; } /* Pegar más al borde inferior */
 
 /* Lógica de Visibilidad al Expandir */
 .flip-card-back.is-expanded > *:not(.scrollable-content):not(.expand-content-btn):not(.actors-scrollable-content) {
@@ -246,27 +421,40 @@
 }
 
 .flip-card-back.is-expanded .scrollable-content {
-  position: absolute; inset: 0; padding: var(--space-md); background-color: var(--color-surface);
-  overflow-y: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; pointer-events: auto; z-index: 15;
+  position: absolute; inset: 0; padding: var(--space-md);
+  background-color: var(--color-surface);
+  overflow-y: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  pointer-events: auto; z-index: 15;
 }
 
+/* Sinopsis expandida: Misma tipografía que el listado de actores */
 .flip-card-back.is-expanded .plot-summary-final {
-  font-size: var(--font-size-sm); line-height: 1.6; color: var(--color-text-primary); opacity: 1; border-top: none; padding-top: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  opacity: 1;
+  border-top: none;
+  padding-top: 0;
 }
 
-.flip-card-back.is-expanded.show-actors .actors-scrollable-content { opacity: 1; visibility: visible; transform: translateY(0); }
-.flip-card-back.is-expanded.show-actors .scrollable-content { opacity: 0 !important; visibility: hidden !important; }
+.flip-card-back.is-expanded.show-actors .actors-scrollable-content {
+  opacity: 1; visibility: visible; transform: translateY(0);
+}
+.flip-card-back.is-expanded.show-actors .scrollable-content {
+  opacity: 0 !important; visibility: hidden !important;
+}
 
-/* Bloque inferior de botones */
+/* =================================================================
+   7. ELEMENTOS INTERACTIVOS (Botones y Estrellas)
+   ================================================================= */
+
 .card-rating-block {
   position: absolute; bottom: 1px; left: 0; right: 0;
   transform: translateY(66.66%); z-index: 5;
   display: flex; justify-content: space-between; align-items: center;
   padding-inline: var(--space-md);
   pointer-events: none;
-  
-  /* Oculto por defecto, visible en Modo Muro */
-  & .wall-rating-number { display: none; }
 
   /* Efecto Aura */
   & > * {
@@ -275,43 +463,73 @@
     filter: drop-shadow(0 0 5px var(--color-surface));
     transition: filter 0.3s ease, transform var(--duration-quick) var(--ease-spring);
 
-    :where(html.dark-mode) & {
+    html.dark-mode & {
+      /* Optimización: Sombra negra sólida suficiente para contraste */
       filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9));
     }
   }
 }
 
+/* Nota numérica (oculta por defecto) */
+.wall-rating-number { display: none; }
+
 .card-action-btn {
   width: 32px; height: 32px; padding: 0; border: none; border-radius: var(--radius-round);
-  background-color: transparent; color: var(--color-accent); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  background-color: transparent; color: var(--color-accent); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
   transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
-  position: relative; isolation: isolate; 
+  position: relative;
+  isolation: isolate; /* Crear contexto de apilamiento para controlar hit area */
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
-  @media (hover: hover) and (pointer: fine) { &:hover { transform: scale(1.15) rotate(10deg); } }
-  &:active { transform: scale(0.96); filter: brightness(0.95); transition: transform 50ms var(--ease-luxury); }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover { transform: scale(1.15) rotate(10deg); }
+  }
+  &:active { 
+    transform: scale(0.96);
+    filter: brightness(0.95);
+    transition: transform 50ms var(--ease-luxury);
+  }
 
   & svg {
     width: 30px; height: 30px;
     fill: transparent; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     transition: fill var(--duration-normal) var(--ease-smooth-out), stroke var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
-    pointer-events: none; position: relative; z-index: 0;
+    pointer-events: none; /* El click debe registrarse en el botón/área expandida, no en el SVG */
+    position: relative; z-index: 0;
   }
 
   &.is-active {
+    /* Animación del botón contenedor (Pop) */
     animation: watchlist-pop 0.3s var(--ease-bounce-in);
     & svg {
       color: #e50914; fill: #e50914; stroke: #e50914;
-      animation: watchlist-glow 0.6s ease-out, bookmark-settle 0.2s 0.3s ease-out forwards;
+      --icon-plus-color: var(--color-surface);
+      /* Animación del icono: Glow + Settle (encadenadas) */
+      animation: watchlist-glow 0.6s ease-out,
+                 bookmark-settle 0.2s 0.3s ease-out forwards;
     }
   }
 }
 
-/* --- 6. ACCESIBILIDAD Y OPTIMIZACIONES --- */
+/* =================================================================
+   8. UTILIDADES
+   ================================================================= */
+
+[data-template="wikipedia-link"] .rating-icon,
+[data-template="justwatch-link"] .rating-icon {
+  width: 1.5em; height: 1.5em; transform: translateY(-1px);
+}
+
+/* =================================================================
+   9. ACCESIBILIDAD TÁCTIL (WCAG 2.5.5)
+   ================================================================= */
 
 @media (hover: none) and (pointer: coarse) {
+  /* Feedback táctil nativo */
   .movie-card:active { transform: scale(0.98); transition-duration: 0s; }
 
+  /* Expandir áreas táctiles */
   .card-action-btn::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -319,70 +537,97 @@
   }
 }
 
+/* =================================================================
+   10. INTERACCIONES ESCRITORIO (Solo Mouse)
+   ================================================================= */
+
 @media (hover: hover) and (pointer: fine) {
-  :where(body:not(.rotation-disabled)) .movie-card.is-hovered .flip-card-inner {
+  body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
 }
 
-/* --- 7. MODO MURO (Tarjetas pequeñas que no giran) --- */
+/* =================================================================
+   11. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
+   ================================================================= */
 
-:where(body.rotation-disabled) :where(.movie-card:not(.is-quick-view)) {
+/* Ajuste de tarjeta visual */
+body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
   transition: transform var(--duration-quick) ease;
 
+  /* Reducir sombra en modo muro para que sea proporcional al tamaño */
   & .flip-card-inner {
-    box-shadow: var(--shadow-sm); border: none; background-color: transparent;
+    box-shadow: var(--shadow-sm);
+    border: none;
+    background-color: transparent;
   }
 
+  /* Ocultar textos y limpiar fondos */
   & .movie-summary { display: none; }
   & .flip-card-front { background-color: transparent; }
 
+  /* Póster domina */
   & .poster-container {
     height: 100%; display: flex; flex-direction: column;
     & img {
       height: auto; flex-grow: 1; min-height: 0; object-fit: cover;
-      border-radius: var(--radius-xxl); border: none;
+      border-radius: var(--radius-xxl);
+      border: none;
     }
   }
 
+  /* Bloque valoración inferior */
   & .card-rating-block {
     position: relative; transform: none; bottom: auto; left: auto; right: auto;
     height: auto; justify-content: center;
     padding: 1px var(--space-xs); background: transparent;
     cursor: pointer; pointer-events: auto;
 
+    /* Ajuste de posición vertical para elementos de valoración */
     & > *:not(.card-action-btn) {
       transform: translateY(calc(-40% + 4px));
     }
 
+    /* Nota numérica para el muro */
     & .wall-rating-number {
-      display: block; flex-grow: 0; text-align: center;
-      font-weight: var(--font-weight-bold); font-size: 1.1rem; color: var(--color-text-primary);
-      font-variant-numeric: tabular-nums; text-shadow: none; filter: none; cursor: pointer;
+      display: block;
+      flex-grow: 0;
+      text-align: center;
+      font-weight: var(--font-weight-bold);
+      font-size: 1.1rem;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      text-shadow: none;
+      filter: none; /* Eliminar aura circular */
+      cursor: pointer;
       transform: translateY(calc(-40% + 6px)); /* Ajuste óptico: 2px más abajo que las estrellas */
       
-      &:hover { transform: translateY(calc(-40% + 6px)) scale(1.15) rotate(10deg); }
+      &:hover {
+        transform: translateY(calc(-40% + 6px)) scale(1.15) rotate(10deg);
+      }
     }
   }
 
-  /* Lógica de Visualización de Valoración (Prioridad: Usuario > Media) */
+  /* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
+  /* 1. Ocultar elementos por defecto */
   & .low-rating-star,
   & .star-rating-container:not(.has-user-rating) {
     display: none !important;
   }
 
+  /* Mostrar estrellas SOLO si hay voto de usuario */
   & .star-rating-container.has-user-rating {
     display: flex !important; gap: 4px; flex-grow: 0; justify-content: center;
     & .star-icon { display: block !important; width: 24px; height: 24px; }
   }
 
-  /* Ocultar nota si hay estrellas / Ocultar watchlist si hay nota */
+  /* Ocultar nota numérica si hay voto de usuario (prioridad a estrellas) */
   & .star-rating-container.has-user-rating ~ .wall-rating-number {
     display: none;
   }
-  & .star-rating-container.has-user-rating ~ .card-action-btn { display: none; }
 
+  /* Watchlist junto a la nota (Modo Muro) */
   & .card-action-btn {
     position: absolute; right: var(--space-xxs); width: auto; height: auto; padding: 0; margin-left: 0;
     background: transparent; backdrop-filter: none; color: var(--color-text-primary);
@@ -392,48 +637,80 @@
     & svg { width: 25px; height: 25px; }
     &.is-active, &:focus-visible { opacity: 1; }
   }
+
+  /* Ocultar watchlist si hay voto de usuario (prioridad a estrellas) */
+  & .star-rating-container.has-user-rating ~ .card-action-btn { display: none; }
 }
 
+/* En móvil desactivar interacción en elementos pequeños del muro */
 @media (hover: none) and (pointer: coarse) {
-  :where(body.rotation-disabled) :where(.movie-card:not(.is-quick-view)) .card-rating-block {
+  body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
     pointer-events: none;
   }
-  :where(body.rotation-disabled) :where(.movie-card:not(.is-quick-view)) .card-action-btn { pointer-events: auto; }
+  body.rotation-disabled .movie-card:not(.is-quick-view) .card-action-btn { pointer-events: auto; }
 }
 
-/* --- 8. TARJETAS VIP (Director, Actor, Colecciones) --- */
+/* =================================================================
+   12. TARJETA DE PERSONA (Director/Actor VIP)
+   ================================================================= */
 
 .person-card .flip-card-inner {
-  transform: none !important; cursor: default; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transform: none !important; /* Desactiva el giro */
+  cursor: default;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Elevación estática elegante */
 }
 .person-card .flip-card-back { display: none; }
 .person-card .poster-container img {
-  object-position: top center; /* CRÍTICO: Evita cortar cabezas en TMDB que son 2:3 */
+  object-position: top center; /* CRÍTICO: Evita cortar cabezas en recortes verticales (TMDB son 2:3) */
+  /* Forzamos el borde para que envuelva SOLO a la imagen, incluso en Modo Muro */
   border: 3px solid var(--color-accent) !important; 
 }
 
+/* Las colecciones usan el centro de la imagen (suelen ser logos o collages) */
 .collection-card .poster-container img { object-position: center center; }
 
+/* Alinear Edad, Años y Bandera a la derecha con mayor separación */
 .person-card .year-flag-group {
-  width: 100%; justify-content: flex-end; gap: var(--space-xs);
+  width: 100%;
+  justify-content: flex-end;
+  gap: var(--space-xs);
 }
 .person-card .card-icons-line { display: none; }
 .person-card .year-country-line { width: 100%; }
 
+/* Línea sutil e incompleta debajo de la foto */
 .person-card .poster-container::after {
-  content: ""; position: absolute; bottom: -10px; left: 10%; right: 10%; height: 1px;
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
   background: linear-gradient(90deg, transparent, var(--color-text-tertiary), transparent);
   opacity: 0.4;
 }
 
-:where(.movie-card).person-card .card-rating-block {
-  display: none; 
+/* Ajuste VIP en Modo Muro: Nombre en la parte inferior */
+.movie-card.person-card .card-rating-block {
+  display: none; /* Oculto en modo normal (ya tiene la info abajo) */
 }
-:where(body.rotation-disabled) :where(.movie-card).person-card .card-rating-block {
-  display: flex; justify-content: center; align-items: center; height: 26px; width: 100%; pointer-events: none !important;
+body.rotation-disabled .movie-card.person-card .card-rating-block {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 26px; /* Iguala la altura de las estrellas para que la foto no crezca ni un milímetro */
+  width: 100%;
+  pointer-events: none !important; /* Bloquea clics accidentales (error de votos) y efectos hover */
 }
-:where(body.rotation-disabled) :where(.movie-card).person-card .wall-person-name {
-  display: block; font-size: 0.95rem; font-weight: var(--font-weight-bold); color: var(--color-text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; padding-bottom: 2px;
-  transform: translateY(-4px) !important;
+body.rotation-disabled .movie-card.person-card .wall-person-name {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2; /* Permite espacio para los descendentes (g, q, y, j) */
+  padding-bottom: 2px; /* Margen de seguridad inferior */
+  transform: translateY(-4px) !important; /* Ajuste óptico: subida estática para igualar el solapamiento de la nota */
 }
