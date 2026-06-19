@@ -5,6 +5,7 @@
 // =================================================================
 
 import { CONFIG } from "./constants.js";
+import { ERROR_CODES } from "./contracts.js";
 import flagSpriteUrl from "../flags.svg";
 
 // =================================================================
@@ -29,14 +30,15 @@ export function mapMoviePayload(movie) {
   if (!movie) return movie;
   const isSeries = isMovieSeries(movie.type);
   const origTitle = movie.original_title?.trim();
-  const hasOrig = origTitle && origTitle.toLowerCase() !== movie.title.toLowerCase();
+  const title = movie.title || "";
+  const hasOrig = origTitle && origTitle.toLowerCase() !== title.toLowerCase();
   
   return {
     ...movie,
     isSeries,
     displayYear: formatYearRange(movie.year, movie.year_end, isSeries, "N/A"),
     posterUrl: getHqPosterUrl(movie.image),
-    displayOriginalTitle: hasOrig ? origTitle : movie.title,
+    displayOriginalTitle: hasOrig ? origTitle : title,
     hasOriginalTitle: hasOrig,
     displayEpisodes: isSeries && movie.episodes ? `${movie.episodes} x` : "",
     parsedActors: movie.actors?.split(",").map(a => a.trim()) || [],
@@ -157,6 +159,12 @@ export const debounce = (func, delay) => {
 // Traduce errores raros en algo que un humano pueda entender
 export const getFriendlyErrorMessage = (e) => 
   e?.name === "AbortError" ? null : 
+  e?.code === ERROR_CODES.ABORTED ? null :
+  e?.code === ERROR_CODES.AUTH_REQUIRED ? e.message :
+  e?.code === ERROR_CODES.CONFIGURATION ? e.message :
+  e?.code === ERROR_CODES.DATABASE ? e.message :
+  e?.code === ERROR_CODES.VALIDATION ? e.message :
+  e?.code === ERROR_CODES.NETWORK ? e.message :
   e?.message?.includes("Failed to fetch") ? "Error de conexión. Revisa tu internet." : 
   "Ha ocurrido un error inesperado. Inténtalo más tarde.";
 

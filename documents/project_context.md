@@ -20,6 +20,7 @@
   - *Stale-While-Revalidate* (Assets estáticos).
   - *Cache First* (Pósters de Supabase Storage).
   - *Custom TTL Cache* (RPC Calls).
+  - Estrategia de invalidación documentada en `documents/service_worker_invalidation.md`.
 
 ### 2. Frontend JS (`src/js/`)
 Arquitectura modular basada en funciones puras y delegación de eventos.

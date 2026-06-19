@@ -101,7 +101,7 @@ async function cacheFirst(request, cacheName = CACHE_DYNAMIC) {
 
 /**
  * ESTRATEGIA: API con Ventana de Frescura (Lógica personalizada)
- * - Si la caché tiene < 30s: Retorna caché (muy rápido).
+ * - Si la caché tiene < 15m: Retorna caché (muy rápido).
  * - Si es vieja o no existe: Retorna caché (si hay) Y actualiza en background, o espera red.
  */
 async function handleApiRequest(request) {

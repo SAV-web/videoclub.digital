@@ -7,12 +7,24 @@
 
 import { DEFAULTS, CONFIG } from "./constants.js";
 import { normalizeText } from "./utils.js";
+import {
+  areContractValuesEqual,
+  normalizeActiveFilters,
+  normalizeFilterValue,
+  normalizeMovieId,
+  normalizePageNumber,
+  normalizeSort,
+  normalizeMediaType,
+  normalizeTotalMovies,
+  normalizeUserMovieData,
+  normalizeUserMovieEntry,
+} from "./contracts.js";
 
 // 1. Estado inicial: La configuración por defecto al entrar a la web.
 const initialState = {
   currentPage: 1,
   totalMovies: 0,
-  activeFilters: {
+  activeFilters: normalizeActiveFilters({
     searchTerm: "",
     genre: null,
     year: null,
@@ -26,7 +38,7 @@ const initialState = {
     excludedGenres: [],
     excludedCountries: [],
     myList: null, // null | 'rated' | 'watchlist' | 'mixed'
-  },
+  }),
   userMovieData: {},
 };
 
@@ -122,7 +134,7 @@ export function syncStateWithUrlParams(queryString) {
   resetFiltersState();
   const params = new URLSearchParams(queryString);
   
-  setCurrentPage(parseInt(params.get("p"), 10) || 1);
+  setCurrentPage(params.get("p"));
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
     if (stateKey === "page") return;
@@ -158,7 +170,7 @@ export const getActiveFilters = () => ({
 });
 
 export const getCurrentPage = () => state.currentPage;
-export const setCurrentPage = (page) => { state.currentPage = page; };
+export const setCurrentPage = (page) => { state.currentPage = normalizePageNumber(page); };
 export const getUserDataForMovie = (id) => state.userMovieData[id] ? { ...state.userMovieData[id] } : undefined;
 export const getAllUserMovieData = () => ({ ...state.userMovieData });
 
@@ -187,29 +199,32 @@ export function getActiveFilterCount() {
   return count;
 }
 
-export function setTotalMovies(total) { state.totalMovies = total; }
-export const setSort = (sort) => { state.activeFilters.sort = sort; };
-export const setMediaType = (type) => { state.activeFilters.mediaType = type; state.totalMovies = 0; };
+export function setTotalMovies(total) { state.totalMovies = normalizeTotalMovies(total); }
+export const setSort = (sort) => { state.activeFilters.sort = normalizeSort(sort); };
+export const setMediaType = (type) => { state.activeFilters.mediaType = normalizeMediaType(type); state.totalMovies = 0; };
 
 // Aplica un filtro (ej: país = 'España')
 export function setFilter(type, value, force = false) {
   if (!(type in state.activeFilters)) return false;
-  if (state.activeFilters[type] === value) return true; // Nada cambia
+  const normalizedValue = normalizeFilterValue(type, value);
+  if (normalizedValue === undefined) return false;
+  if (areContractValuesEqual(state.activeFilters[type], normalizedValue)) return true; // Nada cambia
 
-  const isNew = value && !state.activeFilters[type];
+  const isNew = normalizedValue && !state.activeFilters[type];
   if (!force && isNew && getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) return false;
 
-  state.activeFilters[type] = value;
+  state.activeFilters[type] = normalizedValue;
   state.totalMovies = 0; // Obligamos a recalcular resultados
   return true;
 }
 
 // Guarda lo que escribe el usuario en el buscador y limpia el resto de filtros
 export function setSearchTerm(term) {
-  state.activeFilters.searchTerm = term;
+  const normalizedTerm = normalizeFilterValue("searchTerm", term);
+  state.activeFilters.searchTerm = normalizedTerm;
   state.totalMovies = 0;
   
-  if (term?.length > 0) {
+  if (normalizedTerm.length > 0) {
     const toClear = ['genre', 'year', 'country', 'director', 'actor', 'selection', 'studio', 'myList'];
     const arraysToClear = ['excludedGenres', 'excludedCountries'];
     
@@ -226,9 +241,13 @@ export function setSearchTerm(term) {
 
 // Excluye un filtro (Botón papelera / pausa)
 export function toggleExcludedFilter(type, value) {
+  if (!["genre", "country"].includes(type)) return false;
+  const normalizedValue = normalizeFilterValue(type, value);
+  if (!normalizedValue) return false;
+
   const listKey = type === 'genre' ? 'excludedGenres' : 'excludedCountries';
   const list = state.activeFilters[listKey];
-  const index = list.indexOf(value);
+  const index = list.indexOf(normalizedValue);
 
   if (index > -1) {
     // Si ya está excluido, lo quitamos de la lista
@@ -238,11 +257,11 @@ export function toggleExcludedFilter(type, value) {
   } else {
     if (type === 'genre') {
       // Si es género, reemplazamos por el nuevo (máximo 1). Al asignar, activamos el Proxy.
-      state.activeFilters[listKey] = [value];
+      state.activeFilters[listKey] = [normalizedValue];
     } else {
       // Si no está excluido, lo añadimos (respetando límites)
       if (list.length >= CONFIG.MAX_EXCLUDED_FILTERS || getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) return false;
-      state.activeFilters[listKey] = [...list, value];
+      state.activeFilters[listKey] = [...list, normalizedValue];
     }
   }
   state.totalMovies = 0;
@@ -251,7 +270,7 @@ export function toggleExcludedFilter(type, value) {
 
 // Devuelve todos los filtros a cero
 export function resetFiltersState() {
-  state.activeFilters = structuredClone(initialState.activeFilters);
+  state.activeFilters = normalizeActiveFilters(initialState.activeFilters);
   state.totalMovies = 0; 
 }
 
@@ -259,17 +278,20 @@ export function resetFiltersState() {
 
 // Guarda en bloque las películas del usuario (al hacer login)
 export function setUserMovieData(data) {
-  state.userMovieData = data || {};
+  state.userMovieData = normalizeUserMovieData(data);
 }
 
 // Actualiza si el usuario vota o añade a 'Mi Lista' una sola peli
 export function updateUserDataForMovie(movieId, data) {
-  const current = state.userMovieData[movieId] || { onWatchlist: false, rating: null };
-  const updated = { ...current, ...data };
+  const normalizedMovieId = normalizeMovieId(movieId);
+  if (!normalizedMovieId) return;
+
+  const current = state.userMovieData[normalizedMovieId] || { onWatchlist: false, rating: null };
+  const updated = normalizeUserMovieEntry({ ...current, ...data });
   
   if (current.rating === updated.rating && current.onWatchlist === updated.onWatchlist) return;
   
-  state.userMovieData[movieId] = updated; // Esto dispara automáticamente el evento en makeReactive
+  state.userMovieData[normalizedMovieId] = updated; // Esto dispara automáticamente el evento en makeReactive
 }
 
 // Borra datos de usuario (al hacer logout)

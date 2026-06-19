@@ -10,11 +10,22 @@ import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
 import { getUserDataForMovie } from "./state.js";
+import {
+  ERROR_CODES,
+  createAppError,
+  isAbortError,
+  normalizeMovieId,
+  normalizeMovieQuery,
+  normalizeMoviesResponse,
+  normalizeUserMovieData,
+  normalizeUserMovieEntry,
+  toAppError,
+} from "./contracts.js";
 
 // Set estático para normalizar caché (Campos de texto libre)
 const CANONICAL_TEXT_FIELDS = new Set(['searchTerm', 'genre', 'country', 'director', 'actor', 'excludedGenres', 'excludedCountries']);
 
-const notConfiguredError = () => Promise.reject(new Error("Supabase no configurado (Faltan credenciales)"));
+const notConfiguredError = () => Promise.reject(createAppError(ERROR_CODES.CONFIGURATION, "Supabase no configurado (Faltan credenciales)"));
 let supabasePromise = null;
 
 // 1. CARGA DIFERIDA DE LA BASE DE DATOS (Solo descarga Supabase cuando hace falta)
@@ -68,9 +79,6 @@ const parseYearRange = (y) => {
   return { start: p[0] || null, end: (p.length > 1 ? p[1] : p[0]) || null };
 };
 
-// ¿El usuario canceló la petición?
-const isAbort = (e, s) => e?.name === "AbortError" || s?.aborted || e?.message?.toLowerCase().includes("abort");
-
 // Crea una firma única para recordar una búsqueda exacta (Ej: "accion-pagina-2")
 const createCanonicalCacheKey = (filters, page, pageSize) => {
   const norm = {};
@@ -122,6 +130,13 @@ const inFlightRequests = new Map();
 
 // Trae las películas principales para pintar el muro
 export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_PER_PAGE, signal, requestCount = true, explicitOffset = null) {
+  const request = normalizeMovieQuery({ activeFilters, currentPage, pageSize, requestCount, explicitOffset });
+  activeFilters = request.activeFilters;
+  currentPage = request.currentPage;
+  pageSize = request.pageSize;
+  requestCount = request.requestCount;
+  explicitOffset = request.explicitOffset;
+
   const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount, explicitOffset }, currentPage, pageSize);
 
   if (!activeFilters.myList) {
@@ -171,7 +186,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
         const start = (currentPage - 1) * pageSize;
         const { data, error, count } = await query.range(start, start + pageSize - 1);
 
-        if (error) throw (isAbort(error, signal) ? { name: "AbortError" } : error);
+        if (error) throw (isAbortError(error, signal) ? { name: "AbortError" } : toAppError(error, ERROR_CODES.DATABASE, "No se pudo cargar tu lista."));
 
         const items = (data || []).map(m => {
           const isSeries = m.type && String(m.type).toLowerCase().startsWith('s');
@@ -189,7 +204,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
           return mapMoviePayload(item);
         });
 
-        return { total: requestCount ? (count || 0) : -1, items };
+        return normalizeMoviesResponse({ total: requestCount ? (count || 0) : -1, items });
       }
       
       // MODO B: CATÁLOGO PÚBLICO (Motor potente)
@@ -199,15 +214,15 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
 
       const { data, error } = await query;
 
-      if (error) throw (isAbort(error, signal) ? { name: "AbortError" } : new Error("Fallo en la BD"));
+      if (error) throw (isAbortError(error, signal) ? { name: "AbortError" } : createAppError(ERROR_CODES.DATABASE, "Fallo en la BD", error));
 
-      const result = { total: data?.total ?? -1, items: (data?.items || []).map(mapMoviePayload) };
+      const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: data?.items }, mapMoviePayload);
       if (!signal?.aborted) queryCache.set(queryKey, result);
       return result;
 
     } catch (error) {
-      if (isAbort(error, signal)) return { aborted: true, items: [], total: -1 };
-      throw error;
+      if (isAbortError(error, signal)) return { aborted: true, items: [], total: -1 };
+      throw toAppError(error, ERROR_CODES.UNKNOWN);
     } finally {
       if (inFlightRequests.get(queryKey) === promise) inFlightRequests.delete(queryKey);
     }
@@ -231,7 +246,7 @@ export async function fetchUserMovieData() {
       .select('movie_id, rating, on_watchlist')
       .range(from, from + step - 1);
       
-    if (error) throw new Error("No se pudieron cargar tus datos.");
+    if (error) throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", error);
     
     if (data?.length > 0) {
       allData.push(...data);
@@ -244,7 +259,7 @@ export async function fetchUserMovieData() {
 
   const userMap = {};
   allData.forEach(i => userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist });
-  return userMap;
+  return normalizeUserMovieData(userMap);
 }
 
 // Memoria para los VIPs (Actores/Directores). Máximo 50 a la vez para no ahogar el móvil.
@@ -278,24 +293,27 @@ export async function fetchPersonDetails(type, name) {
 
 // Guarda en BD que le has puesto 5 estrellas o la has metido en pendientes
 export async function setUserMovieDataAPI(movieId, partialData) {
+  const normalizedMovieId = normalizeMovieId(movieId);
+  if (!normalizedMovieId) throw createAppError(ERROR_CODES.VALIDATION, "Película inválida.");
+
   const supabase = await getSupabase();
   
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session || !session.user) throw new Error("Debes iniciar sesión.");
+  if (!session || !session.user) throw createAppError(ERROR_CODES.AUTH_REQUIRED, "Debes iniciar sesión.");
   
-  const currentState = getUserDataForMovie(movieId) || { rating: null, onWatchlist: false };
-  const mergedData = { ...currentState, ...partialData };
+  const currentState = getUserDataForMovie(normalizedMovieId) || { rating: null, onWatchlist: false };
+  const mergedData = normalizeUserMovieEntry({ ...currentState, ...partialData });
   
   const payload = {
     user_id: session.user.id, 
-    movie_id: movieId, 
+    movie_id: normalizedMovieId, 
     rating: mergedData.rating, 
     on_watchlist: mergedData.onWatchlist, 
     updated_at: new Date().toISOString()
   };
   
   const { error } = await supabase.from('user_movie_entries').upsert(payload, { onConflict: 'user_id, movie_id' });
-  if (error) throw new Error("No se pudo guardar tu acción.");
+  if (error) throw createAppError(ERROR_CODES.DATABASE, "No se pudo guardar tu acción.", error);
 }
 
 // --- SUGERENCIAS (AUTOCOMPLETE) ---
