@@ -38,9 +38,9 @@ export const CONFIG = Object.freeze({
   
   // Paginación
   ITEMS_PER_PAGE: 42,
-  DYNAMIC_PAGE_SIZE_LIMIT: 56,
+  DYNAMIC_PAGE_SIZE_LIMIT: 44,
   WALL_MODE_ITEMS_PER_PAGE: 72,
-  WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 84,
+  WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 74,
   // Renderizamos de 12 en 12 para que el móvil no se quede "congelado" pintando 70 de golpe
   CARD_BATCH_SIZE: 12, 
   

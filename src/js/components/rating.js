@@ -8,7 +8,7 @@
 // - Renderizar el estado visual de las estrellas (relleno/clip).
 // =================================================================
 
-import { getUserDataForMovie, updateUserDataForMovie } from "../state.js";
+import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
@@ -179,14 +179,8 @@ function handleRatingMouseLeave(event) {
   // Disparamos evento para que 'card.js' refresque la UI con el estado real (store)
   // Esto desacopla rating.js del estado global.
   // Delegamos la restauración visual a card.js para mantener una única fuente de verdad
-  const updateEvent = new CustomEvent("card:requestUpdate", {
-    bubbles: true,
-    composed: true,
-    detail: { cardElement: event.currentTarget.closest(".movie-card") },
-  });
   
-  // El evento debe dispararse desde un elemento que esté en el DOM
-  event.target.dispatchEvent(updateEvent);
+  appEvents.emit("card:requestUpdate", { cardElement: event.currentTarget.closest(".movie-card") });
 }
 
 export function setupRatingListeners(starContainer, isInteractive) {

@@ -2,7 +2,7 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, isMovieSeries, formatYearRange, getHqPosterUrl, debounce } from "../utils.js";
-import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage } from "../state.js";
+import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
@@ -358,7 +358,7 @@ export function handleCardClick(event) {
     else if (filterLink.dataset.yearValue) { type = "year"; value = filterLink.dataset.yearValue; }
 
     // Evento global: resetea filtros y aplica uno nuevo (usado por sidebar/main).
-    document.dispatchEvent(new CustomEvent("filtersReset", { detail: { keepSort: true, newFilter: { type, value } } }));
+    appEvents.emit("filtersReset", { keepSort: true, newFilter: { type, value } });
     return;
   }
 

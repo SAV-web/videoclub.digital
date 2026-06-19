@@ -17,7 +17,7 @@ export const isMovieSeries = (type) => type?.[0]?.toLowerCase() === 's';
 // Pone bonito el rango de años (ej: "2010-15" o "2020 (M)")
 export const formatYearRange = (year, yearEnd, isSeries, fallback = "N/A") => {
   let text = year ? String(year) : fallback;
-  if (isSeries && yearEnd) text += (yearEnd === "M" || yearEnd === "-") ? ` ${yearEnd}` : `-${String(yearEnd).slice(-2)}`;
+  if (isSeries && yearEnd) text += yearEnd === "M" ? " (M)" : (yearEnd === "-" ? " -" : `-${String(yearEnd).slice(-2)}`);
   return text;
 };
 

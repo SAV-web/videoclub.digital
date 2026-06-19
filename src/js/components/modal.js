@@ -8,6 +8,7 @@
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { setupCardRatings } from "./rating.js";
+import { appEvents } from "../state.js";
 import { formatRuntime, createElement, renderCountryFlag, executeViewTransition } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
@@ -98,9 +99,9 @@ function handleMetadataClick(event) {
     // - reset de filtros
     // - aplica filtro único (director/actor)
     // - respetado por sidebar + main
-    document.dispatchEvent(new CustomEvent("filtersReset", {
-      detail: { keepSort: true, newFilter: { type: filterType, value: filterValue } },
-    }));
+    appEvents.emit("filtersReset", {
+      keepSort: true, newFilter: { type: filterType, value: filterValue }
+    });
   }
 }
 
@@ -337,8 +338,12 @@ function setupModalHeader(nodes, movie) {
   if (nodes.title) {
     nodes.title.textContent = movie.title;
     nodes.title.className = ""; // Reset clases
-    if (movie.title.length > 45) nodes.title.classList.add("title-xl-long");
-    else if (movie.title.length > 25) nodes.title.classList.add("title-long");
+    const tLen = movie.title.length;
+    if (tLen > 70) nodes.title.classList.add("title-xxxl-long");
+    else if (tLen > 50) nodes.title.classList.add("title-xxl-long");
+    else if (tLen > 35) nodes.title.classList.add("title-xl-long");
+    else if (tLen > 25) nodes.title.classList.add("title-long");
+    else if (tLen > 15) nodes.title.classList.add("title-medium");
   }
 
   // Director

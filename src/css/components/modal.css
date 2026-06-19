@@ -64,7 +64,11 @@
 .is-quick-view .movie-summary h3[data-template="title"] {
   font-size: 2rem; font-weight: var(--font-weight-extrabold); color: var(--color-text-primary); line-height: 1.1; margin-bottom: 4px; letter-spacing: -0.03em;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  &.title-long { font-size: 1.6rem; } &.title-xl-long { font-size: 1.3rem; }
+  &.title-medium { font-size: 1.7rem; }
+  &.title-long { font-size: 1.4rem; } 
+  &.title-xl-long { font-size: 1.15rem; }
+  &.title-xxl-long { font-size: 1rem; }
+  &.title-xxxl-long { font-size: 0.85rem; }
 }
 
 .is-quick-view .front-director-info {

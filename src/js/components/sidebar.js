@@ -15,7 +15,7 @@ import {
 } from "../api.js";
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
-import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm } from "../state.js";
+import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, appEvents } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
@@ -551,8 +551,8 @@ async function handleMyListToggle() {
     showToast(messages[nextState], "info");
   }
 
-  document.dispatchEvent(new CustomEvent("updateSidebarUI"));
-  document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+  appEvents.emit("updateSidebarUI");
+  appEvents.emit("uiActionTriggered");
   tryCloseMobileDrawer();
   await loadAndRenderMovies(1);
 }
@@ -570,13 +570,13 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     setFilter(type, value, true); 
     setFilter('myList', null); 
     
-    document.dispatchEvent(new CustomEvent("updateSidebarUI"));
+    appEvents.emit("updateSidebarUI");
     
     const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
     if (mainSearchInput) mainSearchInput.value = "";
 
     renderFilterPills();
-    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+    appEvents.emit("uiActionTriggered");
     
     try { await loadAndRenderMovies(1); } 
     catch (error) { if (error.name !== "AbortError") showToast("Error al cargar filmografía.", "error"); }
@@ -626,7 +626,7 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   }
   
   renderFilterPills();
-  document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+  appEvents.emit("uiActionTriggered");
   
   try { 
     await loadAndRenderMovies(1); 
@@ -677,7 +677,7 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
   }
 
   renderFilterPills();
-  document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+  appEvents.emit("uiActionTriggered");
   try { 
     await loadAndRenderMovies(1); 
   } catch (error) {
@@ -693,7 +693,7 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
 function resetFilters() {
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
-  document.dispatchEvent(new CustomEvent("filtersReset"));
+  appEvents.emit("filtersReset");
   tryCloseMobileDrawer();
 }
 
@@ -785,7 +785,7 @@ function initYearSlider() {
     });
   });
 
-  document.addEventListener("updateSidebarUI", () => {
+  appEvents.on("updateSidebarUI", () => {
     debouncedUpdate.cancel(); 
     const currentFilters = getActiveFilters();
     let years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
@@ -1178,7 +1178,7 @@ export function initSidebar() {
   setupAutocompleteHandlers();
   setupYearInputSteppers();
 
-  document.addEventListener("updateSidebarUI", () => {
+  appEvents.on("updateSidebarUI", () => {
     dom.sidebarFilterForms.forEach((form) => {
       const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
       if (input) input.value = "";
@@ -1189,8 +1189,8 @@ export function initSidebar() {
     });
   });
   
-  document.addEventListener("filtersReset", collapseAllSections);
-  document.addEventListener("uiActionTriggered", collapseAllSections);
+  appEvents.on("filtersReset", collapseAllSections);
+  appEvents.on("uiActionTriggered", collapseAllSections);
 
   renderFilterPills();
   

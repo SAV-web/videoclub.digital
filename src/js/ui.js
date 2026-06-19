@@ -8,7 +8,7 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement } from "./utils.js";
-import { getActiveFilters, getState, hasActiveMeaningfulFilters } from "./state.js";
+import { getActiveFilters, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
 const domCache = {};
@@ -416,7 +416,7 @@ export function initThemeToggle() {
 
   btn.addEventListener("click", (e) => {
     triggerPopAnimation(e.currentTarget);
-    document.dispatchEvent(new CustomEvent("uiActionTriggered"));
+    appEvents.emit("uiActionTriggered");
     
     const isNowDark = document.documentElement.classList.toggle(CSS_CLASSES.DARK_MODE);
     localStorage.setItem("theme", isNowDark ? "dark" : "light");

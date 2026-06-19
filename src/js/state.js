@@ -30,18 +30,41 @@ const initialState = {
   userMovieData: {},
 };
 
-// 2. El Vigilante (Proxy): Envuelve un objeto y reacciona cuando cambia un dato.
-function makeReactive(obj, namespace) {
+export const appEvents = {
+  events: {},
+  on(event, fn) {
+    if (!this.events[event]) this.events[event] = [];
+    this.events[event].push(fn);
+  },
+  emit(event, data) {
+    if (this.events[event]) this.events[event].forEach(fn => fn(data));
+  }
+};
+
+// 2. El Vigilante (Proxy Profundo): Envuelve un objeto y reacciona cuando cambia cualquier dato anidado.
+function makeReactive(obj, path = "") {
   return new Proxy(obj, {
+    get(target, property) {
+      const val = target[property];
+      if (typeof val === 'object' && val !== null && !Object.isFrozen(val)) {
+        return makeReactive(val, `${path}${String(property)}.`);
+      }
+      return val;
+    },
     set(target, property, value) {
       const oldValue = target[property];
       target[property] = value; // Aplicamos el cambio real
       
       // Si el valor realmente cambió y es de datos de usuario, avisamos a la web
-      if (oldValue !== value && namespace === "userMovieData") {
-        document.dispatchEvent(new CustomEvent("userMovieDataChanged", {
-          detail: { movieId: parseInt(property, 10) }
-        }));
+      if (oldValue !== value) {
+        const fullPath = `${path}${String(property)}`;
+        appEvents.emit('state:changed', { path: fullPath, value, oldValue });
+        
+        if (fullPath.startsWith("userMovieData.")) {
+          const parts = fullPath.split(".");
+          const movieId = parseInt(parts[1], 10);
+          if (!isNaN(movieId)) appEvents.emit("userMovieDataChanged", { movieId });
+        }
       }
       return true; // Asignación exitosa
     }
@@ -52,9 +75,9 @@ function makeReactive(obj, namespace) {
 let state = makeReactive({
   currentPage: initialState.currentPage,
   totalMovies: initialState.totalMovies,
-  activeFilters: makeReactive(structuredClone(initialState.activeFilters), "activeFilters"),
-  userMovieData: makeReactive({}, "userMovieData")
-}, "root");
+  activeFilters: structuredClone(initialState.activeFilters),
+  userMovieData: {}
+});
 
 // =================================================================
 //          TRADUCTOR DE URL (Para poder compartir enlaces)
@@ -228,7 +251,7 @@ export function toggleExcludedFilter(type, value) {
 
 // Devuelve todos los filtros a cero
 export function resetFiltersState() {
-  state.activeFilters = makeReactive(structuredClone(initialState.activeFilters), "activeFilters");
+  state.activeFilters = structuredClone(initialState.activeFilters);
   state.totalMovies = 0; 
 }
 
@@ -236,7 +259,7 @@ export function resetFiltersState() {
 
 // Guarda en bloque las películas del usuario (al hacer login)
 export function setUserMovieData(data) {
-  state.userMovieData = makeReactive(data || {}, "userMovieData");
+  state.userMovieData = data || {};
 }
 
 // Actualiza si el usuario vota o añade a 'Mi Lista' una sola peli
@@ -251,5 +274,5 @@ export function updateUserDataForMovie(movieId, data) {
 
 // Borra datos de usuario (al hacer logout)
 export function clearUserMovieData() {
-  state.userMovieData = makeReactive({}, "userMovieData");
+  state.userMovieData = {};
 }
