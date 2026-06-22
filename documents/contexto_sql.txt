@@ -25,6 +25,7 @@ CREATE TABLE public.directors (
   place_of_birth text,
   country_id bigint,
   photo text,
+  biography text,
   CONSTRAINT directors_pkey PRIMARY KEY (id),
   CONSTRAINT directors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
@@ -125,6 +126,7 @@ CREATE TABLE public.actors (
   place_of_birth text,
   country_id bigint,
   photo text,
+  biography text,
   CONSTRAINT actors_pkey PRIMARY KEY (id),
   CONSTRAINT actors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );

@@ -82,16 +82,31 @@ const parseYearRange = (y) => {
 // Crea una firma única para recordar una búsqueda exacta (Ej: "accion-pagina-2")
 const createCanonicalCacheKey = (filters, page, pageSize) => {
   const norm = {};
+  
   Object.keys(filters).sort().forEach(k => {
     const v = filters[k];
+    
+    // Ignorar valores nulos, vacíos o arrays sin longitud
     if (v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return;
     
-    if (CANONICAL_TEXT_FIELDS.has(k)) {
-      norm[k] = Array.isArray(v) ? v.map(x => String(x).trim().toLowerCase()).sort() : String(v).trim().toLowerCase();
+    if (Array.isArray(v)) {
+      // Clonar profundamente el array de strings/numbers convirtiéndolos a texto plano para evitar mutación externa
+      const clonedArray = v.map(x => (x !== null && x !== undefined) ? String(x) : "");
+      
+      if (CANONICAL_TEXT_FIELDS.has(k)) {
+        norm[k] = clonedArray.map(x => x.trim().toLowerCase()).sort();
+      } else {
+        norm[k] = clonedArray.sort();
+      }
+    } else if (typeof v === "object") {
+      // Clonado JSON profundo preventivo por si el filtro se expande con sub-estructuras
+      norm[k] = JSON.parse(JSON.stringify(v));
     } else {
-      norm[k] = Array.isArray(v) ? [...v].sort() : v;
+      // Tratamiento seguro de tipos primitivos
+      norm[k] = CANONICAL_TEXT_FIELDS.has(k) ? String(v).trim().toLowerCase() : v;
     }
   });
+  
   return JSON.stringify({ filters: norm, page, pageSize });
 };
 
@@ -137,11 +152,15 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
   requestCount = request.requestCount;
   explicitOffset = request.explicitOffset;
 
-  const queryKey = createCanonicalCacheKey({ ...activeFilters, requestCount, explicitOffset }, currentPage, pageSize);
+  // Excluir requestCount de la firma de caché para evitar duplicación de slots en la caché LRU
+  const queryKey = createCanonicalCacheKey({ ...activeFilters, explicitOffset }, currentPage, pageSize);
 
   if (!activeFilters.myList) {
     const cached = queryCache.get(queryKey);
-    if (cached) return Promise.resolve(cached);
+    // Servimos de la caché solo si no se requiere conteo (requestCount=false) o si ya tenemos el conteo exacto válido
+    if (cached && (!requestCount || cached.total >= 0)) {
+      return Promise.resolve(cached);
+    }
   }
 
   const inFlightPromise = inFlightRequests.get(queryKey);
@@ -163,7 +182,7 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
             genres:genres_list, directors:directors_list, actors:actors_list, 
             minutes, image, fa_id, fa_rating, fa_votes, 
             imdb_id, imdb_rating, imdb_votes, avg_rating, 
-            synopsis, thumbhash_st, critic, last_synced_at, 
+            synopsis, thumbhash_st, last_synced_at, 
             episodes, wikipedia, selections_list, studios_list, justwatch,
             countries(name, code),
             user_movie_entries!inner(user_id, rating, on_watchlist)
@@ -217,7 +236,14 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
       if (error) throw (isAbortError(error, signal) ? { name: "AbortError" } : createAppError(ERROR_CODES.DATABASE, "Fallo en la BD", error));
 
       const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: data?.items }, mapMoviePayload);
-      if (!signal?.aborted) queryCache.set(queryKey, result);
+      if (!signal?.aborted) {
+        // Si ya hay un total real guardado en la caché y la consulta actual devolvió total=-1, preservamos el conteo previo
+        const existing = queryCache.get(queryKey);
+        if (existing && existing.total >= 0 && result.total < 0) {
+          result.total = existing.total;
+        }
+        queryCache.set(queryKey, result);
+      }
       return result;
 
     } catch (error) {
@@ -234,26 +260,65 @@ export function fetchMovies(activeFilters, currentPage, pageSize = CONFIG.ITEMS_
 
 // Descarga todas las pelis que ha votado el usuario (Para pintarle las estrellas rosas al abrir la web)
 export async function fetchUserMovieData() {
-  let allData = [];
-  let hasMore = true;
-  let from = 0, step = 1000; 
-  
   const supabase = await getSupabase();
+  const step = 1000;
 
-  while (hasMore) {
-    const { data, error } = await supabase
-      .from('user_movie_entries')
-      .select('movie_id, rating, on_watchlist')
-      .range(from, from + step - 1);
-      
-    if (error) throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", error);
-    
-    if (data?.length > 0) {
-      allData.push(...data);
-      from += step;
-      hasMore = data.length === step;
-    } else {
-      hasMore = false;
+  // 1. Obtener la primera página y el conteo exacto de registros en una sola consulta
+  const { data: firstPageData, error: firstPageError, count } = await supabase
+    .from('user_movie_entries')
+    .select('movie_id, rating, on_watchlist', { count: 'exact' })
+    .range(0, step - 1);
+
+  if (firstPageError) {
+    throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", firstPageError);
+  }
+
+  const allData = [...(firstPageData || [])];
+
+  // 2. Si hay más registros de los que cupieron en el primer lote, pedir el resto en paralelo
+  if (count !== null && count !== undefined && count > step) {
+    const promises = [];
+    for (let from = step; from < count; from += step) {
+      promises.push(
+        supabase
+          .from('user_movie_entries')
+          .select('movie_id, rating, on_watchlist')
+          .range(from, from + step - 1)
+      );
+    }
+
+    const responses = await Promise.all(promises);
+
+    for (const resp of responses) {
+      if (resp.error) {
+        throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", resp.error);
+      }
+      if (resp.data) {
+        allData.push(...resp.data);
+      }
+    }
+  } else if ((count === null || count === undefined) && firstPageData?.length === step) {
+    // FALLBACK: Si no tenemos el conteo pero la primera página vino llena, recurrimos a paginación secuencial
+    let hasMore = true;
+    let from = step;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('user_movie_entries')
+        .select('movie_id, rating, on_watchlist')
+        .range(from, from + step - 1);
+
+      if (error) {
+        throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", error);
+      }
+
+      if (data?.length > 0) {
+        allData.push(...data);
+        from += step;
+        hasMore = data.length === step;
+      } else {
+        hasMore = false;
+      }
     }
   }
 
@@ -281,14 +346,31 @@ export async function fetchPersonDetails(type, name) {
 
     const { data, error } = await supabase
       .from(table)
-      .select('id, name, photo, birthday, deathday, place_of_birth, countries(name, code)')
+      .select('id, name, photo, birthday, deathday, place_of_birth, biography, countries(name, code)')
       .eq('name_norm', normalizeText(name))
       .single();
       
-    if (error || !data) { personCache.set(key, null); return null; }
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.warn(`[API] Error al cargar detalles de la persona (${type}: ${name}):`, error);
+      }
+      personCache.set(key, null);
+      return null;
+    }
+    
+    if (!data) {
+      personCache.set(key, null);
+      return null;
+    }
+
     personCache.set(key, data);
     return data;
-  } catch(e) { return null; }
+  } catch(e) {
+    if (import.meta.env.DEV) {
+      console.error(`[API] Excepción capturada en fetchPersonDetails (${type}: ${name}):`, e);
+    }
+    return null;
+  }
 }
 
 // Guarda en BD que le has puesto 5 estrellas o la has metido en pendientes
@@ -333,7 +415,10 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
     const { data, error } = await supabase.rpc(rpcName, { search_term: searchTerm }).abortSignal(controller.signal);
     
     if (error) {
-      if (error.name === "AbortError") return []; // Ignorar cancelaciones
+      if (isAbortError(error, controller.signal)) return []; // Ignorar cancelaciones
+      if (import.meta.env.DEV) {
+        console.warn(`[API] Error al cargar sugerencias para ${rpcName} ("${searchTerm}"):`, error);
+      }
       return [];
     }
     
@@ -341,7 +426,13 @@ const fetchSuggestions = async (rpcName, searchTerm) => {
     
     suggestionsCache.set(cacheKey, results);
     return results;
-  } catch (error) { return []; }
+  } catch (error) {
+    if (isAbortError(error, controller.signal)) return []; // Ignorar cancelaciones
+    if (import.meta.env.DEV) {
+      console.error(`[API] Excepción capturada en fetchSuggestions (${rpcName} para "${searchTerm}"):`, error);
+    }
+    return [];
+  }
 };
 
 export const fetchGenreSuggestions = (term) => fetchSuggestions("get_genre_suggestions", term);

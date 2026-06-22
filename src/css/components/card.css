@@ -655,11 +655,12 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
    ================================================================= */
 
 .person-card .flip-card-inner {
-  transform: none !important; /* Desactiva el giro */
-  cursor: default;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); /* Elevación estática elegante */
 }
-.person-card .flip-card-back { display: none; }
+.person-card .flip-card-back {
+  padding: var(--space-md);
+  background-color: var(--color-surface-1);
+}
 .person-card .poster-container img {
   object-position: top center; /* CRÍTICO: Evita cortar cabezas en recortes verticales (TMDB son 2:3) */
   /* Forzamos el borde para que envuelva SOLO a la imagen, incluso en Modo Muro */

@@ -218,3 +218,19 @@
 @media (prefers-reduced-transparency: reduce), (prefers-reduced-motion: reduce) {
   .quick-view-overlay, .auth-overlay { backdrop-filter: none; -webkit-backdrop-filter: none; background-color: rgba(0, 0, 0, 0.9); }
 }
+
+/* --- 8. ADAPTACIONES ESPECÍFICAS PARA PERSONAS EN VISTA RÁPIDA --- */
+.is-quick-view.person-card {
+  /* Anulamos borde y pseudo-elementos del grid para que la foto ocupe y luzca igual que las películas */
+  & .poster-container img {
+    border: none !important;
+    border-radius: var(--radius-xxl) !important;
+    box-shadow: var(--shadow) !important;
+  }
+  & .poster-container::after {
+    display: none !important;
+  }
+  & .card-rating-block {
+    display: none !important;
+  }
+}

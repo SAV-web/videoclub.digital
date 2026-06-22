@@ -484,51 +484,130 @@ function populateModal(cardElement, contextCards = null) {
 
   // Clon superficial para evitar mutaciones cruzadas con la card del grid.
   const movie = { ...cardElement.movieData, image_hq };
+  const isPerson = cardElement.classList.contains('person-card') || movie.isPerson;
 
-  const clone = template.cloneNode(true);
+  // Si es persona, usamos person-card-template en lugar de quick-view-template
+  const currentTemplate = isPerson 
+    ? document.getElementById("person-card-template")?.content 
+    : template;
+    
+  if (!currentTemplate) return;
+
+  const clone = currentTemplate.cloneNode(true);
   const cardClone = clone.querySelector('.movie-card');
+  cardClone.classList.add('is-quick-view');
+
+  const modalId = isPerson ? `person-${movie.id}` : movie.id;
 
   // FIX CRÍTICO: Asignar ID y datos a la tarjeta clonada.
-  // Esto permite que 'updateCardUI' (llamado por rating.js al salir del hover) encuentre la tarjeta y sus datos.
-  cardClone.dataset.movieId = movie.id;
+  cardClone.dataset.movieId = modalId;
   cardClone.movieData = movie;
 
   // Reset UI
   if (!modal.classList.contains("is-visible")) modal.classList.remove("hide-arrows");
   
   // Binding de Datos
-  // Almacenamos movieData en el nodo para navegación entre fichas.
   content.movieData = movie;
-  content.dataset.movieId = movie.id;
+  content.dataset.movieId = modalId;
 
   // Obtener referencias planas usando el helper
   const nodes = getModalNodes(cardClone);
 
-  // --- CAPA 1: CRÍTICA (Síncrona) ---
-  // Elementos visuales principales para la primera impresión (Póster, Título, Año)
-  setupModalHeader(nodes, movie);
-
-  // Montaje
-  content.textContent = "";
-  content.appendChild(clone);
-
-  // Inicializar interactividad básica
-  updateCardUI(content);
-  initializeCard(content);
-  updateNavButtons(movie.id, contextCards);
-
-  // --- CAPA 2: DETALLES (Asíncrona / Diferida) ---
-  // Texto denso, listas y elementos secundarios.
-  // Se difiere para permitir que el navegador priorice la animación de apertura (Paint).
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      // Guard clause: Asegurar que seguimos en la misma película
-      if (content.dataset.movieId !== String(movie.id)) return;
+  if (isPerson) {
+    // --- CAPA PERSONA (Síncrona) ---
+    // Foto de perfil
+    const img = cardClone.querySelector("img");
+    if (img && image_hq) {
+      img.classList.remove(CSS_CLASSES.LOADED);
+      img.classList.add(CSS_CLASSES.LAZY_LQIP);
+      img.src = image_hq;
       
-      setupModalDetails(nodes, movie);
-      setupCardRatings(cardClone, movie); // Reutilizado de rating.js buscando en toda la tarjeta
+      setTimeout(() => {
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          requestAnimationFrame(() => {
+            img.classList.add(CSS_CLASSES.LOADED);
+          });
+        };
+        tempImg.src = image_hq;
+      }, 50);
+    }
+    
+    // Título/Nombre
+    const titleEl = cardClone.querySelector('[data-template="title"]');
+    if (titleEl) {
+      titleEl.textContent = movie.name;
+    }
+    
+    // Lugar de nacimiento
+    const birthplaceEl = cardClone.querySelector('[data-template="birthplace"]');
+    if (birthplaceEl) {
+      birthplaceEl.textContent = movie.place_of_birth || "";
+    }
+    
+    // Edad y fechas
+    const ageEl = cardClone.querySelector('[data-template="age"]');
+    const datesEl = cardClone.querySelector('[data-template="dates"]');
+    
+    const getYear = (dateStr) => dateStr ? dateStr.split('-')[0] : '';
+    const bYear = getYear(movie.birthday);
+    const dYear = getYear(movie.deathday);
+    
+    let ageStr = "";
+    if (movie.birthday) {
+      const bDate = new Date(movie.birthday);
+      const eDate = movie.deathday ? new Date(movie.deathday) : new Date();
+      let age = eDate.getFullYear() - bDate.getFullYear();
+      const m = eDate.getMonth() - bDate.getMonth();
+      if (m < 0 || (m === 0 && eDate.getDate() < bDate.getDate())) age--;
+      ageStr = movie.deathday ? `(${age} ✝)` : `(${age})`;
+    }
+    
+    if (ageEl) ageEl.textContent = ageStr;
+    if (datesEl) datesEl.textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
+    
+    // Bandera del País
+    renderCountryFlag(
+      cardClone.querySelector('[data-template="country-container"]'),
+      cardClone.querySelector('[data-template="country-flag"]'),
+      movie.countries?.code || movie.country_code,
+      movie.countries?.name || movie.country
+    );
+
+    // Biografía
+    const biographyEl = cardClone.querySelector('[data-template="biography"]');
+    if (biographyEl) {
+      biographyEl.textContent = movie.biography || "Biografía no disponible en el catálogo.";
+    }
+
+    // Montaje
+    content.textContent = "";
+    content.appendChild(clone);
+    updateNavButtons(modalId, contextCards);
+  } else {
+    // --- CAPA PELÍCULA ---
+    // --- CAPA 1: CRÍTICA (Síncrona) ---
+    setupModalHeader(nodes, movie);
+
+    // Montaje
+    content.textContent = "";
+    content.appendChild(clone);
+
+    // Inicializar interactividad básica
+    updateCardUI(content);
+    initializeCard(content);
+    updateNavButtons(modalId, contextCards);
+
+    // --- CAPA 2: DETALLES (Asíncrona / Diferida) ---
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (content.dataset.movieId !== String(movie.id)) return;
+        
+        setupModalDetails(nodes, movie);
+        setupCardRatings(cardClone, movie);
+      });
     });
-  });
+  }
 }
 
 // =================================================================

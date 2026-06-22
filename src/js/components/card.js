@@ -259,40 +259,36 @@ async function toggleWatchlist(movieId, btn, card) {
 
 export function handleCardClick(event) {
   // Contrato Global: Respetar el cooldown de gestos
-  // (Evita clicks accidentales durante pinch-to-zoom o swipes globales)
   if (areInteractionsLocked()) { event.preventDefault(); event.stopPropagation(); return; }
 
   const card = this;
-  
-  // Bloqueo estricto: Las tarjetas VIP no tienen votaciones ni abren modales
-  if (card.classList.contains('person-card')) {
-    event.preventDefault();
-    event.stopPropagation();
-    return;
-  }
-
+  const isPerson = card.classList.contains('person-card');
   const target = event.target;
-  const movieId = parseInt(card.dataset.movieId, 10);
 
   // 1. Botones de Acción
   const watchlistBtn = target.closest('[data-action="toggle-watchlist"]');
   if (watchlistBtn) {
     event.preventDefault(); event.stopPropagation();
+    if (isPerson) return; // Bloquear watchlist en personas/VIPs
+    const movieId = parseInt(card.dataset.movieId, 10);
     toggleWatchlist(movieId, watchlistBtn, card);
     return;
   }
 
   // 2. Rating (Estrellas o Suspenso)
-  if (handleRatingClick(event, card)) return;
+  if (!isPerson && handleRatingClick(event, card)) return;
+  if (isPerson && target.closest('[data-action^="set-rating"]')) {
+    event.preventDefault(); event.stopPropagation();
+    return; // Bloquear votaciones de estrellas en personas/VIPs
+  }
 
-  // 3. Expansión de Contenido
+  // 3. Expansión de Contenido (Películas o Personas)
   const flipBack = card.querySelector(".flip-card-back");
   const expandBtn = target.closest(".expand-content-btn");
   const actorsExpandBtn = target.closest(".actors-expand-btn");
 
   if (actorsExpandBtn) {
-    // Optimización JIT (Just In Time): Renderizado Perezoso del listado de actores.
-    // Ahorramos cientos de nodos DOM al no construir esta lista hasta que se pulsa el botón.
+    // Optimización JIT: Renderizado Perezoso del reparto.
     let actorsOverlay = flipBack.querySelector('.actors-scrollable-content');
     if (!actorsOverlay) {
       actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
@@ -333,7 +329,7 @@ export function handleCardClick(event) {
   }
 
   // 4. Bloqueo de Flip en Scroll
-  if ((target.closest('.scrollable-content') && flipBack.classList.contains('is-expanded')) ||
+  if ((target.closest('.scrollable-content') && flipBack?.classList.contains('is-expanded')) ||
       target.closest('.actors-scrollable-content')) {
     if (!target.closest('.actor-list-item')) {
       event.stopPropagation(); return;
@@ -343,11 +339,7 @@ export function handleCardClick(event) {
   // 5. Enlaces Filtros
   const filterLink = target.closest("[data-director-name], [data-actor-name], [data-year-value]");
   if (filterLink) {
-    // FIX: Si estamos en el modal, ignoramos este handler para evitar doble dispatch
-    // y permitir que modal.js maneje el cierre del modal.
     if (card.id === 'quick-view-content') return;
-
-    // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
     event.preventDefault();
@@ -357,7 +349,6 @@ export function handleCardClick(event) {
     else if (filterLink.dataset.actorName) { type = "actor"; value = filterLink.dataset.actorName; }
     else if (filterLink.dataset.yearValue) { type = "year"; value = filterLink.dataset.yearValue; }
 
-    // Evento global: resetea filtros y aplica uno nuevo (usado por sidebar/main).
     appEvents.emit("filtersReset", { keepSort: true, newFilter: { type, value } });
     return;
   }
@@ -366,9 +357,11 @@ export function handleCardClick(event) {
   const link = target.closest("a");
   if (link && link.href && link.origin !== location.origin) return;
 
-  // 7. Apertura Modal (Modo Muro)
-  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) && card.id !== 'quick-view-content') {
-    loadAndOpenModal(card);
+  // 7. Apertura Modal (Modo Muro / Clic general en VIP)
+  if (card.id !== 'quick-view-content') {
+    if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
+      loadAndOpenModal(card);
+    }
   }
 }
 
@@ -388,7 +381,7 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
     }
   });
 }, { 
-  rootMargin: "200px" // Margen unificado y conservador para evitar sobrecarga en scroll rápido (especialmente en Modo Muro)
+  rootMargin: "200px"
 });
 
 function cleanupLazyImages(container) {
@@ -406,18 +399,14 @@ function populateCard(card, movie, index) {
   
   img.alt = `Póster de ${movie.title}`;
   
-  // LCP & Viewport Optimization
-  // Usamos el viewport cacheado para no forzar reflows costosos en el DOM
   const priorityCount = cachedIsMobileViewport ? 6 : 2;
   const isFirstPage = getCurrentPage() === 1;
 
   if (isFirstPage && index < priorityCount) {
-    // Above the fold: Carga inmediata sin esperar al observer
     card.style.animation = "none";
     img.loading = "eager";
     img.decoding = "async";
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
-    // Solo la primera imagen (LCP candidato) lleva prioridad alta explícita
     img.setAttribute("fetchpriority", index === 0 ? "high" : "auto");
     img.src = hqPoster;
   } else {
@@ -433,15 +422,15 @@ function populateCard(card, movie, index) {
   // --- TEXTOS BÁSICOS ---
   const titleEl = front.querySelector(SELECTORS.TITLE);
   titleEl.textContent = movie.title;
-  titleEl.title = movie.title; // Tooltip nativo
-  titleEl.className = ""; // Reset clases
+  titleEl.title = movie.title;
+  titleEl.className = "";
 
   const tLen = movie.title.length;
   if (tLen > 40) titleEl.classList.add("title-xl-long");
   else if (tLen > 25) titleEl.classList.add("title-long");
   else if (tLen > 12) titleEl.classList.add("title-medium");
 
-  // Directores (Fragmento para evitar innerHTML excesivo)
+  // Directores
   const dirCont = front.querySelector(SELECTORS.DIRECTOR);
   dirCont.textContent = "";
   if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
@@ -452,7 +441,7 @@ function populateCard(card, movie, index) {
       
       if (showOnlyLastName) {
         const nameParts = name.split(" ");
-        if (nameParts.length > 1) displayText = nameParts.pop(); // Toma solo la última palabra (apellido)
+        if (nameParts.length > 1) displayText = nameParts.pop();
       }
       
       const link = createElement("a", { 
@@ -465,7 +454,7 @@ function populateCard(card, movie, index) {
   }
 
   // Año y País
-  const isSeries = movie.isSeries; // OPTIMIZACIÓN: Ya se calcula en la API (mapMoviePayload)
+  const isSeries = movie.isSeries;
   const yearContainer = front.querySelector(SELECTORS.YEAR);
   yearContainer.textContent = "";
   const displayYear = movie.displayYear || "N/A";
@@ -495,10 +484,9 @@ function populateCard(card, movie, index) {
   // Iconos
   const iconCont = front.querySelector('.card-icons-line');
   if (iconCont) {
-    iconCont.innerHTML = ""; // Limpieza rápida
+    iconCont.innerHTML = "";
     const codes = movie.studios_list?.split(",") || [];
     
-    // Si hay 3 o más estudios, aplicar clase compacta (iconos más pequeños)
     iconCont.classList.toggle('compact', codes.filter(c => STUDIO_DATA[c]).length >= 3);
 
     let iconsHtml = "";
@@ -522,12 +510,11 @@ function populateCard(card, movie, index) {
   }
 
   // --- BACK ---
-  // Título Original
   const origWrap = back.querySelector('.back-original-title-wrapper');
   if (movie.original_title && movie.original_title.trim()) {
     const origEl = origWrap.querySelector('[data-template="original-title"]');
     origEl.textContent = movie.original_title;
-    origEl.className = ""; // Reset clases
+    origEl.className = "";
     const oLen = movie.original_title.length;
     if (oLen > 40) origEl.classList.add("title-xl-long");
     else if (oLen > 30) origEl.classList.add("title-long");
@@ -554,7 +541,7 @@ function populateCard(card, movie, index) {
       el.classList.add('disabled');
       el.removeAttribute("aria-label");
     }
-    el.hidden = false; // Siempre visible (habilitado o deshabilitado)
+    el.hidden = false;
   };
   setupLink('justwatch', movie.justwatch);
   setupLink('wikipedia', movie.wikipedia);
@@ -567,14 +554,12 @@ function populateCard(card, movie, index) {
   const actorsEl = back.querySelector(SELECTORS.ACTORS);
   const actors = movie.parsedActors || [];
   
-  // Truncado simple
   let shortActors = actors.slice(0, 4).join(", ");
   if (actors.length > 4) shortActors += "...";
   if (movie.actors === "(A)") shortActors = "Animación";
   
   actorsEl.textContent = shortActors || "Reparto no disponible";
 
-  // Lógica de "Ver más actores"
   const hasActors = actors.length > 0 && actors.some(a => !IGNORED_ACTORS.includes(a.toLowerCase()));
   const expandBtn = actorsEl.parentElement.querySelector(".actors-expand-btn");
   
@@ -592,10 +577,10 @@ function populateCard(card, movie, index) {
 export function updateCardUI(card) {
   const movieId = parseInt(card.dataset.movieId, 10);
   const movie = card.movieData;
-  if (!movie) return;
+  if (!movie || movie.isPerson) return; // Las tarjetas de persona no tienen interacciones de watchlist/voto
 
   const userData = getUserDataForMovie(movieId);
-  const userRating = userData?.rating; // Esto puede ser: número, null, o undefined
+  const userRating = userData?.rating;
   const isOnWatchlist = userData?.onWatchlist ?? false;
 
   // Botón Watchlist
@@ -623,17 +608,16 @@ export async function renderMovieGrid(container, movies, vipData = null) {
   unflipAllCards();
   if (!container) return;
 
-  const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12; // Configurado globalmente para fluidez
+  const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12;
   let index = 0;
 
   function renderBatch() {
-    if (renderId !== currentRenderRequestId) return; // Cancelado por nueva petición
+    if (renderId !== currentRenderRequestId) return;
     if (index >= movies.length || !document.body.contains(container)) return;
 
     const limit = Math.min(index + BATCH_SIZE, movies.length);
     const isFirstBatch = index === 0;
 
-    // Programamos el lote ENTERO como una sola tarea para evitar micro-pausas (yielding excesivo)
     scheduleWork(() => {
       if (renderId !== currentRenderRequestId) return;
       const fragment = document.createDocumentFragment();
@@ -642,7 +626,6 @@ export async function renderMovieGrid(container, movies, vipData = null) {
         fragment.appendChild(createCardElement(movies[i], i));
       }
 
-      // Limpiar contenedor solo antes de pintar el primer lote
       if (isFirstBatch) {
         cleanupLazyImages(container);
         container.textContent = "";
@@ -662,7 +645,7 @@ export async function renderMovieGrid(container, movies, vipData = null) {
       index = limit;
       
       if (index < movies.length) {
-        renderBatch(); // Nos auto-llamamos para el siguiente lote (generando un yield natural)
+        renderBatch();
       }
     }, isFirstBatch ? 'user-visible' : 'background');
   }
@@ -676,9 +659,7 @@ function createCardElement(movie, index) {
   
   card.dataset.movieId = movie.id;
   card.movieData = movie;
-  // OPTIMIZACIÓN: view-transition-name se asigna dinámicamente al hacer clic (ver modal.js)
-  // LIMITAMOS el índice a 20 para evitar que, en páginas grandes (ej. 72), las últimas tarjetas tarden casi 3 segundos en mostrarse.
-  card.style.setProperty("--card-index", Math.min(index, 20)); // Para animación staggered
+  card.style.setProperty("--card-index", Math.min(index, 20));
 
   populateCard(card, movie, index);
   updateCardUI(card);
@@ -691,12 +672,14 @@ function createPersonCardElement(person) {
   const clone = personTemplate.content.cloneNode(true);
   const card = clone.querySelector('.person-card');
   
+  card.dataset.movieId = `person-${person.id}`;
+  card.movieData = { ...person, isPerson: true };
+  
   const img = card.querySelector('img');
   
   // Lógica Exclusiva: Supabase Storage (photo)
   if (person.photo && person.photo !== 'NOT_FOUND') {
     let photoName = person.photo;
-    // Forzar siempre a .webp (reemplazar antigua extensión si existe)
     if (/\.(jpg|jpeg|png)$/i.test(photoName)) {
       photoName = photoName.replace(/\.(jpg|jpeg|png)$/i, ".webp");
     } else if (!photoName.endsWith(".webp")) {
@@ -704,12 +687,11 @@ function createPersonCardElement(person) {
     }
     img.src = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
   } else {
-    // Fallback por seguridad si falta la foto
     img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
   }
   
   img.alt = `Foto de ${person.name}`;
-  img.loading = "eager"; // Prioridad de red crítica (Above the fold)
+  img.loading = "eager";
   img.decoding = "async";
   img.setAttribute("fetchpriority", "high");
   img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
@@ -740,7 +722,6 @@ function createPersonCardElement(person) {
   card.querySelector('[data-template="age"]').textContent = ageStr;
   card.querySelector('[data-template="dates"]').textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
   
-  // Lógica de nombre corto para el Modo Muro
   let wallName = person.name;
   if (wallName.length > 14) {
     const parts = wallName.split(" ");
@@ -751,13 +732,18 @@ function createPersonCardElement(person) {
   
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = wallName;
-
+ 
   renderCountryFlag(
     card.querySelector(SELECTORS.COUNTRY_CONTAINER),
     card.querySelector(SELECTORS.COUNTRY_FLAG),
     person.countries?.code,
     person.countries?.name
   );
+  
+  const biographyEl = card.querySelector('[data-template="biography"]');
+  if (biographyEl) {
+    biographyEl.textContent = person.biography || "Biografía no disponible en el catálogo.";
+  }
   
   return clone;
 }
@@ -894,7 +880,6 @@ export function renderErrorState(container, pagContainer, message) {
 // =================================================================
 
 export function runFlipOnboarding(container) {
-  // Estrategia de refuerzo: Mostrar hasta 3 veces para asegurar el aprendizaje
   const seenCount = LocalStore.get("flipTutorialCount") || 0;
   const MAX_SHOWS = 3;
 
@@ -913,7 +898,7 @@ export function runFlipOnboarding(container) {
           inner.classList.remove("is-flipped");
           LocalStore.set("flipTutorialCount", seenCount + 1);
         }
-      }, 1200); // Tiempo suficiente para leer "atrás"
+      }, 1200);
     }
-  }, 1500); // Retraso inicial para no abrumar al cargar
+  }, 1500);
 }
