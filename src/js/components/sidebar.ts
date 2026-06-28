@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 // =================================================================
 //                 LA CAJONERA (Menú Lateral y Filtros)
 // =================================================================
@@ -20,6 +22,7 @@ import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DA
 import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
+import { ActiveFilters } from '../types.js';
 
 // --- Constantes Locales ---
 const MOBILE_BREAKPOINT = 768;
@@ -31,37 +34,53 @@ let yearInteractionState = { start: false, end: false };
 let isInitialized = false;
 
 const dom = {
-  sidebar: document.getElementById("sidebar"),
-  sidebarInnerWrapper: document.querySelector(".sidebar-inner-wrapper"),
-  rewindButton: document.querySelector("#rewind-button"),
-  toggleRotationBtn: document.querySelector("#toggle-rotation-btn"),
-  playButton: document.querySelector("#play-button"),
-  collapsibleSections: document.querySelectorAll(".collapsible-section"),
-  sidebarFilterForms: document.querySelectorAll(SELECTORS.SIDEBAR_FILTER_FORM),
-  sidebarScrollable: document.querySelector(".sidebar-scrollable-filters"),
-  yearSlider: document.querySelector(SELECTORS.YEAR_SLIDER),
-  yearStartInput: document.querySelector(SELECTORS.YEAR_START_INPUT),
-  yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT),
-  sidebarOverlay: document.getElementById("sidebar-overlay"),
-  mobileSidebarToggle: document.getElementById("mobile-sidebar-toggle"),
-  myListButton: document.getElementById("my-list-button"),
+  sidebar: document.getElementById("sidebar") as HTMLElement | null,
+  sidebarInnerWrapper: document.querySelector(".sidebar-inner-wrapper") as HTMLElement | null,
+  rewindButton: document.querySelector("#rewind-button") as HTMLElement | null,
+  toggleRotationBtn: document.querySelector("#toggle-rotation-btn") as HTMLElement | null,
+  playButton: document.querySelector("#play-button") as HTMLElement | null,
+  collapsibleSections: document.querySelectorAll(".collapsible-section") as NodeListOf<HTMLElement>,
+  sidebarFilterForms: document.querySelectorAll(SELECTORS.SIDEBAR_FILTER_FORM) as NodeListOf<HTMLFormElement>,
+  sidebarScrollable: document.querySelector(".sidebar-scrollable-filters") as HTMLElement | null,
+  yearSlider: document.querySelector(SELECTORS.YEAR_SLIDER) as HTMLElement | null,
+  yearStartInput: document.querySelector(SELECTORS.YEAR_START_INPUT) as HTMLInputElement | null,
+  yearEndInput: document.querySelector(SELECTORS.YEAR_END_INPUT) as HTMLInputElement | null,
+  sidebarOverlay: document.getElementById("sidebar-overlay") as HTMLElement | null,
+  mobileSidebarToggle: document.getElementById("mobile-sidebar-toggle") as HTMLElement | null,
+  myListButton: document.getElementById("my-list-button") as HTMLElement | null,
 };
 
-const sectionContainers = {};
-const isMobileLayout = () => window.innerWidth <= MOBILE_BREAKPOINT || window.innerHeight <= MOBILE_HEIGHT_LIMIT;
+const sectionContainers: Record<string, HTMLElement> = {};
+const isMobileLayout = (): boolean => window.innerWidth <= MOBILE_BREAKPOINT || window.innerHeight <= MOBILE_HEIGHT_LIMIT;
 
 // =================================================================
 //          1. GESTOS TÁCTILES (El dedo manda)
 // =================================================================
 
-let touchState = {
-  isDragging: false, isHorizontalDrag: false,
-  startX: 0, startY: 0, startTime: 0,
-  currentTranslate: 0, startTranslate: 0, isInteractive: false 
+interface TouchState {
+  isDragging: boolean;
+  isHorizontalDrag: boolean;
+  startX: number;
+  startY: number;
+  startTime: number;
+  currentTranslate: number;
+  startTranslate: number;
+  isInteractive: boolean;
+}
+
+let touchState: TouchState = {
+  isDragging: false, 
+  isHorizontalDrag: false,
+  startX: 0, 
+  startY: 0, 
+  startTime: 0,
+  currentTranslate: 0, 
+  startTranslate: 0, 
+  isInteractive: false 
 };
 
 // Guarda el año si has tocado las casillas manuales
-function applyPendingYearFilters() {
+function applyPendingYearFilters(): void {
   if (!dom.yearStartInput || !dom.yearEndInput) return;
   
   const currentStart = parseInt(dom.yearStartInput.value, 10);
@@ -79,8 +98,8 @@ function applyPendingYearFilters() {
 }
 
 // Abre o cierra el cajón izquierdo
-function setSidebarState(isOpen) {
-  if (isMobileLayout()) {
+function setSidebarState(isOpen: boolean): void {
+  if (isMobileLayout() && dom.sidebar) {
     document.body.classList.toggle(CSS_CLASSES.SIDEBAR_OPEN, isOpen);
     dom.sidebar.style.transform = ''; 
     touchState.currentTranslate = isOpen ? 0 : -DRAWER_WIDTH;
@@ -98,16 +117,16 @@ function setSidebarState(isOpen) {
     Object.assign(dom.rewindButton, { title: label, ariaLabel: label, ariaExpanded: isOpen });
   }
   if (dom.mobileSidebarToggle) {
-    dom.mobileSidebarToggle.setAttribute('aria-expanded', isOpen);
+    dom.mobileSidebarToggle.setAttribute('aria-expanded', String(isOpen));
     dom.mobileSidebarToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
   }
 }
 
-export const openMobileDrawer = () => setSidebarState(true);
-export const closeMobileDrawer = () => setSidebarState(false);
-const tryCloseMobileDrawer = () => { if (isMobileLayout()) closeMobileDrawer(); };
+export const openMobileDrawer = (): void => setSidebarState(true);
+export const closeMobileDrawer = (): void => setSidebarState(false);
+const tryCloseMobileDrawer = (): void => { if (isMobileLayout()) closeMobileDrawer(); };
 
-function updateDrawerWidth() {
+function updateDrawerWidth(): void {
   if (dom.sidebar) {
     const width = dom.sidebar.offsetWidth;
     if (width > 0) DRAWER_WIDTH = width;
@@ -115,12 +134,13 @@ function updateDrawerWidth() {
 }
 
 // Cuando pones el dedo en la pantalla
-function handleTouchStart(e) {
+function handleTouchStart(e: TouchEvent): void {
   if (!isMobileLayout()) return;
   if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
   
   const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
-  const canStartDrag = (isOpen && e.target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
+  const target = e.target as HTMLElement;
+  const canStartDrag = (isOpen && target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
 
   if (!canStartDrag) {
     touchState.isDragging = false;
@@ -135,14 +155,14 @@ function handleTouchStart(e) {
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
   
   const isEdgeSwipe = !isOpen && touchState.startX < 30;
-  touchState.isInteractive = !isEdgeSwipe && !!e.target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
+  touchState.isInteractive = !isEdgeSwipe && !!target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
 
-  document.addEventListener("touchmove", handleTouchMove, { passive: true });
+  document.addEventListener("touchmove", handleTouchMove as EventListener, { passive: true });
 }
 
 // Cuando mueves el dedo
-function handleTouchMove(e) {
-  if (!touchState.isDragging) return;
+function handleTouchMove(e: TouchEvent): void {
+  if (!touchState.isDragging || !dom.sidebar) return;
 
   const currentX = e.touches[0].clientX;
   const currentY = e.touches[0].clientY;
@@ -156,7 +176,7 @@ function handleTouchMove(e) {
 
     if (Math.abs(diffY) > Math.abs(diffX)) {
       touchState.isDragging = false;
-      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchmove", handleTouchMove as EventListener);
       return;
     }
     
@@ -184,9 +204,9 @@ function handleTouchMove(e) {
 }
 
 // Al levantar el dedo, decidimos qué hacer
-function handleTouchEnd(e) {
-  if (!touchState.isDragging) return;
-  document.removeEventListener("touchmove", handleTouchMove);
+function handleTouchEnd(e: TouchEvent): void {
+  if (!touchState.isDragging || !dom.sidebar) return;
+  document.removeEventListener("touchmove", handleTouchMove as EventListener);
   
   if (!touchState.isHorizontalDrag) {
     touchState.isDragging = false;
@@ -217,18 +237,18 @@ function handleTouchEnd(e) {
   else closeMobileDrawer();
 }
 
-function initTouchGestures() {
+function initTouchGestures(): void {
   if (!dom.sidebar) return;
   updateDrawerWidth();
-  document.addEventListener("touchstart", handleTouchStart, { passive: true });
-  document.addEventListener("touchend", handleTouchEnd, { passive: true });
-  document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+  document.addEventListener("touchstart", handleTouchStart as EventListener, { passive: true });
+  document.addEventListener("touchend", handleTouchEnd as EventListener, { passive: true });
+  document.addEventListener("touchcancel", handleTouchEnd as EventListener, { passive: true });
 
   const handleResize = debounce(() => {
     if (isMobileLayout()) updateDrawerWidth();
     else {
       document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
-      dom.sidebar.style.transform = "";
+      if (dom.sidebar) dom.sidebar.style.transform = "";
       touchState.currentTranslate = -DRAWER_WIDTH;
     }
   }, 250);
@@ -246,7 +266,7 @@ function initTouchGestures() {
 //          2. PELLIZCO MÁGICO (Pinch to zoom para el Modo Muro)
 // =================================================================
 
-function toggleRotationMode(forceState = null) {
+function toggleRotationMode(forceState: boolean | null = null): void {
   const button = dom.toggleRotationBtn;
   if (!button) return;
 
@@ -259,7 +279,7 @@ function toggleRotationMode(forceState = null) {
   unflipAllCards();
   closeModal();
 
-  const updateState = () => {
+  const updateState = (): void => {
     const currentPage = getCurrentPage();
     const oldPageSize = shouldDisable ? CONFIG.ITEMS_PER_PAGE : CONFIG.WALL_MODE_ITEMS_PER_PAGE;
     const newPageSize = shouldDisable ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
@@ -271,7 +291,7 @@ function toggleRotationMode(forceState = null) {
     button.innerHTML = shouldDisable ? ICONS.SQUARE_STOP : ICONS.PAUSE;
     button.setAttribute("aria-label", shouldDisable ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
     button.title = shouldDisable ? "Giro automático" : "Vista Rápida";
-    button.setAttribute("aria-pressed", shouldDisable);
+    button.setAttribute("aria-pressed", String(shouldDisable));
     LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
     
     loadAndRenderMovies(newPage, { forceSkeleton: true });
@@ -283,29 +303,29 @@ function toggleRotationMode(forceState = null) {
 }
 
 let pinchInited = false;
-function initPinchGestures() {
+function initPinchGestures(): void {
   if (pinchInited) return;
-  const target = document.querySelector('.main-content-wrapper');
+  const target = document.querySelector('.main-content-wrapper') as HTMLElement | null;
   if (!target) return;
 
-  target.addEventListener('click', (e) => {
+  target.addEventListener('click', (e: MouseEvent) => {
     if (areInteractionsLocked()) {
-      if (e.target.closest('.movie-card, .grid-container')) {
+      const el = e.target as HTMLElement;
+      if (el.closest('.movie-card, .grid-container')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
     }
   }, { capture: true });
 
-  let initialDistance = null;
+  let initialDistance: number | null = null;
   let isPinching = false;
   let hasTriggered = false;
-  let cooldownTimer = null;
 
   const activateCooldown = () => {
     lockGlobalInteractions(800);
   };
 
-  target.addEventListener('touchstart', (e) => {
+  target.addEventListener('touchstart', (e: TouchEvent) => {
     if (e.touches.length === 2) {
       isPinching = true;
       hasTriggered = false;
@@ -313,7 +333,7 @@ function initPinchGestures() {
     }
   }, { passive: true });
 
-  target.addEventListener('touchmove', (e) => {
+  target.addEventListener('touchmove', (e: TouchEvent) => {
     if (!isPinching || e.touches.length !== 2 || initialDistance === null) return;
     if (hasTriggered) { activateCooldown(); return; }
 
@@ -329,7 +349,7 @@ function initPinchGestures() {
     }
   }, { passive: true });
 
-  target.addEventListener('touchend', (e) => {
+  target.addEventListener('touchend', (e: TouchEvent) => {
     if (hasTriggered) activateCooldown();
     if (e.touches.length < 2) { isPinching = false; initialDistance = null; }
     if (e.touches.length === 0) hasTriggered = false;
@@ -342,9 +362,11 @@ function initPinchGestures() {
 //          3. EL BUSCADOR INTERNO (Autocompletar)
 // =================================================================
 
-function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
-  const input = formElement.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
-  let resultsContainer = formElement.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: string[], searchTerm: string): void {
+  const input = formElement.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
+  if (!input) return;
+
+  let resultsContainer = formElement.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
 
   if (!resultsContainer) {
     resultsContainer = createElement("div", { className: "sidebar-autocomplete-results" });
@@ -361,7 +383,9 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
     return;
   }
 
-  resultsContainer.id = `autocomplete-results-${formElement.dataset.filterType}`;
+  const filterType = formElement.dataset.filterType || "";
+
+  resultsContainer.id = `autocomplete-results-${filterType}`;
   resultsContainer.setAttribute("role", "listbox");
   input.setAttribute("aria-expanded", "true");
   input.setAttribute("aria-controls", resultsContainer.id);
@@ -372,7 +396,7 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
     const item = createElement("div", {
       className: `${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}${isActive ? ' is-active' : ''}`,
       dataset: { value: suggestion },
-      id: `suggestion-item-${formElement.dataset.filterType}-${index}`,
+      id: `suggestion-item-${filterType}-${index}`,
       attributes: { role: "option", "aria-selected": isActive ? "true" : "false" },
     });
     item.appendChild(highlightAccentInsensitive(suggestion, searchTerm));
@@ -382,42 +406,41 @@ function renderSidebarAutocomplete(formElement, suggestions, searchTerm) {
   resultsContainer.appendChild(fragment);
 
   if (suggestions.length > 0) {
-    input.setAttribute("aria-activedescendant", `suggestion-item-${formElement.dataset.filterType}-0`);
+    input.setAttribute("aria-activedescendant", `suggestion-item-${filterType}-0`);
   }
 }
 
 // Enciende o apaga botones si llegas al límite de filtros
-function updateAllFilterControls() {
+function updateAllFilterControls(): void {
   const activeFilters = getActiveFilters();
   const limitReached = getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS;
 
   const excludedGenresSet = new Set(activeFilters.excludedGenres || []);
   const excludedCountriesSet = new Set(activeFilters.excludedCountries || []);
 
-  const normActiveFilters = {};
+  const normActiveFilters: Record<string, string> = {};
   for (const k in activeFilters) {
-    const val = activeFilters[k];
+    const val = activeFilters[k as keyof ActiveFilters];
     if (!val || Array.isArray(val)) continue;
-    normActiveFilters[k] = k === 'genre' ? normalizeGenreText(val) : normalizeText(val);
+    normActiveFilters[k] = k === 'genre' ? normalizeGenreText(val as string) : normalizeText(val as string);
   }
 
-  const filterLinks = document.getElementsByClassName("filter-link");
+  const filterLinks = document.getElementsByClassName("filter-link") as HTMLCollectionOf<HTMLElement & { _normValue?: string }>;
   for (let i = 0; i < filterLinks.length; i++) {
     const link = filterLinks[i];
-    const type = link.dataset.filterType;
-    const value = link.dataset.filterValue;
+    const type = link.dataset.filterType || "";
+    const value = link.dataset.filterValue || "";
     
     const isExcluded = (type === "genre" && excludedGenresSet.has(value)) || 
                        (type === "country" && excludedCountriesSet.has(value));
     
-    let isActive = false;
     let normValue = link._normValue;
     if (normValue === undefined) {
       normValue = type === 'genre' ? normalizeGenreText(value) : normalizeText(value);
       link._normValue = normValue;
     }
     
-    isActive = normActiveFilters[type] === normValue;
+    const isActive = normActiveFilters[type] === normValue;
     
     let shouldHide = isActive || isExcluded;
     if (type === 'studio' || type === 'genre' || type === 'country' || type === 'selection') {
@@ -439,12 +462,13 @@ function updateAllFilterControls() {
     }
   }
 
-  const filterInputs = document.getElementsByClassName("sidebar-filter-input");
+  const filterInputs = document.getElementsByClassName("sidebar-filter-input") as HTMLCollectionOf<HTMLInputElement>;
   for (let i = 0; i < filterInputs.length; i++) {
     const input = filterInputs[i];
     if (input.disabled !== limitReached) {
         input.disabled = limitReached;
-        input.placeholder = limitReached ? "Límite de filtros" : `Otro ${input.closest("form").dataset.filterType}...`;
+        const form = input.closest("form");
+        input.placeholder = limitReached ? "Límite de filtros" : `Otro ${form?.dataset.filterType}...`;
     }
   }
 
@@ -469,10 +493,10 @@ function updateAllFilterControls() {
   }
 }
 
-let lastPillState = {};
+let lastPillState: Record<string, string> = {};
 
 // Pinta los filtros como etiquetas de colores ("píldoras")
-function renderFilterPills() {
+function renderFilterPills(): void {
   const activeFilters = getActiveFilters();
   let pillIndex = 0;
 
@@ -480,10 +504,10 @@ function renderFilterPills() {
     const cont = sectionContainers[type];
     if (!cont) return;
 
-    const inc = activeFilters[type];
+    const inc = activeFilters[type as keyof ActiveFilters];
     const exc = type === 'genre' ? (activeFilters.excludedGenres || []) : type === 'country' ? (activeFilters.excludedCountries || []) : [];
     const stateKey = `${type}-combined`;
-    const currState = `${inc || ""}|${exc.join(",")}`;
+    const currState = `${(inc as string) || ""}|${exc.join(",")}`;
     
     if (lastPillState[stateKey] === currState) {
       if (inc) pillIndex++;
@@ -492,22 +516,27 @@ function renderFilterPills() {
     }
     lastPillState[stateKey] = currState;
     
-    const desired = [];
-    if (inc) desired.push({ val: inc, exc: false });
+    const desired: Array<{ val: string; exc: boolean }> = [];
+    if (inc && typeof inc === 'string') desired.push({ val: inc, exc: false });
     exc.forEach(v => desired.push({ val: v, exc: true }));
 
-    const exist = Array.from(cont.children);
-    const kept = new Set();
+    const exist = Array.from(cont.children) as HTMLElement[];
+    const kept = new Set<HTMLElement>();
 
     desired.forEach(item => {
       let pill = exist.find(p => p.dataset.filterValue === item.val && p.classList.contains("filter-pill--exclude") === item.exc);
-      if (pill) { kept.add(pill); cont.appendChild(pill); }
-      else {
+      if (pill) { 
+        kept.add(pill); 
+        cont.appendChild(pill); 
+      } else {
         pill = createElement("div", { className: `filter-pill ${item.exc ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: item.val } });
-        pill.style.setProperty("--pill-index", pillIndex);
+        pill.style.setProperty("--pill-index", String(pillIndex));
         
-        let text = FILTER_CONFIG[type]?.items[item.val];
-        if (!text && type === 'country') text = Object.values(REGIONAL_GROUPS).find(r => r.value === item.val)?.label;
+        const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string> } | undefined;
+        let text = config?.items?.[item.val];
+        if (!text && type === 'country') {
+          text = Object.values(REGIONAL_GROUPS).find(r => r.value === item.val)?.label;
+        }
         
         pill.appendChild(createElement("span", { textContent: text || item.val }));
         pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: item.exc ? ICONS.PAUSE_SMALL : "×", attributes: { "aria-hidden": "true" } }));
@@ -524,12 +553,12 @@ function renderFilterPills() {
 
 // --- 4. ACCIONES (Clics en botones de filtros) ---
 
-async function handleMyListToggle() {
+async function handleMyListToggle(): Promise<void> {
   const currentFilters = getActiveFilters();
   const current = currentFilters.myList;
   
   // Ciclo: Inactivo -> Puntuadas -> Pendientes -> Todo -> Inactivo
-  const cycle = [null, 'rated', 'watchlist', 'mixed'];
+  const cycle: Array<string | null> = [null, 'rated', 'watchlist', 'mixed'];
   const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
   const nextState = cycle[nextIndex];
 
@@ -543,7 +572,7 @@ async function handleMyListToggle() {
 
   if (nextState) {
     setFilter('myList', nextState);
-    const messages = {
+    const messages: Record<string, string> = {
       rated: "Mostrando tus puntuaciones",
       watchlist: "Mostrando pendientes",
       mixed: "Mostrando toda tu lista"
@@ -557,7 +586,7 @@ async function handleMyListToggle() {
   await loadAndRenderMovies(1);
 }
 
-async function handleFilterChangeOptimistic(type, value, forceSet = false) {
+async function handleFilterChangeOptimistic(type: string, value: string | null, forceSet = false): Promise<void> {
   const previousFilters = getActiveFilters();
   
   if (value && (type === 'actor' || type === 'director')) {
@@ -572,14 +601,17 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     
     appEvents.emit("updateSidebarUI");
     
-    const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
+    const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
     if (mainSearchInput) mainSearchInput.value = "";
 
     renderFilterPills();
     appEvents.emit("uiActionTriggered");
     
-    try { await loadAndRenderMovies(1); } 
-    catch (error) { if (error.name !== "AbortError") showToast("Error al cargar filmografía.", "error"); }
+    try { 
+      await loadAndRenderMovies(1); 
+    } catch (error: unknown) { 
+      if ((error as Error)?.name !== "AbortError") showToast("Error al cargar filmografía.", "error"); 
+    }
     
     return;
   }
@@ -589,7 +621,7 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     else if (type === 'studio' && previousFilters.selection) setFilter('selection', null);
   }
   
-  const isActivating = forceSet || previousFilters[type] !== value;
+  const isActivating = forceSet || previousFilters[type as keyof ActiveFilters] !== value;
   const newValue = isActivating ? value : null;
   
   if (newValue && type !== 'actor' && type !== 'director') {
@@ -602,7 +634,7 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   // Si activamos un filtro, limpiamos la búsqueda de texto
   if (newValue && previousFilters.searchTerm) {
     setSearchTerm("");
-    const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
+    const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
     if (mainSearchInput) mainSearchInput.value = "";
   }
 
@@ -630,8 +662,8 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
   
   try { 
     await loadAndRenderMovies(1); 
-  } catch (error) {
-    if (error.name === "AbortError") return;
+  } catch (error: unknown) {
+    if ((error as Error)?.name === "AbortError") return;
     console.error("Fallo al aplicar filtro:", error);
     showToast(`No se pudo aplicar el filtro.`, "error");
     setFilter('selection', previousFilters.selection);
@@ -640,12 +672,12 @@ async function handleFilterChangeOptimistic(type, value, forceSet = false) {
     setFilter('director', previousFilters.director);
     setFilter('excludedCountries', previousFilters.excludedCountries, true);
     setFilter('excludedGenres', previousFilters.excludedGenres, true);
-    setFilter(type, previousFilters[type]);
+    setFilter(type, previousFilters[type as keyof ActiveFilters]);
     renderFilterPills();
   }
 }
 
-async function handleToggleExcludedFilterOptimistic(type, value) {
+async function handleToggleExcludedFilterOptimistic(type: string, value: string): Promise<void> {
   const previousState = getActiveFilters();
   
   if (type === 'country' && previousState.country) {
@@ -658,7 +690,7 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
 
   if (previousState.searchTerm) {
     setSearchTerm("");
-    const mainSearchInput = document.querySelector(SELECTORS.SEARCH_INPUT);
+    const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
     if (mainSearchInput) mainSearchInput.value = "";
   }
 
@@ -672,7 +704,8 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
                         (type === 'country' && newState.excludedCountries.includes(value));
 
   if (isNowExcluded) {
-    const label = FILTER_CONFIG[type]?.items[value] || value;
+    const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string> } | undefined;
+    const label = config?.items?.[value] || value;
     showToast(`Excluido: ${label}`, "info");
   }
 
@@ -680,8 +713,8 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
   appEvents.emit("uiActionTriggered");
   try { 
     await loadAndRenderMovies(1); 
-  } catch (error) {
-    if (error.name === "AbortError") return;
+  } catch (error: unknown) {
+    if ((error as Error)?.name === "AbortError") return;
     showToast(`No se pudo aplicar el filtro de exclusión.`, "error");
     toggleExcludedFilter(type, value); 
     setFilter("country", previousState.country); 
@@ -690,14 +723,14 @@ async function handleToggleExcludedFilterOptimistic(type, value) {
   }
 }
 
-function resetFilters() {
+function resetFilters(): void {
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
   appEvents.emit("filtersReset");
   tryCloseMobileDrawer();
 }
 
-function hasCompactTriggeringFilters() {
+function hasCompactTriggeringFilters(): boolean {
   const filters = getActiveFilters();
   const defaultYearRange = `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`;
   const isYearActive = !!(filters.year && filters.year !== defaultYearRange);
@@ -705,7 +738,7 @@ function hasCompactTriggeringFilters() {
   return (isYearActive ? totalCount - 1 : totalCount) > 0;
 }
 
-export function collapseAllSections() {
+export function collapseAllSections(): void {
   dom.collapsibleSections.forEach((section) => {
     section.classList.remove(CSS_CLASSES.ACTIVE);
     section.classList.remove("is-ready");
@@ -717,9 +750,11 @@ export function collapseAllSections() {
   }
 }
 
-// --- 5. LA LÍNEA DEL TIEMPO (Slider de años) ---
+// =================================================================
+//          5. LA LÍNEA DEL TIEMPO (Slider de años) ---
+// =================================================================
 
-function initYearSlider() {
+function initYearSlider(): void {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
   
@@ -731,13 +766,19 @@ function initYearSlider() {
 
   const sliderInstance = noUiSlider.create(dom.yearSlider, {
     start: initialYears,
-    connect: true, step: 1, 
+    connect: true, 
+    step: 1, 
     range: { 'min': CONFIG.YEAR_MIN, '50%': pivotYear, 'max': CONFIG.YEAR_MAX },
     format: { to: (value) => Math.round(value), from: (value) => Number(value) },
   });
-  sliderInstance.on("update", (values, handle) => { yearInputs[handle].value = values[handle]; });
 
-  const updateSliderFilter = (values, handle, autoClose = true) => {
+  sliderInstance.on("update", (values, handle) => { 
+    if (yearInputs[handle]) {
+      yearInputs[handle]!.value = String(values[handle]); 
+    }
+  });
+
+  const updateSliderFilter = (values: (string | number)[], handle: number, autoClose = true) => {
     let [start, end] = values.map(Number);
     if (start > end) {
       if (handle === 0) end = start; else start = end;
@@ -765,10 +806,11 @@ function initYearSlider() {
   
   yearInputs.forEach((input, index) => {
     input.addEventListener("change", (e) => {
-      const newValue = parseFloat(e.target.value);
-      const currentValues = sliderInstance.get().map(v => parseFloat(v));
+      const target = e.target as HTMLInputElement;
+      const newValue = parseFloat(target.value);
+      const currentValues = sliderInstance.get().map(v => parseFloat(v as string));
       
-      const triggerUpdate = (vals) => {
+      const triggerUpdate = (vals: Array<string | number>) => {
         if (index === 0) yearInteractionState.start = true;
         if (index === 1) yearInteractionState.end = true;
         debouncedUpdate(vals, index, false); 
@@ -778,8 +820,8 @@ function initYearSlider() {
         if (index === 0 && newValue > currentValues[0]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
         if (index === 1 && newValue < currentValues[1]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
       }
-      const values = [null, null];
-      values[index] = e.target.value;
+      const values: Array<number | null> = [null, null];
+      values[index] = newValue;
       sliderInstance.set(values, false);
       triggerUpdate(sliderInstance.get());
     });
@@ -794,18 +836,19 @@ function initYearSlider() {
   });
 }
 
-function setupYearInputSteppers() {
+function setupYearInputSteppers(): void {
   document.querySelectorAll(".year-input-wrapper").forEach((wrapper) => {
-    const input = wrapper.querySelector(".year-input");
-    const stepperUp = wrapper.querySelector(".stepper-btn.stepper-up");
-    const stepperDown = wrapper.querySelector(".stepper-btn.stepper-down");
+    const input = wrapper.querySelector(".year-input") as HTMLInputElement | null;
+    const stepperUp = wrapper.querySelector(".stepper-btn.stepper-up") as HTMLButtonElement | null;
+    const stepperDown = wrapper.querySelector(".stepper-btn.stepper-down") as HTMLButtonElement | null;
     if (!input || !stepperUp || !stepperDown) return;
-    const updateYearValue = (increment) => {
+    
+    const updateYearValue = (increment: number) => {
       triggerHapticFeedback('medium'); 
       let currentValue = parseInt(input.value, 10);
       if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
       const newValue = Math.min(Math.max(currentValue + increment, CONFIG.YEAR_MIN), CONFIG.YEAR_MAX);
-      input.value = newValue;
+      input.value = String(newValue);
       input.dispatchEvent(new Event("change", { bubbles: true }));
     };
     stepperUp.addEventListener("click", () => updateYearValue(1));
@@ -813,25 +856,32 @@ function setupYearInputSteppers() {
   });
 }
 
-const suggestionFetchers = { genre: fetchGenreSuggestions, director: fetchDirectorSuggestions, actor: fetchActorSuggestions, country: fetchCountrySuggestions };
+const suggestionFetchers: Record<string, (term: string) => Promise<string[]>> = { 
+  genre: fetchGenreSuggestions, 
+  director: fetchDirectorSuggestions, 
+  actor: fetchActorSuggestions, 
+  country: fetchCountrySuggestions 
+};
 
-const sanitizeSearchTerm = term => term.replace(/%/g, '\\%').replace(/_/g, '\\_');
+const sanitizeSearchTerm = (term: string) => term.replace(/%/g, '\\%').replace(/_/g, '\\_');
 
-function setupAutocompleteHandlers() {
+function setupAutocompleteHandlers(): void {
   dom.sidebarFilterForms.forEach((form) => {
-    const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
+    const input = form.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
     const filterType = form.dataset.filterType;
+    if (!filterType) return;
     const fetcher = suggestionFetchers[filterType];
     if (!input || !fetcher) return;
+
     input.setAttribute("role", "combobox");
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
     
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+      const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
       if (resultsContainer && resultsContainer.children.length > 0) {
-        const items = Array.from(resultsContainer.children);
+        const items = Array.from(resultsContainer.children) as HTMLElement[];
         const activeItem = items.find(i => i.classList.contains('is-active')) || items[0];
         if (activeItem) activeItem.click();
       }
@@ -848,19 +898,19 @@ function setupAutocompleteHandlers() {
     
     input.addEventListener("input", debouncedFetch);
     
-    input.addEventListener("keydown", (e) => {
+    input.addEventListener("keydown", (e: KeyboardEvent) => {
        if (e.key === "Enter") e.preventDefault();
 
-       const resultsContainer = form.querySelector(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+       const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
        if (!resultsContainer || resultsContainer.children.length === 0) return;
        
-       const items = resultsContainer.children;
+       const items = resultsContainer.children as HTMLCollectionOf<HTMLElement>;
        let activeIndex = -1;
        for (let i = 0; i < items.length; i++) {
          if (items[i].classList.contains('is-active')) { activeIndex = i; break; }
        }
        
-       const updateActiveSuggestion = (index) => {
+       const updateActiveSuggestion = (index: number) => {
          for (let i = 0; i < items.length; i++) {
            items[i].classList.remove("is-active");
            items[i].setAttribute("aria-selected", "false");
@@ -874,8 +924,16 @@ function setupAutocompleteHandlers() {
        };
 
        switch (e.key) {
-        case "ArrowDown": e.preventDefault(); activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : -1; updateActiveSuggestion(activeIndex); break;
-        case "ArrowUp": e.preventDefault(); activeIndex = activeIndex > -1 ? activeIndex - 1 : items.length - 1; updateActiveSuggestion(activeIndex); break;
+        case "ArrowDown": 
+          e.preventDefault(); 
+          activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : -1; 
+          updateActiveSuggestion(activeIndex); 
+          break;
+        case "ArrowUp": 
+          e.preventDefault(); 
+          activeIndex = activeIndex > -1 ? activeIndex - 1 : items.length - 1; 
+          updateActiveSuggestion(activeIndex); 
+          break;
         case "Enter": 
           if (activeIndex >= 0 && items[activeIndex]) {
             items[activeIndex].click();
@@ -883,15 +941,19 @@ function setupAutocompleteHandlers() {
             items[0].click();
           }
           break;
-        case "Escape": e.preventDefault(); clearAllSidebarAutocomplete(); break;
+        case "Escape": 
+          e.preventDefault(); 
+          clearAllSidebarAutocomplete(); 
+          break;
       }
     });
     
-    form.addEventListener("click", (e) => {
-      const suggestionItem = e.target.closest(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
+    form.addEventListener("click", (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const suggestionItem = target.closest<HTMLElement>(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
       if (suggestionItem) {
         triggerHapticFeedback('light');
-        handleFilterChangeOptimistic(filterType, suggestionItem.dataset.value);
+        handleFilterChangeOptimistic(filterType, suggestionItem.dataset.value || null);
         input.value = "";
         clearAllSidebarAutocomplete();
         tryCloseMobileDrawer();
@@ -900,24 +962,29 @@ function setupAutocompleteHandlers() {
   });
 }
 
-function handlePillClick(e) {
-  const pill = e.target.closest(".filter-pill");
+function handlePillClick(e: MouseEvent): boolean {
+  const target = e.target as HTMLElement;
+  const pill = target.closest<HTMLElement>(".filter-pill");
   if (!pill) return false;
   
   triggerHapticFeedback('medium');
   const { filterType, filterValue } = pill.dataset;
+  if (!filterType || !filterValue) return false;
   pill.classList.add("is-removing");
   
   pill.addEventListener("animationend", () => {
-    if (pill.classList.contains("filter-pill--exclude")) handleToggleExcludedFilterOptimistic(filterType, filterValue);
-    else handleFilterChangeOptimistic(filterType, null);
+    if (pill.classList.contains("filter-pill--exclude")) {
+      handleToggleExcludedFilterOptimistic(filterType, filterValue);
+    } else {
+      handleFilterChangeOptimistic(filterType, null);
+    }
   }, { once: true });
   
   return true;
 }
 
-function setupEventListeners() {
-  document.querySelectorAll(".collapsible-section .section-header").forEach((header) => {
+function setupEventListeners(): void {
+  document.querySelectorAll<HTMLElement>(".collapsible-section .section-header").forEach((header) => {
     const iconWrapper = document.createElement('div');
     iconWrapper.innerHTML = ICONS.CHEVRON_RIGHT;
     if (iconWrapper.firstChild) header.appendChild(iconWrapper.firstChild);
@@ -925,7 +992,7 @@ function setupEventListeners() {
 
   const staticFilters = document.querySelector(".sidebar-static-filters");
   if (staticFilters) {
-    staticFilters.addEventListener("click", (e) => {
+    staticFilters.addEventListener("click", (e: MouseEvent) => {
       if (handlePillClick(e)) {
         tryCloseMobileDrawer();
       }
@@ -933,7 +1000,7 @@ function setupEventListeners() {
   }
 
   if (dom.rewindButton) {
-    dom.rewindButton.addEventListener("click", (e) => {
+    dom.rewindButton.addEventListener("click", () => {
       triggerHapticFeedback('light');
       const isMobile = isMobileLayout();
       if (isMobile) {
@@ -950,17 +1017,18 @@ function setupEventListeners() {
   if (dom.sidebarOverlay) dom.sidebarOverlay.addEventListener("click", closeMobileDrawer);
 
   if (dom.toggleRotationBtn) {
-    dom.toggleRotationBtn.addEventListener("click", (e) => {
+    dom.toggleRotationBtn.addEventListener("click", () => {
       toggleRotationMode();
       tryCloseMobileDrawer();
     });
   }
 
   if (dom.sidebarScrollable) {
-    dom.sidebarScrollable.addEventListener("keydown", (e) => {
+    dom.sidebarScrollable.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
-        if (e.target.tagName === "BUTTON") return; 
-        const link = e.target.closest(".filter-link");
+        const target = e.target as HTMLElement;
+        if (target.tagName === "BUTTON") return; 
+        const link = target.closest<HTMLElement>(".filter-link");
         if (link) {
           e.preventDefault();
           link.click();
@@ -968,13 +1036,16 @@ function setupEventListeners() {
       }
     });
 
-    dom.sidebarScrollable.addEventListener("click", (e) => {
-      const excludeBtn = e.target.closest(".exclude-filter-btn");
+    dom.sidebarScrollable.addEventListener("click", (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const excludeBtn = target.closest<HTMLElement>(".exclude-filter-btn");
       if (excludeBtn) {
         e.stopPropagation();
         triggerHapticFeedback('medium');
         triggerPopAnimation(excludeBtn);
-        handleToggleExcludedFilterOptimistic(excludeBtn.dataset.type, excludeBtn.dataset.value);
+        const type = excludeBtn.dataset.type || "";
+        const value = excludeBtn.dataset.value || "";
+        handleToggleExcludedFilterOptimistic(type, value);
         tryCloseMobileDrawer();
         return;
       }
@@ -984,11 +1055,13 @@ function setupEventListeners() {
         return;
       }
 
-      const link = e.target.closest(".filter-link");
+      const link = target.closest<HTMLElement>(".filter-link");
       if (link && !link.hasAttribute("disabled")) {
         triggerHapticFeedback('light');
         triggerPopAnimation(link);
-        handleFilterChangeOptimistic(link.dataset.filterType, link.dataset.filterValue);
+        const type = link.dataset.filterType || "";
+        const value = link.dataset.filterValue || "";
+        handleFilterChangeOptimistic(type, value);
         tryCloseMobileDrawer();
       }
     });
@@ -1001,7 +1074,7 @@ function setupEventListeners() {
   }
 
   dom.collapsibleSections.forEach((clickedSection) => {
-    const header = clickedSection.querySelector(".section-header");
+    const header = clickedSection.querySelector<HTMLElement>(".section-header");
     header?.addEventListener("click", () => {
       triggerHapticFeedback('light');
       const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
@@ -1020,7 +1093,7 @@ function setupEventListeners() {
       }
 
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
-      header.setAttribute('aria-expanded', isNowActive);
+      header.setAttribute('aria-expanded', String(isNowActive));
       
       dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive || hasCompactTriggeringFilters());
 
@@ -1029,14 +1102,14 @@ function setupEventListeners() {
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
             clickedSection.classList.add("is-ready");
             
-            const inputField = clickedSection.querySelector('.sidebar-filter-input');
+            const inputField = clickedSection.querySelector<HTMLElement>('.sidebar-filter-input');
             if (inputField) {
               inputField.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
               if (!isMobileLayout()) {
                 inputField.focus({ preventScroll: true });
               }
             } else if (header) {
-              header.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+              header.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
           }
         }, 300);
@@ -1049,7 +1122,7 @@ function setupEventListeners() {
 //          ARRANQUE DEL COMPONENTE
 // =================================================================
 
-export function initSidebar() {
+export function initSidebar(): void {
   if (isInitialized) return;
   isInitialized = true;
 
@@ -1060,14 +1133,15 @@ export function initSidebar() {
     setSidebarState(false); 
   }
   
-  const populateFilterSection = (filterType) => {
-    const config = FILTER_CONFIG[filterType];
+  const populateFilterSection = (filterType: string) => {
+    const config = FILTER_CONFIG[filterType as keyof typeof FILTER_CONFIG];
     if (!config) return;
     const contentId = filterType === 'country' ? 'countries-content' : `${filterType}s-content`;
     const listContainer = document.querySelector(`#${contentId} > div:first-child`);
     if (!listContainer) return;
     
-    const pillsContainer = listContainer.closest('.collapsible-section').querySelector('.active-filters-list');
+    const collapsibleSection = listContainer.closest('.collapsible-section');
+    const pillsContainer = collapsibleSection?.querySelector('.active-filters-list') as HTMLElement | null;
     if (pillsContainer) sectionContainers[filterType] = pillsContainer;
 
     listContainer.textContent = "";
@@ -1080,7 +1154,7 @@ export function initSidebar() {
         attributes: { role: "button", tabindex: "0" }
       });
       
-      const iconData = (filterType === 'studio' ? STUDIO_DATA[value] : null) || 
+      const iconData = (filterType === 'studio' ? STUDIO_DATA[value as keyof typeof STUDIO_DATA] : null) || 
                        (filterType === 'selection' ? SELECTION_DATA?.[value] : null);
 
       if (iconData) {
@@ -1096,8 +1170,10 @@ export function initSidebar() {
           link.appendChild(img);
         } else if (iconData.id) {
           const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-          svg.setAttribute("width", iconData.w || "24"); svg.setAttribute("height", iconData.h || "24");
-          svg.setAttribute("viewBox", iconData.vb || "0 0 24 24"); svg.setAttribute("class", `sidebar-platform-icon ${iconData.class || ''}`);
+          svg.setAttribute("width", iconData.w || "24"); 
+          svg.setAttribute("height", iconData.h || "24");
+          svg.setAttribute("viewBox", iconData.vb || "0 0 24 24"); 
+          svg.setAttribute("class", `sidebar-platform-icon ${iconData.class || ''}`);
           svg.setAttribute("fill", "currentColor");
           svg.innerHTML = `<use href="${spriteUrl}#${iconData.id}"></use>`;
           link.appendChild(svg);
@@ -1111,7 +1187,8 @@ export function initSidebar() {
 
       if (config.excludable?.includes(value)) {
         const excludeBtn = createElement("button", {
-          type: "button", className: "exclude-filter-btn",
+          type: "button", 
+          className: "exclude-filter-btn",
           dataset: { value: value, type: filterType },
           attributes: { "aria-label": `Excluir ${config.label} ${text}` },
           innerHTML: ICONS.PAUSE_SMALL,
@@ -1160,15 +1237,15 @@ export function initSidebar() {
     } catch (e) {}
   };
 
-  if ("requestIdleCallback" in window) requestIdleCallback(updateDynamicFilters);
-  else setTimeout(updateDynamicFilters, 500);
+  const idleCallback = (window as Window & { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 500));
+  idleCallback(updateDynamicFilters);
   
   if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
     dom.toggleRotationBtn.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
     dom.toggleRotationBtn.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
-    dom.toggleRotationBtn.setAttribute("aria-pressed", isRotationDisabled);
+    dom.toggleRotationBtn.setAttribute("aria-pressed", String(isRotationDisabled));
   }
 
   initYearSlider();
@@ -1180,7 +1257,7 @@ export function initSidebar() {
 
   appEvents.on("updateSidebarUI", () => {
     dom.sidebarFilterForms.forEach((form) => {
-      const input = form.querySelector(SELECTORS.SIDEBAR_FILTER_INPUT);
+      const input = form.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
       if (input) input.value = "";
     });
     

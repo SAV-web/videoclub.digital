@@ -1,7 +1,9 @@
+/// <reference types="vite/client" />
+
 // =================================================================
 //          COMPONENTE: Quick View (Modal & Bottom Sheet)
 // =================================================================
-//  FICHERO: src/js/components/modal.js
+//  FICHERO: src/js/components/modal.ts
 //  RESPONSABILIDAD: Gestión de vista detallada, navegación y gestos.
 // =================================================================
 
@@ -12,32 +14,69 @@ import { appEvents } from "../state.js";
 import { formatRuntime, createElement, renderCountryFlag, executeViewTransition } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
+import { Movie, MappedMovie } from "../types.js";
+
+interface MovieCardElement extends HTMLElement {
+  movieData?: Movie;
+}
+
+interface MovieContentElement extends HTMLElement {
+  movieData?: Movie;
+}
+
+interface ModalDom {
+  overlay: HTMLElement | null;
+  modal: HTMLElement | null;
+  content: MovieContentElement | null;
+  template: DocumentFragment | undefined;
+  prevBtn: HTMLButtonElement | null;
+  nextBtn: HTMLButtonElement | null;
+}
+
+export interface ExtendedMovie extends MappedMovie {
+  image_hq?: string | null;
+  // Propiedades para personas en caso de person-card
+  name?: string;
+  place_of_birth?: string | null;
+  birthday?: string | null;
+  deathday?: string | null;
+  biography?: string | null;
+  countries?: { code: string; name: string };
+  isPerson?: boolean;
+}
 
 // --- Referencias DOM (Lazy Getter para seguridad) ---
-// Lazy DOM getter:
-// - evita referencias obsoletas tras re-render
-// - coste mínimo (getElementById)
-// - preferido a cachear nodos que pueden recrearse
-const getDom = () => ({
-  overlay: document.getElementById("quick-view-overlay"),
-  modal: document.getElementById("quick-view-modal"),
-  content: document.getElementById("quick-view-content"),
-  template: document.getElementById("quick-view-template")?.content,
-  prevBtn: document.getElementById("modal-prev-btn"),
-  nextBtn: document.getElementById("modal-next-btn"),
-});
+const getDom = (): ModalDom => {
+  const templateEl = document.getElementById("quick-view-template") as HTMLTemplateElement | null;
+  return {
+    overlay: document.getElementById("quick-view-overlay"),
+    modal: document.getElementById("quick-view-modal"),
+    content: document.getElementById("quick-view-content") as MovieContentElement | null,
+    template: templateEl?.content,
+    prevBtn: document.getElementById("modal-prev-btn") as HTMLButtonElement | null,
+    nextBtn: document.getElementById("modal-next-btn") as HTMLButtonElement | null,
+  };
+};
 
 /**
  * Resetea las transformaciones CSS aplicadas por gestos táctiles.
  */
-const resetModalTransform = () => {
+const resetModalTransform = (): void => {
   const { modal } = getDom();
   if (modal) modal.style.transform = "";
 };
 
 // --- Estado de Gestos Táctiles ---
-const touchState = {
-  // 4.1. Invariante: Solo uno de isDragging / isHorizontalSwipe puede ser true a la vez.
+interface TouchState {
+  startY: number;
+  startX: number;
+  currentY: number;
+  startTime: number;
+  isDragging: boolean;
+  isHorizontalSwipe: boolean;
+}
+
+const touchState: TouchState = {
   startY: 0,
   startX: 0,
   currentY: 0,
@@ -47,7 +86,7 @@ const touchState = {
 };
 
 // Estado para la transición Hero (Card -> Modal)
-let activeHeroCard = null;
+let activeHeroCard: HTMLElement | null = null;
 
 const SWIPE_X_THRESHOLD = 80;
 const SWIPE_Y_CLOSE_THRESHOLD = 120;
@@ -62,26 +101,28 @@ let modalTransitionCount = 0;
 
 /**
  * Cierra el modal si se hace clic fuera del contenido.
- * @param {MouseEvent} event 
  */
-function handleOutsideClick(event) {
+function handleOutsideClick(event: MouseEvent): void {
   const { modal } = getDom();
+  if (!modal) return;
+
+  const target = event.target as HTMLElement;
   // No cerramos si se hace click en una card del grid para permitir navegación directa.
-  const isClickInsideCard = event.target.closest(".movie-card");
+  const isClickInsideCard = target.closest(".movie-card");
   
-  if (modal.classList.contains("is-visible") && !modal.contains(event.target) && !isClickInsideCard) {
+  if (modal.classList.contains("is-visible") && !modal.contains(target) && !isClickInsideCard) {
     closeModal();
   }
 }
 
 /**
  * Maneja clics en metadatos (Director/Actor) para filtrar.
- * @param {MouseEvent} event 
  */
-function handleMetadataClick(event) {
-  const directorLink = event.target.closest(".front-director-info a[data-director-name]");
-  const actorLink = event.target.closest('[data-template="actors"] a[data-actor-name]');
-  const yearLink = event.target.closest("a[data-year-value]");
+function handleMetadataClick(event: MouseEvent): void {
+  const target = event.target as HTMLElement;
+  const directorLink = target.closest<HTMLElement>(".front-director-info a[data-director-name]");
+  const actorLink = target.closest<HTMLElement>('[data-template="actors"] a[data-actor-name]');
+  const yearLink = target.closest<HTMLElement>("a[data-year-value]");
 
   if (directorLink || actorLink || yearLink) {
     // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
@@ -90,17 +131,24 @@ function handleMetadataClick(event) {
     event.preventDefault();
     closeModal();
     
-    let filterType, filterValue;
-    if (directorLink) { filterType = "director"; filterValue = directorLink.dataset.directorName; }
-    else if (actorLink) { filterType = "actor"; filterValue = actorLink.dataset.actorName; }
-    else if (yearLink) { filterType = "year"; filterValue = yearLink.dataset.yearValue; }
+    let filterType: "director" | "actor" | "year";
+    let filterValue: string | undefined;
 
-    // Evento global de integración:
-    // - reset de filtros
-    // - aplica filtro único (director/actor)
-    // - respetado por sidebar + main
+    if (directorLink) { 
+      filterType = "director"; 
+      filterValue = directorLink.dataset.directorName; 
+    } else if (actorLink) { 
+      filterType = "actor"; 
+      filterValue = actorLink.dataset.actorName; 
+    } else { 
+      filterType = "year"; 
+      filterValue = yearLink?.dataset.yearValue; 
+    }
+
+    // Evento global de integración
     appEvents.emit("filtersReset", {
-      keepSort: true, newFilter: { type: filterType, value: filterValue }
+      keepSort: true, 
+      newFilter: { type: filterType, value: filterValue }
     });
   }
 }
@@ -111,10 +159,11 @@ function handleMetadataClick(event) {
 
 /**
  * Inicia el seguimiento del gesto táctil.
- * @param {TouchEvent} e 
  */
-function handleTouchStart(e) {
+function handleTouchStart(e: TouchEvent): void {
   const { modal } = getDom();
+  if (!modal) return;
+
   touchState.startY = e.touches[0].clientY;
   touchState.startX = e.touches[0].clientX;
   touchState.isDragging = false;
@@ -126,14 +175,14 @@ function handleTouchStart(e) {
 
 /**
  * Procesa el movimiento del dedo (Arrastre vertical o Swipe horizontal).
- * @param {TouchEvent} e 
  */
-function handleTouchMove(e) {
+function handleTouchMove(e: TouchEvent): void {
   // Salir rápido si no es un gesto válido o ya está cancelado
-  // 4.2. Si otro handler ya capturó el gesto, no interferimos.
   if (!touchState.isDragging && !touchState.isHorizontalSwipe && e.defaultPrevented) return;
 
   const { modal, content } = getDom();
+  if (!modal || !content) return;
+
   const currentY = e.touches[0].clientY;
   const currentX = e.touches[0].clientX;
   const deltaY = currentY - touchState.startY;
@@ -143,7 +192,7 @@ function handleTouchMove(e) {
   if (!touchState.isDragging && !touchState.isHorizontalSwipe) {
     if (Math.abs(deltaX) < 5 && Math.abs(deltaY) < 5) return; // Umbral de ruido
 
-    const SCROLL_TOLERANCE = 5; // FIX: Tolerancia para scroll inercial (iOS)
+    const SCROLL_TOLERANCE = 5; // Tolerancia para scroll inercial (iOS)
 
     // Gesto Vertical (Cierre): Solo si estamos arriba del todo y arrastramos hacia abajo
     if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= SCROLL_TOLERANCE) {
@@ -163,7 +212,7 @@ function handleTouchMove(e) {
     if (e.cancelable) e.preventDefault();
     
     let translateY = deltaY;
-    // Bonus: Rubber Banding (Resistencia exponencial al arrastrar hacia arriba/tope)
+    // Rubber Banding (Resistencia exponencial al arrastrar hacia arriba/tope)
     if (translateY < 0) {
       translateY = -Math.pow(Math.abs(translateY), 0.75);
     }
@@ -177,10 +226,11 @@ function handleTouchMove(e) {
 
 /**
  * Finaliza el gesto y decide la acción (Cerrar, Navegar o Resetear).
- * @param {TouchEvent} e 
  */
-function handleTouchEnd(e) {
+function handleTouchEnd(e: TouchEvent): void {
   const { modal } = getDom();
+  if (!modal) return;
+
   const duration = Date.now() - touchState.startTime;
 
   // A. Navegación Horizontal
@@ -216,21 +266,21 @@ function handleTouchEnd(e) {
 
 /**
  * Obtiene la lista de tarjetas visibles en el grid principal.
- * @returns {HTMLElement[]}
  */
-function getGridCards() {
+function getGridCards(): HTMLElement[] {
   const grid = document.getElementById("grid-container");
   if (!grid) return [];
-  // Filtramos estrictamente las tarjetas que son películas reales (ignora VIPs/Skeletons)
-  return Array.from(grid.querySelectorAll(".movie-card[data-movie-id]"));
+  return Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
 }
 
 /**
  * Navega a la tarjeta anterior o siguiente.
  * @param {number} direction - -1 (Anterior) o 1 (Siguiente).
  */
-function navigateToSibling(direction) {
+function navigateToSibling(direction: number): void {
   const { content } = getDom();
+  if (!content) return;
+
   const currentId = content.dataset.movieId;
   if (!currentId) return;
 
@@ -241,20 +291,18 @@ function navigateToSibling(direction) {
 
   const nextIndex = currentIndex + direction;
   if (nextIndex >= 0 && nextIndex < cards.length) {
-    openModal(cards[nextIndex], cards); // Optimización: Pasamos la lista para evitar re-query
+    openModal(cards[nextIndex], cards); // Reutilizar la lista de tarjetas para optimizar
   }
 }
 
 /**
  * Actualiza el estado (habilitado/deshabilitado) de los botones de navegación.
- * @param {number|string} currentId 
- * @param {HTMLElement[]|null} contextCards 
  */
-function updateNavButtons(currentId, contextCards = null) {
+function updateNavButtons(currentId: number | string, contextCards: HTMLElement[] | null = null): void {
   const { prevBtn, nextBtn } = getDom();
-  const strId = String(currentId); // Asegurar tipo para comparación
+  const strId = String(currentId);
   
-  const cards = contextCards || getGridCards(); // Reutilizar o consultar
+  const cards = contextCards || getGridCards();
   const currentIndex = cards.findIndex(c => c.dataset.movieId === strId);
 
   if (currentIndex === -1) return;
@@ -274,25 +322,32 @@ function updateNavButtons(currentId, contextCards = null) {
 //          4. RENDERIZADO (POBLADO DE DATOS)
 // =================================================================
 
-// Helpers de Renderizado
-const createLink = (text, type) => {
+const createLink = (text: string, type: 'director' | 'actor'): HTMLAnchorElement => {
   const param = type === 'director' ? 'dir' : 'actor';
   return createElement("a", { 
     textContent: text, 
     href: `?${param}=${encodeURIComponent(text)}`, 
     dataset: { [type === 'director' ? 'directorName' : 'actorName']: text } 
-  });
+  }) as HTMLAnchorElement;
 };
 
+interface ModalNodes {
+  [key: string]: HTMLElement | null | undefined;
+  img?: HTMLImageElement | null;
+  iconsContainer?: HTMLElement | null;
+  origTitleWrap?: HTMLElement | null;
+}
+
 /**
- * Mapea los nodos del modal mediante sus contratos de datos (data-template)
- * para no depender de la estructura jerárquica exacta del DOM.
- * @param {HTMLElement} root 
+ * Mapea los nodos del modal mediante sus contratos de datos (data-template).
  */
-function getModalNodes(root) {
-  const nodes = {};
-  root.querySelectorAll('[data-template]').forEach(el => {
-    nodes[el.dataset.template] = el;
+function getModalNodes(root: HTMLElement): ModalNodes {
+  const nodes: ModalNodes = {};
+  root.querySelectorAll<HTMLElement>('[data-template]').forEach(el => {
+    const key = el.dataset.template;
+    if (key) {
+      nodes[key] = el;
+    }
   });
   nodes.img = root.querySelector("img");
   nodes.iconsContainer = root.querySelector(".card-icons-line");
@@ -302,10 +357,8 @@ function getModalNodes(root) {
 
 /**
  * Configura la cabecera del modal (Póster, Título, Info básica).
- * @param {Object} nodes - Diccionario de nodos UI referenciados.
- * @param {Object} movie - Datos de la película.
  */
-function setupModalHeader(nodes, movie) {
+function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
   // Imagen (Efecto LQIP suave)
   if (nodes.img) {
     const hqUrl = movie.image_hq || movie.posterUrl;
@@ -316,18 +369,18 @@ function setupModalHeader(nodes, movie) {
       nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
       nodes.img.src = movie.thumbhash_st;
 
-          // Retraso estratégico de 150ms para que el navegador pinte el estado difuminado (LQIP)
-          // en la versión móvil antes de cargar la HQ, garantizando la transición CSS suave.
-          setTimeout(() => {
-            const tempImg = new Image();
-            tempImg.onload = () => {
-              nodes.img.src = hqUrl;
-              requestAnimationFrame(() => {
-                nodes.img.classList.add(CSS_CLASSES.LOADED);
-              });
-            };
-            tempImg.src = hqUrl;
-          }, 150);
+      setTimeout(() => {
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          if (nodes.img) {
+            nodes.img.src = hqUrl;
+            requestAnimationFrame(() => {
+              nodes.img?.classList.add(CSS_CLASSES.LOADED);
+            });
+          }
+        };
+        tempImg.src = hqUrl;
+      }, 150);
     } else {
       nodes.img.src = hqUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
       nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
@@ -335,7 +388,7 @@ function setupModalHeader(nodes, movie) {
   }
 
   // Título
-  if (nodes.title) {
+  if (nodes.title && movie.title) {
     nodes.title.textContent = movie.title;
     nodes.title.className = ""; // Reset clases
     const tLen = movie.title.length;
@@ -349,10 +402,10 @@ function setupModalHeader(nodes, movie) {
   // Director
   if (nodes.director) {
     nodes.director.textContent = "";
-    if (movie.parsedDirectors.length > 0) {
+    if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
       movie.parsedDirectors.forEach((name, i, arr) => {
-        nodes.director.appendChild(createLink(name, 'director'));
-        if (i < arr.length - 1) nodes.director.append(", ");
+        nodes.director?.appendChild(createLink(name, 'director'));
+        if (i < arr.length - 1) nodes.director?.append(", ");
       });
     }
   }
@@ -362,34 +415,35 @@ function setupModalHeader(nodes, movie) {
     nodes.year.textContent = "";
     if (movie.year) {
       const yearLink = createElement("a", {
-        textContent: movie.year,
+        textContent: String(movie.year),
         href: `?year=${movie.year}`,
         className: "year-link",
         dataset: { yearValue: `${movie.year}` }
       });
       nodes.year.appendChild(yearLink);
-      if (movie.displayYear.length > String(movie.year).length) {
+      if (movie.displayYear && movie.displayYear.length > String(movie.year).length) {
         const suffix = movie.displayYear.substring(String(movie.year).length);
         nodes.year.appendChild(document.createTextNode(suffix));
       }
-    } else {
+    } else if (movie.displayYear) {
       nodes.year.textContent = movie.displayYear;
     }
   }
+  
   renderCountryFlag(
-    nodes["country-container"],
-    nodes["country-flag"],
-    movie.country_code,
-    movie.country
+    nodes["country-container"] || null,
+    nodes["country-flag"] || null,
+    movie.country_code || null,
+    movie.country || null
   );
 
   // Iconos Plataforma
-  if (nodes.iconsContainer) {
+  if (nodes.iconsContainer && movie.studioList) {
     nodes.iconsContainer.innerHTML = "";
     const codes = movie.studioList;
     
     codes.forEach(code => {
-      const conf = STUDIO_DATA[code];
+      const conf = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
       if (conf) {
         const span = createElement('span', { className: `platform-icon ${conf.class || ''}`, title: conf.title });
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -398,7 +452,7 @@ function setupModalHeader(nodes, movie) {
         const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
         use.setAttribute("href", `${spriteUrl}#${conf.id}`);
         svg.appendChild(use); span.appendChild(svg);
-        nodes.iconsContainer.appendChild(span);
+        nodes.iconsContainer?.appendChild(span);
       }
     });
   }
@@ -406,12 +460,10 @@ function setupModalHeader(nodes, movie) {
 
 /**
  * Configura los detalles extendidos del modal (Sinopsis, Reparto, etc.).
- * @param {Object} nodes - Diccionario de nodos UI referenciados.
- * @param {Object} movie - Datos de la película.
  */
-function setupModalDetails(nodes, movie) {
+function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
   // Título Original
-  if (nodes.origTitleWrap && nodes["original-title"]) {
+  if (nodes.origTitleWrap && nodes["original-title"] && movie.displayOriginalTitle) {
     const actualOriginalTitle = movie.displayOriginalTitle;
     nodes["original-title"].textContent = actualOriginalTitle;
     nodes["original-title"].className = ""; // Reset
@@ -425,13 +477,13 @@ function setupModalDetails(nodes, movie) {
   if (nodes.duration) nodes.duration.textContent = formatRuntime(movie.minutes, movie.isSeries);
   
   if (nodes.episodes) {
-    nodes.episodes.textContent = movie.displayEpisodes;
+    nodes.episodes.textContent = movie.displayEpisodes || "";
     nodes.episodes.hidden = !movie.displayEpisodes;
   }
 
   // Links Externos
-  const setupLink = (key, url) => {
-    const el = nodes[`${key}-link`];
+  const setupLink = (key: string, url: string | null | undefined) => {
+    const el = nodes[`${key}-link`] as HTMLAnchorElement | null | undefined;
     if (!el) return;
     if (url) {
       el.href = url; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
@@ -450,9 +502,7 @@ function setupModalDetails(nodes, movie) {
   // Actores
   if (nodes.actors) {
     nodes.actors.textContent = "";
-    if (movie.parsedActors.length > 0) {
-      // OPTIMIZACIÓN: Como esta lista se inyecta cuando la modal ya está en pantalla, 
-      // usamos DocumentFragment para no provocar repintados (Reflows) por cada actor.
+    if (movie.parsedActors && movie.parsedActors.length > 0) {
       const frag = document.createDocumentFragment();
       movie.parsedActors.forEach((name, i, arr) => {
         if (IGNORED_ACTORS.includes(name.toLowerCase())) {
@@ -471,35 +521,36 @@ function setupModalDetails(nodes, movie) {
 
 /**
  * Puebla el contenido del modal clonando la plantilla y asignando datos.
- * @param {HTMLElement} cardElement - Tarjeta original del grid.
- * @param {HTMLElement[]|null} contextCards - Contexto de navegación.
  */
-function populateModal(cardElement, contextCards = null) {
+function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   const { template, content, modal } = getDom();
-  if (!template) return;
+  if (!template || !content || !modal) return;
   
   // Extraemos URL HQ si ya se cargó en la card para evitar parpadeo
   const cardImg = cardElement.querySelector("img");
   const image_hq = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
 
   // Clon superficial para evitar mutaciones cruzadas con la card del grid.
-  const movie = { ...cardElement.movieData, image_hq };
+  const movie = { ...cardElement.movieData, image_hq } as ExtendedMovie;
   const isPerson = cardElement.classList.contains('person-card') || movie.isPerson;
 
   // Si es persona, usamos person-card-template en lugar de quick-view-template
+  const personTemplate = document.getElementById("person-card-template") as HTMLTemplateElement | null;
   const currentTemplate = isPerson 
-    ? document.getElementById("person-card-template")?.content 
+    ? personTemplate?.content 
     : template;
     
   if (!currentTemplate) return;
 
-  const clone = currentTemplate.cloneNode(true);
-  const cardClone = clone.querySelector('.movie-card');
+  const clone = currentTemplate.cloneNode(true) as DocumentFragment;
+  const cardClone = clone.querySelector('.movie-card') as MovieCardElement | null;
+  if (!cardClone) return;
+
   cardClone.classList.add('is-quick-view');
 
-  const modalId = isPerson ? `person-${movie.id}` : movie.id;
+  const modalId = isPerson ? `person-${movie.id}` : String(movie.id);
 
-  // FIX CRÍTICO: Asignar ID y datos a la tarjeta clonada.
+  // Asignar ID y datos a la tarjeta clonada.
   cardClone.dataset.movieId = modalId;
   cardClone.movieData = movie;
 
@@ -535,7 +586,7 @@ function populateModal(cardElement, contextCards = null) {
     
     // Título/Nombre
     const titleEl = cardClone.querySelector('[data-template="title"]');
-    if (titleEl) {
+    if (titleEl && movie.name) {
       titleEl.textContent = movie.name;
     }
     
@@ -549,7 +600,7 @@ function populateModal(cardElement, contextCards = null) {
     const ageEl = cardClone.querySelector('[data-template="age"]');
     const datesEl = cardClone.querySelector('[data-template="dates"]');
     
-    const getYear = (dateStr) => dateStr ? dateStr.split('-')[0] : '';
+    const getYear = (dateStr: string | null | undefined) => dateStr ? dateStr.split('-')[0] : '';
     const bYear = getYear(movie.birthday);
     const dYear = getYear(movie.deathday);
     
@@ -567,11 +618,13 @@ function populateModal(cardElement, contextCards = null) {
     if (datesEl) datesEl.textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
     
     // Bandera del País
+    const countryCode = movie.countries?.code || movie.country_code || null;
+    const countryName = movie.countries?.name || movie.country || null;
     renderCountryFlag(
       cardClone.querySelector('[data-template="country-container"]'),
       cardClone.querySelector('[data-template="country-flag"]'),
-      movie.countries?.code || movie.country_code,
-      movie.countries?.name || movie.country
+      countryCode,
+      countryName
     );
 
     // Biografía
@@ -586,7 +639,7 @@ function populateModal(cardElement, contextCards = null) {
     updateNavButtons(modalId, contextCards);
   } else {
     // --- CAPA PELÍCULA ---
-    // --- CAPA 1: CRÍTICA (Síncrona) ---
+    // --- CAPA 1: CABECERA (Síncrona) ---
     setupModalHeader(nodes, movie);
 
     // Montaje
@@ -617,16 +670,16 @@ function populateModal(cardElement, contextCards = null) {
 /**
  * Cierra el modal con animación y limpieza.
  */
-export function closeModal() {
+export function closeModal(): void {
   const { modal, overlay } = getDom();
-  if (!modal.classList.contains("is-visible")) return;
+  if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
   
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
-  const header = document.querySelector(".main-header");
+  const header = document.querySelector<HTMLElement>(".main-header");
   modalTransitionCount++;
   if (header) header.style.viewTransitionName = "none";
 
-  const performClose = () => {
+  const performClose = (): void => {
     modal.classList.remove("is-visible");
     overlay.classList.remove("is-visible");
     document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
@@ -665,15 +718,14 @@ export function closeModal() {
 
 /**
  * Abre el modal para una tarjeta específica.
- * @param {HTMLElement} cardElement 
- * @param {HTMLElement[]|null} contextCards 
  */
-export function openModal(cardElement, contextCards = null) {
+export function openModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   if (!cardElement) return;
   const { modal, overlay, content } = getDom();
+  if (!modal || !overlay) return;
   
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
-  const header = document.querySelector(".main-header");
+  const header = document.querySelector<HTMLElement>(".main-header");
   modalTransitionCount++;
   if (header) header.style.viewTransitionName = "none";
 
@@ -683,7 +735,7 @@ export function openModal(cardElement, contextCards = null) {
   unflipAllCards();
   populateModal(cardElement, contextCards);
   
-  const performOpen = () => {
+  const performOpen = (): void => {
     document.body.classList.add(CSS_CLASSES.MODAL_OPEN);
     requestAnimationFrame(() => {
       modal.classList.add("is-visible");
@@ -711,16 +763,17 @@ export function openModal(cardElement, contextCards = null) {
 /**
  * Inicializa los listeners globales del modal (Teclado, Gestos).
  */
-export function initQuickView() {
+export function initQuickView(): void {
   const { modal, content, prevBtn, nextBtn } = getDom();
   if (!modal) return;
 
   // Delegación de eventos en contenido
   if (content) {
-    content.addEventListener("click", (e) => {
+    content.addEventListener("click", (e: MouseEvent) => {
       handleMetadataClick(e);
+      const target = e.target as HTMLElement;
       // Toggle flechas al tocar póster (Móvil/Tablet/Desktop)
-      if (e.target.closest(".poster-container")) {
+      if (target.closest(".poster-container")) {
         modal.classList.toggle("hide-arrows");
       }
     });
@@ -728,7 +781,7 @@ export function initQuickView() {
 
   // Teclado
   // Listener global único; initQuickView solo debe llamarse una vez.
-  window.addEventListener("keydown", (e) => {
+  window.addEventListener("keydown", (e: KeyboardEvent) => {
     if (!modal.classList.contains("is-visible")) return;
     if (e.key === "Escape") {
       e.stopPropagation(); // Detener para que no cierre el sidebar u otros elementos
@@ -739,14 +792,14 @@ export function initQuickView() {
   }, { capture: true }); // IMPORTANTE: Capturar antes que document (main.js)
 
   // Botones
-  prevBtn?.addEventListener("click", (e) => { e.stopPropagation(); navigateToSibling(-1); });
-  nextBtn?.addEventListener("click", (e) => { e.stopPropagation(); navigateToSibling(1); });
+  prevBtn?.addEventListener("click", (e: MouseEvent) => { e.stopPropagation(); navigateToSibling(-1); });
+  nextBtn?.addEventListener("click", (e: MouseEvent) => { e.stopPropagation(); navigateToSibling(1); });
 
   // Gestos
   if (navigator.maxTouchPoints > 0) {
-    modal.addEventListener("touchstart", handleTouchStart, { passive: true });
-    modal.addEventListener("touchmove", handleTouchMove, { passive: false });
-    modal.addEventListener("touchend", handleTouchEnd, { passive: true });
-    modal.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+    modal.addEventListener("touchstart", handleTouchStart as EventListener, { passive: true });
+    modal.addEventListener("touchmove", handleTouchMove as EventListener, { passive: false });
+    modal.addEventListener("touchend", handleTouchEnd as EventListener, { passive: true });
+    modal.addEventListener("touchcancel", handleTouchEnd as EventListener, { passive: true });
   }
 }

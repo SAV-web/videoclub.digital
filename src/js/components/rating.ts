@@ -1,7 +1,7 @@
 // =================================================================
 //          COMPONENTE: Rating Stars (UI Logic)
 // =================================================================
-// FICHERO: src/js/components/rating.js
+// FICHERO: src/js/components/rating.ts
 // RESPONSABILIDAD: 
 // - Calcular visualización de estrellas (Media vs Usuario).
 // - Gestionar efectos visuales (Hover) sin lógica de negocio.
@@ -12,29 +12,30 @@ import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../state
 import { setUserMovieDataAPI } from "../api.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
-import { triggerHapticFeedback, formatVotesUnified } from "../utils.js";
+import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
+import { Movie, UserMovieEntry, MovieCardElement } from "../types.js";
 
-const MAX_VOTES = { FA: 220000, IMDB: 3200000 };
-const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) };
+const MAX_VOTES = { FA: 220000, IMDB: 3200000 } as const;
+const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) } as const;
 
 // =================================================================
 //          1. REGLAS DE NEGOCIO (Domain Logic / State Helpers)
 // =================================================================
 
-export const LEVEL_TO_RATING_MAP = [5, 7, 9];
+export const LEVEL_TO_RATING_MAP = [5, 7, 9] as const;
 const MIN_STAR_THRESHOLD = 5.5;
 
 /**
  * Resuelve cuál será la siguiente nota al hacer clic en una estrella.
  * Implementa el ciclo de UX para el nivel 1 (suspenso -> aprobado -> limpiar) y toggles simples.
  */
-export function resolveNextRating(currentRating, clickedLevel) {
+export function resolveNextRating(currentRating: number | null | undefined, clickedLevel: number): number | null {
   if (clickedLevel === 1) {
     if (currentRating === 2) return 5;
     if (currentRating === 5) return null;
     return 2;
   }
-  const potentialRating = LEVEL_TO_RATING_MAP[clickedLevel - 1];
+  const potentialRating = LEVEL_TO_RATING_MAP[(clickedLevel - 1) as 0 | 1 | 2];
   const currentVisualStars = calculateUserStars(currentRating);
   
   if (clickedLevel === currentVisualStars) return null; // Toggle off
@@ -44,20 +45,34 @@ export function resolveNextRating(currentRating, clickedLevel) {
 /**
  * Reglas de exclusividad mutua entre Watchlist y Rating.
  */
-export function resolveWatchlistMutationOnRate(newRating) {
+export function resolveWatchlistMutationOnRate(newRating: number | null): boolean | undefined {
   if (newRating !== null) return false; // Si la marcamos como vista, ya no está en pendientes
   return undefined; // No mutar
 }
 
-export function resolveRatingMutationOnWatchlist(isOnWatchlist) {
+export function resolveRatingMutationOnWatchlist(isOnWatchlist: boolean): number | null | undefined {
   if (isOnWatchlist) return null; // Si la añadimos a pendientes, borramos la nota
   return undefined; // No mutar
+}
+
+export interface RatingPresentationState {
+  showUserRating: boolean;
+  showAverageRating: boolean;
+  showEmptyAverage: boolean;
+  userRatingValue: number | null | undefined;
+  averageRatingValue: number | null | undefined;
+  visualUserStars: number;
+  visualAverageStars: number;
 }
 
 /**
  * Helpers para decidir qué estado visual renderizar de forma determinista.
  */
-export function getRatingPresentationState(movie, userData, isLoggedIn) {
+export function getRatingPresentationState(
+  movie: Movie | undefined,
+  userData: UserMovieEntry | undefined,
+  isLoggedIn: boolean
+): RatingPresentationState {
   const userRating = userData?.rating;
   const hasUserVote = isLoggedIn && typeof userRating === 'number';
   const avg = movie?.avg_rating;
@@ -83,7 +98,7 @@ export function getRatingPresentationState(movie, userData, isLoggedIn) {
  * @param {number|null} rating
  * @returns {number} 0 a 3
  */
-export function calculateUserStars(rating) {
+export function calculateUserStars(rating: number | null | undefined): number {
   // Nota: 0 estrellas puede significar "sin voto" o "suspenso (2)"
   // La distinción se maneja en la capa de UI
   if (!rating) return 0;
@@ -98,8 +113,8 @@ export function calculateUserStars(rating) {
  * @param {number} averageRating 
  * @returns {number}
  */
-export function calculateAverageStars(averageRating) {
-  if (averageRating <= MIN_STAR_THRESHOLD) return 0;
+export function calculateAverageStars(averageRating: number | null | undefined): number {
+  if (averageRating === null || averageRating === undefined || averageRating <= MIN_STAR_THRESHOLD) return 0;
   if (averageRating >= 9) return 3;
   // Interpolación lineal entre 5.5 y 9 sobre 3 estrellas
   return ((averageRating - MIN_STAR_THRESHOLD) / 3.5) * 3;
@@ -109,46 +124,57 @@ export function calculateAverageStars(averageRating) {
 //          2. LÓGICA DE RENDERIZADO (DOM)
 // =================================================================
 
+interface RenderStarsOptions {
+  hideUnfilled?: boolean;
+  snapToInteger?: boolean;
+}
+
 /**
  * Renderiza el estado visual de las estrellas.
  * @param {HTMLElement} starContainer - Contenedor de las estrellas.
  * @param {number} filledAmount - Cantidad de estrellas a llenar (ej: 2.5).
  * @param {Object} options - Configuración.
  */
-function renderStars(starContainer, filledAmount, { hideUnfilled = false, snapToInteger = false } = {}) {
+function renderStars(
+  starContainer: HTMLElement,
+  filledAmount: number,
+  { hideUnfilled = false, snapToInteger = false }: RenderStarsOptions = {}
+): void {
   // OPTIMIZACIÓN: starContainer.children es una colección instantánea O(1), mucho más rápida que querySelectorAll
   const stars = starContainer.children;
   
   const effectiveFill = snapToInteger ? Math.round(filledAmount) : filledAmount;
 
   for (let i = 0; i < stars.length; i++) {
-    const star = stars[i];
+    const star = stars[i] as HTMLElement;
     // Calcular cuánto se llena esta estrella específica (0 a 1)
     const fillValue = Math.max(0, Math.min(1, effectiveFill - i));
     
     // OPTIMIZACIÓN: Accedemos directamente al último hijo (el path relleno) sin buscar en el DOM
-    const filledPath = star.lastElementChild;
+    const filledPath = star.lastElementChild as HTMLElement | null;
 
-    if (hideUnfilled && fillValue === 0) {
-      // OPTIMIZACIÓN: Solo escribimos en el DOM si el valor realmente cambió
-      if (star.style.opacity !== "0") star.style.opacity = "0";
-    } else {
-      if (star.style.opacity !== "1") star.style.opacity = "1";
-      
-      // Técnica de recorte para estrellas parciales
-      const clipPercentage = (1 - fillValue) * 100;
-      const newClip = `inset(0 ${clipPercentage}% 0 0)`;
-      if (filledPath.style.clipPath !== newClip) {
-        filledPath.style.clipPath = newClip;
+    if (filledPath) {
+      if (hideUnfilled && fillValue === 0) {
+        // OPTIMIZACIÓN: Solo escribimos en el DOM si el valor realmente cambió
+        if (star.style.opacity !== "0") star.style.opacity = "0";
+      } else {
+        if (star.style.opacity !== "1") star.style.opacity = "1";
+        
+        // Técnica de recorte para estrellas parciales
+        const clipPercentage = (1 - fillValue) * 100;
+        const newClip = `inset(0 ${clipPercentage}% 0 0)`;
+        if (filledPath.style.clipPath !== newClip) {
+          filledPath.style.clipPath = newClip;
+        }
       }
     }
   }
 }
 
-export const renderAverageStars = (container, value) => 
+export const renderAverageStars = (container: HTMLElement, value: number): void => 
   renderStars(container, value, { hideUnfilled: true, snapToInteger: false });
 
-export const renderUserStars = (container, value, hideHollow = false) => 
+export const renderUserStars = (container: HTMLElement, value: number, hideHollow = false): void => 
   renderStars(container, value, { hideUnfilled: hideHollow, snapToInteger: true });
 
 // =================================================================
@@ -158,14 +184,13 @@ export const renderUserStars = (container, value, hideHollow = false) =>
 /**
  * Maneja el hover sobre las estrellas (Feedback visual inmediato).
  */
-function handleRatingMouseMove(event) {
-  // Delegación de eventos: Buscamos si el ratón está sobre una estrella
-  const starIcon = event.target.closest(".star-icon");
+function handleRatingMouseMove(event: MouseEvent): void {
+  const target = event.target as HTMLElement;
+  const starIcon = target.closest<HTMLElement>(".star-icon");
   if (!starIcon) return;
   
-  const starContainer = event.currentTarget;
-
-  const hoverLevel = parseInt(starIcon.dataset.ratingLevel, 10);
+  const starContainer = event.currentTarget as HTMLElement;
+  const hoverLevel = parseInt(starIcon.dataset.ratingLevel || "0", 10);
   
   // Renderizamos estado "potencial" (lo que pasaría si haces click)
   // hideHollowStars = false para que el usuario vea las estrellas vacías que va a rellenar
@@ -175,37 +200,40 @@ function handleRatingMouseMove(event) {
 /**
  * Restaura el estado original al salir del contenedor.
  */
-function handleRatingMouseLeave(event) {
+function handleRatingMouseLeave(event: MouseEvent): void {
   // Disparamos evento para que 'card.js' refresque la UI con el estado real (store)
   // Esto desacopla rating.js del estado global.
   // Delegamos la restauración visual a card.js para mantener una única fuente de verdad
-  
-  appEvents.emit("card:requestUpdate", { cardElement: event.currentTarget.closest(".movie-card") });
+  const starContainer = event.currentTarget as HTMLElement;
+  const cardElement = starContainer.closest<HTMLElement>(".movie-card");
+  if (cardElement) {
+    appEvents.emit("card:requestUpdate", { cardElement });
+  }
 }
 
-export function setupRatingListeners(starContainer, isInteractive) {
+export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean): void {
   if (!isInteractive) return;
 
   // OPTIMIZACIÓN: Usamos 'mouseover' en el contenedor (burbujea) en lugar de 'mouseenter' en cada estrella.
   // Pasamos de tener 3 listeners por tarjeta a solo 1 (y sin usar querySelectorAll).
-  starContainer.addEventListener("mouseover", handleRatingMouseMove, { passive: true });
+  starContainer.addEventListener("mouseover", handleRatingMouseMove as EventListener, { passive: true });
 
   // Listener en el contenedor para detectar cuando salimos del área de votación
-  starContainer.addEventListener("mouseleave", handleRatingMouseLeave, { passive: true });
+  starContainer.addEventListener("mouseleave", handleRatingMouseLeave as EventListener, { passive: true });
 }
 
 // =================================================================
 //          4. GESTIÓN DE ESTADO Y CLICS (Lógica de Negocio)
 // =================================================================
 
-async function setRating(movieId, value, card) {
+async function setRating(movieId: number, value: number | null, card: MovieCardElement): Promise<void> {
   // 5.1 Mejora: Guardamos solo el rating anterior para un rollback preciso y robusto.
   // Usamos '?? null' para normalizar 'undefined' (sin datos) a 'null' (sin voto).
   const previousRating = getUserDataForMovie(movieId)?.rating ?? null;
   
   if (previousRating === value) return;
 
-  const newState = { rating: value };
+  const newState: Partial<UserMovieEntry> = { rating: value };
 
   const watchlistMutation = resolveWatchlistMutationOnRate(value);
   if (watchlistMutation !== undefined) {
@@ -220,8 +248,8 @@ async function setRating(movieId, value, card) {
     await setUserMovieDataAPI(movieId, newState);
     // 5.2 Feedback de confirmación solo al establecer voto, no al eliminarlo
     if (value !== null) triggerHapticFeedback("success");
-  } catch (err) {
-    showToast(err.message, "error");
+  } catch (err: unknown) {
+    showToast(getFriendlyErrorMessage(err) || "No se pudo guardar la valoración.", "error");
     // Rollback: Restauramos explícitamente el rating anterior
     updateUserDataForMovie(movieId, { rating: previousRating });
     updateRatingUI(card);
@@ -232,17 +260,17 @@ async function setRating(movieId, value, card) {
  * Maneja el clic en elementos de valoración.
  * @returns {boolean} Devuelve true si el click fue manejado y debe detenerse la propagación.
  */
-export function handleRatingClick(event, card) {
-  const target = event.target;
-  const starEl = target.closest(".star-icon[data-rating-level]");
-  const wallRatingEl = target.closest(".wall-rating-number");
-  const ratingBlock = target.closest(".card-rating-block");
+export function handleRatingClick(event: MouseEvent, card: MovieCardElement): boolean {
+  const target = event.target as HTMLElement;
+  const starEl = target.closest<HTMLElement>(".star-icon[data-rating-level]");
+  const wallRatingEl = target.closest<HTMLElement>(".wall-rating-number");
+  const ratingBlock = target.closest<HTMLElement>(".card-rating-block");
   
   if (starEl) {
     event.preventDefault(); event.stopPropagation();
-    const movieId = parseInt(card.dataset.movieId, 10);
+    const movieId = parseInt(card.dataset.movieId || "0", 10);
     const currentRating = getUserDataForMovie(movieId)?.rating;
-    const level = parseInt(starEl.dataset.ratingLevel, 10);
+    const level = parseInt(starEl.dataset.ratingLevel || "0", 10);
 
     const newRating = resolveNextRating(currentRating, level);
 
@@ -255,7 +283,7 @@ export function handleRatingClick(event, card) {
     return true; // Handled
   } else if (wallRatingEl || (ratingBlock && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED))) {
     event.preventDefault(); event.stopPropagation();
-    const movieId = parseInt(card.dataset.movieId, 10);
+    const movieId = parseInt(card.dataset.movieId || "0", 10);
     // Al pulsar el bloque o la nota, iniciamos el voto con "suspenso" (2)
     setRating(movieId, 2, card);
     return true;
@@ -267,26 +295,26 @@ export function handleRatingClick(event, card) {
 //          5. ACTUALIZACIÓN DE UI (Estrellas y Barras)
 // =================================================================
 
-export function updateRatingUI(card) {
-  const movieId = parseInt(card.dataset.movieId, 10);
+export function updateRatingUI(card: MovieCardElement): void {
+  const movieId = parseInt(card.dataset.movieId || "0", 10);
   const movie = card.movieData;
   if (!movie) return;
 
   const userData = getUserDataForMovie(movieId);
-  const userRating = userData?.rating;
   const isLoggedIn = document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
 
-  const starCont = card.querySelector('[data-action="set-rating-estrellas"]');
-  const circleEl = card.querySelector('[data-action="set-rating-suspenso"]');
+  const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
+  const circleEl = card.querySelector<HTMLElement>('[data-action="set-rating-suspenso"]');
   
   if (!starCont || !circleEl) return;
 
   const state = getRatingPresentationState(movie, userData, isLoggedIn);
 
-  const hideExtraStars = () => {
+  const hideExtraStars = (): void => {
     const stars = starCont.children; // Opt: Acceso directo sin querySelectorAll
     for (let i = 1; i < stars.length; i++) {
-      if (stars[i].style.opacity !== "0") stars[i].style.opacity = "0";
+      const star = stars[i] as HTMLElement;
+      if (star.style.opacity !== "0") star.style.opacity = "0";
     }
   };
 
@@ -327,20 +355,20 @@ export function updateRatingUI(card) {
   if (starCont.style.display !== starDisplay) starCont.style.display = starDisplay;
 }
 
-export function setupCardRatings(container, movie) {
-  const setup = (key, maxKey) => {
-    const link = container.querySelector(`[data-template="${key}-link"]`);
+export function setupCardRatings(container: HTMLElement, movie: Movie): void {
+  const setup = (key: "fa" | "imdb", maxKey: "FA" | "IMDB"): void => {
+    const link = container.querySelector<HTMLAnchorElement>(`[data-template="${key}-link"]`);
     if (!link) return;
 
     // 8.2 Mejora: Cachear referencias DOM para evitar queries repetidas y mejorar legibilidad
-    const ratingEl = container.querySelector(`[data-template="${key}-rating"]`);
-    const barCont = container.querySelector(`[data-template="${key}-votes-bar-container"]`);
-    const barEl = container.querySelector(`[data-template="${key}-votes-bar"]`);
-    const countEl = container.querySelector(`[data-template="${key}-votes-count"]`);
+    const ratingEl = container.querySelector<HTMLElement>(`[data-template="${key}-rating"]`);
+    const barCont = container.querySelector<HTMLElement>(`[data-template="${key}-votes-bar-container"]`);
+    const barEl = container.querySelector<HTMLElement>(`[data-template="${key}-votes-bar"]`);
+    const countEl = container.querySelector<HTMLElement>(`[data-template="${key}-votes-count"]`);
 
-    const id = movie[`${key}_id`];
-    const rating = movie[`${key}_rating`];
-    const votes = movie[`${key}_votes`] || 0;
+    const id = movie[`${key}_id` as keyof Movie] as string | null;
+    const rating = movie[`${key}_rating` as keyof Movie] as number | null;
+    const votes = (movie[`${key}_votes` as keyof Movie] as number | null) || 0;
 
     // 8.1 Mejora: Validación estricta de URL (evita falsos positivos como "http-fake")
     if (id && /^https?:\/\//.test(id)) {
@@ -352,7 +380,9 @@ export function setupCardRatings(container, movie) {
       link.classList.add("disabled");
     }
 
-    if (ratingEl) ratingEl.textContent = rating ? (String(rating).includes(".") ? rating : `${rating}.0`) : "N/A";
+    if (ratingEl) {
+      ratingEl.textContent = rating ? (String(rating).includes(".") ? String(rating) : `${rating}.0`) : "N/A";
+    }
     
     if (barCont) {
       barCont.style.display = votes > 0 ? "block" : "none";

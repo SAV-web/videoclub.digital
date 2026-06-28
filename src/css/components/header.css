@@ -129,6 +129,8 @@
 
   .mobile-sidebar-toggle { color: var(--color-text-primary); }
   .type-filter-toggle { font-size: 0.8rem; }
+  .type-filter-toggle.type-filter--movies { background-color: var(--color-accent) !important; color: #fff !important; border-color: transparent !important; }
+  .type-filter-toggle.type-filter--series { background-color: var(--color-accent-exclude) !important; color: #fff !important; border-color: transparent !important; }
   .type-filter-toggle .mobile-icon svg { width: 20px; height: 20px; }
   
   /* Escondemos el texto de ordenar, dejamos solo el icono, pero el input invisible funciona encima */

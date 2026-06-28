@@ -1,53 +1,135 @@
 // =================================================================
-//             EL DIRECTOR DE ORQUESTA (main.js)
+//             EL DIRECTOR DE ORQUESTA (main.ts)
 // =================================================================
 // Lee la URL, pide datos a la API, pinta resultados y vigila el scroll.
 // =================================================================
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
-import { debounce, triggerPopAnimation, getFriendlyErrorMessage, preloadLcpImage, createAbortableRequest, triggerHapticFeedback, LocalStore, normalizeText, executeViewTransition } from "./utils.js";
+import { 
+  debounce, 
+  triggerPopAnimation, 
+  getFriendlyErrorMessage, 
+  preloadLcpImage, 
+  createAbortableRequest, 
+  triggerHapticFeedback, 
+  LocalStore, 
+  executeViewTransition 
+} from "./utils.js";
 import { fetchMovies, getSupabase, fetchUserMovieData, fetchPersonDetails } from "./api.js";
-import { dom, renderPagination, updateHeaderPaginationState, prefetchNextPage, setupAuthModal, updateTypeFilterUI, updateTotalResultsUI, clearAllSidebarAutocomplete, showToast, initThemeToggle, updateMobileStatusBar } from "./ui.js";
-import { getState, getActiveFilters, getCurrentPage, setCurrentPage, setTotalMovies, setFilter, setSearchTerm, setSort, setMediaType, resetFiltersState, setUserMovieData, clearUserMovieData, syncStateWithUrlParams, stateToUrlParams, appEvents } from "./state.js";
+import { 
+  dom, 
+  renderPagination, 
+  updateHeaderPaginationState, 
+  prefetchNextPage, 
+  setupAuthModal, 
+  updateTypeFilterUI, 
+  updateTotalResultsUI, 
+  clearAllSidebarAutocomplete, 
+  showToast, 
+  initThemeToggle, 
+  updateMobileStatusBar 
+} from "./ui.js";
+import { 
+  getState, 
+  getActiveFilters, 
+  getCurrentPage, 
+  setCurrentPage, 
+  setTotalMovies, 
+  setFilter, 
+  setSearchTerm, 
+  setSort, 
+  setMediaType, 
+  resetFiltersState, 
+  setUserMovieData, 
+  clearUserMovieData, 
+  syncStateWithUrlParams, 
+  stateToUrlParams, 
+  appEvents 
+} from "./state.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
+import { MappedMovie, ActiveFilters, VipData } from "./types.js";
+import type { User } from "@supabase/supabase-js";
+
+
+// Interfaces para carga dinámica de módulos
+interface SidebarModule {
+  initSidebar(): void;
+  closeMobileDrawer(): void;
+  openMobileDrawer(): void;
+  collapseAllSections(): void;
+}
+
+interface CardModule {
+  renderMovieGrid(container: HTMLElement | null, movies: MappedMovie[], vipData: VipData | null): void;
+  renderNoResults(gridContainer: HTMLElement | null, paginationContainer: HTMLElement | null, filters: ActiveFilters): void;
+  renderSkeletons(gridContainer: HTMLElement | null, paginationContainer: HTMLElement | null): void;
+  runFlipOnboarding(gridContainer: HTMLElement | null): void;
+  handleCardClick(this: HTMLElement, e: Event): void;
+  initCardInteractions(gridContainer: HTMLElement | null): void;
+  updateCardUI(cardElement: HTMLElement): void;
+}
+
+interface VipData {
+  type: "person" | "collection" | "studio";
+  data?: unknown;
+  code?: string;
+  total?: number;
+}
 
 // Módulos que cargamos más tarde para que la web arranque al instante
-let sidebarModule = null;
+let sidebarModule: SidebarModule | null = null;
 let isAuthInitialized = false;
 
 // Carga la barra lateral (filtros) bajo demanda
-async function loadSidebar() {
+async function loadSidebar(): Promise<SidebarModule | null> {
   if (sidebarModule) return sidebarModule;
   try {
-    sidebarModule = await import("./components/sidebar.js");
+    const mod = await import("./components/sidebar.js") as unknown as SidebarModule;
+    sidebarModule = mod;
     sidebarModule.initSidebar(); // Inicializar listeners al cargar
     return sidebarModule;
-  } catch (e) { console.error("Error loading sidebar", e); }
+  } catch (e) { 
+    console.error("Error loading sidebar", e); 
+    return null;
+  }
 }
 
-const loadCardModule = () => import("./components/card.js");
+const loadCardModule = (): Promise<CardModule> => 
+  import("./components/card.js") as unknown as Promise<CardModule>;
 
 // --- 1. MOTOR PRINCIPAL (Cargar y Pintar Películas) ---
-export async function loadAndRenderMovies(page = 1, { replaceHistory = false, forceSkeleton = false } = {}) {
-  const signal = createAbortableRequest('movie-grid-load').signal;
+export async function loadAndRenderMovies(
+  page = 1, 
+  { replaceHistory = false, forceSkeleton = false }: { replaceHistory?: boolean; forceSkeleton?: boolean } = {}
+): Promise<void> {
+  const signal = createAbortableRequest("movie-grid-load").signal;
 
   setCurrentPage(page);
   updatePageTitle();
   updateUrl({ replace: replaceHistory }); 
 
   document.body.classList.add(CSS_CLASSES.IS_FETCHING);
-  dom.gridContainer.classList.add(CSS_CLASSES.IS_FETCHING);
-  dom.gridContainer.setAttribute("aria-busy", "true");
+  dom.gridContainer?.classList.add(CSS_CLASSES.IS_FETCHING);
+  dom.gridContainer?.setAttribute("aria-busy", "true");
 
   const cardModulePromise = loadCardModule();
   
-  let skeletonTimeout;
+  let skeletonTimeout: ReturnType<typeof setTimeout> | null = null;
   if (forceSkeleton) {
     const { renderSkeletons } = await cardModulePromise;
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
   } else {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    const skeletonDelay = { 'slow-2g': 0, '2g': 50, '3g': 100 }[connection?.effectiveType] || 150;
+    interface NetworkInfo {
+      effectiveType?: "slow-2g" | "2g" | "3g" | "4g";
+    }
+    const nav = navigator as Navigator & {
+      connection?: NetworkInfo;
+      mozConnection?: NetworkInfo;
+      webkitConnection?: NetworkInfo;
+    };
+    const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
+    const effType = connection?.effectiveType;
+    const skeletonDelay = effType === "slow-2g" ? 0 : effType === "2g" ? 50 : effType === "3g" ? 100 : 150;
 
     skeletonTimeout = setTimeout(async () => {
       const { renderSkeletons } = await cardModulePromise;
@@ -60,28 +142,28 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
   try {
-    let vipData = null;
+    let vipData: VipData | null = null;
     let hasVip = false;
     
     // Si buscamos por un VIP (Tarantino), cargamos su cara grande primero
     if (!activeFilters.myList && !activeFilters.searchTerm) {
-      const vipType = activeFilters.director ? 'director' : (activeFilters.actor ? 'actor' : null);
+      const vipType = activeFilters.director ? "director" : (activeFilters.actor ? "actor" : null);
       const vipName = activeFilters.director || activeFilters.actor;
 
       if (vipType && vipName) {
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
-          const hasPhoto = personData.photo && personData.photo !== 'NOT_FOUND';
+          const hasPhoto = personData.photo && personData.photo !== "NOT_FOUND";
           if (hasPhoto) {
             hasVip = true;
-            if (page === 1) vipData = { type: 'person', data: personData };
+            if (page === 1) vipData = { type: "person", data: personData };
           }
         }
       } else if (activeFilters.selection) {
-        if (page === 1) vipData = { type: 'collection', code: activeFilters.selection };
+        if (page === 1) vipData = { type: "collection", code: activeFilters.selection };
         hasVip = true;
       } else if (activeFilters.studio) {
-        if (page === 1) vipData = { type: 'studio', code: activeFilters.studio };
+        if (page === 1) vipData = { type: "studio", code: activeFilters.studio };
         hasVip = true;
       }
     }
@@ -94,8 +176,12 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
     let fetchOffset = (page - 1) * basePageSize;
 
     if (hasVip) {
-      if (page === 1) { fetchLimit = firstPageLimit - 1; fetchOffset = 0; } 
-      else { fetchOffset = ((page - 1) * basePageSize) - 1; }
+      if (page === 1) { 
+        fetchLimit = firstPageLimit - 1; 
+        fetchOffset = 0; 
+      } else { 
+        fetchOffset = ((page - 1) * basePageSize) - 1; 
+      }
     } else {
       if (page === 1) fetchLimit = firstPageLimit; // Extender pág 1 para llenar pantallas enormes
     }
@@ -119,7 +205,7 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
 
     const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
 
-    if (vipData && (vipData.type === 'collection' || vipData.type === 'studio')) {
+    if (vipData && (vipData.type === "collection" || vipData.type === "studio")) {
       vipData.total = effectiveTotal;
     }
 
@@ -133,9 +219,9 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
       window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
-    if (error.name === "AbortError") return;
+    if ((error as Record<string, unknown>)?.name === "AbortError") return;
     
     const msg = getFriendlyErrorMessage(error);
     if (msg) showToast(msg, "error");
@@ -147,14 +233,20 @@ export async function loadAndRenderMovies(page = 1, { replaceHistory = false, fo
   } finally {
     if (!signal.aborted) {
       document.body.classList.remove(CSS_CLASSES.IS_FETCHING);
-      dom.gridContainer.classList.remove(CSS_CLASSES.IS_FETCHING);
-      dom.gridContainer.setAttribute("aria-busy", "false");
+      dom.gridContainer?.classList.remove(CSS_CLASSES.IS_FETCHING);
+      dom.gridContainer?.setAttribute("aria-busy", "false");
     }
   }
 }
 
 // Ayudante: Pone las pelis en pantalla y actualiza las miguitas de pan (SEO)
-function updateDomWithResults(movies, totalMovies, cardModule, vipData = null, hasVip = false) {
+function updateDomWithResults(
+  movies: MappedMovie[], 
+  totalMovies: number, 
+  cardModule: CardModule, 
+  vipData: VipData | null = null, 
+  hasVip = false
+): void {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, movies);
@@ -186,22 +278,20 @@ function updateDomWithResults(movies, totalMovies, cardModule, vipData = null, h
     updateHeaderPaginationState(1, 0);
   } else if (totalMovies <= actualDynamicLimit && currentPage === 1) {
     renderMovieGrid(dom.gridContainer, movies, vipData);
-    dom.paginationContainer.textContent = "";
+    if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
   } else {
-    
     const currentLimit = (hasVip && currentPage === 1) ? baseLimit - 1 : baseLimit;
-    
     const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
     renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
     
     if (gridTotalItems > baseLimit) {
       renderPagination(dom.paginationContainer, gridTotalItems, currentPage);
     } else {
-      dom.paginationContainer.textContent = "";
+      if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     }
     updateHeaderPaginationState(currentPage, gridTotalItems);
-    }
+  }
 
   if (currentPage === 1 && totalMovies > 0) {
     runFlipOnboarding(dom.gridContainer);
@@ -210,31 +300,35 @@ function updateDomWithResults(movies, totalMovies, cardModule, vipData = null, h
 
 // --- 2. MANEJADORES DE UI (Clícs, Teclado) ---
 
-async function handleSortChange(event) {
-  triggerPopAnimation(event.target);
-  setSort(dom.sortSelect.value);
+async function handleSortChange(event: Event): Promise<void> {
+  const select = event.target as HTMLSelectElement;
+  triggerPopAnimation(select);
+  setSort(select.value);
   updateMobileStatusBar();
   await loadAndRenderMovies(1);
 }
 
-async function handleMediaTypeToggle(event) {
-  triggerPopAnimation(event.currentTarget);
+async function handleMediaTypeToggle(event: Event): Promise<void> {
+  const btn = event.currentTarget as HTMLElement;
+  triggerPopAnimation(btn);
   appEvents.emit("uiActionTriggered");
-  const currentType = getState().activeFilters.mediaType;
-  const cycle = { all: "movies", movies: "series", series: "all" };
-  setMediaType(cycle[currentType]);
-  updateTypeFilterUI(cycle[currentType]);
+  const currentType = getState().activeFilters.mediaType as "all" | "movies" | "series";
+  const cycle = { all: "movies", movies: "series", series: "all" } as const;
+  const nextType = cycle[currentType];
+  setMediaType(nextType);
+  updateTypeFilterUI(nextType);
   updateMobileStatusBar();
   await loadAndRenderMovies(1);
 }
 
-async function handleSearchInput() {
+async function handleSearchInput(): Promise<void> {
+  if (!dom.searchInput) return;
   const searchTerm = dom.searchInput.value.trim();
   const currentSearchTerm = getState().activeFilters.searchTerm;
   
   if (searchTerm === currentSearchTerm) return;
   
-  if (searchTerm.length === 0 && currentSearchTerm.length > 0) {
+  if (searchTerm.length === 0 && currentSearchTerm && currentSearchTerm.length > 0) {
     history.back();
     return;
   }
@@ -255,10 +349,13 @@ async function handleSearchInput() {
 // --- 3. VIGILANTE DE SCROLL (Muy optimizado) ---
 let isTicking = false;
 let lastScrollY = 0;
-let scrollTimer = null;
+let scrollTimer: ReturnType<typeof setTimeout> | null = null;
 
-function handleGlobalScroll() {
-  if (scrollTimer) clearTimeout(scrollTimer);
+function handleGlobalScroll(): void {
+  if (scrollTimer) {
+    clearTimeout(scrollTimer);
+    scrollTimer = null;
+  }
   scrollTimer = setTimeout(() => {
     // Prefetch Predictivo: Si el usuario se detiene (mira) cerca del final (>70%)
     const scrollPos = window.scrollY + window.innerHeight;
@@ -280,23 +377,23 @@ function handleGlobalScroll() {
       const isSearchActive = document.activeElement === dom.searchInput;
       const isKeyboardOpen = vHeight < (window.innerHeight * 0.9);
       const isAtBottom = (window.innerHeight + currentScrollY) >= (docHeight - 50);
-      const isSearchFocused = dom.mainHeader.classList.contains("is-search-focused");
+      const isSearchFocused = dom.mainHeader?.classList.contains("is-search-focused");
 
-      dom.mainHeader.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 20);
+      dom.mainHeader?.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 20);
 
-      if (isMobileLayout) {
+      if (isMobileLayout && dom.mainHeader) {
         if (isSearchActive || isSearchFocused || isKeyboardOpen) {
-          dom.mainHeader.classList.remove('is-hidden-mobile');
+          dom.mainHeader.classList.remove("is-hidden-mobile");
           lastScrollY = currentScrollY; // Reset ancla
         } else {
           const scrollDifference = Math.abs(currentScrollY - lastScrollY);
 
           if (isAtBottom) {
-            dom.mainHeader.classList.remove('is-hidden-mobile');
+            dom.mainHeader.classList.remove("is-hidden-mobile");
             lastScrollY = currentScrollY;
           } else if (scrollDifference > 12) {
             const isScrollingDown = currentScrollY > lastScrollY;
-            dom.mainHeader.classList.toggle('is-hidden-mobile', isScrollingDown && currentScrollY > 60);
+            dom.mainHeader.classList.toggle("is-hidden-mobile", isScrollingDown && currentScrollY > 60);
             lastScrollY = currentScrollY; 
           }
         }
@@ -311,7 +408,7 @@ function handleGlobalScroll() {
 }
 
 // Limpia todo (Botón Play o Atrás completo)
-function handleFiltersReset(data) {
+function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: string } }): void {
   const { keepSort, newFilter } = data || {};
   const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
   
@@ -331,39 +428,48 @@ function handleFiltersReset(data) {
 
 // --- 4. PREPARATIVOS AL ARRANCAR (Cableado) ---
 
-function setupHeaderListeners() {
+function setupHeaderListeners(): void {
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
-  dom.searchInput.addEventListener("input", debouncedSearch);
-  dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
   
-  dom.searchInput.addEventListener("focus", () => dom.mainHeader.classList.add("is-search-focused"));
-  dom.searchInput.addEventListener("blur", () => dom.mainHeader.classList.remove("is-search-focused"));
-
-  dom.searchInput.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      if (getState().activeFilters.searchTerm) {
-        history.back();
-      } else {
-        dom.searchInput.blur();
+  if (dom.searchInput) {
+    dom.searchInput.addEventListener("input", debouncedSearch);
+    dom.searchInput.addEventListener("focus", () => dom.mainHeader?.classList.add("is-search-focused"));
+    dom.searchInput.addEventListener("blur", () => dom.mainHeader?.classList.remove("is-search-focused"));
+    dom.searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (getState().activeFilters.searchTerm) {
+          history.back();
+        } else {
+          dom.searchInput?.blur();
+        }
       }
-    }
-  });
+    });
+  }
 
-  dom.sortSelect.addEventListener("change", handleSortChange);
-  dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
+  if (dom.searchForm) {
+    dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
+  }
+
+  if (dom.sortSelect) {
+    dom.sortSelect.addEventListener("change", handleSortChange);
+  }
+
+  if (dom.typeFilterToggle) {
+    dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
+  }
 
   if (dom.mobileSidebarToggle) {
-    dom.mobileSidebarToggle.addEventListener('click', async () => {
+    dom.mobileSidebarToggle.addEventListener("click", async () => {
       const mod = await loadSidebar();
       if (!mod) return;
-      triggerHapticFeedback('light');
-      const isOpen = document.body.classList.contains('sidebar-is-open');
+      triggerHapticFeedback("light");
+      const isOpen = document.body.classList.contains("sidebar-is-open");
       isOpen ? mod.closeMobileDrawer() : mod.openMobileDrawer();
     });
   }
 
-  const navigatePage = async (direction) => {
+  const navigatePage = async (direction: number) => {
     const currentPage = getCurrentPage();
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const totalPages = Math.ceil(getState().totalMovies / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
@@ -373,21 +479,33 @@ function setupHeaderListeners() {
       await loadAndRenderMovies(newPage);
     }
   };
-  dom.headerPrevBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(-1); });
-  dom.headerNextBtn.addEventListener("click", (e) => { triggerPopAnimation(e.currentTarget); navigatePage(1); });
 
-  const clearSearchBtn = dom.searchForm.querySelector('.search-icon--clear');
+  if (dom.headerPrevBtn) {
+    dom.headerPrevBtn.addEventListener("click", (e) => { 
+      triggerPopAnimation(e.currentTarget as HTMLElement); 
+      navigatePage(-1); 
+    });
+  }
+
+  if (dom.headerNextBtn) {
+    dom.headerNextBtn.addEventListener("click", (e) => { 
+      triggerPopAnimation(e.currentTarget as HTMLElement); 
+      navigatePage(1); 
+    });
+  }
+
+  const clearSearchBtn = dom.searchForm?.querySelector(".search-icon--clear");
   if (clearSearchBtn) {
-    clearSearchBtn.addEventListener('pointerdown', (e) => {
+    clearSearchBtn.addEventListener("pointerdown", (e) => {
       e.preventDefault(); // Gestión manual del foco
       e.stopPropagation();
       
-      if (dom.searchInput.value) {
-        dom.searchInput.value = '';
+      if (dom.searchInput && dom.searchInput.value) {
+        dom.searchInput.value = "";
         dom.searchInput.focus();
         handleSearchInput(); 
       } else {
-        dom.searchInput.blur();
+        dom.searchInput?.blur();
       }
     });
   }
@@ -399,55 +517,65 @@ function setupHeaderListeners() {
   updateSearchPlaceholder();
 }
 
-function setupGlobalListeners() {
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
-    if (!e.target.closest(".sidebar") && sidebarModule) sidebarModule.collapseAllSections();
+function setupGlobalListeners(): void {
+  document.addEventListener("click", (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
+    if (!target.closest(".sidebar") && sidebarModule) sidebarModule.collapseAllSections();
   });
 
-  dom.gridContainer.addEventListener("click", async function(e) {
-    const cardElement = e.target.closest(".movie-card");
-    if (cardElement) { 
-      // Prevenir navegación nativa antes de cargar el módulo
-      const filterLink = e.target.closest("[data-director-name], [data-actor-name]");
-      if (filterLink && !(e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1)) {
-        e.preventDefault();
+  if (dom.gridContainer) {
+    dom.gridContainer.addEventListener("click", async function(e: Event) {
+      const target = e.target as HTMLElement;
+      const cardElement = target.closest(".movie-card") as HTMLElement | null;
+      if (cardElement) { 
+        // Prevenir navegación nativa antes de cargar el módulo
+        const filterLink = target.closest("[data-director-name], [data-actor-name]");
+        if (filterLink && !(e as MouseEvent).ctrlKey && !(e as MouseEvent).metaKey && !(e as MouseEvent).shiftKey && (e as MouseEvent).button !== 1) {
+          e.preventDefault();
+        }
+
+        const { handleCardClick } = await loadCardModule();
+        handleCardClick.call(cardElement, e); 
+        return; 
       }
-
-      const { handleCardClick } = await loadCardModule();
-      handleCardClick.call(cardElement, e); 
-      return; 
-    }
-    
-    if (e.target.closest("#clear-filters-from-empty")) {
-      appEvents.emit("filtersReset");
-    }
-  });
+      
+      if (target.closest("#clear-filters-from-empty")) {
+        appEvents.emit("filtersReset");
+      }
+    });
+  }
   
   // Interacciones Card (Hover, Tap)
   loadCardModule().then(({ initCardInteractions }) => {
     initCardInteractions(dom.gridContainer);
   });
   
-  document.getElementById("quick-view-content").addEventListener("click", async function(e) { 
-    const { handleCardClick } = await loadCardModule();
-    handleCardClick.call(this, e); 
-  });
+  const quickViewContent = document.getElementById("quick-view-content");
+  if (quickViewContent) {
+    quickViewContent.addEventListener("click", async function(this: HTMLElement, e: Event) { 
+      const { handleCardClick } = await loadCardModule();
+      handleCardClick.call(this, e); 
+    });
+  }
   
-  dom.paginationContainer.addEventListener("click", async (e) => {
-    const button = e.target.closest(".btn[data-page]");
-    if (button) {
-      appEvents.emit("uiActionTriggered");
-      triggerPopAnimation(button);
-      const page = parseInt(button.dataset.page, 10);
-      await loadAndRenderMovies(page);
-    }
-  });
+  if (dom.paginationContainer) {
+    dom.paginationContainer.addEventListener("click", async (e: Event) => {
+      const target = e.target as HTMLElement;
+      const button = target.closest(".btn[data-page]") as HTMLElement | null;
+      if (button && button.dataset.page) {
+        appEvents.emit("uiActionTriggered");
+        triggerPopAnimation(button);
+        const page = parseInt(button.dataset.page, 10);
+        await loadAndRenderMovies(page);
+      }
+    });
+  }
 
   lastScrollY = window.scrollY;
   window.addEventListener("scroll", handleGlobalScroll, { passive: true });
   
-  document.addEventListener("keydown", (e) => {
+  document.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { 
       if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
       if (sidebarModule) sidebarModule.closeMobileDrawer();
@@ -455,15 +583,16 @@ function setupGlobalListeners() {
   });
 
   // Eventos Personalizados de la App
-  appEvents.on("card:requestUpdate", async (data) => { 
-    if (data.cardElement) {
+  appEvents.on("card:requestUpdate", async (data: { cardElement: HTMLElement }) => { 
+    if (data && data.cardElement) {
       const { updateCardUI } = await loadCardModule();
       updateCardUI(data.cardElement); 
     }
   });
+
   const handleDataRefresh = async () => {
     const { updateCardUI } = await loadCardModule();
-    document.querySelectorAll(".movie-card").forEach(updateCardUI);
+    document.querySelectorAll(".movie-card").forEach((el) => updateCardUI(el as HTMLElement));
   };
   appEvents.on("userMovieDataChanged", handleDataRefresh);
   
@@ -473,30 +602,37 @@ function setupGlobalListeners() {
       loadAndRenderMovies(getCurrentPage());
     }
   });
+
   appEvents.on("filtersReset", handleFiltersReset);
 }
 
 // --- 5. ENCHUFAR LA AUTENTICACIÓN ---
-function setupAuthSystem() {
+function setupAuthSystem(): void {
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
   const loginButton = document.getElementById("login-button");
   const userSessionGroup = document.getElementById("user-session-group");
+  let initialLoadHandled = false;
   
-  async function onLogin(user) {
+  async function onLogin(user: User) {
     document.body.classList.add(CSS_CLASSES.USER_LOGGED_IN);
     if (loginButton) loginButton.hidden = true;
     if (userSessionGroup) userSessionGroup.hidden = false;
 
     const userEmail = user.email || "";
-    userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
-    userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
+    if (userAvatarInitials) {
+      userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
+      userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
+    }
     try {
       const data = await fetchUserMovieData();
       setUserMovieData(data);
       appEvents.emit("userDataUpdated");
-    } catch (error) { showToast(error.message, "error"); }
-    finally { isAuthInitialized = true; }
+    } catch (error: unknown) { 
+      showToast((error as Error)?.message || "Error al cargar tus datos.", "error"); 
+    } finally { 
+      isAuthInitialized = true; 
+    }
   }
   
   function onLogout() {
@@ -504,8 +640,10 @@ function setupAuthSystem() {
     if (loginButton) loginButton.hidden = false;
     if (userSessionGroup) userSessionGroup.hidden = true;
 
-    userAvatarInitials.textContent = "";
-    userAvatarInitials.title = "";
+    if (userAvatarInitials) {
+      userAvatarInitials.textContent = "";
+      userAvatarInitials.title = "";
+    }
     clearUserMovieData();
     appEvents.emit("userDataUpdated");
     isAuthInitialized = true;
@@ -514,29 +652,70 @@ function setupAuthSystem() {
   async function handleLogout() {
     const supabase = await getSupabase();
     const { error } = await supabase.auth.signOut();
-    if (error) { console.error("Logout error:", error); showToast("Error al cerrar sesión.", "error"); }
+    if (error) { 
+      console.error("Logout error:", error); 
+      showToast("Error al cerrar sesión.", "error"); 
+    }
   }
   
   if (logoutButton) logoutButton.addEventListener("click", handleLogout);
   
   getSupabase().then(supabase => {
-    supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) onLogin(session.user); else onLogout();
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        import("./auth.js").then(({ showResetPasswordView }) => {
+          showResetPasswordView();
+        });
+      }
+      
+      if (session?.user) {
+        onLogin(session.user);
+      } else {
+        onLogout();
+      }
+
+      // Limpieza preventiva del hash de redirección para todos los casos de retorno OTP/Magic Link
+      const hasAuthHash = window.location.hash.includes("access_token=") || 
+                         window.location.hash.includes("error_code=");
+
+      if (hasAuthHash && !window.location.hash.includes("type=recovery")) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        loadAndRenderMovies(1, { replaceHistory: true });
+        initialLoadHandled = true;
+      } else if (!initialLoadHandled) {
+        initialLoadHandled = true;
+        loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
+      } else {
+        // Recargar películas ante cambios de sesión posteriores (login/logout manual)
+        // para refrescar marcas de lista y valoraciones
+        loadAndRenderMovies(getCurrentPage());
+      }
     });
+
+    // Control preventivo de carrera: si la página cargó con el hash de recuperación,
+    // forzar la vista de restablecimiento por si el evento inicial ya se disparó.
+    if (window.location.hash.includes("type=recovery")) {
+      import("./auth.js").then(({ showResetPasswordView }) => {
+        showResetPasswordView();
+      });
+    } else if (window.location.hash.includes("error_code=otp_expired")) {
+      showToast("El enlace de recuperación ha expirado. Solicita uno nuevo.", "error");
+      window.location.hash = "";
+    }
   });
 }
 
-function readUrlAndSetState() {
+function readUrlAndSetState(): void {
   syncStateWithUrlParams(window.location.search);
   
   const activeFilters = getActiveFilters();
   if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
-  dom.sortSelect.value = activeFilters.sort;
-  updateTypeFilterUI(activeFilters.mediaType);
+  if (dom.sortSelect) dom.sortSelect.value = activeFilters.sort;
+  updateTypeFilterUI(activeFilters.mediaType as "movies" | "series" | "all");
   updateMobileStatusBar();
 }
 
-function updateUrl({ replace = false } = {}) {
+function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
   const params = stateToUrlParams(getActiveFilters(), getCurrentPage());
   
   const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
@@ -549,11 +728,10 @@ function updateUrl({ replace = false } = {}) {
   }
 }
 
-// --- 6. ARRANQUE GLOBAL DE LA WEB ---
-function init() {
+function init(): void {
   requestAnimationFrame(() => {
-    document.querySelectorAll('[data-loading]').forEach(el => {
-      el.removeAttribute('data-loading');
+    document.querySelectorAll("[data-loading]").forEach(el => {
+      el.removeAttribute("data-loading");
     });
   });
 
@@ -577,10 +755,11 @@ function init() {
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
   });
   
-  const idleLoad = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000));
+  setupAuthSystem(); // Iniciar sesión de inmediato para resolver la carga limpia de la landing page
+
+  const idleLoad = (window as Window & { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1000));
   idleLoad(() => {
     loadSidebar();
-    setupAuthSystem();
     setupAuthModal();
   });
 
@@ -592,15 +771,21 @@ function init() {
   if (loginBtn) {
     loginBtn.addEventListener("click", async () => {
       try {
-        const { initAuthForms } = await import("./auth.js");
+        const { initAuthForms } = await import("./auth.js") as unknown as { initAuthForms(): void };
         initAuthForms();
-      } catch (e) { console.error("Error loading auth module", e); }
+      } catch (e) { 
+        console.error("Error loading auth module", e); 
+      }
     }, { once: true });
   }
   
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
-  loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
+  
+  // Mostrar skeletons preliminares mientras se carga el catálogo (que se disparará inmediatamente por setupAuthSystem)
+  loadCardModule().then(({ renderSkeletons }) => {
+    renderSkeletons(dom.gridContainer, dom.paginationContainer);
+  });
 }
 
 if (document.readyState === "loading") {

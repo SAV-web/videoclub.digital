@@ -1,36 +1,42 @@
-// src/js/components/card.js
+/// <reference types="vite/client" />
+
+// =================================================================
+//          COMPONENTE: Movie Card (Ficha e Interacciones)
+// =================================================================
+// FICHERO: src/js/components/card.ts
+// RESPONSABILIDAD: Gestión del ciclo de vida de la tarjeta de película.
+// =================================================================
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, isMovieSeries, formatYearRange, getHqPosterUrl, debounce } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import spriteUrl from "../../sprite.svg";
+import { MappedMovie, ActiveFilters, UserMovieEntry, PersonDetails, VipData, MovieCardElement } from "../types.js";
 
 // =================================================================
 //          CONSTANTES Y ESTADO
 // =================================================================
 
-// Cachear template una sola vez
-const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE);
-const personTemplate = document.querySelector(SELECTORS.PERSON_CARD_TEMPLATE);
-const collectionTemplate = document.querySelector("#collection-card-template");
+// Cachear templates una sola vez
+const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE) as HTMLTemplateElement | null;
+const personTemplate = document.querySelector(SELECTORS.PERSON_CARD_TEMPLATE) as HTMLTemplateElement | null;
+const collectionTemplate = document.querySelector("#collection-card-template") as HTMLTemplateElement | null;
 
 // Estado de Renderizado
 let currentRenderRequestId = 0;
 
 // Estado de Interacción
-let currentlyFlippedCard = null;
-// Invariant: hoverTimeout solo es válido para currentHoveredCard
-let hoverTimeout;
-let currentHoveredCard = null;
+let currentlyFlippedCard: MovieCardElement | null = null;
+let hoverTimeout: ReturnType<typeof setTimeout> | undefined;
+let currentHoveredCard: MovieCardElement | null = null;
 const HOVER_DELAY = 1000;
-// Nota: INTERACTIVE_SELECTOR solo aplica a hover-delay, no a tap/click logic
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn";
 const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
 
-// Caché del Viewport para evitar Layout Thrashing (Forced Synchronous Layout) en renderizados masivos
+// Caché del Viewport para evitar Layout Thrashing
 let cachedIsMobileViewport = window.innerWidth <= 768;
 window.addEventListener('resize', debounce(() => { cachedIsMobileViewport = window.innerWidth <= 768; }, 250));
 
@@ -38,10 +44,13 @@ window.addEventListener('resize', debounce(() => { cachedIsMobileViewport = wind
 //          0. LAZY LOADING (Modal)
 // =================================================================
 
-async function loadAndOpenModal(cardElement) {
+async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
   const { openModal, initQuickView } = await import("./modal.js");
-  // Asegurar inicialización única (idempotente en la práctica, pero seguro)
-  if (!window[QUICK_VIEW_INIT_FLAG]) { initQuickView(); window[QUICK_VIEW_INIT_FLAG] = true; }
+  const win = window as unknown as Record<string, unknown>;
+  if (!win[QUICK_VIEW_INIT_FLAG]) { 
+    initQuickView(); 
+    win[QUICK_VIEW_INIT_FLAG] = true; 
+  }
   openModal(cardElement);
 }
 
@@ -49,23 +58,23 @@ async function loadAndOpenModal(cardElement) {
 //          1. GESTIÓN DE ESTADO VISUAL (Flip/Back)
 // =================================================================
 
-function resetCardBackState(cardElement) {
-  const flipCardBack = cardElement.querySelector(".flip-card-back");
+function resetCardBackState(cardElement: MovieCardElement): void {
+  const flipCardBack = cardElement.querySelector<HTMLElement>(".flip-card-back");
   if (flipCardBack?.classList.contains("is-expanded")) {
     flipCardBack.classList.remove("is-expanded", "show-actors");
-    const expandBtn = flipCardBack.querySelector(".expand-content-btn");
+    const expandBtn = flipCardBack.querySelector<HTMLButtonElement>(".expand-content-btn");
     if (expandBtn) {
       expandBtn.textContent = "+";
       expandBtn.setAttribute("aria-label", "Expandir sinopsis");
     }
     // Reset scroll positions
-    const scrolls = flipCardBack.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+    const scrolls = flipCardBack.querySelectorAll<HTMLElement>(".scrollable-content, .actors-scrollable-content");
     scrolls.forEach(el => el.scrollTop = 0);
   }
 }
 
-export function unflipAllCards() {
-  clearTimeout(hoverTimeout);
+export function unflipAllCards(): void {
+  if (hoverTimeout) clearTimeout(hoverTimeout);
   if (currentlyFlippedCard) {
     currentlyFlippedCard.querySelector(".flip-card-inner")?.classList.remove("is-flipped");
     resetCardBackState(currentlyFlippedCard);
@@ -74,8 +83,9 @@ export function unflipAllCards() {
   }
 }
 
-function handleDocumentClick(e) {
-  if (currentlyFlippedCard && !currentlyFlippedCard.contains(e.target)) {
+function handleDocumentClick(e: MouseEvent): void {
+  const target = e.target as HTMLElement;
+  if (currentlyFlippedCard && !currentlyFlippedCard.contains(target)) {
     unflipAllCards();
   }
 }
@@ -84,7 +94,7 @@ function handleDocumentClick(e) {
 //          2. LÓGICA DE INTERACCIÓN (Pointer Events)
 // =================================================================
 
-function prefetchCardResources(card) {
+function prefetchCardResources(card: MovieCardElement): void {
   if (card.dataset.prefetched) return;
   card.dataset.prefetched = "true";
 
@@ -92,28 +102,31 @@ function prefetchCardResources(card) {
   import("./modal.js");
 
   // 2. Intención visual: Cargar imagen HQ
-  const img = card.querySelector("img");
+  const img = card.querySelector<HTMLImageElement>("img");
   if (img && img.dataset.src) {
     const link = document.createElement("link");
-    link.rel = "preload"; link.as = "image"; link.href = img.dataset.src;
+    link.rel = "preload"; 
+    link.as = "image"; 
+    link.href = img.dataset.src;
     document.head.appendChild(link);
   }
 }
 
-function startFlipTimer(cardElement) {
+function startFlipTimer(cardElement: MovieCardElement): void {
   if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
-  if (cardElement.querySelector(".flip-card-inner").classList.contains("is-flipped")) return;
+  const inner = cardElement.querySelector(".flip-card-inner");
+  if (inner?.classList.contains("is-flipped")) return;
 
-  clearTimeout(hoverTimeout);
+  if (hoverTimeout) clearTimeout(hoverTimeout);
   hoverTimeout = setTimeout(() => {
     if (currentHoveredCard === cardElement) {
       cardElement.classList.add("is-hovered");
-      prefetchCardResources(cardElement); // Señal: Hover prolongado
+      prefetchCardResources(cardElement);
     }
   }, HOVER_DELAY);
 }
 
-const handleSingleTap = (cardElement) => {
+const handleSingleTap = (cardElement: MovieCardElement): void => {
   if (!cardElement) return;
   const inner = cardElement.querySelector(".flip-card-inner");
   if (!inner) return;
@@ -126,13 +139,10 @@ const handleSingleTap = (cardElement) => {
   
   triggerHapticFeedback("light");
   inner.classList.toggle("is-flipped");
-  prefetchCardResources(cardElement); // Señal: Interacción directa (Flip)
+  prefetchCardResources(cardElement);
   
   if (!isFlipped) {
     currentlyFlippedCard = cardElement;
-    // Fix: Race condition check. Si la tarjeta se cierra antes de que este timeout se ejecute
-    // (por ejemplo, doble tap rápido o renderizado), no debemos añadir el listener.
-    // Se difiere el listener para evitar que el click actual cierre inmediatamente la card.
     setTimeout(() => {
       if (currentlyFlippedCard === cardElement) {
         document.addEventListener("click", handleDocumentClick);
@@ -145,32 +155,34 @@ const handleSingleTap = (cardElement) => {
   }
 };
 
-export function initCardInteractions(gridContainer) {
+export function initCardInteractions(gridContainer: HTMLElement): void {
   // --- Hover (Desktop) ---
-  gridContainer.addEventListener("pointerover", (e) => {
+  gridContainer.addEventListener("pointerover", (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
-    const card = e.target.closest(".movie-card");
+    const target = e.target as HTMLElement;
+    const card = target.closest<MovieCardElement>(".movie-card");
     if (!card) return;
 
     if (currentHoveredCard !== card) {
       if (currentHoveredCard) {
-        clearTimeout(hoverTimeout);
+        if (hoverTimeout) clearTimeout(hoverTimeout);
         currentHoveredCard.classList.remove("is-hovered");
         resetCardBackState(currentHoveredCard);
       }
       currentHoveredCard = card;
       startFlipTimer(card);
-    } else if (!e.target.closest(INTERACTIVE_SELECTOR)) {
-      startFlipTimer(card); // Reiniciar si salimos de zona interactiva pero seguimos en card
+    } else if (!target.closest(INTERACTIVE_SELECTOR)) {
+      startFlipTimer(card);
     } else {
-      clearTimeout(hoverTimeout); // Pausar si estamos interactuando
+      if (hoverTimeout) clearTimeout(hoverTimeout);
     }
   });
 
-  gridContainer.addEventListener("pointerout", (e) => {
+  gridContainer.addEventListener("pointerout", (e: PointerEvent) => {
     if (e.pointerType !== 'mouse' || !currentHoveredCard) return;
-    if (!currentHoveredCard.contains(e.relatedTarget)) {
-      clearTimeout(hoverTimeout);
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    if (!relatedTarget || !currentHoveredCard.contains(relatedTarget)) {
+      if (hoverTimeout) clearTimeout(hoverTimeout);
       currentHoveredCard.classList.remove("is-hovered");
       resetCardBackState(currentHoveredCard);
       currentHoveredCard = null;
@@ -178,8 +190,9 @@ export function initCardInteractions(gridContainer) {
   });
 
   // --- Doble Click (Desktop) ---
-  gridContainer.addEventListener("dblclick", (e) => {
-    const card = e.target.closest(".movie-card");
+  gridContainer.addEventListener("dblclick", (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const card = target.closest<MovieCardElement>(".movie-card");
     if (card && !document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       loadAndOpenModal(card);
     }
@@ -187,26 +200,25 @@ export function initCardInteractions(gridContainer) {
 
   // --- Tap / Doble Tap (Táctil) ---
   let lastTapTime = 0;
-  let tapTimeout = null;
+  let tapTimeout: ReturnType<typeof setTimeout> | null = null;
   let startX = 0, startY = 0;
   const DOUBLE_TAP_DELAY = 250;
   const MOVE_THRESHOLD = 10;
 
-  gridContainer.addEventListener('pointerdown', e => {
+  gridContainer.addEventListener('pointerdown', (e: PointerEvent) => {
     if (e.pointerType === 'mouse' || !e.isPrimary) return;
     startX = e.clientX;
     startY = e.clientY;
   }, { passive: true });
 
-  gridContainer.addEventListener('pointerup', e => {
+  gridContainer.addEventListener('pointerup', (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
 
-    const card = e.target.closest('.movie-card');
+    const target = e.target as HTMLElement;
+    const card = target.closest<MovieCardElement>('.movie-card');
     
-    // Zona Segura Inteligente: Solo bloquear doble tap en elementos interactivos específicos
-    // Se incluyen botones de actores y expansión para evitar que e.preventDefault() rompa su clic
     const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item';
-    if (!card || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || e.target.closest(criticalElements)) return;
+    if (!card || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || target.closest(criticalElements)) return;
 
     // Detectar si fue un tap o un scroll
     if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) return;
@@ -218,11 +230,11 @@ export function initCardInteractions(gridContainer) {
 
     if (lastTapTime > 0 && tapLength < DOUBLE_TAP_DELAY) {
       // Doble Tap -> Modal
-      clearTimeout(tapTimeout);
+      if (tapTimeout) clearTimeout(tapTimeout);
       loadAndOpenModal(card);
     } else {
       // Primer Tap -> Esperar
-      clearTimeout(tapTimeout);
+      if (tapTimeout) clearTimeout(tapTimeout);
       tapTimeout = setTimeout(() => handleSingleTap(card), DOUBLE_TAP_DELAY);
     }
     lastTapTime = currentTime;
@@ -233,44 +245,44 @@ export function initCardInteractions(gridContainer) {
 //          3. MANEJADORES DE CLICS (Acciones)
 // =================================================================
 
-async function toggleWatchlist(movieId, btn, card) {
+async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
   const wasActive = btn.classList.contains("is-active");
-  const newState = { onWatchlist: !wasActive };
+  const newState: Partial<UserMovieEntry> = { onWatchlist: !wasActive };
   const prevState = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
 
-  const ratingMutation = resolveRatingMutationOnWatchlist(newState.onWatchlist);
+  const ratingMutation = resolveRatingMutationOnWatchlist(newState.onWatchlist || false);
   if (ratingMutation !== undefined) {
     newState.rating = ratingMutation;
   }
 
   triggerHapticFeedback("light");
-  updateUserDataForMovie(movieId, newState); // Optimistic Update
+  updateUserDataForMovie(movieId, newState);
   updateCardUI(card);
 
   try {
     await setUserMovieDataAPI(movieId, newState);
     triggerHapticFeedback("success");
-  } catch (err) {
-    showToast(err.message, "error");
-    updateUserDataForMovie(movieId, prevState); // Rollback
+  } catch (err: unknown) {
+    showToast(getFriendlyErrorMessage(err) || "Error al actualizar la lista.", "error");
+    updateUserDataForMovie(movieId, prevState);
     updateCardUI(card);
   }
 }
 
-export function handleCardClick(event) {
+export function handleCardClick(this: MovieCardElement, event: MouseEvent): void {
   // Contrato Global: Respetar el cooldown de gestos
   if (areInteractionsLocked()) { event.preventDefault(); event.stopPropagation(); return; }
 
   const card = this;
   const isPerson = card.classList.contains('person-card');
-  const target = event.target;
+  const target = event.target as HTMLElement;
 
   // 1. Botones de Acción
-  const watchlistBtn = target.closest('[data-action="toggle-watchlist"]');
+  const watchlistBtn = target.closest<HTMLElement>('[data-action="toggle-watchlist"]');
   if (watchlistBtn) {
     event.preventDefault(); event.stopPropagation();
-    if (isPerson) return; // Bloquear watchlist en personas/VIPs
-    const movieId = parseInt(card.dataset.movieId, 10);
+    if (isPerson) return;
+    const movieId = parseInt(card.dataset.movieId || "0", 10);
     toggleWatchlist(movieId, watchlistBtn, card);
     return;
   }
@@ -279,21 +291,20 @@ export function handleCardClick(event) {
   if (!isPerson && handleRatingClick(event, card)) return;
   if (isPerson && target.closest('[data-action^="set-rating"]')) {
     event.preventDefault(); event.stopPropagation();
-    return; // Bloquear votaciones de estrellas en personas/VIPs
+    return;
   }
 
   // 3. Expansión de Contenido (Películas o Personas)
-  const flipBack = card.querySelector(".flip-card-back");
-  const expandBtn = target.closest(".expand-content-btn");
-  const actorsExpandBtn = target.closest(".actors-expand-btn");
+  const flipBack = card.querySelector<HTMLElement>(".flip-card-back");
+  const expandBtn = target.closest<HTMLButtonElement>(".expand-content-btn");
+  const actorsExpandBtn = target.closest<HTMLButtonElement>(".actors-expand-btn");
 
-  if (actorsExpandBtn) {
-    // Optimización JIT: Renderizado Perezoso del reparto.
-    let actorsOverlay = flipBack.querySelector('.actors-scrollable-content');
+  if (actorsExpandBtn && flipBack) {
+    let actorsOverlay = flipBack.querySelector<HTMLElement>('.actors-scrollable-content');
     if (!actorsOverlay) {
       actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
 
-      const actors = card.movieData?.parsedActors || [];
+      const actors = (card.movieData as MappedMovie)?.parsedActors || [];
       let html = `<h4>Reparto</h4><div class="actors-list-text">`;
       actors.forEach(name => {
         if (IGNORED_ACTORS.includes(name.toLowerCase())) {
@@ -309,12 +320,15 @@ export function handleCardClick(event) {
 
     event.stopPropagation();
     flipBack.classList.add("is-expanded", "show-actors");
-    const bottomBtn = flipBack.querySelector(".expand-content-btn");
-    if(bottomBtn) { bottomBtn.textContent = "−"; bottomBtn.setAttribute("aria-label", "Cerrar detalles"); }
+    const bottomBtn = flipBack.querySelector<HTMLButtonElement>(".expand-content-btn");
+    if(bottomBtn) { 
+      bottomBtn.textContent = "−"; 
+      bottomBtn.setAttribute("aria-label", "Cerrar detalles"); 
+    }
     return;
   }
 
-  if (expandBtn) {
+  if (expandBtn && flipBack) {
     event.stopPropagation();
     const isExpanded = flipBack.classList.contains("is-expanded");
     if (isExpanded) {
@@ -329,25 +343,35 @@ export function handleCardClick(event) {
   }
 
   // 4. Bloqueo de Flip en Scroll
-  if ((target.closest('.scrollable-content') && flipBack?.classList.contains('is-expanded')) ||
-      target.closest('.actors-scrollable-content')) {
+  if (flipBack && ((target.closest('.scrollable-content') && flipBack.classList.contains('is-expanded')) ||
+      target.closest('.actors-scrollable-content'))) {
     if (!target.closest('.actor-list-item')) {
-      event.stopPropagation(); return;
+      event.stopPropagation(); 
+      return;
     }
   }
 
   // 5. Enlaces Filtros
-  const filterLink = target.closest("[data-director-name], [data-actor-name], [data-year-value]");
+  const filterLink = target.closest<HTMLElement>("[data-director-name], [data-actor-name], [data-year-value]");
   if (filterLink) {
     if (card.id === 'quick-view-content') return;
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
     event.preventDefault();
     event.stopPropagation();
-    let type, value;
-    if (filterLink.dataset.directorName) { type = "director"; value = filterLink.dataset.directorName; }
-    else if (filterLink.dataset.actorName) { type = "actor"; value = filterLink.dataset.actorName; }
-    else if (filterLink.dataset.yearValue) { type = "year"; value = filterLink.dataset.yearValue; }
+    let type: "director" | "actor" | "year";
+    let value: string | undefined;
+
+    if (filterLink.dataset.directorName) { 
+      type = "director"; 
+      value = filterLink.dataset.directorName; 
+    } else if (filterLink.dataset.actorName) { 
+      type = "actor"; 
+      value = filterLink.dataset.actorName; 
+    } else { 
+      type = "year"; 
+      value = filterLink.dataset.yearValue; 
+    }
 
     appEvents.emit("filtersReset", { keepSort: true, newFilter: { type, value } });
     return;
@@ -357,7 +381,7 @@ export function handleCardClick(event) {
   const link = target.closest("a");
   if (link && link.href && link.origin !== location.origin) return;
 
-  // 7. Apertura Modal (Modo Muro / Clic general en VIP)
+  // 7. Apertura Modal (Modo Muro)
   if (card.id !== 'quick-view-content') {
     if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       loadAndOpenModal(card);
@@ -369,14 +393,15 @@ export function handleCardClick(event) {
 //          4. RENDERIZADO (Builders)
 // =================================================================
 
-// Observer de Lazy Load
 const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
-      const img = entry.target;
-      img.src = img.dataset.src;
-      img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
-      img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+      const img = entry.target as HTMLImageElement;
+      if (img.dataset.src) {
+        img.src = img.dataset.src;
+        img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
+        img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+      }
       obs.unobserve(img);
     }
   });
@@ -384,19 +409,21 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   rootMargin: "200px"
 });
 
-function cleanupLazyImages(container) {
+function cleanupLazyImages(container: HTMLElement): void {
   if (!container) return;
-  container.querySelectorAll("img[data-src]").forEach(img => lazyLoadObserver.unobserve(img));
+  container.querySelectorAll<HTMLImageElement>("img[data-src]").forEach(img => lazyLoadObserver.unobserve(img));
 }
 
-function populateCard(card, movie, index) {
-  const front = card.querySelector('.movie-summary');
-  const back = card.querySelector('.flip-card-back');
+function populateCard(card: MovieCardElement, movie: MappedMovie, index: number): void {
+  const front = card.querySelector<HTMLElement>('.movie-summary');
+  const back = card.querySelector<HTMLElement>('.flip-card-back');
+  if (!front || !back) return;
 
   // --- IMAGEN ---
-  const img = card.querySelector("img");
+  const img = card.querySelector<HTMLImageElement>("img");
+  if (!img) return;
+
   const hqPoster = getHqPosterUrl(movie.image);
-  
   img.alt = `Póster de ${movie.title}`;
   
   const priorityCount = cachedIsMobileViewport ? 6 : 2;
@@ -420,78 +447,84 @@ function populateCard(card, movie, index) {
   }
 
   // --- TEXTOS BÁSICOS ---
-  const titleEl = front.querySelector(SELECTORS.TITLE);
-  titleEl.textContent = movie.title;
-  titleEl.title = movie.title;
-  titleEl.className = "";
+  const titleEl = front.querySelector<HTMLElement>(SELECTORS.TITLE);
+  if (titleEl && movie.title) {
+    titleEl.textContent = movie.title;
+    titleEl.title = movie.title;
+    titleEl.className = "";
 
-  const tLen = movie.title.length;
-  if (tLen > 40) titleEl.classList.add("title-xl-long");
-  else if (tLen > 25) titleEl.classList.add("title-long");
-  else if (tLen > 12) titleEl.classList.add("title-medium");
+    const tLen = movie.title.length;
+    if (tLen > 40) titleEl.classList.add("title-xl-long");
+    else if (tLen > 25) titleEl.classList.add("title-long");
+    else if (tLen > 12) titleEl.classList.add("title-medium");
+  }
 
   // Directores
-  const dirCont = front.querySelector(SELECTORS.DIRECTOR);
-  dirCont.textContent = "";
-  if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
-    const showOnlyLastName = movie.parsedDirectors.length > 2;
-    
-    movie.parsedDirectors.forEach((name, i, arr) => {
-      let displayText = name;
+  const dirCont = front.querySelector<HTMLElement>(SELECTORS.DIRECTOR);
+  if (dirCont) {
+    dirCont.textContent = "";
+    if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
+      const showOnlyLastName = movie.parsedDirectors.length > 2;
       
-      if (showOnlyLastName) {
-        const nameParts = name.split(" ");
-        if (nameParts.length > 1) displayText = nameParts.pop();
-      }
-      
-      const link = createElement("a", { 
-        textContent: displayText, 
-        href: `?dir=${encodeURIComponent(name)}`, 
-        dataset: { directorName: name } 
+      movie.parsedDirectors.forEach((name, i, arr) => {
+        let displayText = name;
+        
+        if (showOnlyLastName) {
+          const nameParts = name.split(" ");
+          if (nameParts.length > 1) displayText = nameParts.pop() || name;
+        }
+        
+        const link = createElement("a", { 
+          textContent: displayText, 
+          href: `?dir=${encodeURIComponent(name)}`, 
+          dataset: { directorName: name } 
+        });
+        dirCont.append(link, i < arr.length - 1 ? ", " : "");
       });
-      dirCont.append(link, i < arr.length - 1 ? ", " : "");
-    });
+    }
   }
 
   // Año y País
   const isSeries = movie.isSeries;
-  const yearContainer = front.querySelector(SELECTORS.YEAR);
-  yearContainer.textContent = "";
-  const displayYear = movie.displayYear || "N/A";
-  if (movie.year) {
-    const yearLink = createElement("a", {
-      textContent: movie.year,
-      href: `?year=${movie.year}`,
-      className: "year-link",
-      dataset: { yearValue: `${movie.year}` }
-    });
-    yearContainer.appendChild(yearLink);
-    if (displayYear.length > String(movie.year).length) {
-      const suffix = displayYear.substring(String(movie.year).length);
-      yearContainer.appendChild(document.createTextNode(suffix));
+  const yearContainer = front.querySelector<HTMLElement>(SELECTORS.YEAR);
+  if (yearContainer) {
+    yearContainer.textContent = "";
+    const displayYear = movie.displayYear || "N/A";
+    if (movie.year) {
+      const yearLink = createElement("a", {
+        textContent: String(movie.year),
+        href: `?year=${movie.year}`,
+        className: "year-link",
+        dataset: { yearValue: `${movie.year}` }
+      });
+      yearContainer.appendChild(yearLink);
+      if (displayYear.length > String(movie.year).length) {
+        const suffix = displayYear.substring(String(movie.year).length);
+        yearContainer.appendChild(document.createTextNode(suffix));
+      }
+    } else {
+      yearContainer.textContent = displayYear;
     }
-  } else {
-    yearContainer.textContent = displayYear;
   }
   
   renderCountryFlag(
     front.querySelector(SELECTORS.COUNTRY_CONTAINER),
     front.querySelector(SELECTORS.COUNTRY_FLAG),
-    movie.country_code,
-    movie.country
+    movie.country_code || null,
+    movie.country || null
   );
 
   // Iconos
-  const iconCont = front.querySelector('.card-icons-line');
+  const iconCont = front.querySelector<HTMLElement>('.card-icons-line');
   if (iconCont) {
     iconCont.innerHTML = "";
     const codes = movie.studios_list?.split(",") || [];
     
-    iconCont.classList.toggle('compact', codes.filter(c => STUDIO_DATA[c]).length >= 3);
+    iconCont.classList.toggle('compact', codes.filter(c => STUDIO_DATA[c as keyof typeof STUDIO_DATA]).length >= 3);
 
     let iconsHtml = "";
     codes.forEach(code => {
-      const conf = STUDIO_DATA[code];
+      const conf = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
       if (conf) {
         iconsHtml += `<span class="platform-icon ${conf.class || ''}" title="${conf.title}">
           <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="${conf.vb || "0 0 24 24"}">
@@ -504,34 +537,45 @@ function populateCard(card, movie, index) {
   }
 
   // Nota numérica para modo muro
-  const wallRatingEl = card.querySelector('[data-template="wall-rating"]');
+  const wallRatingEl = card.querySelector<HTMLElement>('[data-template="wall-rating"]');
   if (wallRatingEl) {
     wallRatingEl.textContent = movie.avg_rating ? movie.avg_rating.toFixed(1) : "";
   }
 
   // --- BACK ---
-  const origWrap = back.querySelector('.back-original-title-wrapper');
-  if (movie.original_title && movie.original_title.trim()) {
-    const origEl = origWrap.querySelector('[data-template="original-title"]');
-    origEl.textContent = movie.original_title;
-    origEl.className = "";
-    const oLen = movie.original_title.length;
-    if (oLen > 40) origEl.classList.add("title-xl-long");
-    else if (oLen > 30) origEl.classList.add("title-long");
-    else if (oLen > 20) origEl.classList.add("title-medium");
-    origWrap.hidden = false;
-  } else { origWrap.hidden = true; }
+  const origWrap = back.querySelector<HTMLElement>('.back-original-title-wrapper');
+  if (origWrap) {
+    if (movie.original_title && movie.original_title.trim()) {
+      const origEl = origWrap.querySelector<HTMLElement>('[data-template="original-title"]');
+      if (origEl) {
+        origEl.textContent = movie.original_title;
+        origEl.className = "";
+        const oLen = movie.original_title.length;
+        if (oLen > 40) origEl.classList.add("title-xl-long");
+        else if (oLen > 30) origEl.classList.add("title-long");
+        else if (oLen > 20) origEl.classList.add("title-medium");
+      }
+      origWrap.hidden = false;
+    } else { 
+      origWrap.hidden = true; 
+    }
+  }
 
   // Duración y Episodios
-  back.querySelector(SELECTORS.DURATION).textContent = formatRuntime(movie.minutes, isSeries);
-  const epEl = back.querySelector('[data-template="episodes"]');
-  const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
-  epEl.textContent = epText;
-  epEl.hidden = !epText;
+  const durationEl = back.querySelector(SELECTORS.DURATION);
+  if (durationEl) durationEl.textContent = formatRuntime(movie.minutes, isSeries);
+  
+  const epEl = back.querySelector<HTMLElement>('[data-template="episodes"]');
+  if (epEl) {
+    const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
+    epEl.textContent = epText;
+    epEl.hidden = !epText;
+  }
 
   // Links Externos
-  const setupLink = (key, url) => {
-    const el = back.querySelector(`[data-template="${key}-link"]`);
+  const setupLink = (key: string, url: string | null | undefined) => {
+    const el = back.querySelector(`[data-template="${key}-link"]`) as HTMLAnchorElement | null;
+    if (!el) return;
     if (url) {
       el.href = url;
       el.classList.remove('disabled');
@@ -547,40 +591,52 @@ function populateCard(card, movie, index) {
   setupLink('wikipedia', movie.wikipedia);
 
   // Textos Largos
-  back.querySelector(SELECTORS.GENRE).textContent = movie.genres || "Género no disponible";
-  back.querySelector(SELECTORS.SYNOPSIS).textContent = movie.synopsis || "Sinopsis no disponible.";
+  const genreEl = back.querySelector(SELECTORS.GENRE);
+  if (genreEl) genreEl.textContent = movie.genres || "Género no disponible";
+  
+  const synopsisEl = back.querySelector(SELECTORS.SYNOPSIS);
+  if (synopsisEl) synopsisEl.textContent = movie.synopsis || "Sinopsis no disponible.";
   
   // Actores
-  const actorsEl = back.querySelector(SELECTORS.ACTORS);
-  const actors = movie.parsedActors || [];
-  
-  let shortActors = actors.slice(0, 4).join(", ");
-  if (actors.length > 4) shortActors += "...";
-  if (movie.actors === "(A)") shortActors = "Animación";
-  
-  actorsEl.textContent = shortActors || "Reparto no disponible";
+  const actorsEl = back.querySelector<HTMLElement>(SELECTORS.ACTORS);
+  if (actorsEl) {
+    const actors = movie.parsedActors || [];
+    
+    let shortActors = actors.slice(0, 4).join(", ");
+    if (actors.length > 4) shortActors += "...";
+    if (movie.actors === "(A)") shortActors = "Animación";
+    
+    actorsEl.textContent = shortActors || "Reparto no disponible";
 
-  const hasActors = actors.length > 0 && actors.some(a => !IGNORED_ACTORS.includes(a.toLowerCase()));
-  const expandBtn = actorsEl.parentElement.querySelector(".actors-expand-btn");
-  
-  if (hasActors) {
-    if (!expandBtn) actorsEl.parentElement.appendChild(createElement("button", { className: "actors-expand-btn", textContent: "+", attributes: { "aria-label": "Ver reparto" } }));
-  } else {
-    expandBtn?.remove();
-    back.querySelector('.actors-scrollable-content')?.remove();
+    const hasActors = actors.length > 0 && actors.some(a => !IGNORED_ACTORS.includes(a.toLowerCase()));
+    const expandBtn = actorsEl.parentElement?.querySelector(".actors-expand-btn");
+    
+    if (hasActors) {
+      if (!expandBtn) {
+        actorsEl.parentElement?.appendChild(
+          createElement("button", { 
+            className: "actors-expand-btn", 
+            textContent: "+", 
+            attributes: { "aria-label": "Ver reparto" } 
+          })
+        );
+      }
+    } else {
+      expandBtn?.remove();
+      back.querySelector('.actors-scrollable-content')?.remove();
+    }
   }
 
   // Ratings
   setupCardRatings(back, movie);
 }
 
-export function updateCardUI(card) {
-  const movieId = parseInt(card.dataset.movieId, 10);
+export function updateCardUI(card: MovieCardElement): void {
+  const movieId = parseInt(card.dataset.movieId || "0", 10);
   const movie = card.movieData;
-  if (!movie || movie.isPerson) return; // Las tarjetas de persona no tienen interacciones de watchlist/voto
+  if (!movie || movie.isPerson) return;
 
   const userData = getUserDataForMovie(movieId);
-  const userRating = userData?.rating;
   const isOnWatchlist = userData?.onWatchlist ?? false;
 
   // Botón Watchlist
@@ -594,16 +650,22 @@ export function updateCardUI(card) {
   updateRatingUI(card);
 }
 
-export function initializeCard(card) {
-  const starCont = card.querySelector('[data-action="set-rating-estrellas"]');
-  if (starCont) setupRatingListeners(starCont, document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN));
+export function initializeCard(card: MovieCardElement): void {
+  const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
+  if (starCont) {
+    setupRatingListeners(starCont, document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN));
+  }
 }
 
 // =================================================================
 //          5. GESTIÓN DE GRID (Renderizado Masivo)
 // =================================================================
 
-export async function renderMovieGrid(container, movies, vipData = null) {
+export async function renderMovieGrid(
+  container: HTMLElement | null, 
+  movies: MappedMovie[], 
+  vipData: VipData | null = null
+): Promise<void> {
   const renderId = ++currentRenderRequestId;
   unflipAllCards();
   if (!container) return;
@@ -653,59 +715,68 @@ export async function renderMovieGrid(container, movies, vipData = null) {
   renderBatch();
 }
 
-function createCardElement(movie, index) {
-  const clone = cardTemplate.content.cloneNode(true);
-  const card = clone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
+function createCardElement(movie: MappedMovie, index: number): DocumentFragment {
+  if (!cardTemplate) return document.createDocumentFragment();
+  const clone = cardTemplate.content.cloneNode(true) as DocumentFragment;
+  const card = clone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`) as MovieCardElement | null;
   
-  card.dataset.movieId = movie.id;
-  card.movieData = movie;
-  card.style.setProperty("--card-index", Math.min(index, 20));
+  if (card) {
+    card.dataset.movieId = String(movie.id);
+    card.movieData = movie;
+    card.style.setProperty("--card-index", String(Math.min(index, 20)));
 
-  populateCard(card, movie, index);
-  updateCardUI(card);
-  initializeCard(card);
+    populateCard(card, movie, index);
+    updateCardUI(card);
+    initializeCard(card);
+  }
   
   return clone;
 }
 
-function createPersonCardElement(person) {
-  const clone = personTemplate.content.cloneNode(true);
-  const card = clone.querySelector('.person-card');
+function createPersonCardElement(person: PersonDetails): DocumentFragment {
+  if (!personTemplate) return document.createDocumentFragment();
+  const clone = personTemplate.content.cloneNode(true) as DocumentFragment;
+  const card = clone.querySelector('.person-card') as MovieCardElement | null;
+  if (!card) return clone;
   
   card.dataset.movieId = `person-${person.id}`;
   card.movieData = { ...person, isPerson: true };
   
   const img = card.querySelector('img');
   
-  // Lógica Exclusiva: Supabase Storage (photo)
-  if (person.photo && person.photo !== 'NOT_FOUND') {
-    let photoName = person.photo;
-    if (/\.(jpg|jpeg|png)$/i.test(photoName)) {
-      photoName = photoName.replace(/\.(jpg|jpeg|png)$/i, ".webp");
-    } else if (!photoName.endsWith(".webp")) {
-      photoName += ".webp";
+  if (img) {
+    if (person.photo && person.photo !== 'NOT_FOUND') {
+      let photoName = person.photo;
+      if (/\.(jpg|jpeg|png)$/i.test(photoName)) {
+        photoName = photoName.replace(/\.(jpg|jpeg|png)$/i, ".webp");
+      } else if (!photoName.endsWith(".webp")) {
+        photoName += ".webp";
+      }
+      img.src = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
+    } else {
+      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
     }
-    img.src = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
-  } else {
-    img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+    
+    img.alt = `Foto de ${person.name}`;
+    img.loading = "eager";
+    img.decoding = "async";
+    img.setAttribute("fetchpriority", "high");
+    img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
   }
   
-  img.alt = `Foto de ${person.name}`;
-  img.loading = "eager";
-  img.decoding = "async";
-  img.setAttribute("fetchpriority", "high");
-  img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+  const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
+  if (titleEl) {
+    titleEl.textContent = person.name;
+    const tLen = person.name.length;
+    if (tLen > 40) titleEl.classList.add("title-xl-long");
+    else if (tLen > 25) titleEl.classList.add("title-long");
+    else if (tLen > 12) titleEl.classList.add("title-medium");
+  }
   
-  const titleEl = card.querySelector('[data-template="title"]');
-  titleEl.textContent = person.name;
-  const tLen = person.name.length;
-  if (tLen > 40) titleEl.classList.add("title-xl-long");
-  else if (tLen > 25) titleEl.classList.add("title-long");
-  else if (tLen > 12) titleEl.classList.add("title-medium");
+  const birthplaceEl = card.querySelector('[data-template="birthplace"]');
+  if (birthplaceEl) birthplaceEl.textContent = person.place_of_birth || "";
   
-  card.querySelector('[data-template="birthplace"]').textContent = person.place_of_birth || "";
-  
-  const getYear = (dateStr) => dateStr ? dateStr.split('-')[0] : '';
+  const getYear = (dateStr: string | null) => dateStr ? dateStr.split('-')[0] : '';
   const bYear = getYear(person.birthday);
   const dYear = getYear(person.deathday);
   
@@ -719,8 +790,11 @@ function createPersonCardElement(person) {
     ageStr = person.deathday ? `(${age} ✝)` : `(${age})`;
   }
   
-  card.querySelector('[data-template="age"]').textContent = ageStr;
-  card.querySelector('[data-template="dates"]').textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
+  const ageEl = card.querySelector('[data-template="age"]');
+  if (ageEl) ageEl.textContent = ageStr;
+
+  const datesEl = card.querySelector('[data-template="dates"]');
+  if (datesEl) datesEl.textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
   
   let wallName = person.name;
   if (wallName.length > 14) {
@@ -736,8 +810,8 @@ function createPersonCardElement(person) {
   renderCountryFlag(
     card.querySelector(SELECTORS.COUNTRY_CONTAINER),
     card.querySelector(SELECTORS.COUNTRY_FLAG),
-    person.countries?.code,
-    person.countries?.name
+    person.countries?.code || null,
+    person.countries?.name || null
   );
   
   const biographyEl = card.querySelector('[data-template="biography"]');
@@ -748,30 +822,39 @@ function createPersonCardElement(person) {
   return clone;
 }
 
-function createCollectionCardElement(selectionCode, totalMovies) {
-  const clone = collectionTemplate.content.cloneNode(true);
+function createCollectionCardElement(selectionCode: string, totalMovies: number): DocumentFragment {
+  if (!collectionTemplate) return document.createDocumentFragment();
+  const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.collection-card');
+  if (!card) return clone;
   
   const img = card.querySelector('img');
-  const config = FILTER_CONFIG.selection;
+  const config = FILTER_CONFIG.selection as unknown as { titles?: Record<string, string>; items: Record<string, string> };
   const fullName = config.titles?.[selectionCode] || config.items[selectionCode] || selectionCode;
   const shortName = config.items[selectionCode] || fullName;
   
-  img.src = `${CONFIG.PROFILE_BASE_URL}collection_${selectionCode.toLowerCase()}.webp`;
-  img.alt = `Colección ${fullName}`;
-  img.loading = "eager";
-  img.decoding = "async";
-  img.setAttribute("fetchpriority", "high");
-  img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+  if (img) {
+    img.src = `${CONFIG.PROFILE_BASE_URL}collection_${selectionCode.toLowerCase()}.webp`;
+    img.alt = `Colección ${fullName}`;
+    img.loading = "eager";
+    img.decoding = "async";
+    img.setAttribute("fetchpriority", "high");
+    img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+  }
   
-  const titleEl = card.querySelector('[data-template="title"]');
-  titleEl.textContent = fullName;
-  if (fullName.length > 40) titleEl.classList.add("title-xl-long");
-  else if (fullName.length > 25) titleEl.classList.add("title-long");
-  else if (fullName.length > 12) titleEl.classList.add("title-medium");
+  const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
+  if (titleEl) {
+    titleEl.textContent = fullName;
+    if (fullName.length > 40) titleEl.classList.add("title-xl-long");
+    else if (fullName.length > 25) titleEl.classList.add("title-long");
+    else if (fullName.length > 12) titleEl.classList.add("title-medium");
+  }
   
-  card.querySelector('[data-template="subtitle"]').textContent = "Selección / Saga";
-  card.querySelector('[data-template="count"]').textContent = `${totalMovies} títulos`;
+  const subtitleEl = card.querySelector('[data-template="subtitle"]');
+  if (subtitleEl) subtitleEl.textContent = "Selección / Saga";
+
+  const countEl = card.querySelector('[data-template="count"]');
+  if (countEl) countEl.textContent = `${totalMovies} títulos`;
   
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = shortName;
@@ -779,29 +862,38 @@ function createCollectionCardElement(selectionCode, totalMovies) {
   return clone;
 }
 
-function createStudioCardElement(studioCode, totalMovies) {
-  const clone = collectionTemplate.content.cloneNode(true);
+function createStudioCardElement(studioCode: string, totalMovies: number): DocumentFragment {
+  if (!collectionTemplate) return document.createDocumentFragment();
+  const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.collection-card');
+  if (!card) return clone;
   
   const img = card.querySelector('img');
-  const config = STUDIO_DATA[studioCode];
+  const config = STUDIO_DATA[studioCode as keyof typeof STUDIO_DATA];
   const fullName = config ? config.title : studioCode;
   
-  img.src = `${CONFIG.PROFILE_BASE_URL}studio_${studioCode.toLowerCase()}.webp`;
-  img.alt = `Estudio ${fullName}`;
-  img.loading = "eager";
-  img.decoding = "async";
-  img.setAttribute("fetchpriority", "high");
-  img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+  if (img) {
+    img.src = `${CONFIG.PROFILE_BASE_URL}studio_${studioCode.toLowerCase()}.webp`;
+    img.alt = `Estudio ${fullName}`;
+    img.loading = "eager";
+    img.decoding = "async";
+    img.setAttribute("fetchpriority", "high");
+    img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+  }
   
-  const titleEl = card.querySelector('[data-template="title"]');
-  titleEl.textContent = fullName;
-  if (fullName.length > 40) titleEl.classList.add("title-xl-long");
-  else if (fullName.length > 25) titleEl.classList.add("title-long");
-  else if (fullName.length > 12) titleEl.classList.add("title-medium");
+  const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
+  if (titleEl) {
+    titleEl.textContent = fullName;
+    if (fullName.length > 40) titleEl.classList.add("title-xl-long");
+    else if (fullName.length > 25) titleEl.classList.add("title-long");
+    else if (fullName.length > 12) titleEl.classList.add("title-medium");
+  }
   
-  card.querySelector('[data-template="subtitle"]').textContent = "Estudio / Productora";
-  card.querySelector('[data-template="count"]').textContent = `${totalMovies} títulos`;
+  const subtitleEl = card.querySelector('[data-template="subtitle"]');
+  if (subtitleEl) subtitleEl.textContent = "Estudio / Productora";
+
+  const countEl = card.querySelector('[data-template="count"]');
+  if (countEl) countEl.textContent = `${totalMovies} títulos`;
   
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = fullName;
@@ -809,8 +901,8 @@ function createStudioCardElement(studioCode, totalMovies) {
   return clone;
 }
 
-// Skeletons y Estados Vacíos (Reutilizan createElement optimizado)
-export function renderSkeletons(container, pagContainer) {
+// Skeletons y Estados Vacíos
+export function renderSkeletons(container: HTMLElement | null, pagContainer: HTMLElement | null): void {
   currentRenderRequestId++;
   if (container) {
     cleanupLazyImages(container);
@@ -829,7 +921,11 @@ export function renderSkeletons(container, pagContainer) {
   container.appendChild(frag);
 }
 
-export function renderNoResults(container, pagContainer, filters) {
+export function renderNoResults(
+  container: HTMLElement | null, 
+  pagContainer: HTMLElement | null, 
+  filters: ActiveFilters
+): void {
   currentRenderRequestId++;
   if (container) {
     cleanupLazyImages(container);
@@ -859,7 +955,7 @@ export function renderNoResults(container, pagContainer, filters) {
   container.appendChild(div);
 }
 
-export function renderErrorState(container, pagContainer, message) {
+export function renderErrorState(container: HTMLElement | null, pagContainer: HTMLElement | null, message: string): void {
   currentRenderRequestId++;
   if (container) {
     cleanupLazyImages(container);
@@ -879,14 +975,14 @@ export function renderErrorState(container, pagContainer, message) {
 //          6. ONBOARDING (Educación de Usuario)
 // =================================================================
 
-export function runFlipOnboarding(container) {
-  const seenCount = LocalStore.get("flipTutorialCount") || 0;
+export function runFlipOnboarding(container: HTMLElement): void {
+  const seenCount = (LocalStore.get("flipTutorialCount") as number) || 0;
   const MAX_SHOWS = 3;
 
   if (seenCount >= MAX_SHOWS || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
 
   setTimeout(() => {
-    const firstCard = container.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`);
+    const firstCard = container.querySelector<HTMLElement>(`.${CSS_CLASSES.MOVIE_CARD}`);
     if (!firstCard || !firstCard.isConnected) return;
 
     const inner = firstCard.querySelector(".flip-card-inner");

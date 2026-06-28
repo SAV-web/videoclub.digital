@@ -1,37 +1,58 @@
-// src/js/seo.js
+/// <reference types="vite/client" />
+
+// src/js/seo.ts
 import { CONFIG, FILTER_CONFIG, STUDIO_DATA } from "./constants.js";
+// @ts-ignore (state.js es un archivo JS híbrido por ahora)
 import { getActiveFilters } from "./state.js";
 import { capitalizeWords } from "./utils.js";
+import { ActiveFilters, Movie } from "./types.js";
 
 // =================================================================
 //          1. BUILDERS (Funciones Puras - Lógica de Negocio)
 // =================================================================
 
-export function buildSeoTitle(filters) {
+export interface SeoTitleResult {
+  pageTitle: string;
+  ogTitle: string;
+  baseNoun: string;
+}
+
+export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
   const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType, myList } = filters;
   
   let baseNoun = "Películas y series";
-  if (mediaType === "movies") baseNoun = "Películas";
-  else if (mediaType === "series") baseNoun = "Series";
+  if (mediaType === "movies") {
+    baseNoun = "Películas";
+  } else if (mediaType === "series") {
+    baseNoun = "Series";
+  }
 
   let title = baseNoun;
   const yearSuffix = (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) 
     ? ` (${year.replace("-", " a ")})` : "";
 
-  if (myList) title = `Mi Lista`;
-  else if (searchTerm) title = `Resultados para "${searchTerm}"`;
-  else if (selection) {
+  if (myList) {
+    title = `Mi Lista`;
+  } else if (searchTerm) {
+    title = `Resultados para "${searchTerm}"`;
+  } else if (selection) {
     const config = FILTER_CONFIG.selection;
-    const name = config.titles?.[selection] || config.items[selection];
+    const name = config.titles?.[selection as keyof typeof config.titles] || config.items[selection as keyof typeof config.items];
     if (name) title = name + yearSuffix;
   } else if (studio) {
-    title = (STUDIO_DATA[studio]?.title || title) + yearSuffix;
+    const studioInfo = STUDIO_DATA[studio as keyof typeof STUDIO_DATA];
+    title = (studioInfo ? studioInfo.title : title) + yearSuffix;
+  } else if (genre) {
+    title = `${baseNoun} de ${capitalizeWords(genre)}`;
+  } else if (director) {
+    title = `${baseNoun} de ${capitalizeWords(director)}`;
+  } else if (actor) {
+    title = `${baseNoun} con ${capitalizeWords(actor)}`;
+  } else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
+    title = `${baseNoun} de ${year.replace("-", " a ")}`;
+  } else if (country) {
+    title = `${baseNoun} de ${capitalizeWords(country)}`;
   }
-  else if (genre) title = `${baseNoun} de ${capitalizeWords(genre)}`;
-  else if (director) title = `${baseNoun} de ${capitalizeWords(director)}`;
-  else if (actor) title = `${baseNoun} con ${capitalizeWords(actor)}`;
-  else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) title = `${baseNoun} de ${year.replace("-", " a ")}`;
-  else if (country) title = `${baseNoun} de ${capitalizeWords(country)}`;
   
   return {
     pageTitle: `${title} | videoclub.digital`,
@@ -40,7 +61,7 @@ export function buildSeoTitle(filters) {
   };
 }
 
-export function buildSeoDescription(noun, filters, movies = []) {
+export function buildSeoDescription(noun: string, filters: ActiveFilters, movies: Movie[] = []): string {
   let desc = `Explora y descubre ${noun.toLowerCase()} en videoclub.digital.`;
   
   if (filters.myList) {
@@ -48,7 +69,7 @@ export function buildSeoDescription(noun, filters, movies = []) {
   } else if (filters.searchTerm) {
     desc = `Resultados de búsqueda para "${filters.searchTerm}". Encuentra ${noun.toLowerCase()} relacionadas en nuestro catálogo inteligente.`;
   } else {
-    const parts = [];
+    const parts: string[] = [];
     if (filters.genre) parts.push(`género ${filters.genre}`);
     if (filters.country) parts.push(`de ${filters.country}`);
     if (filters.director) parts.push(`dirigidas por ${filters.director}`);
@@ -75,7 +96,7 @@ export function buildSeoDescription(noun, filters, movies = []) {
   return desc;
 }
 
-export function buildItemListSchema(movies, totalMovies, currentUrl) {
+export function buildItemListSchema(movies: Movie[] | null | undefined, totalMovies: number, currentUrl: string): Record<string, unknown> | null {
   if (!movies || movies.length === 0) return null;
   
   // Optimización SEO: Truncar a 20 elementos para evitar payloads JSON-LD excesivos.
@@ -90,12 +111,12 @@ export function buildItemListSchema(movies, totalMovies, currentUrl) {
       "@type": "ListItem",
       "position": index + 1,
       "item": {
-        "@type": movie.isSeries ? "TVSeries" : "Movie",
+        "@type": movie.type && movie.type.toLowerCase().startsWith('s') ? "TVSeries" : "Movie",
         "name": movie.title,
-        "image": movie.posterUrl,
+        "image": movie.posterUrl || undefined,
         "dateCreated": movie.year ? String(movie.year) : undefined,
-        "director": movie.parsedDirectors?.length ? movie.parsedDirectors.map(d => ({ "@type": "Person", "name": d })) : undefined,
-        "actor": movie.parsedActors?.length ? movie.parsedActors.map(a => ({ "@type": "Person", "name": a })) : undefined,
+        "director": movie.directors_list ? movie.directors_list.split(",").map(d => ({ "@type": "Person", "name": d.trim() })) : undefined,
+        "actor": movie.actors_list ? movie.actors_list.split(",").map(a => ({ "@type": "Person", "name": a.trim() })) : undefined,
         "aggregateRating": movie.avg_rating ? {
           "@type": "AggregateRating",
           "ratingValue": movie.avg_rating.toFixed(1),
@@ -108,7 +129,7 @@ export function buildItemListSchema(movies, totalMovies, currentUrl) {
   };
 }
 
-export function buildBreadcrumbSchema(filters, baseUrl) {
+export function buildBreadcrumbSchema(filters: ActiveFilters, baseUrl: string): Record<string, unknown> | null {
   const items = [
     {
       "@type": "ListItem",
@@ -140,7 +161,7 @@ export function buildBreadcrumbSchema(filters, baseUrl) {
   });
 
   // Nivel 3: Filtro Específico (Prioridad jerárquica)
-  let filterName = null;
+  let filterName: string | null = null;
   let filterQuery = "";
 
   if (filters.myList) {
@@ -151,10 +172,11 @@ export function buildBreadcrumbSchema(filters, baseUrl) {
     filterQuery = `&q=${encodeURIComponent(filters.searchTerm)}`;
   } else if (filters.selection) {
      const config = FILTER_CONFIG.selection;
-     filterName = config.titles?.[filters.selection] || config.items[filters.selection] || filters.selection;
+     filterName = config.titles?.[filters.selection as keyof typeof config.titles] || config.items[filters.selection as keyof typeof config.items] || filters.selection;
      filterQuery = `&sel=${filters.selection}`;
   } else if (filters.studio) {
-     filterName = STUDIO_DATA[filters.studio]?.title || filters.studio;
+     const studioInfo = STUDIO_DATA[filters.studio as keyof typeof STUDIO_DATA];
+     filterName = studioInfo ? studioInfo.title : filters.studio;
      filterQuery = `&stu=${filters.studio}`;
   } else if (filters.genre) {
     filterName = filters.genre;
@@ -193,14 +215,14 @@ export function buildBreadcrumbSchema(filters, baseUrl) {
 //          2. INJECTORS (Manipulación del DOM)
 // =================================================================
 
-const setMeta = (selector, content) => {
+const setMeta = (selector: string, content: string): void => {
   const el = document.querySelector(selector);
-  // OPTIMIZACIÓN: Solo actualizamos el DOM si el contenido realmente cambia.
-  // Evitamos que las extensiones del navegador y el motor de renderizado trabajen sin motivo.
-  if (el && el.getAttribute("content") !== content) el.setAttribute("content", content);
+  if (el && el.getAttribute("content") !== content) {
+    el.setAttribute("content", content);
+  }
 };
 
-const injectJsonLd = (scriptId, schema) => {
+const injectJsonLd = (scriptId: string, schema: Record<string, unknown> | null): void => {
   let script = document.getElementById(scriptId);
   if (!script) {
     script = document.createElement("script");
@@ -209,14 +231,16 @@ const injectJsonLd = (scriptId, schema) => {
     document.head.appendChild(script);
   }
   const newContent = schema ? JSON.stringify(schema) : "";
-  if (script.textContent !== newContent) script.textContent = newContent;
+  if (script.textContent !== newContent) {
+    script.textContent = newContent;
+  }
 };
 
 // =================================================================
 //          3. ORQUESTADORES PÚBLICOS
 // =================================================================
 
-export function updatePageTitle(movies = []) {
+export function updatePageTitle(movies: Movie[] = []): void {
   const filters = getActiveFilters();
   const currentUrl = window.location.href;
   
@@ -229,21 +253,23 @@ export function updatePageTitle(movies = []) {
   setMeta('meta[property="og:description"]', description);
   setMeta('meta[property="og:url"]', currentUrl);
   
-  let canonical = document.querySelector("link[rel='canonical']");
+  let canonical = document.querySelector("link[rel='canonical']") as HTMLLinkElement | null;
   if (!canonical) {
     canonical = document.createElement("link");
     canonical.rel = "canonical";
     document.head.appendChild(canonical);
   }
-  if (canonical.href !== currentUrl) canonical.href = currentUrl;
+  if (canonical.href !== currentUrl) {
+    canonical.href = currentUrl;
+  }
 }
 
-export function updateStructuredData(movies, totalMovies) {
+export function updateStructuredData(movies: Movie[], totalMovies: number): void {
   const schema = buildItemListSchema(movies, totalMovies, window.location.href);
   injectJsonLd("dynamic-json-ld", schema);
 }
 
-export function updateBreadcrumbData(filters) {
+export function updateBreadcrumbData(filters: ActiveFilters): void {
   const baseUrl = window.location.origin + window.location.pathname;
   const schema = buildBreadcrumbSchema(filters, baseUrl);
   injectJsonLd("dynamic-breadcrumbs-json-ld", schema);

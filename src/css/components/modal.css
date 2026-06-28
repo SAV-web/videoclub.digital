@@ -195,18 +195,76 @@
 .auth-header { margin-bottom: var(--space-lg); display: flex; justify-content: center; }
 .auth-logo-modal { font-family: var(--font-title); font-size: var(--font-size-xl); font-weight: 700; line-height: 1.2; & span:first-child { color: var(--color-accent); } }
 .auth-box h3 { margin-bottom: var(--space-lg); font-size: var(--font-size-lg); }
+.auth-box section { opacity: 1; transform: translateY(0); transition: opacity 0.15s ease-out, transform 0.15s ease-out; }
+.auth-box section.auth-view-exiting { opacity: 0; transform: translateY(-8px); }
+.auth-box section.auth-view-entering { opacity: 0; transform: translateY(8px); }
 
 .form-group { margin-bottom: var(--space-md); text-align: left; }
 .form-group label { display: block; margin-bottom: var(--space-xs); font-size: var(--font-size-sm); font-weight: bold; color: var(--color-text-secondary); }
 .form-group input { width: 100%; padding: var(--space-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md); background-color: var(--color-bg); color: var(--color-text-primary); transition: border-color 0.2s, box-shadow 0.2s; &:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(0,0,0,0.1); } }
+.form-group input:disabled { opacity: 0.6; cursor: not-allowed; background-color: rgba(255, 255, 255, 0.05); }
+.form-group input.is-valid { border-color: var(--color-success) !important; box-shadow: 0 0 0 2px var(--color-success-bg) !important; }
+.form-group input.is-invalid { border-color: var(--color-error) !important; box-shadow: 0 0 0 2px var(--color-error-bg) !important; }
+.validation-message { display: block; margin-top: 4px; font-size: var(--font-size-xs); min-height: 16px; font-weight: 500; color: transparent; transition: color 0.2s ease, opacity 0.2s ease; }
+.validation-message.is-valid { color: var(--color-success); }
+.validation-message.is-invalid { color: var(--color-error); }
 .form-group small { display: block; margin-top: 4px; color: var(--color-text-tertiary); font-size: var(--font-size-xs); }
+
+/* Soporte para ver/ocultar contraseña */
+.password-wrapper { position: relative; display: flex; width: 100%; align-items: center; }
+.password-wrapper input { padding-right: 42px !important; }
+.password-toggle-btn {
+  position: absolute; right: 12px; background: none; border: none; padding: 0;
+  color: var(--color-text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: color 0.2s ease;
+  &:hover { color: var(--color-text-primary); }
+}
+.password-toggle-btn svg { width: 20px; height: 20px; display: block; pointer-events: none; }
+
+/* Casilla de Mantener sesión iniciada */
+.form-group--checkbox { display: flex; align-items: center; gap: var(--space-xs); cursor: pointer; user-select: none; margin-top: var(--space-sm); }
+.form-group--checkbox input[type="checkbox"] { width: auto !important; cursor: pointer; padding: 0; margin: 0; }
+.form-group--checkbox label { margin-bottom: 0 !important; cursor: pointer; font-weight: normal !important; color: var(--color-text-secondary); }
+
+/* Enlace de Olvidé mi contraseña */
+.auth-forgot-link {
+  display: block; text-align: right; margin-top: var(--space-xs); font-size: var(--font-size-xs);
+  color: var(--color-accent); background: none; border: none; cursor: pointer; text-decoration: underline;
+  font-weight: bold; padding: 0; width: 100%; transition: color 0.2s;
+  &:hover { color: var(--color-accent-darker); }
+}
+
 
 .auth-button {
   width: 100%; padding: var(--space-sm); margin-top: var(--space-xs); border: none; border-radius: var(--radius-md);
   background-color: var(--color-accent); color: #fff; cursor: pointer; font-weight: bold; transition: background-color 0.2s, transform 0.1s;
   &:hover { background-color: var(--color-accent-darker); } &:active { transform: scale(0.98); }
   &:disabled, &.is-busy { opacity: 0.7; cursor: wait; pointer-events: none; }
+  &.is-loading { color: transparent !important; pointer-events: none; }
+  &.is-loading::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin-left: -10px; margin-top: -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top-color: #ffffff; animation: auth-spinner 0.6s linear infinite;
+  }
 }
+.auth-button--secondary {
+  background-color: transparent !important;
+  color: var(--color-text-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+  margin-top: 0 !important;
+  &:hover { background-color: rgba(0, 0, 0, 0.05) !important; color: var(--color-text-primary) !important; }
+  :where(html.dark-mode) &:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
+  &.is-loading::after {
+    border-color: var(--color-border-soft) !important;
+    border-top-color: var(--color-text-primary) !important;
+  }
+}
+.auth-divider {
+  display: flex; align-items: center; text-align: center; margin: var(--space-md) 0; color: var(--color-text-tertiary); font-size: var(--font-size-xs); font-weight: 500;
+  &::before, &::after { content: ""; flex: 1; border-bottom: 1px solid var(--color-border); }
+  &::before { margin-right: var(--space-sm); }
+  &::after { margin-left: var(--space-sm); }
+}
+@keyframes auth-spinner { to { transform: rotate(360deg); } }
 
 .auth-toggle-text { margin-top: var(--space-lg); font-size: var(--font-size-sm); color: var(--color-text-secondary); & button { border: none; background: none; color: var(--color-accent); cursor: pointer; font-weight: bold; text-decoration: underline; } }
 .auth-message { margin-top: var(--space-md); padding: var(--space-sm); border-radius: var(--radius-md); font-weight: bold; font-size: var(--font-size-sm); }

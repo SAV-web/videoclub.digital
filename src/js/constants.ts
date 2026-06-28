@@ -1,12 +1,11 @@
+/// <reference types="vite/client" />
+
 // =================================================================
 // CONSTANTES GLOBALES (La "Caja Fuerte" de la configuración)
 // Este archivo guarda todos los textos, límites y configuraciones de la app.
-// Al tenerlos todos aquí, si algún día queremos cambiar un texto o un límite,
-// solo tenemos que editar este archivo sin buscar por todo el código.
 // =================================================================
 
 // --- Variables de Entorno (Contraseñas y URLs secretas) ---
-// 'import.meta.env' es la forma en la que Vite lee el archivo oculto '.env' de tu ordenador.
 const envUrl = import.meta.env.VITE_SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -16,9 +15,6 @@ if (!envUrl || !envKey) {
   console.error(msg);
 }
 
-// Lógica de seguridad por si faltan las claves:
-// - Si estamos programando (DEV), ponemos texto falso para que la web no explote.
-// - Si estamos en Internet (PROD), lo dejamos vacío para darnos cuenta del error.
 const usePlaceholder = import.meta.env.DEV && (!envUrl || !envKey);
 
 const supabaseUrl = usePlaceholder ? "https://placeholder.supabase.co" : (envUrl || "");
@@ -26,48 +22,50 @@ const supabaseKey = usePlaceholder ? "placeholder" : (envKey || "");
 
 /**
  * CONFIGURACIÓN PRINCIPAL DE LA WEB
- * Usamos 'Object.freeze' para "congelar" este objeto. Es como ponerle un candado.
- * Así evitamos que otro trozo de código cambie estos valores por accidente (ej: CONFIG.ITEMS_PER_PAGE = 0).
+ * Usamos 'as const' para que TypeScript infiera tipos literales de solo lectura sumamente estrictos.
  */
-export const CONFIG = Object.freeze({
+export const CONFIG = {
   // API
   SUPABASE_URL: supabaseUrl,
   SUPABASE_ANON_KEY: supabaseKey,
   POSTER_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/",
   PROFILE_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/vips/",
-  
+
   // Paginación
   ITEMS_PER_PAGE: 42,
   DYNAMIC_PAGE_SIZE_LIMIT: 44,
   WALL_MODE_ITEMS_PER_PAGE: 72,
   WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 74,
-  // Renderizamos de 12 en 12 para que el móvil no se quede "congelado" pintando 70 de golpe
-  CARD_BATCH_SIZE: 12, 
-  
+  CARD_BATCH_SIZE: 12,
+
   // Comportamiento
   MAX_ACTIVE_FILTERS: 20,
   MAX_EXCLUDED_FILTERS: 20,
-  SEARCH_DEBOUNCE_DELAY: 400, // Tiempo de espera tras teclear antes de buscar (milisegundos)
-  
+  SEARCH_DEBOUNCE_DELAY: 400,
+
   // Límites de Datos
   YEAR_MIN: 1926,
   YEAR_MAX: new Date().getFullYear(),
-  
+
   // Sistema
-  STORAGE_VERSION: 1, // Si cambiamos esto, obligamos al navegador a borrar la caché vieja
-});
+  STORAGE_VERSION: 1,
+} as const;
 
 /**
  * LISTAS DE EXCLUSIÓN
- * Actores que en realidad son etiquetas o grupos y no queremos que salgan sugeridos.
  */
-export const IGNORED_ACTORS = Object.freeze(["(a)", "animación", "animacion", "documental"]);
+export const IGNORED_ACTORS = ["(a)", "animación", "animacion", "documental"] as const;
 
 /**
  * Regiones Geopolíticas (Virtuales para filtrado compuesto)
- * Agrupan varios códigos de país bajo un solo nombre para el usuario.
  */
-export const REGIONAL_GROUPS = Object.freeze({
+export interface RegionalGroup {
+  readonly label: string;
+  readonly value: string;
+  readonly codes: readonly string[];
+}
+
+export const REGIONAL_GROUPS: Record<string, RegionalGroup> = {
   NORDICS: {
     label: "Nordic",
     value: "nordic",
@@ -78,41 +76,38 @@ export const REGIONAL_GROUPS = Object.freeze({
     value: "latam",
     codes: ["AR", "MX", "BR", "CL", "CO", "PE", "UY", "VE", "CU", "PY", "BO", "EC", "CR", "GT", "DO"]
   }
-});
+} as const;
 
-export const DEFAULTS = Object.freeze({
+export const DEFAULTS = {
   SORT: "relevance,asc",
   MEDIA_TYPE: "all",
-});
+} as const;
 
 /**
  * DICCIONARIO DE CLASES CSS
- * Guardar las clases aquí evita errores tipográficos. Si en el código escribes
- * CSS_CLASSES.ACTIVE, JavaScript te avisará si te equivocas. Si escribes "active" a mano
- * por todas partes y te equivocas escribiendo "ative", el navegador no te avisará.
  */
-export const CSS_CLASSES = Object.freeze({
+export const CSS_CLASSES = {
   ACTIVE: "active",
   DISABLED: "disabled",
   IS_SCROLLED: "is-scrolled",
   SIDEBAR_OPEN: "sidebar-is-open",
-  
+
   // Global Body States (Contratos de UI)
   SIDEBAR_COLLAPSED: "sidebar-collapsed",
   SIDEBAR_DRAGGING_BODY: "sidebar-is-dragging",
   ROTATION_DISABLED: "rotation-disabled",
   MODAL_OPEN: "modal-open",
   USER_LOGGED_IN: "user-logged-in",
-  IS_DRAGGING: "is-dragging", // Element state (sidebar/modal)
-  IS_FETCHING: "is-fetching", // Barra de progreso global
-  DARK_MODE: "dark-mode",     // Tema (en html)
-  IS_SCROLLING: "is-scrolling", // Optimización de rendimiento
-  
+  IS_DRAGGING: "is-dragging",
+  IS_FETCHING: "is-fetching",
+  DARK_MODE: "dark-mode",
+  IS_SCROLLING: "is-scrolling",
+
   // Componentes
   MOVIE_CARD: "movie-card",
   FILTER_PILL_REMOVE_BTN: "remove-filter-btn",
   SIDEBAR_AUTOCOMPLETE_ITEM: "sidebar-autocomplete-item",
-  
+
   // Tipos
   TYPE_FILTER_MOVIES: "type-filter--movies",
   TYPE_FILTER_SERIES: "type-filter--series",
@@ -120,13 +115,12 @@ export const CSS_CLASSES = Object.freeze({
   // Carga
   LAZY_LQIP: "lazy-lqip",
   LOADED: "loaded",
-});
+} as const;
 
 /**
  * DICCIONARIO DE SELECTORES HTML
- * Igual que las clases, los guardamos aquí para no repetir textos (strings) en el código.
  */
-export const SELECTORS = Object.freeze({
+export const SELECTORS = {
   // Globales (IDs)
   GRID_CONTAINER: "#grid-container",
   PAGINATION_CONTAINER: "#pagination-container",
@@ -165,18 +159,16 @@ export const SELECTORS = Object.freeze({
   GENRE: '[data-template="genre"]',
   ACTORS: '[data-template="actors"]',
   SYNOPSIS: '[data-template="synopsis"]',
-  
+
   SIDEBAR_FILTER_FORM: ".sidebar-filter-form",
   SIDEBAR_AUTOCOMPLETE_RESULTS: ".sidebar-autocomplete-results",
   SIDEBAR_FILTER_INPUT: ".sidebar-filter-input",
-});
+} as const;
 
 /**
  * ALMACÉN DE ICONOS
- * Guardamos el código de los iconos directamente aquí para no tener que cargar
- * archivos de imagen externos, lo que hace que la web cargue instantáneamente.
  */
-export const ICONS = Object.freeze({
+export const ICONS = {
   PAUSE: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,
   SQUARE_STOP: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>`,
   REWIND: `<svg class="sidebar-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>`,
@@ -190,12 +182,20 @@ export const ICONS = Object.freeze({
   LIST: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>`,
   STAR: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
   WATCHLIST: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>`,
-});
+} as const;
 
 /**
  * DATOS DE PLATAFORMAS (Streaming / Estudios)
  */
-export const STUDIO_DATA = Object.freeze({
+export interface StudioInfo {
+  readonly id: string;
+  readonly class: string;
+  readonly title: string;
+  readonly w: number;
+  readonly h: number;
+}
+
+export const STUDIO_DATA: Record<string, StudioInfo> = {
   N: { id: "icon-netflix", class: "netflix-icon", title: "Netflix", w: 20, h: 20 },
   D: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 20, h: 20 },
   W: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 20 },
@@ -211,21 +211,24 @@ export const STUDIO_DATA = Object.freeze({
   A: { id: "icon-apple", class: "apple-icon", title: "Apple TV", w: 20, h: 20 },
   C: { id: "icon-canalplus", class: "canalplus-icon", title: "StudioCanal", w: 20, h: 20 },
   B: { id: "icon-bbc", title: "BBC", class: "bbc-icon", w: 20, h: 20 }
-
-});
+} as const;
 
 /**
- * DATOS DE SELECCIONES (Iconos PNG/SVG para Sidebar)
- * Soporta propiedad 'img' para rutas de imagen o 'id' para sprite SVG.
- * 'invertDark': true invierte colores en modo oscuro (útil para logos negros transparentes).
+ * DATOS DE SELECCIONES
  */
-export const SELECTION_DATA = Object.freeze({
-});
+export const SELECTION_DATA = {} as const;
 
 /**
  * CONFIGURACIÓN DE FILTROS LATERALES (COMPLETA)
  */
-export const FILTER_CONFIG = {
+export interface FilterGroup {
+  readonly label: string;
+  readonly items: Record<string, string>;
+  readonly titles?: Record<string, string>;
+  readonly excludable?: readonly string[];
+}
+
+export const FILTER_CONFIG: Record<string, FilterGroup> = {
   selection: {
     label: "Selección",
     items: {
@@ -301,12 +304,10 @@ export const FILTER_CONFIG = {
   },
   director: {
     label: "Directores",
-    // Se puebla dinámicamente al cargar el sidebar (ver updateDynamicFilters en sidebar.js)
     items: {},
   },
   actor: {
     label: "Actores",
-    // Se puebla dinámicamente al cargar el sidebar (ver updateDynamicFilters en sidebar.js)
     items: {},
   },
-};
+} as const;

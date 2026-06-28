@@ -1,3 +1,10 @@
+/// <reference types="vite/client" />
+
+declare module "*.svg" {
+  const content: string;
+  export default content;
+}
+
 // =================================================================
 //                 CAJA DE HERRAMIENTAS (Utils)
 // =================================================================
@@ -5,33 +12,43 @@
 // =================================================================
 
 import { CONFIG } from "./constants.js";
+// @ts-ignore (contracts.js es un archivo JS híbrido por ahora)
 import { ERROR_CODES } from "./contracts.js";
 import flagSpriteUrl from "../flags.svg";
+import { Movie, MappedMovie } from "./types.js";
 
 // =================================================================
 //          1. PREPARAR DATOS DE PELÍCULAS
 // =================================================================
 
 // ¿Es una serie? (Miramos si empieza por 'S' o 's')
-export const isMovieSeries = (type) => type?.[0]?.toLowerCase() === 's';
+export const isMovieSeries = (type: string | null | undefined): boolean => 
+  type?.[0]?.toLowerCase() === 's';
 
 // Pone bonito el rango de años (ej: "2010-15" o "2020 (M)")
-export const formatYearRange = (year, yearEnd, isSeries, fallback = "N/A") => {
+export const formatYearRange = (
+  year: number | string | null | undefined, 
+  yearEnd: string | null | undefined, 
+  isSeries: boolean, 
+  fallback: string = "N/A"
+): string => {
   let text = year ? String(year) : fallback;
-  if (isSeries && yearEnd) text += yearEnd === "M" ? " (M)" : (yearEnd === "-" ? " -" : `-${String(yearEnd).slice(-2)}`);
+  if (isSeries && yearEnd) {
+    text += yearEnd === "M" ? " (M)" : (yearEnd === "-" ? " -" : `-${String(yearEnd).slice(-2)}`);
+  }
   return text;
 };
 
 // URL del póster en alta calidad
-export const getHqPosterUrl = (img) => img && img !== "." ? `${CONFIG.POSTER_BASE_URL}${img}.webp` : "";
+export const getHqPosterUrl = (img: string | null | undefined): string => 
+  img && img !== "." ? `${CONFIG.POSTER_BASE_URL}${img}.webp` : "";
 
 // Coge los datos brutos de la base de datos y los pone bonitos para usarlos en la web
-export function mapMoviePayload(movie) {
-  if (!movie) return movie;
+export function mapMoviePayload(movie: Movie): MappedMovie {
   const isSeries = isMovieSeries(movie.type);
   const origTitle = movie.original_title?.trim();
   const title = movie.title || "";
-  const hasOrig = origTitle && origTitle.toLowerCase() !== title.toLowerCase();
+  const hasOrig = !!(origTitle && origTitle.toLowerCase() !== title.toLowerCase());
   
   return {
     ...movie,
@@ -44,7 +61,8 @@ export function mapMoviePayload(movie) {
     parsedActors: movie.actors?.split(",").map(a => a.trim()) || [],
     parsedDirectors: movie.directors?.split(",").map(d => d.trim()) || [],
     studioList: movie.studios_list?.split(",") || []
-  };
+
+  } as MappedMovie;
 }
 
 // =================================================================
@@ -56,8 +74,8 @@ const compactFormatter = new Intl.NumberFormat('es-ES', { notation: "compact", m
 const thousandsFormatter = new Intl.NumberFormat('de-DE'); // Usamos 'de-DE' porque usa puntos en los miles (1.000)
 
 // Pone bonitos los números de votos (Ej: 1500000 -> "1,5 M")
-export const formatVotesUnified = (votes, platform) => {
-  const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes).replace(/\D/g, ""), 10);
+export const formatVotesUnified = (votes: number | string | null | undefined, platform?: 'fa' | 'imdb'): string => {
+  const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes || "").replace(/\D/g, ""), 10);
   if (!numVotes || isNaN(numVotes)) return "";
 
   if (numVotes >= 1000000) return compactFormatter.format(numVotes).replace("M", " M");
@@ -72,8 +90,8 @@ export const formatVotesUnified = (votes, platform) => {
 };
 
 // Pone bonito el tiempo (Ej: 130 -> "2h 10min")
-export const formatRuntime = (minutesString, useShortLabel = false) => {
-  const minutes = +minutesString; 
+export const formatRuntime = (minutesString: string | number | null | undefined, useShortLabel: boolean = false): string => {
+  const minutes = +(minutesString || 0); 
   if (!minutes || minutes <= 0) return "";
   if (useShortLabel) return `${minutes}'`;
 
@@ -86,9 +104,10 @@ export const formatRuntime = (minutesString, useShortLabel = false) => {
 const DIACRITICS_REGEX = /[\u0300-\u036f]/g;
 
 // Quita acentos y mayúsculas (la 'á' pasa a 'a')
-export const normalizeText = t => t?.toLowerCase().normalize("NFD").replace(DIACRITICS_REGEX, "").trim() || "";
+export const normalizeText = (t: string | null | undefined): string => 
+  t?.toLowerCase().normalize("NFD").replace(DIACRITICS_REGEX, "").trim() || "";
 
-const GENRES = [
+const GENRES: ReadonlyArray<readonly [RegExp, string]> = [
   [/scifi|ciencia[\s-]?ficcion|futurista|distopia/g, "scifi"], [/filmnoir|negro|neo[\s-]?noir/g, "noir"],
   [/action|adrenalina/g, "accion"], [/adventure|epico/g, "aventuras"], [/animation|animado|dibujos|cgi/g, "animacion"],
   [/biography|biografico|biopic/g, "biografia"], [/comedy|humor|comico/g, "comedia"],
@@ -101,13 +120,18 @@ const GENRES = [
 ];
 
 // Limpia un género y unifica palabras clave ("ciencia ficcion" -> "scifi")
-export const normalizeGenreText = t => GENRES.reduce((acc, [p, r]) => acc.replace(p, r), normalizeText(t));
+export const normalizeGenreText = (t: string | null | undefined): string => 
+  GENRES.reduce((acc, [p, r]) => acc.replace(p, r), normalizeText(t));
 
 // Protege contra símbolos raros en el buscador (Previene ataques ReDoS)
-export const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const escapeRegExp = (s: string): string => 
+  s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Ilumina en negrita lo que has buscado, ignorando si pusiste acentos
-export const highlightAccentInsensitive = (text, searchTerm) => {
+export const highlightAccentInsensitive = (
+  text: string | null | undefined, 
+  searchTerm: string | null | undefined
+): DocumentFragment | Text => {
   if (!text) return document.createTextNode("");
   if (!searchTerm) return document.createTextNode(text);
 
@@ -117,7 +141,7 @@ export const highlightAccentInsensitive = (text, searchTerm) => {
   const regex = new RegExp(escapeRegExp(normalizedSearch), "gi");
   
   let lastIndex = 0;
-  let match;
+  let match: RegExpExecArray | null;
 
   while ((match = regex.exec(normalizedText)) !== null) {
     const matchIndex = match.index;
@@ -139,38 +163,51 @@ export const highlightAccentInsensitive = (text, searchTerm) => {
 };
 
 // Pone la primera letra en mayúscula
-export const capitalizeWords = (str) => str ? str.replace(/\b\w/g, l => l.toUpperCase()) : "";
+export const capitalizeWords = (str: string | null | undefined): string => 
+  str ? str.replace(/\b\w/g, l => l.toUpperCase()) : "";
 
 // =================================================================
 //          3. CONTROL DE TRÁFICO (Red y Clics)
 // =================================================================
 
+export interface DebouncedFunction<T extends (...args: never[]) => void> {
+  (...args: Parameters<T>): void;
+  cancel(): void;
+}
+
 // El "Anti-Ametralladora": Espera a que termines de escribir para buscar
-export const debounce = (func, delay) => {
-  let timeout;
-  const debounced = function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), delay);
+export const debounce = <T extends (...args: never[]) => void>(
+  func: T, 
+  delay: number
+): DebouncedFunction<T> => {
+  let timeout: number | undefined;
+  
+  const debounced = function (this: unknown, ...args: Parameters<T>) {
+    window.clearTimeout(timeout);
+    timeout = window.setTimeout(() => func.apply(this, args), delay);
   };
-  debounced.cancel = () => clearTimeout(timeout);
+  
+  debounced.cancel = () => window.clearTimeout(timeout);
   return debounced;
 };
 
 // Traduce errores raros en algo que un humano pueda entender
-export const getFriendlyErrorMessage = (e) => 
-  e?.name === "AbortError" ? null : 
-  e?.code === ERROR_CODES.ABORTED ? null :
-  e?.code === ERROR_CODES.AUTH_REQUIRED ? e.message :
-  e?.code === ERROR_CODES.CONFIGURATION ? e.message :
-  e?.code === ERROR_CODES.DATABASE ? e.message :
-  e?.code === ERROR_CODES.VALIDATION ? e.message :
-  e?.code === ERROR_CODES.NETWORK ? e.message :
-  e?.message?.includes("Failed to fetch") ? "Error de conexión. Revisa tu internet." : 
-  "Ha ocurrido un error inesperado. Inténtalo más tarde.";
+export const getFriendlyErrorMessage = (e: unknown): string | null => {
+  const err = e as Record<string, unknown> | null | undefined;
+  return err?.name === "AbortError" ? null : 
+    err?.code === ERROR_CODES.ABORTED ? null :
+    err?.code === ERROR_CODES.AUTH_REQUIRED ? String(err.message) :
+    err?.code === ERROR_CODES.CONFIGURATION ? String(err.message) :
+    err?.code === ERROR_CODES.DATABASE ? String(err.message) :
+    err?.code === ERROR_CODES.VALIDATION ? String(err.message) :
+    err?.code === ERROR_CODES.NETWORK ? String(err.message) :
+    (typeof err?.message === "string" && err.message.includes("Failed to fetch")) ? "Error de conexión. Revisa tu internet." : 
+    "Ha ocurrido un error inesperado. Inténtalo más tarde.";
+};
 
-const requestControllers = new Map();
+const requestControllers = new Map<string, AbortController>();
 // Si pides cargar una página, pero luego pinchas en otra antes de que cargue, cancela la anterior
-export function createAbortableRequest(key) {
+export function createAbortableRequest(key: string): AbortController {
   requestControllers.get(key)?.abort();
   const controller = new AbortController();
   requestControllers.set(key, controller);
@@ -182,7 +219,12 @@ export function createAbortableRequest(key) {
 // =================================================================
 
 // Pinta la banderita del país
-export function renderCountryFlag(container, flagSpan, countryCode, countryName = "") {
+export function renderCountryFlag(
+  container: HTMLElement | null, 
+  flagSpan: HTMLElement | null, 
+  countryCode: string | null | undefined, 
+  countryName: string = ""
+): void {
   if (!container || !flagSpan) return;
   if (countryCode) {
     container.style.display = "flex"; 
@@ -200,8 +242,15 @@ export function renderCountryFlag(container, flagSpan, countryCode, countryName 
   }
 }
 
+interface CreateElementOptions {
+  dataset?: Record<string, string>;
+  attributes?: Record<string, string>;
+  style?: string;
+  [key: string]: unknown;
+}
+
 // Crea HTML rapidísimo usando Object.assign
-export function createElement(tag, { dataset, attributes, style, ...props } = {}) {
+export function createElement(tag: string, { dataset, attributes, style, ...props }: CreateElementOptions = {}): HTMLElement {
   const el = Object.assign(document.createElement(tag), props);
   if (style) el.style.cssText = style;
   if (dataset) Object.assign(el.dataset, dataset);
@@ -210,7 +259,7 @@ export function createElement(tag, { dataset, attributes, style, ...props } = {}
 }
 
 // Hace que un botón dé un pequeño "saltito" al pulsarlo
-export const triggerPopAnimation = (element) => {
+export const triggerPopAnimation = (element: HTMLElement | null): void => {
   if (!element) return;
   element.classList.remove("pop-animation");
   void element.offsetWidth; // Fuerza al navegador a reiniciar la animación
@@ -219,7 +268,7 @@ export const triggerPopAnimation = (element) => {
 };
 
 // Avisa al navegador para que cargue la primera imagen antes que nada (Mejora el LCP)
-export function preloadLcpImage(movieData) {
+export function preloadLcpImage(movieData: Partial<MappedMovie> | null | undefined): void {
   const imageUrl = movieData?.posterUrl || getHqPosterUrl(movieData?.image);
   if (!imageUrl) return;
 
@@ -231,16 +280,16 @@ export function preloadLcpImage(movieData) {
   document.head.appendChild(link);
 }
 
-const canVibrate = "vibrate" in navigator;
+const canVibrate = typeof navigator !== 'undefined' && "vibrate" in navigator;
 // Vibra el móvil un poquito al tocar botones (si no lo tienes quitado en ajustes)
-export function triggerHapticFeedback(style = "light") {
+export function triggerHapticFeedback(style: 'light' | 'medium' | 'success' = "light"): void {
   if (!canVibrate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   
   try {
     switch (style) {
       case "light": navigator.vibrate(10); break;
       case "medium": navigator.vibrate(20); break;
-      case "success": navigator.vibrate([10, 30, 10]); break; // Patrón distintivo
+      case "success": navigator.vibrate([10, 30, 10]); break;
     }
   } catch (e) { /* Ignorar errores en entornos restringidos */ }
 }
@@ -250,13 +299,15 @@ export function triggerHapticFeedback(style = "light") {
 // =================================================================
 
 export const LocalStore = {
-  get: (key) => {
+  get: <T = unknown>(key: string): T | null => {
     try {
-      const parsed = JSON.parse(localStorage.getItem(key));
-      return (parsed?.v === CONFIG.STORAGE_VERSION) ? parsed.d : null;
+      const item = localStorage.getItem(key);
+      if (!item) return null;
+      const parsed = JSON.parse(item);
+      return (parsed?.v === CONFIG.STORAGE_VERSION) ? (parsed.d as T) : null;
     } catch (e) { return null; }
   },
-  set: (key, value) => {
+  set: (key: string, value: unknown): void => {
     try {
       const payload = { v: CONFIG.STORAGE_VERSION, d: value };
       localStorage.setItem(key, JSON.stringify(payload));
@@ -264,27 +315,49 @@ export const LocalStore = {
       if (import.meta.env.DEV) console.warn("Storage full or disabled", e); 
     }
   },
-  remove: (key) => { try { localStorage.removeItem(key); } catch (e) {} }
+  remove: (key: string): void => { try { localStorage.removeItem(key); } catch (e) {} }
 };
 
 // =================================================================
 //          6. RENDIMIENTO MAGISTRAL (Programador de Tareas)
 // =================================================================
 
+declare global {
+  interface Window {
+    scheduler?: {
+      postTask<T>(task: () => T, options?: { priority?: 'user-blocking' | 'user-visible' | 'background' }): Promise<T>;
+    };
+    requestIdleCallback?: (callback: (deadline: IdleDeadline) => void, options?: { timeout?: number }) => number;
+  }
+}
+
 // Pinta las tarjetas "a trocitos" para que la pantalla nunca se congele
-export function scheduleWork(task, priority = 'user-visible') {
-  if ('scheduler' in window && window.scheduler.postTask) {
+export function scheduleWork<T>(task: () => T, priority: 'user-blocking' | 'user-visible' | 'background' = 'user-visible'): Promise<T> {
+  if (window.scheduler && window.scheduler.postTask) {
     return window.scheduler.postTask(task, { priority });
   }
   // Fallback con requestIdleCallback
   return new Promise(resolve => {
-    const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
+    const idleCallback = window.requestIdleCallback || ((cb) => window.setTimeout(cb, 1));
     idleCallback(() => resolve(task()), { timeout: 300 });
   });
 }
 
+export interface ViewTransition {
+  finished: Promise<void>;
+  ready: Promise<void>;
+  updateCallbackDone: Promise<void>;
+  skipTransition(): void;
+}
+
+declare global {
+  interface Document {
+    startViewTransition?(updateCallback: () => void): ViewTransition;
+  }
+}
+
 // Animaciones de Hollywood (cuando pinchas una peli y se hace grande)
-export function executeViewTransition(updateDomCallback) {
+export function executeViewTransition(updateDomCallback: () => void): ViewTransition | { finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void> } {
   if (!document.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     updateDomCallback();
     const resolved = Promise.resolve();
