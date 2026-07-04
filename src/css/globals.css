@@ -140,3 +140,10 @@ button, input, select, textarea, a {
 .smooth-scroll {
   scroll-behavior: smooth;
 }
+
+/* 12. Protección Global de Imágenes (Estrategia B) */
+img {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}

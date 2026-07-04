@@ -367,6 +367,7 @@
               height="496"
               decoding="async"
             />
+            <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
               <svg class="low-rating-star" data-action="set-rating-suspenso">
                  <use href="/src/sprite.svg#icon-star"></use>
@@ -504,6 +505,7 @@
         <div class="flip-card-front">
           <div class="poster-container">
             <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" class="lazy-image" width="400" height="496" decoding="async" />
+            <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
               <span class="wall-person-name" data-template="wall-name"></span>
             </div>
@@ -523,7 +525,8 @@
         </div>
         <div class="flip-card-back">
           <div class="scrollable-content" style="flex-grow: 1; margin-top: var(--space-xs);">
-            <div class="plot-summary-final" data-template="biography" style="border-top: none; padding-top: 0; font-size: var(--font-size-sm); line-height: 1.5;"></div>
+            <h4 class="bio-headline" data-template="bio-headline"></h4>
+            <div class="plot-summary-final" data-template="biography" style="border-top: none; padding-top: 0; font-size: calc(var(--font-size-sm) * 1.2); line-height: 1.5;"></div>
           </div>
         </div>
       </div>
@@ -536,6 +539,7 @@
         <div class="flip-card-front">
           <div class="poster-container">
             <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" class="lazy-image" width="400" height="496" decoding="async" />
+            <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
               <span class="wall-person-name" data-template="wall-name"></span>
             </div>
@@ -572,6 +576,7 @@
         <div class="flip-card-front">
           <div class="poster-container">
             <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" class="lazy-image" width="400" height="496" decoding="async" />
+            <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
               <svg class="low-rating-star" data-action="set-rating-suspenso"><use href="/src/sprite.svg#icon-star"></use></svg>
               <div class="star-rating-container" data-template="average-rating-stars" data-action="set-rating-estrellas">
@@ -588,6 +593,7 @@
             </div>
             <div class="movie-meta">
               <div class="card-icons-line"></div> 
+              <div class="modal-horizontal-divider"></div>
               <div class="year-country-line"><div class="year-flag-group"><span data-template="year"></span><span class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></span></div>
               </div>
             </div>

@@ -153,6 +153,20 @@
     border: var(--space-xxs) solid var(--color-surface);
     border-radius: var(--radius-xxl);
     object-fit: cover;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  & .poster-overlay-guard {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: transparent;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+    border-radius: var(--radius-xxl);
   }
 }
 
@@ -714,4 +728,19 @@ body.rotation-disabled .movie-card.person-card .wall-person-name {
   line-height: 1.2; /* Permite espacio para los descendentes (g, q, y, j) */
   padding-bottom: 2px; /* Margen de seguridad inferior */
   transform: translateY(-4px) !important; /* Ajuste óptico: subida estática para igualar el solapamiento de la nota */
+}
+
+/* Titular previo al texto de la biografía en directores/actores */
+.bio-headline {
+  font-size: calc(var(--font-size-base) * 1.25);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--color-border);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.bio-headline:empty {
+  display: none !important;
 }

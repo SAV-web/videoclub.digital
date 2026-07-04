@@ -63,6 +63,7 @@ export interface PersonDetails {
   deathday: string | null;
   place_of_birth: string | null;
   biography: string | null;
+  titulo_bio: string | null;
   countries: { name: string; code: string } | null;
 }
 

@@ -87,7 +87,9 @@
 .is-quick-view .card-action-btn { width: 60px; height: 60px; margin-left: 0; & svg { width: 38px; height: 38px; stroke-width: 2.5px; } }
 
 /* Metadatos */
-.is-quick-view .movie-meta { align-items: flex-end; margin-top: auto; padding-top: var(--space-xs); }
+.is-quick-view .movie-meta { align-items: center; margin-top: auto; padding-top: var(--space-xs); }
+.is-quick-view .modal-horizontal-divider { flex-grow: 1; height: 1px; background-color: var(--color-border); align-self: center; margin-inline: var(--space-md); opacity: 0.8; }
+.is-quick-view .card-icons-line:empty + .modal-horizontal-divider { margin-left: 0; }
 .is-quick-view .card-icons-line { gap: var(--space-md); }
 .is-quick-view .platform-icon svg { width: 33px; height: 33px; }
 .is-quick-view .year-flag-group { font-size: 2rem; line-height: 1; gap: var(--space-sm); }

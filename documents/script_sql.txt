@@ -40,6 +40,10 @@ SET search_path = public, extensions AS $$ BEGIN RETURN replace(v_input, ',', '.
 -- 2.0. MODIFICACIONES DE ESQUEMA (Soporte de orden para directores)
 -- =================================================================
 ALTER TABLE public.movie_directors ADD COLUMN IF NOT EXISTS ordinality smallint;
+ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS titulo_bio text;
+ALTER TABLE public.actors ADD COLUMN IF NOT EXISTS titulo_bio text;
+ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS titulo_bio text;
+ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS biography text;
 
 -- =================================================================
 -- 2.1. GARANTÍA DE COLUMNAS GENERADAS (Fix Crítico ETL)
@@ -482,7 +486,7 @@ GROUP BY a.id, a.name, a.name_norm;
 CREATE UNIQUE INDEX mv_actor_suggestions_id_idx ON mv_actor_suggestions(id);
 CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON mv_actor_suggestions USING gin(name_norm gin_trgm_ops);
 CREATE INDEX mv_actor_suggestions_count_idx ON mv_actor_suggestions(movie_count DESC);
-REVOKE ALL ON mv_actor_suggestions FROM anon, authenticated;
+GRANT SELECT ON TABLE public.mv_actor_suggestions TO anon, authenticated;
 
 -- 2. Directores
 DROP MATERIALIZED VIEW IF EXISTS mv_director_suggestions CASCADE;
@@ -494,7 +498,7 @@ GROUP BY d.id, d.name, d.name_norm;
 CREATE UNIQUE INDEX mv_director_suggestions_id_idx ON mv_director_suggestions(id);
 CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON mv_director_suggestions USING gin(name_norm gin_trgm_ops);
 CREATE INDEX mv_director_suggestions_count_idx ON mv_director_suggestions(movie_count DESC);
-REVOKE ALL ON mv_director_suggestions FROM anon, authenticated;
+GRANT SELECT ON TABLE public.mv_director_suggestions TO anon, authenticated;
 
 -- 3. Títulos (Optimización para Autocompletado)
 DROP MATERIALIZED VIEW IF EXISTS mv_title_suggestions CASCADE;
@@ -506,12 +510,12 @@ GROUP BY title, title_norm;
 CREATE UNIQUE INDEX mv_title_suggestions_title_idx ON mv_title_suggestions(title);
 CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON mv_title_suggestions USING gin(title_norm gin_trgm_ops);
 CREATE INDEX mv_title_suggestions_relevance_idx ON mv_title_suggestions(best_relevance ASC);
-REVOKE ALL ON mv_title_suggestions FROM anon, authenticated;
+GRANT SELECT ON TABLE public.mv_title_suggestions TO anon, authenticated;
 
 -- 3. Funciones de Lectura
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
-SECURITY DEFINER SET search_path = public, extensions AS $$
+SET search_path = public, extensions AS $$
     SELECT name FROM mv_actor_suggestions
     -- OPTIMIZACIÓN: name_norm ya está en minúsculas en la MV. LIKE es mucho más rápido que ILIKE
     WHERE name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
@@ -521,7 +525,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_director_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
-SECURITY DEFINER SET search_path = public, extensions AS $$
+SET search_path = public, extensions AS $$
     SELECT name FROM mv_director_suggestions
     WHERE name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ORDER BY movie_count DESC
@@ -530,7 +534,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_title_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
-SECURITY DEFINER SET search_path = public, extensions AS $$
+SET search_path = public, extensions AS $$
     SELECT title FROM mv_title_suggestions
     WHERE title_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ORDER BY best_relevance ASC
@@ -563,7 +567,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_random_top_actors(limit_count int DEFAULT 5)
 RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE
-SECURITY DEFINER SET search_path = public, extensions AS $$
+SET search_path = public, extensions AS $$
     WITH top_actors AS (
         SELECT name
         FROM mv_actor_suggestions
@@ -575,7 +579,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_random_top_directors(limit_count int DEFAULT 5)
 RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE
-SECURITY DEFINER SET search_path = public, extensions AS $$
+SET search_path = public, extensions AS $$
     WITH top_directors AS (
         SELECT name
         FROM mv_director_suggestions

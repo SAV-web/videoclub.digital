@@ -45,6 +45,7 @@ window.addEventListener('resize', debounce(() => { cachedIsMobileViewport = wind
 // =================================================================
 
 async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
+  if (cardElement.classList.contains('collection-card')) return;
   const { openModal, initQuickView } = await import("./modal.js");
   const win = window as unknown as Record<string, unknown>;
   if (!win[QUICK_VIEW_INIT_FLAG]) { 
@@ -113,7 +114,7 @@ function prefetchCardResources(card: MovieCardElement): void {
 }
 
 function startFlipTimer(cardElement: MovieCardElement): void {
-  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
+  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || cardElement.classList.contains('collection-card') || cardElement.classList.contains('person-card')) return;
   const inner = cardElement.querySelector(".flip-card-inner");
   if (inner?.classList.contains("is-flipped")) return;
 
@@ -127,7 +128,7 @@ function startFlipTimer(cardElement: MovieCardElement): void {
 }
 
 const handleSingleTap = (cardElement: MovieCardElement): void => {
-  if (!cardElement) return;
+  if (!cardElement || cardElement.classList.contains('collection-card') || cardElement.classList.contains('person-card')) return;
   const inner = cardElement.querySelector(".flip-card-inner");
   if (!inner) return;
 
@@ -161,7 +162,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     if (e.pointerType !== 'mouse') return;
     const target = e.target as HTMLElement;
     const card = target.closest<MovieCardElement>(".movie-card");
-    if (!card) return;
+    if (!card || card.classList.contains('collection-card') || card.classList.contains('person-card')) return;
 
     if (currentHoveredCard !== card) {
       if (currentHoveredCard) {
@@ -216,9 +217,21 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 
     const target = e.target as HTMLElement;
     const card = target.closest<MovieCardElement>('.movie-card');
+    if (!card) return;
     
     const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item';
-    if (!card || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || target.closest(criticalElements)) return;
+    
+    if (card.classList.contains('person-card')) {
+      if (!target.closest(criticalElements)) {
+        if (Math.abs(e.clientX - startX) <= MOVE_THRESHOLD && Math.abs(e.clientY - startY) <= MOVE_THRESHOLD) {
+          if (e.cancelable) e.preventDefault();
+          loadAndOpenModal(card);
+        }
+      }
+      return;
+    }
+
+    if (card.classList.contains('collection-card') || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || target.closest(criticalElements)) return;
 
     // Detectar si fue un tap o un scroll
     if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) return;
@@ -381,9 +394,10 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   const link = target.closest("a");
   if (link && link.href && link.origin !== location.origin) return;
 
-  // 7. Apertura Modal (Modo Muro)
+  // 7. Apertura Modal (Modo Muro o Fichas de Personas)
   if (card.id !== 'quick-view-content') {
-    if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
+    const isPerson = card.classList.contains('person-card');
+    if (isPerson || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       loadAndOpenModal(card);
     }
   }
@@ -813,6 +827,11 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
     person.countries?.code || null,
     person.countries?.name || null
   );
+  
+  const headlineEl = card.querySelector('[data-template="bio-headline"]');
+  if (headlineEl) {
+    headlineEl.textContent = person.titulo_bio || "";
+  }
   
   const biographyEl = card.querySelector('[data-template="biography"]');
   if (biographyEl) {

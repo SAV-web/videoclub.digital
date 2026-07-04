@@ -41,6 +41,7 @@ export interface ExtendedMovie extends MappedMovie {
   birthday?: string | null;
   deathday?: string | null;
   biography?: string | null;
+  titulo_bio?: string | null;
   countries?: { code: string; name: string };
   isPerson?: boolean;
 }
@@ -628,6 +629,11 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     );
 
     // Biografía
+    const headlineEl = cardClone.querySelector('[data-template="bio-headline"]');
+    if (headlineEl) {
+      headlineEl.textContent = movie.titulo_bio || "";
+    }
+
     const biographyEl = cardClone.querySelector('[data-template="biography"]');
     if (biographyEl) {
       biographyEl.textContent = movie.biography || "Biografía no disponible en el catálogo.";
