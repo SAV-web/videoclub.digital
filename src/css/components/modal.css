@@ -281,16 +281,93 @@
 
 /* --- 8. ADAPTACIONES ESPECÍFICAS PARA PERSONAS EN VISTA RÁPIDA --- */
 .is-quick-view.person-card {
-  /* Anulamos borde y pseudo-elementos del grid para que la foto ocupe y luzca igual que las películas */
-  & .poster-container img {
-    border: none !important;
-    border-radius: var(--radius-xxl) !important;
-    box-shadow: var(--shadow) !important;
+  & .poster-container {
+    width: 240px !important;
+    height: auto !important;
+    margin: 0 auto !important;
+    padding-top: var(--space-lg) !important;
+    position: relative !important;
+    background: transparent !important;
+    display: block !important;
   }
+
+  & .poster-container img {
+    width: 100% !important;
+    height: auto !important;
+    border-radius: var(--radius-xxl) !important;
+    border: 4px solid var(--color-surface) !important;
+    box-shadow: var(--shadow), 0 0 0 1px var(--color-border) !important;
+    transition: transform var(--duration-quick) var(--ease-spring) !important;
+    display: block !important;
+    
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        transform: scale(1.03) !important;
+      }
+    }
+  }
+
+  & .poster-overlay-guard {
+    position: absolute !important;
+    inset: 4px !important;
+    width: auto !important;
+    height: auto !important;
+    border-radius: calc(var(--radius-xxl) - 4px) !important;
+    left: auto !important;
+    transform: none !important;
+  }
+
   & .poster-container::after {
     display: none !important;
   }
   & .card-rating-block {
     display: none !important;
+  }
+
+  /* Altura estable y centrado vertical en escritorio */
+  @media (min-width: 701px) {
+    & .flip-card-inner {
+      display: flex !important;
+      flex-direction: row !important;
+      min-height: 520px !important;
+      height: 520px !important;
+    }
+
+    & .flip-card-front {
+      width: 50% !important;
+      height: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      align-items: center !important;
+      text-align: center !important;
+      border-right: 1px solid var(--color-border) !important;
+      border-bottom: none !important;
+      box-sizing: border-box !important;
+      padding: var(--space-lg) !important;
+      flex-shrink: 0 !important;
+    }
+
+    & .flip-card-back {
+      position: static !important;
+      width: 50% !important;
+      height: 100% !important;
+      overflow-y: auto !important;
+      box-sizing: border-box !important;
+      padding: var(--space-lg) !important;
+    }
+
+    & .movie-info.movie-summary {
+      width: 100% !important;
+      margin-top: var(--space-md) !important;
+      padding-top: 0 !important;
+    }
+  }
+
+  /* Separación de foto y nombre en móvil */
+  @media (max-width: 700px) {
+    & .poster-container {
+      margin-bottom: var(--space-lg) !important;
+    }
   }
 }

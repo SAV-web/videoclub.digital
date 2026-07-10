@@ -595,7 +595,7 @@ $$;
 
 -- 6.1. Habilitamos RLS y políticas de solo lectura para tablas públicas.
 DO $$ DECLARE t_name TEXT; BEGIN
-    FOR t_name IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name NOT IN ('user_movie_entries', 'movies_staging') AND table_name NOT LIKE 'pg_%' AND table_name NOT LIKE 'sql_%'
+    FOR t_name IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name NOT IN ('user_movie_entries', 'movies_staging', 'people_staging') AND table_name NOT LIKE 'pg_%' AND table_name NOT LIKE 'sql_%'
     LOOP
         EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', t_name);
         EXECUTE format('DROP POLICY IF EXISTS "Enable read access for all users" ON public.%I;', t_name);

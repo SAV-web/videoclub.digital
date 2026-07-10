@@ -317,17 +317,27 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     if (!actorsOverlay) {
       actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
 
+      const heading = createElement("h4", { textContent: "Reparto" });
+      const listText = createElement("div", { className: "actors-list-text" });
+
       const actors = (card.movieData as MappedMovie)?.parsedActors || [];
-      let html = `<h4>Reparto</h4><div class="actors-list-text">`;
       actors.forEach(name => {
         if (IGNORED_ACTORS.includes(name.toLowerCase())) {
-          html += `<span class="actor-list-item" style="cursor:default; pointer-events:none">${name}</span>`;
+          listText.appendChild(createElement("span", {
+            className: "actor-list-item",
+            textContent: name,
+            style: "cursor:default; pointer-events:none"
+          }));
         } else {
-          html += `<button type="button" class="actor-list-item" data-actor-name="${name}">${name}</button>`;
+          listText.appendChild(createElement("button", {
+            className: "actor-list-item",
+            textContent: name,
+            attributes: { "type": "button", "data-actor-name": name }
+          }));
         }
       });
-      html += `</div>`;
-      actorsOverlay.innerHTML = html;
+      actorsOverlay.appendChild(heading);
+      actorsOverlay.appendChild(listText);
       flipBack.insertBefore(actorsOverlay, flipBack.querySelector(".expand-content-btn"));
     }
 

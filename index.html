@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- === 0. SEGURIDAD Y PROTECCIÓN CLIENTE === -->
+    <!-- Content Security Policy (CSP) robusta adaptada al stack Supabase -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co; img-src 'self' data: https://wibygecgfczcvaqewleq.supabase.co; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://wibygecgfczcvaqewleq.supabase.co; frame-ancestors 'none';" />
+    
+    <!-- Evitar Clickjacking (Equivalente cliente a X-Frame-Options: DENY) -->
+    <script>
+      if (window.self !== window.top) {
+        window.top.location = window.self.location;
+      }
+    </script>
+
 <!-- === 1. METADATOS Y CONFIGURACIÓN === -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
