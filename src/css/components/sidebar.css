@@ -65,15 +65,13 @@
 .active-filters-list {
   display: flex; flex-wrap: wrap; gap: var(--space-xs);
   padding: var(--space-xxs) var(--space-xs) 0; min-height: 1px;
-  /* Ocultar pills si la sección está abierta para no duplicar info visual */
-  :where(.collapsible-section.active) & { display: none; }
 }
 
 @keyframes pill-pop-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
 @keyframes fadeOutPill { to { opacity: 0; transform: scale(0.8); } }
 
 .filter-pill {
-  display: flex; align-items: center; height: 30px; padding-inline: var(--space-sm);
+  display: flex; align-items: center; min-height: 30px; height: auto; padding-inline: var(--space-sm); padding-block: 4px;
   border-radius: var(--radius-pill);
   background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); color: #fff; cursor: pointer;

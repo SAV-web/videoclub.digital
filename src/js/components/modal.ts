@@ -10,9 +10,9 @@
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { setupCardRatings } from "./rating.js";
-import { appEvents } from "../state.js";
+import { appEvents, getState, getCurrentPage } from "../state.js";
 import { formatRuntime, createElement, renderCountryFlag, executeViewTransition } from "../utils.js"; 
-import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES } from "../constants.js";
+import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 import { Movie, MappedMovie } from "../types.js";
 
@@ -279,7 +279,7 @@ function getGridCards(): HTMLElement[] {
  * @param {number} direction - -1 (Anterior) o 1 (Siguiente).
  */
 function navigateToSibling(direction: number): void {
-  const { content } = getDom();
+  const { content, modal } = getDom();
   if (!content) return;
 
   const currentId = content.dataset.movieId;
@@ -293,6 +293,20 @@ function navigateToSibling(direction: number): void {
   const nextIndex = currentIndex + direction;
   if (nextIndex >= 0 && nextIndex < cards.length) {
     openModal(cards[nextIndex], cards); // Reutilizar la lista de tarjetas para optimizar
+  } else {
+    // Si sale de los límites, intentamos cambiar de página
+    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+    const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+    const totalPages = Math.ceil(getState().totalMovies / pageSize);
+    const currentPage = getCurrentPage();
+
+    if (direction === 1 && currentPage < totalPages) {
+      modal?.classList.add("modal-is-loading");
+      appEvents.emit("page:requestChange", { direction: 1, target: "first" });
+    } else if (direction === -1 && currentPage > 1) {
+      modal?.classList.add("modal-is-loading");
+      appEvents.emit("page:requestChange", { direction: -1, target: "last" });
+    }
   }
 }
 
@@ -308,8 +322,13 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
 
   if (currentIndex === -1) return;
 
-  const hasPrev = currentIndex > 0;
-  const hasNext = currentIndex < cards.length - 1;
+  const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+  const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(getState().totalMovies / pageSize);
+  const currentPage = getCurrentPage();
+
+  const hasPrev = currentIndex > 0 || currentPage > 1;
+  const hasNext = currentIndex < cards.length - 1 || currentPage < totalPages;
 
   if (prevBtn) {
     prevBtn.disabled = !hasPrev;
@@ -710,12 +729,16 @@ export function closeModal(): void {
       activeHeroCard = null;
       
       modalTransitionCount--;
-      if (modalTransitionCount === 0 && header) header.style.viewTransitionName = "";
+      if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+        header.style.viewTransitionName = "";
+      }
     });
   } else {
     executeViewTransition(performClose).finished.finally(() => {
       modalTransitionCount--;
-      if (modalTransitionCount === 0 && header) header.style.viewTransitionName = "";
+      if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+        header.style.viewTransitionName = "";
+      }
     });
   }
 
@@ -729,6 +752,8 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   if (!cardElement) return;
   const { modal, overlay, content } = getDom();
   if (!modal || !overlay) return;
+  
+  modal.classList.remove("modal-is-loading");
   
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
@@ -762,7 +787,9 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
 
   transition.finished.finally(() => {
     modalTransitionCount--;
-    if (modalTransitionCount === 0 && header) header.style.viewTransitionName = "";
+    if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+      header.style.viewTransitionName = "";
+    }
   });
 }
 

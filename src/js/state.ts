@@ -59,6 +59,7 @@ export interface AppEventPayloads {
   'userDataUpdated': undefined;
   'userMovieDataChanged': { movieId: number };
   'state:changed': { path: string; value: unknown; oldValue: unknown };
+  'page:requestChange': { direction: number; target: 'first' | 'last' };
 }
 
 export const appEvents = {

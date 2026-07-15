@@ -333,6 +333,12 @@ declare global {
 
 // Pinta las tarjetas "a trocitos" para que la pantalla nunca se congele
 export function scheduleWork<T>(task: () => T, priority: 'user-blocking' | 'user-visible' | 'background' = 'user-visible'): Promise<T> {
+  // Si la pestaña está en segundo plano (oculta), ejecutamos la tarea inmediatamente.
+  // No hay interfaz que congelar ni frames que proteger en segundo plano.
+  if (typeof document !== 'undefined' && document.hidden) {
+    return Promise.resolve(task());
+  }
+
   if (window.scheduler && window.scheduler.postTask) {
     return window.scheduler.postTask(task, { priority });
   }

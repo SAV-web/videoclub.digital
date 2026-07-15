@@ -1102,14 +1102,23 @@ function setupEventListeners(): void {
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
             clickedSection.classList.add("is-ready");
             
+            const nextSection = clickedSection.nextElementSibling as HTMLElement | null;
+            const nextHeader = nextSection?.querySelector<HTMLElement>('.section-header');
             const inputField = clickedSection.querySelector<HTMLElement>('.sidebar-filter-input');
-            if (inputField) {
+            const profileContainer = document.getElementById('user-profile-container');
+
+            if (isMobileLayout() && profileContainer) {
+              profileContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (nextHeader) {
+              nextHeader.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (inputField) {
               inputField.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              if (!isMobileLayout()) {
-                inputField.focus({ preventScroll: true });
-              }
             } else if (header) {
               header.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            if (inputField && !isMobileLayout()) {
+              inputField.focus({ preventScroll: true });
             }
           }
         }, 300);

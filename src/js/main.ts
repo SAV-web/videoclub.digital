@@ -60,7 +60,7 @@ interface SidebarModule {
 }
 
 interface CardModule {
-  renderMovieGrid(container: HTMLElement | null, movies: MappedMovie[], vipData: VipData | null): void;
+  renderMovieGrid(container: HTMLElement | null, movies: MappedMovie[], vipData: VipData | null): Promise<void>;
   renderNoResults(gridContainer: HTMLElement | null, paginationContainer: HTMLElement | null, filters: ActiveFilters): void;
   renderSkeletons(gridContainer: HTMLElement | null, paginationContainer: HTMLElement | null): void;
   runFlipOnboarding(gridContainer: HTMLElement | null): void;
@@ -214,10 +214,16 @@ export async function loadAndRenderMovies(
     const cardModule = await cardModulePromise;
 
     // Pinta con efecto cine
-    executeViewTransition(() => {
-      updateDomWithResults(movies, effectiveTotal, cardModule, vipData, hasVip);
+    let renderPromise: Promise<void> | void;
+    const transition = executeViewTransition(() => {
+      renderPromise = updateDomWithResults(movies, effectiveTotal, cardModule, vipData, hasVip);
       window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
     });
+
+    await transition.updateCallbackDone;
+    if (renderPromise) {
+      await renderPromise;
+    }
 
   } catch (error: unknown) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
@@ -246,7 +252,7 @@ function updateDomWithResults(
   cardModule: CardModule, 
   vipData: VipData | null = null, 
   hasVip = false
-): void {
+): Promise<void> | void {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, movies);
@@ -277,13 +283,14 @@ function updateDomWithResults(
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
   } else if (totalMovies <= actualDynamicLimit && currentPage === 1) {
-    renderMovieGrid(dom.gridContainer, movies, vipData);
+    const promise = renderMovieGrid(dom.gridContainer, movies, vipData);
     if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     updateHeaderPaginationState(1, 1);
+    return promise;
   } else {
     const currentLimit = (hasVip && currentPage === 1) ? baseLimit - 1 : baseLimit;
     const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
-    renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
+    const promise = renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
     
     if (gridTotalItems > baseLimit) {
       renderPagination(dom.paginationContainer, gridTotalItems, currentPage);
@@ -291,6 +298,7 @@ function updateDomWithResults(
       if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     }
     updateHeaderPaginationState(currentPage, gridTotalItems);
+    return promise;
   }
 
   if (currentPage === 1 && totalMovies > 0) {
@@ -604,6 +612,29 @@ function setupGlobalListeners(): void {
   });
 
   appEvents.on("filtersReset", handleFiltersReset);
+
+  appEvents.on("page:requestChange", async (data: { direction: number; target: 'first' | 'last' }) => {
+    const { direction, target } = data;
+    const currentPage = getCurrentPage();
+    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+    const totalPages = Math.ceil(getState().totalMovies / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
+    const newPage = currentPage + direction;
+    
+    if (newPage > 0 && newPage <= totalPages) {
+      appEvents.emit("uiActionTriggered");
+      await loadAndRenderMovies(newPage);
+      
+      const grid = document.getElementById("grid-container");
+      if (grid) {
+        const cards = Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
+        if (cards.length > 0) {
+          const targetCard = target === "first" ? cards[0] : cards[cards.length - 1];
+          const { openModal } = await import("./components/modal.js");
+          openModal(targetCard as any, cards);
+        }
+      }
+    }
+  });
 }
 
 // --- 5. ENCHUFAR LA AUTENTICACIÓN ---
@@ -613,6 +644,7 @@ function setupAuthSystem(): void {
   const loginButton = document.getElementById("login-button");
   const userSessionGroup = document.getElementById("user-session-group");
   let initialLoadHandled = false;
+  let lastUserId: string | null = null;
   
   async function onLogin(user: User) {
     document.body.classList.add(CSS_CLASSES.USER_LOGGED_IN);
@@ -662,14 +694,17 @@ function setupAuthSystem(): void {
   
   getSupabase().then(supabase => {
     supabase.auth.onAuthStateChange((event, session) => {
+      const currentUser = session?.user || null;
+      const currentUserId = currentUser?.id || null;
+
       if (event === "PASSWORD_RECOVERY") {
         import("./auth.js").then(({ showResetPasswordView }) => {
           showResetPasswordView();
         });
       }
       
-      if (session?.user) {
-        onLogin(session.user);
+      if (currentUser) {
+        onLogin(currentUser);
       } else {
         onLogout();
       }
@@ -680,15 +715,20 @@ function setupAuthSystem(): void {
 
       if (hasAuthHash && !window.location.hash.includes("type=recovery")) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        lastUserId = currentUserId;
         loadAndRenderMovies(1, { replaceHistory: true });
         initialLoadHandled = true;
       } else if (!initialLoadHandled) {
+        lastUserId = currentUserId;
         initialLoadHandled = true;
         loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
       } else {
-        // Recargar películas ante cambios de sesión posteriores (login/logout manual)
-        // para refrescar marcas de lista y valoraciones
-        loadAndRenderMovies(getCurrentPage());
+        // Solo recargamos si el usuario ha cambiado realmente (login o logout manual)
+        // para evitar recargas innecesarias al refrescar el token de sesión (event === "TOKEN_REFRESHED")
+        if (currentUserId !== lastUserId) {
+          lastUserId = currentUserId;
+          loadAndRenderMovies(getCurrentPage());
+        }
       }
     });
 
@@ -779,6 +819,15 @@ function init(): void {
     }, { once: true });
   }
   
+  // Recuperar peticiones de red atascadas al recuperar el foco de la pestaña
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      if (document.body.classList.contains(CSS_CLASSES.IS_FETCHING)) {
+        loadAndRenderMovies(getCurrentPage());
+      }
+    }
+  });
+
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
   

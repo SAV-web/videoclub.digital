@@ -433,6 +433,30 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   rootMargin: "200px"
 });
 
+// Despertar de la hibernación: fuerza la carga de imágenes visibles en el viewport al volver a la pestaña
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      const lazyImages = document.querySelectorAll<HTMLImageElement>("img[data-src]");
+      lazyImages.forEach(img => {
+        const rect = img.getBoundingClientRect();
+        const inViewport = (
+          rect.top >= -200 &&
+          rect.left >= -200 &&
+          rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + 200 &&
+          rect.right <= (window.innerWidth || document.documentElement.clientWidth) + 200
+        );
+        if (inViewport && img.dataset.src) {
+          img.src = img.dataset.src;
+          img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
+          img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+          lazyLoadObserver.unobserve(img);
+        }
+      });
+    }
+  });
+}
+
 function cleanupLazyImages(container: HTMLElement): void {
   if (!container) return;
   container.querySelectorAll<HTMLImageElement>("img[data-src]").forEach(img => lazyLoadObserver.unobserve(img));
@@ -490,20 +514,39 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
       const showOnlyLastName = movie.parsedDirectors.length > 2;
       
-      movie.parsedDirectors.forEach((name, i, arr) => {
-        let displayText = name;
+      const directorsInfo = movie.parsedDirectors.map(fullName => {
+        const parts = fullName.trim().split(/\s+/);
+        const lastName = parts.length > 1 ? parts[parts.length - 1] : fullName;
+        const firstName = parts.length > 1 ? parts[0] : "";
+        return {
+          fullName,
+          lastName,
+          initial: firstName ? firstName.charAt(0).toUpperCase() : ""
+        };
+      });
+
+      directorsInfo.forEach((info, i) => {
+        let displayText = info.fullName;
         
         if (showOnlyLastName) {
-          const nameParts = name.split(" ");
-          if (nameParts.length > 1) displayText = nameParts.pop() || name;
+          const sharesLastName = directorsInfo.some(other => 
+            other.fullName !== info.fullName && 
+            other.lastName.toLowerCase() === info.lastName.toLowerCase()
+          );
+          
+          if (sharesLastName && info.initial) {
+            displayText = `${info.initial}. ${info.lastName}`;
+          } else {
+            displayText = info.lastName;
+          }
         }
         
         const link = createElement("a", { 
           textContent: displayText, 
-          href: `?dir=${encodeURIComponent(name)}`, 
-          dataset: { directorName: name } 
+          href: `?dir=${encodeURIComponent(info.fullName)}`, 
+          dataset: { directorName: info.fullName } 
         });
-        dirCont.append(link, i < arr.length - 1 ? ", " : "");
+        dirCont.append(link, i < directorsInfo.length - 1 ? ", " : "");
       });
     }
   }
@@ -685,58 +728,71 @@ export function initializeCard(card: MovieCardElement): void {
 //          5. GESTIÓN DE GRID (Renderizado Masivo)
 // =================================================================
 
-export async function renderMovieGrid(
+export function renderMovieGrid(
   container: HTMLElement | null, 
   movies: MappedMovie[], 
   vipData: VipData | null = null
 ): Promise<void> {
   const renderId = ++currentRenderRequestId;
   unflipAllCards();
-  if (!container) return;
+  if (!container) return Promise.resolve();
 
   const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12;
   let index = 0;
 
-  function renderBatch() {
-    if (renderId !== currentRenderRequestId) return;
-    if (index >= movies.length || !document.body.contains(container)) return;
-
-    const limit = Math.min(index + BATCH_SIZE, movies.length);
-    const isFirstBatch = index === 0;
-
-    scheduleWork(() => {
-      if (renderId !== currentRenderRequestId) return;
-      const fragment = document.createDocumentFragment();
-
-      for (let i = index; i < limit; i++) {
-        fragment.appendChild(createCardElement(movies[i], i));
+  return new Promise<void>((resolve) => {
+    function renderBatch() {
+      if (renderId !== currentRenderRequestId) {
+        resolve();
+        return;
+      }
+      if (index >= movies.length || !document.body.contains(container)) {
+        resolve();
+        return;
       }
 
-      if (isFirstBatch) {
-        cleanupLazyImages(container);
-        container.textContent = "";
-        
-        if (vipData) {
-          if (vipData.type === 'person' && vipData.data) {
-            container.appendChild(createPersonCardElement(vipData.data));
-          } else if (vipData.type === 'collection') {
-            container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
-          } else if (vipData.type === 'studio') {
-            container.appendChild(createStudioCardElement(vipData.code, vipData.total));
+      const limit = Math.min(index + BATCH_SIZE, movies.length);
+      const isFirstBatch = index === 0;
+
+      scheduleWork(() => {
+        if (renderId !== currentRenderRequestId) {
+          resolve();
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+
+        for (let i = index; i < limit; i++) {
+          fragment.appendChild(createCardElement(movies[i], i));
+        }
+
+        if (isFirstBatch) {
+          cleanupLazyImages(container);
+          container.textContent = "";
+          
+          if (vipData) {
+            if (vipData.type === 'person' && vipData.data) {
+              container.appendChild(createPersonCardElement(vipData.data));
+            } else if (vipData.type === 'collection') {
+              container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
+            } else if (vipData.type === 'studio') {
+              container.appendChild(createStudioCardElement(vipData.code, vipData.total));
+            }
           }
         }
-      }
 
-      container.appendChild(fragment);
-      index = limit;
-      
-      if (index < movies.length) {
-        renderBatch();
-      }
-    }, isFirstBatch ? 'user-visible' : 'background');
-  }
+        container.appendChild(fragment);
+        index = limit;
+        
+        if (index < movies.length) {
+          renderBatch();
+        } else {
+          resolve();
+        }
+      }, isFirstBatch ? 'user-visible' : 'background');
+    }
 
-  renderBatch();
+    renderBatch();
+  });
 }
 
 function createCardElement(movie: MappedMovie, index: number): DocumentFragment {
