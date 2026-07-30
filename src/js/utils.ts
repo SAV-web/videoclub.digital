@@ -103,9 +103,27 @@ export const formatRuntime = (minutesString: string | number | null | undefined,
 // --- LIMPIEZA DE TEXTOS Y BÚSQUEDAS ---
 const DIACRITICS_REGEX = /[\u0300-\u036f]/g;
 
-// Quita acentos y mayúsculas (la 'á' pasa a 'a')
-export const normalizeText = (t: string | null | undefined): string => 
-  t?.toLowerCase().normalize("NFD").replace(DIACRITICS_REGEX, "").trim() || "";
+// Quita acentos y mayúsculas (la 'á' pasa a 'a', 'ø' a 'o', 'æ' a 'ae', etc. igual que PostgreSQL unaccent)
+export const normalizeText = (t: string | null | undefined): string => {
+  if (!t) return "";
+  return t
+    .toLowerCase()
+    .replace(/[’‘`]/g, "'")
+    .replace(/ø/g, "o")
+    .replace(/æ/g, "ae")
+    .replace(/œ/g, "oe")
+    .replace(/ß/g, "ss")
+    .replace(/ð/g, "d")
+    .replace(/þ/g, "th")
+    .replace(/ł/g, "l")
+    .replace(/đ/g, "d")
+    .replace(/ħ/g, "h")
+    .replace(/ŋ/g, "n")
+    .replace(/ı/g, "i")
+    .normalize("NFD")
+    .replace(DIACRITICS_REGEX, "")
+    .trim();
+};
 
 const GENRES: ReadonlyArray<readonly [RegExp, string]> = [
   [/scifi|ciencia[\s-]?ficcion|futurista|distopia/g, "scifi"], [/filmnoir|negro|neo[\s-]?noir/g, "noir"],
@@ -371,4 +389,13 @@ export function executeViewTransition(updateDomCallback: () => void): ViewTransi
   }
   
   return document.startViewTransition(updateDomCallback);
+}
+
+// Calcula el número total de páginas reales tras absorber los elementos huérfanos de la última página (1 o 2 elementos)
+export function getAdjustedTotalPages(gridTotalItems: number, baseLimit: number): number {
+  if (gridTotalItems === 0) return 0;
+  const normalPageCount = Math.ceil(gridTotalItems / baseLimit);
+  const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
+  const isOrphanPage = normalPageCount > 1 && lastPageSlots <= 2;
+  return isOrphanPage ? normalPageCount - 1 : normalPageCount;
 }

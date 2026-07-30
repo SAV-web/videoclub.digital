@@ -13,9 +13,10 @@ import {
   createAbortableRequest, 
   triggerHapticFeedback, 
   LocalStore, 
-  executeViewTransition 
+  executeViewTransition,
+  getAdjustedTotalPages
 } from "./utils.js";
-import { fetchMovies, getSupabase, fetchUserMovieData, fetchPersonDetails } from "./api.js";
+import { fetchMovies, getSupabase, fetchUserMovieDataForIds, clearCheckedUserMovieIds, fetchPersonDetails } from "./api.js";
 import { 
   dom, 
   renderPagination, 
@@ -180,10 +181,15 @@ export async function loadAndRenderMovies(
         fetchLimit = firstPageLimit - 1; 
         fetchOffset = 0; 
       } else { 
+        fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
         fetchOffset = ((page - 1) * basePageSize) - 1; 
       }
     } else {
-      if (page === 1) fetchLimit = firstPageLimit; // Extender pág 1 para llenar pantallas enormes
+      if (page === 1) {
+        fetchLimit = firstPageLimit; 
+      } else {
+        fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
+      }
     }
     
     const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
@@ -209,7 +215,20 @@ export async function loadAndRenderMovies(
       vipData.total = effectiveTotal;
     }
 
-    if (movies && movies.length > 0) preloadLcpImage(movies[0]);
+    if (movies && movies.length > 0) {
+      preloadLcpImage(movies[0]);
+      if (document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+        const movieIds = movies.map((m) => m.id);
+        fetchUserMovieDataForIds(movieIds).then((userEntries) => {
+          if (Object.keys(userEntries).length > 0) {
+            for (const [id, entry] of Object.entries(userEntries)) {
+              updateUserDataForMovie(id, entry);
+            }
+            appEvents.emit("userDataUpdated");
+          }
+        }).catch((err) => console.error("Error syncing page user data", err));
+      }
+    }
       
     const cardModule = await cardModulePromise;
 
@@ -282,22 +301,32 @@ function updateDomWithResults(
 
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
     updateHeaderPaginationState(1, 0);
-  } else if (totalMovies <= actualDynamicLimit && currentPage === 1) {
-    const promise = renderMovieGrid(dom.gridContainer, movies, vipData);
-    if (dom.paginationContainer) dom.paginationContainer.textContent = "";
-    updateHeaderPaginationState(1, 1);
-    return promise;
   } else {
-    const currentLimit = (hasVip && currentPage === 1) ? baseLimit - 1 : baseLimit;
-    const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
-    const promise = renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
+    // Calculamos el número de páginas real ajustado por la orfandad
+    const totalPages = getAdjustedTotalPages(gridTotalItems, baseLimit);
     
-    if (gridTotalItems > baseLimit) {
-      renderPagination(dom.paginationContainer, gridTotalItems, currentPage);
+    // Determinamos el presupuesto de slots de la página actual
+    const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
+    const isOrphanPage = (Math.ceil(gridTotalItems / baseLimit) > 1) && lastPageSlots <= 2;
+    
+    let slotBudget = baseLimit;
+    if (currentPage === totalPages) {
+      slotBudget = isOrphanPage ? baseLimit + lastPageSlots : lastPageSlots;
+    }
+
+    // Convertimos el presupuesto de slots en número de películas a renderizar
+    const currentLimit = (currentPage === 1) ? slotBudget - (hasVip ? 1 : 0) : slotBudget;
+    const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
+    
+    const promise = renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
+
+    const logicalGridTotalItems = isOrphanPage ? totalPages * baseLimit : gridTotalItems;
+    if (totalPages > 1) {
+      renderPagination(dom.paginationContainer, logicalGridTotalItems, currentPage);
     } else {
       if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     }
-    updateHeaderPaginationState(currentPage, gridTotalItems);
+    updateHeaderPaginationState(currentPage, logicalGridTotalItems);
     return promise;
   }
 
@@ -656,15 +685,9 @@ function setupAuthSystem(): void {
       userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
       userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
     }
-    try {
-      const data = await fetchUserMovieData();
-      setUserMovieData(data);
-      appEvents.emit("userDataUpdated");
-    } catch (error: unknown) { 
-      showToast((error as Error)?.message || "Error al cargar tus datos.", "error"); 
-    } finally { 
-      isAuthInitialized = true; 
-    }
+    isAuthInitialized = true;
+    clearCheckedUserMovieIds();
+    appEvents.emit("userDataUpdated");
   }
   
   function onLogout() {

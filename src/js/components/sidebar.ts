@@ -7,8 +7,8 @@
 // y los gestos táctiles (deslizar para abrir, pellizcar para muro).
 // =================================================================
 
-import noUiSlider from 'nouislider';
-import 'nouislider/dist/nouislider.css'; 
+import "../../css/components/sidebar.css";
+import { DualRangeSlider } from './yearSlider.js';
 import { CONFIG } from "../constants.js";
 import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition } from "../utils.js";
 import {
@@ -758,18 +758,17 @@ function initYearSlider(): void {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
   
-  const pivotYear = Math.max(CONFIG.YEAR_MIN + 1, CONFIG.YEAR_MAX - 20);
+  const pivotYear = 2000;
 
   const currentFilters = getActiveFilters();
   let initialYears = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
   if (initialYears.length === 1) initialYears = [initialYears[0], initialYears[0]];
 
-  const sliderInstance = noUiSlider.create(dom.yearSlider, {
+  const sliderInstance = new DualRangeSlider(dom.yearSlider, {
+    min: CONFIG.YEAR_MIN,
+    max: CONFIG.YEAR_MAX,
+    pivotYear: pivotYear,
     start: initialYears,
-    connect: true, 
-    step: 1, 
-    range: { 'min': CONFIG.YEAR_MIN, '50%': pivotYear, 'max': CONFIG.YEAR_MAX },
-    format: { to: (value) => Math.round(value), from: (value) => Number(value) },
   });
 
   sliderInstance.on("update", (values, handle) => { 

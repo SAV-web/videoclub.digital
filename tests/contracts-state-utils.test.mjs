@@ -7,6 +7,7 @@ let constants;
 let contracts;
 let state;
 let utils;
+let yearSliderModule;
 
 before(async () => {
   server = await createServer({
@@ -15,11 +16,12 @@ before(async () => {
     server: { middlewareMode: true },
   });
 
-  [constants, contracts, state, utils] = await Promise.all([
+  [constants, contracts, state, utils, yearSliderModule] = await Promise.all([
     server.ssrLoadModule("/src/js/constants.js"),
     server.ssrLoadModule("/src/js/contracts.js"),
     server.ssrLoadModule("/src/js/state.js"),
     server.ssrLoadModule("/src/js/utils.js"),
+    server.ssrLoadModule("/src/js/components/yearSlider.ts"),
   ]);
 });
 
@@ -37,6 +39,8 @@ beforeEach(() => {
 describe("utils.js", () => {
   test("normaliza texto para búsquedas sin acentos ni espacios extra", () => {
     assert.equal(utils.normalizeText("  Ácción Ñ  "), "accion n");
+    assert.equal(utils.normalizeText("Per-Olav Sørensen"), "per-olav sorensen");
+    assert.equal(utils.normalizeText("André Øvredal"), "andre ovredal");
   });
 
   test("mapea payloads de películas al contrato de UI", () => {
@@ -163,5 +167,65 @@ describe("state.js", () => {
 
     assert.deepEqual(state.getUserDataForMovie(42), { rating: 8, onWatchlist: true });
     assert.equal(state.getUserDataForMovie("bad-id"), undefined);
+  });
+});
+
+describe("yearSlider.ts (DualRangeSlider)", () => {
+  test("instancia el slider y gestiona valores min/max/pivot sin errores", () => {
+    // Basic DOM mock for Node.js test environment
+    const elementsCreated = [];
+    const mockElement = (tag) => {
+      const children = [];
+      const listeners = {};
+      const attrs = {};
+      const style = {};
+      const el = {
+        tagName: tag.toUpperCase(),
+        classList: { add: () => {} },
+        style,
+        innerHTML: "",
+        appendChild: (child) => children.push(child),
+        setAttribute: (k, v) => { attrs[k] = v; },
+        getAttribute: (k) => attrs[k],
+        addEventListener: (event, handler) => {
+          listeners[event] = listeners[event] || [];
+          listeners[event].push(handler);
+        },
+        getBoundingClientRect: () => ({ left: 0, width: 200, top: 0, height: 24 }),
+        setPointerCapture: () => {},
+        releasePointerCapture: () => {},
+      };
+      elementsCreated.push(el);
+      return el;
+    };
+
+    globalThis.document = globalThis.document || {
+      createElement: mockElement,
+    };
+    globalThis.window = globalThis.window || {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+
+    const container = mockElement("div");
+    const slider = new yearSliderModule.DualRangeSlider(container, {
+      min: 1926,
+      max: 2026,
+      pivotYear: 2000,
+      start: [1970, 2020],
+    });
+
+    assert.deepEqual(slider.get(), [1970, 2020]);
+
+    slider.set([1980, 2010], false);
+    assert.deepEqual(slider.get(), [1980, 2010]);
+
+    // Test snap calculation: raw values before 2000 snap to decade
+    assert.equal(slider["snapYear"](1934), 1930);
+    assert.equal(slider["snapYear"](1936), 1940);
+    assert.equal(slider["snapYear"](1998), 2000);
+    // Values after 2000 snap to exact year
+    assert.equal(slider["snapYear"](2003), 2003);
+    assert.equal(slider["snapYear"](2021), 2021);
   });
 });

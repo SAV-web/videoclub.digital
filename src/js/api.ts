@@ -293,6 +293,33 @@ export function fetchMovies(
       if (error) throw (isAbortError(error, signal) ? { name: "AbortError" } : createAppError(ERROR_CODES.DATABASE, "Fallo en la BD", error));
 
       const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: data?.items }, mapMoviePayload);
+
+      // Filtrar coincidencias exactas para actores y directores para evitar falsos positivos por coincidencia parcial de palabras (ej: "SABU" vs "Sabu Kawahara")
+      if (result.items && result.items.length > 0) {
+        if (normFilters.actor) {
+          const targetActorNorm = normalizeText(normFilters.actor);
+          const initialCount = result.items.length;
+          result.items = result.items.filter(m => 
+            m.parsedActors && m.parsedActors.some(a => normalizeText(a) === targetActorNorm)
+          );
+          const removed = initialCount - result.items.length;
+          if (removed > 0 && result.total > 0) {
+            result.total = Math.max(0, result.total - removed);
+          }
+        }
+        if (normFilters.director) {
+          const targetDirectorNorm = normalizeText(normFilters.director);
+          const initialCount = result.items.length;
+          result.items = result.items.filter(m => 
+            m.parsedDirectors && m.parsedDirectors.some(d => normalizeText(d) === targetDirectorNorm)
+          );
+          const removed = initialCount - result.items.length;
+          if (removed > 0 && result.total > 0) {
+            result.total = Math.max(0, result.total - removed);
+          }
+        }
+      }
+
       if (!signal?.aborted) {
         // Si ya hay un total real guardado en la caché y la consulta actual devolvió total=-1, preservamos el conteo previo
         const existing = queryCache.get(queryKey);
@@ -315,73 +342,62 @@ export function fetchMovies(
   return promise;
 }
 
-// Descarga todas las pelis que ha votado el usuario (Para pintarle las estrellas rosas al abrir la web)
-export async function fetchUserMovieData(): Promise<Record<string, UserMovieEntry>> {
+const checkedUserMovieIds = new Set<string>();
+
+export function clearCheckedUserMovieIds(): void {
+  checkedUserMovieIds.clear();
+}
+
+export function markMovieIdAsChecked(movieId: number | string): void {
+  const normId = normalizeMovieId(movieId);
+  if (normId !== null) checkedUserMovieIds.add(String(normId));
+}
+
+// Descarga los datos del usuario únicamente para las películas visibles en pantalla (Lazy Sync por IDs)
+export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): Promise<Record<string, UserMovieEntry>> {
+  if (!movieIds || movieIds.length === 0) return {};
+
+  const uncachedIds: number[] = [];
+  for (const rawId of movieIds) {
+    const normId = normalizeMovieId(rawId);
+    if (normId !== null && !checkedUserMovieIds.has(String(normId))) {
+      uncachedIds.push(normId);
+    }
+  }
+
+  if (uncachedIds.length === 0) return {};
+
   const supabase = await getSupabase();
-  const step = 1000;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return {};
 
-  // 1. Obtener la primera página y el conteo exacto de registros en una sola consulta
-  const { data: firstPageData, error: firstPageError, count } = await supabase
+  const { data, error } = await supabase
     .from('user_movie_entries')
-    .select('movie_id, rating, on_watchlist', { count: 'exact' })
-    .range(0, step - 1);
+    .select('movie_id, rating, on_watchlist')
+    .in('movie_id', uncachedIds);
 
-  if (firstPageError) {
-    throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", firstPageError);
+  if (error) {
+    console.error("Error al cargar datos del usuario para el lote de películas:", error);
+    return {};
   }
 
-  const allData = [...(firstPageData || [])];
-
-  // 2. Si hay más registros de los que cupieron en el primer lote, pedir el resto en paralelo
-  if (count !== null && count !== undefined && count > step) {
-    const promises = [];
-    for (let from = step; from < count; from += step) {
-      promises.push(
-        supabase
-          .from('user_movie_entries')
-          .select('movie_id, rating, on_watchlist')
-          .range(from, from + step - 1)
-      );
-    }
-
-    const responses = await Promise.all(promises);
-
-    for (const resp of responses) {
-      if (resp.error) {
-        throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", resp.error);
-      }
-      if (resp.data) {
-        allData.push(...resp.data);
-      }
-    }
-  } else if ((count === null || count === undefined) && firstPageData?.length === step) {
-    // FALLBACK: Si no tenemos el conteo pero la primera página vino llena, recurrimos a paginación secuencial
-    let hasMore = true;
-    let from = step;
-
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('user_movie_entries')
-        .select('movie_id, rating, on_watchlist')
-        .range(from, from + step - 1);
-
-      if (error) {
-        throw createAppError(ERROR_CODES.DATABASE, "No se pudieron cargar tus datos.", error);
-      }
-
-      if (data && data.length > 0) {
-        allData.push(...data);
-        from += step;
-        hasMore = data.length === step;
-      } else {
-        hasMore = false;
-      }
-    }
-  }
+  // Marcar todos los IDs de la página como consultados para no repetir peticiones
+  uncachedIds.forEach(id => checkedUserMovieIds.add(String(id)));
 
   const userMap: Record<string, UserMovieEntry> = {};
-  allData.forEach(i => userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist });
+  (data || []).forEach(i => {
+    userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist };
+  });
+
   return normalizeUserMovieData(userMap);
+}
+
+// Compatibilidad previa: redirige a fetchUserMovieDataForIds si se pasa una lista de IDs
+export async function fetchUserMovieData(movieIds?: (number | string)[]): Promise<Record<string, UserMovieEntry>> {
+  if (movieIds && movieIds.length > 0) {
+    return fetchUserMovieDataForIds(movieIds);
+  }
+  return {};
 }
 
 // Memoria para los VIPs (Actores/Directores). Máximo 50 a la vez para no ahogar el móvil.

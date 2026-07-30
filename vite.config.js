@@ -13,8 +13,7 @@ export default defineConfig({
       output: {
         // Separar librerías pesadas en sus propios archivos (Mejora la caché del navegador)
         manualChunks: {
-          supabase: ['@supabase/supabase-js'],
-          vendor: ['lru-cache', 'nouislider']
+          vendor: ['lru-cache']
         }
       }
     }

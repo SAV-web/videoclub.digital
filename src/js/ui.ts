@@ -7,7 +7,7 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS } from "./constants.js";
 import { fetchMovies } from "./api.js";
-import { triggerPopAnimation, createElement } from "./utils.js";
+import { triggerPopAnimation, createElement, getAdjustedTotalPages } from "./utils.js";
 import { getActiveFilters, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
 
@@ -178,7 +178,8 @@ export function renderPagination(
   if (!paginationContainer) return;
 
   paginationContainer.textContent = "";
-  const totalPages = Math.ceil(totalMovies / getCurrentPageSize());
+  const pageSize = getCurrentPageSize();
+  const totalPages = getAdjustedTotalPages(totalMovies, pageSize);
   if (totalPages <= 1) return;
 
   const fragment = document.createDocumentFragment();
@@ -238,7 +239,8 @@ export function updateHeaderPaginationState(currentPage: number, totalMovies: nu
   const { headerPrevBtn, headerNextBtn } = dom;
   if (!headerPrevBtn || !headerNextBtn) return;
 
-  const totalPages = Math.ceil(totalMovies / getCurrentPageSize());
+  const pageSize = getCurrentPageSize();
+  const totalPages = getAdjustedTotalPages(totalMovies, pageSize);
   headerPrevBtn.disabled = currentPage <= 1;
   headerNextBtn.disabled = currentPage >= totalPages || totalPages === 0;
 }
@@ -249,7 +251,12 @@ export function prefetchNextPage(
   activeFilters: ActiveFilters
 ): void {
   const pageSize = getCurrentPageSize();
-  const totalPages = Math.ceil(totalMovies / pageSize);
+  
+  // Determinamos si hay una tarjeta VIP en el DOM (person-card, collection-card, studio-card)
+  const hasVip = !!document.querySelector('.person-card, .collection-card, .studio-card');
+  const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
+  
+  const totalPages = getAdjustedTotalPages(gridTotalItems, pageSize);
   if (currentPage >= totalPages) return;
 
   // Usar requestIdleCallback para no bloquear el hilo principal
