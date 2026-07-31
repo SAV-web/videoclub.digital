@@ -142,6 +142,11 @@ export class DualRangeSlider {
   private bindEvents(): void {
     let activeHandleIndex: number | null = null;
 
+    // Evitar que los gestos táctiles del slider activen el arrastre del menú lateral móvil
+    this.container.addEventListener("touchstart", (e: TouchEvent) => {
+      e.stopPropagation();
+    }, { passive: true });
+
     const onPointerMove = (e: PointerEvent) => {
       if (activeHandleIndex === null) return;
       const pct = this.getPctFromClientX(e.clientX);

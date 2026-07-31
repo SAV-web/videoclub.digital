@@ -210,6 +210,7 @@ export const getActiveFilters = (): ActiveFilters => ({
   excludedCountries: [...state.activeFilters.excludedCountries]
 });
 
+export const getTotalMovies = (): number => state.totalMovies;
 export const getCurrentPage = (): number => state.currentPage;
 export const setCurrentPage = (page: unknown): void => { state.currentPage = normalizePageNumber(page); };
 export const getUserDataForMovie = (id: number | string): UserMovieEntry | undefined => {

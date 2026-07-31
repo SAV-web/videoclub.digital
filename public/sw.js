@@ -1,8 +1,8 @@
 // =================================================================
-//              SERVICE WORKER OPTIMIZADO (v2.1)
+//              SERVICE WORKER OPTIMIZADO (v2.2)
 // =================================================================
 
-const VERSION = "v9"; // Incrementado para invalidar cachés anteriores
+const VERSION = "v10"; // Incrementado para invalidar cachés anteriores
 const CACHE_STATIC = `videoclub-static-${VERSION}`;
 const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 const CACHE_API = `videoclub-api-${VERSION}`;
@@ -12,8 +12,6 @@ const CRITICAL_ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  // Añade aquí tu CSS/JS compilado si no usas inyección de Vite, 
-  // pero con Vite normalmente index.html es suficiente entry point.
 ];
 
 // --- 2. HELPERS DE ESTRATEGIAS ---
@@ -25,7 +23,6 @@ const limitCacheSize = async (cacheName, maxItems) => {
   const cache = await caches.open(cacheName);
   const keys = await cache.keys();
   if (keys.length > maxItems) {
-    // Borramos el exceso (los más antiguos primero) de una sola vez
     const itemsToDelete = keys.slice(0, keys.length - maxItems);
     await Promise.all(itemsToDelete.map(key => cache.delete(key)));
   }
@@ -35,7 +32,7 @@ const limitCacheSize = async (cacheName, maxItems) => {
  * Helper para guardar en caché asíncronamente sin bloquear la respuesta
  */
 const cacheResponse = async (cacheName, request, response) => {
-  if (!response || response.status !== 200 || response.type !== 'basic' && response.type !== 'cors') {
+  if (!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
     return;
   }
   const cache = await caches.open(cacheName);
@@ -49,7 +46,6 @@ const cacheResponse = async (cacheName, request, response) => {
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
-    // Guardamos copia fresca
     cacheResponse(CACHE_STATIC, request, networkResponse.clone());
     return networkResponse;
   } catch (error) {
@@ -70,9 +66,8 @@ async function staleWhileRevalidate(request, cacheName = CACHE_DYNAMIC) {
   const networkFetch = fetch(request).then(response => {
     if (response.ok) {
       cache.put(request, response.clone()).then(() => {
-        // Protección de Cuota: Limitar imágenes almacenadas dinámicamente
         if (request.destination === 'image' || request.url.includes('/storage/v1/object/public/')) {
-          limitCacheSize(cacheName, 200); // Mantiene aprox. los últimos 200 pósters
+          limitCacheSize(cacheName, 200);
         }
       });
     }
@@ -85,7 +80,6 @@ async function staleWhileRevalidate(request, cacheName = CACHE_DYNAMIC) {
 /**
  * ESTRATEGIA: Cache First (Prioridad Caché, fallback Red)
  * Ideal para imágenes estáticas (Pósters) que nunca cambian.
- * Ahorra ancho de banda al evitar validaciones en segundo plano.
  */
 async function cacheFirst(request, cacheName = CACHE_DYNAMIC) {
   const cache = await caches.open(cacheName);
@@ -116,20 +110,16 @@ async function handleApiRequest(request) {
   if (cachedResponse) {
     const dateHeader = cachedResponse.headers.get('date');
     
-    // Si existe la cabecera Date, comprobamos frescura.
-    // Si no existe (CORS opaco), asumimos que es viejo y dejamos que networkFetch actualice.
     if (dateHeader) {
-      const ageMs = new Date() - new Date(dateHeader);
+      const ageMs = new Date().getTime() - new Date(dateHeader).getTime();
       // Si es "fresco" (< 15m), devolvemos caché y NO esperamos a la red
-      // (aunque la red se dispara en background para la próxima vez)
       if (ageMs < 900000) {
-        networkFetch.catch(() => {}); // Evitar errores de promesa no manejada
+        networkFetch.catch(() => {});
         return cachedResponse;
       }
     }
-    // Si es "viejo", devolvemos lo que tenemos (stale) para velocidad,
-    // mientras se actualiza detrás.
-    networkFetch.catch(() => {}); // Evitar errores de promesa no manejada
+    // Si es "viejo", devolvemos lo que tenemos (stale) mientras se actualiza detrás
+    networkFetch.catch(() => {});
     return cachedResponse; 
   }
 
@@ -137,7 +127,6 @@ async function handleApiRequest(request) {
   try {
     return await networkFetch;
   } catch (error) {
-    // Fallback JSON offline
     return new Response(JSON.stringify({ error: "Sin conexión" }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' }
@@ -149,13 +138,10 @@ async function handleApiRequest(request) {
 
 self.addEventListener("install", (event) => {
   console.log(`[SW ${VERSION}] Instalando...`);
-  // skipWaiting fuerza a este SW a activarse inmediatamente, no espera a cerrar pestañas
   self.skipWaiting(); 
   
   event.waitUntil(
     caches.open(CACHE_STATIC).then((cache) => {
-      // addAll es atómico: si uno falla, falla toda la instalación.
-      // Es bueno para asegurar integridad crítica.
       return cache.addAll(CRITICAL_ASSETS);
     })
   );
@@ -175,7 +161,7 @@ self.addEventListener("activate", (event) => {
       );
     })
   );
-  return self.clients.claim(); // Controlar clientes inmediatamente
+  return self.clients.claim();
 });
 
 // --- INTERCEPTACIÓN DE RED ---
@@ -187,8 +173,10 @@ self.addEventListener("fetch", (event) => {
   // 1. Ignorar métodos no-GET y esquemas no-http
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // 2. EXCEPCIONES: Nunca cachear Auth ni REST directo (datos vivos)
-  if (url.pathname.includes("/auth/v1/") || url.pathname.includes("/rest/v1/")) {
+  // 2. EXCEPCIONES: Nunca cachear Auth ni REST directo de tablas (datos vivos)
+  // Se permite /rest/v1/rpc/ para aprovechar la caché de llamadas RPC de consulta
+  if (url.pathname.includes("/auth/v1/")) return;
+  if (url.pathname.includes("/rest/v1/") && !url.pathname.includes("rpc/")) {
     return;
   }
 
@@ -205,15 +193,12 @@ self.addEventListener("fetch", (event) => {
   }
 
   // 5. ESTRATEGIA: Imágenes de Supabase Storage (Posters)
-  // Usamos Cache First puro porque los pósters no cambian, ahorrando ancho de banda.
   if (url.pathname.includes("/storage/v1/object/public/")) {
     event.respondWith(cacheFirst(request, CACHE_DYNAMIC));
     return;
   }
 
   // 6. ESTRATEGIA: Assets Estáticos (JS, CSS, Fuentes, Iconos)
-  // Vite suele versionar los archivos (ej: index.a3b4c.js), así que CacheFirst
-  // o StaleWhileRevalidate son seguros.
   if (
     request.destination === "script" ||
     request.destination === "style" ||
@@ -225,7 +210,6 @@ self.addEventListener("fetch", (event) => {
   }
 
   // 7. Fallback por defecto (Cache First simple)
-  // Para cualquier otro recurso no contemplado
   event.respondWith(
     caches.match(request).then((response) => {
       return response || fetch(request).then((networkResponse) => {

@@ -140,6 +140,13 @@ function handleTouchStart(e: TouchEvent): void {
   
   const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
   const target = e.target as HTMLElement;
+
+  // Evitar conflicto entre el slider de años y los gestos de deslizamiento del drawer móvil
+  if (target.closest("#year-slider, .custom-year-slider, .slider-handle, .slider-track")) {
+    touchState.isDragging = false;
+    return;
+  }
+
   const canStartDrag = (isOpen && target.closest("#sidebar")) || (!isOpen && e.touches[0].clientX < 150);
 
   if (!canStartDrag) {
@@ -155,7 +162,7 @@ function handleTouchStart(e: TouchEvent): void {
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
   
   const isEdgeSwipe = !isOpen && touchState.startX < 30;
-  touchState.isInteractive = !isEdgeSwipe && !!target.closest('button, a, input, select, textarea, .movie-card, .noUi-handle');
+  touchState.isInteractive = !isEdgeSwipe && !!target.closest('button, a, input, select, textarea, .movie-card, .custom-year-slider, .slider-handle');
 
   document.addEventListener("touchmove", handleTouchMove as EventListener, { passive: true });
 }

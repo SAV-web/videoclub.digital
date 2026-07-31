@@ -34,6 +34,7 @@ import {
   getState, 
   getActiveFilters, 
   getCurrentPage, 
+  getTotalMovies,
   setCurrentPage, 
   setTotalMovies, 
   setFilter, 
@@ -138,7 +139,7 @@ export async function loadAndRenderMovies(
     }, skeletonDelay);
   }
 
-  const currentKnownTotal = getState().totalMovies;
+  const currentKnownTotal = getTotalMovies();
   const activeFilters = getActiveFilters();
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   
@@ -280,7 +281,7 @@ function updateDomWithResults(
   updateBreadcrumbData(getActiveFilters());
   updatePageTitle(movies);
 
-  const { currentPage } = getState();
+  const currentPage = getCurrentPage();
 
   if (totalMovies > 0 && movies.length === 0 && currentPage === 1) {
     renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
@@ -349,7 +350,7 @@ async function handleMediaTypeToggle(event: Event): Promise<void> {
   const btn = event.currentTarget as HTMLElement;
   triggerPopAnimation(btn);
   appEvents.emit("uiActionTriggered");
-  const currentType = getState().activeFilters.mediaType as "all" | "movies" | "series";
+  const currentType = getActiveFilters().mediaType as "all" | "movies" | "series";
   const cycle = { all: "movies", movies: "series", series: "all" } as const;
   const nextType = cycle[currentType];
   setMediaType(nextType);
@@ -361,7 +362,7 @@ async function handleMediaTypeToggle(event: Event): Promise<void> {
 async function handleSearchInput(): Promise<void> {
   if (!dom.searchInput) return;
   const searchTerm = dom.searchInput.value.trim();
-  const currentSearchTerm = getState().activeFilters.searchTerm;
+  const currentSearchTerm = getActiveFilters().searchTerm;
   
   if (searchTerm === currentSearchTerm) return;
   
@@ -399,8 +400,7 @@ function handleGlobalScroll(): void {
     const docHeight = document.documentElement.scrollHeight;
     
     if (docHeight > 0 && scrollPos / docHeight > 0.7) {
-      const { currentPage, totalMovies, activeFilters } = getState();
-      prefetchNextPage(currentPage, totalMovies, activeFilters);
+      prefetchNextPage(getCurrentPage(), getTotalMovies(), getActiveFilters());
     }
   }, 250);
 
@@ -447,7 +447,7 @@ function handleGlobalScroll(): void {
 // Limpia todo (Botón Play o Atrás completo)
 function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: string } }): void {
   const { keepSort, newFilter } = data || {};
-  const currentSort = keepSort ? getState().activeFilters.sort : DEFAULTS.SORT;
+  const currentSort = keepSort ? getActiveFilters().sort : DEFAULTS.SORT;
   
   resetFiltersState();
   setSort(currentSort);
@@ -475,7 +475,7 @@ function setupHeaderListeners(): void {
     dom.searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        if (getState().activeFilters.searchTerm) {
+        if (getActiveFilters().searchTerm) {
           history.back();
         } else {
           dom.searchInput?.blur();
@@ -509,7 +509,7 @@ function setupHeaderListeners(): void {
   const navigatePage = async (direction: number) => {
     const currentPage = getCurrentPage();
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const totalPages = Math.ceil(getState().totalMovies / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
+    const totalPages = Math.ceil(getTotalMovies() / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
     const newPage = currentPage + direction;
     if (newPage > 0 && newPage <= totalPages) {
       appEvents.emit("uiActionTriggered");
@@ -646,7 +646,7 @@ function setupGlobalListeners(): void {
     const { direction, target } = data;
     const currentPage = getCurrentPage();
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const totalPages = Math.ceil(getState().totalMovies / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
+    const totalPages = Math.ceil(getTotalMovies() / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
     const newPage = currentPage + direction;
     
     if (newPage > 0 && newPage <= totalPages) {

@@ -11,7 +11,7 @@ import "../../css/components/modal.css";
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { setupCardRatings } from "./rating.js";
-import { appEvents, getState, getCurrentPage } from "../state.js";
+import { appEvents, getState, getCurrentPage, getTotalMovies } from "../state.js";
 import { formatRuntime, createElement, renderCountryFlag, executeViewTransition } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
@@ -298,7 +298,7 @@ function navigateToSibling(direction: number): void {
     // Si sale de los límites, intentamos cambiar de página
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-    const totalPages = Math.ceil(getState().totalMovies / pageSize);
+    const totalPages = Math.ceil(getTotalMovies() / pageSize);
     const currentPage = getCurrentPage();
 
     if (direction === 1 && currentPage < totalPages) {
@@ -325,7 +325,7 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
 
   const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
   const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-  const totalPages = Math.ceil(getState().totalMovies / pageSize);
+  const totalPages = Math.ceil(getTotalMovies() / pageSize);
   const currentPage = getCurrentPage();
 
   const hasPrev = currentIndex > 0 || currentPage > 1;

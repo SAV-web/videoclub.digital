@@ -8,7 +8,7 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages } from "./utils.js";
-import { getActiveFilters, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
+import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
@@ -404,7 +404,7 @@ export function updateTypeFilterUI(mediaType: "movies" | "series" | "all"): void
 
 // Helper para determinar si se debe mostrar el contador total
 function shouldShowTotalCount(): boolean {
-  const { totalMovies } = getState();
+  const totalMovies = getTotalMovies();
   if (totalMovies <= 0) return false;
   if (!hasActiveMeaningfulFilters()) return false;
 
@@ -496,7 +496,7 @@ export function updateMobileStatusBar(movies: MappedMovie[] | null = null): void
   if (!mobileStatusBar) return;
 
   const filters = getActiveFilters();
-  const { totalMovies } = getState();
+  const totalMovies = getTotalMovies();
   
   // 1. Tipo dinámico basado en resultados
   let typeText = totalMovies === 1 ? "peli o serie" : "pelis y series";
