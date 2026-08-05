@@ -2,7 +2,7 @@
 //              SERVICE WORKER OPTIMIZADO (v2.2)
 // =================================================================
 
-const VERSION = "v10"; // Incrementado para invalidar cachés anteriores
+const VERSION = "dev"; // Generado automáticamente en build time por swVersionPlugin en vite.config.js
 const CACHE_STATIC = `videoclub-static-${VERSION}`;
 const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 const CACHE_API = `videoclub-api-${VERSION}`;

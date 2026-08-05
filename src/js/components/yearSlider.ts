@@ -122,12 +122,26 @@ export class DualRangeSlider {
   private updateUI(): void {
     const startPct = this.valToPct(this.values[0]) * 100;
     const endPct = this.valToPct(this.values[1]) * 100;
+    const isSameYear = this.values[0] === this.values[1];
+
+    if (this.container.classList) {
+      if (isSameYear) {
+        this.container.classList.add("is-same-year");
+      } else if (typeof this.container.classList.remove === "function") {
+        this.container.classList.remove("is-same-year");
+      }
+    }
 
     this.connectEl.style.left = `${startPct}%`;
     this.connectEl.style.width = `${Math.max(0, endPct - startPct)}%`;
 
     this.handleStartEl.style.left = `${startPct}%`;
     this.handleStartEl.setAttribute("aria-valuenow", String(this.values[0]));
+    if (this.values[0] <= this.min) {
+      this.handleStartEl.setAttribute("aria-valuetext", `<${this.min}`);
+    } else if (typeof this.handleStartEl.removeAttribute === "function") {
+      this.handleStartEl.removeAttribute("aria-valuetext");
+    }
 
     this.handleEndEl.style.left = `${endPct}%`;
     this.handleEndEl.setAttribute("aria-valuenow", String(this.values[1]));
@@ -142,6 +156,31 @@ export class DualRangeSlider {
   private bindEvents(): void {
     let activeHandleIndex: number | null = null;
 
+    // Actualiza z-index dinámicamente según la posición del puntero para dar prioridad visual al lado más cercano
+    const updateHoverZIndex = (clientX: number) => {
+      if (activeHandleIndex !== null) return;
+      const pct = this.getPctFromClientX(clientX);
+      const startPct = this.valToPct(this.values[0]);
+      const endPct = this.valToPct(this.values[1]);
+
+      const distStart = Math.abs(pct - startPct);
+      const distEnd = Math.abs(pct - endPct);
+
+      if (distStart <= distEnd) {
+        this.handleStartEl.style.zIndex = "5";
+        this.handleEndEl.style.zIndex = "2";
+      } else {
+        this.handleEndEl.style.zIndex = "5";
+        this.handleStartEl.style.zIndex = "2";
+      }
+    };
+
+    this.container.addEventListener("pointermove", (e: PointerEvent) => {
+      if (activeHandleIndex === null) {
+        updateHoverZIndex(e.clientX);
+      }
+    });
+
     // Evitar que los gestos táctiles del slider activen el arrastre del menú lateral móvil
     this.container.addEventListener("touchstart", (e: TouchEvent) => {
       e.stopPropagation();
@@ -153,6 +192,16 @@ export class DualRangeSlider {
       const newYear = this.pctToVal(pct);
 
       let changed = false;
+
+      // Auto-intercambio inteligente cuando ambas agujas están en el mismo año
+      if (this.values[0] === this.values[1]) {
+        if (activeHandleIndex === 1 && newYear < this.values[0]) {
+          activeHandleIndex = 0;
+        } else if (activeHandleIndex === 0 && newYear > this.values[1]) {
+          activeHandleIndex = 1;
+        }
+      }
+
       if (activeHandleIndex === 0) {
         const val = Math.min(newYear, this.values[1]);
         if (val !== this.values[0]) {
@@ -194,14 +243,29 @@ export class DualRangeSlider {
       window.addEventListener("pointercancel", onPointerUp);
     };
 
+    const getTargetHandleForClick = (clientX: number): number => {
+      const pct = this.getPctFromClientX(clientX);
+      const startPct = this.valToPct(this.values[0]);
+      const endPct = this.valToPct(this.values[1]);
+
+      const distStart = Math.abs(pct - startPct);
+      const distEnd = Math.abs(pct - endPct);
+
+      if (distStart < distEnd) return 0;
+      if (distEnd < distStart) return 1;
+      return pct < startPct ? 0 : 1;
+    };
+
     this.handleStartEl.addEventListener("pointerdown", (e: PointerEvent) => {
       e.stopPropagation();
-      startDrag(0, e);
+      const targetHandle = getTargetHandleForClick(e.clientX);
+      startDrag(targetHandle, e);
     });
 
     this.handleEndEl.addEventListener("pointerdown", (e: PointerEvent) => {
       e.stopPropagation();
-      startDrag(1, e);
+      const targetHandle = getTargetHandleForClick(e.clientX);
+      startDrag(targetHandle, e);
     });
 
     // Clic en la barra o contenedor

@@ -181,11 +181,12 @@ describe("yearSlider.ts (DualRangeSlider)", () => {
       const style = {};
       const el = {
         tagName: tag.toUpperCase(),
-        classList: { add: () => {} },
+        classList: { add: () => {}, remove: () => {}, contains: () => false },
         style,
         innerHTML: "",
         appendChild: (child) => children.push(child),
         setAttribute: (k, v) => { attrs[k] = v; },
+        removeAttribute: (k) => { delete attrs[k]; },
         getAttribute: (k) => attrs[k],
         addEventListener: (event, handler) => {
           listeners[event] = listeners[event] || [];
@@ -209,7 +210,7 @@ describe("yearSlider.ts (DualRangeSlider)", () => {
 
     const container = mockElement("div");
     const slider = new yearSliderModule.DualRangeSlider(container, {
-      min: 1926,
+      min: 1920,
       max: 2026,
       pivotYear: 2000,
       start: [1970, 2020],

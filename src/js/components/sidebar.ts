@@ -7,7 +7,6 @@
 // y los gestos táctiles (deslizar para abrir, pellizcar para muro).
 // =================================================================
 
-import "../../css/components/sidebar.css";
 import { DualRangeSlider } from './yearSlider.js';
 import { CONFIG } from "../constants.js";
 import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition } from "../utils.js";
@@ -780,7 +779,8 @@ function initYearSlider(): void {
 
   sliderInstance.on("update", (values, handle) => { 
     if (yearInputs[handle]) {
-      yearInputs[handle]!.value = String(values[handle]); 
+      const yearVal = Number(values[handle]);
+      yearInputs[handle]!.value = (handle === 0 && yearVal <= CONFIG.YEAR_MIN) ? `<${CONFIG.YEAR_MIN}` : String(yearVal); 
     }
   });
 
@@ -813,7 +813,9 @@ function initYearSlider(): void {
   yearInputs.forEach((input, index) => {
     input.addEventListener("change", (e) => {
       const target = e.target as HTMLInputElement;
-      const newValue = parseFloat(target.value);
+      const cleanVal = target.value.replace(/[^0-9]/g, "");
+      const newValue = parseFloat(cleanVal);
+      if (isNaN(newValue)) return;
       const currentValues = sliderInstance.get().map(v => parseFloat(v as string));
       
       const triggerUpdate = (vals: Array<string | number>) => {
@@ -851,10 +853,12 @@ function setupYearInputSteppers(): void {
     
     const updateYearValue = (increment: number) => {
       triggerHapticFeedback('medium'); 
-      let currentValue = parseInt(input.value, 10);
+      const cleanVal = input.value.replace(/[^0-9]/g, "");
+      let currentValue = parseInt(cleanVal, 10);
       if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
       const newValue = Math.min(Math.max(currentValue + increment, CONFIG.YEAR_MIN), CONFIG.YEAR_MAX);
-      input.value = String(newValue);
+      const isStart = input.id === "year-start-input";
+      input.value = (isStart && newValue <= CONFIG.YEAR_MIN) ? `<${CONFIG.YEAR_MIN}` : String(newValue);
       input.dispatchEvent(new Event("change", { bubbles: true }));
     };
     stepperUp.addEventListener("click", () => updateYearValue(1));

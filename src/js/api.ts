@@ -107,11 +107,17 @@ const suggestionsCache = new LRUCache<string, string[]>({
 
 // --- 3. PREPARAR DATOS Y LLAVES ---
 
-// Saca el principio y fin de un texto como "2010-2020"
+// Saca el principio y fin de un texto como "2010-2020".
+// Si el año de inicio es <= CONFIG.YEAR_MIN (1920), se pasa null para incluir todo el catálogo histórico previo a 1920.
 const parseYearRange = (y: string | null | undefined): { start: number | null; end: number | null } => {
   if (!y) return { start: null, end: null };
   const p = y.split("-").map(Number);
-  return { start: p[0] || null, end: (p.length > 1 ? p[1] : p[0]) || null };
+  const rawStart = p[0] || null;
+  const rawEnd = (p.length > 1 ? p[1] : p[0]) || null;
+  return { 
+    start: (rawStart !== null && rawStart <= CONFIG.YEAR_MIN) ? null : rawStart, 
+    end: (rawEnd !== null && rawEnd >= CONFIG.YEAR_MAX) ? null : rawEnd 
+  };
 };
 
 // Crea una firma única para recordar una búsqueda exacta (Ej: "accion-pagina-2")

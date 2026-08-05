@@ -19,7 +19,9 @@
 @import "components/button.css";
 @import "components/card.css";
 @import "components/header.css"; /* Estilos internos del header */
+@import "components/modal.css";
 @import "components/rating.css"; /* Sistema de estrellas reutilizable */
+@import "components/sidebar.css";
 @import "components/ui.css";
 
 /* =================================================================
