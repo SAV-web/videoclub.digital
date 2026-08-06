@@ -7,6 +7,7 @@
 //  RESPONSABILIDAD: Gestión de vista detallada, navegación y gestos.
 // =================================================================
 
+import "../../css/components/modal.css";
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
 import { setupCardRatings } from "./rating.js";
