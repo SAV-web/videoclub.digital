@@ -44,7 +44,7 @@ export const CONFIG = {
   SEARCH_DEBOUNCE_DELAY: 400,
 
   // Límites de Datos
-  YEAR_MIN: 1920,
+  YEAR_MIN: 1900,
   YEAR_MAX: new Date().getFullYear(),
 
   // Sistema

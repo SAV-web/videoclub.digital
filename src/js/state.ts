@@ -7,7 +7,7 @@
 // - Usa un "vigilante" (Proxy) para avisar al instante cuando algo cambia.
 // =================================================================
 
-import { clearCheckedUserMovieIds, markMovieIdAsChecked } from "./api.js";
+import { clearCheckedUserMovieIds, markMovieIdAsChecked } from "./checkedIds.js";
 import { DEFAULTS, CONFIG } from "./constants.js";
 import { normalizeText } from "./utils.js";
 import {

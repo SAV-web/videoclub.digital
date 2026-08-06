@@ -210,7 +210,7 @@ describe("yearSlider.ts (DualRangeSlider)", () => {
 
     const container = mockElement("div");
     const slider = new yearSliderModule.DualRangeSlider(container, {
-      min: 1920,
+      min: 1900,
       max: 2026,
       pivotYear: 2000,
       start: [1970, 2020],

@@ -10,7 +10,8 @@
 import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
-// @ts-ignore (state.js es un archivo JS híbrido por ahora)
+import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
+export { clearCheckedUserMovieIds, markMovieIdAsChecked };
 import { getUserDataForMovie } from "./state.js";
 import {
   ERROR_CODES,
@@ -108,8 +109,8 @@ const suggestionsCache = new LRUCache<string, string[]>({
 // --- 3. PREPARAR DATOS Y LLAVES ---
 
 // Saca el principio y fin de un texto como "2010-2020".
-// Si el año de inicio es <= CONFIG.YEAR_MIN (1920), se pasa null para incluir todo el catálogo histórico previo a 1920.
-const parseYearRange = (y: string | null | undefined): { start: number | null; end: number | null } => {
+// Si el año de inicio es <= CONFIG.YEAR_MIN (1900), se pasa null para incluir todo el catálogo histórico previo a 1900.
+export const parseYearRange = (y: string | null | undefined): { start: number | null; end: number | null } => {
   if (!y) return { start: null, end: null };
   const p = y.split("-").map(Number);
   const rawStart = p[0] || null;
@@ -121,7 +122,7 @@ const parseYearRange = (y: string | null | undefined): { start: number | null; e
 };
 
 // Crea una firma única para recordar una búsqueda exacta (Ej: "accion-pagina-2")
-const createCanonicalCacheKey = (filters: ActiveFilters, page: number, pageSize: number): string => {
+export const createCanonicalCacheKey = (filters: ActiveFilters, page: number, pageSize: number): string => {
   const norm: Record<string, unknown> = {};
   
   Object.keys(filters).sort().forEach(k => {
@@ -152,7 +153,7 @@ const createCanonicalCacheKey = (filters: ActiveFilters, page: number, pageSize:
 };
 
 // Traduce lo que pide el usuario al idioma que entiende el servidor SQL
-function stateToRpcParams(
+export function stateToRpcParams(
   activeFilters: ActiveFilters, 
   currentPage: number, 
   pageSize: number, 
@@ -300,29 +301,20 @@ export function fetchMovies(
 
       const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: data?.items }, mapMoviePayload);
 
-      // Filtrar coincidencias exactas para actores y directores para evitar falsos positivos por coincidencia parcial de palabras (ej: "SABU" vs "Sabu Kawahara")
+      // Filtro de precisión para garantizar que el nombre del actor o director coincida exactamente con una de las personas de la lista
+      // (Evita que buscar "Yuna" devuelva a "Madeleine Yuna Voyles")
       if (result.items && result.items.length > 0) {
         if (normFilters.actor) {
           const targetActorNorm = normalizeText(normFilters.actor);
-          const initialCount = result.items.length;
           result.items = result.items.filter(m => 
             m.parsedActors && m.parsedActors.some(a => normalizeText(a) === targetActorNorm)
           );
-          const removed = initialCount - result.items.length;
-          if (removed > 0 && result.total > 0) {
-            result.total = Math.max(0, result.total - removed);
-          }
         }
         if (normFilters.director) {
           const targetDirectorNorm = normalizeText(normFilters.director);
-          const initialCount = result.items.length;
           result.items = result.items.filter(m => 
             m.parsedDirectors && m.parsedDirectors.some(d => normalizeText(d) === targetDirectorNorm)
           );
-          const removed = initialCount - result.items.length;
-          if (removed > 0 && result.total > 0) {
-            result.total = Math.max(0, result.total - removed);
-          }
         }
       }
 
@@ -348,17 +340,6 @@ export function fetchMovies(
   return promise;
 }
 
-const checkedUserMovieIds = new Set<string>();
-
-export function clearCheckedUserMovieIds(): void {
-  checkedUserMovieIds.clear();
-}
-
-export function markMovieIdAsChecked(movieId: number | string): void {
-  const normId = normalizeMovieId(movieId);
-  if (normId !== null) checkedUserMovieIds.add(String(normId));
-}
-
 // Descarga los datos del usuario únicamente para las películas visibles en pantalla (Lazy Sync por IDs)
 export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): Promise<Record<string, UserMovieEntry>> {
   if (!movieIds || movieIds.length === 0) return {};
@@ -366,7 +347,7 @@ export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): P
   const uncachedIds: number[] = [];
   for (const rawId of movieIds) {
     const normId = normalizeMovieId(rawId);
-    if (normId !== null && !checkedUserMovieIds.has(String(normId))) {
+    if (normId !== null && !isMovieIdChecked(normId)) {
       uncachedIds.push(normId);
     }
   }
@@ -388,7 +369,7 @@ export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): P
   }
 
   // Marcar todos los IDs de la página como consultados para no repetir peticiones
-  uncachedIds.forEach(id => checkedUserMovieIds.add(String(id)));
+  uncachedIds.forEach(id => markMovieIdAsChecked(id));
 
   const userMap: Record<string, UserMovieEntry> = {};
   (data || []).forEach(i => {

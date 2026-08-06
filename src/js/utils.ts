@@ -12,7 +12,6 @@ declare module "*.svg" {
 // =================================================================
 
 import { CONFIG } from "./constants.js";
-// @ts-ignore (contracts.js es un archivo JS híbrido por ahora)
 import { ERROR_CODES } from "./contracts.js";
 import flagSpriteUrl from "../flags.svg";
 import { Movie, MappedMovie } from "./types.js";
@@ -344,9 +343,24 @@ declare global {
   interface Window {
     scheduler?: {
       postTask<T>(task: () => T, options?: { priority?: 'user-blocking' | 'user-visible' | 'background' }): Promise<T>;
+      yield?(): Promise<void>;
     };
     requestIdleCallback?: (callback: (deadline: IdleDeadline) => void, options?: { timeout?: number }) => number;
   }
+}
+
+/**
+ * Cede el control del Hilo Principal (Main Thread) al navegador para mantener
+ * el scroll fluido y mejorar la métrica INP (Interaction to Next Paint).
+ * Utiliza scheduler.yield() si está disponible (Chrome 115+) o cae suavemente a setTimeout.
+ */
+export async function yieldToMain(): Promise<void> {
+  if (typeof document !== 'undefined' && document.hidden) return;
+
+  if (typeof window !== 'undefined' && window.scheduler && typeof window.scheduler.yield === 'function') {
+    return window.scheduler.yield();
+  }
+  return new Promise(resolve => setTimeout(resolve, 0));
 }
 
 // Pinta las tarjetas "a trocitos" para que la pantalla nunca se congele

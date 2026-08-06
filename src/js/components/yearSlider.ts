@@ -136,12 +136,7 @@ export class DualRangeSlider {
     this.connectEl.style.width = `${Math.max(0, endPct - startPct)}%`;
 
     this.handleStartEl.style.left = `${startPct}%`;
-    this.handleStartEl.setAttribute("aria-valuenow", String(this.values[0]));
-    if (this.values[0] <= this.min) {
-      this.handleStartEl.setAttribute("aria-valuetext", `<${this.min}`);
-    } else if (typeof this.handleStartEl.removeAttribute === "function") {
-      this.handleStartEl.removeAttribute("aria-valuetext");
-    }
+    this.handleStartEl.setAttribute("aria-valuetext", String(this.values[0]));
 
     this.handleEndEl.style.left = `${endPct}%`;
     this.handleEndEl.setAttribute("aria-valuenow", String(this.values[1]));

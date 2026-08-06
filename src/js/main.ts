@@ -16,7 +16,8 @@ import {
   executeViewTransition,
   getAdjustedTotalPages
 } from "./utils.js";
-import { fetchMovies, getSupabase, fetchUserMovieDataForIds, clearCheckedUserMovieIds, fetchPersonDetails } from "./api.js";
+import { fetchMovies, getSupabase, fetchUserMovieDataForIds, fetchPersonDetails } from "./api.js";
+import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { 
   dom, 
   renderPagination, 

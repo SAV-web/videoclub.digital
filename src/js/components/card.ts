@@ -8,7 +8,7 @@
 // =================================================================
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
@@ -728,71 +728,59 @@ export function initializeCard(card: MovieCardElement): void {
 //          5. GESTIÓN DE GRID (Renderizado Masivo)
 // =================================================================
 
-export function renderMovieGrid(
+export async function renderMovieGrid(
   container: HTMLElement | null, 
   movies: MappedMovie[], 
   vipData: VipData | null = null
 ): Promise<void> {
   const renderId = ++currentRenderRequestId;
   unflipAllCards();
-  if (!container) return Promise.resolve();
+  if (!container) return;
 
   const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12;
-  let index = 0;
 
-  return new Promise<void>((resolve) => {
-    function renderBatch() {
-      if (renderId !== currentRenderRequestId) {
-        resolve();
-        return;
-      }
-      if (index >= movies.length || !document.body.contains(container)) {
-        resolve();
-        return;
-      }
+  // Lote 1: Renderizado inmediato inicial para FCP ultra-rápido (primeras 12 tarjetas)
+  const firstBatchLimit = Math.min(BATCH_SIZE, movies.length);
+  const fragment = document.createDocumentFragment();
 
-      const limit = Math.min(index + BATCH_SIZE, movies.length);
-      const isFirstBatch = index === 0;
+  for (let i = 0; i < firstBatchLimit; i++) {
+    fragment.appendChild(createCardElement(movies[i], i));
+  }
 
-      scheduleWork(() => {
-        if (renderId !== currentRenderRequestId) {
-          resolve();
-          return;
-        }
-        const fragment = document.createDocumentFragment();
+  if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
 
-        for (let i = index; i < limit; i++) {
-          fragment.appendChild(createCardElement(movies[i], i));
-        }
+  cleanupLazyImages(container);
+  container.textContent = "";
 
-        if (isFirstBatch) {
-          cleanupLazyImages(container);
-          container.textContent = "";
-          
-          if (vipData) {
-            if (vipData.type === 'person' && vipData.data) {
-              container.appendChild(createPersonCardElement(vipData.data));
-            } else if (vipData.type === 'collection') {
-              container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
-            } else if (vipData.type === 'studio') {
-              container.appendChild(createStudioCardElement(vipData.code, vipData.total));
-            }
-          }
-        }
+  if (vipData) {
+    if (vipData.type === 'person' && vipData.data) {
+      container.appendChild(createPersonCardElement(vipData.data));
+    } else if (vipData.type === 'collection') {
+      container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
+    } else if (vipData.type === 'studio') {
+      container.appendChild(createStudioCardElement(vipData.code, vipData.total));
+    }
+  }
 
-        container.appendChild(fragment);
-        index = limit;
-        
-        if (index < movies.length) {
-          renderBatch();
-        } else {
-          resolve();
-        }
-      }, isFirstBatch ? 'user-visible' : 'background');
+  container.appendChild(fragment);
+
+  // Lotes siguientes: Ceder control al Main Thread (yieldToMain) entre cada lote de 12 tarjetas
+  for (let index = BATCH_SIZE; index < movies.length; index += BATCH_SIZE) {
+    if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
+
+    await yieldToMain();
+
+    if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
+
+    const limit = Math.min(index + BATCH_SIZE, movies.length);
+    const batchFragment = document.createDocumentFragment();
+
+    for (let i = index; i < limit; i++) {
+      batchFragment.appendChild(createCardElement(movies[i], i));
     }
 
-    renderBatch();
-  });
+    container.appendChild(batchFragment);
+  }
 }
 
 function createCardElement(movie: MappedMovie, index: number): DocumentFragment {

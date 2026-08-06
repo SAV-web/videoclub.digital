@@ -780,7 +780,7 @@ function initYearSlider(): void {
   sliderInstance.on("update", (values, handle) => { 
     if (yearInputs[handle]) {
       const yearVal = Number(values[handle]);
-      yearInputs[handle]!.value = (handle === 0 && yearVal <= CONFIG.YEAR_MIN) ? `<${CONFIG.YEAR_MIN}` : String(yearVal); 
+      yearInputs[handle]!.value = String(yearVal); 
     }
   });
 
@@ -857,8 +857,7 @@ function setupYearInputSteppers(): void {
       let currentValue = parseInt(cleanVal, 10);
       if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
       const newValue = Math.min(Math.max(currentValue + increment, CONFIG.YEAR_MIN), CONFIG.YEAR_MAX);
-      const isStart = input.id === "year-start-input";
-      input.value = (isStart && newValue <= CONFIG.YEAR_MIN) ? `<${CONFIG.YEAR_MIN}` : String(newValue);
+      input.value = String(newValue);
       input.dispatchEvent(new Event("change", { bubbles: true }));
     };
     stepperUp.addEventListener("click", () => updateYearValue(1));

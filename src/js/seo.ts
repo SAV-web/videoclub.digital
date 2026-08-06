@@ -2,7 +2,6 @@
 
 // src/js/seo.ts
 import { CONFIG, FILTER_CONFIG, STUDIO_DATA } from "./constants.js";
-// @ts-ignore (state.js es un archivo JS híbrido por ahora)
 import { getActiveFilters } from "./state.js";
 import { capitalizeWords } from "./utils.js";
 import { ActiveFilters, Movie } from "./types.js";
