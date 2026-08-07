@@ -12,7 +12,7 @@ import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
 export { clearCheckedUserMovieIds, markMovieIdAsChecked };
-import { getUserDataForMovie } from "./state.js";
+import { getUserDataForMovie, updateUserDataForMovie, setUserMovieData, appEvents } from "./state.js";
 import {
   ERROR_CODES,
   createAppError,
@@ -264,6 +264,7 @@ export function fetchMovies(
 
         const items = (data || []).map((mRaw: unknown) => {
           const m = mRaw as Record<string, unknown> & {
+            id?: number;
             type?: string | null;
             original_title?: string | null;
             title?: string | null;
@@ -271,7 +272,16 @@ export function fetchMovies(
             episodes?: number | null;
             countries?: { name: string; code: string } | null;
             last_synced_at?: string | null;
+            user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
           };
+          
+          if (m.id && m.user_movie_entries) {
+            const rawEntry = Array.isArray(m.user_movie_entries) ? m.user_movie_entries[0] : m.user_movie_entries;
+            if (rawEntry && typeof rawEntry === "object") {
+              updateUserDataForMovie(m.id, { rating: rawEntry.rating, onWatchlist: rawEntry.on_watchlist });
+            }
+          }
+
           const isSeries = m.type && String(m.type).toLowerCase().startsWith('s');
           const item = {
             ...m,
@@ -340,6 +350,45 @@ export function fetchMovies(
   return promise;
 }
 
+/**
+ * Descarga el 100% de los datos y votos del usuario activo desde Supabase.
+ * Se ejecuta al iniciar sesión o recargar la página para tener la totalidad
+ * de las puntuaciones en memoria desde el primer instante.
+ */
+export async function fetchAllUserMovieData(): Promise<Record<string, UserMovieEntry>> {
+  try {
+    const supabase = await getSupabase();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return {};
+
+    const { data, error } = await supabase
+      .from('user_movie_entries')
+      .select('movie_id, rating, on_watchlist')
+      .eq('user_id', session.user.id);
+
+    if (error || !data) {
+      console.error("Error al descargar catálogo completo de usuario:", error);
+      return {};
+    }
+
+    const userMap: Record<string, UserMovieEntry> = {};
+    data.forEach(i => {
+      if (i.movie_id) {
+        userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist };
+        markMovieIdAsChecked(i.movie_id);
+      }
+    });
+
+    const normalized = normalizeUserMovieData(userMap);
+    setUserMovieData(normalized);
+    appEvents.emit("userDataUpdated");
+    return normalized;
+  } catch (err) {
+    console.error("Error en fetchAllUserMovieData:", err);
+    return {};
+  }
+}
+
 // Descarga los datos del usuario únicamente para las películas visibles en pantalla (Lazy Sync por IDs)
 export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): Promise<Record<string, UserMovieEntry>> {
   if (!movieIds || movieIds.length === 0) return {};
@@ -352,7 +401,18 @@ export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): P
     }
   }
 
-  if (uncachedIds.length === 0) return {};
+  // Si los IDs ya fueron verificados o cargados en memoria, devolver los datos del estado
+  if (uncachedIds.length === 0) {
+    const existing: Record<string, UserMovieEntry> = {};
+    for (const rawId of movieIds) {
+      const normId = normalizeMovieId(rawId);
+      if (normId !== null) {
+        const u = getUserDataForMovie(normId);
+        if (u) existing[String(normId)] = u;
+      }
+    }
+    return existing;
+  }
 
   const supabase = await getSupabase();
   const { data: { session } } = await supabase.auth.getSession();
@@ -373,10 +433,16 @@ export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): P
 
   const userMap: Record<string, UserMovieEntry> = {};
   (data || []).forEach(i => {
-    userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist };
+    if (i.movie_id) {
+      userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist };
+    }
   });
 
-  return normalizeUserMovieData(userMap);
+  const normalized = normalizeUserMovieData(userMap);
+  for (const [id, entry] of Object.entries(normalized)) {
+    updateUserDataForMovie(id, entry);
+  }
+  return normalized;
 }
 
 // Compatibilidad previa: redirige a fetchUserMovieDataForIds si se pasa una lista de IDs
@@ -384,7 +450,7 @@ export async function fetchUserMovieData(movieIds?: (number | string)[]): Promis
   if (movieIds && movieIds.length > 0) {
     return fetchUserMovieDataForIds(movieIds);
   }
-  return {};
+  return fetchAllUserMovieData();
 }
 
 // Memoria para los VIPs (Actores/Directores). Máximo 50 a la vez para no ahogar el móvil.
@@ -522,3 +588,54 @@ export const fetchRandomTopDirectors = async (): Promise<string[]> => {
   if (error) return [];
   return (data as Array<{ name: string }> || []).map(d => d.name);
 };
+
+/**
+ * Obtiene el detalle completo de una única película por su ID.
+ * Útil cuando el usuario accede por enlace directo a la SPA con ?movie={id}.
+ */
+export async function fetchMovieById(id: number | string): Promise<MappedMovie | null> {
+  const normId = Number(id);
+  if (!normId || isNaN(normId)) return null;
+
+  try {
+    const supabaseClient = await getSupabase();
+    const { data, error } = await supabaseClient
+      .from("movies")
+      .select("*, countries(name, code)")
+      .eq("id", normId)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    const m = data as Record<string, unknown> & {
+      type?: string | null;
+      original_title?: string | null;
+      title?: string | null;
+      year_end?: string | null;
+      episodes?: number | null;
+      countries?: { name: string; code: string } | null;
+      last_synced_at?: string | null;
+    };
+    const isSeries = m.type && String(m.type).toLowerCase().startsWith("s");
+    const item = {
+      ...m,
+      genres: (m.genres || m.genres_list || null) as string | null,
+      directors: (m.directors || m.directors_list || null) as string | null,
+      actors: (m.actors || m.actors_list || null) as string | null,
+      genres_list: (m.genres_list || m.genres || null) as string | null,
+      directors_list: (m.directors_list || m.directors || null) as string | null,
+      actors_list: (m.actors_list || m.actors || null) as string | null,
+      original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
+      year_end: isSeries ? m.year_end : null,
+      episodes: isSeries ? m.episodes : null,
+      country: m.countries?.name || null,
+      country_code: m.countries?.code || null,
+      last_synced_at: m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null
+    };
+    delete item.countries;
+    delete item.user_movie_entries;
+    return mapMoviePayload(item as unknown as Movie);
+  } catch {
+    return null;
+  }
+}

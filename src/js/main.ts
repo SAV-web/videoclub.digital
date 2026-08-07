@@ -688,6 +688,15 @@ function setupAuthSystem(): void {
     }
     isAuthInitialized = true;
     clearCheckedUserMovieIds();
+
+    // Descargar el 100% de votos y lista del usuario al iniciar sesión o recargar la página
+    try {
+      const { fetchAllUserMovieData } = await import("./api.js");
+      await fetchAllUserMovieData();
+    } catch (err) {
+      console.error("Error al sincronizar catálogo del usuario:", err);
+    }
+
     appEvents.emit("userDataUpdated");
   }
   
@@ -792,6 +801,27 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
   }
 }
 
+/**
+ * Detecta si la URL contiene un parámetro ?movie={id} o ?m={id} al cargar la SPA
+ * y abre de forma automática el modal con la película correspondiente.
+ */
+async function checkAndOpenMovieFromUrl(): Promise<void> {
+  const params = new URLSearchParams(window.location.search);
+  const movieId = params.get("movie") || params.get("m");
+  if (!movieId) return;
+
+  try {
+    const { fetchMovieById } = await import("./api.js");
+    const movie = await fetchMovieById(movieId);
+    if (!movie) return;
+
+    const { openModalForMovie } = await import("./components/modal.js");
+    openModalForMovie(movie);
+  } catch (err) {
+    console.error("Error al abrir película desde URL:", err);
+  }
+}
+
 function init(): void {
   requestAnimationFrame(() => {
     document.querySelectorAll("[data-loading]").forEach(el => {
@@ -854,6 +884,7 @@ function init(): void {
 
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
+  checkAndOpenMovieFromUrl();
   
   // Mostrar skeletons preliminares mientras se carga el catálogo (que se disparará inmediatamente por setupAuthSystem)
   loadCardModule().then(({ renderSkeletons }) => {

@@ -331,6 +331,7 @@ export function resetFiltersState(): void {
 // Guarda en bloque las películas del usuario (al hacer login)
 export function setUserMovieData(data: unknown): void {
   state.userMovieData = normalizeUserMovieData(data);
+  appEvents.emit("userDataUpdated");
 }
 
 // Actualiza si el usuario vota o añade a 'Mi Lista' una sola peli

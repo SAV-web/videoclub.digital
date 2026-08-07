@@ -30,16 +30,25 @@ const MIN_STAR_THRESHOLD = 5.5;
  * Implementa el ciclo de UX para el nivel 1 (suspenso -> aprobado -> limpiar) y toggles simples.
  */
 export function resolveNextRating(currentRating: number | null | undefined, clickedLevel: number): number | null {
-  if (clickedLevel === 1) {
-    if (currentRating === 2) return 5;
-    if (currentRating === 5) return null;
-    return 2;
+  if (clickedLevel === 0) {
+    // Clic en icono de suspenso directo (low-rating-star)
+    if (currentRating === 2) return 5; // De suspenso (2) pasa a 1 estrella llena (5)
+    return 2; // Pasa a suspenso (2)
   }
-  const potentialRating = LEVEL_TO_RATING_MAP[(clickedLevel - 1) as 0 | 1 | 2];
+
+  if (clickedLevel === 1) {
+    if (currentRating === 2) return 5;    // 2º clic: de suspenso (2) -> 1 estrella llena (5)
+    if (currentRating === 5) return null; // 3er clic: de 1 estrella llena (5) -> sin voto (null)
+    return 2;                             // 1er clic: de sin voto u otra nota -> estrella vacía suspenso (2)
+  }
+
+  const targetRating = LEVEL_TO_RATING_MAP[(clickedLevel - 1) as 0 | 1 | 2];
   const currentVisualStars = calculateUserStars(currentRating);
-  
-  if (clickedLevel === currentVisualStars) return null; // Toggle off
-  return potentialRating;
+
+  if (clickedLevel === currentVisualStars && currentRating !== 2) {
+    return null; // Toggle off
+  }
+  return targetRating;
 }
 
 /**
@@ -74,7 +83,7 @@ export function getRatingPresentationState(
   isLoggedIn: boolean
 ): RatingPresentationState {
   const userRating = userData?.rating;
-  const hasUserVote = isLoggedIn && typeof userRating === 'number';
+  const hasUserVote = typeof userRating === 'number';
   const avg = movie?.avg_rating;
   const hasValidAverage = typeof avg === "number" && avg > 0;
 
@@ -99,8 +108,6 @@ export function getRatingPresentationState(
  * @returns {number} 0 a 3
  */
 export function calculateUserStars(rating: number | null | undefined): number {
-  // Nota: 0 estrellas puede significar "sin voto" o "suspenso (2)"
-  // La distinción se maneja en la capa de UI
   if (!rating) return 0;
   if (rating >= 9) return 3;
   if (rating >= 7) return 2;
@@ -140,7 +147,6 @@ function renderStars(
   filledAmount: number,
   { hideUnfilled = false, snapToInteger = false }: RenderStarsOptions = {}
 ): void {
-  // OPTIMIZACIÓN: starContainer.children es una colección instantánea O(1), mucho más rápida que querySelectorAll
   const stars = starContainer.children;
   
   const effectiveFill = snapToInteger ? Math.round(filledAmount) : filledAmount;
@@ -263,15 +269,17 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
 export function handleRatingClick(event: MouseEvent, card: MovieCardElement): boolean {
   const target = event.target as HTMLElement;
   const starEl = target.closest<HTMLElement>(".star-icon[data-rating-level]");
+  const lowStarEl = target.closest<HTMLElement>('[data-action="set-rating-suspenso"]');
   const wallRatingEl = target.closest<HTMLElement>(".wall-rating-number");
-  const ratingBlock = target.closest<HTMLElement>(".card-rating-block");
   
+  const movieId = parseInt(card.dataset.movieId || "0", 10);
+  if (!movieId) return false;
+
+  const currentRating = getUserDataForMovie(movieId)?.rating;
+
   if (starEl) {
     event.preventDefault(); event.stopPropagation();
-    const movieId = parseInt(card.dataset.movieId || "0", 10);
-    const currentRating = getUserDataForMovie(movieId)?.rating;
     const level = parseInt(starEl.dataset.ratingLevel || "0", 10);
-
     const newRating = resolveNextRating(currentRating, level);
 
     setRating(movieId, newRating, card);
@@ -280,14 +288,28 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
     starEl.classList.add('just-rated');
     setTimeout(() => starEl.classList.remove('just-rated'), 400);
     
-    return true; // Handled
-  } else if (wallRatingEl || (ratingBlock && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED))) {
-    event.preventDefault(); event.stopPropagation();
-    const movieId = parseInt(card.dataset.movieId || "0", 10);
-    // Al pulsar el bloque o la nota, iniciamos el voto con "suspenso" (2)
-    setRating(movieId, 2, card);
     return true;
   }
+
+  if (lowStarEl) {
+    event.preventDefault(); event.stopPropagation();
+    const newRating = resolveNextRating(currentRating, 0);
+
+    setRating(movieId, newRating, card);
+    
+    lowStarEl.classList.add('just-rated');
+    setTimeout(() => lowStarEl.classList.remove('just-rated'), 400);
+    
+    return true;
+  }
+
+  if (wallRatingEl || (target.closest<HTMLElement>(".card-rating-block") && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED))) {
+    event.preventDefault(); event.stopPropagation();
+    const newRating = resolveNextRating(currentRating, 0);
+    setRating(movieId, newRating, card);
+    return true;
+  }
+
   return false; // Not handled
 }
 
@@ -310,14 +332,6 @@ export function updateRatingUI(card: MovieCardElement): void {
 
   const state = getRatingPresentationState(movie, userData, isLoggedIn);
 
-  const hideExtraStars = (): void => {
-    const stars = starCont.children; // Opt: Acceso directo sin querySelectorAll
-    for (let i = 1; i < stars.length; i++) {
-      const star = stars[i] as HTMLElement;
-      if (star.style.opacity !== "0") star.style.opacity = "0";
-    }
-  };
-
   let starDisplay = "none";
   let circleDisplay = "none";
   let hasUserRatingClass = false;
@@ -325,29 +339,33 @@ export function updateRatingUI(card: MovieCardElement): void {
   if (state.showUserRating) {
     hasUserRatingClass = true;
     
-    starDisplay = "flex";
     if (state.userRatingValue === 2) {
-      renderUserStars(starCont, 0, false);
-      hideExtraStars();
+      circleDisplay = "block";
+      starDisplay = "none";
     } else {
+      starDisplay = "flex";
+      circleDisplay = "none";
       renderUserStars(starCont, state.visualUserStars, true);
     }
   } else {
     if (state.showEmptyAverage) {
       if (isLoggedIn) {
         starDisplay = "flex";
-        renderUserStars(starCont, 0);
-        hideExtraStars();
+        renderUserStars(starCont, 0, false);
       } else {
         circleDisplay = "block";
       }
     } else if (state.showAverageRating) {
       starDisplay = "flex";
       renderAverageStars(starCont, state.visualAverageStars);
+    } else {
+      if (isLoggedIn) {
+        starDisplay = "flex";
+        renderUserStars(starCont, 0, false);
+      }
     }
   }
 
-  // OPTIMIZACIÓN (Layout Thrashing): Escribir en el DOM de golpe al final.
   starCont.classList.toggle("has-user-rating", hasUserRatingClass);
   circleEl.classList.toggle("has-user-rating", hasUserRatingClass);
 

@@ -1,0 +1,19 @@
+{
+  "name": "seo-site",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@supabase/supabase-js": "^2.112.2",
+    "astro": "^7.2.0"
+  }
+}

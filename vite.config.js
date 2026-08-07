@@ -23,8 +23,37 @@ function swVersionPlugin() {
   };
 }
 
+function serveSeoSitePlugin() {
+  return {
+    name: 'serve-seo-site-plugin',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url && (req.url.startsWith('/pelicula/') || req.url.startsWith('/sitemap') || req.url.startsWith('/_astro/'))) {
+          const reqPath = req.url.split('?')[0];
+          let filePath = path.join(__dirname, 'seo-site/dist', reqPath);
+          
+          if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+            filePath = path.join(filePath, 'index.html');
+          }
+
+          if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            if (reqPath.endsWith('.xml')) res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            else if (reqPath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=utf-8');
+            else if (reqPath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            else if (reqPath.endsWith('.html') || filePath.endsWith('index.html')) res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            
+            res.end(fs.readFileSync(filePath));
+            return;
+          }
+        }
+        next();
+      });
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [swVersionPlugin()],
+  plugins: [swVersionPlugin(), serveSeoSitePlugin()],
   // Base relativa para que los assets carguen correctamente en subdirectorios (GitHub Pages)
   base: './',
   

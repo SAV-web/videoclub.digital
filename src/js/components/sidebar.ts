@@ -482,20 +482,25 @@ function updateAllFilterControls(): void {
     const state = activeFilters.myList;
     dom.myListButton.classList.toggle("active", !!state);
     
-    // Actualizar icono y tooltip según estado
+    // El icono refleja el estado ACTUAL.
+    // El Tooltip / Title informa de la ACCIÓN que ocurrirá al pulsar (próximo estado).
     let iconHtml = ICONS.LIST;
-    let title = "Mi Lista";
+    let nextTitle = "Mis Puntuaciones"; // Estado actual: Todas -> Al pulsar: Mis Puntuaciones
     
     if (state === 'rated') {
       iconHtml = ICONS.STAR;
-      title = "Mis Puntuaciones";
+      nextTitle = "Pendiente"; // Estado actual: Mis Puntuaciones -> Al pulsar: Pendiente
     } else if (state === 'watchlist') {
       iconHtml = ICONS.WATCHLIST;
-      title = "Pendientes";
+      nextTitle = "Mi Lista"; // Estado actual: Pendiente -> Al pulsar: Mi Lista
+    } else if (state === 'mixed') {
+      iconHtml = ICONS.LIST;
+      nextTitle = "Todas las películas"; // Estado actual: Mi Lista -> Al pulsar: Todas
     }
     
     dom.myListButton.innerHTML = iconHtml;
-    dom.myListButton.title = title;
+    dom.myListButton.title = nextTitle;
+    dom.myListButton.setAttribute("aria-label", nextTitle);
   }
 }
 
@@ -563,8 +568,8 @@ async function handleMyListToggle(): Promise<void> {
   const currentFilters = getActiveFilters();
   const current = currentFilters.myList;
   
-  // Ciclo: Inactivo -> Puntuadas -> Pendientes -> Todo -> Inactivo
-  const cycle: Array<string | null> = [null, 'rated', 'watchlist', 'mixed'];
+  // Ciclo: Mis Puntuaciones -> Pendiente -> Mi lista -> Todas
+  const cycle: Array<string | null> = ['rated', 'watchlist', 'mixed', null];
   const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
   const nextState = cycle[nextIndex];
 
@@ -584,6 +589,8 @@ async function handleMyListToggle(): Promise<void> {
       mixed: "Mostrando toda tu lista"
     };
     showToast(messages[nextState], "info");
+  } else {
+    showToast("Regresando al catálogo completo", "info");
   }
 
   appEvents.emit("updateSidebarUI");

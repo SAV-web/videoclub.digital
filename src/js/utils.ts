@@ -49,18 +49,25 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
   const title = movie.title || "";
   const hasOrig = !!(origTitle && origTitle.toLowerCase() !== title.toLowerCase());
   
+  const genresStr = movie.genres || movie.genres_list || "";
+  const directorsStr = movie.directors || movie.directors_list || "";
+  const actorsStr = movie.actors || movie.actors_list || "";
+  const studiosStr = movie.studios_list || "";
+
   return {
     ...movie,
+    genres: genresStr,
+    directors: directorsStr,
+    actors: actorsStr,
     isSeries,
     displayYear: formatYearRange(movie.year, movie.year_end, isSeries, "N/A"),
     posterUrl: getHqPosterUrl(movie.image),
     displayOriginalTitle: hasOrig ? origTitle : title,
     hasOriginalTitle: hasOrig,
     displayEpisodes: isSeries && movie.episodes ? `${movie.episodes} x` : "",
-    parsedActors: movie.actors?.split(",").map(a => a.trim()) || [],
-    parsedDirectors: movie.directors?.split(",").map(d => d.trim()) || [],
-    studioList: movie.studios_list?.split(",") || []
-
+    parsedActors: actorsStr ? actorsStr.split(",").map(a => a.trim()).filter(Boolean) : [],
+    parsedDirectors: directorsStr ? directorsStr.split(",").map(d => d.trim()).filter(Boolean) : [],
+    studioList: studiosStr ? studiosStr.split(",").map(s => s.trim()).filter(Boolean) : []
   } as MappedMovie;
 }
 

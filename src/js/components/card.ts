@@ -190,6 +190,24 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     }
   });
 
+  // --- Actualizar tarjetas del grid cuando se descarguen datos de usuario ---
+  appEvents.on("userDataUpdated", () => {
+    const grid = document.getElementById("grid-container");
+    if (grid) {
+      grid.querySelectorAll<MovieCardElement>(".movie-card[data-movie-id]").forEach(card => {
+        updateCardUI(card);
+      });
+    }
+  });
+
+  appEvents.on("userMovieDataChanged", ({ movieId }) => {
+    const grid = document.getElementById("grid-container");
+    if (grid && movieId) {
+      const card = grid.querySelector<MovieCardElement>(`.movie-card[data-movie-id="${movieId}"]`);
+      if (card) updateCardUI(card);
+    }
+  });
+
   // --- Doble Click (Desktop) ---
   gridContainer.addEventListener("dblclick", (e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -258,7 +276,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 //          3. MANEJADORES DE CLICS (Acciones)
 // =================================================================
 
-async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
+export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
   const wasActive = btn.classList.contains("is-active");
   const newState: Partial<UserMovieEntry> = { onWatchlist: !wasActive };
   const prevState = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
@@ -720,8 +738,9 @@ export function updateCardUI(card: MovieCardElement): void {
 export function initializeCard(card: MovieCardElement): void {
   const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
   if (starCont) {
-    setupRatingListeners(starCont, document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN));
+    setupRatingListeners(starCont, true);
   }
+  card.addEventListener("click", handleCardClick);
 }
 
 // =================================================================

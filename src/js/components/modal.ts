@@ -9,9 +9,9 @@
 
 import "../../css/components/modal.css";
 import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
-import { updateCardUI, initializeCard, unflipAllCards } from "./card.js";
-import { setupCardRatings } from "./rating.js";
-import { appEvents, getState, getCurrentPage, getTotalMovies } from "../state.js";
+import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
+import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
+import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
 import { formatRuntime, createElement, renderCountryFlag, executeViewTransition } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
@@ -315,13 +315,18 @@ function navigateToSibling(direction: number): void {
  * Actualiza el estado (habilitado/deshabilitado) de los botones de navegación.
  */
 function updateNavButtons(currentId: number | string, contextCards: HTMLElement[] | null = null): void {
-  const { prevBtn, nextBtn } = getDom();
+  const { prevBtn, nextBtn, modal } = getDom();
   const strId = String(currentId);
-  
+
   const cards = contextCards || getGridCards();
   const currentIndex = cards.findIndex(c => c.dataset.movieId === strId);
 
-  if (currentIndex === -1) return;
+  if (currentIndex === -1) {
+    if (modal) modal.classList.add("hide-arrows");
+    if (prevBtn) prevBtn.disabled = true;
+    if (nextBtn) nextBtn.disabled = true;
+    return;
+  }
 
   const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
   const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
@@ -330,6 +335,12 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
 
   const hasPrev = currentIndex > 0 || currentPage > 1;
   const hasNext = currentIndex < cards.length - 1 || currentPage < totalPages;
+
+  if (!hasPrev && !hasNext) {
+    if (modal) modal.classList.add("hide-arrows");
+  } else {
+    if (modal) modal.classList.remove("hide-arrows");
+  }
 
   if (prevBtn) {
     prevBtn.disabled = !hasPrev;
@@ -673,8 +684,12 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     content.appendChild(clone);
 
     // Inicializar interactividad básica
-    updateCardUI(content);
-    initializeCard(content);
+    updateCardUI(cardClone);
+    initializeCard(cardClone);
+    const starCont = cardClone.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
+    if (starCont) {
+      setupRatingListeners(starCont, true);
+    }
     updateNavButtons(modalId, contextCards);
 
     // --- CAPA 2: DETALLES (Asíncrona / Diferida) ---
@@ -684,10 +699,32 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
         
         setupModalDetails(nodes, movie);
         setupCardRatings(cardClone, movie);
+
+        // Si el usuario está autenticado, sincronizar sus datos específicos (nota/watchlist) para la modal
+        if (movie.id && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+          import("../api.js").then(({ fetchUserMovieDataForIds }) => {
+            fetchUserMovieDataForIds([movie.id]).then(userEntries => {
+              if (userEntries[movie.id]) {
+                updateUserDataForMovie(movie.id, userEntries[movie.id]);
+                if (content && content.dataset.movieId === String(movie.id)) {
+                  updateCardUI(cardClone);
+                }
+              }
+            }).catch(() => {});
+          });
+        }
       });
     });
   }
 }
+
+// Suscribir actualización de UI del modal a eventos globales de datos de usuario
+appEvents.on("userDataUpdated", () => {
+  const { content, modal } = getDom();
+  if (modal && modal.classList.contains("is-visible") && content) {
+    updateCardUI(content);
+  }
+});
 
 // =================================================================
 //          5. API PÚBLICA
@@ -747,6 +784,19 @@ export function closeModal(): void {
 }
 
 /**
+ * Abre el modal directamente a partir de un objeto de película (MappedMovie o Movie).
+ * Útil para la apertura automática desde URLs ?movie={id}.
+ */
+export function openModalForMovie(movie: MappedMovie | Movie): void {
+  const dummyCard = document.createElement("div") as MovieCardElement;
+  dummyCard.className = "movie-card";
+  dummyCard.movieData = movie as Movie;
+  openModal(dummyCard);
+  const { modal } = getDom();
+  if (modal) modal.classList.add("hide-arrows");
+}
+
+/**
  * Abre el modal para una tarjeta específica.
  */
 export function openModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
@@ -794,20 +844,35 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   });
 }
 
-/**
- * Inicializa los listeners globales del modal (Teclado, Gestos).
- */
 export function initQuickView(): void {
   const { modal, content, prevBtn, nextBtn } = getDom();
   if (!modal) return;
 
+  appEvents.on("userMovieDataChanged", ({ movieId }) => {
+    const { content } = getDom();
+    if (content && content.dataset.movieId === String(movieId)) {
+      const modalCard = content.querySelector<MovieCardElement>(".movie-card");
+      if (modalCard) updateCardUI(modalCard);
+    }
+  });
+
+  appEvents.on("userDataUpdated", () => {
+    const { content } = getDom();
+    if (content && content.dataset.movieId) {
+      const modalCard = content.querySelector<MovieCardElement>(".movie-card");
+      if (modalCard) updateCardUI(modalCard);
+    }
+  });
+
   // Delegación de eventos en contenido
   if (content) {
     content.addEventListener("click", (e: MouseEvent) => {
-      handleMetadataClick(e);
       const target = e.target as HTMLElement;
-      // Toggle flechas al tocar póster (Móvil/Tablet/Desktop)
-      if (target.closest(".poster-container")) {
+
+      handleMetadataClick(e);
+
+      // Toggle flechas al tocar póster (Móvil/Tablet/Desktop), pero NUNCA en la barra de controles
+      if (target.closest(".poster-container") && !target.closest(".card-rating-block")) {
         modal.classList.toggle("hide-arrows");
       }
     });

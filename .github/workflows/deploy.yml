@@ -29,23 +29,35 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install SPA Dependencies
         run: npm ci
 
-      - name: Build Project
+      - name: Build SPA Project
         run: npm run build
         env:
-          # Inyectamos las variables de entorno necesarias para el build
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          
+
+      - name: Install & Build Astro SEO Site (SSG)
+        run: |
+          cd seo-site
+          npm ci
+          npx astro build
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Merge Astro SEO Artifacts into SPA dist
+        run: |
+          cp -r seo-site/dist/* ./dist/
+
       - name: Disable Jekyll
         run: touch ./dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist # Sube la carpeta construida
+          path: ./dist # Sube la carpeta construida unificada (SPA + Fichas SEO + Sitemaps)
 
   deploy:
     environment:
