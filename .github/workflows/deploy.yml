@@ -41,15 +41,16 @@ jobs:
       - name: Install & Build Astro SEO Site (SSG)
         run: |
           cd seo-site
-          npm ci
+          npm install
           npx astro build
         env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc' }}
 
       - name: Merge Astro SEO Artifacts into SPA dist
         run: |
-          cp -r seo-site/dist/* ./dist/
+          cp -R seo-site/dist/. ./dist/
 
       - name: Disable Jekyll
         run: touch ./dist/.nojekyll
