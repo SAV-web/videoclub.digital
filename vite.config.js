@@ -51,6 +51,11 @@ function serveSeoSitePlugin() {
             
             res.end(fs.readFileSync(filePath));
             return;
+          } else if (reqPath.startsWith('/pelicula/')) {
+            // Si una página estática de película no existe, redirigir a la raíz de la SPA
+            res.writeHead(302, { Location: '/' });
+            res.end();
+            return;
           }
         }
         next();

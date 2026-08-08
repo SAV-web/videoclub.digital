@@ -108,10 +108,13 @@ const imdbBarWidth = movie.imdb_votes ? Math.min(100, (Math.sqrt(movie.imdb_vote
 const formattedFaVotes = formatVotesUnified(movie.fa_votes, 'fa');
 const formattedImdbVotes = formatVotesUnified(movie.imdb_votes, 'imdb');
 
+const sameAs = [movie.imdb_id, movie.fa_id, movie.wikipedia, movie.justwatch].filter(Boolean);
+
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': isSeries ? 'TVSeries' : 'Movie',
   name: movie.title,
+  ...(sameAs.length ? { sameAs } : {}),
   ...(movie.original_title ? { alternateName: movie.original_title } : {}),
   ...(movie.year ? { datePublished: String(movie.year) } : {}),
   ...(movie.synopsis ? { description: movie.synopsis } : {}),
@@ -930,11 +933,11 @@ const jsonLd = {
   <!-- Header Superior de Marca -->
   <header class="site-header">
     <div class="header-content">
-      <a href="/" class="brand-logo">
+      <a href={baseUrl} class="brand-logo">
         <span class="logo-icon">🎬</span>
         <span class="logo-text">videoclub<span class="logo-accent">.digital</span></span>
       </a>
-      <a href={`/?movie=${movie.id}`} class="btn-header-cta">
+      <a href={`${baseUrl}?movie=${movie.id}`} class="btn-header-cta">
         <span class="btn-icon">⚡</span> Abrir en la App
       </a>
     </div>
@@ -963,6 +966,7 @@ const jsonLd = {
                   width="400" 
                   height="496" 
                   loading="eager" 
+                  fetchpriority="high"
                   class="loaded"
                 />
               ) : (
@@ -988,7 +992,7 @@ const jsonLd = {
                 </div>
                 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->
-                <a href={`/?movie=${movie.id}`} class="card-action-btn" title="Abrir en Videoclub Digital" aria-label="Abrir en la App">
+                <a href={`${baseUrl}?movie=${movie.id}`} class="card-action-btn" title="Abrir en Videoclub Digital" aria-label="Abrir en la App">
                   <svg class="icon-watchlist"><use href={`${baseUrl}sprite.svg#icon-bookmark-plus`}></use></svg>
                 </a>
               </div>
@@ -1021,7 +1025,7 @@ const jsonLd = {
                   <div class="year-flag-group">
                     {movie.year && (
                       <span data-template="year">
-                        <a href={`/?year=${movie.year}`} class="year-link">{movie.year}</a>
+                        <a href={`${baseUrl}?year=${movie.year}`} class="year-link">{movie.year}</a>
                         {movie.year_end ? `–${movie.year_end}` : ''}
                       </span>
                     )}
@@ -1039,7 +1043,7 @@ const jsonLd = {
 
           </div>
 
-          <!-- COLUMNA DERECHA EN DESKTOP / ABAJO EN MÓVIL (BACKCARD) -->
+          <!-- COLUMNA DERECHA EN DESKTOP / ABAJO EN MÓVIL (FRONTCARD) -->
           <div class="flip-card-back">
             
             <!-- Duración, Episodios y Links Externos -->
@@ -1099,7 +1103,7 @@ const jsonLd = {
               <div class="front-director-info" data-template="director">
                 {directors.map((name, i) => (
                   <>
-                    <a href={`/?dir=${encodeURIComponent(name)}`}>{name}</a>
+                    <a href={`${baseUrl}?dir=${encodeURIComponent(name)}`}>{name}</a>
                     {i < directors.length - 1 ? ', ' : ''}
                   </>
                 ))}
@@ -1120,7 +1124,7 @@ const jsonLd = {
                   <span class="detail-data" data-template="actors">
                     {actors.map((name, i) => (
                       <>
-                        <a href={`/?actor=${encodeURIComponent(name)}`}>{name}</a>
+                        <a href={`${baseUrl}?actor=${encodeURIComponent(name)}`}>{name}</a>
                         {i < actors.length - 1 ? ', ' : ''}
                       </>
                     ))}
@@ -1147,7 +1151,7 @@ const jsonLd = {
     </div>
   </div>
 
-  <script is:inline>
+  <script is:inline define:vars={{ baseUrl }}>
     document.addEventListener('DOMContentLoaded', () => {
       const starContainer = document.querySelector('.star-rating-container');
       if (starContainer) {
@@ -1170,7 +1174,7 @@ const jsonLd = {
             e.stopPropagation();
             const movieId = document.querySelector('.movie-card')?.getAttribute('data-movie-id');
             if (movieId) {
-              window.location.href = `/?movie=${movieId}`;
+              window.location.href = `${baseUrl}?movie=${movieId}`;
             }
           });
         });
@@ -1191,7 +1195,7 @@ const jsonLd = {
           e.stopPropagation();
           const movieId = document.querySelector('.movie-card')?.getAttribute('data-movie-id');
           if (movieId) {
-            window.location.href = `/?movie=${movieId}`;
+            window.location.href = `${baseUrl}?movie=${movieId}`;
           }
         });
       }
