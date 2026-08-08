@@ -4,6 +4,6 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   output: 'static',        // SSG puro — GitHub Pages no soporta SSR
   site: 'https://videoclub.digital',  // Dominio canónico del proyecto
-  base: '/',                // Vive en la raíz del sitio
+  base: process.env.GITHUB_ACTIONS ? '/videoclub.digital/' : '/',
   integrations: [sitemap()],
 });

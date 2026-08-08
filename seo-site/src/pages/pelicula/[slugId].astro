@@ -16,7 +16,7 @@ export async function getStaticPaths() {
 interface Props { movie: MovieRow }
 const { movie } = Astro.props;
 
-// SVG Sprites cargados en tiempo de compilación
+// SVG Sprites cargados en tiempo de compilación para compatibilidad total de estilos
 const spriteSvgPath = path.resolve(process.cwd(), '../src/sprite.svg');
 const flagsSvgPath = path.resolve(process.cwd(), '../src/flags.svg');
 const spriteSvg = fs.existsSync(spriteSvgPath) ? fs.readFileSync(spriteSvgPath, 'utf-8') : '';
@@ -55,8 +55,8 @@ const STUDIO_DATA: Record<string, { id: string; class: string; title: string; w:
 };
 
 // Formatos de visualización
-const countryCode = movie.countries?.code || movie.country_code || null;
-const countryName = movie.countries?.name || movie.country || '';
+const countryCode = movie.countries?.code || null;
+const countryName = movie.countries?.name || '';
 
 function formatRuntime(minutes: number | null | undefined, isSeries: boolean): string {
   if (!minutes) return isSeries ? 'Serie TV' : 'Película';
@@ -152,19 +152,36 @@ const jsonLd = {
   <meta name="twitter:description" content={description} />
   {posterUrl && <meta name="twitter:image" content={posterUrl} />}
 
-  <!-- Tipografía Inter Variable -->
-  <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
+  <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
+  <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
 
   <!-- Estilos visuales identicos al Modal de la SPA -->
-  <style is:inline>
+  <style>
+    /* Inter Variable: Un solo archivo para todos los pesos */
+    @font-face {
+      font-family: "Inter";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2") format("woff2");
+    }
+
+    /* Fallback métricamente ajustado para reducir CLS */
+    @font-face {
+      font-family: "Inter Fallback";
+      src: local("Arial");
+      ascent-override: 92.77%;
+      descent-override: 24.41%;
+      line-gap-override: 0%;
+      size-adjust: 107.8%;
+    }
+
     /* RESET & DESIGN TOKENS (dark-mode por defecto) */
     :root, html.dark-mode {
-      --font-body: "Inter", system-ui, -apple-system, sans-serif;
+      --font-body: "Inter", "Inter Fallback", system-ui, -apple-system, sans-serif;
       --font-title: var(--font-body);
 
       --font-size-xs: 0.75rem;

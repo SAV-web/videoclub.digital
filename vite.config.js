@@ -54,6 +54,12 @@ function serveSeoSitePlugin() {
 
 export default defineConfig({
   plugins: [swVersionPlugin(), serveSeoSitePlugin()],
+  // Ignorar seo-site/dist y dist en el watcher de Vite para evitar fugas de memoria con 13.488 archivos
+  server: {
+    watch: {
+      ignored: ['**/seo-site/dist/**', '**/dist/**']
+    }
+  },
   // Base relativa para que los assets carguen correctamente en subdirectorios (GitHub Pages)
   base: './',
   
