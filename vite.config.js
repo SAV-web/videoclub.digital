@@ -28,8 +28,13 @@ function serveSeoSitePlugin() {
     name: 'serve-seo-site-plugin',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url && (req.url.startsWith('/pelicula/') || req.url.startsWith('/sitemap') || req.url.startsWith('/_astro/'))) {
-          const reqPath = req.url.split('?')[0];
+        if (!req.url) return next();
+
+        // Normalizar URL removiendo el prefijo /videoclub.digital/ si está presente
+        const cleanUrl = req.url.replace(/^\/videoclub\.digital\//, '/');
+        const reqPath = cleanUrl.split('?')[0];
+
+        if (reqPath.startsWith('/pelicula/') || reqPath.startsWith('/sitemap') || reqPath.startsWith('/_astro/') || reqPath === '/sprite.svg' || reqPath === '/flags.svg' || reqPath === '/robots.txt') {
           let filePath = path.join(__dirname, 'seo-site/dist', reqPath);
           
           if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
@@ -38,8 +43,10 @@ function serveSeoSitePlugin() {
 
           if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
             if (reqPath.endsWith('.xml')) res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            else if (reqPath.endsWith('.txt')) res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             else if (reqPath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=utf-8');
             else if (reqPath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            else if (reqPath.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
             else if (reqPath.endsWith('.html') || filePath.endsWith('index.html')) res.setHeader('Content-Type', 'text/html; charset=utf-8');
             
             res.end(fs.readFileSync(filePath));

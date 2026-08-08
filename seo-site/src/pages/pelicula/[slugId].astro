@@ -1,6 +1,4 @@
 ---
-import fs from 'node:fs';
-import path from 'node:path';
 import { fetchAllMovies } from '../../lib/fetchAllMovies';
 import { getPosterUrl, parseList } from '../../lib/format';
 import type { MovieRow } from '../../lib/types';
@@ -16,18 +14,13 @@ export async function getStaticPaths() {
 interface Props { movie: MovieRow }
 const { movie } = Astro.props;
 
-// SVG Sprites cargados en tiempo de compilación para compatibilidad total de estilos
-const spriteSvgPath = path.resolve(process.cwd(), '../src/sprite.svg');
-const flagsSvgPath = path.resolve(process.cwd(), '../src/flags.svg');
-const spriteSvg = fs.existsSync(spriteSvgPath) ? fs.readFileSync(spriteSvgPath, 'utf-8') : '';
-const flagsSvg = fs.existsSync(flagsSvgPath) ? fs.readFileSync(flagsSvgPath, 'utf-8') : '';
-
+const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 const posterUrl = getPosterUrl(movie);
 const genres = parseList(movie.genres_list);
 const directors = parseList(movie.directors_list);
 const actors = parseList(movie.actors_list);
 const studios = parseList(movie.studios_list);
-const canonicalUrl = new URL(`/pelicula/${movie.slug}/`, Astro.site);
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const isSeries = Boolean(movie.type && String(movie.type).toLowerCase().startsWith('s'));
 
 const pageTitle = `${movie.title}${movie.year ? ` (${movie.year})` : ''} — Videoclub Digital`;
@@ -79,6 +72,13 @@ else if (tLen > 50) titleLengthClass = 'title-xxl-long';
 else if (tLen > 35) titleLengthClass = 'title-xl-long';
 else if (tLen > 25) titleLengthClass = 'title-long';
 else if (tLen > 15) titleLengthClass = 'title-medium';
+
+const displayOriginalTitle = movie.original_title?.trim() || movie.title;
+const oLen = displayOriginalTitle.length;
+let origTitleLengthClass = '';
+if (oLen > 40) origTitleLengthClass = 'title-xl-long';
+else if (oLen > 30) origTitleLengthClass = 'title-long';
+else if (oLen > 20) origTitleLengthClass = 'title-medium';
 
 // Estrellas continuas (0-3)
 function calculateAverageStars(avg: number | null | undefined): number {
@@ -156,10 +156,10 @@ const jsonLd = {
   <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
   <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
-  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
 
   <!-- Estilos visuales identicos al Modal de la SPA -->
-  <style>
+  <style is:global>
     /* Inter Variable: Un solo archivo para todos los pesos */
     @font-face {
       font-family: "Inter";
@@ -927,10 +927,6 @@ const jsonLd = {
   </style>
 </head>
 <body>
-  <!-- Inyección de SVG Sprites (Iconos y Banderas) -->
-  <Fragment set:html={spriteSvg} />
-  <Fragment set:html={flagsSvg} />
-
   <!-- Header Superior de Marca -->
   <header class="site-header">
     <div class="header-content">
@@ -978,22 +974,22 @@ const jsonLd = {
               <div class="card-rating-block">
                 <div class="star-rating-container has-user-rating" style="display:flex;">
                   <svg class="star-icon" data-rating-level="1">
-                    <use class="star-icon-path star-icon-path--empty" href="#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="#icon-star" style={`clip-path: inset(0 ${clip1}% 0 0);`}></use>
+                    <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
+                    <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip1}% 0 0);`}></use>
                   </svg>
                   <svg class="star-icon" data-rating-level="2">
-                    <use class="star-icon-path star-icon-path--empty" href="#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="#icon-star" style={`clip-path: inset(0 ${clip2}% 0 0);`}></use>
+                    <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
+                    <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip2}% 0 0);`}></use>
                   </svg>
                   <svg class="star-icon" data-rating-level="3">
-                    <use class="star-icon-path star-icon-path--empty" href="#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="#icon-star" style={`clip-path: inset(0 ${clip3}% 0 0);`}></use>
+                    <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
+                    <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip3}% 0 0);`}></use>
                   </svg>
                 </div>
                 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->
                 <a href={`/?movie=${movie.id}`} class="card-action-btn" title="Abrir en Videoclub Digital" aria-label="Abrir en la App">
-                  <svg class="icon-watchlist"><use href="#icon-bookmark-plus"></use></svg>
+                  <svg class="icon-watchlist"><use href={`${baseUrl}sprite.svg#icon-bookmark-plus`}></use></svg>
                 </a>
               </div>
             </div>
@@ -1013,7 +1009,7 @@ const jsonLd = {
                       return (
                         <span class={`platform-icon ${conf.class}`} title={conf.title}>
                           <svg width={conf.w || 24} height={conf.h || 24} fill="currentColor" viewBox="0 0 24 24">
-                            <use href={`#${conf.id}`}></use>
+                            <use href={`${baseUrl}sprite.svg#${conf.id}`}></use>
                           </svg>
                         </span>
                       );
@@ -1032,7 +1028,7 @@ const jsonLd = {
                     {countryCode && (
                       <span class="country-info" data-template="country-container" style="display:flex;">
                         <span class="country-flag-icon" title={countryName}>
-                          <svg width="28" height="28"><use href={`#flag-${countryCode.toLowerCase()}`}></use></svg>
+                          <svg width="28" height="28"><use href={`${baseUrl}flags.svg#flag-${countryCode.toLowerCase()}`}></use></svg>
                         </span>
                       </span>
                     )}
@@ -1053,12 +1049,12 @@ const jsonLd = {
                 {durationText && <span data-template="duration">{durationText}</span>}
                 {movie.justwatch && (
                   <a target="_blank" rel="noopener noreferrer" class="rating-line" href={movie.justwatch} title="Ver en JustWatch" data-template="justwatch-link">
-                    <svg class="rating-icon" fill="#9A1485"><use href="#icon-justwatch"></use></svg>
+                    <svg class="rating-icon" fill="#9A1485"><use href={`${baseUrl}sprite.svg#icon-justwatch`}></use></svg>
                   </a>
                 )}
                 {movie.wikipedia && (
                   <a target="_blank" rel="noopener noreferrer" class="rating-line" href={movie.wikipedia} title="Ver en Wikipedia" data-template="wikipedia-link">
-                    <svg class="rating-icon" fill="#B3404A"><use href="#icon-wikipedia"></use></svg>
+                    <svg class="rating-icon" fill="#B3404A"><use href={`${baseUrl}sprite.svg#icon-wikipedia`}></use></svg>
                   </a>
                 )}
               </div>
@@ -1069,7 +1065,7 @@ const jsonLd = {
               {movie.fa_rating && (
                 <div class="rating-line">
                   <a target="_blank" rel="noopener noreferrer" class="rating-left" href={movie.fa_id || '#'} data-template="fa-link">
-                    <svg class="rating-icon"><use href="#icon-filmaffinity"></use></svg>
+                    <svg class="rating-icon"><use href={`${baseUrl}sprite.svg#icon-filmaffinity`}></use></svg>
                     <span data-template="fa-rating">{movie.fa_rating.toFixed(1)}</span>
                   </a>
                   <span class="rating-votes-count">{formattedFaVotes}</span>
@@ -1082,7 +1078,7 @@ const jsonLd = {
               {movie.imdb_rating && (
                 <div class="rating-line">
                   <a target="_blank" rel="noopener noreferrer" class="rating-left" href={movie.imdb_id || '#'} data-template="imdb-link">
-                    <svg class="rating-icon" fill="#F5C618"><use href="#icon-imdb"></use></svg>
+                    <svg class="rating-icon" fill="#F5C618"><use href={`${baseUrl}sprite.svg#icon-imdb`}></use></svg>
                     <span data-template="imdb-rating">{movie.imdb_rating.toFixed(1)}</span>
                   </a>
                   <span class="rating-votes-count">{formattedImdbVotes}</span>
@@ -1094,11 +1090,9 @@ const jsonLd = {
             </div>
 
             <!-- Título Original tras las Puntuaciones -->
-            {movie.original_title && movie.original_title !== movie.title && (
-              <div class="back-original-title-wrapper">
-                <span data-template="original-title">{movie.original_title}</span>
-              </div>
-            )}
+            <div class="back-original-title-wrapper">
+              <span data-template="original-title" class={origTitleLengthClass}>{displayOriginalTitle}</span>
+            </div>
 
             <!-- Director tras el Título Original -->
             {directors.length > 0 && (

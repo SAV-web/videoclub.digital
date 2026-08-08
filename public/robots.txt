@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sav-web.github.io/videoclub.digital/sitemap-index.xml
