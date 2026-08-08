@@ -84,7 +84,7 @@ export default defineConfig({
       output: {
         // Separar librerías pesadas en sus propios archivos (Mejora la caché del navegador)
         manualChunks: {
-          vendor: ['lru-cache']
+          vendor: ['lru-cache', '@supabase/supabase-js']
         }
       }
     }

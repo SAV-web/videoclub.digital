@@ -37,6 +37,22 @@ export interface UserMovieEntry {
   onWatchlist: boolean;
 }
 
+export interface ActiveFilters {
+  searchTerm: string;
+  genre: string | null;
+  year: string | null;
+  country: string | null;
+  director: string | null;
+  actor: string | null;
+  selection: string | null;
+  studio: string | null;
+  sort: string;
+  mediaType: "all" | "movies" | "series";
+  excludedGenres: string[];
+  excludedCountries: string[];
+  myList: null | "rated" | "watchlist" | "mixed";
+}
+
 export interface MappedMovie extends Movie {
   isSeries: boolean;
   displayYear: string;

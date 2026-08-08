@@ -24,7 +24,7 @@ import {
   normalizeUserMovieEntry,
   toAppError,
 } from "./contracts.js";
-import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails } from "./types.js";
+import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Set estático para normalizar caché (Campos de texto libre)
@@ -122,7 +122,7 @@ export const parseYearRange = (y: string | null | undefined): { start: number | 
 };
 
 // Crea una firma única para recordar una búsqueda exacta (Ej: "accion-pagina-2")
-export const createCanonicalCacheKey = (filters: ActiveFilters, page: number, pageSize: number): string => {
+export const createCanonicalCacheKey = (filters: ActiveFilters & { explicitOffset?: number | null }, page: number, pageSize: number): string => {
   const norm: Record<string, unknown> = {};
   
   Object.keys(filters).sort().forEach(k => {
@@ -191,6 +191,57 @@ export function stateToRpcParams(
 // Evita que pidamos exactamente los mismos datos a la BD dos veces al mismo tiempo
 const inFlightRequests = new Map<string, Promise<ApiResponse>>();
 
+export interface RawMovieRow extends Record<string, unknown> {
+  id?: number;
+  type?: string | null;
+  original_title?: string | null;
+  title?: string | null;
+  year_end?: string | null;
+  episodes?: number | null;
+  countries?: { name: string; code: string } | null;
+  last_synced_at?: string | number | null;
+  user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
+}
+
+/**
+ * Normaliza una fila cruda de la tabla movies o un join de Supabase al tipo unificado Movie.
+ * Efecto secundario: Si mRaw contiene la propiedad user_movie_entries, sincroniza
+ * automáticamente el estado global de valoraciones del usuario (userMovieData).
+ */
+export function shapeRawMovieRow(mRaw: unknown): Movie {
+  const m = (mRaw || {}) as RawMovieRow;
+
+  if (m.id && m.user_movie_entries) {
+    const rawEntry = Array.isArray(m.user_movie_entries) ? m.user_movie_entries[0] : m.user_movie_entries;
+    if (rawEntry && typeof rawEntry === "object") {
+      updateUserDataForMovie(m.id, { rating: rawEntry.rating, onWatchlist: rawEntry.on_watchlist });
+    }
+  }
+
+  const isSeries = m.type && String(m.type).toLowerCase().startsWith("s");
+  const item: Record<string, unknown> = {
+    ...m,
+    genres: (m.genres || m.genres_list || null),
+    directors: (m.directors || m.directors_list || null),
+    actors: (m.actors || m.actors_list || null),
+    genres_list: (m.genres_list || m.genres || null),
+    directors_list: (m.directors_list || m.directors || null),
+    actors_list: (m.actors_list || m.actors || null),
+    original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
+    year_end: isSeries ? m.year_end : null,
+    episodes: isSeries ? m.episodes : null,
+    country: m.countries?.name || m.country || null,
+    country_code: m.countries?.code || m.country_code || null,
+    last_synced_at: typeof m.last_synced_at === "number"
+      ? m.last_synced_at
+      : (m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null)
+  };
+
+  delete item.countries;
+  delete item.user_movie_entries;
+  return item as unknown as Movie;
+}
+
 // Trae las películas principales para pintar el muro
 export function fetchMovies(
   activeFilters: Partial<ActiveFilters>, 
@@ -221,7 +272,8 @@ export function fetchMovies(
   const inFlightPromise = inFlightRequests.get(queryKey);
   if (inFlightPromise) return inFlightPromise;
 
-  const promise = (async () => {
+  let promise!: Promise<ApiResponse>;
+  promise = (async () => {
     const supabase = await getSupabase();
     
     try {
@@ -262,40 +314,7 @@ export function fetchMovies(
 
         if (error) throw (isAbortError(error, signal) ? { name: "AbortError" } : toAppError(error, ERROR_CODES.DATABASE, "No se pudo cargar tu lista."));
 
-        const items = (data || []).map((mRaw: unknown) => {
-          const m = mRaw as Record<string, unknown> & {
-            id?: number;
-            type?: string | null;
-            original_title?: string | null;
-            title?: string | null;
-            year_end?: string | null;
-            episodes?: number | null;
-            countries?: { name: string; code: string } | null;
-            last_synced_at?: string | null;
-            user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
-          };
-          
-          if (m.id && m.user_movie_entries) {
-            const rawEntry = Array.isArray(m.user_movie_entries) ? m.user_movie_entries[0] : m.user_movie_entries;
-            if (rawEntry && typeof rawEntry === "object") {
-              updateUserDataForMovie(m.id, { rating: rawEntry.rating, onWatchlist: rawEntry.on_watchlist });
-            }
-          }
-
-          const isSeries = m.type && String(m.type).toLowerCase().startsWith('s');
-          const item = {
-            ...m,
-            original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
-            year_end: isSeries ? m.year_end : null,
-            episodes: isSeries ? m.episodes : null,
-            country: m.countries?.name || null,
-            country_code: m.countries?.code || null,
-            last_synced_at: m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null
-          };
-          delete item.countries;
-          delete item.user_movie_entries; // Limpiamos el join para el frontend
-          return mapMoviePayload(item as unknown as Movie);
-        });
+        const items = (data || []).map(mRaw => mapMoviePayload(shapeRawMovieRow(mRaw)));
 
         return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
       }
@@ -367,7 +386,9 @@ export async function fetchAllUserMovieData(): Promise<Record<string, UserMovieE
       .eq('user_id', session.user.id);
 
     if (error || !data) {
-      console.error("Error al descargar catálogo completo de usuario:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error al descargar catálogo completo de usuario:", error);
+      }
       return {};
     }
 
@@ -384,7 +405,9 @@ export async function fetchAllUserMovieData(): Promise<Record<string, UserMovieE
     appEvents.emit("userDataUpdated");
     return normalized;
   } catch (err) {
-    console.error("Error en fetchAllUserMovieData:", err);
+    if (import.meta.env.DEV) {
+      console.error("Error en fetchAllUserMovieData:", err);
+    }
     return {};
   }
 }
@@ -424,7 +447,9 @@ export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): P
     .in('movie_id', uncachedIds);
 
   if (error) {
-    console.error("Error al cargar datos del usuario para el lote de películas:", error);
+    if (import.meta.env.DEV) {
+      console.error("Error al cargar datos del usuario para el lote de películas:", error);
+    }
     return {};
   }
 
@@ -445,16 +470,9 @@ export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): P
   return normalized;
 }
 
-// Compatibilidad previa: redirige a fetchUserMovieDataForIds si se pasa una lista de IDs
-export async function fetchUserMovieData(movieIds?: (number | string)[]): Promise<Record<string, UserMovieEntry>> {
-  if (movieIds && movieIds.length > 0) {
-    return fetchUserMovieDataForIds(movieIds);
-  }
-  return fetchAllUserMovieData();
-}
-
+const NOT_FOUND = Symbol("person-not-found");
 // Memoria para los VIPs (Actores/Directores). Máximo 50 a la vez para no ahogar el móvil.
-const personCache = new LRUCache<string, PersonDetails | null>({
+const personCache = new LRUCache<string, PersonDetails | typeof NOT_FOUND>({
   max: 50,
   ttl: 1000 * 60 * 60, 
 });
@@ -463,7 +481,10 @@ const personCache = new LRUCache<string, PersonDetails | null>({
 export async function fetchPersonDetails(type: 'director' | 'actor', name: string): Promise<PersonDetails | null> {
   if (!name) return null;
   const key = `${type}:${name}`;
-  if (personCache.has(key)) return personCache.get(key) || null;
+  if (personCache.has(key)) {
+    const cached = personCache.get(key);
+    return cached === NOT_FOUND ? null : (cached ?? null);
+  }
   
   const table = type === 'director' ? 'directors' : 'actors';
   
@@ -476,16 +497,11 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       .eq('name_norm', normalizeText(name))
       .single();
       
-    if (error) {
-      if (import.meta.env.DEV) {
+    if (error || !data) {
+      if (error && import.meta.env.DEV) {
         console.warn(`[API] Error al cargar detalles de la persona (${type}: ${name}):`, error);
       }
-      personCache.set(key, null);
-      return null;
-    }
-    
-    if (!data) {
-      personCache.set(key, null);
+      personCache.set(key, NOT_FOUND);
       return null;
     }
 
@@ -496,6 +512,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     if (import.meta.env.DEV) {
       console.error(`[API] Excepción capturada en fetchPersonDetails (${type}: ${name}):`, e);
     }
+    personCache.set(key, NOT_FOUND);
     return null;
   }
 }
@@ -568,7 +585,7 @@ export const fetchCountrySuggestions = (term: string) => fetchSuggestions("get_c
 export const fetchActorSuggestions = async (term: string): Promise<string[]> => {
   const suggestions = await fetchSuggestions("get_actor_suggestions", term);
   // Filtrar actores ignorados (animación, etc.)
-  return suggestions.filter(name => !IGNORED_ACTORS.includes(name.trim().toLowerCase()));
+  return suggestions.filter(name => !(IGNORED_ACTORS as readonly string[]).includes(name.trim().toLowerCase()));
 };
 
 // --- DATOS ALEATORIOS (Discovery) ---
@@ -578,7 +595,7 @@ export const fetchRandomTopActors = async (): Promise<string[]> => {
   
   const { data, error } = await supabase.rpc("get_random_top_actors", { limit_count: 5 });
   if (error) return [];
-  return (data as Array<{ name: string }> || []).map(d => d.name).filter((name: string) => !IGNORED_ACTORS.includes(name.trim().toLowerCase()));
+  return (data as Array<{ name: string }> || []).map(d => d.name).filter((name: string) => !(IGNORED_ACTORS as readonly string[]).includes(name.trim().toLowerCase()));
 };
 
 export const fetchRandomTopDirectors = async (): Promise<string[]> => {
@@ -606,35 +623,7 @@ export async function fetchMovieById(id: number | string): Promise<MappedMovie |
       .maybeSingle();
 
     if (error || !data) return null;
-
-    const m = data as Record<string, unknown> & {
-      type?: string | null;
-      original_title?: string | null;
-      title?: string | null;
-      year_end?: string | null;
-      episodes?: number | null;
-      countries?: { name: string; code: string } | null;
-      last_synced_at?: string | null;
-    };
-    const isSeries = m.type && String(m.type).toLowerCase().startsWith("s");
-    const item = {
-      ...m,
-      genres: (m.genres || m.genres_list || null) as string | null,
-      directors: (m.directors || m.directors_list || null) as string | null,
-      actors: (m.actors || m.actors_list || null) as string | null,
-      genres_list: (m.genres_list || m.genres || null) as string | null,
-      directors_list: (m.directors_list || m.directors || null) as string | null,
-      actors_list: (m.actors_list || m.actors || null) as string | null,
-      original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
-      year_end: isSeries ? m.year_end : null,
-      episodes: isSeries ? m.episodes : null,
-      country: m.countries?.name || null,
-      country_code: m.countries?.code || null,
-      last_synced_at: m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null
-    };
-    delete item.countries;
-    delete item.user_movie_entries;
-    return mapMoviePayload(item as unknown as Movie);
+    return mapMoviePayload(shapeRawMovieRow(data));
   } catch {
     return null;
   }

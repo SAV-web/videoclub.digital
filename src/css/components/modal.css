@@ -243,9 +243,9 @@
   padding: 0 0 2px;
   margin: -8px 0 0;
   pointer-events: auto;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
 }
 
 .is-quick-view .card-rating-block * {

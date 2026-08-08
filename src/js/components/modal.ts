@@ -864,6 +864,10 @@ export function initQuickView(): void {
     }
   });
 
+  appEvents.on("filtersReset", () => {
+    closeModal();
+  });
+
   // Delegación de eventos en contenido
   if (content) {
     content.addEventListener("click", (e: MouseEvent) => {

@@ -1,9 +1,6 @@
 /// <reference types="vite/client" />
 
-declare module "*.svg" {
-  const content: string;
-  export default content;
-}
+
 
 // =================================================================
 //                 CAJA DE HERRAMIENTAS (Utils)
@@ -352,7 +349,9 @@ declare global {
       postTask<T>(task: () => T, options?: { priority?: 'user-blocking' | 'user-visible' | 'background' }): Promise<T>;
       yield?(): Promise<void>;
     };
-    requestIdleCallback?: (callback: (deadline: IdleDeadline) => void, options?: { timeout?: number }) => number;
+  }
+  interface Document {
+    startViewTransition(updateCallback: () => void): ViewTransition;
   }
 }
 
@@ -393,12 +392,6 @@ export interface ViewTransition {
   ready: Promise<void>;
   updateCallbackDone: Promise<void>;
   skipTransition(): void;
-}
-
-declare global {
-  interface Document {
-    startViewTransition?(updateCallback: () => void): ViewTransition;
-  }
 }
 
 // Animaciones de Hollywood (cuando pinchas una peli y se hace grande)

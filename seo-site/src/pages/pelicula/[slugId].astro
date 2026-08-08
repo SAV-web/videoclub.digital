@@ -134,7 +134,7 @@ const jsonLd = {
 };
 ---
 <!DOCTYPE html>
-<html lang="es" class="dark-mode">
+<html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -205,6 +205,9 @@ const jsonLd = {
       --font-weight-bold: 700;
       --font-weight-extrabold: 800;
 
+      --color-header-bg: rgba(13, 13, 13, 0.85);
+      --color-overlay-bg: rgba(0, 0, 0, 0.65);
+      --modal-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
       --color-bg: #0d0d0d;
       --color-surface: #1a1a1a;
       --color-surface-1: #242424;
@@ -245,6 +248,32 @@ const jsonLd = {
       --z-index-overlay: 1999;
     }
 
+    @media (prefers-color-scheme: light) {
+      :root:not(.dark-mode) {
+        --color-header-bg: rgba(255, 255, 255, 0.85);
+        --color-overlay-bg: rgba(0, 0, 0, 0.18);
+        --modal-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08);
+        --color-bg: #f5f5f5;
+        --color-surface: #ffffff;
+        --color-surface-1: #ffffff;
+        --color-surface-2: #ffffff;
+
+        --color-text-primary: #1a1a1a;
+        --color-text-secondary: #4a4a4a;
+        --color-text-tertiary: #666666;
+
+        --color-border: #e0e0e0;
+        --color-border-soft: rgba(0, 0, 0, 0.07);
+
+        --color-accent: #37474f;
+        --color-accent-darker: #263238;
+        --color-accent-lighter: #546e7a;
+        --color-focus: rgba(55, 71, 79, 0.4);
+
+        --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+      }
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -269,7 +298,7 @@ const jsonLd = {
       right: 0;
       height: 56px;
       z-index: 2000;
-      background: rgba(13, 13, 13, 0.85);
+      background: var(--color-header-bg);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--color-border);
       padding: 0 20px;
@@ -293,7 +322,7 @@ const jsonLd = {
       text-decoration: none;
       font-size: 1.15rem;
       font-weight: 800;
-      color: #ffffff;
+      color: var(--color-text-primary);
       letter-spacing: -0.02em;
     }
 
@@ -326,7 +355,7 @@ const jsonLd = {
       position: fixed;
       inset: 0;
       z-index: var(--z-index-overlay);
-      background-color: rgba(0, 0, 0, 0.65);
+      background-color: var(--color-overlay-bg);
       backdrop-filter: blur(6px) saturate(85%);
       -webkit-backdrop-filter: blur(6px) saturate(85%);
       opacity: 1;
@@ -339,7 +368,7 @@ const jsonLd = {
       z-index: calc(var(--z-index-overlay) + 1);
       display: flex;
       background-color: var(--color-surface-2);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      box-shadow: var(--modal-shadow);
       overflow: hidden;
       opacity: 1;
       visibility: visible;
@@ -493,9 +522,9 @@ const jsonLd = {
       padding: 0 0 2px;
       margin: -8px 0 0;
       pointer-events: auto;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      gap: var(--space-xl);
+      gap: var(--space-lg);
       display: flex;
     }
 
