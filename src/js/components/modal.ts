@@ -12,14 +12,10 @@ import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
-import { formatRuntime, createElement, renderCountryFlag, executeViewTransition } from "../utils.js"; 
+import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
-import { Movie, MappedMovie } from "../types.js";
-
-interface MovieCardElement extends HTMLElement {
-  movieData?: Movie;
-}
+import { Movie, MappedMovie, MovieCardElement } from "../types.js";
 
 interface MovieContentElement extends HTMLElement {
   movieData?: Movie;
@@ -381,9 +377,9 @@ function getModalNodes(root: HTMLElement): ModalNodes {
       nodes[key] = el;
     }
   });
-  nodes.img = root.querySelector("img");
-  nodes.iconsContainer = root.querySelector(".card-icons-line");
-  nodes.origTitleWrap = root.querySelector(".back-original-title-wrapper");
+  nodes.img = root.querySelector<HTMLImageElement>("img");
+  nodes.iconsContainer = root.querySelector<HTMLElement>(".card-icons-line");
+  nodes.origTitleWrap = root.querySelector<HTMLElement>(".back-original-title-wrapper");
   return nodes;
 }
 
@@ -465,8 +461,8 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
   renderCountryFlag(
     nodes["country-container"] || null,
     nodes["country-flag"] || null,
-    movie.country_code || null,
-    movie.country || null
+    movie.country_code || undefined,
+    movie.country || undefined
   );
 
   // Iconos Plataforma
@@ -479,7 +475,7 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
       if (conf) {
         const span = createElement('span', { className: `platform-icon ${conf.class || ''}`, title: conf.title });
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", conf.w || "24"); svg.setAttribute("height", conf.h || "24");
+        svg.setAttribute("width", String(conf.w || "24")); svg.setAttribute("height", String(conf.h || "24"));
         svg.setAttribute("fill", "currentColor"); svg.setAttribute("viewBox", conf.vb || "0 0 24 24");
         const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
         use.setAttribute("href", `${spriteUrl}#${conf.id}`);
@@ -537,7 +533,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
     if (movie.parsedActors && movie.parsedActors.length > 0) {
       const frag = document.createDocumentFragment();
       movie.parsedActors.forEach((name, i, arr) => {
-        if (IGNORED_ACTORS.includes(name.toLowerCase())) {
+        if ((IGNORED_ACTORS as readonly string[]).includes(name.toLowerCase())) {
           frag.append(name);
         } else {
           frag.appendChild(createLink(name, 'actor'));
@@ -650,8 +646,8 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     if (datesEl) datesEl.textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
     
     // Bandera del País
-    const countryCode = movie.countries?.code || movie.country_code || null;
-    const countryName = movie.countries?.name || movie.country || null;
+    const countryCode = movie.countries?.code || movie.country_code || undefined;
+    const countryName = movie.countries?.name || movie.country || undefined;
     renderCountryFlag(
       cardClone.querySelector('[data-template="country-container"]'),
       cardClone.querySelector('[data-template="country-flag"]'),
@@ -722,7 +718,8 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
 appEvents.on("userDataUpdated", () => {
   const { content, modal } = getDom();
   if (modal && modal.classList.contains("is-visible") && content) {
-    updateCardUI(content);
+    const modalCard = content.querySelector<MovieCardElement>(".movie-card");
+    if (modalCard) updateCardUI(modalCard);
   }
 });
 
@@ -790,7 +787,7 @@ export function closeModal(): void {
 export function openModalForMovie(movie: MappedMovie | Movie): void {
   const dummyCard = document.createElement("div") as MovieCardElement;
   dummyCard.className = "movie-card";
-  dummyCard.movieData = movie as Movie;
+  dummyCard.movieData = "posterUrl" in movie ? movie : mapMoviePayload(movie);
   openModal(dummyCard);
   const { modal } = getDom();
   if (modal) modal.classList.add("hide-arrows");

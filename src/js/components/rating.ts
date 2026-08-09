@@ -13,7 +13,7 @@ import { setUserMovieDataAPI } from "../api.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
-import { Movie, UserMovieEntry, MovieCardElement } from "../types.js";
+import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.js";
 
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 } as const;
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) } as const;
@@ -78,7 +78,7 @@ export interface RatingPresentationState {
  * Helpers para decidir qué estado visual renderizar de forma determinista.
  */
 export function getRatingPresentationState(
-  movie: Movie | undefined,
+  movie: Movie | MappedMovie | undefined,
   userData: UserMovieEntry | undefined,
   isLoggedIn: boolean
 ): RatingPresentationState {
@@ -320,7 +320,8 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
 export function updateRatingUI(card: MovieCardElement): void {
   const movieId = parseInt(card.dataset.movieId || "0", 10);
   const movie = card.movieData;
-  if (!movie) return;
+  if (!movie || ("isPerson" in movie && movie.isPerson)) return;
+  const mappedMovie = movie as MappedMovie;
 
   const userData = getUserDataForMovie(movieId);
   const isLoggedIn = document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
@@ -330,7 +331,7 @@ export function updateRatingUI(card: MovieCardElement): void {
   
   if (!starCont || !circleEl) return;
 
-  const state = getRatingPresentationState(movie, userData, isLoggedIn);
+  const state = getRatingPresentationState(mappedMovie, userData, isLoggedIn);
 
   let starDisplay = "none";
   let circleDisplay = "none";

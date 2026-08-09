@@ -59,6 +59,7 @@ export interface AppEventPayloads {
   'updateSidebarUI': undefined;
   'userDataUpdated': undefined;
   'userMovieDataChanged': { movieId: number };
+  'card:requestUpdate': { cardElement: HTMLElement };
   'state:changed': { path: string; value: unknown; oldValue: unknown };
   'page:requestChange': { direction: number; target: 'first' | 'last' };
 }

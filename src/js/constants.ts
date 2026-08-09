@@ -188,11 +188,25 @@ export const ICONS = {
  * DATOS DE PLATAFORMAS (Streaming / Estudios)
  */
 export interface StudioInfo {
-  readonly id: string;
-  readonly class: string;
-  readonly title: string;
-  readonly w: number;
-  readonly h: number;
+  readonly id?: string;
+  readonly class?: string;
+  readonly title?: string;
+  readonly w?: number;
+  readonly h?: number;
+  readonly vb?: string;
+  readonly img?: string;
+  readonly invertDark?: boolean;
+}
+
+export interface SelectionInfo {
+  readonly id?: string;
+  readonly class?: string;
+  readonly title?: string;
+  readonly w?: number;
+  readonly h?: number;
+  readonly vb?: string;
+  readonly img?: string;
+  readonly invertDark?: boolean;
 }
 
 export const STUDIO_DATA: Record<string, StudioInfo> = {
@@ -216,14 +230,14 @@ export const STUDIO_DATA: Record<string, StudioInfo> = {
 /**
  * DATOS DE SELECCIONES
  */
-export const SELECTION_DATA = {} as const;
+export const SELECTION_DATA: Record<string, SelectionInfo> = {};
 
 /**
  * CONFIGURACIÓN DE FILTROS LATERALES (COMPLETA)
  */
 export interface FilterGroup {
   readonly label: string;
-  readonly items: Record<string, string>;
+  items: Record<string, string>;
   readonly titles?: Record<string, string>;
   readonly excludable?: readonly string[];
 }

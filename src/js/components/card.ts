@@ -340,7 +340,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
 
       const actors = (card.movieData as MappedMovie)?.parsedActors || [];
       actors.forEach(name => {
-        if (IGNORED_ACTORS.includes(name.toLowerCase())) {
+        if ((IGNORED_ACTORS as readonly string[]).includes(name.toLowerCase())) {
           listText.appendChild(createElement("span", {
             className: "actor-list-item",
             textContent: name,
@@ -395,7 +395,6 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   // 5. Enlaces Filtros
   const filterLink = target.closest<HTMLElement>("[data-director-name], [data-actor-name], [data-year-value]");
   if (filterLink) {
-    if (card.id === 'quick-view-content') return;
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
     event.preventDefault();
@@ -422,8 +421,9 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   const link = target.closest("a");
   if (link && link.href && link.origin !== location.origin) return;
 
-  // 7. Apertura Modal (Modo Muro o Fichas de Personas)
-  if (card.id !== 'quick-view-content') {
+  // 7. Apertura Modal (Modo Muro o Fichas de Personas) - Solo si NO estamos ya dentro del modal
+  const isInsideModal = card.classList.contains('is-quick-view') || !!card.closest('#quick-view-content');
+  if (!isInsideModal) {
     const isPerson = card.classList.contains('person-card');
     if (isPerson || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       loadAndOpenModal(card);
@@ -595,8 +595,8 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   renderCountryFlag(
     front.querySelector(SELECTORS.COUNTRY_CONTAINER),
     front.querySelector(SELECTORS.COUNTRY_FLAG),
-    movie.country_code || null,
-    movie.country || null
+    movie.country_code || undefined,
+    movie.country || undefined
   );
 
   // Iconos
@@ -693,7 +693,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     
     actorsEl.textContent = shortActors || "Reparto no disponible";
 
-    const hasActors = actors.length > 0 && actors.some(a => !IGNORED_ACTORS.includes(a.toLowerCase()));
+    const hasActors = actors.length > 0 && actors.some(a => !(IGNORED_ACTORS as readonly string[]).includes(a.toLowerCase()));
     const expandBtn = actorsEl.parentElement?.querySelector(".actors-expand-btn");
     
     if (hasActors) {
@@ -719,7 +719,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
 export function updateCardUI(card: MovieCardElement): void {
   const movieId = parseInt(card.dataset.movieId || "0", 10);
   const movie = card.movieData;
-  if (!movie || movie.isPerson) return;
+  if (!movie || ("isPerson" in movie && movie.isPerson)) return;
 
   const userData = getUserDataForMovie(movieId);
   const isOnWatchlist = userData?.onWatchlist ?? false;
@@ -773,7 +773,7 @@ export async function renderMovieGrid(
 
   if (vipData) {
     if (vipData.type === 'person' && vipData.data) {
-      container.appendChild(createPersonCardElement(vipData.data));
+      container.appendChild(createPersonCardElement(vipData.data as PersonDetails));
     } else if (vipData.type === 'collection') {
       container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
     } else if (vipData.type === 'studio') {
@@ -897,8 +897,8 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   renderCountryFlag(
     card.querySelector(SELECTORS.COUNTRY_CONTAINER),
     card.querySelector(SELECTORS.COUNTRY_FLAG),
-    person.countries?.code || null,
-    person.countries?.name || null
+    person.countries?.code ?? undefined,
+    person.countries?.name ?? undefined
   );
   
   const headlineEl = card.querySelector('[data-template="bio-headline"]');

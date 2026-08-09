@@ -17,7 +17,7 @@ import {
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, appEvents } from "../state.js";
-import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS } from "../constants.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js"; 
 import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
@@ -484,7 +484,7 @@ function updateAllFilterControls(): void {
     
     // El icono refleja el estado ACTUAL.
     // El Tooltip / Title informa de la ACCIÓN que ocurrirá al pulsar (próximo estado).
-    let iconHtml = ICONS.LIST;
+    let iconHtml: string = ICONS.LIST;
     let nextTitle = "Mis Puntuaciones"; // Estado actual: Todas -> Al pulsar: Mis Puntuaciones
     
     if (state === 'rated') {
@@ -823,7 +823,7 @@ function initYearSlider(): void {
       const cleanVal = target.value.replace(/[^0-9]/g, "");
       const newValue = parseFloat(cleanVal);
       if (isNaN(newValue)) return;
-      const currentValues = sliderInstance.get().map(v => parseFloat(v as string));
+      const currentValues = sliderInstance.get();
       
       const triggerUpdate = (vals: Array<string | number>) => {
         if (index === 0) yearInteractionState.start = true;
@@ -1006,7 +1006,7 @@ function setupEventListeners(): void {
     if (iconWrapper.firstChild) header.appendChild(iconWrapper.firstChild);
   });
 
-  const staticFilters = document.querySelector(".sidebar-static-filters");
+  const staticFilters = document.querySelector<HTMLElement>(".sidebar-static-filters");
   if (staticFilters) {
     staticFilters.addEventListener("click", (e: MouseEvent) => {
       if (handlePillClick(e)) {
@@ -1179,8 +1179,8 @@ export function initSidebar(): void {
         attributes: { role: "button", tabindex: "0" }
       });
       
-      const iconData = (filterType === 'studio' ? STUDIO_DATA[value as keyof typeof STUDIO_DATA] : null) || 
-                       (filterType === 'selection' ? SELECTION_DATA?.[value] : null);
+      const iconData: StudioInfo | SelectionInfo | null = (filterType === 'studio' ? STUDIO_DATA[value] : null) || 
+                       (filterType === 'selection' ? SELECTION_DATA[value] : null);
 
       if (iconData) {
         link.classList.add("filter-link--icon"); 
@@ -1195,8 +1195,8 @@ export function initSidebar(): void {
           link.appendChild(img);
         } else if (iconData.id) {
           const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-          svg.setAttribute("width", iconData.w || "24"); 
-          svg.setAttribute("height", iconData.h || "24");
+          svg.setAttribute("width", String(iconData.w || "24")); 
+          svg.setAttribute("height", String(iconData.h || "24"));
           svg.setAttribute("viewBox", iconData.vb || "0 0 24 24"); 
           svg.setAttribute("class", `sidebar-platform-icon ${iconData.class || ''}`);
           svg.setAttribute("fill", "currentColor");

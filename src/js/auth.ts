@@ -364,7 +364,7 @@ async function handleMagicLinkSubmit(e: Event): Promise<void> {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        redirectTo: window.location.origin
+        emailRedirectTo: window.location.origin
       }
     });
 
@@ -464,7 +464,9 @@ export function initAuthForms(): void {
   if (!dom.fLogin) return;
 
   dom.fLogin.addEventListener("submit", e => { void handleSubmit(e, true); });
-  dom.fReg.addEventListener("submit", e => { void handleSubmit(e, false); });
+  if (dom.fReg) {
+    dom.fReg.addEventListener("submit", e => { void handleSubmit(e, false); });
+  }
   
   if (dom.fRecover) {
     dom.fRecover.addEventListener("submit", e => { void handleRecoverSubmit(e); });
