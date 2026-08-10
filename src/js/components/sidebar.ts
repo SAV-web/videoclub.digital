@@ -680,7 +680,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
     await loadAndRenderMovies(targetPage, { isYearFilter, replaceHistory: isYearFilter }); 
   } catch (error: unknown) {
     if ((error as Error)?.name === "AbortError") return;
-    console.error("Fallo al aplicar filtro:", error);
+    if (import.meta.env.DEV) console.error("Fallo al aplicar filtro:", error);
     showToast(`No se pudo aplicar el filtro.`, "error");
     setFilter('selection', previousFilters.selection);
     setFilter('studio', previousFilters.studio);

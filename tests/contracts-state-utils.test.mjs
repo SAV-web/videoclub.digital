@@ -78,6 +78,47 @@ describe("utils.js", () => {
     );
     assert.equal(utils.getFriendlyErrorMessage({ name: "AbortError" }), null);
   });
+
+  test("computePersonAgeInfo calcula correctamente la edad de personas vivas y fallecidas", () => {
+    const living = utils.computePersonAgeInfo("1970-05-15", null);
+    assert.equal(living.bYear, "1970");
+    assert.equal(living.dYear, "");
+    assert.equal(living.datesStr, "1970-");
+    assert.ok(living.ageStr.startsWith("(") && !living.ageStr.includes("✝"));
+
+    const deceased = utils.computePersonAgeInfo("1920-01-01", "1990-12-31");
+    assert.equal(deceased.bYear, "1920");
+    assert.equal(deceased.dYear, "1990");
+    assert.equal(deceased.datesStr, "1920-1990");
+    assert.equal(deceased.ageStr, "(70 ✝)");
+  });
+
+  test("applyLengthBasedClass aplica dinámicamente clases CSS por longitud de texto", () => {
+    const mockEl = {
+      className: "initial-class",
+      classList: {
+        classes: new Set(["initial-class"]),
+        add(c) { this.classes.add(c); },
+        has(c) { return this.classes.has(c); }
+      }
+    };
+
+    const thresholds = [
+      [40, "title-xl-long"],
+      [25, "title-long"],
+      [12, "title-medium"],
+    ];
+
+    utils.applyLengthBasedClass(mockEl, "Short", thresholds);
+    assert.equal(mockEl.classList.has("title-medium"), false);
+
+    utils.applyLengthBasedClass(mockEl, "A Medium Title!!", thresholds);
+    assert.equal(mockEl.classList.has("title-medium"), true);
+
+    utils.applyLengthBasedClass(mockEl, "Very Very Very Long Movie Title Exceeding Forty Characters", thresholds, true);
+    assert.equal(mockEl.className, "");
+    assert.equal(mockEl.classList.has("title-xl-long"), true);
+  });
 });
 
 describe("normalización de filtros", () => {

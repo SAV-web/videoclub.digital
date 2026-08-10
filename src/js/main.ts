@@ -90,7 +90,7 @@ async function loadSidebar(): Promise<SidebarModule | null> {
     sidebarModule.initSidebar(); // Inicializar listeners al cargar
     return sidebarModule;
   } catch (e) { 
-    console.error("Error loading sidebar", e); 
+    if (import.meta.env.DEV) console.error("Error loading sidebar", e); 
     return null;
   }
 }
@@ -296,7 +296,9 @@ export async function loadAndRenderMovies(
             }
             appEvents.emit("userDataUpdated");
           }
-        }).catch((err) => console.error("Error syncing page user data", err));
+        }).catch((err) => {
+          if (import.meta.env.DEV) console.error("Error syncing page user data", err);
+        });
       }
     }
       
@@ -757,7 +759,7 @@ function setupAuthSystem(): void {
       const { fetchAllUserMovieData } = await import("./api.js");
       await fetchAllUserMovieData();
     } catch (err) {
-      console.error("Error al sincronizar catálogo del usuario:", err);
+      if (import.meta.env.DEV) console.error("Error al sincronizar catálogo del usuario:", err);
     }
 
     appEvents.emit("userDataUpdated");
@@ -781,7 +783,7 @@ function setupAuthSystem(): void {
     const supabase = await getSupabase();
     const { error } = await supabase.auth.signOut();
     if (error) { 
-      console.error("Logout error:", error); 
+      if (import.meta.env.DEV) console.error("Logout error:", error); 
       showToast("Error al cerrar sesión.", "error"); 
     }
   }
@@ -881,7 +883,7 @@ async function checkAndOpenMovieFromUrl(): Promise<void> {
     const { openModalForMovie } = await import("./components/modal.js");
     openModalForMovie(movie);
   } catch (err) {
-    console.error("Error al abrir película desde URL:", err);
+    if (import.meta.env.DEV) console.error("Error al abrir película desde URL:", err);
   }
 }
 
@@ -899,7 +901,9 @@ function init(): void {
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(err => console.error("Fallo SW:", err));
+      navigator.serviceWorker.register("sw.js").catch(err => {
+        if (import.meta.env.DEV) console.error("Fallo SW:", err);
+      });
     });
   }
   
@@ -930,7 +934,7 @@ function init(): void {
         const { initAuthForms } = await import("./auth.js") as unknown as { initAuthForms(): void };
         initAuthForms();
       } catch (e) { 
-        console.error("Error loading auth module", e); 
+        if (import.meta.env.DEV) console.error("Error loading auth module", e); 
       }
     }, { once: true });
   }

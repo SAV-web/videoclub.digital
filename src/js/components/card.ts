@@ -8,7 +8,7 @@
 // =================================================================
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
@@ -518,12 +518,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   if (titleEl && movie.title) {
     titleEl.textContent = movie.title;
     titleEl.title = movie.title;
-    titleEl.className = "";
-
-    const tLen = movie.title.length;
-    if (tLen > 40) titleEl.classList.add("title-xl-long");
-    else if (tLen > 25) titleEl.classList.add("title-long");
-    else if (tLen > 12) titleEl.classList.add("title-medium");
+    applyLengthBasedClass(titleEl, movie.title, CARD_TITLE_THRESHOLDS, true);
   }
 
   // Directores
@@ -855,34 +850,19 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
   if (titleEl) {
     titleEl.textContent = person.name;
-    const tLen = person.name.length;
-    if (tLen > 40) titleEl.classList.add("title-xl-long");
-    else if (tLen > 25) titleEl.classList.add("title-long");
-    else if (tLen > 12) titleEl.classList.add("title-medium");
+    applyLengthBasedClass(titleEl, person.name, CARD_TITLE_THRESHOLDS);
   }
   
   const birthplaceEl = card.querySelector('[data-template="birthplace"]');
   if (birthplaceEl) birthplaceEl.textContent = person.place_of_birth || "";
   
-  const getYear = (dateStr: string | null) => dateStr ? dateStr.split('-')[0] : '';
-  const bYear = getYear(person.birthday);
-  const dYear = getYear(person.deathday);
-  
-  let ageStr = "";
-  if (person.birthday) {
-    const bDate = new Date(person.birthday);
-    const eDate = person.deathday ? new Date(person.deathday) : new Date();
-    let age = eDate.getFullYear() - bDate.getFullYear();
-    const m = eDate.getMonth() - bDate.getMonth();
-    if (m < 0 || (m === 0 && eDate.getDate() < bDate.getDate())) age--;
-    ageStr = person.deathday ? `(${age} ✝)` : `(${age})`;
-  }
+  const ageInfo = computePersonAgeInfo(person.birthday, person.deathday);
   
   const ageEl = card.querySelector('[data-template="age"]');
-  if (ageEl) ageEl.textContent = ageStr;
+  if (ageEl) ageEl.textContent = ageInfo.ageStr;
 
   const datesEl = card.querySelector('[data-template="dates"]');
-  if (datesEl) datesEl.textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
+  if (datesEl) datesEl.textContent = ageInfo.datesStr;
   
   let wallName = person.name;
   if (wallName.length > 14) {
@@ -915,83 +895,67 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   return clone;
 }
 
-function createCollectionCardElement(selectionCode: string, totalMovies: number = 0): DocumentFragment {
+function createGroupCardElement(
+  kind: 'collection' | 'studio',
+  code: string,
+  totalMovies: number = 0
+): DocumentFragment {
   if (!collectionTemplate) return document.createDocumentFragment();
   const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.collection-card');
   if (!card) return clone;
-  
+
+  const isStudio = kind === 'studio';
   const img = card.querySelector('img');
-  const config = FILTER_CONFIG.selection as unknown as { titles?: Record<string, string>; items: Record<string, string> };
-  const fullName = config.titles?.[selectionCode] || config.items[selectionCode] || selectionCode;
-  const shortName = config.items[selectionCode] || fullName;
   
+  let fullName = code;
+  let shortName = code;
+
+  if (isStudio) {
+    const config = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
+    fullName = (config && config.title) ? config.title : code;
+    shortName = fullName;
+  } else {
+    const config = FILTER_CONFIG.selection as unknown as { titles?: Record<string, string>; items: Record<string, string> };
+    fullName = config.titles?.[code] || config.items[code] || code;
+    shortName = config.items[code] || fullName;
+  }
+
   if (img) {
-    img.src = `${CONFIG.PROFILE_BASE_URL}collection_${selectionCode.toLowerCase()}.webp`;
-    img.alt = `Colección ${fullName}`;
+    const prefix = isStudio ? "studio" : "collection";
+    const label = isStudio ? "Estudio" : "Colección";
+    img.src = `${CONFIG.PROFILE_BASE_URL}${prefix}_${code.toLowerCase()}.webp`;
+    img.alt = `${label} ${fullName}`;
     img.loading = "eager";
     img.decoding = "async";
     img.setAttribute("fetchpriority", "high");
     img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
   }
-  
+
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
   if (titleEl) {
     titleEl.textContent = fullName;
-    if (fullName.length > 40) titleEl.classList.add("title-xl-long");
-    else if (fullName.length > 25) titleEl.classList.add("title-long");
-    else if (fullName.length > 12) titleEl.classList.add("title-medium");
+    applyLengthBasedClass(titleEl, fullName, CARD_TITLE_THRESHOLDS);
   }
-  
+
   const subtitleEl = card.querySelector('[data-template="subtitle"]');
-  if (subtitleEl) subtitleEl.textContent = "Selección / Saga";
+  if (subtitleEl) subtitleEl.textContent = isStudio ? "Estudio / Productora" : "Selección / Saga";
 
   const countEl = card.querySelector('[data-template="count"]');
   if (countEl) countEl.textContent = `${totalMovies} títulos`;
-  
+
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = shortName;
 
   return clone;
 }
 
+function createCollectionCardElement(selectionCode: string, totalMovies: number = 0): DocumentFragment {
+  return createGroupCardElement('collection', selectionCode, totalMovies);
+}
+
 function createStudioCardElement(studioCode: string, totalMovies: number = 0): DocumentFragment {
-  if (!collectionTemplate) return document.createDocumentFragment();
-  const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
-  const card = clone.querySelector('.collection-card');
-  if (!card) return clone;
-  
-  const img = card.querySelector('img');
-  const config = STUDIO_DATA[studioCode as keyof typeof STUDIO_DATA];
-  const fullName = (config && config.title) ? config.title : studioCode;
-  
-  if (img) {
-    img.src = `${CONFIG.PROFILE_BASE_URL}studio_${studioCode.toLowerCase()}.webp`;
-    img.alt = `Estudio ${fullName}`;
-    img.loading = "eager";
-    img.decoding = "async";
-    img.setAttribute("fetchpriority", "high");
-    img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
-  }
-  
-  const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
-  if (titleEl) {
-    titleEl.textContent = fullName;
-    if (fullName.length > 40) titleEl.classList.add("title-xl-long");
-    else if (fullName.length > 25) titleEl.classList.add("title-long");
-    else if (fullName.length > 12) titleEl.classList.add("title-medium");
-  }
-  
-  const subtitleEl = card.querySelector('[data-template="subtitle"]');
-  if (subtitleEl) subtitleEl.textContent = "Estudio / Productora";
-
-  const countEl = card.querySelector('[data-template="count"]');
-  if (countEl) countEl.textContent = `${totalMovies} títulos`;
-  
-  const wallNameEl = card.querySelector('[data-template="wall-name"]');
-  if (wallNameEl) wallNameEl.textContent = fullName;
-
-  return clone;
+  return createGroupCardElement('studio', studioCode, totalMovies);
 }
 
 // Skeletons y Estados Vacíos
@@ -1068,8 +1032,16 @@ export function renderErrorState(container: HTMLElement | null, pagContainer: HT
 //          6. ONBOARDING (Educación de Usuario)
 // =================================================================
 
+const CARD_TITLE_THRESHOLDS: Array<[number, string]> = [
+  [40, "title-xl-long"],
+  [25, "title-long"],
+  [12, "title-medium"],
+];
+
+const FLIP_ONBOARDING_KEY = "videoclub_flip_onboarding_shown";
+
 export function runFlipOnboarding(container: HTMLElement): void {
-  const seenCount = (LocalStore.get("flipTutorialCount") as number) || 0;
+  const seenCount = (LocalStore.get(FLIP_ONBOARDING_KEY) as number) || 0;
   const MAX_SHOWS = 3;
 
   if (seenCount >= MAX_SHOWS || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;

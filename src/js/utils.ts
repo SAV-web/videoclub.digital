@@ -435,3 +435,54 @@ export function getAdjustedTotalPages(gridTotalItems: number, baseLimit: number)
   const isOrphanPage = normalPageCount > 1 && lastPageSlots <= 2;
   return isOrphanPage ? normalPageCount - 1 : normalPageCount;
 }
+
+export interface PersonAgeInfo {
+  bYear: string;
+  dYear: string;
+  datesStr: string;
+  ageStr: string;
+}
+
+export function computePersonAgeInfo(
+  birthday?: string | null,
+  deathday?: string | null
+): PersonAgeInfo {
+  const getYear = (dateStr: string | null | undefined) => dateStr ? dateStr.split('-')[0] : '';
+  const bYear = getYear(birthday);
+  const dYear = getYear(deathday);
+
+  let ageStr = "";
+  if (birthday) {
+    const bDate = new Date(birthday);
+    const eDate = deathday ? new Date(deathday) : new Date();
+    let age = eDate.getFullYear() - bDate.getFullYear();
+    const m = eDate.getMonth() - bDate.getMonth();
+    if (m < 0 || (m === 0 && eDate.getDate() < bDate.getDate())) age--;
+    ageStr = deathday ? `(${age} ✝)` : `(${age})`;
+  }
+
+  const datesStr = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
+
+  return { bYear, dYear, datesStr, ageStr };
+}
+
+export function applyLengthBasedClass(
+  el: HTMLElement | null | undefined,
+  text: string | null | undefined,
+  thresholds: Array<[number, string]>,
+  resetClassName = false
+): void {
+  if (!el) return;
+  if (resetClassName) {
+    el.className = "";
+  }
+  const str = text || "";
+  const len = str.length;
+  const sorted = [...thresholds].sort((a, b) => b[0] - a[0]);
+  for (const [limit, className] of sorted) {
+    if (len > limit) {
+      el.classList.add(className);
+      break;
+    }
+  }
+}

@@ -12,7 +12,7 @@ import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
-import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload } from "../utils.js"; 
+import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js"; 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 import { Movie, MappedMovie, MovieCardElement } from "../types.js";
@@ -420,13 +420,13 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
   // Título
   if (nodes.title && movie.title) {
     nodes.title.textContent = movie.title;
-    nodes.title.className = ""; // Reset clases
-    const tLen = movie.title.length;
-    if (tLen > 70) nodes.title.classList.add("title-xxxl-long");
-    else if (tLen > 50) nodes.title.classList.add("title-xxl-long");
-    else if (tLen > 35) nodes.title.classList.add("title-xl-long");
-    else if (tLen > 25) nodes.title.classList.add("title-long");
-    else if (tLen > 15) nodes.title.classList.add("title-medium");
+    applyLengthBasedClass(nodes.title, movie.title, [
+      [70, "title-xxxl-long"],
+      [50, "title-xxl-long"],
+      [35, "title-xl-long"],
+      [25, "title-long"],
+      [15, "title-medium"],
+    ], true);
   }
 
   // Director
@@ -496,10 +496,11 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
   if (nodes.origTitleWrap && nodes["original-title"] && movie.displayOriginalTitle) {
     const actualOriginalTitle = movie.displayOriginalTitle;
     nodes["original-title"].textContent = actualOriginalTitle;
-    nodes["original-title"].className = ""; // Reset
-    if (actualOriginalTitle.length > 40) nodes["original-title"].classList.add("title-xl-long");
-    else if (actualOriginalTitle.length > 30) nodes["original-title"].classList.add("title-long");
-    else if (actualOriginalTitle.length > 20) nodes["original-title"].classList.add("title-medium");
+    applyLengthBasedClass(nodes["original-title"], actualOriginalTitle, [
+      [40, "title-xl-long"],
+      [30, "title-long"],
+      [20, "title-medium"],
+    ], true);
     nodes.origTitleWrap.hidden = false; // Siempre visible
   }
 
@@ -630,22 +631,10 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     const ageEl = cardClone.querySelector('[data-template="age"]');
     const datesEl = cardClone.querySelector('[data-template="dates"]');
     
-    const getYear = (dateStr: string | null | undefined) => dateStr ? dateStr.split('-')[0] : '';
-    const bYear = getYear(movie.birthday);
-    const dYear = getYear(movie.deathday);
+    const ageInfo = computePersonAgeInfo(movie.birthday, movie.deathday);
     
-    let ageStr = "";
-    if (movie.birthday) {
-      const bDate = new Date(movie.birthday);
-      const eDate = movie.deathday ? new Date(movie.deathday) : new Date();
-      let age = eDate.getFullYear() - bDate.getFullYear();
-      const m = eDate.getMonth() - bDate.getMonth();
-      if (m < 0 || (m === 0 && eDate.getDate() < bDate.getDate())) age--;
-      ageStr = movie.deathday ? `(${age} ✝)` : `(${age})`;
-    }
-    
-    if (ageEl) ageEl.textContent = ageStr;
-    if (datesEl) datesEl.textContent = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
+    if (ageEl) ageEl.textContent = ageInfo.ageStr;
+    if (datesEl) datesEl.textContent = ageInfo.datesStr;
     
     // Bandera del País
     const countryCode = movie.countries?.code || movie.country_code || undefined;

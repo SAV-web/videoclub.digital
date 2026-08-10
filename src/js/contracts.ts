@@ -30,7 +30,12 @@ export const ERROR_CODES = {
   UNKNOWN: "UNKNOWN",
 } as const;
 
-import { parseYearRangeRaw } from "./utils.js";
+export function parseYearRangeRaw(yearFilter?: string | null): [number, number] {
+  let years = (yearFilter || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
+  if (years.length === 1) years = [years[0], years[0]];
+  return [years[0] || CONFIG.YEAR_MIN, years[1] || CONFIG.YEAR_MAX];
+}
+
 import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
 
 export const FILTER_KEYS: ReadonlyArray<string> = [
