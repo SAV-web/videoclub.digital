@@ -6,7 +6,7 @@
 // y evita que datos inválidos se propaguen por la UI.
 // =================================================================
 
-import { CONFIG, DEFAULTS } from "./constants.js";
+import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
 import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
 
 export const FILTER_KEYS: ReadonlyArray<string> = [
@@ -25,7 +25,6 @@ export const FILTER_KEYS: ReadonlyArray<string> = [
   "myList",
 ];
 
-const TEXT_FILTER_KEYS = new Set<string>(["searchTerm", "genre", "country", "director", "actor", "selection", "studio"]);
 const LIST_FILTER_KEYS = new Set<string>(["excludedGenres", "excludedCountries"]);
 const SORT_VALUES = new Set<string>([
   "relevance,asc",
@@ -153,6 +152,11 @@ export function normalizeNullableText(value: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
+export function normalizeCodeValue(value: unknown): string | null {
+  const text = normalizeTextValue(value);
+  return text.length > 0 ? text.toUpperCase() : null;
+}
+
 export function normalizeStringList(value: unknown): string[] {
   const source = Array.isArray(value) 
     ? value 
@@ -166,6 +170,7 @@ export function normalizeFilterValue(key: string, value: unknown): unknown {
   if (key === "mediaType") return normalizeMediaType(value);
   if (key === "myList") return normalizeMyList(value);
   if (key === "year") return normalizeYearRange(value);
+  if (key === "selection" || key === "studio") return normalizeCodeValue(value);
   if (LIST_FILTER_KEYS.has(key)) return normalizeStringList(value);
   if (key === "searchTerm") return normalizeTextValue(value);
   if (TEXT_FILTER_KEYS.has(key)) return normalizeNullableText(value);
@@ -180,8 +185,8 @@ export function normalizeActiveFilters(filters: Partial<ActiveFilters> = {}): Ac
     country: normalizeNullableText(filters.country),
     director: normalizeNullableText(filters.director),
     actor: normalizeNullableText(filters.actor),
-    selection: normalizeNullableText(filters.selection),
-    studio: normalizeNullableText(filters.studio),
+    selection: normalizeCodeValue(filters.selection),
+    studio: normalizeCodeValue(filters.studio),
     sort: normalizeSort(filters.sort),
     mediaType: normalizeMediaType(filters.mediaType),
     excludedGenres: normalizeStringList(filters.excludedGenres),

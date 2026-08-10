@@ -7,7 +7,7 @@
 // recordar lo que ya ha descargado y no pedirlo dos veces.
 // =================================================================
 
-import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS } from "./constants.js";
+import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS, TEXT_FILTER_KEYS } from "./constants.js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
@@ -27,8 +27,7 @@ import {
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Set estático para normalizar caché (Campos de texto libre)
-const CANONICAL_TEXT_FIELDS = new Set<string>(['searchTerm', 'genre', 'country', 'director', 'actor', 'excludedGenres', 'excludedCountries']);
+
 
 const notConfiguredError = () => Promise.reject(createAppError(ERROR_CODES.CONFIGURATION, "Supabase no configurado (Faltan credenciales)"));
 
@@ -135,7 +134,7 @@ export const createCanonicalCacheKey = (filters: ActiveFilters & { explicitOffse
       // Clonar profundamente el array de strings/numbers convirtiéndolos a texto plano para evitar mutación externa
       const clonedArray = v.map(x => (x !== null && x !== undefined) ? String(x) : "");
       
-      if (CANONICAL_TEXT_FIELDS.has(k)) {
+      if (TEXT_FILTER_KEYS.has(k)) {
         norm[k] = clonedArray.map(x => x.trim().toLowerCase()).sort();
       } else {
         norm[k] = clonedArray.sort();
@@ -145,7 +144,7 @@ export const createCanonicalCacheKey = (filters: ActiveFilters & { explicitOffse
       norm[k] = JSON.parse(JSON.stringify(v));
     } else {
       // Tratamiento seguro de tipos primitivos
-      norm[k] = CANONICAL_TEXT_FIELDS.has(k) ? String(v).trim().toLowerCase() : v;
+      norm[k] = TEXT_FILTER_KEYS.has(k) ? String(v).trim().toLowerCase() : v;
     }
   });
   

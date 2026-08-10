@@ -52,6 +52,21 @@ export const CONFIG = {
 } as const;
 
 /**
+ * CAMPOS DE TEXTO LIBRE O FILTROS DE TEXTO QUE REQUIEREN NORMALIZACIÓN DE ACENTOS/MAYÚSCULAS
+ */
+export const TEXT_FILTER_KEYS = new Set<string>([
+  "searchTerm",
+  "genre",
+  "country",
+  "director",
+  "actor",
+  "selection",
+  "studio",
+  "excludedGenres",
+  "excludedCountries"
+]);
+
+/**
  * LISTAS DE EXCLUSIÓN
  */
 export const IGNORED_ACTORS = ["(a)", "animación", "animacion", "documental"] as const;

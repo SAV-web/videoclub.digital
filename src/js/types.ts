@@ -86,8 +86,8 @@ export interface PersonDetails {
 export interface VipData {
   type: "person" | "collection" | "studio";
   data?: PersonDetails | Record<string, unknown> | null;
-  code: string;
-  total: number;
+  code?: string;
+  total?: number;
 }
 
 export interface MovieCardElement extends HTMLElement {

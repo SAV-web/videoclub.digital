@@ -14,7 +14,8 @@ import {
   triggerHapticFeedback, 
   LocalStore, 
   executeViewTransition,
-  getAdjustedTotalPages
+  getAdjustedTotalPages,
+  mapMoviePayload
 } from "./utils.js";
 import { fetchMovies, getSupabase, fetchUserMovieDataForIds, fetchPersonDetails } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
@@ -47,7 +48,8 @@ import {
   clearUserMovieData, 
   syncStateWithUrlParams, 
   stateToUrlParams, 
-  appEvents 
+  appEvents,
+  updateUserDataForMovie
 } from "./state.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 import { MappedMovie, ActiveFilters, VipData } from "./types.js";
@@ -70,13 +72,7 @@ interface CardModule {
   handleCardClick(this: HTMLElement, e: Event): void;
   initCardInteractions(gridContainer: HTMLElement | null): void;
   updateCardUI(cardElement: HTMLElement): void;
-}
-
-interface VipData {
-  type: "person" | "collection" | "studio";
-  data?: unknown;
-  code?: string;
-  total?: number;
+  renderErrorState?(container: HTMLElement | null, pagContainer: HTMLElement | null, message: string): void;
 }
 
 // Módulos que cargamos más tarde para que la web arranque al instante
@@ -100,10 +96,16 @@ async function loadSidebar(): Promise<SidebarModule | null> {
 const loadCardModule = (): Promise<CardModule> => 
   import("./components/card.js") as unknown as Promise<CardModule>;
 
+export interface RenderOptions {
+  replaceHistory?: boolean;
+  forceSkeleton?: boolean;
+  isYearFilter?: boolean;
+}
+
 // --- 1. MOTOR PRINCIPAL (Cargar y Pintar Películas) ---
 export async function loadAndRenderMovies(
   page = 1, 
-  { replaceHistory = false, forceSkeleton = false }: { replaceHistory?: boolean; forceSkeleton?: boolean } = {}
+  { replaceHistory = false, forceSkeleton = false, isYearFilter = false }: RenderOptions = {}
 ): Promise<void> {
   const signal = createAbortableRequest("movie-grid-load").signal;
 
@@ -132,7 +134,7 @@ export async function loadAndRenderMovies(
     };
     const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
     const effType = connection?.effectiveType;
-    const skeletonDelay = effType === "slow-2g" ? 0 : effType === "2g" ? 50 : effType === "3g" ? 100 : 150;
+    const skeletonDelay = isYearFilter ? 300 : (effType === "slow-2g" ? 0 : effType === "2g" ? 50 : effType === "3g" ? 100 : 150);
 
     skeletonTimeout = setTimeout(async () => {
       const { renderSkeletons } = await cardModulePromise;
@@ -175,7 +177,7 @@ export async function loadAndRenderMovies(
     const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
     
-    let fetchLimit = basePageSize;
+    let fetchLimit: number = basePageSize;
     let fetchOffset = (page - 1) * basePageSize;
 
     if (hasVip) {
@@ -194,7 +196,7 @@ export async function loadAndRenderMovies(
       }
     }
     
-    const shouldRequestCount = (page === 1) || (currentKnownTotal === 0);
+    const shouldRequestCount = isYearFilter || (page === 1) || (currentKnownTotal === 0);
 
     const result = await fetchMovies(
       activeFilters,
@@ -209,9 +211,73 @@ export async function loadAndRenderMovies(
 
     if (result.aborted) return;
 
-    const { items: movies, total: returnedTotal } = result;
+    const { items: rawMovies, total: returnedTotal } = result;
+    const movies = (rawMovies || []).map(mapMoviePayload);
 
     const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
+
+    // --- OPTIMIZACIÓN FILTRO DE AÑO ---
+    if (isYearFilter) {
+      const gridTotalItems = hasVip ? effectiveTotal - 1 : effectiveTotal;
+      const totalPages = getAdjustedTotalPages(gridTotalItems, basePageSize);
+
+      // 1. Si el número total de películas CAMBIÓ o la página actual excede el límite de páginas (ej: estamos en pág 2 pero solo hay 1 página):
+      if ((currentKnownTotal > 0 && effectiveTotal !== currentKnownTotal) || page > totalPages) {
+        const p1Limit = (hasVip) ? firstPageLimit - 1 : firstPageLimit;
+        const p1Result = await fetchMovies(activeFilters, 1, p1Limit, signal, false, 0);
+        if (p1Result.aborted) return;
+        
+        const p1Movies = (p1Result.items || []).map(mapMoviePayload);
+        setCurrentPage(1);
+        updateUrl({ replace: replaceHistory });
+        
+        const cardModule = await cardModulePromise;
+        let renderPromise: Promise<void> | undefined = undefined;
+        const transition = executeViewTransition(() => {
+          renderPromise = updateDomWithResults(p1Movies, effectiveTotal, cardModule, vipData, hasVip);
+          window.scrollTo({ top: 0, behavior: "auto" });
+        });
+        await transition.updateCallbackDone;
+        if (renderPromise) await renderPromise;
+        return;
+      }
+
+      // 2. Si el total NO cambió y estamos dentro del rango de páginas, comprobamos si las películas a renderizar en la página actual son idénticas:
+      const lastPageSlots = gridTotalItems % basePageSize || basePageSize;
+      const isOrphanPage = (Math.ceil(gridTotalItems / basePageSize) > 1) && lastPageSlots <= 2;
+      let slotBudget: number = basePageSize;
+      if (page === totalPages) {
+        slotBudget = isOrphanPage ? basePageSize + lastPageSlots : lastPageSlots;
+      }
+      const currentLimit = (page === 1 && hasVip) ? slotBudget - 1 : slotBudget;
+      const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
+
+      const currentCardEls = Array.from(dom.gridContainer?.querySelectorAll<HTMLElement>('.movie-card') || []);
+      const currentCardIds = currentCardEls.map((el) => el.dataset.movieId || "").filter(Boolean);
+      const newCardIds = moviesToRender.map((m) => String(m.id));
+
+      const isIdenticalPage = currentCardIds.length === newCardIds.length &&
+        currentCardIds.every((id, idx) => id === newCardIds[idx]);
+
+      if (isIdenticalPage) {
+        // Ningún cambio en las fichas en pantalla: actualizamos estado y metadatos sin refrescar el grid ni hacer scroll
+        setTotalMovies(effectiveTotal);
+        updateTotalResultsUI(effectiveTotal, movies);
+        updateStructuredData(movies, effectiveTotal);
+        updateBreadcrumbData(getActiveFilters());
+        updatePageTitle(movies);
+
+        const logicalGridTotalItems = isOrphanPage ? totalPages * basePageSize : gridTotalItems;
+        if (totalPages > 1) {
+          renderPagination(dom.paginationContainer, logicalGridTotalItems, page);
+        } else {
+          if (dom.paginationContainer) dom.paginationContainer.textContent = "";
+        }
+        updateHeaderPaginationState(page, logicalGridTotalItems);
+
+        return; // Salida limpia sin refresco del grid ni scroll
+      }
+    }
 
     if (vipData && (vipData.type === "collection" || vipData.type === "studio")) {
       vipData.total = effectiveTotal;
@@ -235,7 +301,7 @@ export async function loadAndRenderMovies(
     const cardModule = await cardModulePromise;
 
     // Pinta con efecto cine
-    let renderPromise: Promise<void> | void;
+    let renderPromise: Promise<void> | undefined = undefined;
     const transition = executeViewTransition(() => {
       renderPromise = updateDomWithResults(movies, effectiveTotal, cardModule, vipData, hasVip);
       window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
@@ -253,7 +319,9 @@ export async function loadAndRenderMovies(
     const msg = getFriendlyErrorMessage(error);
     if (msg) showToast(msg, "error");
     const { renderErrorState } = await cardModulePromise;
-    renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
+    if (renderErrorState) {
+      renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
+    }
     
     // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
     if (msg) throw new Error(msg); 
@@ -267,13 +335,13 @@ export async function loadAndRenderMovies(
 }
 
 // Ayudante: Pone las pelis en pantalla y actualiza las miguitas de pan (SEO)
-function updateDomWithResults(
+async function updateDomWithResults(
   movies: MappedMovie[], 
   totalMovies: number, 
   cardModule: CardModule, 
   vipData: VipData | null = null, 
   hasVip = false
-): Promise<void> | void {
+): Promise<void> {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, movies);
@@ -283,26 +351,17 @@ function updateDomWithResults(
   updatePageTitle(movies);
 
   const currentPage = getCurrentPage();
-
-  if (totalMovies > 0 && movies.length === 0 && currentPage === 1) {
-    renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
-    return;
-  }
-
-  const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
+  const activeFilters = getActiveFilters();
   const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
   const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-  const dynamicLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
-  const actualDynamicLimit = hasVip ? dynamicLimit - 1 : dynamicLimit;
+  const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
 
-  if (totalMovies === 0) {
-    if (getActiveFilters().myList && !isAuthInitialized) {
-      renderSkeletons(dom.gridContainer, dom.paginationContainer);
-      return;
-    }
+  const gridTotalItems = hasVip ? totalMovies - 1 : totalMovies;
 
-    renderNoResults(dom.gridContainer, dom.paginationContainer, getActiveFilters());
+  if (gridTotalItems <= 0) {
+    renderNoResults(dom.gridContainer, dom.paginationContainer, activeFilters);
     updateHeaderPaginationState(1, 0);
+    return;
   } else {
     // Calculamos el número de páginas real ajustado por la orfandad
     const totalPages = getAdjustedTotalPages(gridTotalItems, baseLimit);
@@ -311,16 +370,16 @@ function updateDomWithResults(
     const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
     const isOrphanPage = (Math.ceil(gridTotalItems / baseLimit) > 1) && lastPageSlots <= 2;
     
-    let slotBudget = baseLimit;
+    let slotBudget: number = baseLimit;
     if (currentPage === totalPages) {
       slotBudget = isOrphanPage ? baseLimit + lastPageSlots : lastPageSlots;
     }
 
     // Convertimos el presupuesto de slots en número de películas a renderizar
-    const currentLimit = (currentPage === 1) ? slotBudget - (hasVip ? 1 : 0) : slotBudget;
+    const currentLimit = (currentPage === 1 && hasVip) ? slotBudget - 1 : slotBudget;
     const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
     
-    const promise = renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
+    await renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
 
     const logicalGridTotalItems = isOrphanPage ? totalPages * baseLimit : gridTotalItems;
     if (totalPages > 1) {
@@ -329,7 +388,6 @@ function updateDomWithResults(
       if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     }
     updateHeaderPaginationState(currentPage, logicalGridTotalItems);
-    return promise;
   }
 
   if (currentPage === 1 && totalMovies > 0) {
@@ -446,7 +504,7 @@ function handleGlobalScroll(): void {
 }
 
 // Limpia todo (Botón Play o Atrás completo)
-function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: string } }): void {
+function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: unknown } }): void {
   const { keepSort, newFilter } = data || {};
   const currentSort = keepSort ? getActiveFilters().sort : DEFAULTS.SORT;
   

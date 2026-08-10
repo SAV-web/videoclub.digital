@@ -774,9 +774,9 @@ export async function renderMovieGrid(
   if (vipData) {
     if (vipData.type === 'person' && vipData.data) {
       container.appendChild(createPersonCardElement(vipData.data as PersonDetails));
-    } else if (vipData.type === 'collection') {
+    } else if (vipData.type === 'collection' && vipData.code) {
       container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
-    } else if (vipData.type === 'studio') {
+    } else if (vipData.type === 'studio' && vipData.code) {
       container.appendChild(createStudioCardElement(vipData.code, vipData.total));
     }
   }
@@ -914,7 +914,7 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   return clone;
 }
 
-function createCollectionCardElement(selectionCode: string, totalMovies: number): DocumentFragment {
+function createCollectionCardElement(selectionCode: string, totalMovies: number = 0): DocumentFragment {
   if (!collectionTemplate) return document.createDocumentFragment();
   const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.collection-card');
@@ -954,7 +954,7 @@ function createCollectionCardElement(selectionCode: string, totalMovies: number)
   return clone;
 }
 
-function createStudioCardElement(studioCode: string, totalMovies: number): DocumentFragment {
+function createStudioCardElement(studioCode: string, totalMovies: number = 0): DocumentFragment {
   if (!collectionTemplate) return document.createDocumentFragment();
   const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.collection-card');
@@ -962,7 +962,7 @@ function createStudioCardElement(studioCode: string, totalMovies: number): Docum
   
   const img = card.querySelector('img');
   const config = STUDIO_DATA[studioCode as keyof typeof STUDIO_DATA];
-  const fullName = config ? config.title : studioCode;
+  const fullName = (config && config.title) ? config.title : studioCode;
   
   if (img) {
     img.src = `${CONFIG.PROFILE_BASE_URL}studio_${studioCode.toLowerCase()}.webp`;

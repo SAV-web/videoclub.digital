@@ -200,7 +200,7 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.01em; /* Base más relajada */
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
   text-wrap: balance; /* Títulos equilibrados visualmente */
   overflow: hidden; text-overflow: ellipsis;
 
@@ -275,7 +275,7 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
     color: var(--color-text-primary); line-height: var(--line-height-tight);
     letter-spacing: -0.01em;
     text-align: left;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden; text-overflow: ellipsis;
 
     /* Tipografía Responsiva (Reverso) */
@@ -332,12 +332,12 @@ html.dark-mode .disney-icon { color: #D9534F; } html.dark-mode .wb-icon { color:
 }
 .detail-item[data-template="genre-container"] {
   position: relative; overflow: hidden; text-overflow: ellipsis;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
   padding-right: 10px;
 }
 .detail-item[data-template="actors-container"] {
   position: relative; overflow: hidden; text-overflow: ellipsis;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical;
   padding-right: 10px;
   line-height: 1.4;
 }

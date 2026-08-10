@@ -543,8 +543,11 @@ function renderFilterPills(): void {
         pill = createElement("div", { className: `filter-pill ${item.exc ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: item.val } });
         pill.style.setProperty("--pill-index", String(pillIndex));
         
-        const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string> } | undefined;
-        let text = config?.items?.[item.val];
+        const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string>; titles?: Record<string, string> } | undefined;
+        let text = config?.items?.[item.val] || config?.items?.[item.val.toUpperCase()];
+        if (!text && type === 'selection' && FILTER_CONFIG.selection.titles) {
+          text = FILTER_CONFIG.selection.titles[item.val] || FILTER_CONFIG.selection.titles[item.val.toUpperCase()];
+        }
         if (!text && type === 'country') {
           text = Object.values(REGIONAL_GROUPS).find(r => r.value === item.val)?.label;
         }
@@ -671,10 +674,11 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
   }
   
   renderFilterPills();
-  appEvents.emit("uiActionTriggered");
-  
+  const isYearFilter = type === 'year';
+  const targetPage = isYearFilter ? getCurrentPage() : 1;
+
   try { 
-    await loadAndRenderMovies(1); 
+    await loadAndRenderMovies(targetPage, { isYearFilter, replaceHistory: isYearFilter }); 
   } catch (error: unknown) {
     if ((error as Error)?.name === "AbortError") return;
     console.error("Fallo al aplicar filtro:", error);

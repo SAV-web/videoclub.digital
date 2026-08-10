@@ -80,7 +80,7 @@
 
   &:active { transform: scale(0.96); filter: brightness(0.95); transition: transform 50ms var(--ease-luxury); }
   & > span:first-child {
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     text-transform: capitalize;
   }
   &.filter-pill--exclude { background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude)); }
@@ -325,6 +325,7 @@ body.sidebar-collapsed .sidebar {
   background-color: var(--color-bg); color: var(--color-text-primary);
   text-align: center; font-size: var(--font-size-xs);
   -moz-appearance: textfield;
+  appearance: textfield;
   &:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-focus); }
   &::-webkit-outer-spin-button, &::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 }

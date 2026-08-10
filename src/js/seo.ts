@@ -3,8 +3,8 @@
 // src/js/seo.ts
 import { CONFIG, FILTER_CONFIG, STUDIO_DATA } from "./constants.js";
 import { getActiveFilters } from "./state.js";
-import { capitalizeWords } from "./utils.js";
-import { ActiveFilters, Movie } from "./types.js";
+import { capitalizeWords, getHqPosterUrl } from "./utils.js";
+import { ActiveFilters, Movie, MappedMovie } from "./types.js";
 
 // =================================================================
 //          1. BUILDERS (Funciones Puras - Lógica de Negocio)
@@ -95,7 +95,7 @@ export function buildSeoDescription(noun: string, filters: ActiveFilters, movies
   return desc;
 }
 
-export function buildItemListSchema(movies: Movie[] | null | undefined, totalMovies: number, currentUrl: string): Record<string, unknown> | null {
+export function buildItemListSchema(movies: Array<Movie | MappedMovie> | null | undefined, totalMovies: number, currentUrl: string): Record<string, unknown> | null {
   if (!movies || movies.length === 0) return null;
   
   // Optimización SEO: Truncar a 20 elementos para evitar payloads JSON-LD excesivos.
@@ -112,7 +112,7 @@ export function buildItemListSchema(movies: Movie[] | null | undefined, totalMov
       "item": {
         "@type": movie.type && movie.type.toLowerCase().startsWith('s') ? "TVSeries" : "Movie",
         "name": movie.title,
-        "image": movie.posterUrl || undefined,
+        "image": ("posterUrl" in movie ? movie.posterUrl : (movie.image ? getHqPosterUrl(movie.image) : undefined)) || undefined,
         "dateCreated": movie.year ? String(movie.year) : undefined,
         "director": movie.directors_list ? movie.directors_list.split(",").map(d => ({ "@type": "Person", "name": d.trim() })) : undefined,
         "actor": movie.actors_list ? movie.actors_list.split(",").map(a => ({ "@type": "Person", "name": a.trim() })) : undefined,
@@ -173,10 +173,10 @@ export function buildBreadcrumbSchema(filters: ActiveFilters, baseUrl: string): 
      const config = FILTER_CONFIG.selection;
      filterName = config.titles?.[filters.selection as keyof typeof config.titles] || config.items[filters.selection as keyof typeof config.items] || filters.selection;
      filterQuery = `&sel=${filters.selection}`;
-  } else if (filters.studio) {
-     const studioInfo = STUDIO_DATA[filters.studio as keyof typeof STUDIO_DATA];
-     filterName = studioInfo ? studioInfo.title : filters.studio;
-     filterQuery = `&stu=${filters.studio}`;
+   } else if (filters.studio) {
+      const studioInfo = STUDIO_DATA[filters.studio as keyof typeof STUDIO_DATA];
+      filterName = (studioInfo && studioInfo.title) ? studioInfo.title : filters.studio;
+      filterQuery = `&stu=${filters.studio}`;
   } else if (filters.genre) {
     filterName = filters.genre;
     filterQuery = `&genre=${encodeURIComponent(filters.genre)}`;
@@ -222,7 +222,7 @@ const setMeta = (selector: string, content: string): void => {
 };
 
 const injectJsonLd = (scriptId: string, schema: Record<string, unknown> | null): void => {
-  let script = document.getElementById(scriptId);
+  let script = document.getElementById(scriptId) as HTMLScriptElement | null;
   if (!script) {
     script = document.createElement("script");
     script.id = scriptId;

@@ -195,6 +195,7 @@
   letter-spacing: -0.03em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 
@@ -432,6 +433,7 @@
     line-height: 1.1;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
     margin-top: -0.2em;
@@ -473,6 +475,7 @@
 .is-quick-view .detail-item[data-template="actors-container"],
 .is-quick-view .detail-item[data-template="genre-container"] {
   -webkit-line-clamp: initial;
+  line-clamp: initial;
   white-space: normal;
   display: block;
 }

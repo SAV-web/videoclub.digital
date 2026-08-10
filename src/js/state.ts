@@ -8,7 +8,7 @@
 // =================================================================
 
 import { clearCheckedUserMovieIds, markMovieIdAsChecked } from "./checkedIds.js";
-import { DEFAULTS, CONFIG } from "./constants.js";
+import { DEFAULTS, CONFIG, TEXT_FILTER_KEYS } from "./constants.js";
 import { normalizeText } from "./utils.js";
 import {
   areContractValuesEqual,
@@ -151,7 +151,9 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
           (key === "sort" && value === DEFAULTS.SORT) ||
           (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`)) return;
       
-      const valToSet = ['director', 'actor', 'genre', 'country'].includes(key) ? normalizeText(value) : value;
+      const valToSet = (key === "selection" || key === "studio")
+        ? value.toUpperCase()
+        : (TEXT_FILTER_KEYS.has(key) ? normalizeText(value) : value);
       params.set(shortKey, valToSet);
     }
   });
@@ -234,16 +236,20 @@ export function hasActiveMeaningfulFilters(): boolean {
 //          LOGICA DE NEGOCIO (Helpers)
 // =================================================================
 
-// Cuenta cuántos filtros "reales" hay activos
+// Cuenta cuántos filtros "reales" hay activos (Patrón Whitelist)
 export function getActiveFilterCount(): number {
-  let count = state.activeFilters.excludedGenres.length + state.activeFilters.excludedCountries.length;
-  if (state.activeFilters.year && state.activeFilters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) count++;
+  const f = state.activeFilters;
+  let count = f.excludedGenres.length + f.excludedCountries.length;
+  if (f.year && f.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) count++;
 
-  for (const key in state.activeFilters) {
-    if (!["mediaType", "sort", "searchTerm", "myList", "excludedGenres", "excludedCountries", "year"].includes(key) && state.activeFilters[key as keyof ActiveFilters]) {
-      count++;
-    }
+  const INCLUDED_FILTERS: Array<keyof ActiveFilters> = [
+    "genre", "country", "director", "actor", "selection", "studio"
+  ];
+
+  for (const key of INCLUDED_FILTERS) {
+    if (f[key]) count++;
   }
+
   return count;
 }
 
