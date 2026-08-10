@@ -10,7 +10,7 @@ export interface DualRangeSliderOptions {
   min: number;
   max: number;
   pivotYear?: number;
-  start?: number[];
+  start?: [number, number] | number[];
 }
 
 export class DualRangeSlider {
@@ -125,7 +125,9 @@ export class DualRangeSlider {
     const isSameYear = this.values[0] === this.values[1];
 
     if (this.container.classList) {
-      if (isSameYear) {
+      if (typeof this.container.classList.toggle === "function") {
+        this.container.classList.toggle("is-same-year", isSameYear);
+      } else if (isSameYear) {
         this.container.classList.add("is-same-year");
       } else if (typeof this.container.classList.remove === "function") {
         this.container.classList.remove("is-same-year");
@@ -136,10 +138,12 @@ export class DualRangeSlider {
     this.connectEl.style.width = `${Math.max(0, endPct - startPct)}%`;
 
     this.handleStartEl.style.left = `${startPct}%`;
+    this.handleStartEl.setAttribute("aria-valuenow", String(this.values[0]));
     this.handleStartEl.setAttribute("aria-valuetext", String(this.values[0]));
 
     this.handleEndEl.style.left = `${endPct}%`;
     this.handleEndEl.setAttribute("aria-valuenow", String(this.values[1]));
+    this.handleEndEl.setAttribute("aria-valuetext", String(this.values[1]));
   }
 
   private getPctFromClientX(clientX: number): number {

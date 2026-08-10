@@ -13,6 +13,7 @@ import { setUserMovieDataAPI } from "../api.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
+import { normalizeMovieId } from "../contracts.js";
 import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.js";
 
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 } as const;
@@ -272,7 +273,7 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
   const lowStarEl = target.closest<HTMLElement>('[data-action="set-rating-suspenso"]');
   const wallRatingEl = target.closest<HTMLElement>(".wall-rating-number");
   
-  const movieId = parseInt(card.dataset.movieId || "0", 10);
+  const movieId = normalizeMovieId(card.dataset.movieId);
   if (!movieId) return false;
 
   const currentRating = getUserDataForMovie(movieId)?.rating;
@@ -317,13 +318,13 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
 //          5. ACTUALIZACIÓN DE UI (Estrellas y Barras)
 // =================================================================
 
-export function updateRatingUI(card: MovieCardElement): void {
-  const movieId = parseInt(card.dataset.movieId || "0", 10);
+export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovieEntry): void {
+  const movieId = normalizeMovieId(card.dataset.movieId);
   const movie = card.movieData;
-  if (!movie || ("isPerson" in movie && movie.isPerson)) return;
+  if (!movie || ("isPerson" in movie && movie.isPerson) || !movieId) return;
   const mappedMovie = movie as MappedMovie;
 
-  const userData = getUserDataForMovie(movieId);
+  const userData = userDataInput ?? getUserDataForMovie(movieId);
   const isLoggedIn = document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
 
   const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');

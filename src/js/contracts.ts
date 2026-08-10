@@ -7,26 +7,7 @@
 // =================================================================
 
 import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
-import { parseYearRangeRaw } from "./utils.js";
-import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
 
-export const FILTER_KEYS: ReadonlyArray<string> = [
-  "searchTerm",
-  "genre",
-  "year",
-  "country",
-  "director",
-  "actor",
-  "selection",
-  "studio",
-  "sort",
-  "mediaType",
-  "excludedGenres",
-  "excludedCountries",
-  "myList",
-];
-
-const LIST_FILTER_KEYS = new Set<string>(["excludedGenres", "excludedCountries"]);
 const SORT_VALUES = new Set<string>([
   "relevance,asc",
   "year,desc",
@@ -48,6 +29,27 @@ export const ERROR_CODES = {
   VALIDATION: "VALIDATION",
   UNKNOWN: "UNKNOWN",
 } as const;
+
+import { parseYearRangeRaw } from "./utils.js";
+import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
+
+export const FILTER_KEYS: ReadonlyArray<string> = [
+  "searchTerm",
+  "genre",
+  "year",
+  "country",
+  "director",
+  "actor",
+  "selection",
+  "studio",
+  "sort",
+  "mediaType",
+  "excludedGenres",
+  "excludedCountries",
+  "myList",
+];
+
+const LIST_FILTER_KEYS = new Set<string>(["excludedGenres", "excludedCountries"]);
 
 export type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
 

@@ -20,6 +20,7 @@ import {
 } from "./utils.js";
 import { fetchMovies, getSupabase, fetchUserMovieDataForIds, fetchPersonDetails } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
+import { isAbortError } from "./contracts.js";
 import { 
   dom, 
   renderPagination, 
@@ -315,7 +316,7 @@ export async function loadAndRenderMovies(
 
   } catch (error: unknown) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
-    if ((error as Record<string, unknown>)?.name === "AbortError") return;
+    if (isAbortError(error, signal)) return;
     
     const msg = getFriendlyErrorMessage(error);
     if (msg) showToast(msg, "error");

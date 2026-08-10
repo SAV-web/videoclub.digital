@@ -7,6 +7,7 @@
 // visualización de contraseña y restablecimiento de contraseña.
 // =================================================================
 
+import type { AuthError } from "@supabase/supabase-js";
 import { getSupabase } from "./api.js";
 import { openAuthModal, closeAuthModal, showToast } from "./ui.js";
 
@@ -180,11 +181,11 @@ function setFormDisabledState(form: HTMLFormElement, disabled: boolean): void {
   });
 }
 
-async function submitAuthForm<T>(
+async function submitAuthForm(
   form: HTMLFormElement,
   btn: HTMLButtonElement | null,
-  action: () => Promise<{ data?: T; error?: AuthError | null }>,
-  onSuccess: (res: { data?: T; error?: AuthError | null }) => void,
+  action: () => Promise<{ data?: unknown; error?: AuthError | null }>,
+  onSuccess: (res: { data?: unknown; error?: AuthError | null }) => void,
   errorMessage = "Error inesperado de conexión."
 ): Promise<void> {
   setFormDisabledState(form, true);
@@ -242,7 +243,8 @@ async function handleLoginRegisterSubmit(e: Event, isLogin: boolean): Promise<vo
         : await supabase.auth.signUp({ email, password: pass });
     },
     (res) => {
-      if (!isLogin && res.data?.user?.identities?.length === 0) {
+      const user = (res.data as { user?: { identities?: unknown[] } } | undefined)?.user;
+      if (!isLogin && user?.identities?.length === 0) {
         setFeedback("Este usuario ya está registrado.", "error");
       } else if (isLogin) {
         showToast("¡Hola de nuevo!", "success");
@@ -447,9 +449,9 @@ export function initAuthForms(): void {
   const dom = getDom();
   if (!dom.fLogin) return;
 
-  dom.fLogin.addEventListener("submit", e => { void handleSubmit(e, true); });
+  dom.fLogin.addEventListener("submit", e => { void handleLoginRegisterSubmit(e, true); });
   if (dom.fReg) {
-    dom.fReg.addEventListener("submit", e => { void handleSubmit(e, false); });
+    dom.fReg.addEventListener("submit", e => { void handleLoginRegisterSubmit(e, false); });
   }
   
   if (dom.fRecover) {

@@ -43,17 +43,19 @@ export interface ExtendedMovie extends MappedMovie {
   isPerson?: boolean;
 }
 
-// --- Referencias DOM (Lazy Getter para seguridad) ---
+// --- Referencias DOM (Caché con Lazy Getter para máxima eficiencia) ---
+let cachedModalDom: ModalDom | null = null;
 const getDom = (): ModalDom => {
+  if (cachedModalDom?.modal && cachedModalDom?.content) return cachedModalDom;
   const templateEl = document.getElementById("quick-view-template") as HTMLTemplateElement | null;
-  return {
+  return (cachedModalDom = {
     overlay: document.getElementById("quick-view-overlay"),
     modal: document.getElementById("quick-view-modal"),
     content: document.getElementById("quick-view-content") as MovieContentElement | null,
     template: templateEl?.content,
     prevBtn: document.getElementById("modal-prev-btn") as HTMLButtonElement | null,
     nextBtn: document.getElementById("modal-next-btn") as HTMLButtonElement | null,
-  };
+  });
 };
 
 /**

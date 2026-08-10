@@ -16,6 +16,8 @@ export interface SeoTitleResult {
   baseNoun: string;
 }
 
+const formatYearPeriod = (year: string): string => year.replace("-", " a ");
+
 export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
   const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType, myList } = filters;
   
@@ -27,8 +29,8 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
   }
 
   let title = baseNoun;
-  const yearSuffix = (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) 
-    ? ` (${year.replace("-", " a ")})` : "";
+  const isCustomYear = !!(year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`);
+  const yearSuffix = isCustomYear ? ` (${formatYearPeriod(year)})` : "";
 
   if (myList) {
     title = `Mi Lista`;
@@ -47,8 +49,8 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
     title = `${baseNoun} de ${capitalizeWords(director)}`;
   } else if (actor) {
     title = `${baseNoun} con ${capitalizeWords(actor)}`;
-  } else if (year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
-    title = `${baseNoun} de ${year.replace("-", " a ")}`;
+  } else if (isCustomYear) {
+    title = `${baseNoun} de ${formatYearPeriod(year)}`;
   } else if (country) {
     title = `${baseNoun} de ${capitalizeWords(country)}`;
   }
@@ -74,7 +76,7 @@ export function buildSeoDescription(noun: string, filters: ActiveFilters, movies
     if (filters.director) parts.push(`dirigidas por ${filters.director}`);
     if (filters.actor) parts.push(`con ${filters.actor}`);
     if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
-      parts.push(filters.year.includes("-") ? `del periodo ${filters.year.replace("-", " a ")}` : `del año ${filters.year}`);
+      parts.push(filters.year.includes("-") ? `del periodo ${formatYearPeriod(filters.year)}` : `del año ${filters.year}`);
     }
     
     if (parts.length > 0) {
@@ -90,7 +92,7 @@ export function buildSeoDescription(noun: string, filters: ActiveFilters, movies
   }
 
   if (desc.length > 160) {
-    desc = desc.substring(0, 157) + "...";
+    desc = `${desc.slice(0, 157)}...`;
   }
   return desc;
 }

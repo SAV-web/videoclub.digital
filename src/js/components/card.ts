@@ -13,6 +13,7 @@ import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
+import { normalizeMovieId } from "../contracts.js";
 import spriteUrl from "../../sprite.svg";
 import { MappedMovie, ActiveFilters, UserMovieEntry, PersonDetails, VipData, MovieCardElement } from "../types.js";
 
@@ -36,9 +37,9 @@ const HOVER_DELAY = 1000;
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn";
 const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
 
-// Caché del Viewport para evitar Layout Thrashing
-let cachedIsMobileViewport = window.innerWidth <= 768;
-window.addEventListener('resize', debounce(() => { cachedIsMobileViewport = window.innerWidth <= 768; }, 250));
+// Consulta de Viewport sin listeners pesados de resize
+const mobileQuery = typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)") : null;
+export const isMobileViewport = (): boolean => mobileQuery ? mobileQuery.matches : false;
 
 // =================================================================
 //          0. LAZY LOADING (Modal)
@@ -313,8 +314,8 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   if (watchlistBtn) {
     event.preventDefault(); event.stopPropagation();
     if (isPerson) return;
-    const movieId = parseInt(card.dataset.movieId || "0", 10);
-    toggleWatchlist(movieId, watchlistBtn, card);
+    const movieId = normalizeMovieId(card.dataset.movieId);
+    if (movieId) toggleWatchlist(movieId, watchlistBtn, card);
     return;
   }
 
@@ -492,7 +493,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   const hqPoster = getHqPosterUrl(movie.image);
   img.alt = `Póster de ${movie.title}`;
   
-  const priorityCount = cachedIsMobileViewport ? 6 : 2;
+  const priorityCount = isMobileViewport() ? 6 : 2;
   const isFirstPage = getCurrentPage() === 1;
 
   if (isFirstPage && index < priorityCount) {
@@ -717,9 +718,9 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
 }
 
 export function updateCardUI(card: MovieCardElement): void {
-  const movieId = parseInt(card.dataset.movieId || "0", 10);
+  const movieId = normalizeMovieId(card.dataset.movieId);
   const movie = card.movieData;
-  if (!movie || ("isPerson" in movie && movie.isPerson)) return;
+  if (!movie || ("isPerson" in movie && movie.isPerson) || !movieId) return;
 
   const userData = getUserDataForMovie(movieId);
   const isOnWatchlist = userData?.onWatchlist ?? false;
@@ -731,8 +732,8 @@ export function updateCardUI(card: MovieCardElement): void {
     watchlistBtn.setAttribute("aria-label", isOnWatchlist ? "Quitar de lista" : "Añadir a lista");
   }
 
-  // Estrellas
-  updateRatingUI(card);
+  // Estrellas (pasamos userData ya obtenido para evitar consulta duplicada)
+  updateRatingUI(card, userData);
 }
 
 export function initializeCard(card: MovieCardElement): void {

@@ -9,7 +9,7 @@
 
 import { DualRangeSlider } from './yearSlider.js';
 import { CONFIG } from "../constants.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition, runWhenIdle } from "../utils.js";
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition, runWhenIdle, parseYearRangeRaw } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
   fetchRandomTopActors, fetchRandomTopDirectors
@@ -88,8 +88,7 @@ function applyPendingYearFilters(): void {
   if (isNaN(currentStart) || isNaN(currentEnd)) return;
 
   const activeFilters = getActiveFilters();
-  let [globalStart, globalEnd] = (activeFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split('-').map(Number);
-  if (!globalEnd) globalEnd = globalStart;
+  const [globalStart, globalEnd] = parseYearRangeRaw(activeFilters.year);
 
   if (currentStart !== globalStart || currentEnd !== globalEnd) {
     handleFilterChangeOptimistic("year", currentStart === currentEnd ? `${currentStart}` : `${currentStart}-${currentEnd}`, true);
@@ -849,8 +848,7 @@ function initYearSlider(): void {
   appEvents.on("updateSidebarUI", () => {
     debouncedUpdate.cancel(); 
     const currentFilters = getActiveFilters();
-    let years = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
-    if (years.length === 1) years = [years[0], years[0]];
+    const years = parseYearRangeRaw(currentFilters.year);
     sliderInstance.set(years, false); 
   });
 }
