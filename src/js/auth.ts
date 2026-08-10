@@ -160,6 +160,15 @@ function isFormValid(form: HTMLFormElement): boolean {
   return allValid;
 }
 
+function resetFormValidationState(form: HTMLFormElement): void {
+  form.reset();
+  form.querySelectorAll("input").forEach(inp => inp.classList.remove("is-valid", "is-invalid"));
+  form.querySelectorAll(".validation-message").forEach(span => {
+    span.textContent = "";
+    span.classList.remove("is-valid", "is-invalid");
+  });
+}
+
 function setFormDisabledState(form: HTMLFormElement, disabled: boolean): void {
   const elements = form.querySelectorAll("input, button");
   elements.forEach(el => {
@@ -171,8 +180,33 @@ function setFormDisabledState(form: HTMLFormElement, disabled: boolean): void {
   });
 }
 
-// Lógica genérica al pulsar el botón "Entrar" o "Registrar"
-async function handleSubmit(e: Event, isLogin: boolean): Promise<void> {
+async function submitAuthForm<T>(
+  form: HTMLFormElement,
+  btn: HTMLButtonElement | null,
+  action: () => Promise<{ data?: T; error?: AuthError | null }>,
+  onSuccess: (res: { data?: T; error?: AuthError | null }) => void,
+  errorMessage = "Error inesperado de conexión."
+): Promise<void> {
+  setFormDisabledState(form, true);
+  if (btn) btn.classList.add("is-loading");
+
+  try {
+    const res = await action();
+    if (res.error) {
+      setFeedback(translateError(res.error));
+    } else {
+      onSuccess(res);
+      resetFormValidationState(form);
+    }
+  } catch (err) {
+    setFeedback(errorMessage);
+  } finally {
+    setFormDisabledState(form, false);
+    if (btn) btn.classList.remove("is-loading");
+  }
+}
+
+async function handleLoginRegisterSubmit(e: Event, isLogin: boolean): Promise<void> {
   e.preventDefault();
   setFeedback(null);
 
@@ -198,39 +232,26 @@ async function handleSubmit(e: Event, isLogin: boolean): Promise<void> {
     localStorage.setItem("videoclub:remember_me", remember ? "true" : "false");
   }
 
-  setFormDisabledState(form, true);
-  if (btn) btn.classList.add("is-loading");
-
-  try {
-    const supabase = await getSupabase();
-    const { data, error } = isLogin 
-      ? await supabase.auth.signInWithPassword({ email, password: pass })
-      : await supabase.auth.signUp({ email, password: pass });
-
-    if (error) {
-      setFeedback(translateError(error));
-    } else if (!isLogin && data?.user?.identities?.length === 0) {
-      setFeedback("Este usuario ya está registrado.", "error");
-    } else {
-      if (isLogin) {
+  await submitAuthForm(
+    form,
+    btn,
+    async () => {
+      const supabase = await getSupabase();
+      return isLogin 
+        ? await supabase.auth.signInWithPassword({ email, password: pass })
+        : await supabase.auth.signUp({ email, password: pass });
+    },
+    (res) => {
+      if (!isLogin && res.data?.user?.identities?.length === 0) {
+        setFeedback("Este usuario ya está registrado.", "error");
+      } else if (isLogin) {
         showToast("¡Hola de nuevo!", "success");
         closeAuthModal();
       } else {
         setFeedback("¡Registro exitoso! Revisa tu email.", "success");
       }
-      form.reset();
-      form.querySelectorAll("input").forEach(inp => inp.classList.remove("is-valid", "is-invalid"));
-      form.querySelectorAll(".validation-message").forEach(span => {
-        span.textContent = "";
-        span.classList.remove("is-valid", "is-invalid");
-      });
     }
-  } catch (err) {
-    setFeedback("Error inesperado de conexión.");
-  } finally {
-    setFormDisabledState(form, false);
-    if (btn) btn.classList.remove("is-loading");
-  }
+  );
 }
 
 // Lógica para enviar correo de recuperación de contraseña
@@ -252,32 +273,20 @@ async function handleRecoverSubmit(e: Event): Promise<void> {
     return;
   }
 
-  setFormDisabledState(form, true);
-  if (btn) btn.classList.add("is-loading");
-
-  try {
-    const supabase = await getSupabase();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/#reset-password`
-    });
-
-    if (error) {
-      setFeedback(translateError(error));
-    } else {
-      setFeedback("Enlace de recuperación enviado. Revisa tu correo.", "success");
-      form.reset();
-      form.querySelectorAll("input").forEach(inp => inp.classList.remove("is-valid", "is-invalid"));
-      form.querySelectorAll(".validation-message").forEach(span => {
-        span.textContent = "";
-        span.classList.remove("is-valid", "is-invalid");
+  await submitAuthForm(
+    form,
+    btn,
+    async () => {
+      const supabase = await getSupabase();
+      return await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/#reset-password`
       });
-    }
-  } catch (err) {
-    setFeedback("Error al conectar con el servidor.");
-  } finally {
-    setFormDisabledState(form, false);
-    if (btn) btn.classList.remove("is-loading");
-  }
+    },
+    () => {
+      setFeedback("Enlace de recuperación enviado. Revisa tu correo.", "success");
+    },
+    "Error al conectar con el servidor."
+  );
 }
 
 // Lógica para guardar la nueva contraseña restablecida
@@ -299,35 +308,22 @@ async function handleResetPasswordSubmit(e: Event): Promise<void> {
     return;
   }
 
-  setFormDisabledState(form, true);
-  if (btn) btn.classList.add("is-loading");
-
-  try {
-    const supabase = await getSupabase();
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-
-    if (error) {
-      setFeedback(translateError(error));
-    } else {
+  await submitAuthForm(
+    form,
+    btn,
+    async () => {
+      const supabase = await getSupabase();
+      return await supabase.auth.updateUser({ password: newPassword });
+    },
+    () => {
       showToast("Contraseña actualizada con éxito.", "success");
       closeAuthModal();
-      form.reset();
-      form.querySelectorAll("input").forEach(inp => inp.classList.remove("is-valid", "is-invalid"));
-      form.querySelectorAll(".validation-message").forEach(span => {
-        span.textContent = "";
-        span.classList.remove("is-valid", "is-invalid");
-      });
-      
       if (window.location.hash) {
         window.location.hash = "";
       }
-    }
-  } catch (err) {
-    setFeedback("Error al actualizar la contraseña.");
-  } finally {
-    setFormDisabledState(form, false);
-    if (btn) btn.classList.remove("is-loading");
-  }
+    },
+    "Error al actualizar la contraseña."
+  );
 }
 
 // Lógica para enviar Magic Link para inicio de sesión sin contraseña
@@ -356,35 +352,23 @@ async function handleMagicLinkSubmit(e: Event): Promise<void> {
     return;
   }
 
-  setFormDisabledState(form, true);
-  btn.classList.add("is-loading");
-
-  try {
-    const supabase = await getSupabase();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin
-      }
-    });
-
-    if (error) {
-      setFeedback(translateError(error));
-    } else {
-      setFeedback("Enlace de acceso enviado. Revisa tu correo.", "success");
-      form.reset();
-      form.querySelectorAll("input").forEach(inp => inp.classList.remove("is-valid", "is-invalid"));
-      form.querySelectorAll(".validation-message").forEach(span => {
-        span.textContent = "";
-        span.classList.remove("is-valid", "is-invalid");
+  await submitAuthForm(
+    form,
+    btn,
+    async () => {
+      const supabase = await getSupabase();
+      return await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
       });
-    }
-  } catch (err) {
-    setFeedback("Error al conectar con el servidor.");
-  } finally {
-    setFormDisabledState(form, false);
-    btn.classList.remove("is-loading");
-  }
+    },
+    () => {
+      setFeedback("Enlace de acceso enviado. Revisa tu correo.", "success");
+    },
+    "Error al conectar con el servidor."
+  );
 }
 
 // Alterna visualmente entre las vistas del modal

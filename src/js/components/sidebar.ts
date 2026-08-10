@@ -9,7 +9,7 @@
 
 import { DualRangeSlider } from './yearSlider.js';
 import { CONFIG } from "../constants.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition } from "../utils.js";
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition, runWhenIdle } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
   fetchRandomTopActors, fetchRandomTopDirectors
@@ -1266,8 +1266,7 @@ export function initSidebar(): void {
     } catch (e) {}
   };
 
-  const idleCallback = (window as Window & { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 500));
-  idleCallback(updateDynamicFilters);
+  runWhenIdle(updateDynamicFilters, 500);
   
   if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);

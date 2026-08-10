@@ -35,6 +35,17 @@ export const formatYearRange = (
   return text;
 };
 
+/**
+ * Convierte una cadena de filtro de año (ej: "1980-2020", "1995" o null) en una tupla [minYear, maxYear].
+ */
+export function parseYearRangeRaw(yearStr: string | null | undefined): [number, number] {
+  if (!yearStr || !yearStr.trim()) return [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX];
+  const parts = yearStr.split("-").map(Number);
+  const min = isNaN(parts[0]) ? CONFIG.YEAR_MIN : parts[0];
+  const max = parts.length > 1 ? (isNaN(parts[1]) ? CONFIG.YEAR_MAX : parts[1]) : min;
+  return [min, max];
+}
+
 // URL del póster en alta calidad
 export const getHqPosterUrl = (img: string | null | undefined): string => 
   img && img !== "." ? `${CONFIG.POSTER_BASE_URL}${img}.webp` : "";
@@ -370,8 +381,20 @@ export async function yieldToMain(): Promise<void> {
 }
 
 // Pinta las tarjetas "a trocitos" para que la pantalla nunca se congele
+/**
+ * Ejecuta una tarea en periodos de inactividad del navegador (idle) o usa setTimeout con el delay de fallback.
+ */
+export function runWhenIdle(callback: () => void, fallbackDelayMs = 500): void {
+  const windowWithIdle = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
+  if (typeof windowWithIdle.requestIdleCallback === "function") {
+    windowWithIdle.requestIdleCallback(() => callback());
+  } else {
+    setTimeout(callback, fallbackDelayMs);
+  }
+}
+
 export function scheduleWork<T>(task: () => T, priority: 'user-blocking' | 'user-visible' | 'background' = 'user-visible'): Promise<T> {
-  // Si la pestaña está en segundo plano (oculta), ejecutamos la tarea inmediatamente.
+  // En segundo plano (p. ej., durante el scraping de la consola), no retrasamos las tareas sintéticas.
   // No hay interfaz que congelar ni frames que proteger en segundo plano.
   if (typeof document !== 'undefined' && document.hidden) {
     return Promise.resolve(task());
@@ -382,8 +405,7 @@ export function scheduleWork<T>(task: () => T, priority: 'user-blocking' | 'user
   }
   // Fallback con requestIdleCallback
   return new Promise(resolve => {
-    const idleCallback = window.requestIdleCallback || ((cb) => window.setTimeout(cb, 1));
-    idleCallback(() => resolve(task()), { timeout: 300 });
+    runWhenIdle(() => resolve(task()), 1);
   });
 }
 

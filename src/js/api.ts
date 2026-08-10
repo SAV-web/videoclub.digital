@@ -9,7 +9,7 @@
 
 import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS, TEXT_FILTER_KEYS } from "./constants.js";
 import { LRUCache } from "lru-cache";
-import { createAbortableRequest, mapMoviePayload, normalizeText } from "./utils.js";
+import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
 export { clearCheckedUserMovieIds, markMovieIdAsChecked };
 import { getUserDataForMovie, updateUserDataForMovie, setUserMovieData, appEvents } from "./state.js";
@@ -107,16 +107,12 @@ const suggestionsCache = new LRUCache<string, string[]>({
 
 // --- 3. PREPARAR DATOS Y LLAVES ---
 
-// Saca el principio y fin de un texto como "2010-2020".
-// Si el año de inicio es <= CONFIG.YEAR_MIN (1900), se pasa null para incluir todo el catálogo histórico previo a 1900.
 export const parseYearRange = (y: string | null | undefined): { start: number | null; end: number | null } => {
   if (!y) return { start: null, end: null };
-  const p = y.split("-").map(Number);
-  const rawStart = p[0] || null;
-  const rawEnd = (p.length > 1 ? p[1] : p[0]) || null;
+  const [min, max] = parseYearRangeRaw(y);
   return { 
-    start: (rawStart !== null && rawStart <= CONFIG.YEAR_MIN) ? null : rawStart, 
-    end: (rawEnd !== null && rawEnd >= CONFIG.YEAR_MAX) ? null : rawEnd 
+    start: min <= CONFIG.YEAR_MIN ? null : min, 
+    end: max >= CONFIG.YEAR_MAX ? null : max 
   };
 };
 

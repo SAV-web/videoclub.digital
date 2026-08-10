@@ -15,7 +15,8 @@ import {
   LocalStore, 
   executeViewTransition,
   getAdjustedTotalPages,
-  mapMoviePayload
+  mapMoviePayload,
+  runWhenIdle
 } from "./utils.js";
 import { fetchMovies, getSupabase, fetchUserMovieDataForIds, fetchPersonDetails } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
@@ -690,13 +691,16 @@ function setupGlobalListeners(): void {
     const { updateCardUI } = await loadCardModule();
     document.querySelectorAll(".movie-card").forEach((el) => updateCardUI(el as HTMLElement));
   };
-  appEvents.on("userMovieDataChanged", handleDataRefresh);
-  
-  appEvents.on("userDataUpdated", () => {
+
+  appEvents.on("userMovieDataChanged", () => {
     handleDataRefresh();
     if (getActiveFilters().myList) {
       loadAndRenderMovies(getCurrentPage());
     }
+  });
+  
+  appEvents.on("userDataUpdated", () => {
+    handleDataRefresh();
   });
 
   appEvents.on("filtersReset", handleFiltersReset);
@@ -909,11 +913,10 @@ function init(): void {
   
   setupAuthSystem(); // Iniciar sesión de inmediato para resolver la carga limpia de la landing page
 
-  const idleLoad = (window as Window & { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1000));
-  idleLoad(() => {
+  runWhenIdle(() => {
     loadSidebar();
     setupAuthModal();
-  });
+  }, 1000);
 
   initThemeToggle();
   setupHeaderListeners();

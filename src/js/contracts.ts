@@ -7,6 +7,7 @@
 // =================================================================
 
 import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
+import { parseYearRangeRaw } from "./utils.js";
 import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
 
 export const FILTER_KEYS: ReadonlyArray<string> = [
@@ -128,11 +129,10 @@ export function normalizeMyList(value: unknown): null | "rated" | "watchlist" | 
 
 export function normalizeYearRange(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
+  const str = String(value).trim();
+  if (!str) return null;
 
-  const parts = String(value).split("-").map(part => Number.parseInt(part, 10));
-  const [rawStart, rawEnd = rawStart] = parts;
-  if (!Number.isFinite(rawStart)) return null;
-
+  const [rawStart, rawEnd] = parseYearRangeRaw(str);
   const minYear = CONFIG.YEAR_MIN;
   const maxYear = CONFIG.YEAR_MAX;
   const start = Math.min(Math.max(rawStart, minYear), maxYear);

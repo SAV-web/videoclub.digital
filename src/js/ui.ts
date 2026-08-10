@@ -7,7 +7,7 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS } from "./constants.js";
 import { fetchMovies } from "./api.js";
-import { triggerPopAnimation, createElement, getAdjustedTotalPages } from "./utils.js";
+import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw } from "./utils.js";
 import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
 
@@ -259,10 +259,7 @@ export function prefetchNextPage(
   const totalPages = getAdjustedTotalPages(gridTotalItems, pageSize);
   if (currentPage >= totalPages) return;
 
-  // Usar requestIdleCallback para no bloquear el hilo principal
-  const idleCallback = (window as Window & { requestIdleCallback?: typeof requestIdleCallback }).requestIdleCallback || ((cb: () => void) => setTimeout(cb, 500));
-  
-  idleCallback(() => {
+  runWhenIdle(() => {
     // 1. Prefetch página siguiente (Prioridad)
     fetchMovies(activeFilters, currentPage + 1, pageSize, null, false)
       .catch(() => {});
@@ -423,13 +420,9 @@ function shouldShowTotalCount(): boolean {
 
   // 3. Solo filtro de año: Verificar rango
   if (filters.year) {
-    const parts = filters.year.split('-').map(Number);
-    const start = parts[0];
-    const end = parts.length > 1 ? parts[1] : parts[0];
-    if (!isNaN(start) && !isNaN(end)) {
-      // Ocultar si el rango es de 10 años o más
-      return (end - start) < 10;
-    }
+    const [start, end] = parseYearRangeRaw(filters.year);
+    // Ocultar si el rango es de 10 años o más
+    return (end - start) < 10;
   }
 
   return true;
@@ -438,8 +431,9 @@ function shouldShowTotalCount(): boolean {
 export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null = null): void {
   const containers = document.querySelectorAll<HTMLElement>(".total-results-container");
   const counts = document.querySelectorAll<HTMLElement>(".total-results-count");
+  const showTotal = shouldShowTotalCount();
 
-  if (shouldShowTotalCount()) {
+  if (showTotal) {
     const text = total.toLocaleString("es-ES");
     counts.forEach(el => el.textContent = text);
     containers.forEach(el => el.hidden = false);
@@ -447,8 +441,8 @@ export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null
     containers.forEach(el => el.hidden = true);
   }
 
-  // Actualizar barra de estado móvil con el nuevo total
-  updateMobileStatusBar(movies);
+  // Actualizar barra de estado móvil evitando re-consultas redundantes
+  updateMobileStatusBar(movies, total, showTotal);
 }
 
 export function initThemeToggle(): void {
@@ -491,12 +485,15 @@ export function clearAllSidebarAutocomplete(exceptForm: HTMLFormElement | null =
   });
 }
 
-export function updateMobileStatusBar(movies: MappedMovie[] | null = null): void {
+export function updateMobileStatusBar(
+  movies: MappedMovie[] | null = null,
+  totalMovies: number = getTotalMovies(),
+  showTotalCount: boolean = shouldShowTotalCount()
+): void {
   const { mobileStatusBar } = dom;
   if (!mobileStatusBar) return;
 
   const filters = getActiveFilters();
-  const totalMovies = getTotalMovies();
   
   // 1. Tipo dinámico basado en resultados
   let typeText = totalMovies === 1 ? "peli o serie" : "pelis y series";
@@ -533,7 +530,7 @@ export function updateMobileStatusBar(movies: MappedMovie[] | null = null): void
   }
 
   // 3. Total (Usando la lógica unificada de rango de años)
-  if (shouldShowTotalCount()) {
+  if (showTotalCount) {
     text = `${totalMovies.toLocaleString("es-ES")} ${text}`;
   } else {
     text = text.charAt(0).toUpperCase() + text.slice(1);
