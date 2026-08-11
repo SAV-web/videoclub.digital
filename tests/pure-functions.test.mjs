@@ -1,28 +1,23 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
-import { createServer } from "vite";
+import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
-let server;
+let viteEnv;
 let apiModule;
 let seoModule;
 let ratingModule;
 
 before(async () => {
-  server = await createServer({
-    appType: "custom",
-    logLevel: "silent",
-    server: { middlewareMode: true },
-  });
-
-  [apiModule, seoModule, ratingModule] = await Promise.all([
-    server.ssrLoadModule("/src/js/api.ts"),
-    server.ssrLoadModule("/src/js/seo.ts"),
-    server.ssrLoadModule("/src/js/components/rating.ts"),
+  viteEnv = await startViteSsrServer([
+    "/src/js/api.ts",
+    "/src/js/seo.ts",
+    "/src/js/components/rating.ts",
   ]);
+  [apiModule, seoModule, ratingModule] = viteEnv.modules;
 });
 
 after(async () => {
-  await server?.close();
+  await viteEnv?.close();
 });
 
 describe("api.ts (Normalización de Caché y Parámetros RPC)", () => {

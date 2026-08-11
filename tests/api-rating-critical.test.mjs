@@ -1,28 +1,23 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
-import { createServer } from "vite";
+import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
-let server;
+let viteEnv;
 let checkedIdsModule;
 let ratingModule;
 let stateModule;
 
 before(async () => {
-  server = await createServer({
-    appType: "custom",
-    logLevel: "silent",
-    server: { middlewareMode: true },
-  });
-
-  [checkedIdsModule, ratingModule, stateModule] = await Promise.all([
-    server.ssrLoadModule("/src/js/checkedIds.ts"),
-    server.ssrLoadModule("/src/js/components/rating.ts"),
-    server.ssrLoadModule("/src/js/state.ts"),
+  viteEnv = await startViteSsrServer([
+    "/src/js/checkedIds.ts",
+    "/src/js/components/rating.ts",
+    "/src/js/state.js",
   ]);
+  [checkedIdsModule, ratingModule, stateModule] = viteEnv.modules;
 });
 
 after(async () => {
-  await server?.close();
+  await viteEnv?.close();
 });
 
 describe("checkedIds.ts (Gestión de Caché de Películas Consultadas)", () => {
@@ -59,5 +54,13 @@ describe("rating.ts (Lógica de Valoración y Exclusividad Watchlist)", () => {
 
     // Al quitar la nota (null), no altera la watchlist (retorna undefined)
     assert.equal(ratingModule.resolveWatchlistMutationOnRate(null), undefined);
+  });
+
+  test("resolveRatingMutationOnWatchlist borra la nota asignada al añadir a la lista de pendientes", () => {
+    // Al marcar como pendiente (true), borra automáticamente la nota (retorna null)
+    assert.equal(ratingModule.resolveRatingMutationOnWatchlist(true), null);
+
+    // Al desmarcar de pendientes (false), no muta la nota (retorna undefined)
+    assert.equal(ratingModule.resolveRatingMutationOnWatchlist(false), undefined);
   });
 });

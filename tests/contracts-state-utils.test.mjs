@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
-import { createServer } from "vite";
+import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
-let server;
+let viteEnv;
 let constants;
 let contracts;
 let state;
@@ -10,23 +10,18 @@ let utils;
 let yearSliderModule;
 
 before(async () => {
-  server = await createServer({
-    appType: "custom",
-    logLevel: "silent",
-    server: { middlewareMode: true },
-  });
-
-  [constants, contracts, state, utils, yearSliderModule] = await Promise.all([
-    server.ssrLoadModule("/src/js/constants.js"),
-    server.ssrLoadModule("/src/js/contracts.js"),
-    server.ssrLoadModule("/src/js/state.js"),
-    server.ssrLoadModule("/src/js/utils.js"),
-    server.ssrLoadModule("/src/js/components/yearSlider.ts"),
+  viteEnv = await startViteSsrServer([
+    "/src/js/constants.js",
+    "/src/js/contracts.js",
+    "/src/js/state.js",
+    "/src/js/utils.js",
+    "/src/js/components/yearSlider.ts",
   ]);
+  [constants, contracts, state, utils, yearSliderModule] = viteEnv.modules;
 });
 
 after(async () => {
-  await server?.close();
+  await viteEnv?.close();
 });
 
 beforeEach(() => {
@@ -181,6 +176,10 @@ describe("state.js", () => {
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {
     state.setFilter("genre", "Drama", true);
     state.setFilter("country", "España", true);
+    state.setFilter("director", "Nolan", true);
+    state.setFilter("actor", "DiCaprio", true);
+    state.setFilter("excludedGenres", ["Terror"], true);
+
     const clearedFilters = state.setSearchTerm("  Matrix  ");
 
     const filters = state.getActiveFilters();
@@ -188,6 +187,25 @@ describe("state.js", () => {
     assert.equal(filters.searchTerm, "Matrix");
     assert.equal(filters.genre, null);
     assert.equal(filters.country, null);
+    assert.equal(filters.director, null);
+    assert.equal(filters.actor, null);
+    assert.deepEqual(filters.excludedGenres, []);
+  });
+
+  test("getActiveFilterCount cuenta los filtros activos ignorando valores por defecto", () => {
+    assert.equal(state.getActiveFilterCount(), 0);
+
+    state.setFilter("genre", "Acción", true);
+    assert.equal(state.getActiveFilterCount(), 1);
+
+    state.setFilter("country", "España", true);
+    assert.equal(state.getActiveFilterCount(), 2);
+
+    state.setFilter("year", "1990-2000", true);
+    assert.equal(state.getActiveFilterCount(), 3);
+
+    state.resetFiltersState();
+    assert.equal(state.getActiveFilterCount(), 0);
   });
 
   test("sincroniza URL con estado seguro", () => {
