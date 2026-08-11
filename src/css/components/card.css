@@ -18,8 +18,8 @@
 }
 
 @keyframes watchlist-glow {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 189, 7, 0)); }
-  50% { filter: drop-shadow(0 0 10px rgba(255, 189, 7, 0.8)); }
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(var(--color-star-gold-rgb), 0)); }
+  50% { filter: drop-shadow(0 0 10px rgba(var(--color-star-gold-rgb), 0.8)); }
 }
 
 @keyframes bookmark-settle {

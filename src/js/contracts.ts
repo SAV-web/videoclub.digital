@@ -7,6 +7,7 @@
 // =================================================================
 
 import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
+import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
 
 const SORT_VALUES = new Set<string>([
   "relevance,asc",
@@ -30,13 +31,16 @@ export const ERROR_CODES = {
   UNKNOWN: "UNKNOWN",
 } as const;
 
-export function parseYearRangeRaw(yearFilter?: string | null): [number, number] {
-  let years = (yearFilter || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
-  if (years.length === 1) years = [years[0], years[0]];
-  return [years[0] || CONFIG.YEAR_MIN, years[1] || CONFIG.YEAR_MAX];
+/**
+ * Convierte una cadena de filtro de año (ej: "1980-2020", "1995" o null) en una tupla [minYear, maxYear].
+ */
+export function parseYearRangeRaw(yearStr?: string | null): [number, number] {
+  if (!yearStr || !yearStr.trim()) return [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX];
+  const parts = yearStr.split("-").map(Number);
+  const min = isNaN(parts[0]) ? CONFIG.YEAR_MIN : parts[0];
+  const max = parts.length > 1 ? (isNaN(parts[1]) ? CONFIG.YEAR_MAX : parts[1]) : min;
+  return [min, max];
 }
-
-import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
 
 export const FILTER_KEYS: ReadonlyArray<string> = [
   "searchTerm",

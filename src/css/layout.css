@@ -125,14 +125,7 @@ body.sidebar-is-open .sidebar {
   @container (min-width: 1080px) { :where(body:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 }
 
-/* --- 5. TAMAÑOS DINÁMICOS Y ACCESIBILIDAD TÁCTIL --- */
-
-@media (min-width: 48em) {
-  :root { --font-size-md: 1.25rem; --font-size-lg: 1.5rem; --font-size-xl: 1.75rem; --font-size-xxl: 2.25rem; }
-}
-@media (min-width: 62em) {
-  :root { --font-size-md: 1.5rem; --font-size-lg: 1.75rem; --font-size-xl: 2.25rem; --font-size-xxl: 3rem; }
-}
+/* --- 5. ACCESIBILIDAD TÁCTIL --- */
 
 /* Hacemos los botones más altos en móviles para no fallar con el dedo gordo */
 @media (hover: none) and (pointer: coarse) {

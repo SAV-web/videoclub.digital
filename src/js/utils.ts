@@ -9,7 +9,8 @@
 // =================================================================
 
 import { CONFIG } from "./constants.js";
-import { ERROR_CODES } from "./contracts.js";
+import { ERROR_CODES, parseYearRangeRaw } from "./contracts.js";
+export { parseYearRangeRaw };
 import flagSpriteUrl from "../flags.svg";
 import { Movie, MappedMovie } from "./types.js";
 
@@ -35,16 +36,6 @@ export const formatYearRange = (
   return text;
 };
 
-/**
- * Convierte una cadena de filtro de año (ej: "1980-2020", "1995" o null) en una tupla [minYear, maxYear].
- */
-export function parseYearRangeRaw(yearStr: string | null | undefined): [number, number] {
-  if (!yearStr || !yearStr.trim()) return [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX];
-  const parts = yearStr.split("-").map(Number);
-  const min = isNaN(parts[0]) ? CONFIG.YEAR_MIN : parts[0];
-  const max = parts.length > 1 ? (isNaN(parts[1]) ? CONFIG.YEAR_MAX : parts[1]) : min;
-  return [min, max];
-}
 
 // URL del póster en alta calidad
 export const getHqPosterUrl = (img: string | null | undefined): string => 

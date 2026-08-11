@@ -492,7 +492,7 @@
   z-index: 100;
   width: 48px;
   height: 48px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(var(--color-surface-rgb), 0.9);
   border: 1px solid var(--color-border);
   border-radius: 50%;
   color: var(--color-text-primary);
@@ -518,7 +518,7 @@
   }
 
   :where(html.dark-mode) & {
-    background: rgba(40, 40, 40, 0.9);
+    background: rgba(var(--color-surface-rgb), 0.9);
   }
 }
 
@@ -775,7 +775,7 @@
 .form-group input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--color-bg);
 }
 
 .form-group input.is-valid {
