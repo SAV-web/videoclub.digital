@@ -1,17 +1,17 @@
 # Contratos de Datos - VIDEOCLUB.DIGITAL
 
-Este documento define las fronteras de datos que debe respetar la aplicación. El contrato ejecutable vive en `src/js/contracts.js`; este archivo explica su intención para mantenimiento.
+Este documento define las fronteras de datos que debe respetar la aplicación. El contrato ejecutable vive en `src/js/contracts.ts` y `src/js/types.ts`; este archivo explica su intención para mantenimiento.
 
 ## 1. Estado Global
 
 El estado público de la aplicación tiene esta forma:
 
-```js
+```ts
 {
   currentPage: number,
   totalMovies: number,
   activeFilters: ActiveFilters,
-  userMovieData: Record<movieId, UserMovieEntry>
+  userMovieData: Record<number, UserMovieEntry>
 }
 ```
 
@@ -24,9 +24,9 @@ Reglas:
 
 ## 2. Filtros
 
-`ActiveFilters` tiene esta forma:
+`ActiveFilters` (definido en `src/js/types.ts`) tiene esta forma:
 
-```js
+```ts
 {
   searchTerm: string,
   genre: string | null,
@@ -47,7 +47,7 @@ Reglas:
 Reglas:
 
 - Los textos se recortan con `trim`; textos vacíos pasan a `null`, salvo `searchTerm`, que pasa a `""`.
-- `year` acepta `YYYY` o `YYYY-YYYY` y se limita al rango `CONFIG.YEAR_MIN` - `CONFIG.YEAR_MAX`.
+- `year` acepta `YYYY` o `YYYY-YYYY` y se limita al rango `CONFIG.YEAR_MIN` - `CONFIG.YEAR_MAX`. La función pura de parseo `parseYearRangeRaw` reside de forma única en `contracts.ts` para evitar duplicidades o dependencias circulares.
 - `sort` solo acepta valores presentes en el selector de ordenación de `index.html`.
 - `mediaType` solo acepta `all`, `movies` o `series`.
 - `excludedGenres` y `excludedCountries` son arrays únicos, sin valores vacíos.
@@ -55,12 +55,12 @@ Reglas:
 
 ## 3. Respuestas de API
 
-La respuesta estándar de películas es:
+La respuesta estándar de películas (`ApiResponse`) es:
 
-```js
+```ts
 {
   total: number,
-  items: Movie[],
+  items: MappedMovie[],
   aborted?: true
 }
 ```
@@ -69,14 +69,14 @@ Reglas:
 
 - `total` debe ser un entero. `-1` significa "total desconocido".
 - `items` siempre es un array.
-- Cada película debe tener al menos `id` válido y `title` string antes de mapearse para UI.
+- Cada película debe tener al menos `id` válido y `title` string antes de mapearse para UI mediante `shapeRawMovieRow` y `mapMoviePayload`.
 - Una petición cancelada devuelve `{ aborted: true, total: -1, items: [] }` y no debe mostrarse como error al usuario.
 
 ## 4. Datos de Usuario
 
 `UserMovieEntry` tiene esta forma:
 
-```js
+```ts
 {
   rating: number | null,
   onWatchlist: boolean
@@ -89,12 +89,13 @@ Reglas:
 - `onWatchlist` siempre es booleano.
 - Las mutaciones optimistas deben pasar por `updateUserDataForMovie`.
 - Las escrituras remotas deben pasar por `setUserMovieDataAPI`.
+- Al puntuar una película, la mutación elimina la película de la Watchlist (`resolveWatchlistMutationOnRate`). De forma recíproca, al añadir una película a la Watchlist, se borra la puntuación existente (`resolveRatingMutationOnWatchlist`).
 
 ## 5. Errores
 
 Los errores de aplicación usan `AppError`:
 
-```js
+```ts
 {
   name: "AppError",
   code: ERROR_CODES.*,
@@ -103,7 +104,7 @@ Los errores de aplicación usan `AppError`:
 }
 ```
 
-Códigos permitidos:
+Códigos permitidos (`ERROR_CODES` en `contracts.ts`):
 
 - `ABORTED`: petición cancelada; no se muestra toast.
 - `AUTH_REQUIRED`: el usuario debe iniciar sesión.
@@ -118,9 +119,9 @@ Códigos permitidos:
 Las fronteras obligatorias son:
 
 1. URL hacia estado: `syncStateWithUrlParams`.
-2. UI hacia estado: setters de `state.js`.
+2. UI hacia estado: setters de `state.ts`.
 3. Estado hacia Supabase: `fetchMovies` y `setUserMovieDataAPI`.
-4. Supabase hacia UI: `normalizeMoviesResponse` y `mapMoviePayload`.
+4. Supabase hacia UI: `normalizeMoviesResponse`, `shapeRawMovieRow` y `mapMoviePayload`.
 5. Errores técnicos hacia usuario: `getFriendlyErrorMessage`.
 
 No se deben consumir datos externos directamente desde componentes sin pasar por estas fronteras.

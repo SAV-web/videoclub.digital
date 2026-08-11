@@ -220,7 +220,7 @@ export async function loadAndRenderMovies(
 
     // --- OPTIMIZACIÓN FILTRO DE AÑO ---
     if (isYearFilter) {
-      const gridTotalItems = hasVip ? effectiveTotal - 1 : effectiveTotal;
+      const gridTotalItems = hasVip ? effectiveTotal + 1 : effectiveTotal;
       const totalPages = getAdjustedTotalPages(gridTotalItems, basePageSize);
 
       // 1. Si el número total de películas CAMBIÓ o la página actual excede el límite de páginas (ej: estamos en pág 2 pero solo hay 1 página):
@@ -360,9 +360,9 @@ async function updateDomWithResults(
   const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
   const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
 
-  const gridTotalItems = hasVip ? totalMovies - 1 : totalMovies;
+  const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
 
-  if (gridTotalItems <= 0) {
+  if (totalMovies <= 0) {
     renderNoResults(dom.gridContainer, dom.paginationContainer, activeFilters);
     updateHeaderPaginationState(1, 0);
     return;

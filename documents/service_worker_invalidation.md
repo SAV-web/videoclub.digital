@@ -4,10 +4,10 @@ Este documento define cómo se invalidan las cachés controladas por `public/sw.
 
 ## 1. Caches Actuales
 
-`public/sw.js` crea tres namespaces versionados:
+`public/sw.js` define tres namespaces versionados:
 
 ```js
-const VERSION = "v9";
+const VERSION = "v202608111748"; // Inyectado automáticamente en cada `npm run build` vía plugin Vite
 const CACHE_STATIC = `videoclub-static-${VERSION}`;
 const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 const CACHE_API = `videoclub-api-${VERSION}`;
@@ -20,24 +20,22 @@ Cada cambio de `VERSION` crea cachés nuevas y elimina todas las cachés cuyo no
 | Recurso | Estrategia | Invalidación |
 | --- | --- | --- |
 | Navegación HTML | `Network First` | Se actualiza desde red siempre que haya conexión. Fallback a caché offline. |
-| `index.html` y críticos | Precarga en `install` | Requiere subida de `VERSION` si cambia el shell crítico. |
+| `index.html` y críticos | Precarga en `install` | Requiere subida de `VERSION` (automatizado en el proceso de build). |
 | JS/CSS/fuentes/iconos | `Stale While Revalidate` | Vite genera filenames con hash; el HTML nuevo referencia assets nuevos. |
 | Pósters Supabase Storage | `Cache First` | Persisten hasta cambio de `VERSION` o expulsión FIFO por límite. |
 | RPC / Functions | Cache API con ventana de frescura | Si hay caché, se devuelve rápido y se revalida en background. |
 | Auth / REST directo | Sin caché | Nunca se interceptan para evitar datos privados obsoletos. |
+| Service Worker Script (`sw.js`) | Automática vía Vite | `vite.config.ts` incluye un plugin (`injectSwVersion`) que reemplaza la constante `VERSION` con una marca temporal (`vYYYYMMDDHHMM`) en cada compilación. |
 
-## 3. Cuándo Incrementar `VERSION`
+## 3. Cuándo y Cómo se Incrementa `VERSION`
 
-Incrementa `VERSION` en `public/sw.js` cuando ocurra cualquiera de estos casos:
+La inyección de versión está **automatizada en el pipeline de Vite** (`vite.config.ts`):
 
-1. Cambia la lógica del Service Worker.
-2. Cambia la estrategia de caché de cualquier tipo de recurso.
-3. Cambia `CRITICAL_ASSETS`.
-4. Cambia el formato de respuestas cacheadas de RPC.
-5. Cambian rutas públicas de Storage que puedan mantener assets antiguos con el mismo nombre.
-6. Necesitas forzar limpieza global de cachés de usuarios.
+- Cada vez que ejecutas `npm run build`, el plugin `injectSwVersion` sustituye `__SW_VERSION__` o `const VERSION = "..."` en `dist/sw.js` por una firma única basada en la fecha y hora UTC (`vYYYYMMDDHHMM`).
+- Esto garantiza que en cada nuevo despliegue en producción los clientes invaliden de forma limpia y transparente las cachés anteriores de assets estáticos y API.
 
-No es obligatorio incrementar `VERSION` para cambios normales de JS/CSS generados por Vite, porque los assets salen con hash y `index.html` se resuelve con `Network First`.
+Si deseas realizar un cambio manual durante desarrollo local sin compilación completa:
+1. Puedes actualizar manualmente la cadena `VERSION` en `dist/sw.js`.
 
 ## 4. TTL y Límites
 
@@ -64,12 +62,11 @@ Implicación: un usuario puede recibir la nueva estrategia durante una sesión a
 
 Antes de desplegar:
 
-1. Ejecuta `npm run build`.
-2. Si cambió `public/sw.js`, sube `VERSION`.
-3. Si cambian contratos de RPC cacheadas, sube `VERSION`.
-4. Comprueba en DevTools > Application > Service Workers que la nueva versión queda activa.
-5. Comprueba en DevTools > Application > Cache Storage que solo quedan caches `videoclub-*-vX` actuales tras `activate`.
-6. Haz una prueba offline de navegación básica.
+1. Ejecuta `npm run build` (el plugin de Vite inyectará automáticamente el nuevo `VERSION` en `dist/sw.js`).
+2. Comprueba en la consola la salida del build: `✓ Service Worker version injected: vYYYYMMDDHHMM in dist/sw.js`.
+3. Comprueba en DevTools > Application > Service Workers que la nueva versión queda activa.
+4. Comprueba en DevTools > Application > Cache Storage que solo quedan caches `videoclub-*-vYYYYMMDDHHMM` actuales tras `activate`.
+5. Haz una prueba offline de navegación básica.
 
 ## 7. Riesgos Conocidos
 
@@ -79,4 +76,4 @@ Antes de desplegar:
 
 ## 8. Relación con Otras Cachés
 
-`CONFIG.STORAGE_VERSION` en `src/js/constants.js` afecta a `localStorage` gestionado por `LocalStore`, no a Cache Storage del Service Worker. Si cambia el formato de datos locales y también la respuesta cacheada por SW, deben incrementarse ambos mecanismos cuando corresponda.
+`CONFIG.STORAGE_VERSION` en `src/js/constants.ts` afecta a `localStorage` gestionado por `LocalStore`, no a Cache Storage del Service Worker. Si cambia el formato de datos locales y también la respuesta cacheada por SW, deben incrementarse ambos mecanismos cuando corresponda.

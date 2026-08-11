@@ -188,8 +188,8 @@ body.sidebar-collapsed .sidebar {
   @media (hover: none) and (pointer: coarse) { opacity: 1; color: var(--color-text-tertiary); }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
-  .filter-link.active &,
-  .filter-link.is-excluded & { color: #fff; }
+  .filter-link.active & { color: #fff; }
+  .filter-link.is-excluded & { display: none !important; }
   & svg { width: 22px; height: 22px; stroke-width: 2; }
 }
 

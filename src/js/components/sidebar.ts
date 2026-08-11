@@ -18,14 +18,14 @@ import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, appEvents } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo } from "../constants.js";
-import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js"; 
+import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
 import { loadAndRenderMovies } from "../main.js";
 import spriteUrl from "../../sprite.svg";
 import { ActiveFilters } from '../types.js';
 
 // --- Constantes Locales ---
 const MOBILE_BREAKPOINT = 768;
-const MOBILE_HEIGHT_LIMIT = 500; 
+const MOBILE_HEIGHT_LIMIT = 500;
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
 let DRAWER_WIDTH = 300;
 
@@ -68,23 +68,23 @@ interface TouchState {
 }
 
 let touchState: TouchState = {
-  isDragging: false, 
+  isDragging: false,
   isHorizontalDrag: false,
-  startX: 0, 
-  startY: 0, 
+  startX: 0,
+  startY: 0,
   startTime: 0,
-  currentTranslate: 0, 
-  startTranslate: 0, 
-  isInteractive: false 
+  currentTranslate: 0,
+  startTranslate: 0,
+  isInteractive: false
 };
 
 // Guarda el año si has tocado las casillas manuales
 function applyPendingYearFilters(): void {
   if (!dom.yearStartInput || !dom.yearEndInput) return;
-  
+
   const currentStart = parseInt(dom.yearStartInput.value, 10);
   const currentEnd = parseInt(dom.yearEndInput.value, 10);
-  
+
   if (isNaN(currentStart) || isNaN(currentEnd)) return;
 
   const activeFilters = getActiveFilters();
@@ -99,9 +99,9 @@ function applyPendingYearFilters(): void {
 function setSidebarState(isOpen: boolean): void {
   if (isMobileLayout() && dom.sidebar) {
     document.body.classList.toggle(CSS_CLASSES.SIDEBAR_OPEN, isOpen);
-    dom.sidebar.style.transform = ''; 
+    dom.sidebar.style.transform = '';
     touchState.currentTranslate = isOpen ? 0 : -DRAWER_WIDTH;
-    
+
     if (isOpen) {
       yearInteractionState = { start: false, end: false };
     } else {
@@ -135,7 +135,7 @@ function updateDrawerWidth(): void {
 function handleTouchStart(e: TouchEvent): void {
   if (!isMobileLayout()) return;
   if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
-  
+
   const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
   const target = e.target as HTMLElement;
 
@@ -158,7 +158,7 @@ function handleTouchStart(e: TouchEvent): void {
   touchState.startY = e.touches[0].clientY;
   touchState.startTime = Date.now();
   touchState.startTranslate = isOpen ? 0 : -DRAWER_WIDTH;
-  
+
   const isEdgeSwipe = !isOpen && touchState.startX < 30;
   touchState.isInteractive = !isEdgeSwipe && !!target.closest('button, a, input, select, textarea, .movie-card, .custom-year-slider, .slider-handle');
 
@@ -175,8 +175,8 @@ function handleTouchMove(e: TouchEvent): void {
   const diffY = currentY - touchState.startY;
 
   if (!touchState.isHorizontalDrag) {
-    const threshold = touchState.isInteractive ? 15 : 10; 
-    
+    const threshold = touchState.isInteractive ? 15 : 10;
+
     if (Math.abs(diffX) < threshold && Math.abs(diffY) < threshold) return;
 
     if (Math.abs(diffY) > Math.abs(diffX)) {
@@ -184,24 +184,24 @@ function handleTouchMove(e: TouchEvent): void {
       document.removeEventListener("touchmove", handleTouchMove as EventListener);
       return;
     }
-    
+
     touchState.isHorizontalDrag = true;
-    touchState.startX = currentX; 
+    touchState.startX = currentX;
     touchState.startY = currentY;
     touchState.startTime = Date.now();
 
-    dom.sidebar.classList.add(CSS_CLASSES.IS_DRAGGING); 
-    document.body.classList.add(CSS_CLASSES.SIDEBAR_DRAGGING_BODY); 
+    dom.sidebar.classList.add(CSS_CLASSES.IS_DRAGGING);
+    document.body.classList.add(CSS_CLASSES.SIDEBAR_DRAGGING_BODY);
   }
 
   let newTranslate = touchState.startTranslate + (currentX - touchState.startX);
 
   // Efecto goma elástica al chocar con los bordes
   if (newTranslate > 0) {
-    newTranslate *= 0.2; 
+    newTranslate *= 0.2;
   } else if (newTranslate < -DRAWER_WIDTH) {
     const overflow = Math.abs(newTranslate + DRAWER_WIDTH);
-    newTranslate = -DRAWER_WIDTH - (overflow * 0.2); 
+    newTranslate = -DRAWER_WIDTH - (overflow * 0.2);
   }
 
   touchState.currentTranslate = newTranslate;
@@ -212,12 +212,12 @@ function handleTouchMove(e: TouchEvent): void {
 function handleTouchEnd(e: TouchEvent): void {
   if (!touchState.isDragging || !dom.sidebar) return;
   document.removeEventListener("touchmove", handleTouchMove as EventListener);
-  
+
   if (!touchState.isHorizontalDrag) {
     touchState.isDragging = false;
     return;
   }
-  
+
   touchState.isDragging = false;
   touchState.isHorizontalDrag = false;
 
@@ -231,11 +231,11 @@ function handleTouchEnd(e: TouchEvent): void {
 
   let shouldOpen;
   if (velocity > SWIPE_VELOCITY_THRESHOLD) {
-    shouldOpen = true; 
+    shouldOpen = true;
   } else if (velocity < -SWIPE_VELOCITY_THRESHOLD) {
-    shouldOpen = false; 
+    shouldOpen = false;
   } else {
-    shouldOpen = touchState.currentTranslate > -DRAWER_WIDTH * 0.5; 
+    shouldOpen = touchState.currentTranslate > -DRAWER_WIDTH * 0.5;
   }
 
   if (shouldOpen) openMobileDrawer();
@@ -259,7 +259,7 @@ function initTouchGestures(): void {
   }, 250);
 
   window.addEventListener("resize", handleResize);
-  
+
   if (screen?.orientation) {
     screen.orientation.addEventListener("change", handleResize);
   } else {
@@ -288,7 +288,7 @@ function toggleRotationMode(forceState: boolean | null = null): void {
     const currentPage = getCurrentPage();
     const oldPageSize = shouldDisable ? CONFIG.ITEMS_PER_PAGE : CONFIG.WALL_MODE_ITEMS_PER_PAGE;
     const newPageSize = shouldDisable ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-    
+
     const firstItemIndex = (currentPage - 1) * oldPageSize;
     const newPage = Math.floor(firstItemIndex / newPageSize) + 1;
 
@@ -298,7 +298,7 @@ function toggleRotationMode(forceState: boolean | null = null): void {
     button.title = shouldDisable ? "Giro automático" : "Vista Rápida";
     button.setAttribute("aria-pressed", String(shouldDisable));
     LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
-    
+
     loadAndRenderMovies(newPage, { forceSkeleton: true });
   };
 
@@ -347,10 +347,10 @@ function initPinchGestures(): void {
 
     if (Math.abs(diff) > 60) {
       if (diff < 0) {
-         toggleRotationMode(); 
-         activateCooldown();
-         hasTriggered = true;
-      } 
+        toggleRotationMode();
+        activateCooldown();
+        hasTriggered = true;
+      }
     }
   }, { passive: true });
 
@@ -397,7 +397,7 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
 
   const fragment = document.createDocumentFragment();
   suggestions.forEach((suggestion, index) => {
-    const isActive = index === 0; 
+    const isActive = index === 0;
     const item = createElement("div", {
       className: `${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}${isActive ? ' is-active' : ''}`,
       dataset: { value: suggestion },
@@ -435,35 +435,47 @@ function updateAllFilterControls(): void {
     const link = filterLinks[i];
     const type = link.dataset.filterType || "";
     const value = link.dataset.filterValue || "";
-    
-    const isExcluded = (type === "genre" && excludedGenresSet.has(value)) || 
-                       (type === "country" && excludedCountriesSet.has(value));
-    
+
+    const isExcluded = (type === "genre" && excludedGenresSet.has(value)) ||
+      (type === "country" && excludedCountriesSet.has(value));
+
     let normValue = link._normValue;
     if (normValue === undefined) {
       normValue = type === 'genre' ? normalizeGenreText(value) : normalizeText(value);
       link._normValue = normValue;
     }
-    
+
     const isActive = normActiveFilters[type] === normValue;
-    
+
     let shouldHide = isActive || isExcluded;
     if (type === 'studio' || type === 'genre' || type === 'country' || type === 'selection') {
       shouldHide = false;
       link.classList.toggle('active', isActive);
       link.classList.toggle('is-excluded', isExcluded);
+
+      const textSpan = link.querySelector("span:not(.sr-only):not(.remove-filter-btn)");
+      if (textSpan) {
+        const linkWithText = link as HTMLElement & { _originalText?: string };
+        if (linkWithText._originalText === undefined) {
+          linkWithText._originalText = textSpan.textContent || value;
+        }
+        const targetText = isExcluded ? `(-) ${linkWithText._originalText}` : linkWithText._originalText;
+        if (textSpan.textContent !== targetText) {
+          textSpan.textContent = targetText;
+        }
+      }
     }
-    
+
     if (link.hidden !== shouldHide) link.hidden = shouldHide;
 
     if (!shouldHide) {
-        const shouldDisable = limitReached;
-        if (link.hasAttribute("disabled") !== shouldDisable) {
-            link.toggleAttribute("disabled", shouldDisable);
-            link.setAttribute("aria-disabled", String(shouldDisable)); 
-            link.style.pointerEvents = shouldDisable ? "none" : "auto";
-            link.style.opacity = shouldDisable ? "0.5" : "1";
-        }
+      const shouldDisable = limitReached;
+      if (link.hasAttribute("disabled") !== shouldDisable) {
+        link.toggleAttribute("disabled", shouldDisable);
+        link.setAttribute("aria-disabled", String(shouldDisable));
+        link.style.pointerEvents = shouldDisable ? "none" : "auto";
+        link.style.opacity = shouldDisable ? "0.5" : "1";
+      }
     }
   }
 
@@ -471,36 +483,83 @@ function updateAllFilterControls(): void {
   for (let i = 0; i < filterInputs.length; i++) {
     const input = filterInputs[i];
     if (input.disabled !== limitReached) {
-        input.disabled = limitReached;
-        const form = input.closest("form");
-        input.placeholder = limitReached ? "Límite de filtros" : `Otro ${form?.dataset.filterType}...`;
+      input.disabled = limitReached;
+      const form = input.closest("form");
+      input.placeholder = limitReached ? "Límite de filtros" : `Otro ${form?.dataset.filterType}...`;
     }
   }
 
   if (dom.myListButton) {
-    const state = activeFilters.myList;
-    dom.myListButton.classList.toggle("active", !!state);
-    
-    // El icono refleja el estado ACTUAL.
-    // El Tooltip / Title informa de la ACCIÓN que ocurrirá al pulsar (próximo estado).
-    let iconHtml: string = ICONS.LIST;
-    let nextTitle = "Mis Puntuaciones"; // Estado actual: Todas -> Al pulsar: Mis Puntuaciones
-    
-    if (state === 'rated') {
+    const isMyListActive = !!activeFilters.myList;
+    dom.myListButton.classList.toggle("active", isMyListActive);
+
+    let iconHtml: string = ICONS.STAR;
+    let nextTitle = "Filtrar por Mi Lista";
+    if (activeFilters.myList === 'rated') {
       iconHtml = ICONS.STAR;
-      nextTitle = "Pendiente"; // Estado actual: Mis Puntuaciones -> Al pulsar: Pendiente
-    } else if (state === 'watchlist') {
+      nextTitle = "Vistas / Puntuadas";
+    } else if (activeFilters.myList === 'watchlist') {
       iconHtml = ICONS.WATCHLIST;
-      nextTitle = "Mi Lista"; // Estado actual: Pendiente -> Al pulsar: Mi Lista
-    } else if (state === 'mixed') {
+      nextTitle = "Pendientes de ver";
+    } else if (activeFilters.myList === 'mixed') {
       iconHtml = ICONS.LIST;
-      nextTitle = "Todas las películas"; // Estado actual: Mi Lista -> Al pulsar: Todas
+      nextTitle = "Mi Lista (Combinado)";
     }
-    
     dom.myListButton.innerHTML = iconHtml;
     dom.myListButton.title = nextTitle;
     dom.myListButton.setAttribute("aria-label", nextTitle);
   }
+}
+
+export function isPredefinedFilterItem(type: string, value: string): boolean {
+  if (!value || !type) return false;
+  const normVal = value.trim().toLowerCase();
+
+  if (type === 'selection') {
+    const items = FILTER_CONFIG.selection.items;
+    const titles = FILTER_CONFIG.selection.titles;
+    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal) ||
+      (titles ? Object.keys(titles).some(k => k.toLowerCase() === normVal || titles[k as keyof typeof titles].toLowerCase() === normVal) : false);
+  }
+
+  if (type === 'studio') {
+    const items = FILTER_CONFIG.studio.items;
+    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
+  }
+
+  if (type === 'genre') {
+    const items = FILTER_CONFIG.genre.items;
+    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
+  }
+
+  if (type === 'country') {
+    const items = FILTER_CONFIG.country.items;
+    const isItem = Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
+    const isGroup = Object.values(REGIONAL_GROUPS).some(r => r.value.toLowerCase() === normVal || r.label.toLowerCase() === normVal);
+    return isItem || isGroup;
+  }
+
+  return false;
+}
+
+export function updatePillVisibility(): void {
+  Object.keys(sectionContainers).forEach(type => {
+    const cont = sectionContainers[type];
+    if (!cont) return;
+    const section = cont.closest('.collapsible-section');
+    const isSectionOpen = section?.classList.contains(CSS_CLASSES.ACTIVE) ?? false;
+
+    Array.from(cont.children).forEach(child => {
+      const pill = child as HTMLElement;
+      const filterType = pill.dataset.filterType || type;
+      const filterVal = pill.dataset.filterValue || '';
+
+      const isPredefined = isPredefinedFilterItem(filterType, filterVal);
+      const shouldHide = isSectionOpen && isPredefined;
+
+      pill.style.display = shouldHide ? 'none' : '';
+    });
+  });
 }
 
 let lastPillState: Record<string, string> = {};
@@ -518,14 +577,14 @@ function renderFilterPills(): void {
     const exc = type === 'genre' ? (activeFilters.excludedGenres || []) : type === 'country' ? (activeFilters.excludedCountries || []) : [];
     const stateKey = `${type}-combined`;
     const currState = `${(inc as string) || ""}|${exc.join(",")}`;
-    
+
     if (lastPillState[stateKey] === currState) {
       if (inc) pillIndex++;
       pillIndex += exc.length;
       return;
     }
     lastPillState[stateKey] = currState;
-    
+
     const desired: Array<{ val: string; exc: boolean }> = [];
     if (inc && typeof inc === 'string') desired.push({ val: inc, exc: false });
     exc.forEach(v => desired.push({ val: v, exc: true }));
@@ -535,13 +594,13 @@ function renderFilterPills(): void {
 
     desired.forEach(item => {
       let pill = exist.find(p => p.dataset.filterValue === item.val && p.classList.contains("filter-pill--exclude") === item.exc);
-      if (pill) { 
-        kept.add(pill); 
-        cont.appendChild(pill); 
+      if (pill) {
+        kept.add(pill);
+        cont.appendChild(pill);
       } else {
         pill = createElement("div", { className: `filter-pill ${item.exc ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: item.val } });
         pill.style.setProperty("--pill-index", String(pillIndex));
-        
+
         const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string>; titles?: Record<string, string> } | undefined;
         let text = config?.items?.[item.val] || config?.items?.[item.val.toUpperCase()];
         if (!text && type === 'selection' && FILTER_CONFIG.selection.titles) {
@@ -550,9 +609,10 @@ function renderFilterPills(): void {
         if (!text && type === 'country') {
           text = Object.values(REGIONAL_GROUPS).find(r => r.value === item.val)?.label;
         }
-        
-        pill.appendChild(createElement("span", { textContent: text || item.val }));
-        pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: item.exc ? ICONS.PAUSE_SMALL : "×", attributes: { "aria-hidden": "true" } }));
+
+        const pillLabel = item.exc ? `(-) ${text || item.val}` : (text || item.val);
+        pill.appendChild(createElement("span", { textContent: pillLabel }));
+        pill.appendChild(createElement("span", { className: "remove-filter-btn", innerHTML: "×", attributes: { "aria-hidden": "true" } }));
         cont.appendChild(pill);
       }
       pillIndex++;
@@ -562,6 +622,7 @@ function renderFilterPills(): void {
   });
 
   updateAllFilterControls();
+  updatePillVisibility();
 }
 
 // --- 4. ACCIONES (Clics en botones de filtros) ---
@@ -569,7 +630,7 @@ function renderFilterPills(): void {
 async function handleMyListToggle(): Promise<void> {
   const currentFilters = getActiveFilters();
   const current = currentFilters.myList;
-  
+
   // Ciclo: Mis Puntuaciones -> Pendiente -> Mi lista -> Todas
   const cycle: Array<string | null> = ['rated', 'watchlist', 'mixed', null];
   const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
@@ -577,7 +638,7 @@ async function handleMyListToggle(): Promise<void> {
 
   triggerHapticFeedback('medium');
   if (dom.myListButton) triggerPopAnimation(dom.myListButton);
-  
+
   // Resetear filtros pero mantener sort y mediaType
   resetFiltersState();
   setSort(currentFilters.sort);
@@ -603,47 +664,47 @@ async function handleMyListToggle(): Promise<void> {
 
 async function handleFilterChangeOptimistic(type: string, value: string | null, forceSet = false): Promise<void> {
   const previousFilters = getActiveFilters();
-  
+
   if (value && (type === 'actor' || type === 'director')) {
     const currentSort = previousFilters.sort;
     const currentMediaType = previousFilters.mediaType;
-    
+
     resetFiltersState();
     setSort(currentSort);
     setMediaType(currentMediaType);
-    setFilter(type, value, true); 
-    setFilter('myList', null); 
-    
+    setFilter(type, value, true);
+    setFilter('myList', null);
+
     appEvents.emit("updateSidebarUI");
-    
+
     const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
     if (mainSearchInput) mainSearchInput.value = "";
 
     renderFilterPills();
     appEvents.emit("uiActionTriggered");
-    
-    try { 
-      await loadAndRenderMovies(1); 
-    } catch (error: unknown) { 
-      if ((error as Error)?.name !== "AbortError") showToast("Error al cargar filmografía.", "error"); 
+
+    try {
+      await loadAndRenderMovies(1);
+    } catch (error: unknown) {
+      if ((error as Error)?.name !== "AbortError") showToast("Error al cargar filmografía.", "error");
     }
-    
+
     return;
   }
 
   if (value) {
-    if (type === 'selection' && previousFilters.studio) setFilter('studio', null); 
+    if (type === 'selection' && previousFilters.studio) setFilter('studio', null);
     else if (type === 'studio' && previousFilters.selection) setFilter('selection', null);
   }
-  
+
   const isActivating = forceSet || previousFilters[type as keyof ActiveFilters] !== value;
   const newValue = isActivating ? value : null;
-  
+
   if (newValue && type !== 'actor' && type !== 'director') {
     if (previousFilters.actor) setFilter('actor', null);
     if (previousFilters.director) setFilter('director', null);
   }
-  
+
   if (newValue) setFilter('myList', null);
 
   // Si activamos un filtro, limpiamos la búsqueda de texto
@@ -660,8 +721,8 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
   if (newValue && type === 'genre') {
     const currentExcluded = previousFilters.excludedGenres || [];
     if (currentExcluded.includes(newValue)) {
-       const newExcluded = currentExcluded.filter(g => g !== newValue);
-       setFilter('excludedGenres', newExcluded, true);
+      const newExcluded = currentExcluded.filter(g => g !== newValue);
+      setFilter('excludedGenres', newExcluded, true);
     }
   }
 
@@ -671,13 +732,13 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
     if (type === 'studio' && previousFilters.selection) setFilter('selection', previousFilters.selection);
     return;
   }
-  
+
   renderFilterPills();
   const isYearFilter = type === 'year';
   const targetPage = isYearFilter ? getCurrentPage() : 1;
 
-  try { 
-    await loadAndRenderMovies(targetPage, { isYearFilter, replaceHistory: isYearFilter }); 
+  try {
+    await loadAndRenderMovies(targetPage, { isYearFilter, replaceHistory: isYearFilter });
   } catch (error: unknown) {
     if ((error as Error)?.name === "AbortError") return;
     if (import.meta.env.DEV) console.error("Fallo al aplicar filtro:", error);
@@ -695,7 +756,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
 
 async function handleToggleExcludedFilterOptimistic(type: string, value: string): Promise<void> {
   const previousState = getActiveFilters();
-  
+
   if (type === 'country' && previousState.country) {
     return;
   }
@@ -717,7 +778,7 @@ async function handleToggleExcludedFilterOptimistic(type: string, value: string)
 
   const newState = getActiveFilters();
   const isNowExcluded = (type === 'genre' && newState.excludedGenres.includes(value)) ||
-                        (type === 'country' && newState.excludedCountries.includes(value));
+    (type === 'country' && newState.excludedCountries.includes(value));
 
   if (isNowExcluded) {
     const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string> } | undefined;
@@ -727,13 +788,13 @@ async function handleToggleExcludedFilterOptimistic(type: string, value: string)
 
   renderFilterPills();
   appEvents.emit("uiActionTriggered");
-  try { 
-    await loadAndRenderMovies(1); 
+  try {
+    await loadAndRenderMovies(1);
   } catch (error: unknown) {
     if ((error as Error)?.name === "AbortError") return;
     showToast(`No se pudo aplicar el filtro de exclusión.`, "error");
-    toggleExcludedFilter(type, value); 
-    setFilter("country", previousState.country); 
+    toggleExcludedFilter(type, value);
+    setFilter("country", previousState.country);
     setFilter("genre", previousState.genre);
     renderFilterPills();
   }
@@ -760,10 +821,12 @@ export function collapseAllSections(): void {
     section.classList.remove("is-ready");
     section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
   });
-  
+
   if (dom.sidebarInnerWrapper) {
     dom.sidebarInnerWrapper.classList.toggle("is-compact", hasCompactTriggeringFilters());
   }
+
+  updatePillVisibility();
 }
 
 // =================================================================
@@ -773,7 +836,7 @@ export function collapseAllSections(): void {
 function initYearSlider(): void {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
-  
+
   const pivotYear = 2000;
 
   const currentFilters = getActiveFilters();
@@ -787,10 +850,10 @@ function initYearSlider(): void {
     start: initialYears,
   });
 
-  sliderInstance.on("update", (values, handle) => { 
+  sliderInstance.on("update", (values, handle) => {
     if (yearInputs[handle]) {
       const yearVal = Number(values[handle]);
-      yearInputs[handle]!.value = String(yearVal); 
+      yearInputs[handle]!.value = String(yearVal);
     }
   });
 
@@ -800,7 +863,7 @@ function initYearSlider(): void {
       if (handle === 0) end = start; else start = end;
     }
     const yearFilter = start === end ? `${start}` : `${start}-${end}`;
-    
+
     if (isMobileLayout()) {
       if (autoClose && yearInteractionState.start && yearInteractionState.end) {
         closeMobileDrawer();
@@ -811,15 +874,15 @@ function initYearSlider(): void {
   };
 
   const debouncedUpdate = debounce(updateSliderFilter, 500);
-  
+
   sliderInstance.on("set", (values, handle) => {
     triggerHapticFeedback("light");
     const h = Number(handle);
     if (h === 0) yearInteractionState.start = true;
     if (h === 1) yearInteractionState.end = true;
-    debouncedUpdate(values, handle, true); 
+    debouncedUpdate(values, handle, true);
   });
-  
+
   yearInputs.forEach((input, index) => {
     input.addEventListener("change", (e) => {
       const target = e.target as HTMLInputElement;
@@ -827,11 +890,11 @@ function initYearSlider(): void {
       const newValue = parseFloat(cleanVal);
       if (isNaN(newValue)) return;
       const currentValues = sliderInstance.get();
-      
+
       const triggerUpdate = (vals: Array<string | number>) => {
         if (index === 0) yearInteractionState.start = true;
         if (index === 1) yearInteractionState.end = true;
-        debouncedUpdate(vals, index, false); 
+        debouncedUpdate(vals, index, false);
       };
 
       if (currentValues[0] === currentValues[1]) {
@@ -846,10 +909,10 @@ function initYearSlider(): void {
   });
 
   appEvents.on("updateSidebarUI", () => {
-    debouncedUpdate.cancel(); 
+    debouncedUpdate.cancel();
     const currentFilters = getActiveFilters();
     const years = parseYearRangeRaw(currentFilters.year);
-    sliderInstance.set(years, false); 
+    sliderInstance.set(years, false);
   });
 }
 
@@ -859,9 +922,9 @@ function setupYearInputSteppers(): void {
     const stepperUp = wrapper.querySelector(".stepper-btn.stepper-up") as HTMLButtonElement | null;
     const stepperDown = wrapper.querySelector(".stepper-btn.stepper-down") as HTMLButtonElement | null;
     if (!input || !stepperUp || !stepperDown) return;
-    
+
     const updateYearValue = (increment: number) => {
-      triggerHapticFeedback('medium'); 
+      triggerHapticFeedback('medium');
       const cleanVal = input.value.replace(/[^0-9]/g, "");
       let currentValue = parseInt(cleanVal, 10);
       if (isNaN(currentValue)) currentValue = increment > 0 ? CONFIG.YEAR_MIN : CONFIG.YEAR_MAX;
@@ -874,11 +937,11 @@ function setupYearInputSteppers(): void {
   });
 }
 
-const suggestionFetchers: Record<string, (term: string) => Promise<string[]>> = { 
-  genre: fetchGenreSuggestions, 
-  director: fetchDirectorSuggestions, 
-  actor: fetchActorSuggestions, 
-  country: fetchCountrySuggestions 
+const suggestionFetchers: Record<string, (term: string) => Promise<string[]>> = {
+  genre: fetchGenreSuggestions,
+  director: fetchDirectorSuggestions,
+  actor: fetchActorSuggestions,
+  country: fetchCountrySuggestions
 };
 
 const sanitizeSearchTerm = (term: string) => term.replace(/%/g, '\\%').replace(/_/g, '\\_');
@@ -894,7 +957,7 @@ function setupAutocompleteHandlers(): void {
     input.setAttribute("role", "combobox");
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
-    
+
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
@@ -908,64 +971,64 @@ function setupAutocompleteHandlers(): void {
     const debouncedFetch = debounce(async () => {
       const rawTerm = input.value.trim();
       if (rawTerm.length < 3) { clearAllSidebarAutocomplete(); return; }
-      
+
       const apiTerm = sanitizeSearchTerm(rawTerm);
       const suggestions = await fetcher(apiTerm);
       renderSidebarAutocomplete(form, suggestions, rawTerm);
     }, CONFIG.SEARCH_DEBOUNCE_DELAY);
-    
+
     input.addEventListener("input", debouncedFetch);
-    
+
     input.addEventListener("keydown", (e: KeyboardEvent) => {
-       if (e.key === "Enter") e.preventDefault();
+      if (e.key === "Enter") e.preventDefault();
 
-       const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
-       if (!resultsContainer || resultsContainer.children.length === 0) return;
-       
-       const items = resultsContainer.children as HTMLCollectionOf<HTMLElement>;
-       let activeIndex = -1;
-       for (let i = 0; i < items.length; i++) {
-         if (items[i].classList.contains('is-active')) { activeIndex = i; break; }
-       }
-       
-       const updateActiveSuggestion = (index: number) => {
-         for (let i = 0; i < items.length; i++) {
-           items[i].classList.remove("is-active");
-           items[i].setAttribute("aria-selected", "false");
-         }
-         if (index >= 0 && items[index]) {
-           items[index].classList.add("is-active");
-           items[index].setAttribute("aria-selected", "true");
-           input.setAttribute("aria-activedescendant", items[index].id);
-           items[index].scrollIntoView({ block: 'nearest' });
-         } else { input.removeAttribute("aria-activedescendant"); }
-       };
+      const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+      if (!resultsContainer || resultsContainer.children.length === 0) return;
 
-       switch (e.key) {
-        case "ArrowDown": 
-          e.preventDefault(); 
-          activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : -1; 
-          updateActiveSuggestion(activeIndex); 
+      const items = resultsContainer.children as HTMLCollectionOf<HTMLElement>;
+      let activeIndex = -1;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].classList.contains('is-active')) { activeIndex = i; break; }
+      }
+
+      const updateActiveSuggestion = (index: number) => {
+        for (let i = 0; i < items.length; i++) {
+          items[i].classList.remove("is-active");
+          items[i].setAttribute("aria-selected", "false");
+        }
+        if (index >= 0 && items[index]) {
+          items[index].classList.add("is-active");
+          items[index].setAttribute("aria-selected", "true");
+          input.setAttribute("aria-activedescendant", items[index].id);
+          items[index].scrollIntoView({ block: 'nearest' });
+        } else { input.removeAttribute("aria-activedescendant"); }
+      };
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          activeIndex = activeIndex < items.length - 1 ? activeIndex + 1 : -1;
+          updateActiveSuggestion(activeIndex);
           break;
-        case "ArrowUp": 
-          e.preventDefault(); 
-          activeIndex = activeIndex > -1 ? activeIndex - 1 : items.length - 1; 
-          updateActiveSuggestion(activeIndex); 
+        case "ArrowUp":
+          e.preventDefault();
+          activeIndex = activeIndex > -1 ? activeIndex - 1 : items.length - 1;
+          updateActiveSuggestion(activeIndex);
           break;
-        case "Enter": 
+        case "Enter":
           if (activeIndex >= 0 && items[activeIndex]) {
             items[activeIndex].click();
           } else if (items.length > 0) {
             items[0].click();
           }
           break;
-        case "Escape": 
-          e.preventDefault(); 
-          clearAllSidebarAutocomplete(); 
+        case "Escape":
+          e.preventDefault();
+          clearAllSidebarAutocomplete();
           break;
       }
     });
-    
+
     form.addEventListener("click", (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const suggestionItem = target.closest<HTMLElement>(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
@@ -984,12 +1047,12 @@ function handlePillClick(e: MouseEvent): boolean {
   const target = e.target as HTMLElement;
   const pill = target.closest<HTMLElement>(".filter-pill");
   if (!pill) return false;
-  
+
   triggerHapticFeedback('medium');
   const { filterType, filterValue } = pill.dataset;
   if (!filterType || !filterValue) return false;
   pill.classList.add("is-removing");
-  
+
   pill.addEventListener("animationend", () => {
     if (pill.classList.contains("filter-pill--exclude")) {
       handleToggleExcludedFilterOptimistic(filterType, filterValue);
@@ -997,7 +1060,7 @@ function handlePillClick(e: MouseEvent): boolean {
       handleFilterChangeOptimistic(filterType, null);
     }
   }, { once: true });
-  
+
   return true;
 }
 
@@ -1027,7 +1090,7 @@ function setupEventListeners(): void {
       } else {
         document.body.classList.toggle(CSS_CLASSES.SIDEBAR_COLLAPSED);
         const isNowCollapsed = document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
-        setSidebarState(!isNowCollapsed); 
+        setSidebarState(!isNowCollapsed);
       }
     });
   }
@@ -1045,7 +1108,7 @@ function setupEventListeners(): void {
     dom.sidebarScrollable.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         const target = e.target as HTMLElement;
-        if (target.tagName === "BUTTON") return; 
+        if (target.tagName === "BUTTON") return;
         const link = target.closest<HTMLElement>(".filter-link");
         if (link) {
           e.preventDefault();
@@ -1067,7 +1130,7 @@ function setupEventListeners(): void {
         tryCloseMobileDrawer();
         return;
       }
-      
+
       if (handlePillClick(e)) {
         tryCloseMobileDrawer();
         return;
@@ -1079,12 +1142,16 @@ function setupEventListeners(): void {
         triggerPopAnimation(link);
         const type = link.dataset.filterType || "";
         const value = link.dataset.filterValue || "";
-        handleFilterChangeOptimistic(type, value);
+        if (link.classList.contains("is-excluded")) {
+          handleToggleExcludedFilterOptimistic(type, value);
+        } else {
+          handleFilterChangeOptimistic(type, value);
+        }
         tryCloseMobileDrawer();
       }
     });
   }
-  
+
   if (dom.playButton) dom.playButton.addEventListener("click", resetFilters);
 
   if (dom.myListButton) {
@@ -1097,7 +1164,7 @@ function setupEventListeners(): void {
       triggerHapticFeedback('light');
       const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
       const isNowActive = !wasActive;
-      
+
       dom.collapsibleSections.forEach((section) => {
         if (section !== clickedSection) {
           section.classList.remove(CSS_CLASSES.ACTIVE);
@@ -1105,21 +1172,22 @@ function setupEventListeners(): void {
           section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
         }
       });
-      
+
       if (!isNowActive) {
         clickedSection.classList.remove("is-ready");
       }
 
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
       header.setAttribute('aria-expanded', String(isNowActive));
-      
+      updatePillVisibility();
+
       dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive || hasCompactTriggeringFilters());
 
       if (isNowActive) {
         setTimeout(() => {
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
             clickedSection.classList.add("is-ready");
-            
+
             const nextSection = clickedSection.nextElementSibling as HTMLElement | null;
             const nextHeader = nextSection?.querySelector<HTMLElement>('.section-header');
             const inputField = clickedSection.querySelector<HTMLElement>('.sidebar-filter-input');
@@ -1154,19 +1222,19 @@ export function initSidebar(): void {
   isInitialized = true;
 
   if (isMobileLayout()) {
-    setSidebarState(false); 
+    setSidebarState(false);
   } else if (window.innerWidth <= 1024 && window.innerHeight > MOBILE_HEIGHT_LIMIT) {
     document.body.classList.add(CSS_CLASSES.SIDEBAR_COLLAPSED);
-    setSidebarState(false); 
+    setSidebarState(false);
   }
-  
+
   const populateFilterSection = (filterType: string) => {
     const config = FILTER_CONFIG[filterType as keyof typeof FILTER_CONFIG];
     if (!config) return;
     const contentId = filterType === 'country' ? 'countries-content' : `${filterType}s-content`;
     const listContainer = document.querySelector(`#${contentId} > div:first-child`);
     if (!listContainer) return;
-    
+
     const collapsibleSection = listContainer.closest('.collapsible-section');
     const pillsContainer = collapsibleSection?.querySelector('.active-filters-list') as HTMLElement | null;
     if (pillsContainer) sectionContainers[filterType] = pillsContainer;
@@ -1175,31 +1243,31 @@ export function initSidebar(): void {
     const fragment = document.createDocumentFragment();
 
     Object.entries(config.items).forEach(([value, text]) => {
-      const link = createElement("div", { 
-        className: "filter-link", 
+      const link = createElement("div", {
+        className: "filter-link",
         dataset: { filterType, filterValue: value },
         attributes: { role: "button", tabindex: "0" }
       });
-      
-      const iconData: StudioInfo | SelectionInfo | null = (filterType === 'studio' ? STUDIO_DATA[value] : null) || 
-                       (filterType === 'selection' ? SELECTION_DATA[value] : null);
+
+      const iconData: StudioInfo | SelectionInfo | null = (filterType === 'studio' ? STUDIO_DATA[value] : null) ||
+        (filterType === 'selection' ? SELECTION_DATA[value] : null);
 
       if (iconData) {
-        link.classList.add("filter-link--icon"); 
+        link.classList.add("filter-link--icon");
         link.title = text;
-        
+
         if (iconData.img) {
-          const img = createElement("img", { 
-            src: iconData.img, 
+          const img = createElement("img", {
+            src: iconData.img,
             className: `sidebar-platform-img ${iconData.invertDark ? 'invert-on-dark' : ''}`,
-            alt: text 
+            alt: text
           });
           link.appendChild(img);
         } else if (iconData.id) {
           const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-          svg.setAttribute("width", String(iconData.w || "24")); 
+          svg.setAttribute("width", String(iconData.w || "24"));
           svg.setAttribute("height", String(iconData.h || "24"));
-          svg.setAttribute("viewBox", iconData.vb || "0 0 24 24"); 
+          svg.setAttribute("viewBox", iconData.vb || "0 0 24 24");
           svg.setAttribute("class", `sidebar-platform-icon ${iconData.class || ''}`);
           svg.setAttribute("fill", "currentColor");
           svg.innerHTML = `<use href="${spriteUrl}#${iconData.id}"></use>`;
@@ -1214,7 +1282,7 @@ export function initSidebar(): void {
 
       if (config.excludable?.includes(value)) {
         const excludeBtn = createElement("button", {
-          type: "button", 
+          type: "button",
           className: "exclude-filter-btn",
           dataset: { value: value, type: filterType },
           attributes: { "aria-label": `Excluir ${config.label} ${text}` },
@@ -1227,14 +1295,14 @@ export function initSidebar(): void {
 
     if (filterType === 'country') {
       Object.values(REGIONAL_GROUPS).forEach(region => {
-        const link = createElement("div", { 
-          className: "filter-link", 
+        const link = createElement("div", {
+          className: "filter-link",
           dataset: { filterType, filterValue: region.value },
           attributes: { role: "button", tabindex: "0" }
         });
-        
+
         const text = createElement("span", { textContent: region.label });
-        
+
         link.append(text);
         fragment.appendChild(link);
       });
@@ -1261,11 +1329,11 @@ export function initSidebar(): void {
         FILTER_CONFIG.director.items = directors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
         populateFilterSection('director');
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   runWhenIdle(updateDynamicFilters, 500);
-  
+
   if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
@@ -1286,17 +1354,17 @@ export function initSidebar(): void {
       const input = form.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
       if (input) input.value = "";
     });
-    
+
     requestAnimationFrame(() => {
       renderFilterPills();
     });
   });
-  
+
   appEvents.on("filtersReset", collapseAllSections);
   appEvents.on("uiActionTriggered", collapseAllSections);
 
   renderFilterPills();
-  
+
   if (hasCompactTriggeringFilters() && dom.sidebarInnerWrapper) {
     dom.sidebarInnerWrapper.classList.add("is-compact");
   }
