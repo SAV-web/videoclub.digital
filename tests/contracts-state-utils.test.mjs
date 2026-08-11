@@ -117,6 +117,13 @@ describe("utils.js", () => {
 });
 
 describe("normalización de filtros", () => {
+  test("parseYearRangeRaw convierte cadenas de año en tuplas [min, max]", () => {
+    assert.deepEqual(contracts.parseYearRangeRaw("1990-2010"), [1990, 2010]);
+    assert.deepEqual(contracts.parseYearRangeRaw("1995"), [1995, 1995]);
+    assert.deepEqual(contracts.parseYearRangeRaw(""), [constants.CONFIG.YEAR_MIN, constants.CONFIG.YEAR_MAX]);
+    assert.deepEqual(contracts.parseYearRangeRaw(null), [constants.CONFIG.YEAR_MIN, constants.CONFIG.YEAR_MAX]);
+  });
+
   test("aplica valores por defecto ante sort, mediaType y myList inválidos", () => {
     const filters = contracts.normalizeActiveFilters({
       sort: "drop table,desc",

@@ -6,14 +6,16 @@ let viteEnv;
 let apiModule;
 let seoModule;
 let ratingModule;
+let stateModule;
 
 before(async () => {
   viteEnv = await startViteSsrServer([
     "/src/js/api.ts",
     "/src/js/seo.ts",
     "/src/js/components/rating.ts",
+    "/src/js/state.ts",
   ]);
-  [apiModule, seoModule, ratingModule] = viteEnv.modules;
+  [apiModule, seoModule, ratingModule, stateModule] = viteEnv.modules;
 });
 
 after(async () => {
@@ -21,6 +23,35 @@ after(async () => {
 });
 
 describe("api.ts (Normalización de Caché y Parámetros RPC)", () => {
+  test("shapeRawMovieRow normaliza filas relacionales de Supabase y sincroniza estado de usuario", () => {
+    stateModule.clearUserMovieData();
+
+    const rawRow = {
+      id: 99,
+      title: "Pulp Fiction",
+      original_title: "pulp fiction",
+      type: "M",
+      year_end: "2000",
+      episodes: 10,
+      countries: { name: "Estados Unidos", code: "US" },
+      user_movie_entries: [{ rating: 9, on_watchlist: true }],
+    };
+
+    const shaped = apiModule.shapeRawMovieRow(rawRow);
+
+    assert.strictEqual(shaped.id, 99);
+    assert.strictEqual(shaped.original_title, null);
+    assert.strictEqual(shaped.year_end, null);
+    assert.strictEqual(shaped.episodes, null);
+    assert.strictEqual(shaped.country, "Estados Unidos");
+    assert.strictEqual(shaped.country_code, "US");
+    assert.strictEqual("countries" in shaped, false);
+    assert.strictEqual("user_movie_entries" in shaped, false);
+
+    const userData = stateModule.getUserDataForMovie(99);
+    assert.deepEqual(userData, { rating: 9, onWatchlist: true });
+  });
+
   test("createCanonicalCacheKey normaliza claves desordenadas y elimina campos nulos", () => {
     const key1 = apiModule.createCanonicalCacheKey({ actor: "Tom Hanks", year: "2010-2020", genre: null }, 1, 42);
     const key2 = apiModule.createCanonicalCacheKey({ year: "2010-2020", actor: "tom hanks" }, 1, 42);
