@@ -31,9 +31,11 @@ jobs:
       - name: Install SPA Dependencies
         run: npm install
 
-      - name: Type Check SPA Project (Informativo)
+      - name: Type Check SPA Project (Strict)
         run: npm run check
-        continue-on-error: true
+
+      - name: Run Unit Tests
+        run: npm run test
 
       - name: Build SPA Project
         run: npm run build
@@ -45,7 +47,7 @@ jobs:
         run: |
           cd seo-site
           npm install
-          npm run check || true
+          npm run check
           npx astro build
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"

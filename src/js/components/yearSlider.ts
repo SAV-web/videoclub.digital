@@ -190,30 +190,7 @@ export class DualRangeSlider {
       const pct = this.getPctFromClientX(e.clientX);
       const newYear = this.pctToVal(pct);
 
-      let changed = false;
-
-      // Auto-intercambio inteligente cuando ambas agujas están en el mismo año
-      if (this.values[0] === this.values[1]) {
-        if (activeHandleIndex === 1 && newYear < this.values[0]) {
-          activeHandleIndex = 0;
-        } else if (activeHandleIndex === 0 && newYear > this.values[1]) {
-          activeHandleIndex = 1;
-        }
-      }
-
-      if (activeHandleIndex === 0) {
-        const val = Math.min(newYear, this.values[1]);
-        if (val !== this.values[0]) {
-          this.values[0] = val;
-          changed = true;
-        }
-      } else {
-        const val = Math.max(newYear, this.values[0]);
-        if (val !== this.values[1]) {
-          this.values[1] = val;
-          changed = true;
-        }
-      }
+      const changed = this.updateValuesForHandle(activeHandleIndex, newYear);
 
       if (changed) {
         this.updateUI();
@@ -283,11 +260,7 @@ export class DualRangeSlider {
         chosenHandle = 1;
       }
 
-      if (chosenHandle === 0) {
-        this.values[0] = Math.min(year, this.values[1]);
-      } else {
-        this.values[1] = Math.max(year, this.values[0]);
-      }
+      this.updateValuesForHandle(chosenHandle, year);
 
       this.updateUI();
       this.emitUpdate(chosenHandle);
@@ -301,23 +274,18 @@ export class DualRangeSlider {
       if (e.key === "ArrowLeft" || e.key === "ArrowDown" || e.key === "PageDown") dir = -1;
       else if (e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "PageUp") dir = 1;
       else if (e.key === "Home") {
-        if (handleIndex === 0) this.values[0] = this.min;
-        else this.values[1] = this.values[0];
+        if (handleIndex === 0) this.updateValuesForHandle(0, this.min);
+        else this.updateValuesForHandle(1, this.getSteppedYear(this.values[0], 1));
       } else if (e.key === "End") {
-        if (handleIndex === 1) this.values[1] = this.max;
-        else this.values[0] = this.values[1];
+        if (handleIndex === 1) this.updateValuesForHandle(1, this.max);
+        else this.updateValuesForHandle(0, this.getSteppedYear(this.values[1], -1));
       } else return;
 
       e.preventDefault();
 
       if (dir !== 0) {
-        if (handleIndex === 0) {
-          const next = this.getSteppedYear(this.values[0], dir);
-          this.values[0] = Math.min(this.values[1], next);
-        } else {
-          const next = this.getSteppedYear(this.values[1], dir);
-          this.values[1] = Math.max(this.values[0], next);
-        }
+        const next = this.getSteppedYear(this.values[handleIndex], dir);
+        this.updateValuesForHandle(handleIndex, next);
       }
 
       this.updateUI();
@@ -327,6 +295,41 @@ export class DualRangeSlider {
 
     this.handleStartEl.addEventListener("keydown", (e) => handleKey(0, e));
     this.handleEndEl.addEventListener("keydown", (e) => handleKey(1, e));
+  }
+
+  private updateValuesForHandle(handleIndex: number, newYear: number): boolean {
+    const prevStart = this.values[0];
+    const prevEnd = this.values[1];
+
+    if (handleIndex === 0) {
+      if (newYear >= this.values[1]) {
+        const nextRight = this.getSteppedYear(newYear, 1);
+        if (nextRight > newYear) {
+          this.values[0] = newYear;
+          this.values[1] = nextRight;
+        } else {
+          const maxLeft = this.getSteppedYear(this.values[1], -1);
+          this.values[0] = Math.min(newYear, maxLeft);
+        }
+      } else {
+        this.values[0] = Math.max(this.min, newYear);
+      }
+    } else {
+      if (newYear <= this.values[0]) {
+        const prevLeft = this.getSteppedYear(newYear, -1);
+        if (prevLeft < newYear) {
+          this.values[1] = newYear;
+          this.values[0] = prevLeft;
+        } else {
+          const minRight = this.getSteppedYear(this.values[0], 1);
+          this.values[1] = Math.max(newYear, minRight);
+        }
+      } else {
+        this.values[1] = Math.min(this.max, newYear);
+      }
+    }
+
+    return this.values[0] !== prevStart || this.values[1] !== prevEnd;
   }
 
   private getSteppedYear(current: number, direction: 1 | -1): number {
@@ -393,10 +396,16 @@ export class DualRangeSlider {
   }
 
   private emitUpdate(handleIndex: number): void {
-    this.updateCallbacks.forEach((cb) => cb([...this.values], handleIndex));
+    this.updateCallbacks.forEach((cb) => {
+      cb([...this.values], 0);
+      cb([...this.values], 1);
+    });
   }
 
   private emitSet(handleIndex: number): void {
-    this.setCallbacks.forEach((cb) => cb([...this.values], handleIndex));
+    this.setCallbacks.forEach((cb) => {
+      cb([...this.values], 0);
+      cb([...this.values], 1);
+    });
   }
 }

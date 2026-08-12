@@ -294,5 +294,20 @@ describe("yearSlider.ts (DualRangeSlider)", () => {
     // Values after 2000 snap to exact year
     assert.equal(slider["snapYear"](2003), 2003);
     assert.equal(slider["snapYear"](2021), 2021);
+
+    // Test push & separation logic during slider interaction:
+    // Arrastrar selector izquierdo a 1950 (estando el derecho en 1950) empuja el derecho a 1960
+    slider.set([1930, 1950], false);
+    slider["updateValuesForHandle"](0, 1950);
+    assert.deepEqual(slider.get(), [1950, 1960]);
+
+    // Arrastrar selector derecho a 1980 (estando el izquierdo en 1980) empuja el izquierdo a 1970
+    slider.set([1980, 2000], false);
+    slider["updateValuesForHandle"](1, 1980);
+    assert.deepEqual(slider.get(), [1970, 1980]);
+
+    // La entrada manual mediante campos de texto sigue permitiendo intervalos del mismo año (ej. 1950-1950)
+    slider.set([1950, 1950], false);
+    assert.deepEqual(slider.get(), [1950, 1950]);
   });
 });
