@@ -14,5 +14,5 @@ export function parseList(value: string | null | undefined): string[] {
 }
 
 export function buildCanonicalPath(movie: MovieRow): string {
-  return `/${movie.slug}/`;
+  return `/pelicula/${movie.slug}/`;
 }
