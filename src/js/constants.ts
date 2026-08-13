@@ -105,6 +105,7 @@ export const CSS_CLASSES = {
   ACTIVE: "active",
   DISABLED: "disabled",
   IS_SCROLLED: "is-scrolled",
+  IS_INTERACTIVE: "is-interactive",
   SIDEBAR_OPEN: "sidebar-is-open",
 
   // Global Body States (Contratos de UI)

@@ -43,7 +43,6 @@
 
   --line-height-tight: 1.1;
   --line-height-normal: 1.5;
-  --line-height-relaxed: 1.75;
 
   --font-weight-light: 300;
   --font-weight-normal: 400;
@@ -69,7 +68,6 @@
   /* Marca */
   --color-accent: #37474f;
   --color-accent-darker: #263238;
-  --color-accent-lighter: #546e7a; /* Blue Grey 600 */
   --color-accent-exclude: #90a4ae;
   --color-accent-exclude-darker: #78909c;
   --color-focus: rgba(55, 71, 79, 0.4); /* Nuevo: Para anillos de foco */
@@ -81,7 +79,6 @@
   --color-success: #28a745;
   --color-success-rgb: 40, 167, 69;
   --color-success-bg: #28a74520;
-  --color-info: #17a2b8;
   --color-info-rgb: 23, 162, 184;
 
   /* Dorado de valoración de usuario (estrellas activas) */
@@ -99,7 +96,6 @@
   --space-lg: 1.5rem;    /* 24px */
   --space-xl: 2rem;      /* 32px */
   --space-xxl: 3rem;     /* 48px */
-  --space-xxxl: 4rem;    /* 64px */
 
   /* ---- Bordes y Sombras ---- */
   --radius-sm: 4px;
@@ -117,11 +113,12 @@
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-snap: var(--ease-smooth);
   --ease-bounce-in: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-bounce-sharp: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-smooth-out: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-panel: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-luxury: cubic-bezier(0.16, 1, 0.3, 1); /* Quiet Luxury: Exponencial inversa */
 
-  --duration-instant: 100ms;
   --duration-quick: 200ms;
   --duration-fast: 300ms;
   --duration-normal: 400ms;
@@ -178,7 +175,6 @@ html.dark-mode {
   
   --color-accent: #b0bec5;
   --color-accent-darker: #90a4ae;
-  --color-accent-lighter: #ffffff; /* Máximo contraste para foco */
   --color-accent-exclude: #546e7a;
   --color-accent-exclude-darker: #607d8b;
   --color-focus: rgba(176, 190, 197, 0.4);
@@ -186,5 +182,9 @@ html.dark-mode {
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   
   --color-error: #cf6679; 
+  --color-error-rgb: 207, 102, 121;
+  --color-error-bg: rgba(207, 102, 121, 0.15);
   --color-success: #66bb6a;
+  --color-success-rgb: 102, 187, 106;
+  --color-success-bg: rgba(102, 187, 106, 0.15);
 }

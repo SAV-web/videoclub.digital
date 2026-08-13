@@ -10,7 +10,7 @@
   display: flex; flex-direction: column; min-height: 100dvh;
   padding: var(--space-xl) var(--space-lg) calc(var(--space-lg) + env(safe-area-inset-bottom));
   padding-inline-end: calc(var(--space-lg) + 8px); 
-  transition: padding 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: padding 0.5s var(--ease-panel);
 
   @media (min-width: 769px) and (min-height: 501px) {
     height: 100%; padding-inline: var(--space-md); 
@@ -26,10 +26,10 @@
 }
 
 /* --- 2. EL LOGOTIPO --- */
-.logo-area { margin-bottom: var(--space-xl); text-align: center; transition: margin-bottom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.logo-area { margin-bottom: var(--space-xl); text-align: center; transition: margin-bottom 0.5s var(--ease-panel); }
 .logo-title {
   margin: 0; font-family: var(--font-title); font-size: var(--font-size-xl); font-weight: 700; line-height: 1.2; letter-spacing: -0.03em;
-  transition: font-size 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: font-size 0.5s var(--ease-panel);
   @media (min-width: 769px) and (min-height: 501px) { font-size: calc(var(--font-size-xl) * 0.8); }
 }
 .sidebar-inner-wrapper.is-compact .logo-title {
@@ -91,7 +91,7 @@
 
   & .remove-filter-btn {
     margin-left: var(--space-xs); padding: 0; border: none; background: none; color: currentColor; opacity: 0.7; display: flex; align-items: center; height: 100%;
-    transition: opacity var(--transition-duration-fast), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity var(--transition-duration-fast), transform 0.2s var(--ease-bounce-sharp);
     @media (hover: hover) and (pointer: fine) { &:hover { opacity: 1; transform: scale(1.2); } }
     &:active { transform: scale(0.9); }
   }
@@ -181,7 +181,7 @@ body.sidebar-collapsed .sidebar {
   border: 1px solid transparent; border-radius: 50%;
   background-color: transparent; color: var(--color-text-secondary);
   opacity: 0;
-  transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast), transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast), transform 0.2s var(--ease-bounce-sharp);
 
   .filter-link:hover &, .filter-link:focus-visible &, .filter-link.is-excluded &, &:focus-visible { opacity: 1; }
   @media (hover: hover) and (pointer: fine) { &:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); transform: scale(1.15); } }

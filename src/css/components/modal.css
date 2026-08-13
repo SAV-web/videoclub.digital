@@ -255,6 +255,8 @@
 
 .is-quick-view .star-rating-container {
   gap: var(--space-sm);
+  width: 150px;
+  justify-content: center;
 }
 
 .is-quick-view .star-icon {
@@ -264,9 +266,11 @@
 }
 
 .is-quick-view .low-rating-star {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   stroke-width: 2.5px;
+  margin-left: 0;
+  margin-right: 108px; /* 150px slot width - 42px star width = 108px right margin */
 }
 
 .is-quick-view .card-action-btn {
@@ -768,7 +772,7 @@
   &:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 3px var(--color-focus);
   }
 }
 

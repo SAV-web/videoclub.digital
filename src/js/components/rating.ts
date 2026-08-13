@@ -221,6 +221,15 @@ function handleRatingMouseLeave(event: MouseEvent): void {
 export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean): void {
   if (!isInteractive) return;
 
+  starContainer.classList.add(CSS_CLASSES.IS_INTERACTIVE);
+  const cardElement = starContainer.closest<HTMLElement>(".movie-card, .quick-view-modal") || starContainer.parentElement;
+  if (cardElement) {
+    const lowStar = cardElement.querySelector<HTMLElement>(".low-rating-star");
+    if (lowStar) {
+      lowStar.classList.add(CSS_CLASSES.IS_INTERACTIVE);
+    }
+  }
+
   // OPTIMIZACIÓN: Usamos 'mouseover' en el contenedor (burbujea) en lugar de 'mouseenter' en cada estrella.
   // Pasamos de tener 3 listeners por tarjeta a solo 1 (y sin usar querySelectorAll).
   starContainer.addEventListener("mouseover", handleRatingMouseMove as EventListener, { passive: true });
