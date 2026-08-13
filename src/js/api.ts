@@ -74,7 +74,7 @@ export function getSupabase(): Promise<SupabaseClient> {
           from: () => ({ select: notConfiguredError, upsert: notConfiguredError }),
           auth: {
             getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
             signInWithPassword: notConfiguredError,
             signUp: notConfiguredError,
             signOut: notConfiguredError,
@@ -94,7 +94,7 @@ export function getSupabase(): Promise<SupabaseClient> {
 // TTL de 30 minutos: el catálogo es estable y no requiere refresco inmediato.
 export const queryCache = new LRUCache<string, ApiResponse>({
   max: 300, // Guardar hasta 300 páginas de resultados
-  ttl: 1000 * 60 * 30, 
+  ttl: 1000 * 60 * 30,
   updateAgeOnGet: true,
   ttlAutopurge: true,
 });
@@ -110,26 +110,26 @@ const suggestionsCache = new LRUCache<string, string[]>({
 export const parseYearRange = (y: string | null | undefined): { start: number | null; end: number | null } => {
   if (!y) return { start: null, end: null };
   const [min, max] = parseYearRangeRaw(y);
-  return { 
-    start: min <= CONFIG.YEAR_MIN ? null : min, 
-    end: max >= CONFIG.YEAR_MAX ? null : max 
+  return {
+    start: min <= CONFIG.YEAR_MIN ? null : min,
+    end: max >= CONFIG.YEAR_MAX ? null : max
   };
 };
 
 // Crea una firma única para recordar una búsqueda exacta (Ej: "accion-pagina-2")
 export const createCanonicalCacheKey = (filters: ActiveFilters & { explicitOffset?: number | null }, page: number, pageSize: number): string => {
   const norm: Record<string, unknown> = {};
-  
+
   Object.keys(filters).sort().forEach(k => {
     const v = filters[k as keyof ActiveFilters];
-    
+
     // Ignorar valores nulos, vacíos o arrays sin longitud
     if (v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return;
-    
+
     if (Array.isArray(v)) {
       // Clonar profundamente el array de strings/numbers convirtiéndolos a texto plano para evitar mutación externa
       const clonedArray = v.map(x => (x !== null && x !== undefined) ? String(x) : "");
-      
+
       if (TEXT_FILTER_KEYS.has(k)) {
         norm[k] = clonedArray.map(x => x.trim().toLowerCase()).sort();
       } else {
@@ -143,16 +143,16 @@ export const createCanonicalCacheKey = (filters: ActiveFilters & { explicitOffse
       norm[k] = TEXT_FILTER_KEYS.has(k) ? String(v).trim().toLowerCase() : v;
     }
   });
-  
+
   return JSON.stringify({ filters: norm, page, pageSize });
 };
 
 // Traduce lo que pide el usuario al idioma que entiende el servidor SQL
 export function stateToRpcParams(
-  activeFilters: ActiveFilters, 
-  currentPage: number, 
-  pageSize: number, 
-  requestCount: boolean, 
+  activeFilters: ActiveFilters,
+  currentPage: number,
+  pageSize: number,
+  requestCount: boolean,
   explicitOffset: number | null
 ): Record<string, unknown> {
   const { start: yearStart, end: yearEnd } = parseYearRange(activeFilters.year);
@@ -239,11 +239,11 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
 
 // Trae las películas principales para pintar el muro
 export function fetchMovies(
-  activeFilters: Partial<ActiveFilters>, 
-  currentPage: number, 
-  pageSize: number = CONFIG.ITEMS_PER_PAGE, 
-  signal?: AbortSignal | null, 
-  requestCount: boolean = true, 
+  activeFilters: Partial<ActiveFilters>,
+  currentPage: number,
+  pageSize: number = CONFIG.ITEMS_PER_PAGE,
+  signal?: AbortSignal | null,
+  requestCount: boolean = true,
   explicitOffset: number | null = null
 ): Promise<ApiResponse> {
   const request = normalizeMovieQuery({ activeFilters, currentPage, pageSize, requestCount, explicitOffset });
@@ -270,7 +270,7 @@ export function fetchMovies(
   let promise!: Promise<ApiResponse>;
   promise = (async () => {
     const supabase = await getSupabase();
-    
+
     try {
       // MODO A: MI LISTA (Películas privadas del usuario)
       if (normFilters.myList) {
@@ -313,7 +313,7 @@ export function fetchMovies(
 
         return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
       }
-      
+
       // MODO B: CATÁLOGO PÚBLICO (Motor potente)
       const rpcParams = stateToRpcParams(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
       let query = supabase.rpc("search_movies_offset", rpcParams);
@@ -330,13 +330,13 @@ export function fetchMovies(
       if (result.items && result.items.length > 0) {
         if (normFilters.actor) {
           const targetActorNorm = normalizeText(normFilters.actor);
-          result.items = result.items.filter(m => 
+          result.items = result.items.filter(m =>
             m.parsedActors && m.parsedActors.some(a => normalizeText(a) === targetActorNorm)
           );
         }
         if (normFilters.director) {
           const targetDirectorNorm = normalizeText(normFilters.director);
-          result.items = result.items.filter(m => 
+          result.items = result.items.filter(m =>
             m.parsedDirectors && m.parsedDirectors.some(d => normalizeText(d) === targetDirectorNorm)
           );
         }
@@ -469,7 +469,7 @@ const NOT_FOUND = Symbol("person-not-found");
 // Memoria para los VIPs (Actores/Directores). Máximo 50 a la vez para no ahogar el móvil.
 const personCache = new LRUCache<string, PersonDetails | typeof NOT_FOUND>({
   max: 50,
-  ttl: 1000 * 60 * 60, 
+  ttl: 1000 * 60 * 60,
 });
 
 // Saca la foto y la fecha de nacimiento de un VIP cuando le clicas
@@ -480,9 +480,9 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     const cached = personCache.get(key);
     return cached === NOT_FOUND ? null : (cached ?? null);
   }
-  
+
   const table = type === 'director' ? 'directors' : 'actors';
-  
+
   try {
     const supabase = await getSupabase();
 
@@ -491,7 +491,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       .select('id, name, photo, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
       .eq('name_norm', normalizeText(name))
       .single();
-      
+
     if (error || !data) {
       if (error && import.meta.env.DEV) {
         console.warn(`[API] Error al cargar detalles de la persona (${type}: ${name}):`, error);
@@ -503,7 +503,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     const personData = data as unknown as PersonDetails;
     personCache.set(key, personData);
     return personData;
-  } catch(e) {
+  } catch (e) {
     if (import.meta.env.DEV) {
       console.error(`[API] Excepción capturada en fetchPersonDetails (${type}: ${name}):`, e);
     }
@@ -518,21 +518,21 @@ export async function setUserMovieDataAPI(movieId: number | string, partialData:
   if (!normalizedMovieId) throw createAppError(ERROR_CODES.VALIDATION, "Película inválida.");
 
   const supabase = await getSupabase();
-  
+
   const { data: { session } } = await supabase.auth.getSession();
   if (!session || !session.user) throw createAppError(ERROR_CODES.AUTH_REQUIRED, "Debes iniciar sesión.");
-  
+
   const currentState = getUserDataForMovie(normalizedMovieId) || { rating: null, onWatchlist: false };
   const mergedData = normalizeUserMovieEntry({ ...currentState, ...partialData });
-  
+
   const payload = {
-    user_id: session.user.id, 
-    movie_id: normalizedMovieId, 
-    rating: mergedData.rating, 
-    on_watchlist: mergedData.onWatchlist, 
+    user_id: session.user.id,
+    movie_id: normalizedMovieId,
+    rating: mergedData.rating,
+    on_watchlist: mergedData.onWatchlist,
     updated_at: new Date().toISOString()
   };
-  
+
   const { error } = await supabase.from('user_movie_entries').upsert(payload, { onConflict: 'user_id, movie_id' });
   if (error) throw createAppError(ERROR_CODES.DATABASE, "No se pudo guardar tu acción.", error);
 }
@@ -541,18 +541,18 @@ export async function setUserMovieDataAPI(movieId: number | string, partialData:
 
 const fetchSuggestions = async (rpcName: string, searchTerm: string): Promise<string[]> => {
   if (!searchTerm || searchTerm.length < 2) return [];
-  
+
   const cacheKey = `suggest:${rpcName}:${searchTerm.toLowerCase()}`;
   if (suggestionsCache.has(cacheKey)) return suggestionsCache.get(cacheKey) || [];
 
   // Evitar solapamientos si el usuario escribe muy rápido
   const controller = createAbortableRequest(`suggestion-${rpcName}`);
-  
+
   try {
     const supabase = await getSupabase();
-    
+
     const { data, error } = await supabase.rpc(rpcName, { search_term: searchTerm }).abortSignal(controller.signal);
-    
+
     if (error) {
       if (isAbortError(error, controller.signal)) return [];
       if (import.meta.env.DEV) {
@@ -560,9 +560,9 @@ const fetchSuggestions = async (rpcName: string, searchTerm: string): Promise<st
       }
       return [];
     }
-    
+
     const results = (data as Array<{ suggestion: string }> || []).map(item => item.suggestion);
-    
+
     suggestionsCache.set(cacheKey, results);
     return results;
   } catch (error) {
@@ -587,7 +587,7 @@ export const fetchActorSuggestions = async (term: string): Promise<string[]> => 
 
 export const fetchRandomTopActors = async (): Promise<string[]> => {
   const supabase = await getSupabase();
-  
+
   const { data, error } = await supabase.rpc("get_random_top_actors", { limit_count: 5 });
   if (error) return [];
   return (data as Array<{ name: string }> || []).map(d => d.name).filter((name: string) => !(IGNORED_ACTORS as readonly string[]).includes(name.trim().toLowerCase()));
@@ -595,7 +595,7 @@ export const fetchRandomTopActors = async (): Promise<string[]> => {
 
 export const fetchRandomTopDirectors = async (): Promise<string[]> => {
   const supabase = await getSupabase();
-  
+
   const { data, error } = await supabase.rpc("get_random_top_directors", { limit_count: 5 });
   if (error) return [];
   return (data as Array<{ name: string }> || []).map(d => d.name);

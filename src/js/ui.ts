@@ -454,6 +454,11 @@ export function initThemeToggle(): void {
     const label = isDark ? "Modo claro" : "Modo oscuro";
     btn.setAttribute("aria-label", label);
     btn.title = label;
+
+    const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+    metas.forEach((meta) => {
+      meta.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5");
+    });
   };
 
   // Sincronización inicial

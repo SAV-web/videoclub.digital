@@ -39,12 +39,10 @@
   --font-size-md: 1.35rem;
   --font-size-lg: 1.5rem;
   --font-size-xl: 1.8rem;
-  --font-size-xxl: 2.4rem;
 
   --line-height-tight: 1.1;
   --line-height-normal: 1.5;
 
-  --font-weight-light: 300;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -154,7 +152,6 @@
     --font-size-md: 1.125rem;
     --font-size-lg: 1.25rem;
     --font-size-xl: 1.5rem;
-    --font-size-xxl: 2rem;
   }
 }
 

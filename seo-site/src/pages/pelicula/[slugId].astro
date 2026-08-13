@@ -139,19 +139,24 @@ const jsonLd = {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
   <!-- Anti-flicker para sincronización de modo claro/oscuro con el grid -->
   <script is:inline>
     (function () {
       try {
         var stored = localStorage.getItem("theme");
         var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (stored === "dark" || (!stored && systemDark)) {
+        var isDark = stored === "dark" || (!stored && systemDark);
+        if (isDark) {
           document.documentElement.classList.add("dark-mode");
           document.documentElement.classList.remove("light-mode");
         } else if (stored === "light" || (!stored && !systemDark)) {
           document.documentElement.classList.add("light-mode");
           document.documentElement.classList.remove("dark-mode");
         }
+        var metas = document.querySelectorAll('meta[name="theme-color"]');
+        metas.forEach(function(m) { m.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5"); });
       } catch (e) {}
     })();
   </script>
@@ -236,6 +241,40 @@ const jsonLd = {
       position: relative;
     }
 
+    /* ACCESIBILIDAD: Anillos de foco para navegación por teclado */
+    .brand-logo:focus-visible,
+    .btn-header-cta:focus-visible,
+    #theme-toggle:focus-visible,
+    .card-action-btn:focus-visible,
+    .year-link:focus-visible,
+    .rating-left:focus-visible,
+    [data-template="justwatch-link"]:focus-visible,
+    [data-template="wikipedia-link"]:focus-visible,
+    .front-director-info a:focus-visible,
+    [data-template="actors"] a:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--color-focus);
+    }
+
+    .brand-logo:focus-visible,
+    .btn-header-cta:focus-visible,
+    #theme-toggle:focus-visible,
+    .card-action-btn:focus-visible {
+      border-radius: 9999px;
+    }
+
+    .year-link:focus-visible,
+    .rating-left:focus-visible,
+    [data-template="justwatch-link"]:focus-visible,
+    [data-template="wikipedia-link"]:focus-visible {
+      border-radius: var(--radius-sm);
+    }
+
+    .front-director-info a:focus-visible,
+    [data-template="actors"] a:focus-visible {
+      border-radius: var(--radius-xs);
+    }
+
     /* HEADER DE MARCA SUPERIOR */
     .site-header {
       position: fixed;
@@ -266,10 +305,10 @@ const jsonLd = {
       align-items: center;
       gap: 8px;
       text-decoration: none;
-      font-size: 1.15rem;
+      font-size: 1.8rem;
       font-weight: 800;
       color: var(--color-text-primary);
-      letter-spacing: -0.02em;
+      letter-spacing: -0.03em;
     }
 
     .logo-accent {
@@ -971,7 +1010,7 @@ const jsonLd = {
 
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
-                <div class="star-rating-container has-user-rating" style="display:flex;">
+                <div class="star-rating-container has-average-rating" style="display:flex;">
                   <svg class="star-icon" data-rating-level="1">
                     <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
                     <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip1}% 0 0);`}></use>
@@ -1216,6 +1255,8 @@ const jsonLd = {
             themeBtn.setAttribute("aria-label", "Modo oscuro");
             themeBtn.setAttribute("aria-pressed", "false");
           }
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          metas.forEach(function(m) { m.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5"); });
         }
 
         syncThemeUI();
