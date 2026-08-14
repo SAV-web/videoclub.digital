@@ -5,7 +5,6 @@
 const VERSION = "dev"; // Generado automáticamente en build time por swVersionPlugin en vite.config.js
 const CACHE_STATIC = `videoclub-static-${VERSION}`;
 const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
-const CACHE_API = `videoclub-api-${VERSION}`;
 
 // --- 1. ACTIVOS CRÍTICOS (Instalación) ---
 const CRITICAL_ASSETS = [
@@ -93,47 +92,6 @@ async function cacheFirst(request, cacheName = CACHE_DYNAMIC) {
   return networkResponse;
 }
 
-/**
- * ESTRATEGIA: API con Ventana de Frescura (Lógica personalizada)
- * - Si la caché tiene < 15m: Retorna caché (muy rápido).
- * - Si es vieja o no existe: Retorna caché (si hay) Y actualiza en background, o espera red.
- */
-async function handleApiRequest(request) {
-  const cache = await caches.open(CACHE_API);
-  const cachedResponse = await cache.match(request);
-  
-  const networkFetch = fetch(request).then(response => {
-    if (response.ok) cache.put(request, response.clone());
-    return response;
-  });
-
-  if (cachedResponse) {
-    const dateHeader = cachedResponse.headers.get('date');
-    
-    if (dateHeader) {
-      const ageMs = new Date().getTime() - new Date(dateHeader).getTime();
-      // Si es "fresco" (< 15m), devolvemos caché y NO esperamos a la red
-      if (ageMs < 900000) {
-        networkFetch.catch(() => {});
-        return cachedResponse;
-      }
-    }
-    // Si es "viejo", devolvemos lo que tenemos (stale) mientras se actualiza detrás
-    networkFetch.catch(() => {});
-    return cachedResponse; 
-  }
-
-  // Si no hay caché, esperamos a la red
-  try {
-    return await networkFetch;
-  } catch (error) {
-    return new Response(JSON.stringify({ error: "Sin conexión" }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
 // --- CICLO DE VIDA ---
 
 self.addEventListener("install", (event) => {
@@ -153,7 +111,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keyList) => {
       return Promise.all(
         keyList.map((key) => {
-          if (key !== CACHE_STATIC && key !== CACHE_DYNAMIC && key !== CACHE_API) {
+          if (key !== CACHE_STATIC && key !== CACHE_DYNAMIC) {
             console.log(`[SW] Borrando caché antigua: ${key}`);
             return caches.delete(key);
           }
@@ -173,10 +131,14 @@ self.addEventListener("fetch", (event) => {
   // 1. Ignorar métodos no-GET y esquemas no-http
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // 2. EXCEPCIONES: Nunca cachear Auth ni REST directo de tablas (datos vivos)
-  // Se permite /rest/v1/rpc/ para aprovechar la caché de llamadas RPC de consulta
-  if (url.pathname.includes("/auth/v1/")) return;
-  if (url.pathname.includes("/rest/v1/") && !url.pathname.includes("rpc/")) {
+  // 2. EXCEPCIONES: Datos dinámicos de Supabase (Auth y API REST/RPC)
+  // NOTA DE ARQUITECTURA:
+  // - Supabase Auth (/auth/v1/) y tablas REST (/rest/v1/) manejan datos vivos de sesión y usuario.
+  // - Las consultas RPC (/rest/v1/rpc/) viajan en HTTP POST (estándar de PostgREST para filtros complejos).
+  // - La API CacheStorage del navegador prohíbe métodos no-GET (W3C spec).
+  // - Por tanto, la caché de búsquedas y filtros se gestiona en memoria LRU en el cliente (src/js/api.ts),
+  //   mientras el Service Worker se enfoca en hacer offline el App Shell y los pósters.
+  if (url.pathname.includes("/auth/v1/") || url.pathname.includes("/rest/v1/")) {
     return;
   }
 
@@ -186,19 +148,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 4. ESTRATEGIA: API RPC (Supabase Functions)
-  if (url.pathname.includes("/functions/v1/") || url.pathname.includes("rpc/")) {
-    event.respondWith(handleApiRequest(request));
-    return;
-  }
-
-  // 5. ESTRATEGIA: Imágenes de Supabase Storage (Posters)
+  // 4. ESTRATEGIA: Imágenes de Supabase Storage (Posters)
   if (url.pathname.includes("/storage/v1/object/public/")) {
     event.respondWith(cacheFirst(request, CACHE_DYNAMIC));
     return;
   }
 
-  // 6. ESTRATEGIA: Assets Estáticos (JS, CSS, Fuentes, Iconos)
+  // 5. ESTRATEGIA: Assets Estáticos (JS, CSS, Fuentes, Iconos)
   if (
     request.destination === "script" ||
     request.destination === "style" ||
@@ -209,7 +165,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 7. Fallback por defecto (Cache First simple)
+  // 6. Fallback por defecto (Cache First simple)
   event.respondWith(
     caches.match(request).then((response) => {
       return response || fetch(request).then((networkResponse) => {
