@@ -24,7 +24,7 @@ export interface Movie {
   imdb_rating: number | null;
   imdb_votes: number | null;
   avg_rating: number | null;
-  synopsis: string;
+  synopsis: string | null;
   thumbhash_st: string | null;
   last_synced_at: number;
   episodes: number | null;

@@ -1,7 +1,19 @@
 import { supabase } from './supabase';
-import type { MovieRow } from './types';
+import { isValidMovieRow, type MovieRow } from './types';
 
 const PAGE_SIZE = 1000;
+
+function validateAndFilterRows(rows: unknown[], context: string): MovieRow[] {
+  const valid: MovieRow[] = [];
+  for (const row of rows) {
+    if (isValidMovieRow(row)) {
+      valid.push(row);
+    } else {
+      console.warn(`[SEO Build] Fila omitida por contrato inválido (${context}):`, row);
+    }
+  }
+  return valid;
+}
 
 /**
  * Trae películas para generar las páginas estáticas.
@@ -24,7 +36,11 @@ export async function fetchAllMovies(): Promise<MovieRow[]> {
       .limit(sampleSize);
 
     if (error) throw new Error(`Error en muestra de prueba: ${error.message}`);
-    return (data ?? []) as MovieRow[];
+    const valid = validateAndFilterRows(data ?? [], `muestra ${sampleSize}`);
+    if (valid.length === 0 && (data?.length ?? 0) > 0) {
+      throw new Error(`[SEO Build] Todas las filas de la muestra fallaron la validación de contrato.`);
+    }
+    return valid;
   }
 
   let all: MovieRow[] = [];
@@ -40,7 +56,8 @@ export async function fetchAllMovies(): Promise<MovieRow[]> {
     if (error) throw new Error(`Error al paginar movies (offset ${from}): ${error.message}`);
     if (!data || data.length === 0) break;
 
-    all = all.concat(data as MovieRow[]);
+    const validPage = validateAndFilterRows(data, `offset ${from}`);
+    all = all.concat(validPage);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }

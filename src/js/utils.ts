@@ -37,7 +37,8 @@ export const formatYearRange = (
 };
 
 
-// URL del póster en alta calidad
+// URL del póster en alta calidad.
+// Centinela '.' ("sin póster") y URL compartidos con seo-site/src/lib/format.ts (getPosterUrl) — mantener sincronizados.
 export const getHqPosterUrl = (img: string | null | undefined): string => 
   img && img !== "." ? `${CONFIG.POSTER_BASE_URL}${img}.webp` : "";
 

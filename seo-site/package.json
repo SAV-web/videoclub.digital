@@ -1,5 +1,6 @@
 {
   "name": "seo-site",
+  "private": true,
   "type": "module",
   "version": "0.0.1",
   "engines": {
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@types/node": "^24.0.0",
     "typescript": "^6.0.3"
   }
 }
