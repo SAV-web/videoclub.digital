@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://videoclub.digital/sitemap-index.xml
