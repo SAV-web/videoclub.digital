@@ -618,6 +618,21 @@ function setupHeaderListeners(): void {
 }
 
 function setupGlobalListeners(): void {
+  // Protección integral de imágenes (evita menú contextual, descarga y arrastre)
+  document.addEventListener("contextmenu", (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "IMG" || target.closest(".poster-container") || target.classList.contains("poster-overlay-guard")) {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener("dragstart", (e: DragEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "IMG" || target.closest(".poster-container") || target.classList.contains("poster-overlay-guard")) {
+      e.preventDefault();
+    }
+  });
+
   document.addEventListener("click", (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();

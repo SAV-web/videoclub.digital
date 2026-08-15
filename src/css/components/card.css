@@ -1075,7 +1075,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   }
 
   /* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
-  /* 1. Ocultar elementos por defecto */
+  /* 1. Ocultar low-rating-star y contenedor si no hay voto de usuario */
   & .low-rating-star,
   & .star-rating-container:not(.has-user-rating) {
     display: none !important;
@@ -1089,15 +1089,14 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     justify-content: center;
 
     & .star-icon {
-      display: block !important;
       width: 24px;
       height: 24px;
     }
   }
 
-  /* Ocultar nota numérica si hay voto de usuario (prioridad a estrellas) */
+  /* Ocultar nota numérica si hay voto de usuario */
   & .star-rating-container.has-user-rating~.wall-rating-number {
-    display: none;
+    display: none !important;
   }
 
   /* Watchlist junto a la nota (Modo Muro) */
@@ -1192,6 +1191,46 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   content: "";
   position: absolute;
   bottom: -10px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-text-tertiary), transparent);
+  opacity: 0.4;
+}
+
+/* Centrado vertical de la información en fichas de Selección y Estudio */
+.collection-card .movie-summary {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: calc(var(--space-sm) + 2px) var(--space-xxs) calc(var(--space-sm) + 2px);
+}
+
+.collection-card .title-director-block {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Línea horizontal inferior para fichas de Selección y Estudio (réplica de la superior) */
+.collection-card .movie-meta {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  min-height: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+}
+
+.collection-card .movie-meta::after {
+  content: "";
+  position: absolute;
+  top: 0;
   left: 10%;
   right: 10%;
   height: 1px;

@@ -20,6 +20,7 @@
 /* --- Icono de Estrella Individual --- */
 .star-icon {
   position: relative; width: 25px; height: 25px; cursor: pointer;
+  transform-origin: center center;
 }
 
 .star-icon-path {
@@ -42,6 +43,7 @@
   transition: stroke 0.3s ease, transform var(--duration-quick) var(--ease-spring);
   position: relative;
   cursor: pointer;
+  transform-origin: center center;
 
   &.is-interactive { cursor: pointer; }
 
@@ -57,8 +59,9 @@
 
 /* --- Interacciones (Hover) --- */
 @media (hover: hover) and (pointer: fine) {
-  .star-rating-container.is-interactive .star-icon:hover,
-  .low-rating-star.is-interactive:hover {
+  :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:hover,
+  .low-rating-star.is-interactive:hover,
+  .low-rating-star:hover {
     transform: scale(1.35); 
     z-index: 20;
     filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
@@ -67,17 +70,18 @@
 }
 
 /* Feedback Táctil (:active) */
-.star-rating-container.is-interactive .star-icon:active,
-.low-rating-star.is-interactive:active {
+:is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:active,
+.low-rating-star.is-interactive:active,
+.low-rating-star:active {
   transform: scale(0.92);
   filter: brightness(0.95);
   transition: transform 50ms var(--ease-bounce-sharp);
 }
 
 /* Efecto de Confirmación (Post-Tap) */
-.star-rating-container.is-interactive .star-icon.just-rated,
-.low-rating-star.is-interactive.just-rated {
-  animation: star-vote-success 0.6s var(--ease-bounce-in);
+.star-icon.just-rated,
+.low-rating-star.just-rated {
+  animation: star-vote-success 0.6s var(--ease-bounce-in) !important;
   z-index: 20; /* Asegurar que se vea sobre las otras */
 }
 

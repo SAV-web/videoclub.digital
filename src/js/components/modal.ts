@@ -729,12 +729,13 @@ export function isModalOpen(): boolean {
 /**
  * Cierra el modal con animación y limpieza.
  */
-export function closeModal(options: { fromPopstate?: boolean } = {}): void {
+export function closeModal(options?: { fromPopstate?: boolean } | Event): void {
+  const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
 
   // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
-  if (!options.fromPopstate && window.history.state?.modalOpen) {
+  if (!isPopstate && window.history.state?.modalOpen) {
     window.history.back();
   }
   

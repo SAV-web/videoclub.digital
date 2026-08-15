@@ -266,11 +266,7 @@
 }
 
 .is-quick-view .low-rating-star {
-  width: 42px;
-  height: 42px;
-  stroke-width: 2.5px;
-  margin-left: 0;
-  margin-right: 108px; /* 150px slot width - 42px star width = 108px right margin */
+  display: none !important;
 }
 
 .is-quick-view .card-action-btn {

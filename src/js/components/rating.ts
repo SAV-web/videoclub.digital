@@ -181,8 +181,35 @@ function renderStars(
 export const renderAverageStars = (container: HTMLElement, value: number): void => 
   renderStars(container, value, { hideUnfilled: true, snapToInteger: false });
 
-export const renderUserStars = (container: HTMLElement, value: number, hideHollow = false): void => 
-  renderStars(container, value, { hideUnfilled: hideHollow, snapToInteger: true });
+export function renderUserStars(container: HTMLElement, value: number, hideHollow = false, isSuspenso = false): void {
+  const stars = container.children;
+  for (let i = 0; i < stars.length; i++) {
+    const star = stars[i] as HTMLElement;
+    const filledPath = star.lastElementChild as HTMLElement | null;
+
+    if (isSuspenso) {
+      if (i === 0) {
+        // La 1.ª estrella se muestra como hueca dorada
+        if (star.style.opacity !== "1") star.style.opacity = "1";
+        if (filledPath) filledPath.style.clipPath = "inset(0 100% 0 0)";
+      } else {
+        // Las estrellas 2 y 3 se ocultan
+        if (star.style.opacity !== "0") star.style.opacity = "0";
+      }
+    } else {
+      const fillValue = Math.max(0, Math.min(1, value - i));
+      if (filledPath) {
+        if (hideHollow && fillValue === 0) {
+          if (star.style.opacity !== "0") star.style.opacity = "0";
+        } else {
+          if (star.style.opacity !== "1") star.style.opacity = "1";
+          const clipPercentage = (1 - fillValue) * 100;
+          filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
+        }
+      }
+    }
+  }
+}
 
 // =================================================================
 //          3. INTERACCIÓN (Eventos)
@@ -200,17 +227,13 @@ function handleRatingMouseMove(event: MouseEvent): void {
   const hoverLevel = parseInt(starIcon.dataset.ratingLevel || "0", 10);
   
   // Renderizamos estado "potencial" (lo que pasaría si haces click)
-  // hideHollowStars = false para que el usuario vea las estrellas vacías que va a rellenar
-  renderUserStars(starContainer, hoverLevel, false);
+  renderUserStars(starContainer, hoverLevel, false, false);
 }
 
 /**
  * Restaura el estado original al salir del contenedor.
  */
 function handleRatingMouseLeave(event: MouseEvent): void {
-  // Disparamos evento para que 'card.js' refresque la UI con el estado real (store)
-  // Esto desacopla rating.js del estado global.
-  // Delegamos la restauración visual a card.js para mantener una única fuente de verdad
   const starContainer = event.currentTarget as HTMLElement;
   const cardElement = starContainer.closest<HTMLElement>(".movie-card");
   if (cardElement) {
@@ -222,19 +245,8 @@ export function setupRatingListeners(starContainer: HTMLElement, isInteractive: 
   if (!isInteractive) return;
 
   starContainer.classList.add(CSS_CLASSES.IS_INTERACTIVE);
-  const cardElement = starContainer.closest<HTMLElement>(".movie-card, .quick-view-modal") || starContainer.parentElement;
-  if (cardElement) {
-    const lowStar = cardElement.querySelector<HTMLElement>(".low-rating-star");
-    if (lowStar) {
-      lowStar.classList.add(CSS_CLASSES.IS_INTERACTIVE);
-    }
-  }
 
-  // OPTIMIZACIÓN: Usamos 'mouseover' en el contenedor (burbujea) en lugar de 'mouseenter' en cada estrella.
-  // Pasamos de tener 3 listeners por tarjeta a solo 1 (y sin usar querySelectorAll).
   starContainer.addEventListener("mouseover", handleRatingMouseMove as EventListener, { passive: true });
-
-  // Listener en el contenedor para detectar cuando salimos del área de votación
   starContainer.addEventListener("mouseleave", handleRatingMouseLeave as EventListener, { passive: true });
 }
 
@@ -243,8 +255,6 @@ export function setupRatingListeners(starContainer: HTMLElement, isInteractive: 
 // =================================================================
 
 async function setRating(movieId: number, value: number | null, card: MovieCardElement): Promise<void> {
-  // 5.1 Mejora: Guardamos solo el rating anterior para un rollback preciso y robusto.
-  // Usamos '?? null' para normalizar 'undefined' (sin datos) a 'null' (sin voto).
   const previousRating = getUserDataForMovie(movieId)?.rating ?? null;
   
   if (previousRating === value) return;
@@ -262,13 +272,26 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
 
   try {
     await setUserMovieDataAPI(movieId, newState);
-    // 5.2 Feedback de confirmación solo al establecer voto, no al eliminarlo
     if (value !== null) triggerHapticFeedback("success");
   } catch (err: unknown) {
     showToast(getFriendlyErrorMessage(err) || "No se pudo guardar la valoración.", "error");
-    // Rollback: Restauramos explícitamente el rating anterior
     updateUserDataForMovie(movieId, { rating: previousRating });
     updateRatingUI(card);
+  }
+}
+
+function triggerRatingAnimation(card: MovieCardElement, newRating: number | null, fallbackEl?: HTMLElement): void {
+  if (newRating === null) return;
+
+  const level = newRating === 2 ? 1 : newRating >= 9 ? 3 : newRating >= 7 ? 2 : 1;
+  const targetToAnimate = card.querySelector<HTMLElement>(`.star-icon[data-rating-level="${level}"]`);
+
+  const el = targetToAnimate || fallbackEl;
+  if (el) {
+    el.classList.remove('just-rated');
+    void el.offsetWidth;
+    el.classList.add('just-rated');
+    setTimeout(() => el.classList.remove('just-rated'), 600);
   }
 }
 
@@ -279,7 +302,6 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
 export function handleRatingClick(event: MouseEvent, card: MovieCardElement): boolean {
   const target = event.target as HTMLElement;
   const starEl = target.closest<HTMLElement>(".star-icon[data-rating-level]");
-  const lowStarEl = target.closest<HTMLElement>('[data-action="set-rating-suspenso"]');
   const wallRatingEl = target.closest<HTMLElement>(".wall-rating-number");
   
   const movieId = normalizeMovieId(card.dataset.movieId);
@@ -293,30 +315,16 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
     const newRating = resolveNextRating(currentRating, level);
 
     setRating(movieId, newRating, card);
-    
-    // Feedback visual post-tap (Animación de pulso)
-    starEl.classList.add('just-rated');
-    setTimeout(() => starEl.classList.remove('just-rated'), 400);
+    triggerRatingAnimation(card, newRating, starEl);
     
     return true;
   }
 
-  if (lowStarEl) {
+  if (wallRatingEl || (target.closest<HTMLElement>(".card-rating-block") && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) && !starEl)) {
     event.preventDefault(); event.stopPropagation();
-    const newRating = resolveNextRating(currentRating, 0);
-
+    const newRating = resolveNextRating(currentRating, 1);
     setRating(movieId, newRating, card);
-    
-    lowStarEl.classList.add('just-rated');
-    setTimeout(() => lowStarEl.classList.remove('just-rated'), 400);
-    
-    return true;
-  }
-
-  if (wallRatingEl || (target.closest<HTMLElement>(".card-rating-block") && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED))) {
-    event.preventDefault(); event.stopPropagation();
-    const newRating = resolveNextRating(currentRating, 0);
-    setRating(movieId, newRating, card);
+    triggerRatingAnimation(card, newRating, starEl || undefined);
     return true;
   }
 
@@ -339,32 +347,31 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
   const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
   const circleEl = card.querySelector<HTMLElement>('[data-action="set-rating-suspenso"]');
   
-  if (!starCont || !circleEl) return;
+  if (!starCont) return;
 
   const state = getRatingPresentationState(mappedMovie, userData, isLoggedIn);
 
   let starDisplay = "none";
-  let circleDisplay = "none";
   let hasUserRatingClass = false;
 
   if (state.showUserRating) {
     hasUserRatingClass = true;
+    starDisplay = "flex";
     
     if (state.userRatingValue === 2) {
-      circleDisplay = "block";
-      starDisplay = "none";
+      // Suspenso: La 1.ª estrella se muestra hueca en el contenedor unificado de 3 estrellas
+      renderUserStars(starCont, 0, true, true);
     } else {
-      starDisplay = "flex";
-      circleDisplay = "none";
-      renderUserStars(starCont, state.visualUserStars, true);
+      // 1, 2 o 3 estrellas llenas
+      renderUserStars(starCont, state.visualUserStars, true, false);
     }
   } else {
     if (state.showEmptyAverage) {
       if (isLoggedIn) {
         starDisplay = "flex";
-        renderUserStars(starCont, 0, false);
+        renderUserStars(starCont, 0, false, false);
       } else {
-        circleDisplay = "block";
+        starDisplay = "none";
       }
     } else if (state.showAverageRating) {
       starDisplay = "flex";
@@ -372,15 +379,13 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
     } else {
       if (isLoggedIn) {
         starDisplay = "flex";
-        renderUserStars(starCont, 0, false);
+        renderUserStars(starCont, 0, false, false);
       }
     }
   }
 
   starCont.classList.toggle("has-user-rating", hasUserRatingClass);
-  circleEl.classList.toggle("has-user-rating", hasUserRatingClass);
-
-  if (circleEl.style.display !== circleDisplay) circleEl.style.display = circleDisplay;
+  if (circleEl) circleEl.style.display = "none";
   if (starCont.style.display !== starDisplay) starCont.style.display = starDisplay;
 }
 

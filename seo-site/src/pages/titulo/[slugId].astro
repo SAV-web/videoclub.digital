@@ -302,37 +302,54 @@ const jsonLd = {
 
     .brand-logo {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
       text-decoration: none;
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: var(--color-text-primary);
+      font-family: var(--font-title);
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.1;
       letter-spacing: -0.03em;
+      color: var(--color-text-primary);
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 0.85;
+      }
     }
 
-    .logo-accent {
-      color: #f59e0b;
+    .logo-line-1,
+    .logo-line-2 {
+      display: block;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
     }
 
     .btn-header-cta {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
       background: rgba(245, 158, 11, 0.15);
       color: #f59e0b;
       border: 1px solid rgba(245, 158, 11, 0.35);
-      padding: 6px 14px;
       border-radius: 9999px;
-      font-size: 0.85rem;
-      font-weight: 700;
       text-decoration: none;
       transition: all 0.2s ease;
-    }
 
-    .btn-header-cta:hover {
-      background: #f59e0b;
-      color: #0d0d0d;
+      &:hover {
+        background: #f59e0b;
+        color: #0d0d0d;
+        transform: scale(1.08);
+      }
+
+      & svg {
+        width: 20px;
+        height: 20px;
+      }
     }
 
     /* CORTINA OSCURA Y VENTANA MODAL (SPA QUICK VIEW) */
@@ -447,6 +464,11 @@ const jsonLd = {
       border: none;
       display: block;
       object-fit: cover;
+      pointer-events: none !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      -webkit-user-drag: none !important;
+      -webkit-touch-callout: none !important;
     }
 
     .is-quick-view .movie-summary {
@@ -961,17 +983,15 @@ const jsonLd = {
   <!-- Header Superior de Marca -->
   <header class="site-header">
     <div class="header-content">
-      <a href={baseUrl} class="brand-logo">
-        <span class="logo-icon">🎬</span>
-        <span class="logo-text">videoclub<span class="logo-accent">.digital</span></span>
+      <a href={baseUrl} class="brand-logo" aria-label="Videoclub Digital">
+        <span class="logo-line-1">videoclub</span>
+        <span class="logo-line-2">.digital</span>
       </a>
-      <div class="header-controls" style="display: flex; align-items: center; gap: 12px;">
-        <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Modo oscuro" aria-label="Modo oscuro" aria-pressed="false" style="background: none; border: none; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; color: var(--color-text-primary); border-radius: 9999px;">
-          <svg class="theme-icon moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-          <svg class="theme-icon sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-        </button>
-        <a href={`${baseUrl}?movie=${movie.id}`} class="btn-header-cta">
-          <span class="btn-icon">⚡</span> Abrir en la App
+      <div class="header-controls">
+        <a href={`${baseUrl}?movie=${movie.id}`} class="btn-header-cta" title="Abrir en la App" aria-label="Abrir en la App">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
         </a>
       </div>
     </div>
@@ -1187,6 +1207,20 @@ const jsonLd = {
 
   <script is:inline define:vars={{ baseUrl }}>
     document.addEventListener('DOMContentLoaded', () => {
+      // Protección de imágenes
+      document.addEventListener('contextmenu', (e) => {
+        const t = e.target;
+        if (t && (t.tagName === 'IMG' || t.closest('.poster-container'))) {
+          e.preventDefault();
+        }
+      });
+      document.addEventListener('dragstart', (e) => {
+        const t = e.target;
+        if (t && (t.tagName === 'IMG' || t.closest('.poster-container'))) {
+          e.preventDefault();
+        }
+      });
+
       const starContainer = document.querySelector('.star-rating-container');
       if (starContainer) {
         starContainer.classList.add('is-interactive');

@@ -141,9 +141,14 @@ button, input, select, textarea, a {
   scroll-behavior: smooth;
 }
 
-/* 12. Protección Global de Imágenes (Estrategia B) */
+/* 12. Protección Global de Imágenes */
+img, picture, .poster-container, .poster-overlay-guard {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+  -webkit-touch-callout: none !important;
+}
+
 img {
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-drag: none;
+  pointer-events: none !important;
 }

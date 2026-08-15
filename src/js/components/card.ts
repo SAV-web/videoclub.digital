@@ -240,17 +240,15 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     
     const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item';
     
-    if (card.classList.contains('person-card')) {
-      if (!target.closest(criticalElements)) {
-        if (Math.abs(e.clientX - startX) <= MOVE_THRESHOLD && Math.abs(e.clientY - startY) <= MOVE_THRESHOLD) {
-          if (e.cancelable) e.preventDefault();
-          loadAndOpenModal(card);
-        }
+    if (card.classList.contains('collection-card') || target.closest(criticalElements)) return;
+
+    if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
+      if (Math.abs(e.clientX - startX) <= MOVE_THRESHOLD && Math.abs(e.clientY - startY) <= MOVE_THRESHOLD) {
+        if (e.cancelable) e.preventDefault();
+        loadAndOpenModal(card);
       }
       return;
     }
-
-    if (card.classList.contains('collection-card') || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || target.closest(criticalElements)) return;
 
     // Detectar si fue un tap o un scroll
     if (Math.abs(e.clientX - startX) > MOVE_THRESHOLD || Math.abs(e.clientY - startY) > MOVE_THRESHOLD) return;
@@ -265,9 +263,11 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
       if (tapTimeout) clearTimeout(tapTimeout);
       loadAndOpenModal(card);
     } else {
-      // Primer Tap -> Esperar
+      // Primer Tap -> Si es película, rotar ficha; si es persona, esperar
       if (tapTimeout) clearTimeout(tapTimeout);
-      tapTimeout = setTimeout(() => handleSingleTap(card), DOUBLE_TAP_DELAY);
+      if (!card.classList.contains('person-card')) {
+        tapTimeout = setTimeout(() => handleSingleTap(card), DOUBLE_TAP_DELAY);
+      }
     }
     lastTapTime = currentTime;
   });
@@ -422,11 +422,10 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   const link = target.closest("a");
   if (link && link.href && link.origin !== location.origin) return;
 
-  // 7. Apertura Modal (Modo Muro o Fichas de Personas) - Solo si NO estamos ya dentro del modal
+  // 7. Apertura Modal (Modo Muro) - Solo si NO estamos ya dentro del modal
   const isInsideModal = card.classList.contains('is-quick-view') || !!card.closest('#quick-view-content');
   if (!isInsideModal) {
-    const isPerson = card.classList.contains('person-card');
-    if (isPerson || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
+    if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       loadAndOpenModal(card);
     }
   }
@@ -941,9 +940,6 @@ function createGroupCardElement(
   const subtitleEl = card.querySelector('[data-template="subtitle"]');
   if (subtitleEl) subtitleEl.textContent = isStudio ? "Estudio / Productora" : "Selección / Saga";
 
-  const countEl = card.querySelector('[data-template="count"]');
-  if (countEl) countEl.textContent = `${totalMovies} títulos`;
-
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = shortName;
 
@@ -1047,17 +1043,21 @@ export function runFlipOnboarding(container: HTMLElement): void {
   if (seenCount >= MAX_SHOWS || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
 
   setTimeout(() => {
-    const firstCard = container.querySelector<HTMLElement>(`.${CSS_CLASSES.MOVIE_CARD}`);
-    if (!firstCard || !firstCard.isConnected) return;
+    // Seleccionar la primera ficha de película real (omitiendo fichas de cabecera VIP: Director, Actor, Colección o Estudio)
+    const targetMovieCard = container.querySelector<HTMLElement>(
+      `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card)`
+    ) || container.querySelector<HTMLElement>(`.${CSS_CLASSES.MOVIE_CARD}`);
 
-    const inner = firstCard.querySelector(".flip-card-inner");
+    if (!targetMovieCard || !targetMovieCard.isConnected) return;
+
+    const inner = targetMovieCard.querySelector(".flip-card-inner");
     if (inner && !inner.classList.contains("is-flipped")) {
       inner.classList.add("is-flipped");
       
       setTimeout(() => {
         if (inner.isConnected && inner.classList.contains("is-flipped")) {
           inner.classList.remove("is-flipped");
-          LocalStore.set("flipTutorialCount", seenCount + 1);
+          LocalStore.set(FLIP_ONBOARDING_KEY, seenCount + 1);
         }
       }, 1200);
     }

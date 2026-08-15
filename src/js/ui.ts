@@ -358,9 +358,10 @@ export const isAuthModalOpen = (): boolean => {
   return Boolean(dom.authModal && !dom.authModal.hidden);
 };
 
-export const closeAuthModal = (options: { fromPopstate?: boolean } = {}): void => {
+export const closeAuthModal = (options?: { fromPopstate?: boolean } | Event): void => {
+  const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
   if (dom.authModal && !dom.authModal.hidden) {
-    if (!options.fromPopstate && window.history.state?.modalOpen) {
+    if (!isPopstate && window.history.state?.modalOpen) {
       window.history.back();
     }
     dom.authModal.style.transform = "";
@@ -388,7 +389,7 @@ export function setupAuthModal(): void {
   if (!loginButton || !authModal) return;
 
   loginButton.addEventListener("click", openAuthModal);
-  authOverlay?.addEventListener("click", closeAuthModal);
+  authOverlay?.addEventListener("click", () => closeAuthModal());
   
   document.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Escape" && !authModal.hidden) closeAuthModal();
