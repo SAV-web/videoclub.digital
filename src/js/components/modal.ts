@@ -719,11 +719,24 @@ appEvents.on("userDataUpdated", () => {
 // =================================================================
 
 /**
+ * Comprueba si la modal está actualmente visible.
+ */
+export function isModalOpen(): boolean {
+  const { modal } = getDom();
+  return Boolean(modal && modal.classList.contains("is-visible"));
+}
+
+/**
  * Cierra el modal con animación y limpieza.
  */
-export function closeModal(): void {
+export function closeModal(options: { fromPopstate?: boolean } = {}): void {
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
+
+  // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
+  if (!options.fromPopstate && window.history.state?.modalOpen) {
+    window.history.back();
+  }
   
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
@@ -791,6 +804,11 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   if (!cardElement) return;
   const { modal, overlay, content } = getDom();
   if (!modal || !overlay) return;
+
+  // Integración con el botón "Atrás" del navegador: crear entrada en el historial
+  if (!window.history.state?.modalOpen) {
+    window.history.pushState({ modalOpen: true }, "", window.location.href);
+  }
   
   modal.classList.remove("modal-is-loading");
   

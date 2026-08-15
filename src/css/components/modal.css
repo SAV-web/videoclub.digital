@@ -673,13 +673,7 @@
 
 .auth-modal {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   z-index: calc(var(--z-index-overlay) + 1);
-  width: 90%;
-  max-width: 420px;
-  padding-bottom: max(var(--space-md), env(safe-area-inset-bottom));
 
   &:focus,
   &:focus-visible {
@@ -687,14 +681,87 @@
   }
 }
 
-.auth-box {
-  width: 100%;
-  padding: var(--space-xl);
-  border-radius: var(--radius-lg);
-  background-color: var(--color-surface);
-  box-shadow: var(--shadow);
-  text-align: center;
-  animation: auth-pop-in 0.3s var(--ease-snap);
+/* A) Modo Escritorio (> 700px): Modal flotante centrado */
+@media (min-width: 701px) {
+  .auth-modal {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 420px;
+  }
+
+  .auth-box {
+    width: 100%;
+    padding: var(--space-xl);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow);
+    text-align: center;
+    animation: auth-pop-in 0.3s var(--ease-snap);
+  }
+}
+
+/* B) Modo Móvil (<= 700px): Formato Bottom Sheet con tirador y arrastre */
+@media (max-width: 700px) {
+  .auth-overlay {
+    backdrop-filter: blur(4px) saturate(85%);
+    -webkit-backdrop-filter: blur(4px) saturate(85%);
+  }
+
+  .auth-modal {
+    top: auto;
+    bottom: 0;
+    left: 50%;
+    width: 96%;
+    max-width: 480px;
+    max-height: 90dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    transform: translate(-50%, 0);
+    transition: transform 0.35s var(--ease-smooth-out);
+
+    /* Barrita de arrastre superior (Pill Handle) */
+    &::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 5px;
+      background-color: var(--color-border);
+      border-radius: 10px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    &.is-dragging {
+      transition: none !important;
+      will-change: transform;
+    }
+  }
+
+  .auth-box {
+    width: 100%;
+    padding: calc(var(--space-lg) + 12px) var(--space-lg) max(var(--space-lg), env(safe-area-inset-bottom));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow);
+    text-align: center;
+    max-height: 90dvh;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    animation: auth-slide-up 0.35s var(--ease-smooth-out);
+  }
+
+  @keyframes auth-slide-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
 }
 
 @keyframes auth-pop-in {

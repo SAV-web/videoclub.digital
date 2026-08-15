@@ -50,7 +50,7 @@
   --font-weight-extrabold: 800; 
 
   /* ---- Paleta de Colores (Tema Claro) ---- */
-  --color-bg: #f5f5f5;
+  --color-bg: #eceff2;
   --color-surface: #ffffff;
   --color-surface-rgb: 255, 255, 255;
   --color-surface-1: #ffffff; /* Nivel 1 (Igual en claro) */

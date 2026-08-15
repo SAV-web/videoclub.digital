@@ -714,18 +714,6 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
     if (mainSearchInput) mainSearchInput.value = "";
   }
 
-  if (newValue && type === 'country') {
-    setFilter('excludedCountries', [], true);
-  }
-
-  if (newValue && type === 'genre') {
-    const currentExcluded = previousFilters.excludedGenres || [];
-    if (currentExcluded.includes(newValue)) {
-      const newExcluded = currentExcluded.filter(g => g !== newValue);
-      setFilter('excludedGenres', newExcluded, true);
-    }
-  }
-
   if (!setFilter(type, newValue)) {
     showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, "error");
     if (type === 'selection' && previousFilters.studio) setFilter('studio', previousFilters.studio);
@@ -757,14 +745,6 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
 async function handleToggleExcludedFilterOptimistic(type: string, value: string): Promise<void> {
   const previousState = getActiveFilters();
 
-  if (type === 'country' && previousState.country) {
-    return;
-  }
-
-  if (type === 'genre' && previousState.genre === value) {
-    setFilter('genre', null);
-  }
-
   if (previousState.searchTerm) {
     setSearchTerm("");
     const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
@@ -787,7 +767,6 @@ async function handleToggleExcludedFilterOptimistic(type: string, value: string)
   }
 
   renderFilterPills();
-  appEvents.emit("uiActionTriggered");
   try {
     await loadAndRenderMovies(1);
   } catch (error: unknown) {

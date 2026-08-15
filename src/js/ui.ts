@@ -354,8 +354,31 @@ export function closeAccessibleModal(modal: HTMLElement | null, overlay: HTMLEle
   }
 }
 
-export const closeAuthModal = (): void => closeAccessibleModal(dom.authModal, dom.authOverlay);
-export const openAuthModal = (): void => openAccessibleModal(dom.authModal, dom.authOverlay);
+export const isAuthModalOpen = (): boolean => {
+  return Boolean(dom.authModal && !dom.authModal.hidden);
+};
+
+export const closeAuthModal = (options: { fromPopstate?: boolean } = {}): void => {
+  if (dom.authModal && !dom.authModal.hidden) {
+    if (!options.fromPopstate && window.history.state?.modalOpen) {
+      window.history.back();
+    }
+    dom.authModal.style.transform = "";
+    dom.authModal.classList.remove("is-dragging");
+  }
+  closeAccessibleModal(dom.authModal, dom.authOverlay);
+};
+
+export const openAuthModal = (): void => {
+  if (!window.history.state?.modalOpen) {
+    window.history.pushState({ modalOpen: true }, "", window.location.href);
+  }
+  if (dom.authModal) {
+    dom.authModal.style.transform = "";
+    dom.authModal.classList.remove("is-dragging");
+  }
+  openAccessibleModal(dom.authModal, dom.authOverlay);
+};
 
 let authModalInitialized = false;
 
@@ -370,6 +393,64 @@ export function setupAuthModal(): void {
   document.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Escape" && !authModal.hidden) closeAuthModal();
   });
+
+  // Gesto táctil de deslizamiento hacia abajo para cerrar (Bottom Sheet Swipe Down en móvil)
+  const authBox = authModal.querySelector<HTMLElement>(".auth-box") || authModal;
+  let startY = 0;
+  let startX = 0;
+  let isDragging = false;
+  let startTime = 0;
+  let currentY = 0;
+
+  authModal.addEventListener("touchstart", (e: TouchEvent) => {
+    if (window.innerWidth > 700) return;
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+    isDragging = false;
+    startTime = Date.now();
+    authModal.classList.remove("is-dragging");
+  }, { passive: true });
+
+  authModal.addEventListener("touchmove", (e: TouchEvent) => {
+    if (window.innerWidth > 700) return;
+    const clientY = e.touches[0].clientY;
+    const clientX = e.touches[0].clientX;
+    const deltaY = clientY - startY;
+    const deltaX = clientX - startX;
+
+    if (!isDragging) {
+      if (Math.abs(deltaY) < 5 && Math.abs(deltaX) < 5) return;
+      // Solo iniciar arrastre hacia abajo si estamos en el tope superior del scroll
+      if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && authBox.scrollTop <= 5) {
+        isDragging = true;
+        authModal.classList.add("is-dragging");
+      }
+    }
+
+    if (isDragging) {
+      if (e.cancelable) e.preventDefault();
+      currentY = Math.max(0, deltaY);
+      authModal.style.transform = `translate(-50%, ${currentY}px)`;
+    }
+  }, { passive: false });
+
+  const endDrag = () => {
+    if (!isDragging) return;
+    authModal.classList.remove("is-dragging");
+    const duration = Date.now() - startTime;
+    const velocityY = currentY / (duration || 1);
+
+    if (currentY > 100 || velocityY > 0.5) {
+      closeAuthModal();
+    } else {
+      authModal.style.transform = "";
+    }
+    isDragging = false;
+    currentY = 0;
+  };
+
+  authModal.addEventListener("touchend", endDrag, { passive: true });
+  authModal.addEventListener("touchcancel", endDrag, { passive: true });
 
   authModalInitialized = true;
 }

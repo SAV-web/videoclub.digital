@@ -270,6 +270,15 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
   if (!force && isNew && getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) return false;
 
   Reflect.set(state.activeFilters, type, normalizedValue);
+
+  // Regla: Sólo 1 bento por menú (positivos y exclusiones son mutuamente excluyentes en la misma categoría)
+  if (normalizedValue) {
+    if (type === 'genre') state.activeFilters.excludedGenres = [];
+    if (type === 'country') state.activeFilters.excludedCountries = [];
+    if (type === 'excludedGenres' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.genre = null;
+    if (type === 'excludedCountries' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.country = null;
+  }
+
   state.totalMovies = 0; // Obligamos a recalcular resultados
   return true;
 }
@@ -298,7 +307,7 @@ export function setSearchTerm(term: string | null | undefined): boolean {
   return false;
 }
 
-// Excluye un filtro (Botón papelera / pausa)
+// Excluye un filtro (Botón papelera / pausa) - Sólo 1 bento por menú
 export function toggleExcludedFilter(type: string, value: unknown): boolean {
   if (!["genre", "country"].includes(type)) return false;
   const normalizedValue = normalizeFilterValue(type, value) as string;
@@ -310,18 +319,12 @@ export function toggleExcludedFilter(type: string, value: unknown): boolean {
 
   if (index > -1) {
     // Si ya está excluido, lo quitamos de la lista
-    const newList = [...list];
-    newList.splice(index, 1);
-    state.activeFilters[listKey] = newList;
+    state.activeFilters[listKey] = [];
   } else {
-    if (type === 'genre') {
-      // Si es género, reemplazamos por el nuevo (máximo 1).
-      state.activeFilters[listKey] = [normalizedValue];
-    } else {
-      // Si no está excluido, lo añadimos (respetando límites)
-      if (list.length >= CONFIG.MAX_EXCLUDED_FILTERS || getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) return false;
-      state.activeFilters[listKey] = [...list, normalizedValue];
-    }
+    // Sólo 1 bento por menú: reemplazamos por el nuevo y limpiamos el positivo de esa categoría
+    state.activeFilters[listKey] = [normalizedValue];
+    if (type === 'genre') state.activeFilters.genre = null;
+    if (type === 'country') state.activeFilters.country = null;
   }
   state.totalMovies = 0;
   return true;

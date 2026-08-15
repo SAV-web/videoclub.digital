@@ -152,6 +152,7 @@ body.sidebar-collapsed .sidebar {
   cursor: pointer; text-align: left; text-decoration: none;
   font: inherit; font-size: var(--font-size-sm); font-weight: bold;
   min-height: 34px;
+  box-sizing: border-box;
   transition: color var(--transition-duration-fast), background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
   &:active { transform: scale(0.98); transition-duration: 0.1s; }
   @media (hover: hover) and (pointer: fine) { &:hover { color: var(--color-text-primary); transform: translateX(2px); } &:hover:active { transform: translateX(2px) scale(0.99); } }
@@ -176,21 +177,23 @@ body.sidebar-collapsed .sidebar {
 
 .exclude-filter-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px;
-  margin-left: var(--space-md);
+  width: 26px; height: 26px;
+  min-width: 0; min-height: 0;
+  flex-shrink: 0;
+  margin-left: var(--space-xs);
   border: 1px solid transparent; border-radius: 50%;
   background-color: transparent; color: var(--color-text-secondary);
   opacity: 0;
   transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast), transform 0.2s var(--ease-bounce-sharp);
 
-  .filter-link:hover &, .filter-link:focus-visible &, .filter-link.is-excluded &, &:focus-visible { opacity: 1; }
+  .filter-link:hover &, .filter-link:focus-visible &, &:focus-visible { opacity: 1; }
   @media (hover: hover) and (pointer: fine) { &:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); transform: scale(1.15); } }
   @media (hover: none) and (pointer: coarse) { opacity: 1; color: var(--color-text-tertiary); }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
-  .filter-link.active & { color: #fff; }
+  .filter-link.active &,
   .filter-link.is-excluded & { display: none !important; }
-  & svg { width: 22px; height: 22px; stroke-width: 2; }
+  & svg { width: 18px; height: 18px; stroke-width: 2; }
 }
 
 /* --- 7. AUTOCOMPLETADO (Buscadores internos) --- */
@@ -453,8 +456,21 @@ body.sidebar-collapsed .sidebar {
   .year-input { font-size: 1.1rem; }
   .total-results-container { font-size: var(--font-size-base); }
   .exclude-filter-btn {
-    width: 32px; height: 32px; opacity: 1;
-    & svg { width: 22px; height: 22px; stroke-width: 2; }
+    width: 26px; height: 26px; opacity: 1;
+    min-width: 0; min-height: 0; flex-shrink: 0;
+    & svg { width: 18px; height: 18px; stroke-width: 2; }
+  }
+  
+  /* Iconos e imágenes de estudios aumentados en móvil */
+  .sidebar-platform-icon {
+    height: 42px;
+  }
+  .sidebar-platform-img {
+    height: 32px;
+  }
+  #studios-list-container .filter-link {
+    min-height: 48px;
+    padding-block: var(--space-xs);
   }
 }
 
@@ -463,8 +479,21 @@ body.sidebar-collapsed .sidebar {
   .filter-pill .remove-filter-btn { padding: 0 8px; font-size: 1.2rem; position: relative; }
   .filter-pill .remove-filter-btn::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
   .sidebar-autocomplete-item:active, .collapsible-section .section-header:active { transform: scale(0.98); }
-  .sidebar-control-button, .exclude-filter-btn { min-width: var(--tap-target-size); min-height: var(--tap-target-size); }
+  .sidebar-control-button { min-width: var(--tap-target-size); min-height: var(--tap-target-size); }
   .filter-link { min-height: var(--tap-target-size); align-items: center; }
+  .exclude-filter-btn {
+    position: relative;
+    min-width: 0; min-height: 0;
+    width: 26px; height: 26px;
+    flex-shrink: 0;
+  }
+  .exclude-filter-btn::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px; height: 44px;
+  }
 }
 
 /* --- 14. SISTEMA BENTO GRID (Géneros y Países) --- */
@@ -483,22 +512,27 @@ body.sidebar-collapsed .sidebar {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   text-align: left;
-  min-height: 34px;
-  padding: var(--space-xs);
+  min-height: 36px;
+  padding: var(--space-xxs) var(--space-xs);
   font-weight: var(--font-weight-semibold);
   box-shadow: var(--shadow-sm);
-  width: 96%;
-  display: block; 
+  width: 100%;
+  display: flex;
+  align-items: center;
   justify-content: flex-start;
   margin: 0 auto;
+  box-sizing: border-box;
   transition: transform 0.1s, background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
 .bento-grid .filter-link { 
   display: flex; width: 100%;
+  align-items: center;
   font-size: var(--font-size-xs);
   line-height: 1.15;
   padding: var(--space-xxs) var(--space-xs);
+  min-height: 36px;
+  box-sizing: border-box;
 }
 .bento-grid .filter-link:active {
   transform: scale(0.96);
@@ -535,18 +569,30 @@ body.sidebar-collapsed .sidebar {
 .bento-grid .filter-link[data-filter-value="España"] {
   grid-column: 1 / -1;
   justify-content: space-between; 
-  padding-inline: var(--space-xs); 
-  padding-block: 2px; 
+  align-items: center;
+  padding: var(--space-xxs) var(--space-xs);
+  min-height: 36px;
+  box-sizing: border-box;
+
+  &.active,
+  &.is-excluded {
+    justify-content: flex-start;
+  }
 }
 
 .bento-grid .exclude-filter-btn {
-  margin-left: 0;
+  margin-left: auto;
   background-color: rgba(0,0,0,0.05);
-  width: 30px; height: 30px; 
+  width: 24px; height: 24px;
+  min-width: 0; min-height: 0;
+  flex-shrink: 0;
   border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .bento-grid .exclude-filter-btn svg {
-  width: 20px; height: 20px;
+  width: 16px; height: 16px;
 }
 :where(html.dark-mode) .bento-grid .exclude-filter-btn {
   background-color: rgba(255,255,255,0.1);

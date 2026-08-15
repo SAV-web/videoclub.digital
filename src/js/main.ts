@@ -908,9 +908,26 @@ function init(): void {
   }
   
   window.addEventListener("popstate", async () => {
-    const { closeModal } = await import("./components/modal.js");
-    closeModal();
-    
+    const { isModalOpen, closeModal } = await import("./components/modal.js");
+    const { isAuthModalOpen, closeAuthModal } = await import("./ui.js");
+
+    let modalWasOpen = false;
+
+    if (isModalOpen()) {
+      closeModal({ fromPopstate: true });
+      modalWasOpen = true;
+    }
+
+    if (isAuthModalOpen()) {
+      closeAuthModal({ fromPopstate: true });
+      modalWasOpen = true;
+    }
+
+    // Si había una modal abierta, el botón "Atrás" se consume exclusivamente para cerrarla sin alterar la página
+    if (modalWasOpen) {
+      return;
+    }
+
     readUrlAndSetState();
     appEvents.emit("updateSidebarUI");
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
