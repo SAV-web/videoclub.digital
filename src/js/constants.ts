@@ -40,7 +40,6 @@ export const CONFIG = {
 
   // Comportamiento
   MAX_ACTIVE_FILTERS: 20,
-  MAX_EXCLUDED_FILTERS: 20,
   SEARCH_DEBOUNCE_DELAY: 400,
 
   // Límites de Datos
@@ -271,7 +270,7 @@ export const FILTER_CONFIG: Record<string, FilterGroup> = {
       T: "A Contra+",
       A: "Arrow",
       E: "Eureka",
-      B: "BFI",
+      I: "Imprint",
     },
     titles: {
       M: "1001 Películas que ver antes de morir",
@@ -283,7 +282,7 @@ export const FILTER_CONFIG: Record<string, FilterGroup> = {
       T: "A Contracorriente Films",
       A: "Colección Arrow Video",
       E: "Colección Eureka",
-      B: "Colección BFI",
+      I: "Colección Imprint",
     },
   },
   studio: {

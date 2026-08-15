@@ -12,7 +12,7 @@ import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
-import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js"; 
+import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js";
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 import { Movie, MappedMovie, MovieCardElement } from "../types.js";
@@ -109,7 +109,7 @@ function handleOutsideClick(event: MouseEvent): void {
   const target = event.target as HTMLElement;
   // No cerramos si se hace click en una card del grid para permitir navegación directa.
   const isClickInsideCard = target.closest(".movie-card");
-  
+
   if (modal.classList.contains("is-visible") && !modal.contains(target) && !isClickInsideCard) {
     closeModal();
   }
@@ -130,24 +130,24 @@ function handleMetadataClick(event: MouseEvent): void {
 
     event.preventDefault();
     closeModal();
-    
+
     let filterType: "director" | "actor" | "year";
     let filterValue: string | undefined;
 
-    if (directorLink) { 
-      filterType = "director"; 
-      filterValue = directorLink.dataset.directorName; 
-    } else if (actorLink) { 
-      filterType = "actor"; 
-      filterValue = actorLink.dataset.actorName; 
-    } else { 
-      filterType = "year"; 
-      filterValue = yearLink?.dataset.yearValue; 
+    if (directorLink) {
+      filterType = "director";
+      filterValue = directorLink.dataset.directorName;
+    } else if (actorLink) {
+      filterType = "actor";
+      filterValue = actorLink.dataset.actorName;
+    } else {
+      filterType = "year";
+      filterValue = yearLink?.dataset.yearValue;
     }
 
     // Evento global de integración
     appEvents.emit("filtersReset", {
-      keepSort: true, 
+      keepSort: true,
       newFilter: { type: filterType, value: filterValue }
     });
   }
@@ -169,7 +169,7 @@ function handleTouchStart(e: TouchEvent): void {
   touchState.isDragging = false;
   touchState.isHorizontalSwipe = false;
   touchState.startTime = Date.now();
-  
+
   modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS si estaba desactivada
 }
 
@@ -200,7 +200,7 @@ function handleTouchMove(e: TouchEvent): void {
         touchState.isDragging = true;
         modal.classList.add(CSS_CLASSES.IS_DRAGGING); // Desactivar transición para seguir el dedo
       }
-    } 
+    }
     // Gesto Horizontal (Navegación)
     else if (Math.abs(deltaX) > Math.abs(deltaY)) {
       touchState.isHorizontalSwipe = true;
@@ -210,7 +210,7 @@ function handleTouchMove(e: TouchEvent): void {
   // 2. Ejecución
   if (touchState.isDragging) {
     if (e.cancelable) e.preventDefault();
-    
+
     let translateY = deltaY;
     // Rubber Banding (Resistencia exponencial al arrastrar hacia arriba/tope)
     if (translateY < 0) {
@@ -246,7 +246,7 @@ function handleTouchEnd(e: TouchEvent): void {
 
   // B. Cierre Vertical
   if (!touchState.isDragging) return;
-  
+
   modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS
 
   const velocityY = touchState.currentY / (duration || 1);
@@ -255,7 +255,7 @@ function handleTouchEnd(e: TouchEvent): void {
   } else {
     resetModalTransform(); // Rebote elástico
   }
-  
+
   touchState.currentY = 0;
   touchState.isDragging = false;
 }
@@ -354,10 +354,10 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
 
 const createLink = (text: string, type: 'director' | 'actor'): HTMLAnchorElement => {
   const param = type === 'director' ? 'dir' : 'actor';
-  return createElement("a", { 
-    textContent: text, 
-    href: `?${param}=${encodeURIComponent(text)}`, 
-    dataset: { [type === 'director' ? 'directorName' : 'actorName']: text } 
+  return createElement("a", {
+    textContent: text,
+    href: `?${param}=${encodeURIComponent(text)}`,
+    dataset: { [type === 'director' ? 'directorName' : 'actorName']: text }
   }) as HTMLAnchorElement;
 };
 
@@ -459,7 +459,7 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
       nodes.year.textContent = movie.displayYear;
     }
   }
-  
+
   renderCountryFlag(
     nodes["country-container"] || null,
     nodes["country-flag"] || null,
@@ -471,7 +471,7 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
   if (nodes.iconsContainer && movie.studioList) {
     nodes.iconsContainer.innerHTML = "";
     const codes = movie.studioList;
-    
+
     codes.forEach(code => {
       const conf = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
       if (conf) {
@@ -506,7 +506,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
 
   // Duración y Episodios
   if (nodes.duration) nodes.duration.textContent = formatRuntime(movie.minutes, movie.isSeries);
-  
+
   if (nodes.episodes) {
     nodes.episodes.textContent = movie.displayEpisodes || "";
     nodes.episodes.hidden = !movie.displayEpisodes;
@@ -529,7 +529,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
   // Textos Largos
   if (nodes.genre) nodes.genre.textContent = movie.genres || "N/A";
   if (nodes.synopsis) nodes.synopsis.textContent = movie.synopsis || "N/A";
-  
+
   // Actores
   if (nodes.actors) {
     nodes.actors.textContent = "";
@@ -556,7 +556,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
 function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   const { template, content, modal } = getDom();
   if (!template || !content || !modal) return;
-  
+
   // Extraemos URL HQ si ya se cargó en la card para evitar parpadeo
   const cardImg = cardElement.querySelector("img");
   const image_hq = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
@@ -567,10 +567,10 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
 
   // Si es persona, usamos person-card-template en lugar de quick-view-template
   const personTemplate = document.getElementById("person-card-template") as HTMLTemplateElement | null;
-  const currentTemplate = isPerson 
-    ? personTemplate?.content 
+  const currentTemplate = isPerson
+    ? personTemplate?.content
     : template;
-    
+
   if (!currentTemplate) return;
 
   const clone = currentTemplate.cloneNode(true) as DocumentFragment;
@@ -587,7 +587,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
 
   // Reset UI
   if (!modal.classList.contains("is-visible")) modal.classList.remove("hide-arrows");
-  
+
   // Binding de Datos
   content.movieData = movie;
   content.dataset.movieId = modalId;
@@ -603,7 +603,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
       img.classList.remove(CSS_CLASSES.LOADED);
       img.classList.add(CSS_CLASSES.LAZY_LQIP);
       img.src = image_hq;
-      
+
       setTimeout(() => {
         const tempImg = new Image();
         tempImg.onload = () => {
@@ -614,28 +614,28 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
         tempImg.src = image_hq;
       }, 50);
     }
-    
+
     // Título/Nombre
     const titleEl = cardClone.querySelector('[data-template="title"]');
     if (titleEl && movie.name) {
       titleEl.textContent = movie.name;
     }
-    
+
     // Lugar de nacimiento
     const birthplaceEl = cardClone.querySelector('[data-template="birthplace"]');
     if (birthplaceEl) {
       birthplaceEl.textContent = movie.place_of_birth || "";
     }
-    
+
     // Edad y fechas
     const ageEl = cardClone.querySelector('[data-template="age"]');
     const datesEl = cardClone.querySelector('[data-template="dates"]');
-    
+
     const ageInfo = computePersonAgeInfo(movie.birthday, movie.deathday);
-    
+
     if (ageEl) ageEl.textContent = ageInfo.ageStr;
     if (datesEl) datesEl.textContent = ageInfo.datesStr;
-    
+
     // Bandera del País
     const countryCode = movie.countries?.code || movie.country_code || undefined;
     const countryName = movie.countries?.name || movie.country || undefined;
@@ -683,7 +683,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (content.dataset.movieId !== String(movie.id)) return;
-        
+
         setupModalDetails(nodes, movie);
         setupCardRatings(cardClone, movie);
 
@@ -697,7 +697,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
                   updateCardUI(cardClone);
                 }
               }
-            }).catch(() => {});
+            }).catch(() => { });
           });
         }
       });
@@ -738,7 +738,7 @@ export function closeModal(options?: { fromPopstate?: boolean } | Event): void {
   if (!isPopstate && window.history.state?.modalOpen) {
     window.history.back();
   }
-  
+
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
   modalTransitionCount++;
@@ -748,7 +748,7 @@ export function closeModal(options?: { fromPopstate?: boolean } | Event): void {
     modal.classList.remove("is-visible");
     overlay.classList.remove("is-visible");
     document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
-    
+
     // Limpieza
     setTimeout(resetModalTransform, MODAL_TRANSITION_MS);
     closeAccessibleModal(modal, overlay);
@@ -760,14 +760,14 @@ export function closeModal(options?: { fromPopstate?: boolean } | Event): void {
     activeHeroCard.style.viewTransitionName = "hero-expansion";
 
     const transition = executeViewTransition(() => {
-      modal.style.viewTransitionName = ""; 
+      modal.style.viewTransitionName = "";
       performClose();
     });
 
     transition.finished.finally(() => {
       if (activeHeroCard) activeHeroCard.style.viewTransitionName = "";
       activeHeroCard = null;
-      
+
       modalTransitionCount--;
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
         header.style.viewTransitionName = "";
@@ -810,9 +810,9 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   if (!window.history.state?.modalOpen) {
     window.history.pushState({ modalOpen: true }, "", window.location.href);
   }
-  
+
   modal.classList.remove("modal-is-loading");
-  
+
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
   modalTransitionCount++;
@@ -823,7 +823,7 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
 
   unflipAllCards();
   populateModal(cardElement, contextCards);
-  
+
   const performOpen = (): void => {
     document.body.classList.add(CSS_CLASSES.MODAL_OPEN);
     requestAnimationFrame(() => {
@@ -836,11 +836,11 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   };
 
   cardElement.style.viewTransitionName = "hero-expansion";
-  
+
   const transition = executeViewTransition(() => {
     performOpen();
-    modal.style.viewTransitionName = "hero-expansion"; 
-    cardElement.style.viewTransitionName = ""; 
+    modal.style.viewTransitionName = "hero-expansion";
+    cardElement.style.viewTransitionName = "";
   });
 
   transition.finished.finally(() => {

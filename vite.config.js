@@ -34,7 +34,7 @@ function serveSeoSitePlugin() {
         const cleanUrl = req.url.replace(/^\/videoclub\.digital\//, '/');
         const reqPath = cleanUrl.split('?')[0];
 
-        if (reqPath.startsWith('/titulo/') || reqPath.startsWith('/pelicula/') || reqPath.startsWith('/sitemap') || reqPath.startsWith('/_astro/') || reqPath === '/sprite.svg' || reqPath === '/flags.svg' || reqPath === '/robots.txt') {
+        if (reqPath.startsWith('/titulo/') || reqPath.startsWith('/sitemap') || reqPath.startsWith('/_astro/') || reqPath === '/sprite.svg' || reqPath === '/flags.svg' || reqPath === '/robots.txt') {
           let filePath = path.join(__dirname, 'seo-site/dist', reqPath);
           
           if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
@@ -51,7 +51,7 @@ function serveSeoSitePlugin() {
             
             res.end(fs.readFileSync(filePath));
             return;
-          } else if (reqPath.startsWith('/titulo/') || reqPath.startsWith('/pelicula/')) {
+          } else if (reqPath.startsWith('/titulo/')) {
             // Si una página estática no existe, redirigir a la raíz de la SPA
             res.writeHead(302, { Location: '/' });
             res.end();

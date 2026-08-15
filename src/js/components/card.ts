@@ -49,9 +49,9 @@ async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
   if (cardElement.classList.contains('collection-card')) return;
   const { openModal, initQuickView } = await import("./modal.js");
   const win = window as unknown as Record<string, unknown>;
-  if (!win[QUICK_VIEW_INIT_FLAG]) { 
-    initQuickView(); 
-    win[QUICK_VIEW_INIT_FLAG] = true; 
+  if (!win[QUICK_VIEW_INIT_FLAG]) {
+    initQuickView();
+    win[QUICK_VIEW_INIT_FLAG] = true;
   }
   openModal(cardElement);
 }
@@ -107,8 +107,8 @@ function prefetchCardResources(card: MovieCardElement): void {
   const img = card.querySelector<HTMLImageElement>("img");
   if (img && img.dataset.src) {
     const link = document.createElement("link");
-    link.rel = "preload"; 
-    link.as = "image"; 
+    link.rel = "preload";
+    link.as = "image";
     link.href = img.dataset.src;
     document.head.appendChild(link);
   }
@@ -134,15 +134,15 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
   if (!inner) return;
 
   const isFlipped = inner.classList.contains("is-flipped");
-  
+
   if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) {
     unflipAllCards();
   }
-  
+
   triggerHapticFeedback("light");
   inner.classList.toggle("is-flipped");
   prefetchCardResources(cardElement);
-  
+
   if (!isFlipped) {
     currentlyFlippedCard = cardElement;
     setTimeout(() => {
@@ -237,9 +237,9 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     const target = e.target as HTMLElement;
     const card = target.closest<MovieCardElement>('.movie-card');
     if (!card) return;
-    
+
     const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item';
-    
+
     if (card.classList.contains('collection-card') || target.closest(criticalElements)) return;
 
     if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
@@ -363,9 +363,9 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     event.stopPropagation();
     flipBack.classList.add("is-expanded", "show-actors");
     const bottomBtn = flipBack.querySelector<HTMLButtonElement>(".expand-content-btn");
-    if(bottomBtn) { 
-      bottomBtn.textContent = "−"; 
-      bottomBtn.setAttribute("aria-label", "Cerrar detalles"); 
+    if (bottomBtn) {
+      bottomBtn.textContent = "−";
+      bottomBtn.setAttribute("aria-label", "Cerrar detalles");
     }
     return;
   }
@@ -386,9 +386,9 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
 
   // 4. Bloqueo de Flip en Scroll
   if (flipBack && ((target.closest('.scrollable-content') && flipBack.classList.contains('is-expanded')) ||
-      target.closest('.actors-scrollable-content'))) {
+    target.closest('.actors-scrollable-content'))) {
     if (!target.closest('.actor-list-item')) {
-      event.stopPropagation(); 
+      event.stopPropagation();
       return;
     }
   }
@@ -403,15 +403,15 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     let type: "director" | "actor" | "year";
     let value: string | undefined;
 
-    if (filterLink.dataset.directorName) { 
-      type = "director"; 
-      value = filterLink.dataset.directorName; 
-    } else if (filterLink.dataset.actorName) { 
-      type = "actor"; 
-      value = filterLink.dataset.actorName; 
-    } else { 
-      type = "year"; 
-      value = filterLink.dataset.yearValue; 
+    if (filterLink.dataset.directorName) {
+      type = "director";
+      value = filterLink.dataset.directorName;
+    } else if (filterLink.dataset.actorName) {
+      type = "actor";
+      value = filterLink.dataset.actorName;
+    } else {
+      type = "year";
+      value = filterLink.dataset.yearValue;
     }
 
     appEvents.emit("filtersReset", { keepSort: true, newFilter: { type, value } });
@@ -447,7 +447,7 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
       obs.unobserve(img);
     }
   });
-}, { 
+}, {
   rootMargin: "200px"
 });
 
@@ -491,7 +491,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
 
   const hqPoster = getHqPosterUrl(movie.image);
   img.alt = `Póster de ${movie.title}`;
-  
+
   const priorityCount = isMobileViewport() ? 6 : 2;
   const isFirstPage = getCurrentPage() === 1;
 
@@ -526,7 +526,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     dirCont.textContent = "";
     if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
       const showOnlyLastName = movie.parsedDirectors.length > 2;
-      
+
       const directorsInfo = movie.parsedDirectors.map(fullName => {
         const parts = fullName.trim().split(/\s+/);
         const lastName = parts.length > 1 ? parts[parts.length - 1] : fullName;
@@ -540,24 +540,24 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
 
       directorsInfo.forEach((info, i) => {
         let displayText = info.fullName;
-        
+
         if (showOnlyLastName) {
-          const sharesLastName = directorsInfo.some(other => 
-            other.fullName !== info.fullName && 
+          const sharesLastName = directorsInfo.some(other =>
+            other.fullName !== info.fullName &&
             other.lastName.toLowerCase() === info.lastName.toLowerCase()
           );
-          
+
           if (sharesLastName && info.initial) {
             displayText = `${info.initial}. ${info.lastName}`;
           } else {
             displayText = info.lastName;
           }
         }
-        
-        const link = createElement("a", { 
-          textContent: displayText, 
-          href: `?dir=${encodeURIComponent(info.fullName)}`, 
-          dataset: { directorName: info.fullName } 
+
+        const link = createElement("a", {
+          textContent: displayText,
+          href: `?dir=${encodeURIComponent(info.fullName)}`,
+          dataset: { directorName: info.fullName }
         });
         dirCont.append(link, i < directorsInfo.length - 1 ? ", " : "");
       });
@@ -586,7 +586,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
       yearContainer.textContent = displayYear;
     }
   }
-  
+
   renderCountryFlag(
     front.querySelector(SELECTORS.COUNTRY_CONTAINER),
     front.querySelector(SELECTORS.COUNTRY_FLAG),
@@ -599,7 +599,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   if (iconCont) {
     iconCont.innerHTML = "";
     const codes = movie.studios_list?.split(",") || [];
-    
+
     iconCont.classList.toggle('compact', codes.filter(c => STUDIO_DATA[c as keyof typeof STUDIO_DATA]).length >= 3);
 
     let iconsHtml = "";
@@ -636,15 +636,15 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
         else if (oLen > 20) origEl.classList.add("title-medium");
       }
       origWrap.hidden = false;
-    } else { 
-      origWrap.hidden = true; 
+    } else {
+      origWrap.hidden = true;
     }
   }
 
   // Duración y Episodios
   const durationEl = back.querySelector(SELECTORS.DURATION);
   if (durationEl) durationEl.textContent = formatRuntime(movie.minutes, isSeries);
-  
+
   const epEl = back.querySelector<HTMLElement>('[data-template="episodes"]');
   if (epEl) {
     const epText = isSeries && movie.episodes ? `${movie.episodes} x` : "";
@@ -673,31 +673,31 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   // Textos Largos
   const genreEl = back.querySelector(SELECTORS.GENRE);
   if (genreEl) genreEl.textContent = movie.genres || "Género no disponible";
-  
+
   const synopsisEl = back.querySelector(SELECTORS.SYNOPSIS);
   if (synopsisEl) synopsisEl.textContent = movie.synopsis || "Sinopsis no disponible.";
-  
+
   // Actores
   const actorsEl = back.querySelector<HTMLElement>(SELECTORS.ACTORS);
   if (actorsEl) {
     const actors = movie.parsedActors || [];
-    
+
     let shortActors = actors.slice(0, 4).join(", ");
     if (actors.length > 4) shortActors += "...";
     if (movie.actors === "(A)") shortActors = "Animación";
-    
+
     actorsEl.textContent = shortActors || "Reparto no disponible";
 
     const hasActors = actors.length > 0 && actors.some(a => !(IGNORED_ACTORS as readonly string[]).includes(a.toLowerCase()));
     const expandBtn = actorsEl.parentElement?.querySelector(".actors-expand-btn");
-    
+
     if (hasActors) {
       if (!expandBtn) {
         actorsEl.parentElement?.appendChild(
-          createElement("button", { 
-            className: "actors-expand-btn", 
-            textContent: "+", 
-            attributes: { "aria-label": "Ver reparto" } 
+          createElement("button", {
+            className: "actors-expand-btn",
+            textContent: "+",
+            attributes: { "aria-label": "Ver reparto" }
           })
         );
       }
@@ -743,8 +743,8 @@ export function initializeCard(card: MovieCardElement): void {
 // =================================================================
 
 export async function renderMovieGrid(
-  container: HTMLElement | null, 
-  movies: MappedMovie[], 
+  container: HTMLElement | null,
+  movies: MappedMovie[],
   vipData: VipData | null = null
 ): Promise<void> {
   const renderId = ++currentRenderRequestId;
@@ -801,7 +801,7 @@ function createCardElement(movie: MappedMovie, index: number): DocumentFragment 
   if (!cardTemplate) return document.createDocumentFragment();
   const clone = cardTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`) as MovieCardElement | null;
-  
+
   if (card) {
     card.dataset.movieId = String(movie.id);
     card.movieData = movie;
@@ -811,7 +811,7 @@ function createCardElement(movie: MappedMovie, index: number): DocumentFragment 
     updateCardUI(card);
     initializeCard(card);
   }
-  
+
   return clone;
 }
 
@@ -820,12 +820,12 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const clone = personTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.person-card') as MovieCardElement | null;
   if (!card) return clone;
-  
+
   card.dataset.movieId = `person-${person.id}`;
   card.movieData = { ...person, isPerson: true };
-  
+
   const img = card.querySelector('img');
-  
+
   if (img) {
     if (person.photo && person.photo !== 'NOT_FOUND') {
       let photoName = person.photo;
@@ -838,31 +838,31 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
     } else {
       img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
     }
-    
+
     img.alt = `Foto de ${person.name}`;
     img.loading = "eager";
     img.decoding = "async";
     img.setAttribute("fetchpriority", "high");
     img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
   }
-  
+
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
   if (titleEl) {
     titleEl.textContent = person.name;
     applyLengthBasedClass(titleEl, person.name, CARD_TITLE_THRESHOLDS);
   }
-  
+
   const birthplaceEl = card.querySelector('[data-template="birthplace"]');
   if (birthplaceEl) birthplaceEl.textContent = person.place_of_birth || "";
-  
+
   const ageInfo = computePersonAgeInfo(person.birthday, person.deathday);
-  
+
   const ageEl = card.querySelector('[data-template="age"]');
   if (ageEl) ageEl.textContent = ageInfo.ageStr;
 
   const datesEl = card.querySelector('[data-template="dates"]');
   if (datesEl) datesEl.textContent = ageInfo.datesStr;
-  
+
   let wallName = person.name;
   if (wallName.length > 14) {
     const parts = wallName.split(" ");
@@ -870,27 +870,27 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
       wallName = `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
     }
   }
-  
+
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = wallName;
- 
+
   renderCountryFlag(
     card.querySelector(SELECTORS.COUNTRY_CONTAINER),
     card.querySelector(SELECTORS.COUNTRY_FLAG),
     person.countries?.code ?? undefined,
     person.countries?.name ?? undefined
   );
-  
+
   const headlineEl = card.querySelector('[data-template="bio-headline"]');
   if (headlineEl) {
     headlineEl.textContent = person.titulo_bio || "";
   }
-  
+
   const biographyEl = card.querySelector('[data-template="biography"]');
   if (biographyEl) {
     biographyEl.textContent = person.biography || "Biografía no disponible en el catálogo.";
   }
-  
+
   return clone;
 }
 
@@ -906,7 +906,7 @@ function createGroupCardElement(
 
   const isStudio = kind === 'studio';
   const img = card.querySelector('img');
-  
+
   let fullName = code;
   let shortName = code;
 
@@ -963,7 +963,7 @@ export function renderSkeletons(container: HTMLElement | null, pagContainer: HTM
   }
   if (pagContainer) pagContainer.textContent = "";
   if (!container) return;
-  
+
   const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
   const count = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
 
@@ -975,8 +975,8 @@ export function renderSkeletons(container: HTMLElement | null, pagContainer: HTM
 }
 
 export function renderNoResults(
-  container: HTMLElement | null, 
-  pagContainer: HTMLElement | null, 
+  container: HTMLElement | null,
+  pagContainer: HTMLElement | null,
   filters: ActiveFilters
 ): void {
   currentRenderRequestId++;
@@ -988,23 +988,23 @@ export function renderNoResults(
   if (!container) return;
 
   const div = createElement("div", { className: "no-results", attributes: { role: "status" } });
-  
+
   // Micro-ilustración editorial (SVG Inline)
   div.appendChild(createElement("div", { className: "no-results-icon", innerHTML: ICONS.POPCORN }));
 
   div.appendChild(createElement("h3", { textContent: "No se encontraron resultados" }));
-  
+
   const hasFilters = hasActiveMeaningfulFilters();
-  const msg = filters.searchTerm 
+  const msg = filters.searchTerm
     ? `Prueba a simplificar tu búsqueda para "${filters.searchTerm}".`
     : hasFilters ? "Intenta eliminar algunos filtros." : "";
-    
+
   if (msg) div.appendChild(createElement("p", { textContent: msg }));
-  
-  div.appendChild(createElement("button", { 
-    id: "clear-filters-from-empty", className: "btn btn--outline", textContent: "Limpiar filtros" 
+
+  div.appendChild(createElement("button", {
+    id: "clear-filters-from-empty", className: "btn btn--outline", textContent: "Limpiar filtros"
   }));
-  
+
   container.appendChild(div);
 }
 
@@ -1015,12 +1015,12 @@ export function renderErrorState(container: HTMLElement | null, pagContainer: HT
     container.textContent = "";
   }
   if (pagContainer) pagContainer.textContent = "";
-  
+
   const div = createElement("div", { className: "no-results", attributes: { role: "alert" } });
-  
+
   div.appendChild(createElement("h3", { textContent: "¡Vaya! Algo ha ido mal" }));
   div.appendChild(createElement("p", { textContent: message }));
-  
+
   container?.appendChild(div);
 }
 
@@ -1053,7 +1053,7 @@ export function runFlipOnboarding(container: HTMLElement): void {
     const inner = targetMovieCard.querySelector(".flip-card-inner");
     if (inner && !inner.classList.contains("is-flipped")) {
       inner.classList.add("is-flipped");
-      
+
       setTimeout(() => {
         if (inner.isConnected && inner.classList.contains("is-flipped")) {
           inner.classList.remove("is-flipped");

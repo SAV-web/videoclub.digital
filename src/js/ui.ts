@@ -82,17 +82,17 @@ export const dom = new Proxy({} as DomElements, {
     // 2. Búsqueda (Lazy) y "Fast-Path" para IDs
     const selector = domSelectors[key];
     const isSimpleId = selector.startsWith("#") && !selector.includes(" ") && !selector.includes(".");
-    
-    const el = isSimpleId 
-      ? document.getElementById(selector.slice(1)) 
+
+    const el = isSimpleId
+      ? document.getElementById(selector.slice(1))
       : document.querySelector(selector);
 
     if (el) {
-      domCache[key] = el as HTMLElement; 
+      domCache[key] = el as HTMLElement;
     } else {
       delete domCache[key];
     }
-    
+
     return el as DomElements[keyof DomElements];
   }
 });
@@ -138,7 +138,7 @@ export function showToast(message: string, type: "error" | "info" | "success" = 
   const toastElement = createElement("div", {
     className: `toast toast--${type}`,
     textContent: message,
-    attributes: { 
+    attributes: {
       role: isError ? "alert" : "status",
       "aria-live": isError ? "assertive" : "polite"
     }
@@ -197,8 +197,8 @@ export function renderPagination(
 
   // Helper local para separador
   const addSeparator = (): void => {
-    fragment.appendChild(createElement("span", { 
-      textContent: "...", className: "pagination-separator", attributes: { "aria-hidden": "true" } 
+    fragment.appendChild(createElement("span", {
+      textContent: "...", className: "pagination-separator", attributes: { "aria-hidden": "true" }
     }));
   };
 
@@ -251,18 +251,18 @@ export function prefetchNextPage(
   activeFilters: ActiveFilters
 ): void {
   const pageSize = getCurrentPageSize();
-  
+
   // Determinamos si hay una tarjeta VIP en el DOM (person-card, collection-card, studio-card)
   const hasVip = !!document.querySelector('.person-card, .collection-card, .studio-card');
   const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
-  
+
   const totalPages = getAdjustedTotalPages(gridTotalItems, pageSize);
   if (currentPage >= totalPages) return;
 
   runWhenIdle(() => {
     // 1. Prefetch página siguiente (Prioridad)
     fetchMovies(activeFilters, currentPage + 1, pageSize, null, false)
-      .catch(() => {});
+      .catch(() => { });
 
     // 2. Prefetch página subsiguiente (Condicional)
     // Simplificación: Solo en Desktop (pointer: fine) para evitar consumo excesivo en móvil
@@ -271,7 +271,7 @@ export function prefetchNextPage(
     if (isDesktop && currentPage + 1 < totalPages) {
       setTimeout(() => {
         fetchMovies(activeFilters, currentPage + 2, pageSize, null, false)
-          .catch(() => {});
+          .catch(() => { });
       }, 1500); // Delay aumentado para asegurar prioridad a la página inmediata
     }
   });
@@ -315,7 +315,7 @@ export function openAccessibleModal(
   focusContent = true
 ): void {
   if (!modal) return;
-  
+
   // Accesibilidad: Garantizar atributos críticos si faltan en HTML
   if (!modal.hasAttribute("role")) modal.setAttribute("role", "dialog");
   if (!modal.hasAttribute("aria-modal")) modal.setAttribute("aria-modal", "true");
@@ -323,7 +323,7 @@ export function openAccessibleModal(
   lastFocusedElement = document.activeElement as HTMLElement | null;
   modal.hidden = false;
   if (overlay) overlay.hidden = false;
-  
+
   // Prevenir scroll brusco al enfocar
   modal.focus({ preventScroll: true });
 
@@ -340,15 +340,15 @@ export function openAccessibleModal(
 
 export function closeAccessibleModal(modal: HTMLElement | null, overlay: HTMLElement | null): void {
   if (!modal) return;
-  
+
   modal.hidden = true;
   if (overlay) overlay.hidden = true;
-  
+
   if (focusTrapListener) {
     modal.removeEventListener("keydown", focusTrapListener as EventListener);
     focusTrapListener = null;
   }
-  
+
   if (lastFocusedElement && isVisible(lastFocusedElement)) {
     lastFocusedElement.focus();
   }
@@ -390,7 +390,7 @@ export function setupAuthModal(): void {
 
   loginButton.addEventListener("click", openAuthModal);
   authOverlay?.addEventListener("click", () => closeAuthModal());
-  
+
   document.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Escape" && !authModal.hidden) closeAuthModal();
   });
@@ -471,10 +471,10 @@ export function updateTypeFilterUI(mediaType: "movies" | "series" | "all"): void
   };
 
   const current = config[mediaType] || config.all;
-  
+
   btn.className = `type-filter-toggle ${current.class}`;
   btn.setAttribute("aria-label", `Filtrar por tipo: ${current.label}`);
-  
+
   const desktopText = createElement("span", { className: "desktop-text", textContent: current.label });
   const mobileIcon = createElement("span", { className: "mobile-icon", innerHTML: current.icon });
 
@@ -488,13 +488,13 @@ function shouldShowTotalCount(): boolean {
   if (!hasActiveMeaningfulFilters()) return false;
 
   const filters = getActiveFilters();
-  
+
   // 1. Búsqueda o Listas: Siempre mostrar
   if ((filters.searchTerm && filters.searchTerm.trim()) || filters.myList) return true;
 
   // 2. Otros filtros específicos: Siempre mostrar
   const hasOtherFilters = [
-    filters.genre, filters.country, filters.director, filters.actor, 
+    filters.genre, filters.country, filters.director, filters.actor,
     filters.selection, filters.studio
   ].some(v => v) || (filters.excludedGenres && filters.excludedGenres.length > 0) || (filters.excludedCountries && filters.excludedCountries.length > 0);
 
@@ -550,7 +550,7 @@ export function initThemeToggle(): void {
   btn.addEventListener("click", (e: MouseEvent) => {
     triggerPopAnimation(e.currentTarget as HTMLElement);
     appEvents.emit("uiActionTriggered");
-    
+
     const isNowDark = document.documentElement.classList.toggle(CSS_CLASSES.DARK_MODE);
     localStorage.setItem("theme", isNowDark ? "dark" : "light");
     updateState(isNowDark);
@@ -581,7 +581,7 @@ export function updateMobileStatusBar(
   if (!mobileStatusBar) return;
 
   const filters = getActiveFilters();
-  
+
   // 1. Tipo dinámico basado en resultados
   let typeText = totalMovies === 1 ? "peli o serie" : "pelis y series";
 
@@ -593,7 +593,7 @@ export function updateMobileStatusBar(
     // Analizar la muestra actual de resultados si el filtro es "all"
     const hasMovies = movies.some(m => !m.isSeries);
     const hasSeries = movies.some(m => m.isSeries);
-    
+
     if (hasMovies && !hasSeries) typeText = totalMovies === 1 ? "película" : "películas";
     else if (hasSeries && !hasMovies) typeText = totalMovies === 1 ? "serie" : "series";
   }
@@ -609,7 +609,7 @@ export function updateMobileStatusBar(
       "imdb_rating,desc": "nota IMDb",
       "imdb_votes,desc": "votos IMDb"
     };
-    
+
     const sortLabel = sortMap[filters.sort];
     if (sortLabel) {
       text += `, orden: ${sortLabel}`;

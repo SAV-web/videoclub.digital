@@ -1075,8 +1075,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   }
 
   /* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
-  /* 1. Ocultar low-rating-star y contenedor si no hay voto de usuario */
-  & .low-rating-star,
+  /* 1. Ocultar contenedor de estrellas si no hay voto de usuario */
   & .star-rating-container:not(.has-user-rating) {
     display: none !important;
   }

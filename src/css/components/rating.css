@@ -35,33 +35,9 @@
   transition: clip-path 0.4s var(--ease-smooth-out);
 }
 
-/* --- Estrella hueca de Suspenso (Nota baja) --- */
-.low-rating-star {
-  display: none; width: 25px; height: 25px;
-  stroke: var(--color-accent); stroke-width: 2px; fill: transparent;
-  border: none; background-color: transparent;
-  transition: stroke 0.3s ease, transform var(--duration-quick) var(--ease-spring);
-  position: relative;
-  cursor: pointer;
-  transform-origin: center center;
-
-  &.is-interactive { cursor: pointer; }
-
-  &.has-user-rating {
-    stroke: var(--color-star-gold); color: var(--color-star-gold); fill: none;
-    filter: drop-shadow(0 0 2px rgba(var(--color-star-gold-rgb), 0.6));
-
-    html.dark-mode & {
-      filter: drop-shadow(0 0 2px rgba(var(--color-star-gold-rgb), 0.8));
-    }
-  }
-}
-
 /* --- Interacciones (Hover) --- */
 @media (hover: hover) and (pointer: fine) {
-  :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:hover,
-  .low-rating-star.is-interactive:hover,
-  .low-rating-star:hover {
+  :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:hover {
     transform: scale(1.35); 
     z-index: 20;
     filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
@@ -70,17 +46,14 @@
 }
 
 /* Feedback Táctil (:active) */
-:is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:active,
-.low-rating-star.is-interactive:active,
-.low-rating-star:active {
+:is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:active {
   transform: scale(0.92);
   filter: brightness(0.95);
   transition: transform 50ms var(--ease-bounce-sharp);
 }
 
 /* Efecto de Confirmación (Post-Tap) */
-.star-icon.just-rated,
-.low-rating-star.just-rated {
+.star-icon.just-rated {
   animation: star-vote-success 0.6s var(--ease-bounce-in) !important;
   z-index: 20; /* Asegurar que se vea sobre las otras */
 }
@@ -97,21 +70,10 @@
 
 /* --- Accesibilidad Táctil (Áreas expandidas) --- */
 @media (hover: none) and (pointer: coarse) {
-  .low-rating-star::after,
   .star-icon::after {
     content: ''; position: absolute;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
     z-index: 10;
-  }
-
-  /* Expandir estrella hueca */
-  .low-rating-star::after {
-    width: var(--tap-target-size);
-    height: var(--tap-target-size);
-  }
-
-  /* Expandir estrella (más alto que ancho por la forma) */
-  .star-icon::after {
     width: 30px; height: var(--tap-target-size);
   }
 }

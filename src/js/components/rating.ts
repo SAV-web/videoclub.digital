@@ -31,12 +31,6 @@ const MIN_STAR_THRESHOLD = 5.5;
  * Implementa el ciclo de UX para el nivel 1 (suspenso -> aprobado -> limpiar) y toggles simples.
  */
 export function resolveNextRating(currentRating: number | null | undefined, clickedLevel: number): number | null {
-  if (clickedLevel === 0) {
-    // Clic en icono de suspenso directo (low-rating-star)
-    if (currentRating === 2) return 5; // De suspenso (2) pasa a 1 estrella llena (5)
-    return 2; // Pasa a suspenso (2)
-  }
-
   if (clickedLevel === 1) {
     if (currentRating === 2) return 5;    // 2º clic: de suspenso (2) -> 1 estrella llena (5)
     if (currentRating === 5) return null; // 3er clic: de 1 estrella llena (5) -> sin voto (null)
@@ -345,8 +339,6 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
   const isLoggedIn = document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
 
   const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
-  const circleEl = card.querySelector<HTMLElement>('[data-action="set-rating-suspenso"]');
-  
   if (!starCont) return;
 
   const state = getRatingPresentationState(mappedMovie, userData, isLoggedIn);
@@ -385,7 +377,6 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
   }
 
   starCont.classList.toggle("has-user-rating", hasUserRatingClass);
-  if (circleEl) circleEl.style.display = "none";
   if (starCont.style.display !== starDisplay) starCont.style.display = starDisplay;
 }
 
