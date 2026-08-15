@@ -1169,7 +1169,14 @@ const jsonLd = {
               {genres.length > 0 && (
                 <div class="detail-item" data-template="genre-container">
                   <span class="detail-label">🎬</span>
-                  <span class="detail-data" data-template="genre">{genres.join(', ')}</span>
+                  <span class="detail-data" data-template="genre">
+                    {genres.map((name, i) => (
+                      <>
+                        <a href={`${baseUrl}?genre=${encodeURIComponent(name)}`}>{name}</a>
+                        {i < genres.length - 1 ? ', ' : ''}
+                      </>
+                    ))}
+                  </span>
                 </div>
               )}
               {actors.length > 0 && (

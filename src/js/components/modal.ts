@@ -116,20 +116,26 @@ function handleOutsideClick(event: MouseEvent): void {
 }
 
 /**
- * Maneja clics en metadatos (Director/Actor) para filtrar.
+ * Maneja clics en metadatos (Director/Actor/Género/Año) para filtrar.
  */
 function handleMetadataClick(event: MouseEvent): void {
   const target = event.target as HTMLElement;
   const directorLink = target.closest<HTMLElement>(".front-director-info a[data-director-name]");
   const actorLink = target.closest<HTMLElement>('[data-template="actors"] a[data-actor-name]');
+  const genreLink = target.closest<HTMLElement>('[data-template="genre"] a[data-genre-name]');
   const yearLink = target.closest<HTMLElement>("a[data-year-value]");
 
-  if (directorLink || actorLink || yearLink) {
+  if (directorLink || actorLink || genreLink || yearLink) {
     // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
     event.preventDefault();
     closeModal();
+
+    if (genreLink && genreLink.dataset.genreName) {
+      appEvents.emit("filter:apply", { type: "genre", value: genreLink.dataset.genreName });
+      return;
+    }
 
     let filterType: "director" | "actor" | "year";
     let filterValue: string | undefined;
@@ -352,12 +358,13 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
 //          4. RENDERIZADO (POBLADO DE DATOS)
 // =================================================================
 
-const createLink = (text: string, type: 'director' | 'actor'): HTMLAnchorElement => {
-  const param = type === 'director' ? 'dir' : 'actor';
+const createLink = (text: string, type: 'director' | 'actor' | 'genre'): HTMLAnchorElement => {
+  const param = type === 'director' ? 'dir' : (type === 'actor' ? 'actor' : 'genre');
+  const dataAttr = type === 'director' ? 'directorName' : (type === 'actor' ? 'actorName' : 'genreName');
   return createElement("a", {
     textContent: text,
     href: `?${param}=${encodeURIComponent(text)}`,
-    dataset: { [type === 'director' ? 'directorName' : 'actorName']: text }
+    dataset: { [dataAttr]: text }
   }) as HTMLAnchorElement;
 };
 
@@ -527,7 +534,20 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
   setupLink('wikipedia', movie.wikipedia);
 
   // Textos Largos
-  if (nodes.genre) nodes.genre.textContent = movie.genres || "N/A";
+  if (nodes.genre) {
+    nodes.genre.textContent = "";
+    const genres = (movie.genres || "").split(",").map(g => g.trim()).filter(Boolean);
+    if (genres.length > 0) {
+      const frag = document.createDocumentFragment();
+      genres.forEach((name, i, arr) => {
+        frag.appendChild(createLink(name, 'genre'));
+        if (i < arr.length - 1) frag.append(", ");
+      });
+      nodes.genre.appendChild(frag);
+    } else {
+      nodes.genre.textContent = "N/A";
+    }
+  }
   if (nodes.synopsis) nodes.synopsis.textContent = movie.synopsis || "N/A";
 
   // Actores
@@ -872,6 +892,10 @@ export function initQuickView(): void {
   });
 
   appEvents.on("filtersReset", () => {
+    closeModal();
+  });
+
+  appEvents.on("filter:apply", () => {
     closeModal();
   });
 

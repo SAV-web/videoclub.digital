@@ -34,7 +34,7 @@ let currentlyFlippedCard: MovieCardElement | null = null;
 let hoverTimeout: ReturnType<typeof setTimeout> | undefined;
 let currentHoveredCard: MovieCardElement | null = null;
 const HOVER_DELAY = 1000;
-const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn";
+const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, .details-list, .genre-link, a[href]";
 const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
 
 // Consulta de Viewport sin listeners pesados de resize
@@ -394,12 +394,17 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   }
 
   // 5. Enlaces Filtros
-  const filterLink = target.closest<HTMLElement>("[data-director-name], [data-actor-name], [data-year-value]");
+  const filterLink = target.closest<HTMLElement>("[data-director-name], [data-actor-name], [data-year-value], [data-genre-name]");
   if (filterLink) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
     event.preventDefault();
     event.stopPropagation();
+    if (filterLink.dataset.genreName) {
+      appEvents.emit("filter:apply", { type: "genre", value: filterLink.dataset.genreName });
+      return;
+    }
+
     let type: "director" | "actor" | "year";
     let value: string | undefined;
 
@@ -671,8 +676,27 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   setupLink('wikipedia', movie.wikipedia);
 
   // Textos Largos
-  const genreEl = back.querySelector(SELECTORS.GENRE);
-  if (genreEl) genreEl.textContent = movie.genres || "Género no disponible";
+  const genreEl = back.querySelector<HTMLElement>(SELECTORS.GENRE);
+  if (genreEl) {
+    genreEl.textContent = "";
+    const genres = (movie.genres || "").split(",").map(g => g.trim()).filter(Boolean);
+    if (genres.length > 0) {
+      const frag = document.createDocumentFragment();
+      genres.forEach((name, i, arr) => {
+        const link = createElement("a", {
+          textContent: name,
+          href: `?genre=${encodeURIComponent(name)}`,
+          className: "genre-link",
+          dataset: { genreName: name }
+        });
+        frag.appendChild(link);
+        if (i < arr.length - 1) frag.append(", ");
+      });
+      genreEl.appendChild(frag);
+    } else {
+      genreEl.textContent = "Género no disponible";
+    }
+  }
 
   const synopsisEl = back.querySelector(SELECTORS.SYNOPSIS);
   if (synopsisEl) synopsisEl.textContent = movie.synopsis || "Sinopsis no disponible.";

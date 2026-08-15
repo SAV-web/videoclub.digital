@@ -265,6 +265,10 @@
   margin-right: 0;
 }
 
+.is-quick-view .low-rating-star {
+  display: none !important;
+}
+
 .is-quick-view .card-action-btn {
   width: 60px;
   height: 60px;
@@ -609,14 +613,14 @@
   }
 }
 
-/* B) ORDENADOR Y LANDSCAPE: Ventana flotante clásica de 2 columnas */
+/* B) ORDENADOR: Ventana flotante clásica */
 @media (min-width: 701px) {
   .quick-view-modal {
     top: 50%;
     left: 50%;
     width: 90%;
     max-width: 720px;
-    max-height: 92dvh;
+    max-height: 92vh;
     height: auto;
     border-radius: var(--radius-xl);
     transform: translate(-50%, calc(-50% + 15px)) scale(0.92);
@@ -632,73 +636,15 @@
     overflow: visible;
   }
 
-  /* Columna Izquierda: Póster, Estrellas, Título, Estudios, Año y Bandera */
+  /* Partimos la tarjeta en dos columnas */
   .is-quick-view .flip-card-front {
     width: 50%;
     height: auto;
-    max-height: 92dvh;
     border-right: 1px solid var(--color-border);
     border-bottom: none;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: var(--space-md) var(--space-lg);
+    overflow-y: hidden;
   }
 
-  .is-quick-view .poster-container {
-    width: auto;
-    max-width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-inline: auto;
-    flex-shrink: 1;
-    min-height: 0;
-  }
-
-  .is-quick-view .poster-container img {
-    height: auto;
-    max-height: min(320px, calc(92dvh - 175px));
-    width: auto;
-    max-width: 100%;
-    aspect-ratio: 2/3;
-    object-fit: contain;
-    display: block;
-    margin: 0 auto;
-  }
-
-  .is-quick-view .movie-summary {
-    width: 100%;
-    flex-shrink: 0;
-    margin-top: var(--space-xs);
-    padding: 0;
-  }
-
-  .quick-view-modal .title-director-block {
-    min-height: 0;
-    justify-content: center;
-    margin-bottom: 0;
-  }
-
-  .is-quick-view .movie-summary h3[data-template="title"] {
-    font-size: 1.4rem;
-    line-height: 1.2;
-    margin-bottom: var(--space-2xs);
-    text-align: center;
-  }
-
-  .is-quick-view .movie-meta {
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  /* Columna Derecha: Notas externas, Actores, Sinopsis (scrolleable) */
   .is-quick-view .flip-card-back {
     position: absolute;
     top: 0;
@@ -707,11 +653,7 @@
     left: auto;
     width: 50%;
     overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    box-sizing: border-box;
-    padding: var(--space-md) var(--space-lg);
   }
 }
 
@@ -1228,13 +1170,12 @@
       position: relative !important;
       overflow: visible !important;
       height: auto !important;
-      min-height: min(600px, 92dvh) !important;
+      min-height: min(600px, 92vh) !important;
     }
 
     & .flip-card-front {
       width: 45% !important;
-      min-height: min(600px, 92dvh) !important;
-      max-height: 92dvh !important;
+      min-height: min(600px, 92vh) !important;
       height: auto !important;
       display: flex !important;
       flex-direction: column !important;
@@ -1246,10 +1187,6 @@
       box-sizing: border-box !important;
       padding: var(--space-lg) !important;
       flex-shrink: 0 !important;
-      overflow-y: auto !important;
-      overscroll-behavior: contain !important;
-      -webkit-overflow-scrolling: touch !important;
-      scrollbar-width: thin;
     }
 
     & .flip-card-back {
@@ -1261,9 +1198,6 @@
       width: 55% !important;
       height: 100% !important;
       overflow-y: auto !important;
-      overscroll-behavior: contain !important;
-      -webkit-overflow-scrolling: touch !important;
-      scrollbar-width: thin;
       box-sizing: border-box !important;
       padding: var(--space-lg) !important;
     }

@@ -55,6 +55,7 @@ const initialState: AppState = {
 
 export interface AppEventPayloads {
   'filtersReset': { keepSort?: boolean; newFilter?: { type: string; value: unknown } };
+  'filter:apply': { type: string; value: unknown; force?: boolean };
   'uiActionTriggered': undefined;
   'updateSidebarUI': undefined;
   'userDataUpdated': undefined;
@@ -271,12 +272,27 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
 
   Reflect.set(state.activeFilters, type, normalizedValue);
 
-  // Regla: Sólo 1 bento por menú (positivos y exclusiones son mutuamente excluyentes en la misma categoría)
+  // Reglas de Exclusividad de Negocio
   if (normalizedValue) {
     if (type === 'genre') state.activeFilters.excludedGenres = [];
     if (type === 'country') state.activeFilters.excludedCountries = [];
     if (type === 'excludedGenres' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.genre = null;
     if (type === 'excludedCountries' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.country = null;
+
+    // Director y Actor son 100% excluyentes con cualquier otra categoría
+    if (type === 'director' || type === 'actor') {
+      state.activeFilters.genre = null;
+      state.activeFilters.country = null;
+      state.activeFilters.selection = null;
+      state.activeFilters.studio = null;
+      state.activeFilters.excludedGenres = [];
+      state.activeFilters.excludedCountries = [];
+      if (type === 'director') state.activeFilters.actor = null;
+      if (type === 'actor') state.activeFilters.director = null;
+    } else if (type !== 'sort' && type !== 'mediaType' && type !== 'searchTerm' && type !== 'myList') {
+      state.activeFilters.director = null;
+      state.activeFilters.actor = null;
+    }
   }
 
   state.totalMovies = 0; // Obligamos a recalcular resultados

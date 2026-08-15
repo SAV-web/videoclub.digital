@@ -526,6 +526,42 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
   loadAndRenderMovies(1, { forceSkeleton: true }); 
 }
 
+// Aplica un filtro específico preservando las categorías activas (Años, Selección, Estudio, País)
+// pero respetando la exclusividad de Director/Actor (las personas son incompatibles con cualquier otra categoría)
+function handleFilterApply(data: { type: string; value: unknown; force?: boolean }): void {
+  const { type, value, force = true } = data;
+  if (!type || value === undefined) return;
+
+  const currentFilters = getActiveFilters();
+
+  if (currentFilters.searchTerm) {
+    setSearchTerm("");
+    if (dom.searchInput) dom.searchInput.value = "";
+  }
+
+  if (currentFilters.myList) {
+    setFilter('myList', null);
+  }
+
+  // Regla de Exclusividad: Si hay un actor o director activo y se pulsa una categoría (género, etc.), se desactiva la persona
+  if (type !== 'actor' && type !== 'director') {
+    if (currentFilters.actor) setFilter('actor', null);
+    if (currentFilters.director) setFilter('director', null);
+  } else {
+    // Si se activa una persona, se limpian todas las demás categorías
+    resetFiltersState();
+  }
+
+  if (!setFilter(type, value, force)) {
+    showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, "error");
+    return;
+  }
+
+  updateMobileStatusBar();
+  appEvents.emit("updateSidebarUI");
+  loadAndRenderMovies(1, { forceSkeleton: true });
+}
+
 // --- 4. PREPARATIVOS AL ARRANCAR (Cableado) ---
 
 function setupHeaderListeners(): void {
@@ -722,6 +758,7 @@ function setupGlobalListeners(): void {
   });
 
   appEvents.on("filtersReset", handleFiltersReset);
+  appEvents.on("filter:apply", handleFilterApply);
 
   appEvents.on("page:requestChange", async (data: { direction: number; target: 'first' | 'last' }) => {
     const { direction, target } = data;
