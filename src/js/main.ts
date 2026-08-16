@@ -5,14 +5,14 @@
 // =================================================================
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
-import { 
-  debounce, 
-  triggerPopAnimation, 
-  getFriendlyErrorMessage, 
-  preloadLcpImage, 
-  createAbortableRequest, 
-  triggerHapticFeedback, 
-  LocalStore, 
+import {
+  debounce,
+  triggerPopAnimation,
+  getFriendlyErrorMessage,
+  preloadLcpImage,
+  createAbortableRequest,
+  triggerHapticFeedback,
+  LocalStore,
   executeViewTransition,
   getAdjustedTotalPages,
   mapMoviePayload,
@@ -21,35 +21,35 @@ import {
 import { fetchMovies, getSupabase, fetchUserMovieDataForIds, fetchPersonDetails } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { isAbortError } from "./contracts.js";
-import { 
-  dom, 
-  renderPagination, 
-  updateHeaderPaginationState, 
-  prefetchNextPage, 
-  setupAuthModal, 
-  updateTypeFilterUI, 
-  updateTotalResultsUI, 
-  clearAllSidebarAutocomplete, 
-  showToast, 
-  initThemeToggle, 
-  updateMobileStatusBar 
+import {
+  dom,
+  renderPagination,
+  updateHeaderPaginationState,
+  prefetchNextPage,
+  setupAuthModal,
+  updateTypeFilterUI,
+  updateTotalResultsUI,
+  clearAllSidebarAutocomplete,
+  showToast,
+  initThemeToggle,
+  updateMobileStatusBar
 } from "./ui.js";
-import { 
-  getState, 
-  getActiveFilters, 
-  getCurrentPage, 
+import {
+  getState,
+  getActiveFilters,
+  getCurrentPage,
   getTotalMovies,
-  setCurrentPage, 
-  setTotalMovies, 
-  setFilter, 
-  setSearchTerm, 
-  setSort, 
-  setMediaType, 
-  resetFiltersState, 
-  setUserMovieData, 
-  clearUserMovieData, 
-  syncStateWithUrlParams, 
-  stateToUrlParams, 
+  setCurrentPage,
+  setTotalMovies,
+  setFilter,
+  setSearchTerm,
+  setSort,
+  setMediaType,
+  resetFiltersState,
+  setUserMovieData,
+  clearUserMovieData,
+  syncStateWithUrlParams,
+  stateToUrlParams,
   appEvents,
   updateUserDataForMovie
 } from "./state.js";
@@ -89,13 +89,13 @@ async function loadSidebar(): Promise<SidebarModule | null> {
     sidebarModule = mod;
     sidebarModule.initSidebar(); // Inicializar listeners al cargar
     return sidebarModule;
-  } catch (e) { 
-    if (import.meta.env.DEV) console.error("Error loading sidebar", e); 
+  } catch (e) {
+    if (import.meta.env.DEV) console.error("Error loading sidebar", e);
     return null;
   }
 }
 
-const loadCardModule = (): Promise<CardModule> => 
+const loadCardModule = (): Promise<CardModule> =>
   import("./components/card.js") as unknown as Promise<CardModule>;
 
 export interface RenderOptions {
@@ -106,21 +106,21 @@ export interface RenderOptions {
 
 // --- 1. MOTOR PRINCIPAL (Cargar y Pintar Películas) ---
 export async function loadAndRenderMovies(
-  page = 1, 
+  page = 1,
   { replaceHistory = false, forceSkeleton = false, isYearFilter = false }: RenderOptions = {}
 ): Promise<void> {
   const signal = createAbortableRequest("movie-grid-load").signal;
 
   setCurrentPage(page);
   updatePageTitle();
-  updateUrl({ replace: replaceHistory }); 
+  updateUrl({ replace: replaceHistory });
 
   document.body.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer?.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer?.setAttribute("aria-busy", "true");
 
   const cardModulePromise = loadCardModule();
-  
+
   let skeletonTimeout: ReturnType<typeof setTimeout> | null = null;
   if (forceSkeleton) {
     const { renderSkeletons } = await cardModulePromise;
@@ -147,11 +147,11 @@ export async function loadAndRenderMovies(
   const currentKnownTotal = getTotalMovies();
   const activeFilters = getActiveFilters();
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
-  
+
   try {
     let vipData: VipData | null = null;
     let hasVip = false;
-    
+
     // Si buscamos por un VIP (Tarantino), cargamos su cara grande primero
     if (!activeFilters.myList && !activeFilters.searchTerm) {
       const vipType = activeFilters.director ? "director" : (activeFilters.actor ? "actor" : null);
@@ -178,26 +178,26 @@ export async function loadAndRenderMovies(
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
     const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
-    
+
     let fetchLimit: number = basePageSize;
     let fetchOffset = (page - 1) * basePageSize;
 
     if (hasVip) {
-      if (page === 1) { 
-        fetchLimit = firstPageLimit - 1; 
-        fetchOffset = 0; 
-      } else { 
+      if (page === 1) {
+        fetchLimit = firstPageLimit - 1;
+        fetchOffset = 0;
+      } else {
         fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
-        fetchOffset = ((page - 1) * basePageSize) - 1; 
+        fetchOffset = ((page - 1) * basePageSize) - 1;
       }
     } else {
       if (page === 1) {
-        fetchLimit = firstPageLimit; 
+        fetchLimit = firstPageLimit;
       } else {
         fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
       }
     }
-    
+
     const shouldRequestCount = isYearFilter || (page === 1) || (currentKnownTotal === 0);
 
     const result = await fetchMovies(
@@ -228,11 +228,11 @@ export async function loadAndRenderMovies(
         const p1Limit = (hasVip) ? firstPageLimit - 1 : firstPageLimit;
         const p1Result = await fetchMovies(activeFilters, 1, p1Limit, signal, false, 0);
         if (p1Result.aborted) return;
-        
+
         const p1Movies = (p1Result.items || []).map(mapMoviePayload);
         setCurrentPage(1);
         updateUrl({ replace: replaceHistory });
-        
+
         const cardModule = await cardModulePromise;
         let renderPromise: Promise<void> | undefined = undefined;
         const transition = executeViewTransition(() => {
@@ -301,7 +301,7 @@ export async function loadAndRenderMovies(
         });
       }
     }
-      
+
     const cardModule = await cardModulePromise;
 
     // Pinta con efecto cine
@@ -319,16 +319,16 @@ export async function loadAndRenderMovies(
   } catch (error: unknown) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
     if (isAbortError(error, signal)) return;
-    
+
     const msg = getFriendlyErrorMessage(error);
     if (msg) showToast(msg, "error");
     const { renderErrorState } = await cardModulePromise;
     if (renderErrorState) {
       renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
     }
-    
+
     // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
-    if (msg) throw new Error(msg); 
+    if (msg) throw new Error(msg);
   } finally {
     if (!signal.aborted) {
       document.body.classList.remove(CSS_CLASSES.IS_FETCHING);
@@ -340,16 +340,16 @@ export async function loadAndRenderMovies(
 
 // Ayudante: Pone las pelis en pantalla y actualiza las miguitas de pan (SEO)
 async function updateDomWithResults(
-  movies: MappedMovie[], 
-  totalMovies: number, 
-  cardModule: CardModule, 
-  vipData: VipData | null = null, 
+  movies: MappedMovie[],
+  totalMovies: number,
+  cardModule: CardModule,
+  vipData: VipData | null = null,
   hasVip = false
 ): Promise<void> {
   const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, movies);
-  
+
   updateStructuredData(movies, totalMovies);
   updateBreadcrumbData(getActiveFilters());
   updatePageTitle(movies);
@@ -369,11 +369,11 @@ async function updateDomWithResults(
   } else {
     // Calculamos el número de páginas real ajustado por la orfandad
     const totalPages = getAdjustedTotalPages(gridTotalItems, baseLimit);
-    
+
     // Determinamos el presupuesto de slots de la página actual
     const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
     const isOrphanPage = (Math.ceil(gridTotalItems / baseLimit) > 1) && lastPageSlots <= 2;
-    
+
     let slotBudget: number = baseLimit;
     if (currentPage === totalPages) {
       slotBudget = isOrphanPage ? baseLimit + lastPageSlots : lastPageSlots;
@@ -382,7 +382,7 @@ async function updateDomWithResults(
     // Convertimos el presupuesto de slots en número de películas a renderizar
     const currentLimit = (currentPage === 1 && hasVip) ? slotBudget - 1 : slotBudget;
     const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
-    
+
     await renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
 
     const logicalGridTotalItems = isOrphanPage ? totalPages * baseLimit : gridTotalItems;
@@ -426,14 +426,14 @@ async function handleSearchInput(): Promise<void> {
   if (!dom.searchInput) return;
   const searchTerm = dom.searchInput.value.trim();
   const currentSearchTerm = getActiveFilters().searchTerm;
-  
+
   if (searchTerm === currentSearchTerm) return;
-  
+
   if (searchTerm.length === 0 && currentSearchTerm && currentSearchTerm.length > 0) {
     history.back();
     return;
   }
-  
+
   if (searchTerm.length >= 3) {
     const isContinuingSearch = !!currentSearchTerm;
 
@@ -461,7 +461,7 @@ function handleGlobalScroll(): void {
     // Prefetch Predictivo: Si el usuario se detiene (mira) cerca del final (>70%)
     const scrollPos = window.scrollY + window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
-    
+
     if (docHeight > 0 && scrollPos / docHeight > 0.7) {
       prefetchNextPage(getCurrentPage(), getTotalMovies(), getActiveFilters());
     }
@@ -472,7 +472,7 @@ function handleGlobalScroll(): void {
       const currentScrollY = Math.max(0, window.scrollY);
       const docHeight = document.documentElement.scrollHeight;
       const vHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      
+
       const isMobileLayout = window.innerWidth <= 768 || window.innerHeight <= 500;
       const isSearchActive = document.activeElement === dom.searchInput;
       const isKeyboardOpen = vHeight < (window.innerHeight * 0.9);
@@ -494,7 +494,7 @@ function handleGlobalScroll(): void {
           } else if (scrollDifference > 12) {
             const isScrollingDown = currentScrollY > lastScrollY;
             dom.mainHeader.classList.toggle("is-hidden-mobile", isScrollingDown && currentScrollY > 60);
-            lastScrollY = currentScrollY; 
+            lastScrollY = currentScrollY;
           }
         }
       } else {
@@ -511,19 +511,19 @@ function handleGlobalScroll(): void {
 function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: unknown } }): void {
   const { keepSort, newFilter } = data || {};
   const currentSort = keepSort ? getActiveFilters().sort : DEFAULTS.SORT;
-  
+
   resetFiltersState();
   setSort(currentSort);
-  
+
   if (newFilter) setFilter(newFilter.type, newFilter.value);
-  
+
   if (dom.searchInput) dom.searchInput.value = "";
   if (dom.sortSelect) dom.sortSelect.value = currentSort;
   updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");
-  
-  loadAndRenderMovies(1, { forceSkeleton: true }); 
+
+  loadAndRenderMovies(1, { forceSkeleton: true });
 }
 
 // Aplica un filtro específico preservando las categorías activas (Años, Selección, Estudio, País)
@@ -566,7 +566,7 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
 
 function setupHeaderListeners(): void {
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
-  
+
   if (dom.searchInput) {
     dom.searchInput.addEventListener("input", debouncedSearch);
     dom.searchInput.addEventListener("focus", () => dom.mainHeader?.classList.add("is-search-focused"));
@@ -617,16 +617,16 @@ function setupHeaderListeners(): void {
   };
 
   if (dom.headerPrevBtn) {
-    dom.headerPrevBtn.addEventListener("click", (e) => { 
-      triggerPopAnimation(e.currentTarget as HTMLElement); 
-      navigatePage(-1); 
+    dom.headerPrevBtn.addEventListener("click", (e) => {
+      triggerPopAnimation(e.currentTarget as HTMLElement);
+      navigatePage(-1);
     });
   }
 
   if (dom.headerNextBtn) {
-    dom.headerNextBtn.addEventListener("click", (e) => { 
-      triggerPopAnimation(e.currentTarget as HTMLElement); 
-      navigatePage(1); 
+    dom.headerNextBtn.addEventListener("click", (e) => {
+      triggerPopAnimation(e.currentTarget as HTMLElement);
+      navigatePage(1);
     });
   }
 
@@ -635,11 +635,11 @@ function setupHeaderListeners(): void {
     clearSearchBtn.addEventListener("pointerdown", (e) => {
       e.preventDefault(); // Gestión manual del foco
       e.stopPropagation();
-      
+
       if (dom.searchInput && dom.searchInput.value) {
         dom.searchInput.value = "";
         dom.searchInput.focus();
-        handleSearchInput(); 
+        handleSearchInput();
       } else {
         dom.searchInput?.blur();
       }
@@ -676,10 +676,10 @@ function setupGlobalListeners(): void {
   });
 
   if (dom.gridContainer) {
-    dom.gridContainer.addEventListener("click", async function(e: Event) {
+    dom.gridContainer.addEventListener("click", async function (e: Event) {
       const target = e.target as HTMLElement;
       const cardElement = target.closest(".movie-card") as HTMLElement | null;
-      if (cardElement) { 
+      if (cardElement) {
         // Prevenir navegación nativa antes de cargar el módulo
         const filterLink = target.closest("[data-director-name], [data-actor-name]");
         if (filterLink && !(e as MouseEvent).ctrlKey && !(e as MouseEvent).metaKey && !(e as MouseEvent).shiftKey && (e as MouseEvent).button !== 1) {
@@ -687,29 +687,29 @@ function setupGlobalListeners(): void {
         }
 
         const { handleCardClick } = await loadCardModule();
-        handleCardClick.call(cardElement, e); 
-        return; 
+        handleCardClick.call(cardElement, e);
+        return;
       }
-      
+
       if (target.closest("#clear-filters-from-empty")) {
         appEvents.emit("filtersReset");
       }
     });
   }
-  
+
   // Interacciones Card (Hover, Tap)
   loadCardModule().then(({ initCardInteractions }) => {
     initCardInteractions(dom.gridContainer);
   });
-  
+
   const quickViewContent = document.getElementById("quick-view-content");
   if (quickViewContent) {
-    quickViewContent.addEventListener("click", async function(this: HTMLElement, e: Event) { 
+    quickViewContent.addEventListener("click", async function (this: HTMLElement, e: Event) {
       const { handleCardClick } = await loadCardModule();
-      handleCardClick.call(this, e); 
+      handleCardClick.call(this, e);
     });
   }
-  
+
   if (dom.paginationContainer) {
     dom.paginationContainer.addEventListener("click", async (e: Event) => {
       const target = e.target as HTMLElement;
@@ -725,19 +725,19 @@ function setupGlobalListeners(): void {
 
   lastScrollY = window.scrollY;
   window.addEventListener("scroll", handleGlobalScroll, { passive: true });
-  
+
   document.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) { 
+    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
       if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
       if (sidebarModule) sidebarModule.closeMobileDrawer();
     }
   });
 
   // Eventos Personalizados de la App
-  appEvents.on("card:requestUpdate", async (data: { cardElement: HTMLElement }) => { 
+  appEvents.on("card:requestUpdate", async (data: { cardElement: HTMLElement }) => {
     if (data && data.cardElement) {
       const { updateCardUI } = await loadCardModule();
-      updateCardUI(data.cardElement); 
+      updateCardUI(data.cardElement);
     }
   });
 
@@ -752,7 +752,7 @@ function setupGlobalListeners(): void {
       loadAndRenderMovies(getCurrentPage());
     }
   });
-  
+
   appEvents.on("userDataUpdated", () => {
     handleDataRefresh();
   });
@@ -766,11 +766,11 @@ function setupGlobalListeners(): void {
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const totalPages = Math.ceil(getTotalMovies() / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
     const newPage = currentPage + direction;
-    
+
     if (newPage > 0 && newPage <= totalPages) {
       appEvents.emit("uiActionTriggered");
       await loadAndRenderMovies(newPage);
-      
+
       const grid = document.getElementById("grid-container");
       if (grid) {
         const cards = Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
@@ -792,7 +792,7 @@ function setupAuthSystem(): void {
   const userSessionGroup = document.getElementById("user-session-group");
   let initialLoadHandled = false;
   let lastUserId: string | null = null;
-  
+
   async function onLogin(user: User) {
     document.body.classList.add(CSS_CLASSES.USER_LOGGED_IN);
     if (loginButton) loginButton.hidden = true;
@@ -816,7 +816,7 @@ function setupAuthSystem(): void {
 
     appEvents.emit("userDataUpdated");
   }
-  
+
   function onLogout() {
     document.body.classList.remove(CSS_CLASSES.USER_LOGGED_IN);
     if (loginButton) loginButton.hidden = false;
@@ -830,18 +830,18 @@ function setupAuthSystem(): void {
     appEvents.emit("userDataUpdated");
     isAuthInitialized = true;
   }
-  
+
   async function handleLogout() {
     const supabase = await getSupabase();
     const { error } = await supabase.auth.signOut();
-    if (error) { 
-      if (import.meta.env.DEV) console.error("Logout error:", error); 
-      showToast("Error al cerrar sesión.", "error"); 
+    if (error) {
+      if (import.meta.env.DEV) console.error("Logout error:", error);
+      showToast("Error al cerrar sesión.", "error");
     }
   }
-  
+
   if (logoutButton) logoutButton.addEventListener("click", handleLogout);
-  
+
   getSupabase().then(supabase => {
     supabase.auth.onAuthStateChange((event, session) => {
       const currentUser = session?.user || null;
@@ -852,7 +852,7 @@ function setupAuthSystem(): void {
           showResetPasswordView();
         });
       }
-      
+
       if (currentUser) {
         onLogin(currentUser);
       } else {
@@ -860,8 +860,8 @@ function setupAuthSystem(): void {
       }
 
       // Limpieza preventiva del hash de redirección para todos los casos de retorno OTP/Magic Link
-      const hasAuthHash = window.location.hash.includes("access_token=") || 
-                         window.location.hash.includes("error_code=");
+      const hasAuthHash = window.location.hash.includes("access_token=") ||
+        window.location.hash.includes("error_code=");
 
       if (hasAuthHash && !window.location.hash.includes("type=recovery")) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -897,7 +897,7 @@ function setupAuthSystem(): void {
 
 function readUrlAndSetState(): void {
   syncStateWithUrlParams(window.location.search);
-  
+
   const activeFilters = getActiveFilters();
   if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
   if (dom.sortSelect) dom.sortSelect.value = activeFilters.sort;
@@ -907,7 +907,7 @@ function readUrlAndSetState(): void {
 
 function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
   const params = stateToUrlParams(getActiveFilters(), getCurrentPage());
-  
+
   const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
   if (newUrl !== `${window.location.pathname}${window.location.search}`) {
     if (replace) {
@@ -958,7 +958,7 @@ function init(): void {
       });
     });
   }
-  
+
   window.addEventListener("popstate", async () => {
     const { isModalOpen, closeModal } = await import("./components/modal.js");
     const { isAuthModalOpen, closeAuthModal } = await import("./ui.js");
@@ -984,7 +984,7 @@ function init(): void {
     appEvents.emit("updateSidebarUI");
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
   });
-  
+
   setupAuthSystem(); // Iniciar sesión de inmediato para resolver la carga limpia de la landing page
 
   runWhenIdle(() => {
@@ -995,19 +995,19 @@ function init(): void {
   initThemeToggle();
   setupHeaderListeners();
   setupGlobalListeners();
-  
+
   const loginBtn = document.getElementById("login-button");
   if (loginBtn) {
     loginBtn.addEventListener("click", async () => {
       try {
         const { initAuthForms } = await import("./auth.js") as unknown as { initAuthForms(): void };
         initAuthForms();
-      } catch (e) { 
-        if (import.meta.env.DEV) console.error("Error loading auth module", e); 
+      } catch (e) {
+        if (import.meta.env.DEV) console.error("Error loading auth module", e);
       }
     }, { once: true });
   }
-  
+
   // Recuperar peticiones de red atascadas al recuperar el foco de la pestaña
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
@@ -1020,7 +1020,7 @@ function init(): void {
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
   checkAndOpenMovieFromUrl();
-  
+
   // Mostrar skeletons preliminares mientras se carga el catálogo (que se disparará inmediatamente por setupAuthSystem)
   loadCardModule().then(({ renderSkeletons }) => {
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
