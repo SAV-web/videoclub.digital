@@ -36,8 +36,8 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 - **`types.ts`**: Interfaces TypeScript centralizadas (`MappedMovie`, `ActiveFilters`, `UserMovieEntry`, `PersonDetails`, `VipData`).
 
 ### 3. Componentes TS (`src/js/components/`)
-- **`card.ts`**: Renderizador masivo de la cuadrícula (*Grid*). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Controla interacciones hápticas y de *hover/flip*.
-- **`modal.ts`**: Vista rápida (*Quick View*). Implementa *Bottom Sheet* en móviles con física de arrastre (*swipe-to-dismiss*) y *View Transitions API* para el efecto *Hero* desde la tarjeta.
+- **`card.ts`**: Renderizador masivo de la cuadrícula (*Grid*). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Controla interacciones hápticas y de *hover/flip*. En el reverso, los géneros se muestran como texto plano informativo no clickable, y al pulsar `+` en la línea de reparto se despliega el panel superpuesto (`.actors-scrollable-content`) con **Géneros interactivos arriba** y **Reparto de actores abajo**.
+- **`modal.ts`**: Vista rápida (*Quick View*). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (*landscape*), y formato *Bottom Sheet* en móviles verticales con física de arrastre (*swipe-to-dismiss*) y *View Transitions API* para el efecto *Hero* desde la tarjeta. Los enlaces dentro de la modal (géneros, directores, actores, año) son interactivos y cierran automáticamente la modal al aplicarse.
 - **`sidebar.ts`**: Menú lateral de filtrado avanzado. Incluye autocompletado en tiempo real, control de rango con slider, acordeones CSS nativos y gestos de *swipe* para abrir/cerrar. Implementa reconciliación de píldoras DOM y exclusiones visuales (`(NO País) x`).
 - **`rating.ts`**: Lógica visual del sistema de puntuación por estrellas y lógica de votación de usuario (optimista), manteniendo la exclusividad mutua con la Watchlist.
 

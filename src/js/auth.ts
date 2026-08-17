@@ -321,7 +321,7 @@ async function handleResetPasswordSubmit(e: Event): Promise<void> {
       showToast("Contraseña actualizada con éxito.", "success");
       closeAuthModal();
       if (window.location.hash) {
-        window.location.hash = "";
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
     },
     "Error al actualizar la contraseña."

@@ -52,6 +52,8 @@ Reglas:
 - `mediaType` solo acepta `all`, `movies` o `series`.
 - `excludedGenres` y `excludedCountries` son arrays únicos, sin valores vacíos.
 - `myList` solo acepta `rated`, `watchlist`, `mixed` o `null`.
+- **Exclusividad de Personas**: `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con `genre`, `country`, `selection`, `studio`, `excludedGenres` y `excludedCountries`.
+- **Exclusividad de Género**: Al asignar `genre`, se limpian `director` y `actor`, pero se conservan `year`, `selection`, `studio` y `country`.
 
 ## 3. Respuestas de API
 

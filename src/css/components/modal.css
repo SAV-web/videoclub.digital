@@ -365,10 +365,27 @@
 }
 
 .is-quick-view .detail-label {
-  font-size: 1.5em;
-  line-height: 1;
-  vertical-align: -0.15em;
-  margin-right: var(--space-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -2px;
+  margin-right: 8px;
+  color: var(--color-accent);
+}
+
+.is-quick-view .detail-icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.is-quick-view .detail-label-title {
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-text-primary);
+  margin-right: 12px;
 }
 
 .is-quick-view .rating-bar-container {

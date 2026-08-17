@@ -861,13 +861,16 @@ function setupAuthSystem(): void {
 
       // Limpieza preventiva del hash de redirección para todos los casos de retorno OTP/Magic Link
       const hasAuthHash = window.location.hash.includes("access_token=") ||
-        window.location.hash.includes("error_code=");
+        window.location.hash.includes("error_code=") ||
+        window.location.hash.includes("error=");
 
       if (hasAuthHash && !window.location.hash.includes("type=recovery")) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
         lastUserId = currentUserId;
-        loadAndRenderMovies(1, { replaceHistory: true });
-        initialLoadHandled = true;
+        if (!initialLoadHandled) {
+          initialLoadHandled = true;
+          loadAndRenderMovies(1, { replaceHistory: true });
+        }
       } else if (!initialLoadHandled) {
         lastUserId = currentUserId;
         initialLoadHandled = true;
@@ -888,11 +891,27 @@ function setupAuthSystem(): void {
       import("./auth.js").then(({ showResetPasswordView }) => {
         showResetPasswordView();
       });
-    } else if (window.location.hash.includes("error_code=otp_expired")) {
-      showToast("El enlace de recuperación ha expirado. Solicita uno nuevo.", "error");
-      window.location.hash = "";
+    } else if (window.location.hash.includes("error_code=") || window.location.hash.includes("error=")) {
+      if (window.location.hash.includes("error_code=otp_expired") || window.location.hash.includes("expired")) {
+        showToast("El enlace de recuperación ha expirado. Solicita uno nuevo.", "error");
+      } else {
+        showToast("El enlace de autenticación no es válido o ha expirado.", "error");
+      }
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      if (!initialLoadHandled) {
+        initialLoadHandled = true;
+        loadAndRenderMovies(1, { replaceHistory: true });
+      }
     }
   });
+
+  // Temporizador de seguridad: garantizar que la página de inicio cargue si el evento auth no dispara la carga
+  setTimeout(() => {
+    if (!initialLoadHandled) {
+      initialLoadHandled = true;
+      loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
+    }
+  }, 600);
 }
 
 function readUrlAndSetState(): void {

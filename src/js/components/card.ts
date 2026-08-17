@@ -34,7 +34,7 @@ let currentlyFlippedCard: MovieCardElement | null = null;
 let hoverTimeout: ReturnType<typeof setTimeout> | undefined;
 let currentHoveredCard: MovieCardElement | null = null;
 const HOVER_DELAY = 1000;
-const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, .details-list, .genre-link, a[href]";
+const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
 const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
 
 // Consulta de Viewport sin listeners pesados de resize
@@ -336,27 +336,53 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     if (!actorsOverlay) {
       actorsOverlay = createElement("div", { className: "actors-scrollable-content" });
 
-      const heading = createElement("h4", { textContent: "Reparto" });
-      const listText = createElement("div", { className: "actors-list-text" });
+      const movieData = card.movieData as MappedMovie;
 
-      const actors = (card.movieData as MappedMovie)?.parsedActors || [];
-      actors.forEach(name => {
-        if ((IGNORED_ACTORS as readonly string[]).includes(name.toLowerCase())) {
-          listText.appendChild(createElement("span", {
-            className: "actor-list-item",
+      // 1. Géneros delante de los actores
+      const genres = (movieData?.genres || "")
+        .split(",")
+        .map(g => g.trim())
+        .filter(Boolean);
+
+      if (genres.length > 0) {
+        const genreHeading = createElement("h4", { textContent: "Géneros" });
+        const genreListText = createElement("div", { className: "actors-list-text genres-list-text" });
+        genres.forEach(name => {
+          genreListText.appendChild(createElement("button", {
+            className: "actor-list-item genre-list-item",
             textContent: name,
-            style: "cursor:default; pointer-events:none"
+            attributes: { "type": "button", "data-genre-name": name }
           }));
-        } else {
-          listText.appendChild(createElement("button", {
-            className: "actor-list-item",
-            textContent: name,
-            attributes: { "type": "button", "data-actor-name": name }
-          }));
-        }
-      });
-      actorsOverlay.appendChild(heading);
-      actorsOverlay.appendChild(listText);
+        });
+        actorsOverlay.appendChild(genreHeading);
+        actorsOverlay.appendChild(genreListText);
+      }
+
+      // 2. Reparto de actores
+      const actors = movieData?.parsedActors || [];
+      if (actors.length > 0) {
+        const heading = createElement("h4", { textContent: "Reparto" });
+        const listText = createElement("div", { className: "actors-list-text" });
+
+        actors.forEach(name => {
+          if ((IGNORED_ACTORS as readonly string[]).includes(name.toLowerCase())) {
+            listText.appendChild(createElement("span", {
+              className: "actor-list-item",
+              textContent: name,
+              style: "cursor:default; pointer-events:none"
+            }));
+          } else {
+            listText.appendChild(createElement("button", {
+              className: "actor-list-item",
+              textContent: name,
+              attributes: { "type": "button", "data-actor-name": name }
+            }));
+          }
+        });
+        actorsOverlay.appendChild(heading);
+        actorsOverlay.appendChild(listText);
+      }
+
       flipBack.insertBefore(actorsOverlay, flipBack.querySelector(".expand-content-btn"));
     }
 
@@ -387,7 +413,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   // 4. Bloqueo de Flip en Scroll
   if (flipBack && ((target.closest('.scrollable-content') && flipBack.classList.contains('is-expanded')) ||
     target.closest('.actors-scrollable-content'))) {
-    if (!target.closest('.actor-list-item')) {
+    if (!target.closest('.actor-list-item') && !target.closest('.genre-list-item')) {
       event.stopPropagation();
       return;
     }
@@ -678,24 +704,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   // Textos Largos
   const genreEl = back.querySelector<HTMLElement>(SELECTORS.GENRE);
   if (genreEl) {
-    genreEl.textContent = "";
-    const genres = (movie.genres || "").split(",").map(g => g.trim()).filter(Boolean);
-    if (genres.length > 0) {
-      const frag = document.createDocumentFragment();
-      genres.forEach((name, i, arr) => {
-        const link = createElement("a", {
-          textContent: name,
-          href: `?genre=${encodeURIComponent(name)}`,
-          className: "genre-link",
-          dataset: { genreName: name }
-        });
-        frag.appendChild(link);
-        if (i < arr.length - 1) frag.append(", ");
-      });
-      genreEl.appendChild(frag);
-    } else {
-      genreEl.textContent = "Género no disponible";
-    }
+    genreEl.textContent = movie.genres || "Género no disponible";
   }
 
   const synopsisEl = back.querySelector(SELECTORS.SYNOPSIS);
@@ -713,15 +722,17 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     actorsEl.textContent = shortActors || "Reparto no disponible";
 
     const hasActors = actors.length > 0 && actors.some(a => !(IGNORED_ACTORS as readonly string[]).includes(a.toLowerCase()));
+    const genres = (movie.genres || "").split(",").map(g => g.trim()).filter(Boolean);
+    const canExpand = hasActors || genres.length > 0;
     const expandBtn = actorsEl.parentElement?.querySelector(".actors-expand-btn");
 
-    if (hasActors) {
+    if (canExpand) {
       if (!expandBtn) {
         actorsEl.parentElement?.appendChild(
           createElement("button", {
             className: "actors-expand-btn",
             textContent: "+",
-            attributes: { "aria-label": "Ver reparto" }
+            attributes: { "aria-label": "Ver detalles de géneros y reparto" }
           })
         );
       }
