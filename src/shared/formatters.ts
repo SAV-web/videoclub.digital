@@ -27,6 +27,25 @@ export function parseList(value: string | null | undefined): string[] {
 }
 
 /**
+ * Formatea el conteo de votos separando con un espacio las unidades k y M (ej: "161 k", "2.8 M").
+ */
+export function formatVotesUnified(votes: number | string | null | undefined, platform?: 'fa' | 'imdb'): string {
+  if (votes === null || votes === undefined || votes === '') return '';
+  const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes).replace(/\D/g, ''), 10);
+  if (!numVotes || isNaN(numVotes)) return '';
+
+  if (numVotes >= 1000000) {
+    const millions = (numVotes / 1000000).toFixed(1);
+    return `${millions.endsWith('.0') ? millions.slice(0, -2) : millions} M`;
+  }
+  if (numVotes >= 1000) {
+    return `${Math.round(numVotes / 1000)} k`;
+  }
+  return String(numVotes);
+}
+
+
+/**
  * Determina si el registro corresponde a una Serie de TV.
  */
 export function isSeriesType(type: string | null | undefined): boolean {

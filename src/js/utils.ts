@@ -75,25 +75,9 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
 //          2. EL TRADUCTOR (Textos, Números y Tiempos)
 // =================================================================
 
-// Creados fuera para ahorrar batería (crearlos es lento)
-const compactFormatter = new Intl.NumberFormat('es-ES', { notation: "compact", maximumFractionDigits: 1 });
-const thousandsFormatter = new Intl.NumberFormat('de-DE'); // Usamos 'de-DE' porque usa puntos en los miles (1.000)
+import { formatVotesUnified } from "../shared/formatters.js";
+export { formatVotesUnified };
 
-// Pone bonitos los números de votos (Ej: 1500000 -> "1,5 M")
-export const formatVotesUnified = (votes: number | string | null | undefined, platform?: 'fa' | 'imdb'): string => {
-  const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes || "").replace(/\D/g, ""), 10);
-  if (!numVotes || isNaN(numVotes)) return "";
-
-  if (numVotes >= 1000000) return compactFormatter.format(numVotes).replace("M", " M");
-  if (numVotes >= 100000) return `${Math.floor(numVotes / 1000)} k`;
-  
-  let rounded = numVotes;
-  if (numVotes < 1000) rounded = Math.round(numVotes / 10) * 10;
-  else if (numVotes < 3000 || platform === 'fa') rounded = Math.ceil(numVotes / 100) * 100;
-  else if (platform === 'imdb') rounded = Math.ceil(numVotes / 1000) * 1000;
-  
-  return thousandsFormatter.format(rounded);
-};
 
 // Pone bonito el tiempo (Ej: 130 -> "2h 10min")
 export const formatRuntime = (minutesString: string | number | null | undefined, useShortLabel: boolean = false): string => {

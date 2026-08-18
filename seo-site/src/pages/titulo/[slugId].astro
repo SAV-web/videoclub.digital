@@ -3,7 +3,7 @@ import { fetchAllMovies } from '../../lib/fetchAllMovies';
 import { getPosterUrl, parseList } from '../../lib/format';
 import type { MovieRow } from '../../lib/types';
 import { STUDIO_DATA } from '../../../../src/shared/constants';
-import { formatRuntime, calculateAverageStars, getTitleLengthClass } from '../../../../src/shared/formatters';
+import { formatRuntime, calculateAverageStars, getTitleLengthClass, formatVotesUnified } from '../../../../src/shared/formatters';
 import '../../../../src/css/variables.css';
 
 export async function getStaticPaths() {
@@ -54,15 +54,7 @@ const clip3 = (1 - Math.max(0, Math.min(1, avgStars - 2))) * 100;
 
 // Cálculo de barras de votos y votos unificados
 const SQRT_MAX_VOTES = { FA: Math.sqrt(220000), IMDB: Math.sqrt(3200000) };
-function formatVotesUnified(votes: number | null | undefined, key: 'fa' | 'imdb'): string {
-  if (!votes) return '';
-  if (key === 'fa') {
-    return votes >= 1000 ? `${Math.round(votes / 1000)}k` : String(votes);
-  }
-  if (votes >= 1000000) return `${(votes / 1000000).toFixed(1)}M`;
-  if (votes >= 1000) return `${Math.round(votes / 1000)}k`;
-  return String(votes);
-}
+
 
 const faBarWidth = movie.fa_votes ? Math.min(100, (Math.sqrt(movie.fa_votes) / SQRT_MAX_VOTES.FA) * 100) : 0;
 const imdbBarWidth = movie.imdb_votes ? Math.min(100, (Math.sqrt(movie.imdb_votes) / SQRT_MAX_VOTES.IMDB) * 100) : 0;
@@ -670,9 +662,11 @@ const jsonLd = {
       align-items: center;
       gap: 8px;
       font-size: calc(var(--font-size-sm) * 1.5);
+      font-weight: var(--font-weight-bold, 700);
       letter-spacing: 1px;
       color: var(--color-text-secondary);
     }
+
 
     [data-template="wikipedia-link"],
     [data-template="justwatch-link"] {
@@ -812,7 +806,7 @@ const jsonLd = {
       white-space: normal;
     }
 
-    .is-quick-view [data-template="actors"] a {
+    .is-quick-view :is([data-template="actors"], [data-template="genre"], .detail-data) a {
       color: inherit;
       text-decoration: none;
 
@@ -823,11 +817,34 @@ const jsonLd = {
     }
 
     .is-quick-view .detail-label {
-      font-size: 1.5em;
-      line-height: 1;
-      vertical-align: -0.15em;
-      margin-right: var(--space-xs);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: -2px;
+      margin-right: 8px;
+      color: var(--color-accent);
+      flex-shrink: 0;
     }
+
+    .is-quick-view .detail-icon {
+      width: 18px;
+      height: 18px;
+      max-width: 18px;
+      max-height: 18px;
+      stroke: currentColor;
+      stroke-width: 2.6;
+      fill: none;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+
+    .is-quick-view .detail-label-title {
+      display: inline-block;
+      font-weight: var(--font-weight-bold, 700);
+      color: var(--color-text-primary);
+      margin-right: 0.85em; /* 3 espacios de separación */
+    }
+
 
     .is-quick-view .scrollable-content {
       overflow: visible;

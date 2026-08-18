@@ -88,6 +88,16 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     // 7.25 está a mitad de camino entre 5.5 y 9.0 -> 1.5 estrellas
     assert.equal(sharedFormatters.calculateAverageStars(7.25), 1.5);
   });
+
+  test("formatVotesUnified formatea votos separando k y M con espacio", () => {
+    assert.equal(sharedFormatters.formatVotesUnified(null), "");
+    assert.equal(sharedFormatters.formatVotesUnified(""), "");
+    assert.equal(sharedFormatters.formatVotesUnified(850), "850");
+    assert.equal(sharedFormatters.formatVotesUnified(161200), "161 k");
+    assert.equal(sharedFormatters.formatVotesUnified(2800000), "2.8 M");
+    assert.equal(sharedFormatters.formatVotesUnified("2800000"), "2.8 M");
+  });
+
 });
 
 describe("src/js/state.ts (appEvents Lifecycle y Prevención de Fugas de Memoria)", () => {
