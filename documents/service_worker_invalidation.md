@@ -4,49 +4,42 @@ Este documento define cómo se invalidan las cachés controladas por `public/sw.
 
 ## 1. Caches Actuales
 
-`public/sw.js` define tres namespaces versionados:
+`public/sw.js` define dos namespaces versionados:
 
 ```js
-const VERSION = "v202608111748"; // Inyectado automáticamente en cada `npm run build` vía plugin Vite
+const VERSION = "vYYYYMMDDHHMM"; // Inyectado automáticamente en cada `npm run build` vía plugin Vite
 const CACHE_STATIC = `videoclub-static-${VERSION}`;
 const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
-const CACHE_API = `videoclub-api-${VERSION}`;
 ```
 
-Cada cambio de `VERSION` crea cachés nuevas y elimina todas las cachés cuyo nombre no coincida con las tres actuales durante el evento `activate`.
+Cada cambio de `VERSION` crea cachés nuevas y elimina todas las cachés cuyo nombre no coincida con las dos actuales durante el evento `activate`.
 
 ## 2. Política por Tipo de Recurso
 
-| Recurso | Estrategia | Invalidación |
-| --- | --- | --- |
-| Navegación HTML | `Network First` | Se actualiza desde red siempre que haya conexión. Fallback a caché offline. |
-| `index.html` y críticos | Precarga en `install` | Requiere subida de `VERSION` (automatizado en el proceso de build). |
-| JS/CSS/fuentes/iconos | `Stale While Revalidate` | Vite genera filenames con hash; el HTML nuevo referencia assets nuevos. |
-| Pósters Supabase Storage | `Cache First` | Persisten hasta cambio de `VERSION` o expulsión FIFO por límite. |
-| RPC / Functions | Cache API con ventana de frescura | Si hay caché, se devuelve rápido y se revalida en background. |
-| Auth / REST directo | Sin caché | Nunca se interceptan para evitar datos privados obsoletos. |
-| Service Worker Script (`sw.js`) | Automática vía Vite | `vite.config.ts` incluye un plugin (`injectSwVersion`) que reemplaza la constante `VERSION` con una marca temporal (`vYYYYMMDDHHMM`) en cada compilación. |
+| Recurso | Estrategia | Cache / Destino | Invalidación |
+| --- | --- | --- | --- |
+| Navegación HTML | `Network First` | `CACHE_STATIC` | Se actualiza desde red siempre que haya conexión. Fallback a caché offline. |
+| `index.html` y manifiesto | Precarga en `install` | `CACHE_STATIC` | Requiere subida de `VERSION` (automatizado en el build). |
+| JS/CSS/fuentes/iconos | `Stale While Revalidate` | `CACHE_DYNAMIC` | Vite genera filenames con hash; el HTML nuevo referencia assets nuevos. |
+| Pósters Supabase Storage | `Cache First` | `CACHE_DYNAMIC` | Persisten hasta cambio de `VERSION` o expulsión FIFO por límite (200 items). |
+| Supabase RPC / Búsquedas | Memoria LRU Cliente | `src/js/api.ts` (`lru-cache`) | Excluidas de SW (viajan en POST, prohibido por W3C CacheStorage). Caché en memoria de 5 min con deduplicación de peticiones en vuelo. |
+| Auth / REST directo | Sin caché | Directo a red | Nunca se interceptan para evitar fugas o datos privados obsoletos. |
+| Service Worker Script (`sw.js`) | Automática vía Vite | `public/sw.js` -> `dist/sw.js` | `vite.config.js` incluye un plugin (`injectSwVersion`) que reemplaza la constante `VERSION` con una marca temporal (`vYYYYMMDDHHMM`) en cada compilación. |
 
 ## 3. Cuándo y Cómo se Incrementa `VERSION`
 
-La inyección de versión está **automatizada en el pipeline de Vite** (`vite.config.ts`):
+La inyección de versión está **automatizada en el pipeline de Vite** (`vite.config.js`):
 
-- Cada vez que ejecutas `npm run build`, el plugin `injectSwVersion` sustituye `__SW_VERSION__` o `const VERSION = "..."` en `dist/sw.js` por una firma única basada en la fecha y hora UTC (`vYYYYMMDDHHMM`).
-- Esto garantiza que en cada nuevo despliegue en producción los clientes invaliden de forma limpia y transparente las cachés anteriores de assets estáticos y API.
+- Cada vez que ejecutas `npm run build`, el plugin `injectSwVersion` sustituye `const VERSION = "dev"` en `dist/sw.js` por una firma única basada en la fecha y hora UTC (`vYYYYMMDDHHMM`).
+- Esto garantiza que en cada nuevo despliegue en producción los clientes invaliden de forma limpia y transparente las cachés anteriores de assets estáticos y App Shell.
 
 Si deseas realizar un cambio manual durante desarrollo local sin compilación completa:
 1. Puedes actualizar manualmente la cadena `VERSION` en `dist/sw.js`.
 
-## 4. TTL y Límites
+## 4. Límites y Gestión de Memoria
 
-La caché de API usa una ventana de frescura de `15 minutos`:
-
-- Si hay respuesta cacheada con cabecera `Date` menor a 15 minutos, se devuelve inmediatamente.
-- La red se dispara en background para refrescar la próxima lectura.
-- Si la respuesta cacheada está vieja, también se devuelve como `stale` para mantener velocidad y se revalida detrás.
-- Si no hay caché y la red falla, se devuelve JSON `503` con `{ "error": "Sin conexión" }`.
-
-La caché dinámica limita imágenes y assets de Storage a unas `200` entradas mediante eliminación FIFO. Esta política protege móviles con cuota baja, pero no garantiza LRU estricto.
+- **Caché Dinámica (`CACHE_DYNAMIC`)**: Limita imágenes y assets de Storage a unas `200` entradas mediante eliminación FIFO (`limitCacheSize`). Esta política protege móviles con almacenamiento limitado.
+- **Caché de Consultas y Búsquedas**: Se ejecuta en el cliente (`api.ts`) usando `lru-cache` con un tamaño máximo de 100 consultas y un TTL de 5 minutos, garantizando respuestas instantáneas sin sobrecargar CacheStorage.
 
 ## 5. Flujo de Activación
 
@@ -54,7 +47,7 @@ El Service Worker usa:
 
 - `self.skipWaiting()` en `install`: activa la versión nueva sin esperar a cerrar pestañas.
 - `self.clients.claim()` en `activate`: toma control inmediato de clientes abiertos.
-- Limpieza por allowlist: conserva solo `CACHE_STATIC`, `CACHE_DYNAMIC` y `CACHE_API` de la versión actual.
+- Limpieza por allowlist: conserva solo `CACHE_STATIC` y `CACHE_DYNAMIC` de la versión actual.
 
 Implicación: un usuario puede recibir la nueva estrategia durante una sesión activa. Por eso cualquier cambio incompatible debe ir acompañado de subida de `VERSION`.
 
@@ -71,8 +64,7 @@ Antes de desplegar:
 ## 7. Riesgos Conocidos
 
 - Los pósters usan `Cache First`; si se reemplaza una imagen manteniendo la misma ruta, el usuario puede conservar la versión antigua hasta limpieza por versión o FIFO.
-- La caché RPC prioriza velocidad sobre consistencia fuerte. No debe usarse para endpoints privados o altamente volátiles.
-- `Auth` y `REST` directo quedan fuera de caché; mantener esta excepción es obligatorio para evitar fugas o estados privados obsoletos.
+- `Auth` y `REST/RPC` directo quedan fuera de la caché del Service Worker; mantener esta excepción es obligatorio para evitar fugas, estados privados obsoletos y respetar la especificación W3C (métodos no-GET).
 
 ## 8. Relación con Otras Cachés
 

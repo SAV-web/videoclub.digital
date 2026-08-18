@@ -7,19 +7,19 @@
 - **Frontend:** TypeScript (ES2022+), HTML5 Semántico, CSS3 (Variables, Grid, Flexbox, Container Queries).
 - **Build Tool:** Vite (con esbuild y TypeScript para minificación y type-checking estricto).
 - **Backend/Database:** Supabase (PostgreSQL), Supabase Auth, Supabase Storage.
-- **PWA:** Service Worker propio (`sw.js`) inyectado dinámicamente con versión por timestamp en build time vía Vite, con estrategias de caché avanzadas y `manifest.webmanifest`.
-- **Dependencias Externas Clave:** `@supabase/supabase-js`, `lru-cache` (caché en memoria), `nouislider` (control de rango de años).
+- **PWA:** Service Worker propio (`sw.js`) inyectado dinámicamente con versión por timestamp en build time vía Vite, con estrategias de caché `CACHE_STATIC` y `CACHE_DYNAMIC` y `manifest.webmanifest`.
+- **Dependencias Externas Clave:** `@supabase/supabase-js`, `lru-cache` (caché en memoria para búsquedas/filtros).
 
 ## 📂 Estructura del Proyecto
 
 ### 1. Archivos Raíz y Configuración
 - `index.html`: Punto de entrada. Contiene el CSS crítico (*Above the Fold*), preloads, meta tags SEO, y los `<template>` de los componentes para instanciación rápida.
-- `vite.config.ts`: Configurado para generar código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase) e inyección automática de versión de Service Worker (`injectSwVersion`).
+- `vite.config.js`: Configurado para generar código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase) e inyección automática de versión de Service Worker (`injectSwVersion`).
 - `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`) y estrategias: 
-  - *Network First* (HTML).
-  - *Stale-While-Revalidate* (Assets estáticos).
-  - *Cache First* (Pósters de Supabase Storage).
-  - *Custom TTL Cache* (RPC Calls).
+  - *Network First* (`CACHE_STATIC` para navegación HTML y App Shell).
+  - *Stale-While-Revalidate* (`CACHE_DYNAMIC` para assets estáticos JS/CSS).
+  - *Cache First* (`CACHE_DYNAMIC` para pósters de Supabase Storage con límite FIFO).
+  - *Exclusiones de API*: Las llamadas RPC y Auth viajan vía POST o manejan datos vivos; se gestionan mediante `lru-cache` en el cliente (`src/js/api.ts`).
   - Estrategia de invalidación documentada en `documents/service_worker_invalidation.md`.
 
 ### 2. Frontend TS (`src/js/`)
@@ -40,14 +40,21 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 - **`modal.ts`**: Vista rápida (*Quick View*). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (*landscape*), y formato *Bottom Sheet* en móviles verticales con física de arrastre (*swipe-to-dismiss*) y *View Transitions API* para el efecto *Hero* desde la tarjeta. Los enlaces dentro de la modal (géneros, directores, actores, año) son interactivos y cierran automáticamente la modal al aplicarse.
 - **`sidebar.ts`**: Menú lateral de filtrado avanzado. Incluye autocompletado en tiempo real, control de rango con slider, acordeones CSS nativos y gestos de *swipe* para abrir/cerrar. Implementa reconciliación de píldoras DOM y exclusiones visuales (`(NO País) x`).
 - **`rating.ts`**: Lógica visual del sistema de puntuación por estrellas y lógica de votación de usuario (optimista), manteniendo la exclusividad mutua con la Watchlist.
+- **`yearSlider.ts`**: Componente nativo de control de rango de años doble (*DualRangeSlider*) con soporte táctil, arrastre fluido de pivotes, cálculos precisos de porcentaje y sin dependencias externas.
 
-### 4. Estilos (`src/css/`)
+### 4. Subsistema SEO Astro (`seo-site/`)
+- **Propósito**: Generador estático (*Static Site Generation - SSG*) para indexación en motores de búsqueda (Google, Bing).
+- **Tecnología**: Astro 5+ con TypeScript.
+- **Páginas Generadas**: Fichas estáticas de títulos (`/titulo/[slugId]`), directores y actores con metadatos OpenGraph, Twitter Cards y microdatos JSON-LD (`Schema.org`).
+- **Integración en Despliegue**: En el pipeline de CI/CD, los artefactos de `seo-site/dist` se fusionan con el `dist` principal de la SPA antes de publicar en GitHub Pages.
+
+### 5. Estilos (`src/css/`)
 - **`variables.css`**: Design tokens. Fuentes (Inter), paleta de colores adaptable (Tema Claro/Oscuro dinámico con tokens como `--color-rating-star` y `--color-accent-darker`) y duraciones de animación (*Quiet Luxury easing*).
 - **`globals.css`**: Reset, utilidades generales y scrollbars personalizados.
 - **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`) y CSS Grid para la cuadrícula principal adaptativa.
 - **`components/*.css`**: CSS scopeado a componentes. Uso intensivo de `contain: layout paint style` y `content-visibility: auto` para máximo rendimiento. Evita transicionar propiedades pesadas (`width`, `padding`) en móviles, priorizando `transform` y `opacity` (GPU).
 
-### 5. Suite de Tests (`tests/`)
+### 6. Suite de Tests (`tests/`)
 - Tests unitarios ejecutados con el rodador nativo de Node.js (`node --test`).
 - **`tests/helpers/vite-ssr.mjs`**: Helper unificado `startViteSsrServer()` que arranca el entorno Vite en modo SSR de forma aislada para cargar módulos TypeScript directamente sin duplicidad de configuración.
 
@@ -60,7 +67,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 - `user_movie_entries`: Almacena las valoraciones (1-10) y la Watchlist (boolean) por usuario.
 - Tablas `_staging`: Usadas exclusivamente para el proceso ETL (ingesta masiva desde CSV) mediante Triggers de `UPSERT`.
 
-### Lógica Avanzada SQL (`documents/script_sql.txt`)
+### Lógica Avanzada SQL (`documents/script_sql.txt` y `documents/contexto_sql.txt`)
 - **Columnas Generadas (`GENERATED ALWAYS AS ... STORED`)**: Usadas para calcular campos `tsvector` de búsqueda en tiempo de inserción, descargando al procesador durante las consultas `SELECT`. También se usa para normalizar textos (`unaccent`).
 - **Índices**: 
   - Índices GIN con Trigramas (`pg_trgm`) para autocompletado ultra-rápido en nombres de actores/directores.

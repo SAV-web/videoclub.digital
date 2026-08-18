@@ -33,12 +33,13 @@
 
 | Capa | Tecnología |
 | --- | --- |
-| **Frontend Core** | TypeScript (ES2022+), HTML5 Semántico |
+| **Frontend Core (SPA)** | TypeScript (ES2022+), HTML5 Semántico |
 | **Estilos (CSS)** | Vanilla CSS3 (Variables, Grid, Flexbox, Container Queries, `contain: layout paint`) |
 | **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
-| **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL, Row Level Security, Trigram Indexes) |
-| **PWA & Offline** | Service Worker dedicado con invalidación dinámica por marca temporal (`vYYYYMMDDHHMM`) |
-| **Caché Local** | `lru-cache` en memoria + `localStorage` versionado |
+| **Subsistema SEO (SSG)** | Astro 5+ en [`seo-site/`](seo-site/) (Generación estática de fichas públicas, sitemaps y JSON-LD) |
+| **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
+| **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
+| **Caché Local** | `lru-cache` en memoria para búsquedas/filtros + `localStorage` versionado |
 | **Testing** | Node.js Test Runner nativo (`node --test`) + Vite SSR Server para aislamiento |
 
 ---
@@ -48,10 +49,10 @@
 ```text
 VIDEOCLUB.DIGITAL/
 ├── index.html                   # Shell HTML principal, CSS crítico y plantillas <template>
-├── vite.config.ts               # Configuración de Vite y plugin inyector de Service Worker
+├── vite.config.js               # Configuración de Vite y plugin inyector de Service Worker
 ├── package.json                 # Dependencias y scripts de desarrollo/test
 ├── public/
-│   ├── sw.js                    # Service Worker interceptor
+│   ├── sw.js                    # Service Worker interceptor (CACHE_STATIC y CACHE_DYNAMIC)
 │   └── manifest.webmanifest     # Manifiesto PWA
 ├── src/
 │   ├── css/                     # Sistema de diseño modular en Vanilla CSS
@@ -62,12 +63,16 @@ VIDEOCLUB.DIGITAL/
 │   └── js/                      # Lógica de la aplicación en TypeScript
 │       ├── main.ts              # Orquestador del DOM y flujo de renderizado
 │       ├── state.ts             # Estado inmutable global y sincronización con URL
-│       ├── api.ts               # Capa de datos, deduplicación e integración Supabase
+│       ├── api.ts               # Capa de datos, deduplicación e integración Supabase (LRU Cache)
 │       ├── contracts.ts         # Contratos, guardas de tipos y normalizadores puros
 │       ├── types.ts             # Interfaces TypeScript centralizadas
 │       ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
 │       ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación)
-│       └── components/          # Módulos UI (card, modal, sidebar, rating)
+│       └── components/          # Módulos UI (card, modal, sidebar, rating, yearSlider)
+├── seo-site/                    # Subsistema Astro para generación estática (SSG) de SEO
+│   ├── astro.config.mjs         # Configuración del generador estático
+│   ├── src/pages/               # Páginas públicas indexables (/titulo/[slugId], /director/[slug], etc.)
+│   └── public/                  # Sitemaps XML y recursos estáticos de indexación
 ├── tests/                       # Suite de pruebas unitarias
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   └── *.test.mjs               # Archivos de test unitarios (api, state, rating, seo, utils)
@@ -75,7 +80,8 @@ VIDEOCLUB.DIGITAL/
     ├── project_context.md       # Contexto global y mapa del proyecto
     ├── contracts.md             # Especificación de contratos de datos y fronteras
     ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
-    └── script_sql.txt           # Esquema SQL, funciones RPC e índices de Supabase
+    ├── script_sql.txt           # Esquema SQL, funciones RPC e índices de Supabase
+    └── contexto_sql.txt         # Esquema DDL de tablas y restricciones relacionales
 ```
 
 ---
@@ -123,3 +129,4 @@ Para más detalles sobre la arquitectura interna y decisiones de diseño técnic
 - 📐 [**Contratos de Datos**](documents/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, `UserMovieEntry` y gestión de errores.
 - 🔄 [**Estrategia de Invalidación del Service Worker**](documents/service_worker_invalidation.md): Explicación de políticas de caché y despliegue.
 - 🗄️ [**Script SQL & Backend Schema**](documents/script_sql.txt): Código de la función RPC `search_movies_offset`, índices trigrama y Row Level Security.
+- 🗃️ [**Contexto SQL & DDL Schema**](documents/contexto_sql.txt): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.
