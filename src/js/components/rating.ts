@@ -19,12 +19,14 @@ import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.j
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 } as const;
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) } as const;
 
-// =================================================================
-//          1. REGLAS DE NEGOCIO (Domain Logic / State Helpers)
-// =================================================================
+import {
+  LEVEL_TO_RATING_MAP,
+  MIN_STAR_THRESHOLD,
+  calculateUserStars,
+  calculateAverageStars,
+} from "../../shared/formatters.js";
+export { LEVEL_TO_RATING_MAP, MIN_STAR_THRESHOLD, calculateUserStars, calculateAverageStars };
 
-export const LEVEL_TO_RATING_MAP = [5, 7, 9] as const;
-const MIN_STAR_THRESHOLD = 5.5;
 
 /**
  * Resuelve cuál será la siguiente nota al hacer clic en una estrella.
@@ -94,37 +96,9 @@ export function getRatingPresentationState(
 }
 
 // =================================================================
-//          2. LÓGICA DE CÁLCULO VISUAL (Funciones Puras)
-// =================================================================
-
-/**
- * Convierte nota de usuario (1-10) a nivel de estrellas (0-3).
- * @param {number|null} rating
- * @returns {number} 0 a 3
- */
-export function calculateUserStars(rating: number | null | undefined): number {
-  if (!rating) return 0;
-  if (rating >= 9) return 3;
-  if (rating >= 7) return 2;
-  if (rating >= 5) return 1;
-  return 0;
-}
-
-/**
- * Convierte nota media (0-10) a valor continuo para clip-path (0.0 - 3.0).
- * @param {number} averageRating 
- * @returns {number}
- */
-export function calculateAverageStars(averageRating: number | null | undefined): number {
-  if (averageRating === null || averageRating === undefined || averageRating <= MIN_STAR_THRESHOLD) return 0;
-  if (averageRating >= 9) return 3;
-  // Interpolación lineal entre 5.5 y 9 sobre 3 estrellas
-  return ((averageRating - MIN_STAR_THRESHOLD) / 3.5) * 3;
-}
-
-// =================================================================
 //          2. LÓGICA DE RENDERIZADO (DOM)
 // =================================================================
+
 
 interface RenderStarsOptions {
   hideUnfilled?: boolean;

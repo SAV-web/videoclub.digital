@@ -188,3 +188,6 @@ CREATE TABLE public.people_staging (
   place_of_birth text,
   country_id text
 );
+
+CREATE INDEX IF NOT EXISTS idx_actors_country_id ON public.actors(country_id);
+CREATE INDEX IF NOT EXISTS idx_directors_country_id ON public.directors(country_id);

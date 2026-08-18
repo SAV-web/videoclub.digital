@@ -12,7 +12,11 @@ import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
+
+import { fetchUserMovieDataForIds } from "../api.js";
 import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js";
+
+
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
 import spriteUrl from "../../sprite.svg";
 import { Movie, MappedMovie, MovieCardElement } from "../types.js";
@@ -709,17 +713,16 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
 
         // Si el usuario está autenticado, sincronizar sus datos específicos (nota/watchlist) para la modal
         if (movie.id && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-          import("../api.js").then(({ fetchUserMovieDataForIds }) => {
-            fetchUserMovieDataForIds([movie.id]).then(userEntries => {
-              if (userEntries[movie.id]) {
-                updateUserDataForMovie(movie.id, userEntries[movie.id]);
-                if (content && content.dataset.movieId === String(movie.id)) {
-                  updateCardUI(cardClone);
-                }
+          fetchUserMovieDataForIds([movie.id]).then(userEntries => {
+            if (userEntries[movie.id]) {
+              updateUserDataForMovie(movie.id, userEntries[movie.id]);
+              if (content && content.dataset.movieId === String(movie.id)) {
+                updateCardUI(cardClone);
               }
-            }).catch(() => { });
-          });
+            }
+          }).catch(() => { });
         }
+
       });
     });
   }
@@ -875,13 +878,16 @@ export function initQuickView(): void {
   const { modal, content, prevBtn, nextBtn } = getDom();
   if (!modal) return;
 
-  appEvents.on("userMovieDataChanged", ({ movieId }) => {
+  appEvents.on("userMovieDataChanged", (data) => {
+    const movieId = data?.movieId;
+    if (!movieId) return;
     const { content } = getDom();
     if (content && content.dataset.movieId === String(movieId)) {
       const modalCard = content.querySelector<MovieCardElement>(".movie-card");
       if (modalCard) updateCardUI(modalCard);
     }
   });
+
 
   appEvents.on("userDataUpdated", () => {
     const { content } = getDom();

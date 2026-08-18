@@ -2,6 +2,8 @@
 import { fetchAllMovies } from '../../lib/fetchAllMovies';
 import { getPosterUrl, parseList } from '../../lib/format';
 import type { MovieRow } from '../../lib/types';
+import { STUDIO_DATA } from '../../../../src/shared/constants';
+import { formatRuntime, calculateAverageStars, getTitleLengthClass } from '../../../../src/shared/formatters';
 import '../../../../src/css/variables.css';
 
 export async function getStaticPaths() {
@@ -29,68 +31,26 @@ const description = movie.synopsis
   ? movie.synopsis.slice(0, 155) + (movie.synopsis.length > 155 ? '…' : '')
   : `Ficha de ${movie.title} en Videoclub Digital.`;
 
-// Constantes de estudio
-const STUDIO_DATA: Record<string, { id: string; class: string; title: string; w: number; h: number }> = {
-  N: { id: 'icon-netflix', class: 'netflix-icon', title: 'Netflix', w: 20, h: 20 },
-  D: { id: 'icon-disney', class: 'disney-icon', title: 'Disney', w: 20, h: 20 },
-  W: { id: 'icon-wb', class: 'wb-icon', title: 'Warner Bros.', w: 20, h: 20 },
-  U: { id: 'icon-universal', class: 'universal-icon', title: 'Universal', w: 20, h: 20 },
-  S: { id: 'icon-sony', class: 'sony-icon', title: 'Sony-Columbia', w: 20, h: 20 },
-  P: { id: 'icon-paramount', class: 'paramount-icon', title: 'Paramount', w: 20, h: 20 },
-  L: { id: 'icon-lionsgate', class: 'lionsgate-icon', title: 'Lionsgate', w: 20, h: 20 },
-  Z: { id: 'icon-amazon', class: 'amazon-icon', title: 'Amazon MGM', w: 20, h: 20 },
-  F: { id: 'icon-twenty', class: 'twenty-icon', title: '20th Century Fox', w: 20, h: 20 },
-  T: { id: 'icon-a24', class: 'a24-icon', title: 'A24', w: 20, h: 20 },
-  O: { id: 'icon-movistar', class: 'movistar-icon', title: 'Movistar', w: 20, h: 20 },
-  X: { id: 'icon-miramax', class: 'miramax-icon', title: 'Miramax', w: 20, h: 20 },
-  A: { id: 'icon-apple', class: 'apple-icon', title: 'Apple TV', w: 20, h: 20 },
-  C: { id: 'icon-canalplus', class: 'canalplus-icon', title: 'StudioCanal', w: 20, h: 20 },
-  B: { id: 'icon-bbc', class: 'bbc-icon', title: 'BBC', w: 20, h: 20 }
-};
 
 // Formatos de visualización
 const countryCode = movie.countries?.code || null;
 const countryName = movie.countries?.name || '';
 
-function formatRuntime(minutes: number | null | undefined, isSeries: boolean): string {
-  if (!minutes) return isSeries ? 'Serie TV' : 'Película';
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (isSeries) return `${minutes} min/ep`;
-  if (hrs === 0) return `${mins} m`;
-  if (mins === 0) return `${hrs} h`;
-  return `${hrs} h ${mins} m`;
-}
-
 const durationText = formatRuntime(movie.minutes, isSeries);
 const episodesText = movie.episodes ? `${movie.episodes} ep` : null;
 
 // Clases de tamaño de título
-const tLen = movie.title.length;
-let titleLengthClass = '';
-if (tLen > 70) titleLengthClass = 'title-xxxl-long';
-else if (tLen > 50) titleLengthClass = 'title-xxl-long';
-else if (tLen > 35) titleLengthClass = 'title-xl-long';
-else if (tLen > 25) titleLengthClass = 'title-long';
-else if (tLen > 15) titleLengthClass = 'title-medium';
+const titleLengthClass = getTitleLengthClass(movie.title);
 
 const displayOriginalTitle = movie.original_title?.trim() || movie.title;
-const oLen = displayOriginalTitle.length;
-let origTitleLengthClass = '';
-if (oLen > 40) origTitleLengthClass = 'title-xl-long';
-else if (oLen > 30) origTitleLengthClass = 'title-long';
-else if (oLen > 20) origTitleLengthClass = 'title-medium';
+const origTitleLengthClass = getTitleLengthClass(displayOriginalTitle);
 
 // Estrellas continuas (0-3)
-function calculateAverageStars(avg: number | null | undefined): number {
-  if (!avg || avg <= 5.5) return 0;
-  if (avg >= 9.0) return 3;
-  return ((avg - 5.5) / 3.5) * 3;
-}
 const avgStars = calculateAverageStars(movie.avg_rating);
 const clip1 = (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
 const clip2 = (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;
 const clip3 = (1 - Math.max(0, Math.min(1, avgStars - 2))) * 100;
+
 
 // Cálculo de barras de votos y votos unificados
 const SQRT_MAX_VOTES = { FA: Math.sqrt(220000), IMDB: Math.sqrt(3200000) };

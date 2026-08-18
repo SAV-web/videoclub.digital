@@ -15,10 +15,17 @@ import {
   LocalStore,
   executeViewTransition,
   getAdjustedTotalPages,
-  mapMoviePayload,
   runWhenIdle
 } from "./utils.js";
-import { fetchMovies, getSupabase, fetchUserMovieDataForIds, fetchPersonDetails } from "./api.js";
+
+import {
+  fetchMovies,
+  getSupabase,
+  fetchUserMovieDataForIds,
+  fetchPersonDetails,
+  fetchAllUserMovieData,
+  fetchMovieById
+} from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { isAbortError } from "./contracts.js";
 import {
@@ -32,8 +39,11 @@ import {
   clearAllSidebarAutocomplete,
   showToast,
   initThemeToggle,
-  updateMobileStatusBar
+  updateMobileStatusBar,
+  isAuthModalOpen,
+  closeAuthModal
 } from "./ui.js";
+
 import {
   getState,
   getActiveFilters,
@@ -213,8 +223,7 @@ export async function loadAndRenderMovies(
 
     if (result.aborted) return;
 
-    const { items: rawMovies, total: returnedTotal } = result;
-    const movies = (rawMovies || []).map(mapMoviePayload);
+    const { items: movies, total: returnedTotal } = result;
 
     const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
 
@@ -229,8 +238,9 @@ export async function loadAndRenderMovies(
         const p1Result = await fetchMovies(activeFilters, 1, p1Limit, signal, false, 0);
         if (p1Result.aborted) return;
 
-        const p1Movies = (p1Result.items || []).map(mapMoviePayload);
+        const p1Movies = p1Result.items || [];
         setCurrentPage(1);
+
         updateUrl({ replace: replaceHistory });
 
         const cardModule = await cardModulePromise;
@@ -808,11 +818,11 @@ function setupAuthSystem(): void {
 
     // Descargar el 100% de votos y lista del usuario al iniciar sesión o recargar la página
     try {
-      const { fetchAllUserMovieData } = await import("./api.js");
       await fetchAllUserMovieData();
     } catch (err) {
       if (import.meta.env.DEV) console.error("Error al sincronizar catálogo del usuario:", err);
     }
+
 
     appEvents.emit("userDataUpdated");
   }
@@ -947,7 +957,6 @@ async function checkAndOpenMovieFromUrl(): Promise<void> {
   if (!movieId) return;
 
   try {
-    const { fetchMovieById } = await import("./api.js");
     const movie = await fetchMovieById(movieId);
     if (!movie) return;
 
@@ -980,7 +989,6 @@ function init(): void {
 
   window.addEventListener("popstate", async () => {
     const { isModalOpen, closeModal } = await import("./components/modal.js");
-    const { isAuthModalOpen, closeAuthModal } = await import("./ui.js");
 
     let modalWasOpen = false;
 
@@ -993,6 +1001,7 @@ function init(): void {
       closeAuthModal({ fromPopstate: true });
       modalWasOpen = true;
     }
+
 
     // Si había una modal abierta, el botón "Atrás" se consume exclusivamente para cerrarla sin alterar la página
     if (modalWasOpen) {

@@ -67,9 +67,18 @@ export interface AppEventPayloads {
 
 export const appEvents = {
   events: {} as Record<string, Array<(data: unknown) => void>>,
-  on<K extends keyof AppEventPayloads>(event: K, fn: (data: AppEventPayloads[K]) => void): void {
+  on<K extends keyof AppEventPayloads>(event: K, fn: (data: AppEventPayloads[K]) => void): () => void {
     if (!this.events[event]) this.events[event] = [];
-    this.events[event].push(fn as (data: unknown) => void);
+    const handler = fn as (data: unknown) => void;
+    this.events[event].push(handler);
+    return () => {
+      this.off(event, fn);
+    };
+  },
+  off<K extends keyof AppEventPayloads>(event: K, fn: (data: AppEventPayloads[K]) => void): void {
+    if (!this.events[event]) return;
+    const handler = fn as (data: unknown) => void;
+    this.events[event] = this.events[event].filter(h => h !== handler);
   },
   emit<K extends keyof AppEventPayloads>(event: K, data?: AppEventPayloads[K]): void {
     if (this.events[event]) {
@@ -77,6 +86,7 @@ export const appEvents = {
     }
   }
 };
+
 
 // 2. El Vigilante (Proxy Profundo): Envuelve un objeto y reacciona cuando cambia cualquier dato anidado.
 function makeReactive<T extends object>(obj: T, path: string = ""): T {
