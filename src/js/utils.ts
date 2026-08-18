@@ -276,8 +276,11 @@ export const triggerPopAnimation = (element: HTMLElement | null): void => {
 };
 
 // Avisa al navegador para que cargue la primera imagen antes que nada (Mejora el LCP)
-export function preloadLcpImage(movieData: Partial<MappedMovie> | null | undefined): void {
-  const imageUrl = movieData?.posterUrl || getHqPosterUrl(movieData?.image);
+export function preloadLcpImage(target: Partial<MappedMovie> | string | null | undefined): void {
+  if (!target) return;
+  const imageUrl = typeof target === "string"
+    ? target
+    : (target.posterUrl || getHqPosterUrl(target.image));
   if (!imageUrl) return;
 
   if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) return;
@@ -287,6 +290,7 @@ export function preloadLcpImage(movieData: Partial<MappedMovie> | null | undefin
   link.setAttribute("fetchpriority", "high"); 
   document.head.appendChild(link);
 }
+
 
 const canVibrate = typeof navigator !== 'undefined' && "vibrate" in navigator;
 // Vibra el móvil un poquito al tocar botones (si no lo tienes quitado en ajustes)

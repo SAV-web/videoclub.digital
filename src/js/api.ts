@@ -488,9 +488,10 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
 
     const { data, error } = await supabase
       .from(table)
-      .select('id, name, photo, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
+      .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
       .eq('name_norm', normalizeText(name))
       .single();
+
 
     if (error || !data) {
       if (error && import.meta.env.DEV) {

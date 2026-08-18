@@ -629,18 +629,22 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     if (img && image_hq) {
       img.classList.remove(CSS_CLASSES.LOADED);
       img.classList.add(CSS_CLASSES.LAZY_LQIP);
-      img.src = image_hq;
 
-      setTimeout(() => {
-        const tempImg = new Image();
-        tempImg.onload = () => {
-          requestAnimationFrame(() => {
-            img.classList.add(CSS_CLASSES.LOADED);
-          });
-        };
-        tempImg.src = image_hq;
-      }, 50);
+      img.onload = () => {
+        requestAnimationFrame(() => {
+          img.classList.add(CSS_CLASSES.LOADED);
+        });
+      };
+      img.onerror = () => {
+        img.classList.add(CSS_CLASSES.LOADED);
+      };
+
+      img.src = image_hq;
+      if (img.complete) {
+        img.classList.add(CSS_CLASSES.LOADED);
+      }
     }
+
 
     // Título/Nombre
     const titleEl = cardClone.querySelector('[data-template="title"]');

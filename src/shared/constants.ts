@@ -1,7 +1,7 @@
 // =================================================================
 //          CONSTANTES COMPARTIDAS (src/shared/constants.ts)
 // =================================================================
-// Fuente única de la verdad para SPA (Vite) y SSG (Astro seo-site).
+// Fuente única de la verdad (SSOT) para SPA (Vite) y SSG (Astro seo-site).
 // =================================================================
 
 export interface StudioConfig {
@@ -15,15 +15,22 @@ export interface StudioConfig {
   invertDark?: boolean;
 }
 
-
 export const POSTER_BASE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/";
+export const PROFILE_BASE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/vips/";
 
 export const SHARED_CONFIG = {
   YEAR_MIN: 1900,
-  YEAR_MAX: 2026,
+  YEAR_MAX: new Date().getFullYear(),
   ITEMS_PER_PAGE: 42,
-  MAX_ACTIVE_FILTERS: 5,
+  DYNAMIC_PAGE_SIZE_LIMIT: 44,
+  WALL_MODE_ITEMS_PER_PAGE: 72,
+  WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 74,
+  CARD_BATCH_SIZE: 12,
+  MAX_ACTIVE_FILTERS: 20,
+  SEARCH_DEBOUNCE_DELAY: 400,
+  STORAGE_VERSION: 1,
   POSTER_BASE_URL,
+  PROFILE_BASE_URL,
 } as const;
 
 export const STUDIO_DATA: Record<string, StudioConfig> = {
@@ -44,14 +51,57 @@ export const STUDIO_DATA: Record<string, StudioConfig> = {
   B: { id: "icon-bbc", class: "bbc-icon", title: "BBC", w: 20, h: 20 }
 };
 
-export const IGNORED_ACTORS: ReadonlySet<string> = new Set([
+/**
+ * LISTA DE ACTORES / CRÉDITOS A IGNORAR EN REPARTO
+ */
+export const IGNORED_ACTORS = [
+  "(a)",
+  "(A)",
+  "animación",
   "animacion",
-  "documental",
   "animation",
+  "documental",
   "documentary"
+] as const;
+
+export const IGNORED_ACTORS_SET: ReadonlySet<string> = new Set(
+  IGNORED_ACTORS.map(a => a.toLowerCase())
+);
+
+/**
+ * CAMPOS DE TEXTO LIBRE O FILTROS QUE REQUIEREN NORMALIZACIÓN
+ */
+export const TEXT_FILTER_KEYS: ReadonlySet<string> = new Set([
+  "searchTerm",
+  "genre",
+  "country",
+  "director",
+  "actor",
+  "selection",
+  "studio",
+  "excludedGenres",
+  "excludedCountries"
 ]);
 
-export const REGIONAL_GROUPS: Record<string, string[]> = {
-  "Nordicos": ["Dinamarca", "Suecia", "Noruega", "Finlandia", "Islandia"],
-  "Latinoamerica": ["Argentina", "Mexico", "Chile", "Colombia", "Brasil", "Peru", "Uruguay", "Cuba", "Venezuela", "Bolivia"]
-};
+/**
+ * REGIONES GEOPOLÍTICAS (Filtrado compuesto mediante códigos ISO)
+ */
+
+export interface RegionalGroup {
+  readonly label: string;
+  readonly value: string;
+  readonly codes: readonly string[];
+}
+
+export const REGIONAL_GROUPS: Record<string, RegionalGroup> = {
+  NORDICS: {
+    label: "Nordic",
+    value: "nordic",
+    codes: ["DK", "FI", "IS", "NO", "SE"]
+  },
+  LATAM: {
+    label: "Latam",
+    value: "latam",
+    codes: ["AR", "MX", "BR", "CL", "CO", "PE", "UY", "VE", "CU", "PY", "BO", "EC", "CR", "GT", "DO"]
+  }
+} as const;

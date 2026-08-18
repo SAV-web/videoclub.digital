@@ -865,6 +865,7 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const img = card.querySelector('img');
 
   if (img) {
+    let photoUrl = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
     if (person.photo && person.photo !== 'NOT_FOUND') {
       let photoName = person.photo;
       if (/\.(jpg|jpeg|png)$/i.test(photoName)) {
@@ -872,16 +873,52 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
       } else if (!photoName.endsWith(".webp")) {
         photoName += ".webp";
       }
-      img.src = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
-    } else {
-      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+      photoUrl = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
     }
 
     img.alt = `Foto de ${person.name}`;
     img.loading = "eager";
     img.decoding = "async";
     img.setAttribute("fetchpriority", "high");
-    img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+
+    if (person.thumbhash_st) {
+      img.src = person.thumbhash_st;
+      img.classList.remove(CSS_CLASSES.LOADED);
+      img.classList.add(CSS_CLASSES.LAZY_LQIP);
+
+      const highResImg = new Image();
+      highResImg.onload = () => {
+        img.src = photoUrl;
+        requestAnimationFrame(() => {
+          img.classList.add(CSS_CLASSES.LOADED);
+        });
+      };
+      highResImg.onerror = () => {
+        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+        img.classList.add(CSS_CLASSES.LOADED);
+      };
+      highResImg.src = photoUrl;
+    } else {
+      img.classList.remove(CSS_CLASSES.LOADED);
+      img.classList.add(CSS_CLASSES.LAZY_LQIP);
+
+      img.onload = () => {
+        requestAnimationFrame(() => {
+          img.classList.add(CSS_CLASSES.LOADED);
+        });
+      };
+      img.onerror = () => {
+        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+        img.classList.add(CSS_CLASSES.LOADED);
+        img.onerror = null;
+      };
+
+      img.src = photoUrl;
+      if (img.complete) {
+        img.classList.add(CSS_CLASSES.LOADED);
+      }
+    }
+
   }
 
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
@@ -961,13 +998,30 @@ function createGroupCardElement(
   if (img) {
     const prefix = isStudio ? "studio" : "collection";
     const label = isStudio ? "Estudio" : "Colección";
-    img.src = `${CONFIG.PROFILE_BASE_URL}${prefix}_${code.toLowerCase()}.webp`;
     img.alt = `${label} ${fullName}`;
     img.loading = "eager";
     img.decoding = "async";
     img.setAttribute("fetchpriority", "high");
-    img.onerror = () => { img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`; img.onerror = null; };
+    img.classList.remove(CSS_CLASSES.LOADED);
+    img.classList.add(CSS_CLASSES.LAZY_LQIP);
+
+    img.onload = () => {
+      requestAnimationFrame(() => {
+        img.classList.add(CSS_CLASSES.LOADED);
+      });
+    };
+    img.onerror = () => {
+      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+      img.classList.add(CSS_CLASSES.LOADED);
+      img.onerror = null;
+    };
+
+    img.src = `${CONFIG.PROFILE_BASE_URL}${prefix}_${code.toLowerCase()}.webp`;
+    if (img.complete) {
+      img.classList.add(CSS_CLASSES.LOADED);
+    }
   }
+
 
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
   if (titleEl) {
@@ -1072,32 +1126,35 @@ const CARD_TITLE_THRESHOLDS: Array<[number, string]> = [
   [12, "title-medium"],
 ];
 
-const FLIP_ONBOARDING_KEY = "videoclub_flip_onboarding_shown";
+let hasShownFlipThisSession = false;
 
-export function runFlipOnboarding(container: HTMLElement): void {
-  const seenCount = (LocalStore.get(FLIP_ONBOARDING_KEY) as number) || 0;
-  const MAX_SHOWS = 3;
-
-  if (seenCount >= MAX_SHOWS || document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
+export function runFlipOnboarding(container: HTMLElement | null, force: boolean = false): void {
+  if (!container) return;
+  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
+  if (hasShownFlipThisSession && !force) return;
 
   setTimeout(() => {
+    if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
+    if (currentlyFlippedCard) return; // Si el usuario ya está interactuando, no interrumpir
+
     // Seleccionar la primera ficha de película real (omitiendo fichas de cabecera VIP: Director, Actor, Colección o Estudio)
     const targetMovieCard = container.querySelector<HTMLElement>(
-      `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card)`
-    ) || container.querySelector<HTMLElement>(`.${CSS_CLASSES.MOVIE_CARD}`);
+      `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card):not(.studio-card)`
+    );
 
     if (!targetMovieCard || !targetMovieCard.isConnected) return;
 
-    const inner = targetMovieCard.querySelector(".flip-card-inner");
+    const inner = targetMovieCard.querySelector<HTMLElement>(".flip-card-inner");
     if (inner && !inner.classList.contains("is-flipped")) {
       inner.classList.add("is-flipped");
+      hasShownFlipThisSession = true;
 
       setTimeout(() => {
-        if (inner.isConnected && inner.classList.contains("is-flipped")) {
+        if (inner.isConnected && inner.classList.contains("is-flipped") && currentlyFlippedCard !== targetMovieCard) {
           inner.classList.remove("is-flipped");
-          LocalStore.set(FLIP_ONBOARDING_KEY, seenCount + 1);
         }
-      }, 1200);
+      }, 1400);
     }
-  }, 1500);
+  }, 1200);
 }
+

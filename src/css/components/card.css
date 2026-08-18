@@ -234,9 +234,9 @@
 }
 
 /* Efecto carga LQIP (Blur) */
-.flip-card-front img.lazy-lqip {
+:is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
   filter: blur(10px);
-  transform: scale(1.1);
+  transform: scale(1.05);
   transition: filter var(--duration-normal) ease-in-out, transform var(--duration-normal) ease-in-out;
 
   &.loaded {
@@ -244,6 +244,7 @@
     transform: scale(1);
   }
 }
+
 
 .movie-summary {
   flex-grow: 1;

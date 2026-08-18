@@ -167,6 +167,17 @@
   }
 }
 
+.is-quick-view img.lazy-lqip {
+  filter: blur(10px);
+  transform: scale(1.03);
+  transition: filter var(--duration-normal, 0.4s) ease-in-out, transform var(--duration-normal, 0.4s) ease-in-out;
+
+  &.loaded {
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
 @keyframes modal-poster-fade-in {
   from {
     opacity: 0;
@@ -176,6 +187,7 @@
     opacity: 1;
   }
 }
+
 
 .quick-view-modal .movie-summary {
   padding-inline: 0;

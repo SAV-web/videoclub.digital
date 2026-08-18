@@ -123,6 +123,7 @@ export interface PersonDetails {
   id: number;
   name: string;
   photo: string | null;
+  thumbhash_st?: string | null;
   birthday: string | null;
   deathday: string | null;
   place_of_birth: string | null;
@@ -130,6 +131,7 @@ export interface PersonDetails {
   titulo_bio: string | null;
   countries: { name: string; code: string } | null;
 }
+
 
 export interface VipData {
   type: "person" | "collection" | "studio";

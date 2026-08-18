@@ -142,3 +142,35 @@ describe("src/js/state.ts (appEvents Lifecycle y Prevención de Fugas de Memoria
     assert.equal(callCount, 1);
   });
 });
+
+describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
+  test("SHARED_CONFIG mantiene los contratos reales del negocio", () => {
+    assert.equal(sharedConstants.SHARED_CONFIG.MAX_ACTIVE_FILTERS, 20);
+    assert.equal(sharedConstants.SHARED_CONFIG.YEAR_MAX, new Date().getFullYear());
+    assert.equal(sharedConstants.SHARED_CONFIG.YEAR_MIN, 1900);
+    assert.equal(typeof sharedConstants.PROFILE_BASE_URL, "string");
+    assert.ok(sharedConstants.PROFILE_BASE_URL.includes("/vips/"));
+    assert.ok(sharedConstants.POSTER_BASE_URL.includes("/posters/"));
+  });
+
+  test("IGNORED_ACTORS incluye etiquetas de animación, documental y créditos en inglés", () => {
+    const list = sharedConstants.IGNORED_ACTORS;
+    assert.ok(list.includes("(a)"));
+    assert.ok(list.includes("(A)"));
+    assert.ok(list.includes("animación"));
+    assert.ok(list.includes("animation"));
+    assert.ok(list.includes("documental"));
+    assert.ok(list.includes("documentary"));
+    assert.ok(sharedConstants.IGNORED_ACTORS_SET.has("animacion"));
+  });
+
+  test("REGIONAL_GROUPS contiene códigos ISO de país para filtrado en PostgreSQL", () => {
+    assert.ok(sharedConstants.REGIONAL_GROUPS.NORDICS);
+    assert.ok(sharedConstants.REGIONAL_GROUPS.NORDICS.codes.includes("DK"));
+    assert.ok(sharedConstants.REGIONAL_GROUPS.NORDICS.codes.includes("NO"));
+    assert.ok(sharedConstants.REGIONAL_GROUPS.LATAM);
+    assert.ok(sharedConstants.REGIONAL_GROUPS.LATAM.codes.includes("AR"));
+    assert.ok(sharedConstants.REGIONAL_GROUPS.LATAM.codes.includes("MX"));
+  });
+});
+

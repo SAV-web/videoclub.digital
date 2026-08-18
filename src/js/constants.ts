@@ -20,77 +20,44 @@ const usePlaceholder = import.meta.env.DEV && (!envUrl || !envKey);
 const supabaseUrl = usePlaceholder ? "https://placeholder.supabase.co" : (envUrl || "");
 const supabaseKey = usePlaceholder ? "placeholder" : (envKey || "");
 
+import {
+  POSTER_BASE_URL,
+  PROFILE_BASE_URL,
+  SHARED_CONFIG,
+  STUDIO_DATA,
+  IGNORED_ACTORS,
+  IGNORED_ACTORS_SET,
+  TEXT_FILTER_KEYS,
+  REGIONAL_GROUPS,
+} from "../shared/constants.js";
+import type { StudioConfig, RegionalGroup } from "../shared/constants.js";
+
+export {
+  POSTER_BASE_URL,
+  PROFILE_BASE_URL,
+  SHARED_CONFIG,
+  STUDIO_DATA,
+  IGNORED_ACTORS,
+  IGNORED_ACTORS_SET,
+  TEXT_FILTER_KEYS,
+  REGIONAL_GROUPS,
+};
+
+export type { StudioConfig, StudioConfig as StudioInfo, RegionalGroup };
+
 /**
  * CONFIGURACIÓN PRINCIPAL DE LA WEB
- * Usamos 'as const' para que TypeScript infiera tipos literales de solo lectura sumamente estrictos.
+ * Combina las credenciales de entorno con la configuración de dominio compartida.
  */
 export const CONFIG = {
   // API
   SUPABASE_URL: supabaseUrl,
   SUPABASE_ANON_KEY: supabaseKey,
-  POSTER_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/",
-  PROFILE_BASE_URL: "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/vips/",
 
-  // Paginación
-  ITEMS_PER_PAGE: 42,
-  DYNAMIC_PAGE_SIZE_LIMIT: 44,
-  WALL_MODE_ITEMS_PER_PAGE: 72,
-  WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT: 74,
-  CARD_BATCH_SIZE: 12,
-
-  // Comportamiento
-  MAX_ACTIVE_FILTERS: 20,
-  SEARCH_DEBOUNCE_DELAY: 400,
-
-  // Límites de Datos
-  YEAR_MIN: 1900,
-  YEAR_MAX: new Date().getFullYear(),
-
-  // Sistema
-  STORAGE_VERSION: 1,
+  // Configuración compartida
+  ...SHARED_CONFIG,
 } as const;
 
-/**
- * CAMPOS DE TEXTO LIBRE O FILTROS DE TEXTO QUE REQUIEREN NORMALIZACIÓN DE ACENTOS/MAYÚSCULAS
- */
-export const TEXT_FILTER_KEYS = new Set<string>([
-  "searchTerm",
-  "genre",
-  "country",
-  "director",
-  "actor",
-  "selection",
-  "studio",
-  "excludedGenres",
-  "excludedCountries"
-]);
-
-/**
- * LISTAS DE EXCLUSIÓN
- */
-export const IGNORED_ACTORS = ["(a)", "animación", "animacion", "documental"] as const;
-
-/**
- * Regiones Geopolíticas (Virtuales para filtrado compuesto)
- */
-export interface RegionalGroup {
-  readonly label: string;
-  readonly value: string;
-  readonly codes: readonly string[];
-}
-
-export const REGIONAL_GROUPS: Record<string, RegionalGroup> = {
-  NORDICS: {
-    label: "Nordic",
-    value: "nordic",
-    codes: ["DK", "FI", "IS", "NO", "SE"]
-  },
-  LATAM: {
-    label: "Latam",
-    value: "latam",
-    codes: ["AR", "MX", "BR", "CL", "CO", "PE", "UY", "VE", "CU", "PY", "BO", "EC", "CR", "GT", "DO"]
-  }
-} as const;
 
 export const DEFAULTS = {
   SORT: "relevance,asc",
@@ -199,15 +166,9 @@ export const ICONS = {
   WATCHLIST: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>`,
 } as const;
 
-/**
- * DATOS DE PLATAFORMAS (Streaming / Estudios)
- */
-import { STUDIO_DATA, StudioConfig } from "../shared/constants.js";
-export type StudioInfo = StudioConfig;
-export { STUDIO_DATA };
-
 
 export interface SelectionInfo {
+
   readonly id?: string;
   readonly class?: string;
   readonly title?: string;
