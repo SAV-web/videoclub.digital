@@ -371,22 +371,28 @@
   vertical-align: -2px;
   margin-right: 8px;
   color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 .is-quick-view .detail-icon {
   width: 18px;
   height: 18px;
+  max-width: 18px;
+  max-height: 18px;
   stroke: currentColor;
   stroke-width: 2.6;
   fill: none;
   flex-shrink: 0;
+  display: inline-block;
 }
 
 .is-quick-view .detail-label-title {
+  display: inline-block;
   font-weight: var(--font-weight-bold, 700);
   color: var(--color-text-primary);
-  margin-right: 12px;
+  margin-right: 8px;
 }
+
 
 .is-quick-view .rating-bar-container {
   height: var(--space-sm);

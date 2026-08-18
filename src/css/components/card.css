@@ -626,24 +626,30 @@ html.dark-mode .bbc-icon {
   align-items: center;
   justify-content: center;
   vertical-align: -2px;
-  margin-right: 8px;
+  margin-right: 6px;
   color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 .detail-icon {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
+  max-width: 14px;
+  max-height: 14px;
   stroke: currentColor;
   stroke-width: 2.6;
   fill: none;
   flex-shrink: 0;
+  display: inline-block;
 }
 
 .detail-label-title {
+  display: inline-block;
   font-weight: var(--font-weight-bold, 700);
   color: var(--color-text-primary);
-  margin-right: 8px;
+  margin-right: 6px;
 }
+
 
 
 .detail-item[data-template="genre-container"] {

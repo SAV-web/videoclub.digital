@@ -64,10 +64,17 @@ body {
 }
 
 /* 4. Reset de Imágenes y Medios */
-img, picture, video, canvas, svg {
+img, picture, video, canvas {
   display: block;
   max-width: 100%;
 }
+
+svg {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 
 /* 5. Scrollbar Personalizada (Webkit) */
 ::-webkit-scrollbar {
