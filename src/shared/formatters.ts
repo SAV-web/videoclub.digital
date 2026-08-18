@@ -46,8 +46,18 @@ export function formatVotesUnified(votes: number | string | null | undefined, pl
 
 
 /**
+ * Reemplaza guiones dentro de palabras ("Sci-Fi", "Gordon-Levitt", "Day-Lewis")
+ * por guiones no divisibles (U+2011) para evitar que salten de línea por la mitad.
+ */
+export function preserveHyphenatedWords(text: string | null | undefined): string {
+  if (!text) return "";
+  return text.replace(/([a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])-(?=[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])/g, "$1\u2011");
+}
+
+/**
  * Determina si el registro corresponde a una Serie de TV.
  */
+
 export function isSeriesType(type: string | null | undefined): boolean {
   return Boolean(type && String(type).trim().toLowerCase().startsWith("s"));
 }

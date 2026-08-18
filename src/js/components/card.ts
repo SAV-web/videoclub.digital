@@ -14,7 +14,9 @@ import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import { normalizeMovieId } from "../contracts.js";
+import { preserveHyphenatedWords } from "../../shared/formatters.js";
 import spriteUrl from "../../sprite.svg";
+
 import { MappedMovie, ActiveFilters, UserMovieEntry, PersonDetails, VipData, MovieCardElement } from "../types.js";
 
 // =================================================================
@@ -704,11 +706,11 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   // Textos Largos
   const genreEl = back.querySelector<HTMLElement>(SELECTORS.GENRE);
   if (genreEl) {
-    genreEl.textContent = movie.genres || "Género no disponible";
+    genreEl.textContent = preserveHyphenatedWords(movie.genres) || "Género no disponible";
   }
 
   const synopsisEl = back.querySelector(SELECTORS.SYNOPSIS);
-  if (synopsisEl) synopsisEl.textContent = movie.synopsis || "Sinopsis no disponible.";
+  if (synopsisEl) synopsisEl.textContent = preserveHyphenatedWords(movie.synopsis) || "Sinopsis no disponible.";
 
   // Actores
   const actorsEl = back.querySelector<HTMLElement>(SELECTORS.ACTORS);
@@ -719,7 +721,8 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     if (actors.length > 4) shortActors += "...";
     if (movie.actors === "(A)") shortActors = "Animación";
 
-    actorsEl.textContent = shortActors || "Reparto no disponible";
+    actorsEl.textContent = preserveHyphenatedWords(shortActors) || "Reparto no disponible";
+
 
     const hasActors = actors.length > 0 && actors.some(a => !(IGNORED_ACTORS as readonly string[]).includes(a.toLowerCase()));
     const genres = (movie.genres || "").split(",").map(g => g.trim()).filter(Boolean);

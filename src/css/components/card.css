@@ -626,12 +626,15 @@ html.dark-mode .bbc-icon {
   text-decoration: none;
   transition: color var(--duration-fast, 0.15s) ease;
   cursor: pointer;
+  display: inline-block;
+  white-space: nowrap;
 
   &:hover {
     color: var(--color-text-primary);
     text-decoration: underline;
   }
 }
+
 
 .detail-label {
   display: inline-flex;

@@ -98,7 +98,16 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.formatVotesUnified("2800000"), "2.8 M");
   });
 
+  test("preserveHyphenatedWords sustituye guiones en palabras por guiones no divisibles", () => {
+    assert.equal(sharedFormatters.preserveHyphenatedWords(null), "");
+    assert.equal(sharedFormatters.preserveHyphenatedWords(""), "");
+    assert.equal(sharedFormatters.preserveHyphenatedWords("Sci-Fi"), "Sci\u2011Fi");
+    assert.equal(sharedFormatters.preserveHyphenatedWords("Joseph Gordon-Levitt"), "Joseph Gordon\u2011Levitt");
+    assert.equal(sharedFormatters.preserveHyphenatedWords("Daniel Day-Lewis"), "Daniel Day\u2011Lewis");
+    assert.equal(sharedFormatters.preserveHyphenatedWords("2010 - 2015"), "2010 - 2015"); // guión aislado sin tocar
+  });
 });
+
 
 describe("src/js/state.ts (appEvents Lifecycle y Prevención de Fugas de Memoria)", () => {
   test("appEvents.on devuelve una función unsubscribe que elimina el listener", () => {

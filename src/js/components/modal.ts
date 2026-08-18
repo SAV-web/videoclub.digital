@@ -15,6 +15,7 @@ import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForM
 
 import { fetchUserMovieDataForIds } from "../api.js";
 import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js";
+import { preserveHyphenatedWords } from "../../shared/formatters.js";
 
 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
@@ -366,11 +367,12 @@ const createLink = (text: string, type: 'director' | 'actor' | 'genre'): HTMLAnc
   const param = type === 'director' ? 'dir' : (type === 'actor' ? 'actor' : 'genre');
   const dataAttr = type === 'director' ? 'directorName' : (type === 'actor' ? 'actorName' : 'genreName');
   return createElement("a", {
-    textContent: text,
+    textContent: preserveHyphenatedWords(text),
     href: `?${param}=${encodeURIComponent(text)}`,
     dataset: { [dataAttr]: text }
   }) as HTMLAnchorElement;
 };
+
 
 interface ModalNodes {
   [key: string]: HTMLElement | null | undefined;
@@ -552,7 +554,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
       nodes.genre.textContent = "N/A";
     }
   }
-  if (nodes.synopsis) nodes.synopsis.textContent = movie.synopsis || "N/A";
+  if (nodes.synopsis) nodes.synopsis.textContent = preserveHyphenatedWords(movie.synopsis) || "N/A";
 
   // Actores
   if (nodes.actors) {
@@ -561,7 +563,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
       const frag = document.createDocumentFragment();
       movie.parsedActors.forEach((name, i, arr) => {
         if ((IGNORED_ACTORS as readonly string[]).includes(name.toLowerCase())) {
-          frag.append(name);
+          frag.append(preserveHyphenatedWords(name));
         } else {
           frag.appendChild(createLink(name, 'actor'));
         }
@@ -572,6 +574,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
       nodes.actors.textContent = "N/A";
     }
   }
+
 }
 
 /**

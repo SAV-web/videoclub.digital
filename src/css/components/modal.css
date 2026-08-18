@@ -29,7 +29,8 @@
   position: fixed;
   z-index: calc(var(--z-index-overlay) + 1);
   display: flex;
-  background-color: var(--color-surface-2);
+  background-color: var(--color-surface-1);
+  color: var(--color-text-primary);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22), 0 6px 18px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   opacity: 0;
@@ -55,6 +56,7 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
 }
+
 
 ::view-transition-group(hero-expansion) {
   animation-duration: 0.4s;
@@ -355,19 +357,38 @@
 .is-quick-view :is(.details-list, .plot-summary-final) {
   font-size: calc(var(--font-size-xs) * 1.5);
   line-height: 1.5;
+  color: var(--color-text-secondary);
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
+.is-quick-view .detail-data {
+  color: var(--color-text-primary);
+}
+
+.is-quick-view .plot-summary-final span[data-template="synopsis"] {
+  color: var(--color-text-primary);
 }
 
 .is-quick-view :is(.details-list, .detail-item, .detail-data, [data-template="genre"], [data-template="actors"]) a {
-  color: inherit;
+  color: var(--color-text-primary);
   text-decoration: none;
   transition: color var(--duration-fast, 0.15s) ease;
   cursor: pointer;
+  display: inline-block;
+  white-space: nowrap;
 
   &:hover {
     color: var(--color-text-primary);
     text-decoration: underline;
   }
 }
+
+.is-quick-view .front-director-info a {
+  display: inline-block;
+  white-space: nowrap;
+}
+
 
 .is-quick-view .details-list {
   margin-top: var(--space-lg);
