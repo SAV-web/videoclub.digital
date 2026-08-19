@@ -877,9 +877,16 @@ let isQuickViewInitialized = false;
 let modalUnsubscribers: Array<() => void> = [];
 
 export function disposeModalEvents(): void {
+  try {
+    closeModal();
+  } catch (e) { }
   modalUnsubscribers.forEach(unsub => unsub());
   modalUnsubscribers = [];
+  cachedModalDom = null;
   isQuickViewInitialized = false;
+  if (typeof window !== "undefined") {
+    delete (window as unknown as Record<string, unknown>)._quickViewInitialized;
+  }
 }
 
 export function initQuickView(): void {
@@ -919,7 +926,7 @@ export function initQuickView(): void {
 
   // Delegación de eventos en contenido
   if (content) {
-    content.addEventListener("click", (e: MouseEvent) => {
+    const handleContentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
       handleMetadataClick(e);
@@ -928,12 +935,16 @@ export function initQuickView(): void {
       if (target.closest(".poster-container") && !target.closest(".card-rating-block")) {
         modal.classList.toggle("hide-arrows");
       }
+    };
+
+    content.addEventListener("click", handleContentClick);
+    modalUnsubscribers.push(() => {
+      content.removeEventListener("click", handleContentClick);
     });
   }
 
   // Teclado
-  // Listener global único; initQuickView solo debe llamarse una vez.
-  window.addEventListener("keydown", (e: KeyboardEvent) => {
+  const handleKeydown = (e: KeyboardEvent) => {
     if (!modal.classList.contains("is-visible")) return;
     if (e.key === "Escape") {
       e.stopPropagation(); // Detener para que no cierre el sidebar u otros elementos
@@ -941,18 +952,44 @@ export function initQuickView(): void {
     }
     else if (e.key === "ArrowLeft") navigateToSibling(-1);
     else if (e.key === "ArrowRight") navigateToSibling(1);
-  }, { capture: true }); // IMPORTANTE: Capturar antes que document (main.js)
+  };
+
+  window.addEventListener("keydown", handleKeydown, { capture: true });
+  modalUnsubscribers.push(() => {
+    window.removeEventListener("keydown", handleKeydown, { capture: true });
+  });
 
   // Botones
-  prevBtn?.addEventListener("click", (e: MouseEvent) => { e.stopPropagation(); navigateToSibling(-1); });
-  nextBtn?.addEventListener("click", (e: MouseEvent) => { e.stopPropagation(); navigateToSibling(1); });
+  if (prevBtn) {
+    const handlePrevClick = (e: MouseEvent) => { e.stopPropagation(); navigateToSibling(-1); };
+    prevBtn.addEventListener("click", handlePrevClick);
+    modalUnsubscribers.push(() => prevBtn.removeEventListener("click", handlePrevClick));
+  }
+
+  if (nextBtn) {
+    const handleNextClick = (e: MouseEvent) => { e.stopPropagation(); navigateToSibling(1); };
+    nextBtn.addEventListener("click", handleNextClick);
+    modalUnsubscribers.push(() => nextBtn.removeEventListener("click", handleNextClick));
+  }
 
   // Gestos
-  if (navigator.maxTouchPoints > 0) {
-    modal.addEventListener("touchstart", handleTouchStart as EventListener, { passive: true });
-    modal.addEventListener("touchmove", handleTouchMove as EventListener, { passive: false });
-    modal.addEventListener("touchend", handleTouchEnd as EventListener, { passive: true });
-    modal.addEventListener("touchcancel", handleTouchEnd as EventListener, { passive: true });
+  if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) {
+    const tStart = handleTouchStart as EventListener;
+    const tMove = handleTouchMove as EventListener;
+    const tEnd = handleTouchEnd as EventListener;
+
+    modal.addEventListener("touchstart", tStart, { passive: true });
+    modal.addEventListener("touchmove", tMove, { passive: false });
+    modal.addEventListener("touchend", tEnd, { passive: true });
+    modal.addEventListener("touchcancel", tEnd, { passive: true });
+
+    modalUnsubscribers.push(() => {
+      modal.removeEventListener("touchstart", tStart);
+      modal.removeEventListener("touchmove", tMove);
+      modal.removeEventListener("touchend", tEnd);
+      modal.removeEventListener("touchcancel", tEnd);
+    });
   }
 }
+
 

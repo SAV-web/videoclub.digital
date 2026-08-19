@@ -685,28 +685,38 @@ function setupGlobalListeners(): void {
   isMainEventsInitialized = true;
 
   // Protección integral de imágenes (evita menú contextual, descarga y arrastre)
-  document.addEventListener("contextmenu", (e: MouseEvent) => {
+  const handleContextMenu = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === "IMG" || target.closest(".poster-container") || target.classList.contains("poster-overlay-guard")) {
       e.preventDefault();
     }
-  });
+  };
 
-  document.addEventListener("dragstart", (e: DragEvent) => {
+  const handleDragStart = (e: DragEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === "IMG" || target.closest(".poster-container") || target.classList.contains("poster-overlay-guard")) {
       e.preventDefault();
     }
-  });
+  };
 
-  document.addEventListener("click", (e: MouseEvent) => {
+  const handleDocClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     if (!target.closest(SELECTORS.SIDEBAR_FILTER_FORM)) clearAllSidebarAutocomplete();
     if (!target.closest(".sidebar") && sidebarModule) sidebarModule.collapseAllSections();
+  };
+
+  document.addEventListener("contextmenu", handleContextMenu);
+  document.addEventListener("dragstart", handleDragStart);
+  document.addEventListener("click", handleDocClick);
+
+  mainUnsubscribers.push(() => {
+    document.removeEventListener("contextmenu", handleContextMenu);
+    document.removeEventListener("dragstart", handleDragStart);
+    document.removeEventListener("click", handleDocClick);
   });
 
   if (dom.gridContainer) {
-    dom.gridContainer.addEventListener("click", async function (e: Event) {
+    const handleGridClick = async function (e: Event) {
       const target = e.target as HTMLElement;
       const cardElement = target.closest(".movie-card") as HTMLElement | null;
       if (cardElement) {
@@ -724,24 +734,30 @@ function setupGlobalListeners(): void {
       if (target.closest("#clear-filters-from-empty")) {
         appEvents.emit("filtersReset");
       }
-    });
+    };
+
+    dom.gridContainer.addEventListener("click", handleGridClick);
+    mainUnsubscribers.push(() => dom.gridContainer?.removeEventListener("click", handleGridClick));
   }
 
   // Interacciones Card (Hover, Tap)
   loadCardModule().then(({ initCardInteractions }) => {
-    initCardInteractions(dom.gridContainer);
+    if (dom.gridContainer) initCardInteractions(dom.gridContainer);
   });
 
   const quickViewContent = document.getElementById("quick-view-content");
   if (quickViewContent) {
-    quickViewContent.addEventListener("click", async function (this: HTMLElement, e: Event) {
+    const handleQuickViewClick = async function (this: HTMLElement, e: Event) {
       const { handleCardClick } = await loadCardModule();
       handleCardClick.call(this, e);
-    });
+    };
+
+    quickViewContent.addEventListener("click", handleQuickViewClick);
+    mainUnsubscribers.push(() => quickViewContent.removeEventListener("click", handleQuickViewClick));
   }
 
   if (dom.paginationContainer) {
-    dom.paginationContainer.addEventListener("click", async (e: Event) => {
+    const handlePaginationClick = async (e: Event) => {
       const target = e.target as HTMLElement;
       const button = target.closest(".btn[data-page]") as HTMLElement | null;
       if (button && button.dataset.page) {
@@ -750,18 +766,25 @@ function setupGlobalListeners(): void {
         const page = parseInt(button.dataset.page, 10);
         await loadAndRenderMovies(page);
       }
-    });
+    };
+
+    dom.paginationContainer.addEventListener("click", handlePaginationClick);
+    mainUnsubscribers.push(() => dom.paginationContainer?.removeEventListener("click", handlePaginationClick));
   }
 
   lastScrollY = window.scrollY;
   window.addEventListener("scroll", handleGlobalScroll, { passive: true });
+  mainUnsubscribers.push(() => window.removeEventListener("scroll", handleGlobalScroll));
 
-  document.addEventListener("keydown", (e: KeyboardEvent) => {
+  const handleEscKey = (e: KeyboardEvent) => {
     if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
       if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
       if (sidebarModule) sidebarModule.closeMobileDrawer();
     }
-  });
+  };
+
+  document.addEventListener("keydown", handleEscKey);
+  mainUnsubscribers.push(() => document.removeEventListener("keydown", handleEscKey));
 
   const handleDataRefresh = async () => {
     const { updateCardUI } = await loadCardModule();
@@ -815,6 +838,7 @@ function setupGlobalListeners(): void {
     })
   );
 }
+
 
 
 
@@ -1079,8 +1103,11 @@ function init(): void {
   });
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
+if (typeof document !== "undefined" && !import.meta.env?.SSR) {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 }
+

@@ -4,7 +4,7 @@
 // Funciones puras de formateo y cálculo compartidas entre SPA y Astro.
 // =================================================================
 
-import { POSTER_BASE_URL, SHARED_CONFIG } from "./constants.js";
+import { POSTER_BASE_URL } from "./constants.js";
 
 /**
  * Obtiene la URL completa del póster WebP optimizado.
@@ -29,7 +29,7 @@ export function parseList(value: string | null | undefined): string[] {
 /**
  * Formatea el conteo de votos separando con un espacio las unidades k y M (ej: "161 k", "2.8 M").
  */
-export function formatVotesUnified(votes: number | string | null | undefined, platform?: 'fa' | 'imdb'): string {
+export function formatVotesUnified(votes: number | string | null | undefined): string {
   if (votes === null || votes === undefined || votes === '') return '';
   const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes).replace(/\D/g, ''), 10);
   if (!numVotes || isNaN(numVotes)) return '';
@@ -43,6 +43,7 @@ export function formatVotesUnified(votes: number | string | null | undefined, pl
   }
   return String(numVotes);
 }
+
 
 /**
  * Reemplaza guiones dentro de palabras ("Sci-Fi", "Gordon-Levitt", "Day-Lewis")

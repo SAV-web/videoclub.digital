@@ -168,15 +168,21 @@ let cardUnsubscribers: Array<() => void> = [];
 export function disposeCardEvents(): void {
   cardUnsubscribers.forEach(unsub => unsub());
   cardUnsubscribers = [];
+  unflipAllCards();
+  if (hoverTimeout) {
+    clearTimeout(hoverTimeout);
+    hoverTimeout = undefined;
+  }
+  currentHoveredCard = null;
   isCardEventsInitialized = false;
 }
 
 export function initCardInteractions(gridContainer: HTMLElement): void {
-  if (isCardEventsInitialized) return;
+  if (isCardEventsInitialized || !gridContainer) return;
   isCardEventsInitialized = true;
 
   // --- Hover (Desktop) ---
-  gridContainer.addEventListener("pointerover", (e: PointerEvent) => {
+  const handlePointerOver = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
     const target = e.target as HTMLElement;
     const card = target.closest<MovieCardElement>(".movie-card");
@@ -195,9 +201,9 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     } else {
       if (hoverTimeout) clearTimeout(hoverTimeout);
     }
-  });
+  };
 
-  gridContainer.addEventListener("pointerout", (e: PointerEvent) => {
+  const handlePointerOut = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse' || !currentHoveredCard) return;
     const relatedTarget = e.relatedTarget as HTMLElement | null;
     if (!relatedTarget || !currentHoveredCard.contains(relatedTarget)) {
@@ -206,6 +212,13 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
       resetCardBackState(currentHoveredCard);
       currentHoveredCard = null;
     }
+  };
+
+  gridContainer.addEventListener("pointerover", handlePointerOver);
+  gridContainer.addEventListener("pointerout", handlePointerOut);
+  cardUnsubscribers.push(() => {
+    gridContainer.removeEventListener("pointerover", handlePointerOver);
+    gridContainer.removeEventListener("pointerout", handlePointerOut);
   });
 
   // --- Actualizar tarjetas del grid cuando se descarguen datos de usuario ---
@@ -228,14 +241,18 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     })
   );
 
-
   // --- Doble Click (Desktop) ---
-  gridContainer.addEventListener("dblclick", (e: MouseEvent) => {
+  const handleDblClick = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
     const card = target.closest<MovieCardElement>(".movie-card");
     if (card && !document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       loadAndOpenModal(card);
     }
+  };
+
+  gridContainer.addEventListener("dblclick", handleDblClick);
+  cardUnsubscribers.push(() => {
+    gridContainer.removeEventListener("dblclick", handleDblClick);
   });
 
   // --- Tap / Doble Tap (Táctil) ---
@@ -245,13 +262,13 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
   const DOUBLE_TAP_DELAY = 250;
   const MOVE_THRESHOLD = 10;
 
-  gridContainer.addEventListener('pointerdown', (e: PointerEvent) => {
+  const handlePointerDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' || !e.isPrimary) return;
     startX = e.clientX;
     startY = e.clientY;
-  }, { passive: true });
+  };
 
-  gridContainer.addEventListener('pointerup', (e: PointerEvent) => {
+  const handlePointerUp = (e: PointerEvent) => {
     if (e.pointerType === 'mouse') return;
 
     const target = e.target as HTMLElement;
@@ -290,8 +307,18 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
       }
     }
     lastTapTime = currentTime;
+  };
+
+  gridContainer.addEventListener('pointerdown', handlePointerDown, { passive: true });
+  gridContainer.addEventListener('pointerup', handlePointerUp);
+
+  cardUnsubscribers.push(() => {
+    gridContainer.removeEventListener('pointerdown', handlePointerDown);
+    gridContainer.removeEventListener('pointerup', handlePointerUp);
+    if (tapTimeout) clearTimeout(tapTimeout);
   });
 }
+
 
 // =================================================================
 //          3. MANEJADORES DE CLICS (Acciones)
@@ -486,7 +513,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
 //          4. RENDERIZADO (Builders)
 // =================================================================
 
-const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
+const lazyLoadObserver: IntersectionObserver | null = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver((entries, obs) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
       const img = entry.target as HTMLImageElement;
@@ -500,7 +527,7 @@ const lazyLoadObserver = new IntersectionObserver((entries, obs) => {
   });
 }, {
   rootMargin: "200px"
-});
+}) : null;
 
 // Despertar de la hibernación: fuerza la carga de imágenes visibles en el viewport al volver a la pestaña
 if (typeof document !== "undefined") {
@@ -519,7 +546,7 @@ if (typeof document !== "undefined") {
           img.src = img.dataset.src;
           img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
           img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
-          lazyLoadObserver.unobserve(img);
+          lazyLoadObserver?.unobserve(img);
         }
       });
     }
@@ -527,9 +554,10 @@ if (typeof document !== "undefined") {
 }
 
 function cleanupLazyImages(container: HTMLElement): void {
-  if (!container) return;
+  if (!container || !lazyLoadObserver) return;
   container.querySelectorAll<HTMLImageElement>("img[data-src]").forEach(img => lazyLoadObserver.unobserve(img));
 }
+
 
 function populateCard(card: MovieCardElement, movie: MappedMovie, index: number): void {
   const front = card.querySelector<HTMLElement>('.movie-summary');
@@ -560,8 +588,13 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     img.decoding = "async";
     img.removeAttribute("fetchpriority");
     if (movie.thumbhash_st) img.classList.add(CSS_CLASSES.LAZY_LQIP);
-    lazyLoadObserver.observe(img);
+    if (lazyLoadObserver) {
+      lazyLoadObserver.observe(img);
+    } else {
+      img.src = hqPoster;
+    }
   }
+
 
   // --- TEXTOS BÁSICOS ---
   const titleEl = front.querySelector<HTMLElement>(SELECTORS.TITLE);

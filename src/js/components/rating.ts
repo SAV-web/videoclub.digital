@@ -388,9 +388,10 @@ export function setupCardRatings(container: HTMLElement, movie: Movie): void {
       if (votes > 0 && barEl) {
         const width = Math.min((Math.sqrt(votes) / SQRT_MAX_VOTES[maxKey]) * 100, 100);
         barEl.style.width = `${width}%`;
-        const formattedVotes = formatVotesUnified(votes, key);
+        const formattedVotes = formatVotesUnified(votes);
         barCont.dataset.votes = formattedVotes;
         if (countEl) countEl.textContent = formattedVotes;
+
       }
     }
   };

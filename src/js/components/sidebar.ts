@@ -52,9 +52,19 @@ const dom = {
 const sectionContainers: Record<string, HTMLElement> = {};
 const isMobileLayout = (): boolean => window.innerWidth <= MOBILE_BREAKPOINT || window.innerHeight <= MOBILE_HEIGHT_LIMIT;
 
+let isSidebarInitialized = false;
+let sidebarUnsubscribers: Array<() => void> = [];
+
+export function disposeSidebarEvents(): void {
+  sidebarUnsubscribers.forEach(unsub => unsub());
+  sidebarUnsubscribers = [];
+  isSidebarInitialized = false;
+}
+
 // =================================================================
 //          1. GESTOS TÁCTILES (El dedo manda)
 // =================================================================
+
 
 interface TouchState {
   isDragging: boolean;
@@ -245,9 +255,11 @@ function handleTouchEnd(e: TouchEvent): void {
 function initTouchGestures(): void {
   if (!dom.sidebar) return;
   updateDrawerWidth();
-  document.addEventListener("touchstart", handleTouchStart as EventListener, { passive: true });
-  document.addEventListener("touchend", handleTouchEnd as EventListener, { passive: true });
-  document.addEventListener("touchcancel", handleTouchEnd as EventListener, { passive: true });
+  const tStart = handleTouchStart as EventListener;
+  const tEnd = handleTouchEnd as EventListener;
+  document.addEventListener("touchstart", tStart, { passive: true });
+  document.addEventListener("touchend", tEnd, { passive: true });
+  document.addEventListener("touchcancel", tEnd, { passive: true });
 
   const handleResize = debounce(() => {
     if (isMobileLayout()) updateDrawerWidth();
@@ -260,12 +272,26 @@ function initTouchGestures(): void {
 
   window.addEventListener("resize", handleResize);
 
-  if (screen?.orientation) {
+  if (typeof screen !== "undefined" && screen?.orientation) {
     screen.orientation.addEventListener("change", handleResize);
-  } else {
+  } else if (typeof window !== "undefined") {
     window.addEventListener("orientationchange", handleResize);
   }
+
+  sidebarUnsubscribers.push(() => {
+    document.removeEventListener("touchstart", tStart);
+    document.removeEventListener("touchend", tEnd);
+    document.removeEventListener("touchcancel", tEnd);
+    window.removeEventListener("resize", handleResize);
+    if (typeof screen !== "undefined" && screen?.orientation) {
+      screen.orientation.removeEventListener("change", handleResize);
+    } else if (typeof window !== "undefined") {
+      window.removeEventListener("orientationchange", handleResize);
+    }
+    handleResize.cancel();
+  });
 }
+
 
 // =================================================================
 //          2. PELLIZCO MÁGICO (Pinch to zoom para el Modo Muro)
@@ -313,14 +339,16 @@ function initPinchGestures(): void {
   const target = document.querySelector('.main-content-wrapper') as HTMLElement | null;
   if (!target) return;
 
-  target.addEventListener('click', (e: MouseEvent) => {
+  const handleClick = (e: MouseEvent) => {
     if (areInteractionsLocked()) {
       const el = e.target as HTMLElement;
       if (el.closest('.movie-card, .grid-container')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
     }
-  }, { capture: true });
+  };
+
+  target.addEventListener('click', handleClick, { capture: true });
 
   let initialDistance: number | null = null;
   let isPinching = false;
@@ -330,15 +358,15 @@ function initPinchGestures(): void {
     lockGlobalInteractions(800);
   };
 
-  target.addEventListener('touchstart', (e: TouchEvent) => {
+  const handleTouchStart = (e: TouchEvent) => {
     if (e.touches.length === 2) {
       isPinching = true;
       hasTriggered = false;
       initialDistance = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
     }
-  }, { passive: true });
+  };
 
-  target.addEventListener('touchmove', (e: TouchEvent) => {
+  const handleTouchMove = (e: TouchEvent) => {
     if (!isPinching || e.touches.length !== 2 || initialDistance === null) return;
     if (hasTriggered) { activateCooldown(); return; }
 
@@ -352,16 +380,29 @@ function initPinchGestures(): void {
         hasTriggered = true;
       }
     }
-  }, { passive: true });
+  };
 
-  target.addEventListener('touchend', (e: TouchEvent) => {
+  const handleTouchEnd = (e: TouchEvent) => {
     if (hasTriggered) activateCooldown();
     if (e.touches.length < 2) { isPinching = false; initialDistance = null; }
     if (e.touches.length === 0) hasTriggered = false;
-  });
+  };
+
+  target.addEventListener('touchstart', handleTouchStart, { passive: true });
+  target.addEventListener('touchmove', handleTouchMove, { passive: true });
+  target.addEventListener('touchend', handleTouchEnd);
 
   pinchInited = true;
+
+  sidebarUnsubscribers.push(() => {
+    target.removeEventListener('click', handleClick, { capture: true });
+    target.removeEventListener('touchstart', handleTouchStart);
+    target.removeEventListener('touchmove', handleTouchMove);
+    target.removeEventListener('touchend', handleTouchEnd);
+    pinchInited = false;
+  });
 }
+
 
 // =================================================================
 //          3. EL BUSCADOR INTERNO (Autocompletar)
@@ -812,16 +853,8 @@ export function collapseAllSections(): void {
 //          5. LA LÍNEA DEL TIEMPO (Slider de años) ---
 // =================================================================
 
-let isSidebarInitialized = false;
-let sidebarUnsubscribers: Array<() => void> = [];
-
-export function disposeSidebarEvents(): void {
-  sidebarUnsubscribers.forEach(unsub => unsub());
-  sidebarUnsubscribers = [];
-  isSidebarInitialized = false;
-}
-
 function initYearSlider(): void {
+
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
 
@@ -923,8 +956,14 @@ function setupYearInputSteppers(): void {
       input.value = String(newValue);
       input.dispatchEvent(new Event("change", { bubbles: true }));
     };
-    stepperUp.addEventListener("click", () => updateYearValue(1));
-    stepperDown.addEventListener("click", () => updateYearValue(-1));
+    const handleUp = () => updateYearValue(1);
+    const handleDown = () => updateYearValue(-1);
+    stepperUp.addEventListener("click", handleUp);
+    stepperDown.addEventListener("click", handleDown);
+    sidebarUnsubscribers.push(() => {
+      stepperUp.removeEventListener("click", handleUp);
+      stepperDown.removeEventListener("click", handleDown);
+    });
   });
 }
 
@@ -949,7 +988,7 @@ function setupAutocompleteHandlers(): void {
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
 
-    form.addEventListener("submit", (e) => {
+    const handleSubmit = (e: Event) => {
       e.preventDefault();
       const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
       if (resultsContainer && resultsContainer.children.length > 0) {
@@ -957,7 +996,9 @@ function setupAutocompleteHandlers(): void {
         const activeItem = items.find(i => i.classList.contains('is-active')) || items[0];
         if (activeItem) activeItem.click();
       }
-    });
+    };
+
+    form.addEventListener("submit", handleSubmit);
 
     const debouncedFetch = debounce(async () => {
       const rawTerm = input.value.trim();
@@ -970,7 +1011,7 @@ function setupAutocompleteHandlers(): void {
 
     input.addEventListener("input", debouncedFetch);
 
-    input.addEventListener("keydown", (e: KeyboardEvent) => {
+    const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === "Enter") e.preventDefault();
 
       const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
@@ -1018,9 +1059,11 @@ function setupAutocompleteHandlers(): void {
           clearAllSidebarAutocomplete();
           break;
       }
-    });
+    };
 
-    form.addEventListener("click", (e: MouseEvent) => {
+    input.addEventListener("keydown", handleKeydown);
+
+    const handleFormClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const suggestionItem = target.closest<HTMLElement>(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
       if (suggestionItem) {
@@ -1030,6 +1073,16 @@ function setupAutocompleteHandlers(): void {
         clearAllSidebarAutocomplete();
         tryCloseMobileDrawer();
       }
+    };
+
+    form.addEventListener("click", handleFormClick);
+
+    sidebarUnsubscribers.push(() => {
+      form.removeEventListener("submit", handleSubmit);
+      input.removeEventListener("input", debouncedFetch);
+      input.removeEventListener("keydown", handleKeydown);
+      form.removeEventListener("click", handleFormClick);
+      debouncedFetch.cancel();
     });
   });
 }
@@ -1064,15 +1117,17 @@ function setupEventListeners(): void {
 
   const staticFilters = document.querySelector<HTMLElement>(".sidebar-static-filters");
   if (staticFilters) {
-    staticFilters.addEventListener("click", (e: MouseEvent) => {
+    const handleStaticClick = (e: MouseEvent) => {
       if (handlePillClick(e)) {
         tryCloseMobileDrawer();
       }
-    });
+    };
+    staticFilters.addEventListener("click", handleStaticClick);
+    sidebarUnsubscribers.push(() => staticFilters.removeEventListener("click", handleStaticClick));
   }
 
   if (dom.rewindButton) {
-    dom.rewindButton.addEventListener("click", () => {
+    const handleRewind = () => {
       triggerHapticFeedback('light');
       const isMobile = isMobileLayout();
       if (isMobile) {
@@ -1083,20 +1138,27 @@ function setupEventListeners(): void {
         const isNowCollapsed = document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
         setSidebarState(!isNowCollapsed);
       }
-    });
+    };
+    dom.rewindButton.addEventListener("click", handleRewind);
+    sidebarUnsubscribers.push(() => dom.rewindButton?.removeEventListener("click", handleRewind));
   }
 
-  if (dom.sidebarOverlay) dom.sidebarOverlay.addEventListener("click", closeMobileDrawer);
+  if (dom.sidebarOverlay) {
+    dom.sidebarOverlay.addEventListener("click", closeMobileDrawer);
+    sidebarUnsubscribers.push(() => dom.sidebarOverlay?.removeEventListener("click", closeMobileDrawer));
+  }
 
   if (dom.toggleRotationBtn) {
-    dom.toggleRotationBtn.addEventListener("click", () => {
+    const handleRotationClick = () => {
       toggleRotationMode();
       tryCloseMobileDrawer();
-    });
+    };
+    dom.toggleRotationBtn.addEventListener("click", handleRotationClick);
+    sidebarUnsubscribers.push(() => dom.toggleRotationBtn?.removeEventListener("click", handleRotationClick));
   }
 
   if (dom.sidebarScrollable) {
-    dom.sidebarScrollable.addEventListener("keydown", (e: KeyboardEvent) => {
+    const handleScrollableKeydown = (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         const target = e.target as HTMLElement;
         if (target.tagName === "BUTTON") return;
@@ -1106,9 +1168,9 @@ function setupEventListeners(): void {
           link.click();
         }
       }
-    });
+    };
 
-    dom.sidebarScrollable.addEventListener("click", (e: MouseEvent) => {
+    const handleScrollableClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const excludeBtn = target.closest<HTMLElement>(".exclude-filter-btn");
       if (excludeBtn) {
@@ -1140,18 +1202,31 @@ function setupEventListeners(): void {
         }
         tryCloseMobileDrawer();
       }
+    };
+
+    dom.sidebarScrollable.addEventListener("keydown", handleScrollableKeydown);
+    dom.sidebarScrollable.addEventListener("click", handleScrollableClick);
+    sidebarUnsubscribers.push(() => {
+      dom.sidebarScrollable?.removeEventListener("keydown", handleScrollableKeydown);
+      dom.sidebarScrollable?.removeEventListener("click", handleScrollableClick);
     });
   }
 
-  if (dom.playButton) dom.playButton.addEventListener("click", resetFilters);
+  if (dom.playButton) {
+    dom.playButton.addEventListener("click", resetFilters);
+    sidebarUnsubscribers.push(() => dom.playButton?.removeEventListener("click", resetFilters));
+  }
 
   if (dom.myListButton) {
     dom.myListButton.addEventListener("click", handleMyListToggle);
+    sidebarUnsubscribers.push(() => dom.myListButton?.removeEventListener("click", handleMyListToggle));
   }
 
   dom.collapsibleSections.forEach((clickedSection) => {
     const header = clickedSection.querySelector<HTMLElement>(".section-header");
-    header?.addEventListener("click", () => {
+    if (!header) return;
+
+    const handleHeaderClick = () => {
       triggerHapticFeedback('light');
       const wasActive = clickedSection.classList.contains(CSS_CLASSES.ACTIVE);
       const isNowActive = !wasActive;
@@ -1200,9 +1275,13 @@ function setupEventListeners(): void {
           }
         }, 300);
       }
-    });
+    };
+
+    header.addEventListener("click", handleHeaderClick);
+    sidebarUnsubscribers.push(() => header.removeEventListener("click", handleHeaderClick));
   });
 }
+
 
 // =================================================================
 //          ARRANQUE DEL COMPONENTE

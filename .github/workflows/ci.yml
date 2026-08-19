@@ -43,11 +43,13 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-placeholder-key' }}
 
-      - name: Check Astro SEO Site (SSG Types & Templates) 🚀
+      - name: Build & Validate Astro SEO Site (SSG Production Build) 🚀
         run: |
           cd seo-site
           npm ci
           npm run check
+          npm run build
         env:
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-placeholder-key' }}
+

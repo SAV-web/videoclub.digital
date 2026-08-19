@@ -61,8 +61,9 @@ const SQRT_MAX_VOTES = { FA: Math.sqrt(220000), IMDB: Math.sqrt(3200000) };
 
 const faBarWidth = movie.fa_votes ? Math.min(100, (Math.sqrt(movie.fa_votes) / SQRT_MAX_VOTES.FA) * 100) : 0;
 const imdbBarWidth = movie.imdb_votes ? Math.min(100, (Math.sqrt(movie.imdb_votes) / SQRT_MAX_VOTES.IMDB) * 100) : 0;
-const formattedFaVotes = formatVotesUnified(movie.fa_votes, 'fa');
-const formattedImdbVotes = formatVotesUnified(movie.imdb_votes, 'imdb');
+const formattedFaVotes = formatVotesUnified(movie.fa_votes);
+const formattedImdbVotes = formatVotesUnified(movie.imdb_votes);
+
 
 const sameAs = [movie.imdb_id, movie.fa_id, movie.wikipedia, movie.justwatch].filter(Boolean);
 
@@ -1196,6 +1197,8 @@ const jsonLd = {
                 </div>
               </div>
             )}
+
+
 
 
 
