@@ -735,18 +735,10 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
   }
 }
 
-// Suscribir actualización de UI del modal a eventos globales de datos de usuario
-appEvents.on("userDataUpdated", () => {
-  const { content, modal } = getDom();
-  if (modal && modal.classList.contains("is-visible") && content) {
-    const modalCard = content.querySelector<MovieCardElement>(".movie-card");
-    if (modalCard) updateCardUI(modalCard);
-  }
-});
-
 // =================================================================
 //          5. API PÚBLICA
 // =================================================================
+
 
 /**
  * Comprueba si la modal está actualmente visible.
@@ -881,36 +873,49 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   });
 }
 
+let isQuickViewInitialized = false;
+let modalUnsubscribers: Array<() => void> = [];
+
+export function disposeModalEvents(): void {
+  modalUnsubscribers.forEach(unsub => unsub());
+  modalUnsubscribers = [];
+  isQuickViewInitialized = false;
+}
+
 export function initQuickView(): void {
+  if (isQuickViewInitialized) return;
   const { modal, content, prevBtn, nextBtn } = getDom();
   if (!modal) return;
 
-  appEvents.on("userMovieDataChanged", (data) => {
-    const movieId = data?.movieId;
-    if (!movieId) return;
-    const { content } = getDom();
-    if (content && content.dataset.movieId === String(movieId)) {
-      const modalCard = content.querySelector<MovieCardElement>(".movie-card");
-      if (modalCard) updateCardUI(modalCard);
-    }
-  });
+  isQuickViewInitialized = true;
 
+  modalUnsubscribers.push(
+    appEvents.on("userMovieDataChanged", (data) => {
+      const movieId = data?.movieId;
+      if (!movieId) return;
+      const { content } = getDom();
+      if (content && content.dataset.movieId === String(movieId)) {
+        const modalCard = content.querySelector<MovieCardElement>(".movie-card");
+        if (modalCard) updateCardUI(modalCard);
+      }
+    }),
 
-  appEvents.on("userDataUpdated", () => {
-    const { content } = getDom();
-    if (content && content.dataset.movieId) {
-      const modalCard = content.querySelector<MovieCardElement>(".movie-card");
-      if (modalCard) updateCardUI(modalCard);
-    }
-  });
+    appEvents.on("userDataUpdated", () => {
+      const { content } = getDom();
+      if (content && content.dataset.movieId) {
+        const modalCard = content.querySelector<MovieCardElement>(".movie-card");
+        if (modalCard) updateCardUI(modalCard);
+      }
+    }),
 
-  appEvents.on("filtersReset", () => {
-    closeModal();
-  });
+    appEvents.on("filtersReset", () => {
+      closeModal();
+    }),
 
-  appEvents.on("filter:apply", () => {
-    closeModal();
-  });
+    appEvents.on("filter:apply", () => {
+      closeModal();
+    })
+  );
 
   // Delegación de eventos en contenido
   if (content) {
@@ -950,3 +955,4 @@ export function initQuickView(): void {
     modal.addEventListener("touchcancel", handleTouchEnd as EventListener, { passive: true });
   }
 }
+

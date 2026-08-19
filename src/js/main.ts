@@ -671,7 +671,19 @@ function setupHeaderListeners(): void {
   updateSearchPlaceholder();
 }
 
+let isMainEventsInitialized = false;
+let mainUnsubscribers: Array<() => void> = [];
+
+export function disposeMainEvents(): void {
+  mainUnsubscribers.forEach(unsub => unsub());
+  mainUnsubscribers = [];
+  isMainEventsInitialized = false;
+}
+
 function setupGlobalListeners(): void {
+  if (isMainEventsInitialized) return;
+  isMainEventsInitialized = true;
+
   // Protección integral de imágenes (evita menú contextual, descarga y arrastre)
   document.addEventListener("contextmenu", (e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -751,56 +763,60 @@ function setupGlobalListeners(): void {
     }
   });
 
-  // Eventos Personalizados de la App
-  appEvents.on("card:requestUpdate", async (data: { cardElement: HTMLElement }) => {
-    if (data && data.cardElement) {
-      const { updateCardUI } = await loadCardModule();
-      updateCardUI(data.cardElement);
-    }
-  });
-
   const handleDataRefresh = async () => {
     const { updateCardUI } = await loadCardModule();
     document.querySelectorAll(".movie-card").forEach((el) => updateCardUI(el as HTMLElement));
   };
 
-  appEvents.on("userMovieDataChanged", () => {
-    handleDataRefresh();
-    if (getActiveFilters().myList) {
-      loadAndRenderMovies(getCurrentPage());
-    }
-  });
+  // Eventos Personalizados de la App
+  mainUnsubscribers.push(
+    appEvents.on("card:requestUpdate", async (data: { cardElement: HTMLElement }) => {
+      if (data && data.cardElement) {
+        const { updateCardUI } = await loadCardModule();
+        updateCardUI(data.cardElement);
+      }
+    }),
 
-  appEvents.on("userDataUpdated", () => {
-    handleDataRefresh();
-  });
+    appEvents.on("userMovieDataChanged", () => {
+      handleDataRefresh();
+      if (getActiveFilters().myList) {
+        loadAndRenderMovies(getCurrentPage());
+      }
+    }),
 
-  appEvents.on("filtersReset", handleFiltersReset);
-  appEvents.on("filter:apply", handleFilterApply);
+    appEvents.on("userDataUpdated", () => {
+      handleDataRefresh();
+    }),
 
-  appEvents.on("page:requestChange", async (data: { direction: number; target: 'first' | 'last' }) => {
-    const { direction, target } = data;
-    const currentPage = getCurrentPage();
-    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const totalPages = Math.ceil(getTotalMovies() / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
-    const newPage = currentPage + direction;
+    appEvents.on("filtersReset", handleFiltersReset),
+    appEvents.on("filter:apply", handleFilterApply),
 
-    if (newPage > 0 && newPage <= totalPages) {
-      appEvents.emit("uiActionTriggered");
-      await loadAndRenderMovies(newPage);
+    appEvents.on("page:requestChange", async (data: { direction: number; target: 'first' | 'last' }) => {
+      const { direction, target } = data;
+      const currentPage = getCurrentPage();
+      const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+      const totalPages = Math.ceil(getTotalMovies() / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
+      const newPage = currentPage + direction;
 
-      const grid = document.getElementById("grid-container");
-      if (grid) {
-        const cards = Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
-        if (cards.length > 0) {
-          const targetCard = target === "first" ? cards[0] : cards[cards.length - 1];
-          const { openModal } = await import("./components/modal.js");
-          openModal(targetCard as any, cards);
+      if (newPage > 0 && newPage <= totalPages) {
+        appEvents.emit("uiActionTriggered");
+        await loadAndRenderMovies(newPage);
+
+        const grid = document.getElementById("grid-container");
+        if (grid) {
+          const cards = Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
+          if (cards.length > 0) {
+            const targetCard = target === "first" ? cards[0] : cards[cards.length - 1];
+            const { openModal } = await import("./components/modal.js");
+            openModal(targetCard as any, cards);
+          }
         }
       }
-    }
-  });
+    })
+  );
 }
+
+
 
 // --- 5. ENCHUFAR LA AUTENTICACIÓN ---
 function setupAuthSystem(): void {

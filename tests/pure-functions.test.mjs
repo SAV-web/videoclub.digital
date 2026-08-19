@@ -45,12 +45,37 @@ describe("api.ts (Normalización de Caché y Parámetros RPC)", () => {
     assert.strictEqual(shaped.episodes, null);
     assert.strictEqual(shaped.country, "Estados Unidos");
     assert.strictEqual(shaped.country_code, "US");
+    assert.strictEqual(typeof shaped.last_synced_at, "number");
     assert.strictEqual("countries" in shaped, false);
     assert.strictEqual("user_movie_entries" in shaped, false);
 
     const userData = stateModule.getUserDataForMovie(99);
     assert.deepEqual(userData, { rating: 9, onWatchlist: true });
   });
+
+  test("shapeRawMovieRow normaliza rigurosamente last_synced_at (ISO, null, number) y series", () => {
+    // 1. last_synced_at como ISO string
+    const isoRow = { id: 101, title: "Breaking Bad", type: "S", year_end: "2013", episodes: 62, last_synced_at: "2026-08-18T10:00:00.000Z" };
+    const shapedIso = apiModule.shapeRawMovieRow(isoRow);
+    assert.strictEqual(shapedIso.id, 101);
+    assert.strictEqual(shapedIso.year_end, "2013");
+    assert.strictEqual(shapedIso.episodes, 62);
+    assert.strictEqual(typeof shapedIso.last_synced_at, "number");
+    assert.strictEqual(shapedIso.last_synced_at, Math.floor(new Date("2026-08-18T10:00:00.000Z").getTime() / 1000));
+
+    // 2. last_synced_at como null / undefined -> devuelve 0 numérico seguro
+    const nullRow = { id: 102, title: "Sin Fecha", last_synced_at: null };
+    const shapedNull = apiModule.shapeRawMovieRow(nullRow);
+    assert.strictEqual(typeof shapedNull.last_synced_at, "number");
+    assert.strictEqual(shapedNull.last_synced_at, 0);
+
+    // 3. last_synced_at ya numérico
+    const numRow = { id: 103, title: "Con Timestamp", last_synced_at: 1723975200 };
+    const shapedNum = apiModule.shapeRawMovieRow(numRow);
+    assert.strictEqual(shapedNum.last_synced_at, 1723975200);
+  });
+
+
 
   test("createCanonicalCacheKey normaliza claves desordenadas y elimina campos nulos", () => {
     const key1 = apiModule.createCanonicalCacheKey({ actor: "Tom Hanks", year: "2010-2020", genre: null }, 1, 42);

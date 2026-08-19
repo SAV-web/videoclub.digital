@@ -44,7 +44,6 @@ export function formatVotesUnified(votes: number | string | null | undefined, pl
   return String(numVotes);
 }
 
-
 /**
  * Reemplaza guiones dentro de palabras ("Sci-Fi", "Gordon-Levitt", "Day-Lewis")
  * por guiones no divisibles (U+2011) para evitar que salten de línea por la mitad.
@@ -57,7 +56,6 @@ export function preserveHyphenatedWords(text: string | null | undefined): string
 /**
  * Determina si el registro corresponde a una Serie de TV.
  */
-
 export function isSeriesType(type: string | null | undefined): boolean {
   return Boolean(type && String(type).trim().toLowerCase().startsWith("s"));
 }
@@ -65,15 +63,16 @@ export function isSeriesType(type: string | null | undefined): boolean {
 /**
  * Formatea la duración en minutos a un texto legible ("1 h 45 m", "45 min/ep", etc.).
  */
-export function formatRuntime(minutes: number | null | undefined, isSeries: boolean = false): string {
-  if (!minutes || minutes <= 0) {
+export function formatRuntime(minutes: string | number | null | undefined, isSeries: boolean = false): string {
+  const num = typeof minutes === "number" ? minutes : parseInt(String(minutes || 0), 10);
+  if (!num || isNaN(num) || num <= 0) {
     return isSeries ? "Serie TV" : "Película";
   }
   if (isSeries) {
-    return `${minutes} min/ep`;
+    return `${num} min/ep`;
   }
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+  const hrs = Math.floor(num / 60);
+  const mins = num % 60;
   if (hrs === 0) return `${mins} m`;
   if (mins === 0) return `${hrs} h`;
   return `${hrs} h ${mins} m`;
@@ -83,20 +82,25 @@ export function formatRuntime(minutes: number | null | undefined, isSeries: bool
  * Formatea el año o rango de años de emisión de una película o serie.
  */
 export function formatYear(
-  year: number | null | undefined,
+  year: number | string | null | undefined,
   yearEnd: string | null | undefined,
-  isSeries: boolean = false
+  isSeries: boolean = false,
+  fallback: string = ""
 ): string {
-  if (!year) return "";
+  if (!year) return fallback;
+  const text = String(year);
   if (isSeries && yearEnd) {
     const normEnd = String(yearEnd).trim().toLowerCase();
-    if (normEnd === "current" || normEnd === "present" || normEnd === "actualidad") {
-      return `${year}-`;
+    if (normEnd === "current" || normEnd === "present" || normEnd === "actualidad" || normEnd === "-") {
+      return `${text}-`;
+    }
+    if (normEnd === "m") {
+      return `${text} (M)`;
     }
     const endSuffix = normEnd.length === 4 ? normEnd.slice(-2) : normEnd;
-    return `${year}-${endSuffix}`;
+    return `${text}-${endSuffix}`;
   }
-  return String(year);
+  return text;
 }
 
 /**
@@ -113,18 +117,30 @@ export function getTitleLengthClass(title: string | null | undefined): string {
   return "";
 }
 
+const DIACRITICS_REGEX = /[\u0300-\u036f]/g;
 
 /**
- * Normaliza cadenas de texto eliminando acentos, caracteres especiales y convirtiendo a minúsculas.
+ * Normaliza cadenas de texto eliminando acentos, caracteres especiales internacionales
+ * y convirtiendo a minúsculas para búsquedas y comparaciones consistentes.
  */
 export function normalizeText(text: string | null | undefined): string {
   if (!text) return "";
   return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[’‘`]/g, "'")
     .replace(/[øØ]/g, "o")
     .replace(/[æÆ]/g, "ae")
-    .toLowerCase()
+    .replace(/[œŒ]/g, "oe")
+    .replace(/[ß]/g, "ss")
+    .replace(/[ðÐ]/g, "d")
+    .replace(/[þÞ]/g, "th")
+    .replace(/[łŁ]/g, "l")
+    .replace(/[đĐ]/g, "d")
+    .replace(/[ħĦ]/g, "h")
+    .replace(/[ŋŊ]/g, "n")
+    .replace(/[ıI]/g, "i")
+    .normalize("NFD")
+    .replace(DIACRITICS_REGEX, "")
     .trim()
     .replace(/\s+/g, " ");
 }
@@ -173,7 +189,6 @@ export function calculateWeightedAverageRating(
   }
   return null;
 }
-
 
 export interface PersonAgeInfo {
   bYear: string;

@@ -4,16 +4,29 @@ import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
 let viteEnv;
 let sharedConstants;
+let spaConstants;
 let sharedFormatters;
+let utilsModule;
 let stateModule;
+let astroFormatModule;
 
 before(async () => {
   viteEnv = await startViteSsrServer([
     "/src/shared/constants.ts",
+    "/src/js/constants.ts",
     "/src/shared/formatters.ts",
+    "/src/js/utils.ts",
     "/src/js/state.ts",
+    "/seo-site/src/lib/format.ts",
   ]);
-  [sharedConstants, sharedFormatters, stateModule] = viteEnv.modules;
+  [
+    sharedConstants,
+    spaConstants,
+    sharedFormatters,
+    utilsModule,
+    stateModule,
+    astroFormatModule,
+  ] = viteEnv.modules;
 });
 
 after(async () => {
@@ -38,29 +51,43 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
       sharedFormatters.parseList("Acción, Drama,  Ciencia Ficción "),
       ["Acción", "Drama", "Ciencia Ficción"]
     );
+    assert.deepEqual(
+      sharedFormatters.parseList(", , Acción, ,"),
+      ["Acción"]
+    );
   });
 
   test("isSeriesType detecta correctamente series de televisión", () => {
     assert.equal(sharedFormatters.isSeriesType("S"), true);
     assert.equal(sharedFormatters.isSeriesType("series"), true);
+    assert.equal(sharedFormatters.isSeriesType("SERIES"), true);
     assert.equal(sharedFormatters.isSeriesType("M"), false);
     assert.equal(sharedFormatters.isSeriesType("movie"), false);
     assert.equal(sharedFormatters.isSeriesType(null), false);
+    assert.equal(sharedFormatters.isSeriesType(undefined), false);
+    assert.equal(sharedFormatters.isSeriesType(""), false);
   });
 
   test("formatRuntime formatea minutos para películas y series", () => {
     assert.equal(sharedFormatters.formatRuntime(null, false), "Película");
     assert.equal(sharedFormatters.formatRuntime(null, true), "Serie TV");
+    assert.equal(sharedFormatters.formatRuntime(0, false), "Película");
     assert.equal(sharedFormatters.formatRuntime(45, true), "45 min/ep");
     assert.equal(sharedFormatters.formatRuntime(50, false), "50 m");
     assert.equal(sharedFormatters.formatRuntime(120, false), "2 h");
     assert.equal(sharedFormatters.formatRuntime(135, false), "2 h 15 m");
+    assert.equal(sharedFormatters.formatRuntime("135", false), "2 h 15 m");
   });
 
   test("formatYear formatea rangos de emisión para series y películas", () => {
     assert.equal(sharedFormatters.formatYear(1994, null, false), "1994");
     assert.equal(sharedFormatters.formatYear(2017, "2020", true), "2017-20");
     assert.equal(sharedFormatters.formatYear(2022, "current", true), "2022-");
+    assert.equal(sharedFormatters.formatYear(2020, "present", true), "2020-");
+    assert.equal(sharedFormatters.formatYear(2015, "actualidad", true), "2015-");
+    assert.equal(sharedFormatters.formatYear(2018, "-", true), "2018-");
+    assert.equal(sharedFormatters.formatYear(2019, "M", true), "2019 (M)");
+    assert.equal(sharedFormatters.formatYear(null, null, false, "N/A"), "N/A");
   });
 
   test("getTitleLengthClass clasifica longitudes según umbrales de diseño", () => {
@@ -72,12 +99,25 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.getTitleLengthClass("Un título descomunalmente largo que supera con creces los setenta caracteres de longitud"), "title-xxxl-long"); // len 88 (>70)
   });
 
+  test("normalizeText normaliza diacríticos, acentos y caracteres internacionales exhaustivamente", () => {
+    assert.equal(sharedFormatters.normalizeText(null), "");
+    assert.equal(sharedFormatters.normalizeText(""), "");
+    assert.equal(sharedFormatters.normalizeText("Árbol Película Único"), "arbol pelicula unico");
+    assert.equal(sharedFormatters.normalizeText("Møller Hæder København"), "moller haeder kobenhavn");
+    assert.equal(sharedFormatters.normalizeText("Groß Strauß Coeur Œil"), "gross strauss coeur oeil");
+    assert.equal(sharedFormatters.normalizeText("Łódź Kraków Wałęsa"), "lodz krakow walesa");
+    assert.equal(sharedFormatters.normalizeText("Þórður Garðar"), "thordur gardar");
+    assert.equal(sharedFormatters.normalizeText("İstanbul Ħamrun"), "istanbul hamrun");
+    assert.equal(sharedFormatters.normalizeText("L’Étranger ‘Matrix’ `Alien`"), "l'etranger 'matrix' 'alien'");
+    assert.equal(sharedFormatters.normalizeText("  El    Padrino   (1972)  "), "el padrino (1972)");
+  });
 
   test("calculateWeightedAverageRating calcula promedio ponderado FilmAffinity + IMDb", () => {
     // FA: 7.0 (+0.5 = 7.5), IMDb: 8.0 (-0.3 = 7.7) -> (7.5 + 7.7) / 2 = 7.6
     assert.equal(sharedFormatters.calculateWeightedAverageRating(7.0, 8.0), 7.6);
     assert.equal(sharedFormatters.calculateWeightedAverageRating(null, 8.0), null);
     assert.equal(sharedFormatters.calculateWeightedAverageRating(0, 0), null);
+    assert.equal(sharedFormatters.calculateWeightedAverageRating(6.5, 6.5), 6.6); // (7.0 + 6.2)/2 = 6.6
   });
 
   test("calculateAverageStars e interpolación continua de 3 estrellas", () => {
@@ -89,13 +129,24 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.calculateAverageStars(7.25), 1.5);
   });
 
-  test("formatVotesUnified formatea votos separando k y M con espacio", () => {
+  test("formatVotesUnified formatea votos con redondeo y límites de millones/miles", () => {
     assert.equal(sharedFormatters.formatVotesUnified(null), "");
     assert.equal(sharedFormatters.formatVotesUnified(""), "");
-    assert.equal(sharedFormatters.formatVotesUnified(850), "850");
+    assert.equal(sharedFormatters.formatVotesUnified("   "), "");
+    assert.equal(sharedFormatters.formatVotesUnified("sin votos"), "");
+    assert.equal(sharedFormatters.formatVotesUnified(0), "");
+    assert.equal(sharedFormatters.formatVotesUnified(1), "1");
+    assert.equal(sharedFormatters.formatVotesUnified(999), "999");
+    assert.equal(sharedFormatters.formatVotesUnified(1000), "1 k");
+    assert.equal(sharedFormatters.formatVotesUnified(1499), "1 k");
+    assert.equal(sharedFormatters.formatVotesUnified(1500), "2 k");
     assert.equal(sharedFormatters.formatVotesUnified(161200), "161 k");
+    assert.equal(sharedFormatters.formatVotesUnified(999499), "999 k");
+    assert.equal(sharedFormatters.formatVotesUnified(1000000), "1 M"); // Millones enteros sin .0
+    assert.equal(sharedFormatters.formatVotesUnified(1050000), "1.1 M");
+    assert.equal(sharedFormatters.formatVotesUnified(2000000), "2 M");
     assert.equal(sharedFormatters.formatVotesUnified(2800000), "2.8 M");
-    assert.equal(sharedFormatters.formatVotesUnified("2800000"), "2.8 M");
+    assert.equal(sharedFormatters.formatVotesUnified("161,200 votos"), "161 k");
   });
 
   test("preserveHyphenatedWords sustituye guiones en palabras por guiones no divisibles", () => {
@@ -106,8 +157,51 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.preserveHyphenatedWords("Daniel Day-Lewis"), "Daniel Day\u2011Lewis");
     assert.equal(sharedFormatters.preserveHyphenatedWords("2010 - 2015"), "2010 - 2015"); // guión aislado sin tocar
   });
-});
 
+  test("Equivalencia SPA vs SEO en formateadores unificados", () => {
+    // 1. isSeriesType y isMovieSeries
+    assert.equal(sharedFormatters.isSeriesType("S"), utilsModule.isMovieSeries("S"));
+    assert.equal(sharedFormatters.isSeriesType("M"), utilsModule.isMovieSeries("M"));
+
+    // 2. formatYear y formatYearRange
+    assert.equal(sharedFormatters.formatYear(1994, null, false), utilsModule.formatYearRange(1994, null, false));
+    assert.equal(sharedFormatters.formatYear(2017, "2020", true), utilsModule.formatYearRange(2017, "2020", true));
+
+    // 3. formatRuntime
+    assert.equal(sharedFormatters.formatRuntime(125, false), utilsModule.formatRuntime(125, false));
+    assert.equal(sharedFormatters.formatRuntime(50, true), utilsModule.formatRuntime(50, true));
+
+    // 4. normalizeText
+    const testSample = "  L'Étranger (1942) - Møller & Strauß  ";
+    assert.equal(sharedFormatters.normalizeText(testSample), utilsModule.normalizeText(testSample));
+
+    // 5. formatVotesUnified
+    assert.equal(sharedFormatters.formatVotesUnified(161200), utilsModule.formatVotesUnified(161200));
+
+    // 6. computePersonAgeInfo
+    assert.deepEqual(
+      sharedFormatters.computePersonAgeInfo("1970-07-30", null),
+      utilsModule.computePersonAgeInfo("1970-07-30", null)
+    );
+    assert.deepEqual(
+      sharedFormatters.computePersonAgeInfo("1928-07-26", "1999-03-07"),
+      utilsModule.computePersonAgeInfo("1928-07-26", "1999-03-07")
+    );
+  });
+
+  test("Compatibilidad directa entre SPA y Astro (seo-site/src/lib/format.ts)", () => {
+    // 1. getPosterUrl en Astro Pick<MovieRow, 'image'> vs SPA getPosterUrl(image)
+    assert.equal(astroFormatModule.getPosterUrl({ image: "matrix_1999" }), sharedFormatters.getPosterUrl("matrix_1999"));
+    assert.equal(astroFormatModule.getPosterUrl({ image: "." }), "");
+    assert.equal(astroFormatModule.getPosterUrl({ image: "" }), "");
+
+    // 2. parseList re-exportado en Astro
+    assert.deepEqual(
+      astroFormatModule.parseList("Drama, Thriller"),
+      sharedFormatters.parseList("Drama, Thriller")
+    );
+  });
+});
 
 describe("src/js/state.ts (appEvents Lifecycle y Prevención de Fugas de Memoria)", () => {
   test("appEvents.on devuelve una función unsubscribe que elimina el listener", () => {
@@ -141,6 +235,35 @@ describe("src/js/state.ts (appEvents Lifecycle y Prevención de Fugas de Memoria
     stateModule.appEvents.emit("userDataUpdated");
     assert.equal(callCount, 1);
   });
+
+  test("appEvents.clear vacía todos los listeners de un evento específico sin afectar a otros", () => {
+    let sidebarCount = 0;
+    let userCount = 0;
+    stateModule.appEvents.on("updateSidebarUI", () => { sidebarCount++; });
+    stateModule.appEvents.on("userDataUpdated", () => { userCount++; });
+
+    stateModule.appEvents.emit("updateSidebarUI");
+    stateModule.appEvents.emit("userDataUpdated");
+    assert.equal(sidebarCount, 1);
+    assert.equal(userCount, 1);
+
+    stateModule.appEvents.clear("updateSidebarUI");
+    stateModule.appEvents.emit("updateSidebarUI");
+    stateModule.appEvents.emit("userDataUpdated");
+    assert.equal(sidebarCount, 1, "updateSidebarUI no debe recibir más eventos tras clear()");
+    assert.equal(userCount, 2, "userDataUpdated debe seguir recibiendo eventos");
+  });
+
+  test("appEvents.clearAll vacía el registro completo de listeners", () => {
+    let count = 0;
+    stateModule.appEvents.on("filtersReset", () => { count++; });
+    stateModule.appEvents.on("userDataUpdated", () => { count++; });
+
+    stateModule.appEvents.clearAll();
+    stateModule.appEvents.emit("filtersReset", {});
+    stateModule.appEvents.emit("userDataUpdated");
+    assert.equal(count, 0);
+  });
 });
 
 describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
@@ -152,6 +275,43 @@ describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
     assert.ok(sharedConstants.PROFILE_BASE_URL.includes("/vips/"));
     assert.ok(sharedConstants.POSTER_BASE_URL.includes("/posters/"));
   });
+
+  test("spaConstants re-exporta exactamente las mismas referencias del SSOT", () => {
+    assert.strictEqual(spaConstants.CONFIG.MAX_ACTIVE_FILTERS, sharedConstants.SHARED_CONFIG.MAX_ACTIVE_FILTERS);
+    assert.strictEqual(spaConstants.CONFIG.YEAR_MAX, sharedConstants.SHARED_CONFIG.YEAR_MAX);
+    assert.strictEqual(spaConstants.CONFIG.YEAR_MIN, sharedConstants.SHARED_CONFIG.YEAR_MIN);
+    assert.strictEqual(spaConstants.PROFILE_BASE_URL, sharedConstants.PROFILE_BASE_URL);
+    assert.strictEqual(spaConstants.POSTER_BASE_URL, sharedConstants.POSTER_BASE_URL);
+    assert.strictEqual(spaConstants.IGNORED_ACTORS, sharedConstants.IGNORED_ACTORS);
+    assert.strictEqual(spaConstants.REGIONAL_GROUPS, sharedConstants.REGIONAL_GROUPS);
+    assert.strictEqual(spaConstants.TEXT_FILTER_KEYS, sharedConstants.TEXT_FILTER_KEYS);
+    assert.strictEqual(spaConstants.STUDIO_DATA, sharedConstants.STUDIO_DATA);
+  });
+
+  test("TEXT_FILTER_KEYS define exactamente las taxonomías textuales requeridas", () => {
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS instanceof Set);
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("searchTerm"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("genre"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("country"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("director"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("actor"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("studio"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("selection"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("excludedGenres"));
+    assert.ok(sharedConstants.TEXT_FILTER_KEYS.has("excludedCountries"));
+  });
+
+  test("STUDIO_DATA contiene mapeos canónicos de estudios cinematográficos", () => {
+    assert.ok(sharedConstants.STUDIO_DATA.D);
+    assert.equal(sharedConstants.STUDIO_DATA.D.title, "Disney");
+    assert.ok(sharedConstants.STUDIO_DATA.W);
+    assert.equal(sharedConstants.STUDIO_DATA.W.title, "Warner Bros.");
+    assert.ok(sharedConstants.STUDIO_DATA.U);
+    assert.equal(sharedConstants.STUDIO_DATA.U.title, "Universal");
+    assert.ok(sharedConstants.STUDIO_DATA.N);
+    assert.equal(sharedConstants.STUDIO_DATA.N.title, "Netflix");
+  });
+
 
   test("IGNORED_ACTORS incluye etiquetas de animación, documental y créditos en inglés", () => {
     const list = sharedConstants.IGNORED_ACTORS;
@@ -173,4 +333,3 @@ describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
     assert.ok(sharedConstants.REGIONAL_GROUPS.LATAM.codes.includes("MX"));
   });
 });
-

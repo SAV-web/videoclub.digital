@@ -79,6 +79,8 @@ function resetCardBackState(cardElement: MovieCardElement): void {
 
 export function unflipAllCards(): void {
   if (hoverTimeout) clearTimeout(hoverTimeout);
+  if (flipOnboardingTimeout) clearTimeout(flipOnboardingTimeout);
+  if (flipBackTimeout) clearTimeout(flipBackTimeout);
   if (currentlyFlippedCard) {
     currentlyFlippedCard.querySelector(".flip-card-inner")?.classList.remove("is-flipped");
     resetCardBackState(currentlyFlippedCard);
@@ -86,6 +88,7 @@ export function unflipAllCards(): void {
     document.removeEventListener("click", handleDocumentClick);
   }
 }
+
 
 function handleDocumentClick(e: MouseEvent): void {
   const target = e.target as HTMLElement;
@@ -159,7 +162,19 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
   }
 };
 
+let isCardEventsInitialized = false;
+let cardUnsubscribers: Array<() => void> = [];
+
+export function disposeCardEvents(): void {
+  cardUnsubscribers.forEach(unsub => unsub());
+  cardUnsubscribers = [];
+  isCardEventsInitialized = false;
+}
+
 export function initCardInteractions(gridContainer: HTMLElement): void {
+  if (isCardEventsInitialized) return;
+  isCardEventsInitialized = true;
+
   // --- Hover (Desktop) ---
   gridContainer.addEventListener("pointerover", (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
@@ -194,22 +209,25 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
   });
 
   // --- Actualizar tarjetas del grid cuando se descarguen datos de usuario ---
-  appEvents.on("userDataUpdated", () => {
-    const grid = document.getElementById("grid-container");
-    if (grid) {
-      grid.querySelectorAll<MovieCardElement>(".movie-card[data-movie-id]").forEach(card => {
-        updateCardUI(card);
-      });
-    }
-  });
+  cardUnsubscribers.push(
+    appEvents.on("userDataUpdated", () => {
+      const grid = document.getElementById("grid-container");
+      if (grid) {
+        grid.querySelectorAll<MovieCardElement>(".movie-card[data-movie-id]").forEach(card => {
+          updateCardUI(card);
+        });
+      }
+    }),
 
-  appEvents.on("userMovieDataChanged", ({ movieId }) => {
-    const grid = document.getElementById("grid-container");
-    if (grid && movieId) {
-      const card = grid.querySelector<MovieCardElement>(`.movie-card[data-movie-id="${movieId}"]`);
-      if (card) updateCardUI(card);
-    }
-  });
+    appEvents.on("userMovieDataChanged", ({ movieId }) => {
+      const grid = document.getElementById("grid-container");
+      if (grid && movieId) {
+        const card = grid.querySelector<MovieCardElement>(`.movie-card[data-movie-id="${movieId}"]`);
+        if (card) updateCardUI(card);
+      }
+    })
+  );
+
 
   // --- Doble Click (Desktop) ---
   gridContainer.addEventListener("dblclick", (e: MouseEvent) => {
@@ -1126,15 +1144,23 @@ const CARD_TITLE_THRESHOLDS: Array<[number, string]> = [
   [12, "title-medium"],
 ];
 
-let hasShownFlipThisSession = false;
+let flipOnboardingTimeout: ReturnType<typeof setTimeout> | null = null;
+let flipBackTimeout: ReturnType<typeof setTimeout> | null = null;
 
-export function runFlipOnboarding(container: HTMLElement | null, force: boolean = false): void {
+export function runFlipOnboarding(container: HTMLElement | null): void {
   if (!container) return;
   if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
-  if (hasShownFlipThisSession && !force) return;
 
-  setTimeout(() => {
-    if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
+  if (flipOnboardingTimeout) clearTimeout(flipOnboardingTimeout);
+  if (flipBackTimeout) clearTimeout(flipBackTimeout);
+
+  flipOnboardingTimeout = setTimeout(() => {
+    if (
+      document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) ||
+      document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)
+    ) {
+      return;
+    }
     if (currentlyFlippedCard) return; // Si el usuario ya está interactuando, no interrumpir
 
     // Seleccionar la primera ficha de película real (omitiendo fichas de cabecera VIP: Director, Actor, Colección o Estudio)
@@ -1147,14 +1173,14 @@ export function runFlipOnboarding(container: HTMLElement | null, force: boolean 
     const inner = targetMovieCard.querySelector<HTMLElement>(".flip-card-inner");
     if (inner && !inner.classList.contains("is-flipped")) {
       inner.classList.add("is-flipped");
-      hasShownFlipThisSession = true;
 
-      setTimeout(() => {
+      flipBackTimeout = setTimeout(() => {
         if (inner.isConnected && inner.classList.contains("is-flipped") && currentlyFlippedCard !== targetMovieCard) {
           inner.classList.remove("is-flipped");
         }
       }, 1400);
     }
-  }, 1200);
+  }, 1000);
 }
+
 

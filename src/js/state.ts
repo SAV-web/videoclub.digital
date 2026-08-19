@@ -80,12 +80,19 @@ export const appEvents = {
     const handler = fn as (data: unknown) => void;
     this.events[event] = this.events[event].filter(h => h !== handler);
   },
+  clear<K extends keyof AppEventPayloads>(event: K): void {
+    delete this.events[event];
+  },
+  clearAll(): void {
+    this.events = {};
+  },
   emit<K extends keyof AppEventPayloads>(event: K, data?: AppEventPayloads[K]): void {
     if (this.events[event]) {
       this.events[event].forEach(fn => fn(data));
     }
   }
 };
+
 
 
 // 2. El Vigilante (Proxy Profundo): Envuelve un objeto y reacciona cuando cambia cualquier dato anidado.

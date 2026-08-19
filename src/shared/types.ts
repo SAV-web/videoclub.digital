@@ -1,13 +1,22 @@
 // =================================================================
 //          TIPOS COMPARTIDOS (src/shared/types.ts)
 // =================================================================
-// Tipos e interfaces comunes compartidos entre SPA y Astro.
+// Separación explícita por capas de responsabilidad:
+// 1. Fila cruda de Supabase (Database/PostgREST).
+// 2. Modelo normalizado de Dominio (Domain Movie).
+// 3. Modelo de Presentación UI (Mapped Movie).
+// 4. Modelo específico de SEO / SSR (Astro Document).
+// 5. Contratos de Búsqueda y Respuestas de API.
 // =================================================================
 
 import type { StudioConfig } from "./constants.js";
 export type { StudioConfig };
 
-export interface MovieRow {
+// =================================================================
+// 1. CAPA DE BASE DE DATOS / FILA CRUDA (Supabase Row)
+// =================================================================
+
+export interface SupabaseMovieRow {
   id: number;
   title: string;
   original_title: string | null;
@@ -41,8 +50,17 @@ export interface MovieRow {
   justwatch: string | null;
   slug?: string | null;
   countries?: { name: string; code: string } | null;
-  user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | null;
+  user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
 }
+
+/**
+ * Alias canónico para la fila cruda de la base de datos (usado en Astro y migraciones).
+ */
+export type MovieRow = SupabaseMovieRow;
+
+// =================================================================
+// 2. CAPA DE DOMINIO NORMALIZADO (Domain Model)
+// =================================================================
 
 export interface Movie {
   id: number;
@@ -72,17 +90,49 @@ export interface Movie {
   avg_rating: number | null;
   synopsis: string | null;
   thumbhash_st: string | null;
-  last_synced_at: number;
+  last_synced_at: number; // Timestamp garantizado en segundos tras shapeRawMovieRow
   episodes: number | null;
   wikipedia: string | null;
   justwatch: string | null;
   slug?: string | null;
 }
 
+// =================================================================
+// 3. CAPA DE PRESENTACIÓN UI (Presentation Model)
+// =================================================================
+
+export interface MappedMovie extends Movie {
+  isSeries: boolean;
+  displayYear: string;
+  posterUrl: string;
+  displayOriginalTitle: string;
+  hasOriginalTitle: boolean;
+  displayEpisodes: string;
+  parsedActors: string[];
+  parsedDirectors: string[];
+  studioList: string[];
+}
+
 export interface UserMovieEntry {
   rating: number | null;
   onWatchlist: boolean;
 }
+
+export interface MovieCardElement extends HTMLElement {
+  movieData?: MappedMovie | (PersonDetails & { isPerson: true });
+}
+
+// =================================================================
+// 4. CAPA DE SEO / SSR (Astro Document Model)
+// =================================================================
+
+export interface SeoMovieDocument extends SupabaseMovieRow {
+  slug: string;
+}
+
+// =================================================================
+// 5. CONTRATOS DE FILTRADO, BÚSQUEDA Y API
+// =================================================================
 
 export interface ActiveFilters {
   searchTerm: string;
@@ -100,24 +150,13 @@ export interface ActiveFilters {
   myList: null | "rated" | "watchlist" | "mixed";
 }
 
-export interface MappedMovie extends Movie {
-  isSeries: boolean;
-  displayYear: string;
-  posterUrl: string;
-  displayOriginalTitle: string;
-  hasOriginalTitle: boolean;
-  displayEpisodes: string;
-  parsedActors: string[];
-  parsedDirectors: string[];
-  studioList: string[];
-}
-
 export interface ApiResponse<T = MappedMovie> {
   total: number;
   items: T[];
   aborted?: boolean;
 }
 
+export type SearchResult<T = MappedMovie> = ApiResponse<T>;
 
 export interface PersonDetails {
   id: number;
@@ -132,14 +171,9 @@ export interface PersonDetails {
   countries: { name: string; code: string } | null;
 }
 
-
 export interface VipData {
   type: "person" | "collection" | "studio";
   data?: PersonDetails | Record<string, unknown> | null;
   code?: string;
   total?: number;
-}
-
-export interface MovieCardElement extends HTMLElement {
-  movieData?: MappedMovie | (PersonDetails & { isPerson: true });
 }

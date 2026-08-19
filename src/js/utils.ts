@@ -14,37 +14,53 @@ export { parseYearRangeRaw };
 import flagSpriteUrl from "../flags.svg";
 import { Movie, MappedMovie } from "./types.js";
 
+// --- IMPORTACIÓN Y RE-EXPORTACIÓN DE LA FUENTE ÚNICA DE FORMATEADORES (SSOT) ---
+import {
+  getPosterUrl,
+  parseList,
+  formatVotesUnified,
+  preserveHyphenatedWords,
+  isSeriesType,
+  formatRuntime,
+  formatYear,
+  getTitleLengthClass,
+  normalizeText,
+  calculateUserStars,
+  calculateAverageStars,
+  calculateWeightedAverageRating,
+  computePersonAgeInfo,
+} from "../shared/formatters.js";
+import type { PersonAgeInfo } from "../shared/formatters.js";
+
+export {
+  getPosterUrl,
+  parseList,
+  formatVotesUnified,
+  preserveHyphenatedWords,
+  isSeriesType,
+  formatRuntime,
+  formatYear,
+  getTitleLengthClass,
+  normalizeText,
+  calculateUserStars,
+  calculateAverageStars,
+  calculateWeightedAverageRating,
+  computePersonAgeInfo,
+};
+export type { PersonAgeInfo };
+
+// Aliases de retrocompatibilidad
+export const isMovieSeries = isSeriesType;
+export const formatYearRange = formatYear;
+export const getHqPosterUrl = getPosterUrl;
+
 // =================================================================
 //          1. PREPARAR DATOS DE PELÍCULAS
 // =================================================================
 
-// ¿Es una serie? (Miramos si empieza por 'S' o 's')
-export const isMovieSeries = (type: string | null | undefined): boolean => 
-  type?.[0]?.toLowerCase() === 's';
-
-// Pone bonito el rango de años (ej: "2010-15" o "2020 (M)")
-export const formatYearRange = (
-  year: number | string | null | undefined, 
-  yearEnd: string | null | undefined, 
-  isSeries: boolean, 
-  fallback: string = "N/A"
-): string => {
-  let text = year ? String(year) : fallback;
-  if (isSeries && yearEnd) {
-    text += yearEnd === "M" ? " (M)" : (yearEnd === "-" ? " -" : `-${String(yearEnd).slice(-2)}`);
-  }
-  return text;
-};
-
-
-// URL del póster en alta calidad.
-// Centinela '.' ("sin póster") y URL compartidos con seo-site/src/lib/format.ts (getPosterUrl) — mantener sincronizados.
-export const getHqPosterUrl = (img: string | null | undefined): string => 
-  img && img !== "." ? `${CONFIG.POSTER_BASE_URL}${img}.webp` : "";
-
 // Coge los datos brutos de la base de datos y los pone bonitos para usarlos en la web
 export function mapMoviePayload(movie: Movie): MappedMovie {
-  const isSeries = isMovieSeries(movie.type);
+  const isSeries = isSeriesType(movie.type);
   const origTitle = movie.original_title?.trim();
   const title = movie.title || "";
   const hasOrig = !!(origTitle && origTitle.toLowerCase() !== title.toLowerCase());
@@ -60,8 +76,8 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
     directors: directorsStr,
     actors: actorsStr,
     isSeries,
-    displayYear: formatYearRange(movie.year, movie.year_end, isSeries, "N/A"),
-    posterUrl: getHqPosterUrl(movie.image),
+    displayYear: formatYear(movie.year, movie.year_end, isSeries, "N/A"),
+    posterUrl: getPosterUrl(movie.image),
     displayOriginalTitle: hasOrig ? origTitle : title,
     hasOriginalTitle: hasOrig,
     displayEpisodes: isSeries && movie.episodes ? `${movie.episodes} x` : "",
@@ -71,49 +87,6 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
   } as MappedMovie;
 }
 
-// =================================================================
-//          2. EL TRADUCTOR (Textos, Números y Tiempos)
-// =================================================================
-
-import { formatVotesUnified } from "../shared/formatters.js";
-export { formatVotesUnified };
-
-
-// Pone bonito el tiempo (Ej: 130 -> "2h 10min")
-export const formatRuntime = (minutesString: string | number | null | undefined, useShortLabel: boolean = false): string => {
-  const minutes = +(minutesString || 0); 
-  if (!minutes || minutes <= 0) return "";
-  if (useShortLabel) return `${minutes}'`;
-
-  const h = (minutes / 60) | 0; // "| 0" quita los decimales a velocidad luz
-  const m = minutes % 60;
-  return h ? `${h}h` + (m ? ` ${m}min` : '') : `${m}min`;
-};
-
-// --- LIMPIEZA DE TEXTOS Y BÚSQUEDAS ---
-const DIACRITICS_REGEX = /[\u0300-\u036f]/g;
-
-// Quita acentos y mayúsculas (la 'á' pasa a 'a', 'ø' a 'o', 'æ' a 'ae', etc. igual que PostgreSQL unaccent)
-export const normalizeText = (t: string | null | undefined): string => {
-  if (!t) return "";
-  return t
-    .toLowerCase()
-    .replace(/[’‘`]/g, "'")
-    .replace(/ø/g, "o")
-    .replace(/æ/g, "ae")
-    .replace(/œ/g, "oe")
-    .replace(/ß/g, "ss")
-    .replace(/ð/g, "d")
-    .replace(/þ/g, "th")
-    .replace(/ł/g, "l")
-    .replace(/đ/g, "d")
-    .replace(/ħ/g, "h")
-    .replace(/ŋ/g, "n")
-    .replace(/ı/g, "i")
-    .normalize("NFD")
-    .replace(DIACRITICS_REGEX, "")
-    .trim();
-};
 
 const GENRES: ReadonlyArray<readonly [RegExp, string]> = [
   [/scifi|ciencia[\s-]?ficcion|futurista|distopia/g, "scifi"], [/filmnoir|negro|neo[\s-]?noir/g, "noir"],
@@ -416,37 +389,8 @@ export function getAdjustedTotalPages(gridTotalItems: number, baseLimit: number)
   return isOrphanPage ? normalPageCount - 1 : normalPageCount;
 }
 
-export interface PersonAgeInfo {
-  bYear: string;
-  dYear: string;
-  datesStr: string;
-  ageStr: string;
-}
-
-export function computePersonAgeInfo(
-  birthday?: string | null,
-  deathday?: string | null
-): PersonAgeInfo {
-  const getYear = (dateStr: string | null | undefined) => dateStr ? dateStr.split('-')[0] : '';
-  const bYear = getYear(birthday);
-  const dYear = getYear(deathday);
-
-  let ageStr = "";
-  if (birthday) {
-    const bDate = new Date(birthday);
-    const eDate = deathday ? new Date(deathday) : new Date();
-    let age = eDate.getFullYear() - bDate.getFullYear();
-    const m = eDate.getMonth() - bDate.getMonth();
-    if (m < 0 || (m === 0 && eDate.getDate() < bDate.getDate())) age--;
-    ageStr = deathday ? `(${age} ✝)` : `(${age})`;
-  }
-
-  const datesStr = bYear ? (dYear ? `${bYear}-${dYear}` : `${bYear}-`) : "";
-
-  return { bYear, dYear, datesStr, ageStr };
-}
-
 export function applyLengthBasedClass(
+
   el: HTMLElement | null | undefined,
   text: string | null | undefined,
   thresholds: Array<[number, string]>,

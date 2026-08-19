@@ -3,7 +3,7 @@ import { fetchAllMovies } from '../../lib/fetchAllMovies';
 import { getPosterUrl, parseList } from '../../lib/format';
 import type { MovieRow } from '../../lib/types';
 import { STUDIO_DATA } from '../../../../src/shared/constants';
-import { formatRuntime, calculateAverageStars, getTitleLengthClass, formatVotesUnified, preserveHyphenatedWords } from '../../../../src/shared/formatters';
+import { isSeriesType, formatRuntime, calculateAverageStars, getTitleLengthClass, formatVotesUnified, preserveHyphenatedWords } from '../../../../src/shared/formatters';
 import '../../../../src/css/variables.css';
 
 
@@ -26,7 +26,8 @@ const directors = parseList(movie.directors_list);
 const actors = parseList(movie.actors_list);
 const studios = parseList(movie.studios_list);
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
-const isSeries = Boolean(movie.type && String(movie.type).toLowerCase().startsWith('s'));
+const isSeries = isSeriesType(movie.type);
+
 
 const pageTitle = `${movie.title}${movie.year ? ` (${movie.year})` : ''} — Videoclub Digital`;
 const description = movie.synopsis

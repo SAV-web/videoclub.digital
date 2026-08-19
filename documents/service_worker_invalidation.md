@@ -22,7 +22,7 @@ Cada cambio de `VERSION` crea cachés nuevas y elimina todas las cachés cuyo no
 | `index.html` y manifiesto | Precarga en `install` | `CACHE_STATIC` | Requiere subida de `VERSION` (automatizado en el build). |
 | JS/CSS/fuentes/iconos | `Stale While Revalidate` | `CACHE_DYNAMIC` | Vite genera filenames con hash; el HTML nuevo referencia assets nuevos. |
 | Pósters Supabase Storage | `Cache First` | `CACHE_DYNAMIC` | Persisten hasta cambio de `VERSION` o expulsión FIFO por límite (200 items). |
-| Supabase RPC / Búsquedas | Memoria LRU Cliente | `src/js/api.ts` (`lru-cache`) | Excluidas de SW (viajan en POST, prohibido por W3C CacheStorage). Caché en memoria de 5 min con deduplicación de peticiones en vuelo. |
+| Supabase RPC / Búsquedas | Memoria LRU Cliente | `src/js/api.ts` (`lru-cache`) | Excluidas de SW (viajan en POST, prohibido por W3C CacheStorage). Caché en memoria cliente multiescala (`queryCache` 30 min / 300 páginas, `suggestionsCache` 5 min / 100 items, `personCache` 1 h / 150 items) con deduplicación de peticiones en vuelo (`inFlightRequests`). |
 | Auth / REST directo | Sin caché | Directo a red | Nunca se interceptan para evitar fugas o datos privados obsoletos. |
 | Service Worker Script (`sw.js`) | Automática vía Vite | `public/sw.js` -> `dist/sw.js` | `vite.config.js` incluye un plugin (`injectSwVersion`) que reemplaza la constante `VERSION` con una marca temporal (`vYYYYMMDDHHMM`) en cada compilación. |
 
@@ -38,8 +38,12 @@ Si deseas realizar un cambio manual durante desarrollo local sin compilación co
 
 ## 4. Límites y Gestión de Memoria
 
-- **Caché Dinámica (`CACHE_DYNAMIC`)**: Limita imágenes y assets de Storage a unas `200` entradas mediante eliminación FIFO (`limitCacheSize`). Esta política protege móviles con almacenamiento limitado.
-- **Caché de Consultas y Búsquedas**: Se ejecuta en el cliente (`api.ts`) usando `lru-cache` con un tamaño máximo de 100 consultas y un TTL de 5 minutos, garantizando respuestas instantáneas sin sobrecargar CacheStorage.
+- **Caché Dinámica de Service Worker (`CACHE_DYNAMIC`)**: Limita imágenes y assets de Storage a unas `200` entradas mediante eliminación FIFO (`limitCacheSize`). Esta política protege dispositivos móviles con almacenamiento limitado.
+- **Cachés en Memoria Cliente (`src/js/api.ts`)**: Se gestionan en la capa de datos mediante `lru-cache` diferenciando tres niveles de caducidad según la volatilidad de los datos:
+  1. **`queryCache` (Páginas y Resultados del Catálogo)**: Capacidad máxima de **300 páginas**, TTL de **30 minutos** (con `updateAgeOnGet` y autopurga activa) para navegación instantánea por paginación y filtros.
+  2. **`suggestionsCache` (Autocompletado de Búsqueda)**: Capacidad máxima de **100 consultas**, TTL de **5 minutos** para optimizar la escritura del usuario sin retener búsquedas pasajeras.
+  3. **`personCache` (Fichas VIP de Actores / Directores)**: Capacidad máxima de **150 registros**, TTL de **1 hora** para evitar reconsultas recurrentes de biografías y filmografías.
+
 
 ## 5. Flujo de Activación
 

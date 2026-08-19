@@ -186,17 +186,9 @@ export function stateToRpcParams(
 // Evita que pidamos exactamente los mismos datos a la BD dos veces al mismo tiempo
 const inFlightRequests = new Map<string, Promise<ApiResponse>>();
 
-export interface RawMovieRow extends Record<string, unknown> {
-  id?: number;
-  type?: string | null;
-  original_title?: string | null;
-  title?: string | null;
-  year_end?: string | null;
-  episodes?: number | null;
-  countries?: { name: string; code: string } | null;
-  last_synced_at?: string | number | null;
-  user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
-}
+import type { SupabaseMovieRow } from "./types.js";
+
+export type RawMovieRow = Partial<SupabaseMovieRow> & Record<string, unknown>;
 
 /**
  * Normaliza una fila cruda de la tabla movies o un join de Supabase al tipo unificado Movie.
@@ -229,13 +221,14 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
     country_code: m.countries?.code || m.country_code || null,
     last_synced_at: typeof m.last_synced_at === "number"
       ? m.last_synced_at
-      : (m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : null)
+      : (m.last_synced_at ? Math.floor(new Date(m.last_synced_at).getTime() / 1000) : 0)
   };
 
   delete item.countries;
   delete item.user_movie_entries;
   return item as unknown as Movie;
 }
+
 
 // Trae las películas principales para pintar el muro
 export function fetchMovies(

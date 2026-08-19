@@ -812,6 +812,15 @@ export function collapseAllSections(): void {
 //          5. LA LÍNEA DEL TIEMPO (Slider de años) ---
 // =================================================================
 
+let isSidebarInitialized = false;
+let sidebarUnsubscribers: Array<() => void> = [];
+
+export function disposeSidebarEvents(): void {
+  sidebarUnsubscribers.forEach(unsub => unsub());
+  sidebarUnsubscribers = [];
+  isSidebarInitialized = false;
+}
+
 function initYearSlider(): void {
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
@@ -887,13 +896,16 @@ function initYearSlider(): void {
     });
   });
 
-  appEvents.on("updateSidebarUI", () => {
-    debouncedUpdate.cancel();
-    const currentFilters = getActiveFilters();
-    const years = parseYearRangeRaw(currentFilters.year);
-    sliderInstance.set(years, false);
-  });
+  sidebarUnsubscribers.push(
+    appEvents.on("updateSidebarUI", () => {
+      debouncedUpdate.cancel();
+      const currentFilters = getActiveFilters();
+      const years = parseYearRangeRaw(currentFilters.year);
+      sliderInstance.set(years, false);
+    })
+  );
 }
+
 
 function setupYearInputSteppers(): void {
   document.querySelectorAll(".year-input-wrapper").forEach((wrapper) => {
@@ -1321,6 +1333,9 @@ export function initSidebar(): void {
     dom.toggleRotationBtn.setAttribute("aria-pressed", String(isRotationDisabled));
   }
 
+  if (isSidebarInitialized) return;
+  isSidebarInitialized = true;
+
   initYearSlider();
   initTouchGestures();
   setupEventListeners();
@@ -1328,21 +1343,24 @@ export function initSidebar(): void {
   setupAutocompleteHandlers();
   setupYearInputSteppers();
 
-  appEvents.on("updateSidebarUI", () => {
-    dom.sidebarFilterForms.forEach((form) => {
-      const input = form.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
-      if (input) input.value = "";
-    });
+  sidebarUnsubscribers.push(
+    appEvents.on("updateSidebarUI", () => {
+      dom.sidebarFilterForms.forEach((form) => {
+        const input = form.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
+        if (input) input.value = "";
+      });
 
-    requestAnimationFrame(() => {
-      renderFilterPills();
-    });
-  });
+      requestAnimationFrame(() => {
+        renderFilterPills();
+      });
+    }),
 
-  appEvents.on("filtersReset", collapseAllSections);
-  appEvents.on("uiActionTriggered", collapseAllSections);
+    appEvents.on("filtersReset", collapseAllSections),
+    appEvents.on("uiActionTriggered", collapseAllSections)
+  );
 
   renderFilterPills();
+
 
   if (hasCompactTriggeringFilters() && dom.sidebarInnerWrapper) {
     dom.sidebarInnerWrapper.classList.add("is-compact");

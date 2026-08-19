@@ -1,0 +1,53 @@
+name: CI Quality Gate
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck, Test & Build Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 ⚙️
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            seo-site/package-lock.json
+
+      - name: Install SPA Dependencies 📦
+        run: npm ci
+
+      - name: Strict Type Check SPA (TypeScript) 🛡️
+        run: npm run check
+
+      - name: Run Unit & Equivalence Tests 🧪
+        run: npm run test
+
+      - name: Validate SPA Production Build 🏗️
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-placeholder-key' }}
+
+      - name: Check Astro SEO Site (SSG Types & Templates) 🚀
+        run: |
+          cd seo-site
+          npm ci
+          npm run check
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'ci-placeholder-key' }}
