@@ -11,10 +11,11 @@ before(async () => {
   viteEnv = await startViteSsrServer([
     "/src/js/checkedIds.ts",
     "/src/js/components/rating.ts",
-    "/src/js/state.js",
+    "/src/js/state.ts",
   ]);
   [checkedIdsModule, ratingModule, stateModule] = viteEnv.modules;
 });
+
 
 after(async () => {
   await viteEnv?.close();

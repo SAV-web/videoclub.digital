@@ -11,14 +11,15 @@ let yearSliderModule;
 
 before(async () => {
   viteEnv = await startViteSsrServer([
-    "/src/js/constants.js",
-    "/src/js/contracts.js",
-    "/src/js/state.js",
-    "/src/js/utils.js",
+    "/src/js/constants.ts",
+    "/src/js/contracts.ts",
+    "/src/js/state.ts",
+    "/src/js/utils.ts",
     "/src/js/components/yearSlider.ts",
   ]);
   [constants, contracts, state, utils, yearSliderModule] = viteEnv.modules;
 });
+
 
 after(async () => {
   await viteEnv?.close();
