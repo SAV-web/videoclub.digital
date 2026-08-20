@@ -32,31 +32,34 @@ jobs:
             package-lock.json
             seo-site/package-lock.json
 
-      - name: Install SPA Dependencies
-        run: npm ci
+      - name: Install Dependencies 📦
+        run: |
+          npm ci
+          cd seo-site && npm ci
 
-      - name: Type Check SPA Project (Strict)
-        run: npm run check
+      - name: Type Check Projects 🛡️
+        run: |
+          npm run check
+          cd seo-site && npm run check
 
-      - name: Run Unit Tests
+      - name: Run Unit Tests 🧪
         run: npm run test
 
-      - name: Build SPA Project
+      - name: Build SPA Project 🏗️
         run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc' }}
 
-      - name: Install & Build Astro SEO Site (SSG)
+      - name: Build Astro SEO Site (SSG) 🚀
         run: |
           cd seo-site
-          npm ci
-          npm run check
           npm run build
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
           SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc' }}
+
 
 
       - name: Merge Astro SEO Artifacts into SPA dist

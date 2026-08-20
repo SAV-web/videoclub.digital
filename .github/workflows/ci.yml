@@ -26,11 +26,15 @@ jobs:
             package-lock.json
             seo-site/package-lock.json
 
-      - name: Install SPA Dependencies 📦
-        run: npm ci
+      - name: Install Dependencies 📦
+        run: |
+          npm ci
+          cd seo-site && npm ci
 
-      - name: Strict Type Check SPA (TypeScript) 🛡️
-        run: npm run check
+      - name: Strict Type Check 🛡️
+        run: |
+          npm run check
+          cd seo-site && npm run check
 
       - name: Run Unit & Equivalence Tests 🧪
         run: npm run test
@@ -44,9 +48,8 @@ jobs:
       - name: Build & Validate Astro SEO Site (Fast CI Validation Sample) 🚀
         run: |
           cd seo-site
-          npm ci
-          npm run check
           npm run build
+
         env:
           SEO_SAMPLE_SIZE: "50"
           SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
