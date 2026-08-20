@@ -339,57 +339,92 @@ describe("Ciclo de Vida: Main Module y Orquestación Global (disposeApp)", () =>
 });
 
 describe("Test de Integración Completo: init → interacción → dispose → resolver timers/promesas → init", () => {
-  test("Garantiza que cada evento y callback se procesa exactamente una vez sin duplicaciones tras el ciclo completo de los cuatro módulos", async () => {
-    let userDataUpdatedCount = 0;
-    const unsub = stateModule.appEvents.on("userDataUpdated", () => {
-      userDataUpdatedCount++;
-    });
-
+  test("Garantiza el ciclo de vida completo y teardown real de los cuatro módulos (Card, Modal, Sidebar, Main)", async () => {
+    // Capturar recuentos base de listeners en window y document
     const initialWindowPopstate = globalThis.window._getListenerCount("popstate");
     const initialWindowKeydown = globalThis.window._getListenerCount("keydown");
     const initialDocVisibility = globalThis.document._getListenerCount("visibilitychange");
+    const initialDocClicks = globalThis.document._getListenerCount("click");
 
-    // 1. Init de los 4 módulos (main, sidebar, modal, card)
+    // ==========================================
+    // CICLO 1: INICIALIZACIÓN DE LOS 4 MÓDULOS
+    // ==========================================
     mainModule.init();
     sidebarModule.initSidebar();
     modalModule.initQuickView();
 
-    const grid = createMockDomElement("div");
-    cardModule.initCardInteractions(grid);
+    const mockGrid = createMockDomElement("div");
+    cardModule.initCardInteractions(mockGrid);
 
-    // 2. Interacción activa (emitir eventos y disparar acciones)
-    stateModule.appEvents.emit("userDataUpdated");
-    assert.equal(userDataUpdatedCount, 1, "Debe procesar el evento exactamente una vez en la primera fase");
+    // Verificar que los listeners reales están activos en el ciclo 1
+    assert.equal(mockGrid._getListenerCount("pointerover"), 1, "Grid debe tener listener de pointerover en ciclo 1");
+    assert.equal(mockGrid._getListenerCount("dblclick"), 1, "Grid debe tener listener de dblclick en ciclo 1");
+    assert.ok(globalThis.document._getListenerCount("visibilitychange") > initialDocVisibility, "visibilitychange activo en ciclo 1");
+    assert.ok(globalThis.window._getListenerCount("keydown") > initialWindowKeydown, "keydown activo en ciclo 1");
+    assert.ok(globalThis.window._getListenerCount("popstate") > initialWindowPopstate, "popstate activo en ciclo 1");
 
-    // 3. Desmontaje completo de la aplicación (disposeApp)
+    // Simular interacción en la app
+    let cardUpdatedTriggered = 0;
+    const unsubCard = stateModule.appEvents.on("userMovieDataChanged", () => {
+      cardUpdatedTriggered++;
+    });
+    stateModule.appEvents.emit("userMovieDataChanged", { movieId: 101 });
+    assert.equal(cardUpdatedTriggered, 1, "userMovieDataChanged debe ejecutarse en ciclo 1");
+
+    // ==========================================
+    // DESMONTAJE COMPLETO (disposeApp)
+    // ==========================================
     await mainModule.disposeApp();
 
-    // Comprobar que los listeners globales de los 4 módulos se retiraron
-    assert.equal(globalThis.window._getListenerCount("popstate"), initialWindowPopstate, "popstate debe haberse removido tras disposeApp");
-    assert.equal(globalThis.window._getListenerCount("keydown"), initialWindowKeydown, "keydown debe haberse removido tras disposeApp");
-    assert.equal(globalThis.document._getListenerCount("visibilitychange"), initialDocVisibility, "visibilitychange debe haberse removido tras disposeApp");
+    // Comprobar que el teardown de los 4 módulos retiró todos sus listeners del DOM, Window y Document
+    assert.equal(mockGrid._getListenerCount("pointerover"), 0, "Grid no debe conservar listener de pointerover tras disposeApp");
+    assert.equal(mockGrid._getListenerCount("dblclick"), 0, "Grid no debe conservar listener de dblclick tras disposeApp");
+    assert.equal(globalThis.document._getListenerCount("visibilitychange"), initialDocVisibility, "visibilitychange restaurado");
+    assert.equal(globalThis.window._getListenerCount("keydown"), initialWindowKeydown, "keydown restaurado");
+    assert.equal(globalThis.window._getListenerCount("popstate"), initialWindowPopstate, "popstate restaurado");
+    assert.equal(globalThis.document._getListenerCount("click"), initialDocClicks, "clicks en document restaurados");
 
-    // 4. Resolver timers, idle tasks y promesas pendientes tras el dispose (garantizar que ningún callback zombi toque DOM o falle)
+    // ==========================================
+    // RESOLUCIÓN DE TIMERS / PROMESAS PENDIENTES TRAS DISPOSE
+    // ==========================================
+    // Simular resolución tardía de red o timers (ej. LQIP onload diferido o fetch que responde tras unmount)
     await new Promise((resolve) => setTimeout(resolve, 60));
 
-    // Emitir tras dispose (no debe procesar nada duplicado ni resucitar listeners)
-    stateModule.appEvents.emit("userDataUpdated");
-    assert.equal(userDataUpdatedCount, 2, "El listener de prueba recibe 2, pero ningún módulo desmontado debe generar efectos secundarios");
+    // Despachar eventos con la app desmontada (no debe disparar handlers de módulos destruidos)
+    mockGrid.dispatchEvent({ type: "pointerover", pointerType: "mouse" });
+    globalThis.window.dispatchEvent({ type: "keydown", key: "Escape" });
 
-    // 5. Segundo init completo tras el dispose
+    // ==========================================
+    // CICLO 2: SEGUNDO INIT COMPLETO (REENGANCHE LIMPIO)
+    // ==========================================
     mainModule.init();
     sidebarModule.initSidebar();
     modalModule.initQuickView();
-    cardModule.initCardInteractions(grid);
+    cardModule.initCardInteractions(mockGrid);
 
-    // 6. Nueva interacción en el segundo ciclo
-    stateModule.appEvents.emit("userDataUpdated");
-    assert.equal(userDataUpdatedCount, 3, "Debe procesar el evento en el nuevo ciclo activo sin interferencia del ciclo previo");
+    // Verificar que los listeners se han reenganchado exactamente 1 vez por módulo (sin duplicaciones)
+    assert.equal(mockGrid._getListenerCount("pointerover"), 1, "Grid debe tener exactamente 1 listener de pointerover en ciclo 2");
+    assert.equal(mockGrid._getListenerCount("dblclick"), 1, "Grid debe tener exactamente 1 listener de dblclick en ciclo 2");
+    assert.equal(
+      globalThis.document._getListenerCount("visibilitychange"),
+      initialDocVisibility + 2, // 1 por main y 1 por card
+      "visibilitychange debe estar reenganchado exactamente una vez por subsistema"
+    );
+    assert.equal(
+      globalThis.window._getListenerCount("keydown"),
+      initialWindowKeydown + 1,
+      "keydown debe estar reenganchado exactamente 1 vez"
+    );
 
-    unsub();
+    // Nueva interacción en el ciclo 2
+    stateModule.appEvents.emit("userMovieDataChanged", { movieId: 102 });
+    assert.equal(cardUpdatedTriggered, 2, "userMovieDataChanged debe procesarse en ciclo 2");
+
+    unsubCard();
     await mainModule.disposeApp();
   });
 });
+
 
 
 

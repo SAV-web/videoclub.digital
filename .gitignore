@@ -27,3 +27,8 @@ dist-ssr
 # Ficheros de variables de entorno
 .env
 .env.*
+
+# Artefactos generados de SEO Site
+seo-site/public/*.svg
+seo-site/dist
+seo-site/.astro

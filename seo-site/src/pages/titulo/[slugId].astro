@@ -445,7 +445,8 @@ const jsonLd = {
       flex-direction: column;
     }
 
-    .is-quick-view .movie-summary h3[data-template="title"] {
+    .is-quick-view .movie-summary :is(h1, h3)[data-template="title"],
+    .is-quick-view .movie-summary .movie-main-title {
       font-size: 2rem;
       font-weight: var(--font-weight-extrabold);
       color: var(--color-text-primary);
@@ -459,6 +460,7 @@ const jsonLd = {
       &.title-xxl-long { font-size: 1rem; }
       &.title-xxxl-long { font-size: 0.85rem; }
     }
+
 
     .is-quick-view .front-director-info {
       font-size: calc(var(--font-size-xs) * 1.5);
@@ -1022,7 +1024,7 @@ const jsonLd = {
 
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
-                <div class="star-rating-container has-average-rating" style="display:flex;">
+                <a href={`${baseUrl}?movie=${movie.id}`} class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
                   <svg class="star-icon" data-rating-level="1" style={isSuspenso || avgStars > 0 ? "opacity: 1;" : "opacity: 0;"}>
                     <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
                     <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip1}% 0 0);`}></use>
@@ -1035,7 +1037,8 @@ const jsonLd = {
                     <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
                     <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip3}% 0 0);`}></use>
                   </svg>
-                </div>
+                </a>
+
 
                 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->
@@ -1048,8 +1051,9 @@ const jsonLd = {
             <!-- Resumen: Título, Estudios y Año -->
             <div class="movie-info movie-summary">
               <div class="title-director-block">
-                <h3 data-template="title" class={titleLengthClass}>{movie.title}</h3>
+                <h1 data-template="title" class={`movie-main-title ${titleLengthClass}`}>{movie.title}</h1>
               </div>
+
 
               <div class="movie-meta">
                 {studios.length > 0 && (
@@ -1219,114 +1223,6 @@ const jsonLd = {
 
     </div>
   </div>
-
-  <script is:inline define:vars={{ baseUrl }}>
-    document.addEventListener('DOMContentLoaded', () => {
-      // Protección de imágenes
-      document.addEventListener('contextmenu', (e) => {
-        const t = e.target;
-        if (t && (t.tagName === 'IMG' || t.closest('.poster-container'))) {
-          e.preventDefault();
-        }
-      });
-      document.addEventListener('dragstart', (e) => {
-        const t = e.target;
-        if (t && (t.tagName === 'IMG' || t.closest('.poster-container'))) {
-          e.preventDefault();
-        }
-      });
-
-      const starContainer = document.querySelector('.star-rating-container');
-      if (starContainer) {
-        starContainer.classList.add('is-interactive');
-        const stars = starContainer.querySelectorAll('.star-icon');
-        const filledPaths = Array.from(stars).map(s => s.querySelector('.star-icon-path--filled'));
-        const initialClips = filledPaths.map(p => p ? p.style.clipPath : '');
-
-        stars.forEach((star, index) => {
-          star.addEventListener('mouseenter', () => {
-            filledPaths.forEach((path, i) => {
-              if (path) {
-                path.style.clipPath = i <= index ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)';
-              }
-            });
-          });
-
-          star.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const movieId = document.querySelector('.movie-card')?.getAttribute('data-movie-id');
-            if (movieId) {
-              window.location.href = `${baseUrl}?movie=${movieId}`;
-            }
-          });
-        });
-
-        starContainer.addEventListener('mouseleave', () => {
-          filledPaths.forEach((path, i) => {
-            if (path) {
-              path.style.clipPath = initialClips[i] || '';
-            }
-          });
-        });
-      }
-
-      const actionBtn = document.querySelector('.card-action-btn');
-      if (actionBtn) {
-        actionBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const movieId = document.querySelector('.movie-card')?.getAttribute('data-movie-id');
-          if (movieId) {
-            window.location.href = `${baseUrl}?movie=${movieId}`;
-          }
-        });
-      }
-
-      // Conmutador de tema para la página estática
-      var themeBtn = document.getElementById("theme-toggle");
-      if (themeBtn) {
-        function syncThemeUI() {
-          var isDark = document.documentElement.classList.contains("dark-mode") || 
-            (!document.documentElement.classList.contains("light-mode") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-          var moon = themeBtn.querySelector(".moon-icon");
-          var sun = themeBtn.querySelector(".sun-icon");
-          if (isDark) {
-            if (moon) moon.style.display = "none";
-            if (sun) sun.style.display = "block";
-            themeBtn.setAttribute("title", "Modo claro");
-            themeBtn.setAttribute("aria-label", "Modo claro");
-            themeBtn.setAttribute("aria-pressed", "true");
-          } else {
-            if (moon) moon.style.display = "block";
-            if (sun) sun.style.display = "none";
-            themeBtn.setAttribute("title", "Modo oscuro");
-            themeBtn.setAttribute("aria-label", "Modo oscuro");
-            themeBtn.setAttribute("aria-pressed", "false");
-          }
-          var metas = document.querySelectorAll('meta[name="theme-color"]');
-          metas.forEach(function(m) { m.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5"); });
-        }
-
-        syncThemeUI();
-
-        themeBtn.addEventListener("click", function() {
-          var isCurrentlyDark = document.documentElement.classList.contains("dark-mode") || 
-            (!document.documentElement.classList.contains("light-mode") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-          if (isCurrentlyDark) {
-            document.documentElement.classList.remove("dark-mode");
-            document.documentElement.classList.add("light-mode");
-            localStorage.setItem("theme", "light");
-          } else {
-            document.documentElement.classList.remove("light-mode");
-            document.documentElement.classList.add("dark-mode");
-            localStorage.setItem("theme", "dark");
-          }
-          syncThemeUI();
-        });
-      }
-    });
-  </script>
 </body>
 </html>
+
