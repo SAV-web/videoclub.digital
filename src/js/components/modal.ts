@@ -433,12 +433,12 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
       nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
       nodes.img.src = movie.thumbhash_st;
 
-      setTimeout(() => {
+      scheduleModalTimeout(() => {
         const tempImg = new Image();
         tempImg.onload = () => {
           if (nodes.img) {
             nodes.img.src = hqUrl;
-            requestAnimationFrame(() => {
+            scheduleModalRAF(() => {
               nodes.img?.classList.add(CSS_CLASSES.LOADED);
             });
           }
@@ -449,6 +449,7 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
       nodes.img.src = hqUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
       nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
     }
+
   }
 
   // Título

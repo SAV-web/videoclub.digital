@@ -125,8 +125,15 @@ function prefetchCardResources(card: MovieCardElement): void {
 
     if (preloadedLinkElements.length >= MAX_PREFETCH_LINKS) {
       const oldest = preloadedLinkElements.shift();
-      try { oldest?.remove(); } catch (e) { }
+      try {
+        if (oldest?.href) {
+          prefetchedUrls.delete(oldest.href);
+          prefetchedUrls.delete(oldest.getAttribute("href") || "");
+        }
+        oldest?.remove();
+      } catch (e) { }
     }
+
 
     if (typeof document !== "undefined" && document.head) {
       const link = document.createElement("link");

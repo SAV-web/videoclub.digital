@@ -93,7 +93,10 @@ let isAuthInitialized = false;
 
 // Carga la barra lateral (filtros) bajo demanda
 async function loadSidebar(): Promise<SidebarModule | null> {
-  if (sidebarModule) return sidebarModule;
+  if (sidebarModule) {
+    sidebarModule.initSidebar();
+    return sidebarModule;
+  }
   try {
     const mod = await import("./components/sidebar.js") as unknown as SidebarModule;
     sidebarModule = mod;
@@ -104,6 +107,7 @@ async function loadSidebar(): Promise<SidebarModule | null> {
     return null;
   }
 }
+
 
 const loadCardModule = (): Promise<CardModule> =>
   import("./components/card.js") as unknown as Promise<CardModule>;
@@ -469,13 +473,16 @@ async function handleSearchInput(): Promise<void> {
 let isTicking = false;
 let lastScrollY = 0;
 let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+let scrollRafId: number | null = null;
 
 function handleGlobalScroll(): void {
   if (scrollTimer) {
     clearTimeout(scrollTimer);
     scrollTimer = null;
   }
+  const scrollGen = mainLifecycleGen;
   scrollTimer = setTimeout(() => {
+    if (scrollGen !== mainLifecycleGen) return;
     // Prefetch Predictivo: Si el usuario se detiene (mira) cerca del final (>70%)
     const scrollPos = window.scrollY + window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
@@ -486,7 +493,11 @@ function handleGlobalScroll(): void {
   }, 250);
 
   if (!isTicking) {
-    window.requestAnimationFrame(() => {
+    isTicking = true;
+    scrollRafId = window.requestAnimationFrame(() => {
+      scrollRafId = null;
+      isTicking = false;
+      if (scrollGen !== mainLifecycleGen) return;
       const currentScrollY = Math.max(0, window.scrollY);
       const docHeight = document.documentElement.scrollHeight;
       const vHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
@@ -518,10 +529,7 @@ function handleGlobalScroll(): void {
       } else {
         lastScrollY = currentScrollY; // En desktop, mantener sincronizado
       }
-
-      isTicking = false;
     });
-    isTicking = true;
   }
 }
 
@@ -705,12 +713,20 @@ export function disposeMainEvents(): void {
   mainLifecycleGen++;
   mainUnsubscribers.forEach(unsub => unsub());
   mainUnsubscribers = [];
+  if (scrollTimer) {
+    clearTimeout(scrollTimer);
+    scrollTimer = null;
+  }
+  if (scrollRafId !== null && typeof cancelAnimationFrame === "function") {
+    cancelAnimationFrame(scrollRafId);
+    scrollRafId = null;
+  }
+  isTicking = false;
+  sidebarModule = null;
   isMainEventsInitialized = false;
   isMainInitialized = false;
   isAuthInitialized = false;
 }
-
-
 
 export async function disposeApp(): Promise<void> {
   disposeMainEvents();
@@ -729,7 +745,10 @@ export async function disposeApp(): Promise<void> {
     const { disposeSidebarEvents } = await import("./components/sidebar.js");
     disposeSidebarEvents();
   } catch (e) { }
+
+  sidebarModule = null;
 }
+
 
 
 
@@ -1082,15 +1101,18 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
  * y abre de forma automática el modal con la película correspondiente.
  */
 async function checkAndOpenMovieFromUrl(): Promise<void> {
+  const checkGen = mainLifecycleGen;
   const params = new URLSearchParams(window.location.search);
   const movieId = params.get("movie") || params.get("m");
   if (!movieId) return;
 
   try {
     const movie = await fetchMovieById(movieId);
+    if (checkGen !== mainLifecycleGen) return;
     if (!movie) return;
 
     const { openModalForMovie } = await import("./components/modal.js");
+    if (checkGen !== mainLifecycleGen) return;
     openModalForMovie(movie);
   } catch (err) {
     if (import.meta.env.DEV) console.error("Error al abrir película desde URL:", err);
@@ -1153,8 +1175,10 @@ export function init(): void {
 
   setupAuthSystem(); // Iniciar sesión de inmediato para resolver la carga limpia de la landing page
 
+  const idleGen = mainLifecycleGen;
   mainUnsubscribers.push(
     runWhenIdle(() => {
+      if (idleGen !== mainLifecycleGen) return;
       loadSidebar();
       setupAuthModal();
     }, 1000)
@@ -1197,10 +1221,13 @@ export function init(): void {
 
 
   // Mostrar skeletons preliminares mientras se carga el catálogo (que se disparará inmediatamente por setupAuthSystem)
+  const skeletonGen = mainLifecycleGen;
   loadCardModule().then(({ renderSkeletons }) => {
+    if (skeletonGen !== mainLifecycleGen) return;
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
   });
 }
+
 
 if (typeof document !== "undefined" && !import.meta.env?.SSR && !Boolean((window as unknown as Record<string, unknown>)?._isTestEnv)) {
   if (document.readyState === "loading") {

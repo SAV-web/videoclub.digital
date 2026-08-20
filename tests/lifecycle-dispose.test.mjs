@@ -339,14 +339,17 @@ describe("Ciclo de Vida: Main Module y Orquestación Global (disposeApp)", () =>
 });
 
 describe("Test de Integración Completo: init → interacción → dispose → resolver timers/promesas → init", () => {
-
-  test("Garantiza que cada evento y callback se procesa exactamente una vez sin duplicaciones tras el ciclo completo", async () => {
+  test("Garantiza que cada evento y callback se procesa exactamente una vez sin duplicaciones tras el ciclo completo de los cuatro módulos", async () => {
     let userDataUpdatedCount = 0;
     const unsub = stateModule.appEvents.on("userDataUpdated", () => {
       userDataUpdatedCount++;
     });
 
-    // 1. Init de toda la app
+    const initialWindowPopstate = globalThis.window._getListenerCount("popstate");
+    const initialWindowKeydown = globalThis.window._getListenerCount("keydown");
+    const initialDocVisibility = globalThis.document._getListenerCount("visibilitychange");
+
+    // 1. Init de los 4 módulos (main, sidebar, modal, card)
     mainModule.init();
     sidebarModule.initSidebar();
     modalModule.initQuickView();
@@ -354,18 +357,24 @@ describe("Test de Integración Completo: init → interacción → dispose → r
     const grid = createMockDomElement("div");
     cardModule.initCardInteractions(grid);
 
-    // 2. Interacción activa (emitir eventos)
+    // 2. Interacción activa (emitir eventos y disparar acciones)
     stateModule.appEvents.emit("userDataUpdated");
     assert.equal(userDataUpdatedCount, 1, "Debe procesar el evento exactamente una vez en la primera fase");
 
-    // 3. Desmontaje completo (disposeApp)
+    // 3. Desmontaje completo de la aplicación (disposeApp)
     await mainModule.disposeApp();
 
-    // 4. Resolver timers y promesas pendientes tras dispose
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Comprobar que los listeners globales de los 4 módulos se retiraron
+    assert.equal(globalThis.window._getListenerCount("popstate"), initialWindowPopstate, "popstate debe haberse removido tras disposeApp");
+    assert.equal(globalThis.window._getListenerCount("keydown"), initialWindowKeydown, "keydown debe haberse removido tras disposeApp");
+    assert.equal(globalThis.document._getListenerCount("visibilitychange"), initialDocVisibility, "visibilitychange debe haberse removido tras disposeApp");
 
-    // Emitir tras dispose
-    stateModule.appEvents.emit("uiActionTriggered");
+    // 4. Resolver timers, idle tasks y promesas pendientes tras el dispose (garantizar que ningún callback zombi toque DOM o falle)
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    // Emitir tras dispose (no debe procesar nada duplicado ni resucitar listeners)
+    stateModule.appEvents.emit("userDataUpdated");
+    assert.equal(userDataUpdatedCount, 2, "El listener de prueba recibe 2, pero ningún módulo desmontado debe generar efectos secundarios");
 
     // 5. Segundo init completo tras el dispose
     mainModule.init();
@@ -373,14 +382,15 @@ describe("Test de Integración Completo: init → interacción → dispose → r
     modalModule.initQuickView();
     cardModule.initCardInteractions(grid);
 
-    // 6. Nueva interacción
+    // 6. Nueva interacción en el segundo ciclo
     stateModule.appEvents.emit("userDataUpdated");
-    assert.equal(userDataUpdatedCount, 2, "Debe procesar el evento exactamente dos veces (1 por cada ciclo activo)");
+    assert.equal(userDataUpdatedCount, 3, "Debe procesar el evento en el nuevo ciclo activo sin interferencia del ciclo previo");
 
     unsub();
     await mainModule.disposeApp();
   });
 });
+
 
 
 
