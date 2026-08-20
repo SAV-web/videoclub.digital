@@ -1,12 +1,12 @@
-import type { MovieRow } from '../../../src/shared/types';
-export type { MovieRow };
-
+import type { MovieRow, SeoMovieDocument } from '../../../src/shared/types';
+export type { MovieRow, SeoMovieDocument };
 
 /**
  * Validador de contrato en tiempo de ejecución (Type Guard).
- * Garantiza que los campos mínimos obligatorios para la generación SSG existan y sean válidos.
+ * Garantiza que los campos mínimos obligatorios para la generación SSG existan y sean válidos,
+ * asegurando que slug sea una cadena de texto no vacía.
  */
-export function isValidMovieRow(row: unknown): row is MovieRow {
+export function isValidMovieRow(row: unknown): row is SeoMovieDocument {
   if (!row || typeof row !== 'object') return false;
   const r = row as Record<string, unknown>;
   return (
@@ -18,4 +18,5 @@ export function isValidMovieRow(row: unknown): row is MovieRow {
     r.slug.trim().length > 0
   );
 }
+
 

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { isValidMovieRow, type MovieRow } from './types';
+import { isValidMovieRow, type SeoMovieDocument } from './types';
 
 const PAGE_SIZE = 1000;
 
@@ -35,8 +35,8 @@ const MOVIE_PROJECTION = [
   'countries(name, code)',
 ].join(', ');
 
-function validateAndFilterRows(rows: unknown[], context: string, seenSlugs: Set<string>): MovieRow[] {
-  const valid: MovieRow[] = [];
+function validateAndFilterRows(rows: unknown[], context: string, seenSlugs: Set<string>): SeoMovieDocument[] {
+  const valid: SeoMovieDocument[] = [];
   for (const row of rows) {
     if (isValidMovieRow(row)) {
       if (seenSlugs.has(row.slug)) {
@@ -62,7 +62,7 @@ function validateAndFilterRows(rows: unknown[], context: string, seenSlugs: Set<
  * Modo producción (SEO_SAMPLE_SIZE sin definir): paginación completa
  * (~20 peticiones de 1.000 filas para las ~20.000 filas actuales).
  */
-export async function fetchAllMovies(): Promise<MovieRow[]> {
+export async function fetchAllMovies(): Promise<SeoMovieDocument[]> {
   const sampleSize = Number(import.meta.env.SEO_SAMPLE_SIZE) || 0;
   const seenSlugs = new Set<string>();
 
@@ -83,7 +83,7 @@ export async function fetchAllMovies(): Promise<MovieRow[]> {
     return valid;
   }
 
-  let all: MovieRow[] = [];
+  let all: SeoMovieDocument[] = [];
   let from = 0;
 
   while (true) {
@@ -106,4 +106,5 @@ export async function fetchAllMovies(): Promise<MovieRow[]> {
 
   return all;
 }
+
 

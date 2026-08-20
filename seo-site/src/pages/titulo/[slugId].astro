@@ -1,7 +1,7 @@
 ---
 import { fetchAllMovies } from '../../lib/fetchAllMovies';
 import { getPosterUrl, parseList } from '../../lib/format';
-import type { MovieRow } from '../../lib/types';
+import type { SeoMovieDocument } from '../../lib/types';
 import { STUDIO_DATA } from '../../../../src/shared/constants';
 import { isSeriesType, formatRuntime, calculateAverageStars, getTitleLengthClass, formatVotesUnified, preserveHyphenatedWords } from '../../../../src/shared/formatters';
 import '../../../../src/css/variables.css';
@@ -16,7 +16,8 @@ export async function getStaticPaths() {
   }));
 }
 
-interface Props { movie: MovieRow }
+interface Props { movie: SeoMovieDocument }
+
 const { movie } = Astro.props;
 
 const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
