@@ -1,4 +1,10 @@
 import { createServer } from "vite";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, "../../");
 
 globalThis._isTestEnv = true;
 if (typeof process !== "undefined" && process.env) {
@@ -10,8 +16,8 @@ if (typeof process !== "undefined" && process.env) {
  * y carga una lista de rutas de módulos de forma sencilla.
  */
 export async function startViteSsrServer(modulePaths = []) {
-
   const server = await createServer({
+    root: projectRoot,
     configFile: false,
     appType: "custom",
     logLevel: "silent",
@@ -25,6 +31,7 @@ export async function startViteSsrServer(modulePaths = []) {
       noDiscovery: true,
     },
   });
+
 
   const modules = await Promise.all(
     modulePaths.map((path) => server.ssrLoadModule(path))
