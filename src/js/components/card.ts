@@ -83,20 +83,39 @@ function resetCardBackState(cardElement: MovieCardElement): void {
 }
 
 export function unflipAllCards(): void {
-  if (hoverTimeout) clearTimeout(hoverTimeout);
+  if (hoverTimeout) {
+    clearTimeout(hoverTimeout);
+    hoverTimeout = undefined;
+  }
   if (singleTapTimeout) {
     clearTimeout(singleTapTimeout);
     singleTapTimeout = undefined;
   }
-  if (flipOnboardingTimeout) clearTimeout(flipOnboardingTimeout);
-  if (flipBackTimeout) clearTimeout(flipBackTimeout);
+  if (flipOnboardingTimeout) {
+    clearTimeout(flipOnboardingTimeout);
+    flipOnboardingTimeout = null;
+  }
+  if (flipBackTimeout) {
+    clearTimeout(flipBackTimeout);
+    flipBackTimeout = null;
+  }
+
+  // Desvoltear de forma segura todas las fichas con is-flipped en el DOM (tanto manuales como de onboarding)
+  if (typeof document !== "undefined") {
+    document.querySelectorAll<HTMLElement>(".flip-card-inner.is-flipped").forEach((inner) => {
+      inner.classList.remove("is-flipped");
+      const parentCard = inner.closest<MovieCardElement>(".movie-card");
+      if (parentCard) resetCardBackState(parentCard);
+    });
+  }
+
   if (currentlyFlippedCard) {
-    currentlyFlippedCard.querySelector(".flip-card-inner")?.classList.remove("is-flipped");
     resetCardBackState(currentlyFlippedCard);
     currentlyFlippedCard = null;
     document.removeEventListener("click", handleDocumentClick);
   }
 }
+
 
 
 function handleDocumentClick(e: MouseEvent): void {
