@@ -12,6 +12,7 @@ if (typeof process !== "undefined" && process.env) {
 export async function startViteSsrServer(modulePaths = []) {
 
   const server = await createServer({
+    configFile: false,
     appType: "custom",
     logLevel: "silent",
     server: {
