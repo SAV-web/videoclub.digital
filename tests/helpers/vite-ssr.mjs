@@ -1,10 +1,16 @@
 import { createServer } from "vite";
 
+globalThis._isTestEnv = true;
+if (typeof process !== "undefined" && process.env) {
+  process.env.NODE_ENV = "test";
+}
+
 /**
  * Arranca un servidor de Vite en modo SSR silencioso para tests
  * y carga una lista de rutas de módulos de forma sencilla.
  */
 export async function startViteSsrServer(modulePaths = []) {
+
   const server = await createServer({
     appType: "custom",
     logLevel: "silent",

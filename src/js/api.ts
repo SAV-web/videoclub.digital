@@ -57,7 +57,10 @@ let supabasePromise: Promise<SupabaseClient> | null = null;
 export function getSupabase(): Promise<SupabaseClient> {
   if (!supabasePromise) {
     supabasePromise = (async () => {
-      const isTestEnv = typeof window !== "undefined" && Boolean((window as unknown as Record<string, unknown>)?._isTestEnv);
+      const isTestEnv =
+        (typeof process !== "undefined" && process.env?.NODE_ENV === "test") ||
+        Boolean((globalThis as unknown as Record<string, unknown>)?._isTestEnv) ||
+        (typeof window !== "undefined" && Boolean((window as unknown as Record<string, unknown>)?._isTestEnv));
       const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = CONFIG;
 
       if (url && key && !isTestEnv) {
@@ -97,8 +100,8 @@ export const queryCache = new LRUCache<string, ApiResponse>({
   max: 300, // Guardar hasta 300 páginas de resultados
   ttl: 1000 * 60 * 30,
   updateAgeOnGet: true,
-  ttlAutopurge: true,
 });
+
 
 // TTL corto (5 min): optimiza la escritura repetitiva sin consumir mucha memoria.
 const suggestionsCache = new LRUCache<string, string[]>({
