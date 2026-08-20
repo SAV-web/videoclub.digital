@@ -48,11 +48,13 @@ const titleLengthClass = getTitleLengthClass(movie.title);
 const displayOriginalTitle = movie.original_title?.trim() || movie.title;
 const origTitleLengthClass = getTitleLengthClass(displayOriginalTitle);
 
-// Estrellas continuas (0-3)
+// Estrellas continuas (0-3) y gestión de suspenso (1 estrella hueca)
+const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= 5.5;
 const avgStars = calculateAverageStars(movie.avg_rating);
-const clip1 = (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
-const clip2 = (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;
-const clip3 = (1 - Math.max(0, Math.min(1, avgStars - 2))) * 100;
+const clip1 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
+const clip2 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;
+const clip3 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 2))) * 100;
+
 
 
 // Cálculo de barras de votos y votos unificados
@@ -722,7 +724,8 @@ const jsonLd = {
       display: flex !important;
       flex-direction: column;
       justify-content: center;
-      min-width: 5ch;
+      min-width: 6ch;
+      white-space: nowrap;
       text-align: right;
       font-size: var(--font-size-base);
       font-weight: bold;
@@ -736,8 +739,10 @@ const jsonLd = {
         text-align: right;
         width: 100%;
         margin-top: 2px;
+        white-space: nowrap;
       }
     }
+
 
     .is-quick-view .rating-bar-container {
       flex-grow: 1;
@@ -814,7 +819,7 @@ const jsonLd = {
     .is-quick-view :is([data-template="actors"], [data-template="genre"], .detail-data) a {
       color: var(--color-text-primary);
       text-decoration: none;
-      display: inline-block;
+      display: inline;
       white-space: nowrap;
 
       &:hover {
@@ -822,6 +827,7 @@ const jsonLd = {
         text-decoration: underline;
       }
     }
+
 
 
     .is-quick-view .detail-label {
@@ -850,8 +856,9 @@ const jsonLd = {
       display: inline-block;
       font-weight: var(--font-weight-bold, 700);
       color: var(--color-text-primary);
-      margin-right: 0.85em; /* 3 espacios de separación */
+      margin-right: 0.5em;
     }
+
 
 
     .is-quick-view .scrollable-content {
@@ -1016,19 +1023,20 @@ const jsonLd = {
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
                 <div class="star-rating-container has-average-rating" style="display:flex;">
-                  <svg class="star-icon" data-rating-level="1">
+                  <svg class="star-icon" data-rating-level="1" style={isSuspenso || avgStars > 0 ? "opacity: 1;" : "opacity: 0;"}>
                     <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
                     <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip1}% 0 0);`}></use>
                   </svg>
-                  <svg class="star-icon" data-rating-level="2">
+                  <svg class="star-icon" data-rating-level="2" style={!isSuspenso && avgStars > 1 ? "opacity: 1;" : "opacity: 0;"}>
                     <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
                     <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip2}% 0 0);`}></use>
                   </svg>
-                  <svg class="star-icon" data-rating-level="3">
+                  <svg class="star-icon" data-rating-level="3" style={!isSuspenso && avgStars > 2 ? "opacity: 1;" : "opacity: 0;"}>
                     <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
                     <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip3}% 0 0);`}></use>
                   </svg>
                 </div>
+
                 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->
                 <a href={`${baseUrl}?movie=${movie.id}`} class="card-action-btn" title="Abrir en Videoclub Digital" aria-label="Abrir en la App">
@@ -1156,7 +1164,7 @@ const jsonLd = {
                   <span class="detail-label">
                     <svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href={`${baseUrl}sprite.svg#icon-clapperboard`}></use></svg>
                   </span>
-                  <strong class="detail-label-title">Género</strong>
+                  <strong class="detail-label-title">Género.</strong>
                   <span class="detail-data" data-template="genre">
                     {genres.map((name, i) => (
                       <>
@@ -1172,7 +1180,7 @@ const jsonLd = {
                   <span class="detail-label">
                     <svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href={`${baseUrl}sprite.svg#icon-cast`}></use></svg>
                   </span>
-                  <strong class="detail-label-title">Reparto</strong>
+                  <strong class="detail-label-title">Reparto.</strong>
                   <span class="detail-data" data-template="actors">
                     {actors.map((name, i) => (
                       <>
@@ -1192,11 +1200,12 @@ const jsonLd = {
                   <span class="detail-label">
                     <svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href={`${baseUrl}sprite.svg#icon-synopsis`}></use></svg>
                   </span>
-                  <strong class="detail-label-title">Sinopsis</strong>
+                  <strong class="detail-label-title">Sinopsis.</strong>
                   <span data-template="synopsis">{preserveHyphenatedWords(movie.synopsis)}</span>
                 </div>
               </div>
             )}
+
 
 
 

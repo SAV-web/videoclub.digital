@@ -27,8 +27,10 @@ export class DualRangeSlider {
 
   private updateCallbacks: Array<(values: [number, number], handle: number) => void> = [];
   private setCallbacks: Array<(values: [number, number], handle: number) => void> = [];
+  private abortController = new AbortController();
 
   constructor(container: HTMLElement, options: DualRangeSliderOptions) {
+
     this.container = container;
     this.min = options.min;
     this.max = options.max;
@@ -178,12 +180,12 @@ export class DualRangeSlider {
       if (activeHandleIndex === null) {
         updateHoverZIndex(e.clientX);
       }
-    });
+    }, { signal: this.abortController.signal });
 
     // Evitar que los gestos táctiles del slider activen el arrastre del menú lateral móvil
     this.container.addEventListener("touchstart", (e: TouchEvent) => {
       e.stopPropagation();
-    }, { passive: true });
+    }, { passive: true, signal: this.abortController.signal });
 
     const onPointerMove = (e: PointerEvent) => {
       if (activeHandleIndex === null) return;
@@ -214,9 +216,9 @@ export class DualRangeSlider {
       if (handleEl.setPointerCapture) {
         try { handleEl.setPointerCapture(e.pointerId); } catch {}
       }
-      window.addEventListener("pointermove", onPointerMove);
-      window.addEventListener("pointerup", onPointerUp);
-      window.addEventListener("pointercancel", onPointerUp);
+      window.addEventListener("pointermove", onPointerMove, { signal: this.abortController.signal });
+      window.addEventListener("pointerup", onPointerUp, { signal: this.abortController.signal });
+      window.addEventListener("pointercancel", onPointerUp, { signal: this.abortController.signal });
     };
 
     const getTargetHandleForClick = (clientX: number): number => {
@@ -236,13 +238,13 @@ export class DualRangeSlider {
       e.stopPropagation();
       const targetHandle = getTargetHandleForClick(e.clientX);
       startDrag(targetHandle, e);
-    });
+    }, { signal: this.abortController.signal });
 
     this.handleEndEl.addEventListener("pointerdown", (e: PointerEvent) => {
       e.stopPropagation();
       const targetHandle = getTargetHandleForClick(e.clientX);
       startDrag(targetHandle, e);
-    });
+    }, { signal: this.abortController.signal });
 
     // Clic en la barra o contenedor
     this.container.addEventListener("pointerdown", (e: PointerEvent) => {
@@ -266,7 +268,7 @@ export class DualRangeSlider {
       this.emitUpdate(chosenHandle);
       this.emitSet(chosenHandle);
       startDrag(chosenHandle, e);
-    });
+    }, { signal: this.abortController.signal });
 
     // Accesibilidad mediante teclado
     const handleKey = (handleIndex: number, e: KeyboardEvent) => {
@@ -293,11 +295,12 @@ export class DualRangeSlider {
       this.emitSet(handleIndex);
     };
 
-    this.handleStartEl.addEventListener("keydown", (e) => handleKey(0, e));
-    this.handleEndEl.addEventListener("keydown", (e) => handleKey(1, e));
+    this.handleStartEl.addEventListener("keydown", (e) => handleKey(0, e), { signal: this.abortController.signal });
+    this.handleEndEl.addEventListener("keydown", (e) => handleKey(1, e), { signal: this.abortController.signal });
   }
 
   private updateValuesForHandle(handleIndex: number, newYear: number): boolean {
+
     const prevStart = this.values[0];
     const prevEnd = this.values[1];
 
@@ -408,4 +411,19 @@ export class DualRangeSlider {
       cb([...this.values], 1);
     });
   }
+
+  destroy(): void {
+    this.abortController.abort();
+    this.updateCallbacks = [];
+    this.setCallbacks = [];
+    if (this.container) {
+      this.container.innerHTML = "";
+      if (this.container.classList) {
+        if (typeof this.container.classList.remove === "function") {
+          this.container.classList.remove("custom-year-slider", "is-same-year");
+        }
+      }
+    }
+  }
 }
+

@@ -72,7 +72,7 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.formatRuntime(null, false), "Película");
     assert.equal(sharedFormatters.formatRuntime(null, true), "Serie TV");
     assert.equal(sharedFormatters.formatRuntime(0, false), "Película");
-    assert.equal(sharedFormatters.formatRuntime(45, true), "45 min/ep");
+    assert.equal(sharedFormatters.formatRuntime(45, true), "45′");
     assert.equal(sharedFormatters.formatRuntime(50, false), "50 m");
     assert.equal(sharedFormatters.formatRuntime(120, false), "2 h");
     assert.equal(sharedFormatters.formatRuntime(135, false), "2 h 15 m");
@@ -129,25 +129,45 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.calculateAverageStars(7.25), 1.5);
   });
 
-  test("formatVotesUnified formatea votos con redondeo y límites de millones/miles", () => {
+  test("formatVotesUnified formatea votos según reglas por intervalos", () => {
     assert.equal(sharedFormatters.formatVotesUnified(null), "");
     assert.equal(sharedFormatters.formatVotesUnified(""), "");
     assert.equal(sharedFormatters.formatVotesUnified("   "), "");
     assert.equal(sharedFormatters.formatVotesUnified("sin votos"), "");
     assert.equal(sharedFormatters.formatVotesUnified(0), "");
-    assert.equal(sharedFormatters.formatVotesUnified(1), "1");
-    assert.equal(sharedFormatters.formatVotesUnified(999), "999");
-    assert.equal(sharedFormatters.formatVotesUnified(1000), "1 k");
-    assert.equal(sharedFormatters.formatVotesUnified(1499), "1 k");
-    assert.equal(sharedFormatters.formatVotesUnified(1500), "2 k");
-    assert.equal(sharedFormatters.formatVotesUnified(161200), "161 k");
+    // Menos de 100: poner 100
+    assert.equal(sharedFormatters.formatVotesUnified(1), "100");
+    assert.equal(sharedFormatters.formatVotesUnified(42), "100");
+    assert.equal(sharedFormatters.formatVotesUnified(99), "100");
+    // De 100 a 999: redondear al 50
+    assert.equal(sharedFormatters.formatVotesUnified(100), "100");
+    assert.equal(sharedFormatters.formatVotesUnified(361), "350");
+    assert.equal(sharedFormatters.formatVotesUnified(375), "400");
+    assert.equal(sharedFormatters.formatVotesUnified(974), "950");
+    // De 1000 a 9999: redondear al 100 con punto de millares
+    assert.equal(sharedFormatters.formatVotesUnified(1000), "1.000");
+    assert.equal(sharedFormatters.formatVotesUnified(1240), "1.200");
+    assert.equal(sharedFormatters.formatVotesUnified(1260), "1.300");
+    assert.equal(sharedFormatters.formatVotesUnified(9940), "9.900");
+    // De 10000 a 99999: redondear al 500 con punto de millares
+    assert.equal(sharedFormatters.formatVotesUnified(10000), "10.000");
+    assert.equal(sharedFormatters.formatVotesUnified(12340), "12.500");
+    assert.equal(sharedFormatters.formatVotesUnified(12750), "13.000");
+
+    // De 100000 a 999999: redondear al 1000, truncar 000 y presentar con "k"
+    assert.equal(sharedFormatters.formatVotesUnified(100000), "100 k");
+    assert.equal(sharedFormatters.formatVotesUnified(261400), "261 k");
+    assert.equal(sharedFormatters.formatVotesUnified(261800), "262 k");
     assert.equal(sharedFormatters.formatVotesUnified(999499), "999 k");
-    assert.equal(sharedFormatters.formatVotesUnified(1000000), "1 M"); // Millones enteros sin .0
-    assert.equal(sharedFormatters.formatVotesUnified(1050000), "1.1 M");
-    assert.equal(sharedFormatters.formatVotesUnified(2000000), "2 M");
-    assert.equal(sharedFormatters.formatVotesUnified(2800000), "2.8 M");
     assert.equal(sharedFormatters.formatVotesUnified("161,200 votos"), "161 k");
+    // Desde 1000000: redondear al 1000, truncar al 10000 y presentar con "M"
+    assert.equal(sharedFormatters.formatVotesUnified(1000000), "1 M");
+    assert.equal(sharedFormatters.formatVotesUnified(1050000), "1,05 M");
+    assert.equal(sharedFormatters.formatVotesUnified(1726000), "1,73 M");
+    assert.equal(sharedFormatters.formatVotesUnified(2000000), "2 M");
+    assert.equal(sharedFormatters.formatVotesUnified(2800000), "2,8 M");
   });
+
 
   test("preserveHyphenatedWords sustituye guiones en palabras por guiones no divisibles", () => {
     assert.equal(sharedFormatters.preserveHyphenatedWords(null), "");

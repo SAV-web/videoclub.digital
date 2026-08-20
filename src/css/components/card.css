@@ -627,7 +627,7 @@ html.dark-mode .bbc-icon {
   text-decoration: none;
   transition: color var(--duration-fast, 0.15s) ease;
   cursor: pointer;
-  display: inline-block;
+  display: inline;
   white-space: nowrap;
 
   &:hover {
@@ -635,6 +635,7 @@ html.dark-mode .bbc-icon {
     text-decoration: underline;
   }
 }
+
 
 
 .detail-label {
@@ -663,8 +664,9 @@ html.dark-mode .bbc-icon {
   display: inline-block;
   font-weight: var(--font-weight-bold, 700);
   color: var(--color-text-primary);
-  margin-right: 0.85em; /* 3 espacios de separación */
+  margin-right: 0.5em;
 }
+
 
 
 

@@ -57,14 +57,15 @@ let supabasePromise: Promise<SupabaseClient> | null = null;
 export function getSupabase(): Promise<SupabaseClient> {
   if (!supabasePromise) {
     supabasePromise = (async () => {
+      const isTestEnv = typeof window !== "undefined" && Boolean((window as unknown as Record<string, unknown>)?._isTestEnv);
       const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = CONFIG;
 
-      if (url && key) {
+      if (url && key && !isTestEnv) {
         const { createClient } = await import("@supabase/supabase-js");
         return createClient(url, key, {
           auth: {
             persistSession: true,
-            storage: customAuthStorage
+            storage: customAuthStorage,
           }
         });
       } else {

@@ -99,6 +99,33 @@ const MODAL_TRANSITION_MS = 400;
 
 // Contador para evitar race conditions al modificar el view-transition del header
 let modalTransitionCount = 0;
+let modalLifecycleGen = 0;
+let modalTimeouts: Array<ReturnType<typeof setTimeout>> = [];
+let modalAnimationFrames: Array<number> = [];
+
+const scheduleModalTimeout = (fn: () => void, delay: number): ReturnType<typeof setTimeout> => {
+  const gen = modalLifecycleGen;
+  const tid = setTimeout(() => {
+    modalTimeouts = modalTimeouts.filter(t => t !== tid);
+    if (gen !== modalLifecycleGen) return;
+    fn();
+  }, delay);
+  modalTimeouts.push(tid);
+  return tid;
+};
+
+const scheduleModalRAF = (fn: () => void): number => {
+  const gen = modalLifecycleGen;
+  const rafId = requestAnimationFrame(() => {
+    modalAnimationFrames = modalAnimationFrames.filter(id => id !== rafId);
+    if (gen !== modalLifecycleGen) return;
+    fn();
+  });
+  modalAnimationFrames.push(rafId);
+  return rafId;
+};
+
+
 
 // =================================================================
 //          1. GESTIÓN DE EVENTOS (Navegación y Cierre)
@@ -324,14 +351,13 @@ function navigateToSibling(direction: number): void {
  * Actualiza el estado (habilitado/deshabilitado) de los botones de navegación.
  */
 function updateNavButtons(currentId: number | string, contextCards: HTMLElement[] | null = null): void {
-  const { prevBtn, nextBtn, modal } = getDom();
+  const { prevBtn, nextBtn } = getDom();
   const strId = String(currentId);
 
   const cards = contextCards || getGridCards();
   const currentIndex = cards.findIndex(c => c.dataset.movieId === strId);
 
   if (currentIndex === -1) {
-    if (modal) modal.classList.add("hide-arrows");
     if (prevBtn) prevBtn.disabled = true;
     if (nextBtn) nextBtn.disabled = true;
     return;
@@ -345,12 +371,6 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
   const hasPrev = currentIndex > 0 || currentPage > 1;
   const hasNext = currentIndex < cards.length - 1 || currentPage < totalPages;
 
-  if (!hasPrev && !hasNext) {
-    if (modal) modal.classList.add("hide-arrows");
-  } else {
-    if (modal) modal.classList.remove("hide-arrows");
-  }
-
   if (prevBtn) {
     prevBtn.disabled = !hasPrev;
   }
@@ -358,6 +378,7 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
     nextBtn.disabled = !hasNext;
   }
 }
+
 
 // =================================================================
 //          4. RENDERIZADO (POBLADO DE DATOS)
@@ -612,8 +633,10 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
   cardClone.dataset.movieId = modalId;
   cardClone.movieData = movie;
 
-  // Reset UI
-  if (!modal.classList.contains("is-visible")) modal.classList.remove("hide-arrows");
+  // Reset UI solo si la modal NO estaba abierta previamente
+  if (!modal.classList.contains("is-visible")) {
+    modal.classList.remove("hide-arrows");
+  }
 
   // Binding de Datos
   content.movieData = movie;
@@ -631,7 +654,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
       img.classList.add(CSS_CLASSES.LAZY_LQIP);
 
       img.onload = () => {
-        requestAnimationFrame(() => {
+        scheduleModalRAF(() => {
           img.classList.add(CSS_CLASSES.LOADED);
         });
       };
@@ -711,8 +734,8 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     updateNavButtons(modalId, contextCards);
 
     // --- CAPA 2: DETALLES (Asíncrona / Diferida) ---
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    scheduleModalRAF(() => {
+      scheduleModalRAF(() => {
         if (content.dataset.movieId !== String(movie.id)) return;
 
         setupModalDetails(nodes, movie);
@@ -751,15 +774,22 @@ export function isModalOpen(): boolean {
 /**
  * Cierra el modal con animación y limpieza.
  */
-export function closeModal(options?: { fromPopstate?: boolean } | Event): void {
+export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean; skipHistory?: boolean } | Event): void {
   const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
+  const suppressHistoryBack = Boolean(
+    options && (
+      ("suppressHistoryBack" in options && options.suppressHistoryBack) ||
+      ("skipHistory" in options && options.skipHistory)
+    )
+  );
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
 
   // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
-  if (!isPopstate && window.history.state?.modalOpen) {
+  if (!isPopstate && !suppressHistoryBack && window.history.state?.modalOpen) {
     window.history.back();
   }
+
 
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
@@ -768,13 +798,15 @@ export function closeModal(options?: { fromPopstate?: boolean } | Event): void {
 
   const performClose = (): void => {
     modal.classList.remove("is-visible");
+    modal.classList.remove("hide-arrows");
     overlay.classList.remove("is-visible");
     document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
 
     // Limpieza
-    setTimeout(resetModalTransform, MODAL_TRANSITION_MS);
+    scheduleModalTimeout(resetModalTransform, MODAL_TRANSITION_MS);
     closeAccessibleModal(modal, overlay);
   };
+
 
   // View Transition (Hero Reverso: Modal -> Card). El helper maneja el fallback y el a11y.
   if (activeHeroCard) {
@@ -848,12 +880,12 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
 
   const performOpen = (): void => {
     document.body.classList.add(CSS_CLASSES.MODAL_OPEN);
-    requestAnimationFrame(() => {
+    scheduleModalRAF(() => {
       modal.classList.add("is-visible");
       overlay.classList.add("is-visible");
       openAccessibleModal(modal, overlay, false);
       if (content) content.scrollTop = 0;
-      setTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
+      scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
     });
   };
 
@@ -877,9 +909,20 @@ let isQuickViewInitialized = false;
 let modalUnsubscribers: Array<() => void> = [];
 
 export function disposeModalEvents(): void {
+  modalLifecycleGen++;
+  modalTimeouts.forEach(t => clearTimeout(t));
+  modalTimeouts = [];
+  modalAnimationFrames.forEach(raf => cancelAnimationFrame(raf));
+  modalAnimationFrames = [];
+
+
   try {
-    closeModal();
+    closeModal({ suppressHistoryBack: true, skipHistory: true, fromPopstate: true });
   } catch (e) { }
+
+
+  document.removeEventListener("click", handleOutsideClick);
+
   modalUnsubscribers.forEach(unsub => unsub());
   modalUnsubscribers = [];
   cachedModalDom = null;

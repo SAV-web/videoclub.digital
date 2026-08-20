@@ -27,21 +27,55 @@ export function parseList(value: string | null | undefined): string[] {
 }
 
 /**
- * Formatea el conteo de votos separando con un espacio las unidades k y M (ej: "161 k", "2.8 M").
+ * Formatea la presentación del número de votos unificado para reverso, modal y SEO:
+ * - Menos de 100 votos: poner 100
+ * - De 100 a 999: redondear al 50 (ej: 361 -> 350)
+ * - De 1000 a 9999: redondear al 100 con punto de millar (ej: 1240 -> 1.200)
+ * - De 10000 a 99999: redondear al 500 con punto de millar (ej: 12340 -> 12.500)
+ * - De 100000 a 999999: redondear al 1000, truncar 000 y presentar con "k" (ej: 261400 -> 261 k)
+ * - Desde 1000000: redondear al 1000, truncar al 10000 y presentar con "M" (ej: 1726000 -> 1,73 M)
  */
 export function formatVotesUnified(votes: number | string | null | undefined): string {
   if (votes === null || votes === undefined || votes === '') return '';
   const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes).replace(/\D/g, ''), 10);
-  if (!numVotes || isNaN(numVotes)) return '';
+  if (!numVotes || isNaN(numVotes) || numVotes <= 0) return '';
 
+  // Desde 1.000.000: redondear al 1000, truncar al 10000 (2 decimales) y presentar con "M"
   if (numVotes >= 1000000) {
-    const millions = (numVotes / 1000000).toFixed(1);
-    return `${millions.endsWith('.0') ? millions.slice(0, -2) : millions} M`;
+    const roundedThousand = Math.round(numVotes / 1000) * 1000;
+    const millions = Math.round(roundedThousand / 10000) / 100;
+    const formatted = String(millions).replace('.', ',');
+    return `${formatted} M`;
   }
+
+  // De 100.000 a 999.999: redondear al 1000, truncar 000 y presentar con "k"
+  if (numVotes >= 100000) {
+    const k = Math.round(numVotes / 1000);
+    if (k >= 1000) return '1 M';
+    return `${k} k`;
+  }
+
+  // De 10.000 a 99.999: redondear al 500 con punto de millares
+  if (numVotes >= 10000) {
+    const rounded = Math.round(numVotes / 500) * 500;
+    if (rounded >= 100000) return `${rounded / 1000} k`;
+    return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  // De 1.000 a 9.999: redondear al 100 con punto de millares
   if (numVotes >= 1000) {
-    return `${Math.round(numVotes / 1000)} k`;
+    const rounded = Math.round(numVotes / 100) * 100;
+    return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   }
-  return String(numVotes);
+
+  // De 100 a 999: redondear al 50
+  if (numVotes >= 100) {
+    const rounded = Math.round(numVotes / 50) * 50;
+    return String(rounded);
+  }
+
+  // Menos de 100 votos: poner 100
+  return '100';
 }
 
 
@@ -62,7 +96,7 @@ export function isSeriesType(type: string | null | undefined): boolean {
 }
 
 /**
- * Formatea la duración en minutos a un texto legible ("1 h 45 m", "45 min/ep", etc.).
+ * Formatea la duración en minutos a un texto legible ("1 h 45 m", "45′", etc.).
  */
 export function formatRuntime(minutes: string | number | null | undefined, isSeries: boolean = false): string {
   const num = typeof minutes === "number" ? minutes : parseInt(String(minutes || 0), 10);
@@ -70,7 +104,7 @@ export function formatRuntime(minutes: string | number | null | undefined, isSer
     return isSeries ? "Serie TV" : "Película";
   }
   if (isSeries) {
-    return `${num} min/ep`;
+    return `${num}′`;
   }
   const hrs = Math.floor(num / 60);
   const mins = num % 60;
@@ -78,6 +112,7 @@ export function formatRuntime(minutes: string | number | null | undefined, isSer
   if (mins === 0) return `${hrs} h`;
   return `${hrs} h ${mins} m`;
 }
+
 
 /**
  * Formatea el año o rango de años de emisión de una película o serie.

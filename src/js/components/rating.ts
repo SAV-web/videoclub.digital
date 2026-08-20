@@ -325,7 +325,7 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
     starDisplay = "flex";
     
     if (state.userRatingValue === 2) {
-      // Suspenso: La 1.ª estrella se muestra hueca en el contenedor unificado de 3 estrellas
+      // Suspenso de usuario: La 1.ª estrella se muestra hueca en el contenedor unificado de 3 estrellas
       renderUserStars(starCont, 0, true, true);
     } else {
       // 1, 2 o 3 estrellas llenas
@@ -333,12 +333,9 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
     }
   } else {
     if (state.showEmptyAverage) {
-      if (isLoggedIn) {
-        starDisplay = "flex";
-        renderUserStars(starCont, 0, false, false);
-      } else {
-        starDisplay = "none";
-      }
+      // Suspenso en nota media (promedio <= 5.5): Se muestra 1 estrella hueca
+      starDisplay = "flex";
+      renderUserStars(starCont, 0, true, true);
     } else if (state.showAverageRating) {
       starDisplay = "flex";
       renderAverageStars(starCont, state.visualAverageStars);
@@ -353,6 +350,7 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
   starCont.classList.toggle("has-user-rating", hasUserRatingClass);
   if (starCont.style.display !== starDisplay) starCont.style.display = starDisplay;
 }
+
 
 export function setupCardRatings(container: HTMLElement, movie: Movie): void {
   const setup = (key: "fa" | "imdb", maxKey: "FA" | "IMDB"): void => {

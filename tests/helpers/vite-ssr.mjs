@@ -8,7 +8,15 @@ export async function startViteSsrServer(modulePaths = []) {
   const server = await createServer({
     appType: "custom",
     logLevel: "silent",
-    server: { middlewareMode: true },
+    server: {
+      middlewareMode: true,
+      watch: null,
+      ws: false,
+      hmr: false,
+    },
+    optimizeDeps: {
+      noDiscovery: true,
+    },
   });
 
   const modules = await Promise.all(
@@ -16,8 +24,14 @@ export async function startViteSsrServer(modulePaths = []) {
   );
 
   const close = async () => {
-    await server.close();
+    try {
+      if (server.watcher) await server.watcher.close();
+      if (server.ws) await server.ws.close();
+      await server.close();
+    } catch (e) { }
   };
 
   return { server, modules, close };
 }
+
+

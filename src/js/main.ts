@@ -586,10 +586,9 @@ function setupHeaderListeners(): void {
   const debouncedSearch = debounce(handleSearchInput, CONFIG.SEARCH_DEBOUNCE_DELAY);
 
   if (dom.searchInput) {
-    dom.searchInput.addEventListener("input", debouncedSearch);
-    dom.searchInput.addEventListener("focus", () => dom.mainHeader?.classList.add("is-search-focused"));
-    dom.searchInput.addEventListener("blur", () => dom.mainHeader?.classList.remove("is-search-focused"));
-    dom.searchInput.addEventListener("keydown", (e: KeyboardEvent) => {
+    const onSearchFocus = () => dom.mainHeader?.classList.add("is-search-focused");
+    const onSearchBlur = () => dom.mainHeader?.classList.remove("is-search-focused");
+    const onSearchKeydown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         if (getActiveFilters().searchTerm) {
@@ -598,29 +597,47 @@ function setupHeaderListeners(): void {
           dom.searchInput?.blur();
         }
       }
+    };
+
+    dom.searchInput.addEventListener("input", debouncedSearch);
+    dom.searchInput.addEventListener("focus", onSearchFocus);
+    dom.searchInput.addEventListener("blur", onSearchBlur);
+    dom.searchInput.addEventListener("keydown", onSearchKeydown);
+
+    mainUnsubscribers.push(() => {
+      dom.searchInput?.removeEventListener("input", debouncedSearch);
+      dom.searchInput?.removeEventListener("focus", onSearchFocus);
+      dom.searchInput?.removeEventListener("blur", onSearchBlur);
+      dom.searchInput?.removeEventListener("keydown", onSearchKeydown);
     });
   }
 
   if (dom.searchForm) {
-    dom.searchForm.addEventListener("submit", (e) => { e.preventDefault(); handleSearchInput(); });
+    const onSearchSubmit = (e: Event) => { e.preventDefault(); handleSearchInput(); };
+    dom.searchForm.addEventListener("submit", onSearchSubmit);
+    mainUnsubscribers.push(() => dom.searchForm?.removeEventListener("submit", onSearchSubmit));
   }
 
   if (dom.sortSelect) {
     dom.sortSelect.addEventListener("change", handleSortChange);
+    mainUnsubscribers.push(() => dom.sortSelect?.removeEventListener("change", handleSortChange));
   }
 
   if (dom.typeFilterToggle) {
     dom.typeFilterToggle.addEventListener("click", handleMediaTypeToggle);
+    mainUnsubscribers.push(() => dom.typeFilterToggle?.removeEventListener("click", handleMediaTypeToggle));
   }
 
   if (dom.mobileSidebarToggle) {
-    dom.mobileSidebarToggle.addEventListener("click", async () => {
+    const onToggleClick = async () => {
       const mod = await loadSidebar();
       if (!mod) return;
       triggerHapticFeedback("light");
       const isOpen = document.body.classList.contains("sidebar-is-open");
       isOpen ? mod.closeMobileDrawer() : mod.openMobileDrawer();
-    });
+    };
+    dom.mobileSidebarToggle.addEventListener("click", onToggleClick);
+    mainUnsubscribers.push(() => dom.mobileSidebarToggle?.removeEventListener("click", onToggleClick));
   }
 
   const navigatePage = async (direction: number) => {
@@ -635,23 +652,27 @@ function setupHeaderListeners(): void {
   };
 
   if (dom.headerPrevBtn) {
-    dom.headerPrevBtn.addEventListener("click", (e) => {
+    const onPrevClick = (e: MouseEvent) => {
       triggerPopAnimation(e.currentTarget as HTMLElement);
       navigatePage(-1);
-    });
+    };
+    dom.headerPrevBtn.addEventListener("click", onPrevClick);
+    mainUnsubscribers.push(() => dom.headerPrevBtn?.removeEventListener("click", onPrevClick));
   }
 
   if (dom.headerNextBtn) {
-    dom.headerNextBtn.addEventListener("click", (e) => {
+    const onNextClick = (e: MouseEvent) => {
       triggerPopAnimation(e.currentTarget as HTMLElement);
       navigatePage(1);
-    });
+    };
+    dom.headerNextBtn.addEventListener("click", onNextClick);
+    mainUnsubscribers.push(() => dom.headerNextBtn?.removeEventListener("click", onNextClick));
   }
 
   const clearSearchBtn = dom.searchForm?.querySelector(".search-icon--clear");
   if (clearSearchBtn) {
-    clearSearchBtn.addEventListener("pointerdown", (e) => {
-      e.preventDefault(); // Gestión manual del foco
+    const onClearPointerDown = (e: Event) => {
+      e.preventDefault();
       e.stopPropagation();
 
       if (dom.searchInput && dom.searchInput.value) {
@@ -661,24 +682,56 @@ function setupHeaderListeners(): void {
       } else {
         dom.searchInput?.blur();
       }
-    });
+    };
+    clearSearchBtn.addEventListener("pointerdown", onClearPointerDown);
+    mainUnsubscribers.push(() => clearSearchBtn.removeEventListener("pointerdown", onClearPointerDown));
   }
 
   const updateSearchPlaceholder = () => {
     if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
   };
-  window.addEventListener("resize", debounce(updateSearchPlaceholder, 250));
+  const debouncedResize = debounce(updateSearchPlaceholder, 250);
+  window.addEventListener("resize", debouncedResize);
+  mainUnsubscribers.push(() => window.removeEventListener("resize", debouncedResize));
   updateSearchPlaceholder();
 }
 
 let isMainEventsInitialized = false;
+let isMainInitialized = false;
+let mainLifecycleGen = 0;
 let mainUnsubscribers: Array<() => void> = [];
 
 export function disposeMainEvents(): void {
+  mainLifecycleGen++;
   mainUnsubscribers.forEach(unsub => unsub());
   mainUnsubscribers = [];
   isMainEventsInitialized = false;
+  isMainInitialized = false;
+  isAuthInitialized = false;
 }
+
+
+
+export async function disposeApp(): Promise<void> {
+  disposeMainEvents();
+
+  try {
+    const { disposeModalEvents } = await import("./components/modal.js");
+    disposeModalEvents();
+  } catch (e) { }
+
+  try {
+    const { disposeCardEvents } = await import("./components/card.js");
+    disposeCardEvents();
+  } catch (e) { }
+
+  try {
+    const { disposeSidebarEvents } = await import("./components/sidebar.js");
+    disposeSidebarEvents();
+  } catch (e) { }
+}
+
+
 
 function setupGlobalListeners(): void {
   if (isMainEventsInitialized) return;
@@ -898,15 +951,24 @@ function setupAuthSystem(): void {
     }
   }
 
-  if (logoutButton) logoutButton.addEventListener("click", handleLogout);
+  if (logoutButton) {
+    logoutButton.addEventListener("click", handleLogout);
+    mainUnsubscribers.push(() => logoutButton.removeEventListener("click", handleLogout));
+  }
+
+  let authSubscription: { unsubscribe: () => void } | null = null;
+  const authGen = mainLifecycleGen;
 
   getSupabase().then(supabase => {
-    supabase.auth.onAuthStateChange((event, session) => {
+    if (authGen !== mainLifecycleGen) return;
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (authGen !== mainLifecycleGen) return;
       const currentUser = session?.user || null;
       const currentUserId = currentUser?.id || null;
 
       if (event === "PASSWORD_RECOVERY") {
         import("./auth.js").then(({ showResetPasswordView }) => {
+          if (authGen !== mainLifecycleGen) return;
           showResetPasswordView();
         });
       }
@@ -943,10 +1005,15 @@ function setupAuthSystem(): void {
       }
     });
 
+    if (data?.subscription) {
+      authSubscription = data.subscription;
+    }
+
     // Control preventivo de carrera: si la página cargó con el hash de recuperación,
     // forzar la vista de restablecimiento por si el evento inicial ya se disparó.
     if (window.location.hash.includes("type=recovery")) {
       import("./auth.js").then(({ showResetPasswordView }) => {
+        if (authGen !== mainLifecycleGen) return;
         showResetPasswordView();
       });
     } else if (window.location.hash.includes("error_code=") || window.location.hash.includes("error=")) {
@@ -963,14 +1030,29 @@ function setupAuthSystem(): void {
     }
   });
 
+  mainUnsubscribers.push(() => {
+    if (authSubscription) {
+      authSubscription.unsubscribe();
+      authSubscription = null;
+    }
+  });
+
   // Temporizador de seguridad: garantizar que la página de inicio cargue si el evento auth no dispara la carga
-  setTimeout(() => {
+  const safetyGen = mainLifecycleGen;
+  const authSafetyTimeout = setTimeout(() => {
+    if (safetyGen !== mainLifecycleGen) return;
     if (!initialLoadHandled) {
       initialLoadHandled = true;
       loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
     }
   }, 600);
+
+  mainUnsubscribers.push(() => {
+    if (authSafetyTimeout) clearTimeout(authSafetyTimeout);
+  });
 }
+
+
 
 function readUrlAndSetState(): void {
   syncStateWithUrlParams(window.location.search);
@@ -1015,12 +1097,16 @@ async function checkAndOpenMovieFromUrl(): Promise<void> {
   }
 }
 
-function init(): void {
+export function init(): void {
+  if (isMainInitialized) return;
+  isMainInitialized = true;
+
   requestAnimationFrame(() => {
     document.querySelectorAll("[data-loading]").forEach(el => {
       el.removeAttribute("data-loading");
     });
   });
+
 
   // Restaurar estado de rotación (Modo Muro) antes de renderizar para evitar saltos visuales
   if (LocalStore.get("rotationState") === "disabled") {
@@ -1028,14 +1114,16 @@ function init(): void {
   }
 
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
+    const onSwLoad = () => {
       navigator.serviceWorker.register("sw.js").catch(err => {
         if (import.meta.env.DEV) console.error("Fallo SW:", err);
       });
-    });
+    };
+    window.addEventListener("load", onSwLoad);
+    mainUnsubscribers.push(() => window.removeEventListener("load", onSwLoad));
   }
 
-  window.addEventListener("popstate", async () => {
+  const handlePopState = async () => {
     const { isModalOpen, closeModal } = await import("./components/modal.js");
 
     let modalWasOpen = false;
@@ -1050,7 +1138,6 @@ function init(): void {
       modalWasOpen = true;
     }
 
-
     // Si había una modal abierta, el botón "Atrás" se consume exclusivamente para cerrarla sin alterar la página
     if (modalWasOpen) {
       return;
@@ -1059,14 +1146,20 @@ function init(): void {
     readUrlAndSetState();
     appEvents.emit("updateSidebarUI");
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
-  });
+  };
+
+  window.addEventListener("popstate", handlePopState);
+  mainUnsubscribers.push(() => window.removeEventListener("popstate", handlePopState));
 
   setupAuthSystem(); // Iniciar sesión de inmediato para resolver la carga limpia de la landing page
 
-  runWhenIdle(() => {
-    loadSidebar();
-    setupAuthModal();
-  }, 1000);
+  mainUnsubscribers.push(
+    runWhenIdle(() => {
+      loadSidebar();
+      setupAuthModal();
+    }, 1000)
+  );
+
 
   initThemeToggle();
   setupHeaderListeners();
@@ -1074,28 +1167,34 @@ function init(): void {
 
   const loginBtn = document.getElementById("login-button");
   if (loginBtn) {
-    loginBtn.addEventListener("click", async () => {
+    const onLoginClick = async () => {
       try {
         const { initAuthForms } = await import("./auth.js") as unknown as { initAuthForms(): void };
         initAuthForms();
       } catch (e) {
         if (import.meta.env.DEV) console.error("Error loading auth module", e);
       }
-    }, { once: true });
+    };
+    loginBtn.addEventListener("click", onLoginClick, { once: true });
+    mainUnsubscribers.push(() => loginBtn.removeEventListener("click", onLoginClick));
   }
 
   // Recuperar peticiones de red atascadas al recuperar el foco de la pestaña
-  document.addEventListener("visibilitychange", () => {
+  const handleMainVisibilityChange = () => {
     if (document.visibilityState === "visible") {
       if (document.body.classList.contains(CSS_CLASSES.IS_FETCHING)) {
         loadAndRenderMovies(getCurrentPage());
       }
     }
-  });
+  };
+
+  document.addEventListener("visibilitychange", handleMainVisibilityChange);
+  mainUnsubscribers.push(() => document.removeEventListener("visibilitychange", handleMainVisibilityChange));
 
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
   checkAndOpenMovieFromUrl();
+
 
   // Mostrar skeletons preliminares mientras se carga el catálogo (que se disparará inmediatamente por setupAuthSystem)
   loadCardModule().then(({ renderSkeletons }) => {
@@ -1103,11 +1202,12 @@ function init(): void {
   });
 }
 
-if (typeof document !== "undefined" && !import.meta.env?.SSR) {
+if (typeof document !== "undefined" && !import.meta.env?.SSR && !Boolean((window as unknown as Record<string, unknown>)?._isTestEnv)) {
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
   } else {
     init();
   }
 }
+
 

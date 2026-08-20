@@ -337,14 +337,21 @@ export async function yieldToMain(): Promise<void> {
 /**
  * Ejecuta una tarea en periodos de inactividad del navegador (idle) o usa setTimeout con el delay de fallback.
  */
-export function runWhenIdle(callback: () => void, fallbackDelayMs = 500): void {
-  const windowWithIdle = window as Window & { requestIdleCallback?: typeof requestIdleCallback };
-  if (typeof windowWithIdle.requestIdleCallback === "function") {
-    windowWithIdle.requestIdleCallback(() => callback());
+export function runWhenIdle(callback: () => void, fallbackDelayMs = 500): () => void {
+  const windowWithIdle = typeof window !== "undefined" ? (window as Window & { requestIdleCallback?: typeof requestIdleCallback; cancelIdleCallback?: typeof cancelIdleCallback }) : null;
+  if (windowWithIdle && typeof windowWithIdle.requestIdleCallback === "function") {
+    const handle = windowWithIdle.requestIdleCallback(() => callback());
+    return () => {
+      if (typeof windowWithIdle.cancelIdleCallback === "function") {
+        windowWithIdle.cancelIdleCallback(handle);
+      }
+    };
   } else {
-    setTimeout(callback, fallbackDelayMs);
+    const handle = setTimeout(callback, fallbackDelayMs);
+    return () => clearTimeout(handle);
   }
 }
+
 
 export function scheduleWork<T>(task: () => T, priority: 'user-blocking' | 'user-visible' | 'background' = 'user-visible'): Promise<T> {
   // En segundo plano (p. ej., durante el scraping de la consola), no retrasamos las tareas sintéticas.

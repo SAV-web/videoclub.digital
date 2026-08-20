@@ -30,7 +30,8 @@ const SWIPE_VELOCITY_THRESHOLD = 0.4;
 let DRAWER_WIDTH = 300;
 
 let yearInteractionState = { start: false, end: false };
-let isInitialized = false;
+
+
 
 const dom = {
   sidebar: document.getElementById("sidebar") as HTMLElement | null,
@@ -53,13 +54,32 @@ const sectionContainers: Record<string, HTMLElement> = {};
 const isMobileLayout = (): boolean => window.innerWidth <= MOBILE_BREAKPOINT || window.innerHeight <= MOBILE_HEIGHT_LIMIT;
 
 let isSidebarInitialized = false;
+let sidebarLifecycleGen = 0;
 let sidebarUnsubscribers: Array<() => void> = [];
+let sidebarAbortController: AbortController | null = null;
+let sidebarTimeouts: Array<ReturnType<typeof setTimeout>> = [];
+let yearSliderInstance: DualRangeSlider | null = null;
 
 export function disposeSidebarEvents(): void {
+  sidebarLifecycleGen++;
+  if (sidebarAbortController) {
+    sidebarAbortController.abort();
+    sidebarAbortController = null;
+  }
+  if (yearSliderInstance) {
+    yearSliderInstance.destroy();
+    yearSliderInstance = null;
+  }
+  sidebarTimeouts.forEach(t => clearTimeout(t));
+  sidebarTimeouts = [];
   sidebarUnsubscribers.forEach(unsub => unsub());
   sidebarUnsubscribers = [];
   isSidebarInitialized = false;
 }
+
+
+
+
 
 // =================================================================
 //          1. GESTOS TÁCTILES (El dedo manda)
@@ -854,6 +874,10 @@ export function collapseAllSections(): void {
 // =================================================================
 
 function initYearSlider(): void {
+  if (yearSliderInstance) {
+    yearSliderInstance.destroy();
+    yearSliderInstance = null;
+  }
 
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
@@ -864,14 +888,23 @@ function initYearSlider(): void {
   let initialYears = (currentFilters.year || `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`).split("-").map(Number);
   if (initialYears.length === 1) initialYears = [initialYears[0], initialYears[0]];
 
-  const sliderInstance = new DualRangeSlider(dom.yearSlider, {
+  yearSliderInstance = new DualRangeSlider(dom.yearSlider, {
     min: CONFIG.YEAR_MIN,
     max: CONFIG.YEAR_MAX,
     pivotYear: pivotYear,
     start: initialYears,
   });
 
-  sliderInstance.on("update", (values, handle) => {
+  const slider = yearSliderInstance;
+
+  sidebarUnsubscribers.push(() => {
+    if (yearSliderInstance === slider) {
+      yearSliderInstance.destroy();
+      yearSliderInstance = null;
+    }
+  });
+
+  slider.on("update", (values, handle) => {
     if (yearInputs[handle]) {
       const yearVal = Number(values[handle]);
       yearInputs[handle]!.value = String(yearVal);
@@ -896,7 +929,11 @@ function initYearSlider(): void {
 
   const debouncedUpdate = debounce(updateSliderFilter, 500);
 
-  sliderInstance.on("set", (values, handle) => {
+  sidebarUnsubscribers.push(() => {
+    debouncedUpdate.cancel();
+  });
+
+  slider.on("set", (values, handle) => {
     triggerHapticFeedback("light");
     const h = Number(handle);
     if (h === 0) yearInteractionState.start = true;
@@ -905,12 +942,12 @@ function initYearSlider(): void {
   });
 
   yearInputs.forEach((input, index) => {
-    input.addEventListener("change", (e) => {
+    const onInputChange = (e: Event) => {
       const target = e.target as HTMLInputElement;
       const cleanVal = target.value.replace(/[^0-9]/g, "");
       const newValue = parseFloat(cleanVal);
       if (isNaN(newValue)) return;
-      const currentValues = sliderInstance.get();
+      const currentValues = slider.get();
 
       const triggerUpdate = (vals: Array<string | number>) => {
         if (index === 0) yearInteractionState.start = true;
@@ -919,14 +956,17 @@ function initYearSlider(): void {
       };
 
       if (currentValues[0] === currentValues[1]) {
-        if (index === 0 && newValue > currentValues[0]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
-        if (index === 1 && newValue < currentValues[1]) { sliderInstance.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
+        if (index === 0 && newValue > currentValues[0]) { slider.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
+        if (index === 1 && newValue < currentValues[1]) { slider.set([newValue, newValue], false); triggerUpdate([newValue, newValue]); return; }
       }
       const values: Array<number | null> = [null, null];
       values[index] = newValue;
-      sliderInstance.set(values, false);
-      triggerUpdate(sliderInstance.get());
-    });
+      slider.set(values, false);
+      triggerUpdate(slider.get());
+    };
+
+    input.addEventListener("change", onInputChange);
+    sidebarUnsubscribers.push(() => input.removeEventListener("change", onInputChange));
   });
 
   sidebarUnsubscribers.push(
@@ -934,10 +974,11 @@ function initYearSlider(): void {
       debouncedUpdate.cancel();
       const currentFilters = getActiveFilters();
       const years = parseYearRangeRaw(currentFilters.year);
-      sliderInstance.set(years, false);
+      slider.set(years, false);
     })
   );
 }
+
 
 
 function setupYearInputSteppers(): void {
@@ -1245,12 +1286,13 @@ function setupEventListeners(): void {
 
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
       header.setAttribute('aria-expanded', String(isNowActive));
-      updatePillVisibility();
-
       dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive || hasCompactTriggeringFilters());
 
       if (isNowActive) {
-        setTimeout(() => {
+        const gen = sidebarLifecycleGen;
+        const timeoutId = setTimeout(() => {
+
+          if (gen !== sidebarLifecycleGen) return;
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
             clickedSection.classList.add("is-ready");
 
@@ -1274,6 +1316,7 @@ function setupEventListeners(): void {
             }
           }
         }, 300);
+        sidebarTimeouts.push(timeoutId);
       }
     };
 
@@ -1288,8 +1331,13 @@ function setupEventListeners(): void {
 // =================================================================
 
 export function initSidebar(): void {
-  if (isInitialized) return;
-  isInitialized = true;
+  if (isSidebarInitialized) return;
+  isSidebarInitialized = true;
+
+  if (sidebarAbortController) {
+    sidebarAbortController.abort();
+  }
+  sidebarAbortController = new AbortController();
 
   if (isMobileLayout()) {
     setSidebarState(false);
@@ -1383,12 +1431,16 @@ export function initSidebar(): void {
 
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);
 
+  const currentSignal = sidebarAbortController.signal;
+  const currentFilterGen = sidebarLifecycleGen;
   const updateDynamicFilters = async () => {
     try {
+      if (currentFilterGen !== sidebarLifecycleGen || currentSignal.aborted) return;
       const [actors, directors] = await Promise.all([
         fetchRandomTopActors(),
         fetchRandomTopDirectors()
       ]);
+      if (currentFilterGen !== sidebarLifecycleGen || currentSignal.aborted) return;
 
       if (actors && actors.length > 0) {
         FILTER_CONFIG.actor.items = actors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
@@ -1402,7 +1454,12 @@ export function initSidebar(): void {
     } catch (e) { }
   };
 
-  runWhenIdle(updateDynamicFilters, 500);
+  sidebarUnsubscribers.push(
+    runWhenIdle(updateDynamicFilters, 500)
+  );
+
+
+
 
   if (dom.toggleRotationBtn) {
     const isRotationDisabled = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
@@ -1412,11 +1469,9 @@ export function initSidebar(): void {
     dom.toggleRotationBtn.setAttribute("aria-pressed", String(isRotationDisabled));
   }
 
-  if (isSidebarInitialized) return;
-  isSidebarInitialized = true;
-
   initYearSlider();
   initTouchGestures();
+
   setupEventListeners();
   initPinchGestures();
   setupAutocompleteHandlers();

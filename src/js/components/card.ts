@@ -34,10 +34,15 @@ let currentRenderRequestId = 0;
 // Estado de Interacción
 let currentlyFlippedCard: MovieCardElement | null = null;
 let hoverTimeout: ReturnType<typeof setTimeout> | undefined;
+let singleTapTimeout: ReturnType<typeof setTimeout> | undefined;
 let currentHoveredCard: MovieCardElement | null = null;
+let preloadedLinkElements: HTMLLinkElement[] = [];
+const prefetchedUrls = new Set<string>();
+const MAX_PREFETCH_LINKS = 12;
 const HOVER_DELAY = 1000;
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
 const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
+
 
 // Consulta de Viewport sin listeners pesados de resize
 const mobileQuery = typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)") : null;
@@ -79,6 +84,10 @@ function resetCardBackState(cardElement: MovieCardElement): void {
 
 export function unflipAllCards(): void {
   if (hoverTimeout) clearTimeout(hoverTimeout);
+  if (singleTapTimeout) {
+    clearTimeout(singleTapTimeout);
+    singleTapTimeout = undefined;
+  }
   if (flipOnboardingTimeout) clearTimeout(flipOnboardingTimeout);
   if (flipBackTimeout) clearTimeout(flipBackTimeout);
   if (currentlyFlippedCard) {
@@ -105,19 +114,31 @@ function prefetchCardResources(card: MovieCardElement): void {
   if (card.dataset.prefetched) return;
   card.dataset.prefetched = "true";
 
-  // 1. Intención de detalle: Cargar lógica del modal
+  // 1. Intención de detalle: Cargar lógica del modal bajo demanda
   import("./modal.js");
 
-  // 2. Intención visual: Cargar imagen HQ
+  // 2. Intención visual: Precarga no bloqueante de imagen HQ (prefetch)
   const img = card.querySelector<HTMLImageElement>("img");
-  if (img && img.dataset.src) {
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "image";
-    link.href = img.dataset.src;
-    document.head.appendChild(link);
+  const src = img?.dataset?.src;
+  if (src && !prefetchedUrls.has(src)) {
+    prefetchedUrls.add(src);
+
+    if (preloadedLinkElements.length >= MAX_PREFETCH_LINKS) {
+      const oldest = preloadedLinkElements.shift();
+      try { oldest?.remove(); } catch (e) { }
+    }
+
+    if (typeof document !== "undefined" && document.head) {
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.as = "image";
+      link.href = src;
+      document.head.appendChild(link);
+      preloadedLinkElements.push(link);
+    }
   }
 }
+
 
 function startFlipTimer(cardElement: MovieCardElement): void {
   if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || cardElement.classList.contains('collection-card') || cardElement.classList.contains('person-card')) return;
@@ -125,7 +146,9 @@ function startFlipTimer(cardElement: MovieCardElement): void {
   if (inner?.classList.contains("is-flipped")) return;
 
   if (hoverTimeout) clearTimeout(hoverTimeout);
+  const currentGen = cardLifecycleGen;
   hoverTimeout = setTimeout(() => {
+    if (currentGen !== cardLifecycleGen) return;
     if (currentHoveredCard === cardElement) {
       cardElement.classList.add("is-hovered");
       prefetchCardResources(cardElement);
@@ -150,7 +173,10 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
 
   if (!isFlipped) {
     currentlyFlippedCard = cardElement;
-    setTimeout(() => {
+    if (singleTapTimeout) clearTimeout(singleTapTimeout);
+    const currentGen = cardLifecycleGen;
+    singleTapTimeout = setTimeout(() => {
+      if (currentGen !== cardLifecycleGen) return;
       if (currentlyFlippedCard === cardElement) {
         document.addEventListener("click", handleDocumentClick);
       }
@@ -158,24 +184,52 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
   } else {
     currentlyFlippedCard = null;
     resetCardBackState(cardElement);
+    if (singleTapTimeout) {
+      clearTimeout(singleTapTimeout);
+      singleTapTimeout = undefined;
+    }
     document.removeEventListener("click", handleDocumentClick);
   }
 };
 
 let isCardEventsInitialized = false;
+let cardLifecycleGen = 0;
 let cardUnsubscribers: Array<() => void> = [];
 
 export function disposeCardEvents(): void {
+  cardLifecycleGen++;
   cardUnsubscribers.forEach(unsub => unsub());
+
   cardUnsubscribers = [];
   unflipAllCards();
   if (hoverTimeout) {
     clearTimeout(hoverTimeout);
     hoverTimeout = undefined;
   }
+  if (singleTapTimeout) {
+    clearTimeout(singleTapTimeout);
+    singleTapTimeout = undefined;
+  }
+  if (flipOnboardingTimeout) {
+    clearTimeout(flipOnboardingTimeout);
+    flipOnboardingTimeout = null;
+  }
+  if (flipBackTimeout) {
+    clearTimeout(flipBackTimeout);
+    flipBackTimeout = null;
+  }
+  // Purgar enlaces de precarga acumulados
+  preloadedLinkElements.forEach(link => {
+    try { link.remove(); } catch (e) { }
+  });
+  preloadedLinkElements = [];
+  prefetchedUrls.clear();
   currentHoveredCard = null;
   isCardEventsInitialized = false;
 }
+
+
+
 
 export function initCardInteractions(gridContainer: HTMLElement): void {
   if (isCardEventsInitialized || !gridContainer) return;
@@ -312,12 +366,20 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
   gridContainer.addEventListener('pointerdown', handlePointerDown, { passive: true });
   gridContainer.addEventListener('pointerup', handlePointerUp);
 
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", handleCardVisibilityChange);
+  }
+
   cardUnsubscribers.push(() => {
     gridContainer.removeEventListener('pointerdown', handlePointerDown);
     gridContainer.removeEventListener('pointerup', handlePointerUp);
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", handleCardVisibilityChange);
+    }
     if (tapTimeout) clearTimeout(tapTimeout);
   });
 }
+
 
 
 // =================================================================
@@ -530,28 +592,27 @@ const lazyLoadObserver: IntersectionObserver | null = typeof IntersectionObserve
 }) : null;
 
 // Despertar de la hibernación: fuerza la carga de imágenes visibles en el viewport al volver a la pestaña
-if (typeof document !== "undefined") {
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      const lazyImages = document.querySelectorAll<HTMLImageElement>("img[data-src]");
-      lazyImages.forEach(img => {
-        const rect = img.getBoundingClientRect();
-        const inViewport = (
-          rect.top >= -200 &&
-          rect.left >= -200 &&
-          rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + 200 &&
-          rect.right <= (window.innerWidth || document.documentElement.clientWidth) + 200
-        );
-        if (inViewport && img.dataset.src) {
-          img.src = img.dataset.src;
-          img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
-          img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
-          lazyLoadObserver?.unobserve(img);
-        }
-      });
-    }
-  });
+function handleCardVisibilityChange(): void {
+  if (document.visibilityState === "visible") {
+    const lazyImages = document.querySelectorAll<HTMLImageElement>("img[data-src]");
+    lazyImages.forEach(img => {
+      const rect = img.getBoundingClientRect();
+      const inViewport = (
+        rect.top >= -200 &&
+        rect.left >= -200 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + 200 &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth) + 200
+      );
+      if (inViewport && img.dataset.src) {
+        img.src = img.dataset.src;
+        img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
+        img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+        lazyLoadObserver?.unobserve(img);
+      }
+    });
+  }
 }
+
 
 function cleanupLazyImages(container: HTMLElement): void {
   if (!container || !lazyLoadObserver) return;
@@ -1187,7 +1248,9 @@ export function runFlipOnboarding(container: HTMLElement | null): void {
   if (flipOnboardingTimeout) clearTimeout(flipOnboardingTimeout);
   if (flipBackTimeout) clearTimeout(flipBackTimeout);
 
+  const onboardGen = cardLifecycleGen;
   flipOnboardingTimeout = setTimeout(() => {
+    if (onboardGen !== cardLifecycleGen) return;
     if (
       document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) ||
       document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)
@@ -1208,12 +1271,14 @@ export function runFlipOnboarding(container: HTMLElement | null): void {
       inner.classList.add("is-flipped");
 
       flipBackTimeout = setTimeout(() => {
+        if (onboardGen !== cardLifecycleGen) return;
         if (inner.isConnected && inner.classList.contains("is-flipped") && currentlyFlippedCard !== targetMovieCard) {
           inner.classList.remove("is-flipped");
         }
       }, 1400);
     }
   }, 1000);
+
 }
 
 

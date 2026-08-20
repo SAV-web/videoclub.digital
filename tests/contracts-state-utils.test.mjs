@@ -309,5 +309,12 @@ describe("yearSlider.ts (DualRangeSlider)", () => {
     // La entrada manual mediante campos de texto sigue permitiendo intervalos del mismo año (ej. 1950-1950)
     slider.set([1950, 1950], false);
     assert.deepEqual(slider.get(), [1950, 1950]);
+
+    // Teardown / destroy limpia callbacks, DOM y clases
+    slider.destroy();
+    assert.equal(container.innerHTML, "");
+    assert.equal(container.classList.contains("custom-year-slider"), false);
   });
 });
+
+

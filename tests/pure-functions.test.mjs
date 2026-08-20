@@ -182,5 +182,15 @@ describe("rating.ts (Cálculo Visual y Estados de Valoración)", () => {
     );
     assert.strictEqual(loggedInState.showUserRating, true);
     assert.strictEqual(loggedInState.showAverageRating, false);
+
+    const suspensoAverageState = ratingModule.getRatingPresentationState(
+      { id: 1, title: "Test Suspenso", avg_rating: 4.8 },
+      null,
+      false
+    );
+    assert.strictEqual(suspensoAverageState.showUserRating, false);
+    assert.strictEqual(suspensoAverageState.showAverageRating, false);
+    assert.strictEqual(suspensoAverageState.showEmptyAverage, true);
   });
 });
+
