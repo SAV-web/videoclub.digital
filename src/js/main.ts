@@ -93,12 +93,14 @@ let isAuthInitialized = false;
 
 // Carga la barra lateral (filtros) bajo demanda
 async function loadSidebar(): Promise<SidebarModule | null> {
+  const loadGen = mainLifecycleGen;
   if (sidebarModule) {
     sidebarModule.initSidebar();
     return sidebarModule;
   }
   try {
     const mod = await import("./components/sidebar.js") as unknown as SidebarModule;
+    if (loadGen !== mainLifecycleGen) return null;
     sidebarModule = mod;
     sidebarModule.initSidebar(); // Inicializar listeners al cargar
     return sidebarModule;
@@ -107,6 +109,7 @@ async function loadSidebar(): Promise<SidebarModule | null> {
     return null;
   }
 }
+
 
 
 const loadCardModule = (): Promise<CardModule> =>
@@ -813,9 +816,12 @@ function setupGlobalListeners(): void {
   }
 
   // Interacciones Card (Hover, Tap)
+  const cardInteractionsGen = mainLifecycleGen;
   loadCardModule().then(({ initCardInteractions }) => {
+    if (cardInteractionsGen !== mainLifecycleGen) return;
     if (dom.gridContainer) initCardInteractions(dom.gridContainer);
   });
+
 
   const quickViewContent = document.getElementById("quick-view-content");
   if (quickViewContent) {

@@ -911,16 +911,15 @@ let modalUnsubscribers: Array<() => void> = [];
 
 export function disposeModalEvents(): void {
   modalLifecycleGen++;
-  modalTimeouts.forEach(t => clearTimeout(t));
-  modalTimeouts = [];
-  modalAnimationFrames.forEach(raf => cancelAnimationFrame(raf));
-  modalAnimationFrames = [];
-
 
   try {
     closeModal({ suppressHistoryBack: true, skipHistory: true, fromPopstate: true });
   } catch (e) { }
 
+  modalTimeouts.forEach(t => clearTimeout(t));
+  modalTimeouts = [];
+  modalAnimationFrames.forEach(raf => cancelAnimationFrame(raf));
+  modalAnimationFrames = [];
 
   document.removeEventListener("click", handleOutsideClick);
 
@@ -932,6 +931,7 @@ export function disposeModalEvents(): void {
     delete (window as unknown as Record<string, unknown>)._quickViewInitialized;
   }
 }
+
 
 export function initQuickView(): void {
   if (isQuickViewInitialized) return;
