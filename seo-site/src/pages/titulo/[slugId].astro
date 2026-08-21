@@ -203,7 +203,6 @@ const jsonLd = {
     /* ACCESIBILIDAD: Anillos de foco para navegación por teclado */
     .brand-logo:focus-visible,
     .btn-header-cta:focus-visible,
-    #theme-toggle:focus-visible,
     .card-action-btn:focus-visible,
     .year-link:focus-visible,
     .rating-left:focus-visible,
@@ -217,10 +216,10 @@ const jsonLd = {
 
     .brand-logo:focus-visible,
     .btn-header-cta:focus-visible,
-    #theme-toggle:focus-visible,
     .card-action-btn:focus-visible {
       border-radius: 9999px;
     }
+
 
     .year-link:focus-visible,
     .rating-left:focus-visible,
@@ -446,7 +445,7 @@ const jsonLd = {
       flex-direction: column;
     }
 
-    .is-quick-view .movie-summary :is(h1, h3)[data-template="title"],
+    .is-quick-view .movie-summary h1[data-template="title"],
     .is-quick-view .movie-summary .movie-main-title {
       font-size: 2rem;
       font-weight: var(--font-weight-extrabold);
@@ -454,6 +453,7 @@ const jsonLd = {
       line-height: 1.1;
       margin-bottom: 4px;
       letter-spacing: -0.03em;
+
 
       &.title-medium { font-size: 1.7rem; }
       &.title-long { font-size: 1.4rem; }

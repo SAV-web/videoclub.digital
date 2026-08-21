@@ -35,18 +35,25 @@ const MOVIE_PROJECTION = [
   'countries(name, code)',
 ].join(', ');
 
-function validateAndFilterRows(rows: unknown[], context: string, seenSlugs: Set<string>): SeoMovieDocument[] {
+function validateAndFilterRows(
+  rows: unknown[],
+  context: string,
+  seenSlugs: Map<string, number>,
+  duplicateErrors: Array<{ slug: string; id: number; firstId: number; context: string }>,
+  invalidErrors: Array<{ row: unknown; context: string }>
+): SeoMovieDocument[] {
   const valid: SeoMovieDocument[] = [];
   for (const row of rows) {
     if (isValidMovieRow(row)) {
       if (seenSlugs.has(row.slug)) {
-        console.warn(`[SEO Build] Slug duplicado omitido (${context}): "${row.slug}" (ID ${row.id})`);
+        const firstId = seenSlugs.get(row.slug)!;
+        duplicateErrors.push({ slug: row.slug, id: row.id, firstId, context });
         continue;
       }
-      seenSlugs.add(row.slug);
+      seenSlugs.set(row.slug, row.id);
       valid.push(row);
     } else {
-      console.warn(`[SEO Build] Fila omitida por contrato inválido (${context}):`, row);
+      invalidErrors.push({ row, context });
     }
   }
   return valid;
@@ -64,7 +71,9 @@ function validateAndFilterRows(rows: unknown[], context: string, seenSlugs: Set<
  */
 export async function fetchAllMovies(): Promise<SeoMovieDocument[]> {
   const sampleSize = Number(import.meta.env.SEO_SAMPLE_SIZE) || 0;
-  const seenSlugs = new Set<string>();
+  const seenSlugs = new Map<string, number>();
+  const duplicateErrors: Array<{ slug: string; id: number; firstId: number; context: string }> = [];
+  const invalidErrors: Array<{ row: unknown; context: string }> = [];
 
   if (sampleSize > 0) {
     const { data, error } = await supabase
@@ -76,7 +85,17 @@ export async function fetchAllMovies(): Promise<SeoMovieDocument[]> {
       .limit(sampleSize);
 
     if (error) throw new Error(`Error en muestra de prueba: ${error.message}`);
-    const valid = validateAndFilterRows(data ?? [], `muestra ${sampleSize}`, seenSlugs);
+    const valid = validateAndFilterRows(data ?? [], `muestra ${sampleSize}`, seenSlugs, duplicateErrors, invalidErrors);
+
+    if (duplicateErrors.length > 0) {
+      const details = duplicateErrors.map(d => `  - Slug "${d.slug}" (ID ${d.id} colisiona con ID ${d.firstId}) [${d.context}]`).join('\n');
+      throw new Error(`[SEO Build] Se detectaron ${duplicateErrors.length} slug(s) duplicados:\n${details}`);
+    }
+
+    if (invalidErrors.length > 0) {
+      throw new Error(`[SEO Build] Se detectaron ${invalidErrors.length} fila(s) con contrato inválido en la muestra.`);
+    }
+
     if (valid.length === 0 && (data?.length ?? 0) > 0) {
       throw new Error(`[SEO Build] Todas las filas de la muestra fallaron la validación de contrato.`);
     }
@@ -98,13 +117,23 @@ export async function fetchAllMovies(): Promise<SeoMovieDocument[]> {
     if (error) throw new Error(`Error al paginar movies (offset ${from}): ${error.message}`);
     if (!data || data.length === 0) break;
 
-    const validPage = validateAndFilterRows(data, `offset ${from}`, seenSlugs);
+    const validPage = validateAndFilterRows(data, `offset ${from}`, seenSlugs, duplicateErrors, invalidErrors);
     all = all.concat(validPage);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
 
+  if (duplicateErrors.length > 0) {
+    const details = duplicateErrors.map(d => `  - Slug "${d.slug}" (ID ${d.id} colisiona con ID ${d.firstId}) [${d.context}]`).join('\n');
+    throw new Error(`[SEO Build] Se detectaron ${duplicateErrors.length} slug(s) duplicados en la base de datos:\n${details}`);
+  }
+
+  if (invalidErrors.length > 0) {
+    throw new Error(`[SEO Build] Se detectaron ${invalidErrors.length} fila(s) con contrato inválido en la base de datos.`);
+  }
+
   return all;
 }
+
 
 

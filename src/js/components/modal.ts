@@ -8,8 +8,9 @@
 // =================================================================
 
 import "../../css/components/modal.css";
-import { openAccessibleModal, closeAccessibleModal } from "../ui.js";
+import { openAccessibleModal, closeAccessibleModal, setIsClosingModalViaHistory } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
+
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
 
@@ -793,8 +794,10 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
 
   // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
   if (!isPopstate && !suppressHistoryBack && window.history.state?.modalOpen) {
+    setIsClosingModalViaHistory();
     window.history.back();
   }
+
 
 
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
@@ -995,13 +998,54 @@ export function initQuickView(): void {
   // Teclado
   const handleKeydown = (e: KeyboardEvent) => {
     if (!modal.classList.contains("is-visible")) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
     if (e.key === "Escape") {
       e.stopPropagation(); // Detener para que no cierre el sidebar u otros elementos
       closeModal();
     }
-    else if (e.key === "ArrowLeft") navigateToSibling(-1);
-    else if (e.key === "ArrowRight") navigateToSibling(1);
+    else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      navigateToSibling(-1);
+    }
+    else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      navigateToSibling(1);
+    }
+    else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      e.stopPropagation();
+      const scrollTarget = window.innerWidth > 700
+        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        : content;
+      scrollTarget?.scrollBy({ top: 70, behavior: "smooth" });
+    }
+    else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      e.stopPropagation();
+      const scrollTarget = window.innerWidth > 700
+        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        : content;
+      scrollTarget?.scrollBy({ top: -70, behavior: "smooth" });
+    }
+    else if (e.key === "PageDown") {
+      e.preventDefault();
+      e.stopPropagation();
+      const scrollTarget = window.innerWidth > 700
+        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        : content;
+      scrollTarget?.scrollBy({ top: 250, behavior: "smooth" });
+    }
+    else if (e.key === "PageUp") {
+      e.preventDefault();
+      e.stopPropagation();
+      const scrollTarget = window.innerWidth > 700
+        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        : content;
+      scrollTarget?.scrollBy({ top: -250, behavior: "smooth" });
+    }
   };
+
 
   window.addEventListener("keydown", handleKeydown, { capture: true });
   modalUnsubscribers.push(() => {

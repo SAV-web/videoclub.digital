@@ -22,3 +22,8 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# generated sprites
+public/sprite.svg
+public/flags.svg
+

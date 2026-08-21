@@ -354,6 +354,18 @@ export function closeAccessibleModal(modal: HTMLElement | null, overlay: HTMLEle
   }
 }
 
+let isClosingModalViaHistory = false;
+
+export function setIsClosingModalViaHistory(): void {
+  isClosingModalViaHistory = true;
+}
+
+export function consumeIsClosingModalViaHistory(): boolean {
+  const was = isClosingModalViaHistory;
+  isClosingModalViaHistory = false;
+  return was;
+}
+
 export const isAuthModalOpen = (): boolean => {
   return Boolean(dom.authModal && !dom.authModal.hidden);
 };
@@ -362,6 +374,7 @@ export const closeAuthModal = (options?: { fromPopstate?: boolean } | Event): vo
   const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
   if (dom.authModal && !dom.authModal.hidden) {
     if (!isPopstate && window.history.state?.modalOpen) {
+      setIsClosingModalViaHistory();
       window.history.back();
     }
     dom.authModal.style.transform = "";
@@ -369,6 +382,7 @@ export const closeAuthModal = (options?: { fromPopstate?: boolean } | Event): vo
   }
   closeAccessibleModal(dom.authModal, dom.authOverlay);
 };
+
 
 export const openAuthModal = (): void => {
   if (!window.history.state?.modalOpen) {

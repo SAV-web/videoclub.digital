@@ -41,8 +41,10 @@ import {
   initThemeToggle,
   updateMobileStatusBar,
   isAuthModalOpen,
-  closeAuthModal
+  closeAuthModal,
+  consumeIsClosingModalViaHistory
 } from "./ui.js";
+
 
 import {
   getState,
@@ -1166,8 +1168,20 @@ export function init(): void {
       modalWasOpen = true;
     }
 
-    // Si había una modal abierta, el botón "Atrás" se consume exclusivamente para cerrarla sin alterar la página
-    if (modalWasOpen) {
+    // Si había una modal abierta o el popstate fue originado por un cierre de modal previo
+    if (modalWasOpen || consumeIsClosingModalViaHistory()) {
+      return;
+    }
+
+    // Comprobar si los parámetros reales de la URL han cambiado respecto al estado actual
+    const currentParams = stateToUrlParams(getActiveFilters(), getCurrentPage()).toString();
+    const incomingParams = new URLSearchParams(window.location.search);
+    incomingParams.delete("movie");
+    incomingParams.delete("m");
+    const normalizedIncomingQuery = incomingParams.toString();
+
+    // Si los filtros y página son exactamente los mismos, no recargar el grid
+    if (currentParams === normalizedIncomingQuery) {
       return;
     }
 
@@ -1175,6 +1189,7 @@ export function init(): void {
     appEvents.emit("updateSidebarUI");
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
   };
+
 
   window.addEventListener("popstate", handlePopState);
   mainUnsubscribers.push(() => window.removeEventListener("popstate", handlePopState));
