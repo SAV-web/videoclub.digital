@@ -47,6 +47,8 @@ export interface ExtendedMovie extends MappedMovie {
   titulo_bio?: string | null;
   countries?: { code: string; name: string };
   isPerson?: boolean;
+  hasBothRoles?: boolean;
+  currentRole?: 'director' | 'actor';
 }
 
 // --- Referencias DOM (Caché con Lazy Getter para máxima eficiencia) ---
@@ -716,6 +718,30 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     const biographyEl = cardClone.querySelector('[data-template="biography"]');
     if (biographyEl) {
       biographyEl.textContent = movie.biography || "Biografía no disponible en el catálogo.";
+    }
+
+    // Botón de alternancia de rol (Director <-> Actor)
+    const roleToggleBtn = cardClone.querySelector<HTMLButtonElement>('[data-template="role-toggle-btn"]');
+    const roleLetterEl = cardClone.querySelector<HTMLElement>('[data-template="role-badge-letter"]');
+
+    if (roleToggleBtn && roleLetterEl) {
+      if (movie.hasBothRoles) {
+        const isDirector = movie.currentRole === "director";
+        const targetRole = isDirector ? "actor" : "director";
+        const targetLetter = isDirector ? "A" : "D";
+        const tooltipText = isDirector
+          ? `Ver películas de ${movie.name} como Actor`
+          : `Ver películas de ${movie.name} como Director`;
+
+        roleLetterEl.textContent = targetLetter;
+        roleToggleBtn.title = tooltipText;
+        roleToggleBtn.setAttribute("aria-label", tooltipText);
+        roleToggleBtn.style.display = "flex";
+        roleToggleBtn.dataset.targetRole = targetRole;
+        roleToggleBtn.dataset.personName = movie.name;
+      } else {
+        roleToggleBtn.style.display = "none";
+      }
     }
 
     // Montaje

@@ -99,7 +99,7 @@ DROP FUNCTION IF EXISTS public.normalize_genre_text;
 -- =================================================================
 -- 2.4. GESTIÓN DE UPSERT EN STAGING (IMPORTACIÓN CSV)
 -- =================================================================
--- Trigger para transformar INSERTs duplicados en UPDATEs en movies_staging.
+-- Triggers para transformar INSERTs duplicados en UPDATEs en movies_staging y people_staging.
 -- Esto evita el error 23505 al importar CSVs con registros existentes.
 
 CREATE OR REPLACE FUNCTION public.handle_movies_staging_upsert()
@@ -148,6 +148,34 @@ DROP TRIGGER IF EXISTS on_movies_staging_upsert ON public.movies_staging;
 CREATE TRIGGER on_movies_staging_upsert
 BEFORE INSERT ON public.movies_staging
 FOR EACH ROW EXECUTE PROCEDURE public.handle_movies_staging_upsert();
+
+-- Trigger de UPSERT para people_staging
+CREATE OR REPLACE FUNCTION public.handle_people_staging_upsert()
+RETURNS TRIGGER LANGUAGE plpgsql
+SET search_path = public, extensions AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM public.people_staging WHERE id = NEW.id AND type = NEW.type) THEN
+        UPDATE public.people_staging SET
+            name = NEW.name,
+            name_norm = NEW.name_norm,
+            photo = NEW.photo,
+            birthday = NEW.birthday,
+            deathday = NEW.deathday,
+            place_of_birth = NEW.place_of_birth,
+            country_id = NEW.country_id,
+            titulo_bio = NEW.titulo_bio,
+            biography = NEW.biography
+        WHERE id = NEW.id AND type = NEW.type;
+        RETURN NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_people_staging_upsert ON public.people_staging;
+CREATE TRIGGER on_people_staging_upsert
+BEFORE INSERT ON public.people_staging
+FOR EACH ROW EXECUTE PROCEDURE public.handle_people_staging_upsert();
 
 -- =================================================================
 -- FUNCIÓN DE BÚSQUEDA OPTIMIZADA (v3.0 - Smart Counting)
@@ -620,27 +648,31 @@ USING ( auth.uid() = user_id )
 WITH CHECK ( auth.uid() = user_id );
 
 -- =================================================================
--- PASO 7: FUNCIÓN DE INGESTA (ETL) CON DENORMALIZACIÓN (v2.1 - Corregida para Columnas Generadas)
+-- PASO 7: FUNCIÓN DE INGESTA (ETL) DIFERENCIAL Y ESTABLE (v3.0)
 -- =================================================================
--- v2.1: Se simplifica drásticamente la FASE 4. La función ahora solo se
--- encarga de actualizar las columnas de texto `_list`. Las columnas `_tsv`
--- son ahora `GENERATED COLUMNS` en la propia tabla, por lo que PostgreSQL
--- las actualiza automáticamente cada vez que las columnas `_list` cambian.
--- Esto elimina el error "cannot update a generated column".
+-- v3.0: Pipeline diferencial idempotente:
+-- 1. Bloqueo transaccional con pg_advisory_xact_lock para evitar ejecuciones concurrentes.
+-- 2. Actualización diferencial de personas (actors y directors) desde people_staging (fotos, bios, fechas).
+-- 3. UPSERT diferencial en movies con detección de cambios mediante IS DISTINCT FROM.
+-- 4. Reconciliación diferencial de relaciones M:N sin DELETE ciego ni vaciado masivo.
+-- 5. Refresco concurrente de vistas materializadas.
 CREATE OR REPLACE FUNCTION public.process_staging_data()
  RETURNS void
  LANGUAGE plpgsql
- SET search_path = public, extensions
+ SET search_path TO 'public', 'extensions'
 AS $function$
 DECLARE
     sync_timestamp TIMESTAMP WITH TIME ZONE := NOW();
     affected_movie_ids INT[];
+    people_modified_count INT := 0;
 BEGIN
-    -- FASE 0, 1, 2 y 3 (SIN CAMBIOS)
-    -- ... (El código de inserción en catálogos, upsert de películas y reconstrucción de relaciones es correcto y no cambia)
-    -- (Asegúrate de tener las fases 0 a 3 aquí como estaban antes)
+    -- 1. BLOQUEO TRANSACCIONAL DE EXCLUSIÓN MUTUA
+    -- Evita que dos sincronizaciones de staging se ejecuten concurrentemente
+    PERFORM pg_advisory_xact_lock(hashtext('cinelog_staging_sync'));
 
-    -- FASE 0: POBLAR TABLAS DE CATÁLOGO (SIN LÓGICA DE PAÍSES)
+    -- =================================================================
+    -- FASE 0: POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE MOVIES_STAGING Y PEOPLE_STAGING
+    -- =================================================================
     INSERT INTO public.genres (name)
     SELECT DISTINCT TRIM(g.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(genre, ',')) AS g(name)
     WHERE genre IS NOT NULL AND TRIM(g.name) <> '' ON CONFLICT (name) DO NOTHING;
@@ -649,21 +681,77 @@ BEGIN
     SELECT DISTINCT TRIM(d.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(directors, ',')) AS d(name)
     WHERE directors IS NOT NULL AND TRIM(d.name) <> '' ON CONFLICT (name) DO NOTHING;
 
+    INSERT INTO public.directors (name)
+    SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
+    WHERE p.type = 'D' AND TRIM(p.name) <> '' ON CONFLICT (name) DO NOTHING;
+
     INSERT INTO public.actors (name)
     SELECT DISTINCT TRIM(a.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(actors, ',')) AS a(name)
     WHERE actors IS NOT NULL AND TRIM(a.name) <> '' AND actors <> '(A)' ON CONFLICT (name) DO NOTHING;
+
+    INSERT INTO public.actors (name)
+    SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
+    WHERE p.type = 'A' AND TRIM(p.name) <> '' ON CONFLICT (name) DO NOTHING;
     
-    -- Poblar Selections (si no existen, usando el código como nombre temporalmente)
     INSERT INTO public.selections (code, name)
     SELECT DISTINCT TRIM(s.code), TRIM(s.code) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(collection, ',')) AS s(code)
     WHERE collection IS NOT NULL AND TRIM(s.code) <> '' ON CONFLICT (code) DO NOTHING;
 
-    -- Poblar Studios (si no existen, usando el código como nombre temporalmente)
     INSERT INTO public.studios (code, name)
     SELECT DISTINCT TRIM(s.code), TRIM(s.code) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(studio, ',')) AS s(code)
     WHERE studio IS NOT NULL AND TRIM(s.code) <> '' ON CONFLICT (name) DO NOTHING;
 
-    -- FASE 1: UPSERT DE PELÍCULAS Y CAPTURA DE IDs AFECTADOS
+    -- =================================================================
+    -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPs, Fotos, Biografías)
+    -- =================================================================
+    -- Actualizar directores desde people_staging (sólo cambios reales)
+    UPDATE public.directors d
+    SET
+        photo = p.photo,
+        birthday = public.to_date_safe(p.birthday),
+        deathday = public.to_date_safe(p.deathday),
+        place_of_birth = p.place_of_birth,
+        country_id = c.id,
+        titulo_bio = p.titulo_bio,
+        biography = p.biography
+    FROM public.people_staging p
+    LEFT JOIN public.countries c ON c.name_norm = lower(trim(p.country_id)) OR lower(trim(c.name)) = lower(trim(p.country_id))
+    WHERE d.name = p.name AND p.type = 'D' AND (
+        d.photo IS DISTINCT FROM p.photo OR
+        d.birthday IS DISTINCT FROM public.to_date_safe(p.birthday) OR
+        d.deathday IS DISTINCT FROM public.to_date_safe(p.deathday) OR
+        d.place_of_birth IS DISTINCT FROM p.place_of_birth OR
+        d.country_id IS DISTINCT FROM c.id OR
+        d.titulo_bio IS DISTINCT FROM p.titulo_bio OR
+        d.biography IS DISTINCT FROM p.biography
+    );
+    GET DIAGNOSTICS people_modified_count = ROW_COUNT;
+
+    -- Actualizar actores desde people_staging (sólo cambios reales)
+    UPDATE public.actors a
+    SET
+        photo = p.photo,
+        birthday = public.to_date_safe(p.birthday),
+        deathday = public.to_date_safe(p.deathday),
+        place_of_birth = p.place_of_birth,
+        country_id = c.id,
+        titulo_bio = p.titulo_bio,
+        biography = p.biography
+    FROM public.people_staging p
+    LEFT JOIN public.countries c ON c.name_norm = lower(trim(p.country_id)) OR lower(trim(c.name)) = lower(trim(p.country_id))
+    WHERE a.name = p.name AND p.type = 'A' AND (
+        a.photo IS DISTINCT FROM p.photo OR
+        a.birthday IS DISTINCT FROM public.to_date_safe(p.birthday) OR
+        a.deathday IS DISTINCT FROM public.to_date_safe(p.deathday) OR
+        a.place_of_birth IS DISTINCT FROM p.place_of_birth OR
+        a.country_id IS DISTINCT FROM c.id OR
+        a.titulo_bio IS DISTINCT FROM p.titulo_bio OR
+        a.biography IS DISTINCT FROM p.biography
+    );
+
+    -- =================================================================
+    -- FASE 2: UPSERT DIFERENCIAL DE PELÍCULAS
+    -- =================================================================
     WITH upserted_movies AS (
         INSERT INTO public.movies (
             relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
@@ -716,111 +804,143 @@ BEGIN
     )
     SELECT array_agg(id) INTO affected_movie_ids FROM upserted_movies;
 
-    IF affected_movie_ids IS NULL THEN
-        RAISE NOTICE 'No movies were inserted or updated. Exiting function.';
-        RETURN;
+    -- =================================================================
+    -- FASE 3: RELACIONES DIFERENCIALES (SÓLO PARA PELÍCULAS AFECTADAS)
+    -- =================================================================
+    IF affected_movie_ids IS NOT NULL AND array_length(affected_movie_ids, 1) > 0 THEN
+        -- Inserción / actualización de relaciones
+        INSERT INTO public.movie_genres (movie_id, genre_id)
+        SELECT m.id, g.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS genre_name(name) JOIN public.genres g ON g.name = TRIM(genre_name.name)
+        WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, genre_id) DO NOTHING;
+
+        INSERT INTO public.movie_directors (movie_id, director_id, ordinality)
+        SELECT DISTINCT ON (m.id, d.id) m.id, d.id, director_name.ordinality FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) WITH ORDINALITY AS director_name(name, ordinality) JOIN public.directors d ON d.name = TRIM(director_name.name)
+        WHERE m.id = ANY(affected_movie_ids)
+        ORDER BY m.id, d.id, director_name.ordinality ASC ON CONFLICT (movie_id, director_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
+
+        INSERT INTO public.movie_actors (movie_id, actor_id, ordinality)
+        SELECT DISTINCT ON (m.id, a.id) m.id, a.id, actor_name.ordinality FROM public.movies_staging s
+        JOIN public.movies m ON TRIM(s.image) = m.image
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) WITH ORDINALITY AS actor_name(name, ordinality) JOIN public.actors a ON a.name = TRIM(actor_name.name)
+        WHERE m.id = ANY(affected_movie_ids) AND s.actors <> '(A)'
+        ORDER BY m.id, a.id, actor_name.ordinality ASC ON CONFLICT (movie_id, actor_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
+
+        INSERT INTO public.movie_selections (movie_id, selection_id)
+        SELECT m.id, c.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS sel_code(code) JOIN public.selections c ON c.code = TRIM(sel_code.code)
+        WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, selection_id) DO NOTHING;
+
+        INSERT INTO public.movie_studios (movie_id, studio_id)
+        SELECT m.id, st.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.studio, ',')) AS stu_code(code) JOIN public.studios st ON st.code = TRIM(stu_code.code)
+        WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, studio_id) DO NOTHING;
+
+        -- Eliminación de relaciones retiradas (sólo para las películas modificadas)
+        DELETE FROM public.movie_genres mg
+        WHERE mg.movie_id = ANY(affected_movie_ids)
+          AND NOT EXISTS (
+            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS g_name(name) JOIN public.genres g ON g.name = TRIM(g_name.name)
+            WHERE m.id = mg.movie_id AND g.id = mg.genre_id
+          );
+
+        DELETE FROM public.movie_directors md
+        WHERE md.movie_id = ANY(affected_movie_ids)
+          AND NOT EXISTS (
+            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) AS d_name(name) JOIN public.directors d ON d.name = TRIM(d_name.name)
+            WHERE m.id = md.movie_id AND d.id = md.director_id
+          );
+
+        DELETE FROM public.movie_actors ma
+        WHERE ma.movie_id = ANY(affected_movie_ids)
+          AND NOT EXISTS (
+            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) AS a_name(name) JOIN public.actors a ON a.name = TRIM(a_name.name)
+            WHERE m.id = ma.movie_id AND a.id = ma.actor_id
+          );
+
+        DELETE FROM public.movie_selections ms
+        WHERE ms.movie_id = ANY(affected_movie_ids)
+          AND NOT EXISTS (
+            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS s_code(code) JOIN public.selections sel ON sel.code = TRIM(s_code.code)
+            WHERE m.id = ms.movie_id AND sel.id = ms.selection_id
+          );
+
+        DELETE FROM public.movie_studios mst
+        WHERE mst.movie_id = ANY(affected_movie_ids)
+          AND NOT EXISTS (
+            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.studio, ',')) AS stu_code(code) JOIN public.studios stu ON stu.code = TRIM(stu_code.code)
+            WHERE m.id = mst.movie_id AND stu.id = mst.studio_id
+          );
+
+        -- Reagregación de listas denormalizadas en movies
+        WITH aggregated_data AS (
+            SELECT
+                m.id,
+                STRING_AGG(DISTINCT g.name, ', ' ORDER BY g.name) AS genres,
+                (
+                    SELECT STRING_AGG(director_name, ', ' ORDER BY ordinality)
+                    FROM (
+                        SELECT DISTINCT ON (d.name) d.name as director_name, md.ordinality
+                        FROM public.movie_directors md
+                        JOIN public.directors d ON md.director_id = d.id
+                        WHERE md.movie_id = m.id
+                        ORDER BY d.name, md.ordinality
+                    ) AS unique_directors
+                ) AS directors,
+                STRING_AGG(DISTINCT sel.code, ',') AS selections,
+                STRING_AGG(DISTINCT stu.code, ',') AS studios,
+                (
+                    SELECT STRING_AGG(actor_name, ', ' ORDER BY ordinality)
+                    FROM (
+                        SELECT DISTINCT ON (a.name) a.name as actor_name, ma.ordinality
+                        FROM public.movie_actors ma
+                        JOIN public.actors a ON ma.actor_id = a.id
+                        WHERE ma.movie_id = m.id
+                        ORDER BY a.name, ma.ordinality
+                    ) AS unique_actors
+                ) AS actors
+            FROM public.movies m
+            LEFT JOIN public.movie_genres mg ON m.id = mg.movie_id
+            LEFT JOIN public.genres g ON mg.genre_id = g.id
+            LEFT JOIN public.movie_directors md ON m.id = md.movie_id
+            LEFT JOIN public.directors d ON md.director_id = d.id
+            LEFT JOIN public.movie_selections ms ON m.id = ms.movie_id
+            LEFT JOIN public.selections sel ON ms.selection_id = sel.id
+            LEFT JOIN public.movie_studios mst ON m.id = mst.movie_id
+            LEFT JOIN public.studios stu ON mst.studio_id = stu.id
+            WHERE m.id = ANY(affected_movie_ids)
+            GROUP BY m.id
+        )
+        UPDATE public.movies m
+        SET
+            genres_list = ad.genres,
+            directors_list = ad.directors,
+            actors_list = ad.actors,
+            selections_list = ad.selections,
+            studios_list = ad.studios
+        FROM aggregated_data ad
+        WHERE m.id = ad.id;
     END IF;
 
-    -- FASE 2: BORRADO DE RELACIONES ANTIGUAS
-    DELETE FROM public.movie_genres WHERE movie_id = ANY(affected_movie_ids);
-    DELETE FROM public.movie_directors WHERE movie_id = ANY(affected_movie_ids);
-    DELETE FROM public.movie_actors WHERE movie_id = ANY(affected_movie_ids);
-    DELETE FROM public.movie_selections WHERE movie_id = ANY(affected_movie_ids);
-    DELETE FROM public.movie_studios WHERE movie_id = ANY(affected_movie_ids);
+    -- =================================================================
+    -- FASE 4: REFRESCO CONCURRENTE DE VISTAS MATERIALIZADAS
+    -- =================================================================
+    REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_actor_suggestions;
+    REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_director_suggestions;
+    REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_title_suggestions;
 
-    -- FASE 3: RECONSTRUCCIÓN DE RELACIONES NUEVAS
-    INSERT INTO public.movie_genres (movie_id, genre_id)
-    SELECT m.id, g.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS genre_name(name) JOIN public.genres g ON g.name = TRIM(genre_name.name)
-    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT DO NOTHING;
-
-    INSERT INTO public.movie_directors (movie_id, director_id, ordinality)
-    SELECT DISTINCT ON (m.id, d.id) m.id, d.id, director_name.ordinality FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) WITH ORDINALITY AS director_name(name, ordinality) JOIN public.directors d ON d.name = TRIM(director_name.name)
-    WHERE m.id = ANY(affected_movie_ids)
-    ORDER BY m.id, d.id, director_name.ordinality ASC ON CONFLICT (movie_id, director_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
-
-    INSERT INTO public.movie_actors (movie_id, actor_id, ordinality)
-    SELECT DISTINCT ON (m.id, a.id) m.id, a.id, actor_name.ordinality FROM public.movies_staging s
-    JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) WITH ORDINALITY AS actor_name(name, ordinality) JOIN public.actors a ON a.name = TRIM(actor_name.name)
-    WHERE m.id = ANY(affected_movie_ids) AND s.actors <> '(A)'
-    ORDER BY m.id, a.id, actor_name.ordinality ASC ON CONFLICT (movie_id, actor_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
-
-    INSERT INTO public.movie_selections (movie_id, selection_id)
-    SELECT m.id, c.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS sel_code(code) JOIN public.selections c ON c.code = TRIM(sel_code.code)
-    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, selection_id) DO NOTHING;
-
-    INSERT INTO public.movie_studios (movie_id, studio_id)
-    SELECT m.id, st.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-    CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.studio, ',')) AS stu_code(code) JOIN public.studios st ON st.code = TRIM(stu_code.code)
-    WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, studio_id) DO NOTHING;
-
-    -- ==========================================================
-    --  ▼▼▼ FASE 4: DESNORMALIZACIÓN (SIMPLIFICADA) ▼▼▼
-    -- ==========================================================
-    WITH aggregated_data AS (
-        SELECT
-            m.id,
-            STRING_AGG(DISTINCT g.name, ', ' ORDER BY g.name) AS genres,
-            (
-                SELECT STRING_AGG(director_name, ', ' ORDER BY ordinality)
-                FROM (
-                    SELECT DISTINCT ON (d.name) d.name as director_name, md.ordinality
-                    FROM public.movie_directors md
-                    JOIN public.directors d ON md.director_id = d.id
-                    WHERE md.movie_id = m.id
-                    ORDER BY d.name, md.ordinality
-                ) AS unique_directors
-            ) AS directors,
-            STRING_AGG(DISTINCT sel.code, ',') AS selections,
-            STRING_AGG(DISTINCT stu.code, ',') AS studios,
-            (
-                SELECT STRING_AGG(actor_name, ', ' ORDER BY ordinality)
-                FROM (
-                    SELECT DISTINCT ON (a.name) a.name as actor_name, ma.ordinality
-                    FROM public.movie_actors ma
-                    JOIN public.actors a ON ma.actor_id = a.id
-                    WHERE ma.movie_id = m.id
-                    ORDER BY a.name, ma.ordinality
-                ) AS unique_actors
-            ) AS actors
-        FROM public.movies m
-        LEFT JOIN public.movie_genres mg ON m.id = mg.movie_id
-        LEFT JOIN public.genres g ON mg.genre_id = g.id
-        LEFT JOIN public.movie_directors md ON m.id = md.movie_id
-        LEFT JOIN public.directors d ON md.director_id = d.id
-        LEFT JOIN public.movie_selections ms ON m.id = ms.movie_id
-        LEFT JOIN public.selections sel ON ms.selection_id = sel.id
-        LEFT JOIN public.movie_studios mst ON m.id = mst.movie_id
-        LEFT JOIN public.studios stu ON mst.studio_id = stu.id
-        WHERE m.id = ANY(affected_movie_ids)
-        GROUP BY m.id
-    )
-    -- Ahora, solo actualizamos las columnas de texto `_list`.
-    -- La base de datos se encargará de actualizar las columnas `_tsv` automáticamente.
-    UPDATE public.movies m
-    SET
-        genres_list = ad.genres,
-        directors_list = ad.directors,
-        actors_list = ad.actors,
-        selections_list = ad.selections,
-        studios_list = ad.studios
-    FROM aggregated_data ad
-    WHERE m.id = ad.id;
-
-    -- FASE 5: REFRESCO DE VISTAS MATERIALIZADAS
-    -- Se usa CONCURRENTLY para no bloquear lecturas durante la actualización.
-    -- Requiere índices únicos creados en el paso 5.
-    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_actor_suggestions;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_director_suggestions;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_title_suggestions;
-
-    -- FASE 6: ACTUALIZACIÓN DE ESTADÍSTICAS
-    -- Crítico para que el planificador use los índices correctamente tras la carga masiva.
+    -- =================================================================
+    -- FASE 5: ACTUALIZACIÓN DE ESTADÍSTICAS DEL OPTIMIZADOR
+    -- =================================================================
     ANALYZE public.movies;
-
+    ANALYZE public.actors;
+    ANALYZE public.directors;
 END;
 $function$;
 

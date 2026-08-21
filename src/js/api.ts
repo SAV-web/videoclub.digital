@@ -479,26 +479,40 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
   }
 
   const table = type === 'director' ? 'directors' : 'actors';
+  const otherTable = type === 'director' ? 'actors' : 'directors';
+  const nameNorm = normalizeText(name);
 
   try {
     const supabase = await getSupabase();
 
-    const { data, error } = await supabase
-      .from(table)
-      .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
-      .eq('name_norm', normalizeText(name))
-      .single();
+    const [primaryRes, otherRes] = await Promise.all([
+      supabase
+        .from(table)
+        .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
+        .eq('name_norm', nameNorm)
+        .single(),
+      supabase
+        .from(otherTable)
+        .select('id')
+        .eq('name_norm', nameNorm)
+        .limit(1)
+    ]);
 
-
-    if (error || !data) {
-      if (error && import.meta.env.DEV) {
-        console.warn(`[API] Error al cargar detalles de la persona (${type}: ${name}):`, error);
+    if (primaryRes.error || !primaryRes.data) {
+      if (primaryRes.error && import.meta.env.DEV) {
+        console.warn(`[API] Error al cargar detalles de la persona (${type}: ${name}):`, primaryRes.error);
       }
       personCache.set(key, NOT_FOUND);
       return null;
     }
 
-    const personData = data as unknown as PersonDetails;
+    const hasBothRoles = !otherRes.error && Array.isArray(otherRes.data) && otherRes.data.length > 0;
+    const personData: PersonDetails = {
+      ...(primaryRes.data as unknown as PersonDetails),
+      hasBothRoles,
+      currentRole: type
+    };
+
     personCache.set(key, personData);
     return personData;
   } catch (e) {

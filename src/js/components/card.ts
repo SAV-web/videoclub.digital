@@ -444,6 +444,22 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   const isPerson = card.classList.contains('person-card');
   const target = event.target as HTMLElement;
 
+  // 0. Botón de alternancia de rol en VIP (Director <-> Actor)
+  const roleToggleBtn = target.closest<HTMLElement>('.person-role-toggle-btn');
+  if (roleToggleBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    const targetRole = roleToggleBtn.dataset.targetRole;
+    const personName = roleToggleBtn.dataset.personName;
+    if (targetRole && personName) {
+      if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+        import("./modal.js").then(({ closeModal }) => closeModal());
+      }
+      appEvents.emit("filter:apply", { type: targetRole, value: personName });
+    }
+    return;
+  }
+
   // 1. Botones de Acción
   const watchlistBtn = target.closest<HTMLElement>('[data-action="toggle-watchlist"]');
   if (watchlistBtn) {
@@ -1102,6 +1118,30 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const biographyEl = card.querySelector('[data-template="biography"]');
   if (biographyEl) {
     biographyEl.textContent = person.biography || "Biografía no disponible en el catálogo.";
+  }
+
+  // Botón de alternancia de rol (Director <-> Actor)
+  const roleToggleBtn = card.querySelector<HTMLButtonElement>('[data-template="role-toggle-btn"]');
+  const roleLetterEl = card.querySelector<HTMLElement>('[data-template="role-badge-letter"]');
+
+  if (roleToggleBtn && roleLetterEl) {
+    if (person.hasBothRoles) {
+      const isDirector = person.currentRole === "director";
+      const targetRole = isDirector ? "actor" : "director";
+      const targetLetter = isDirector ? "A" : "D";
+      const tooltipText = isDirector
+        ? `Ver películas de ${person.name} como Actor`
+        : `Ver películas de ${person.name} como Director`;
+
+      roleLetterEl.textContent = targetLetter;
+      roleToggleBtn.title = tooltipText;
+      roleToggleBtn.setAttribute("aria-label", tooltipText);
+      roleToggleBtn.style.display = "flex";
+      roleToggleBtn.dataset.targetRole = targetRole;
+      roleToggleBtn.dataset.personName = person.name;
+    } else {
+      roleToggleBtn.style.display = "none";
+    }
   }
 
   return clone;

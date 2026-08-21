@@ -827,6 +827,14 @@
     display: none !important;
   }
 
+  & .person-role-toggle-btn {
+    bottom: 12px !important;
+    right: 12px !important;
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 1rem !important;
+  }
+
   /* Estructura alineada al modal de películas en escritorio con reparto 40%/60% */
   @media (min-width: 701px) {
     & .flip-card-inner {

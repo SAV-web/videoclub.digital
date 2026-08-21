@@ -1255,6 +1255,59 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   opacity: 0.4;
 }
 
+/* Botón de alternancia de rol (Director / Actor) */
+.person-role-toggle-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-surface, #1e1e1e);
+  color: var(--color-accent);
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  font-weight: var(--font-weight-extrabold, 800);
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  transition: transform var(--duration-quick) var(--ease-spring), background var(--duration-fast) ease, color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+
+  &:hover {
+    transform: scale(1.18);
+    background: var(--color-accent);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px var(--color-accent);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus), 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:where(html.dark-mode) .person-role-toggle-btn {
+  background: #141414;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+
+  &:hover {
+    background: var(--color-accent);
+    color: #141414;
+  }
+}
+
 /* Centrado vertical de la información en fichas de Selección y Estudio */
 .collection-card .movie-summary {
   position: relative;

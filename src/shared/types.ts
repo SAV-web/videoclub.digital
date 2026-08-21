@@ -169,6 +169,8 @@ export interface PersonDetails {
   biography: string | null;
   titulo_bio: string | null;
   countries: { name: string; code: string } | null;
+  hasBothRoles?: boolean;
+  currentRole?: 'director' | 'actor';
 }
 
 export interface VipData {
