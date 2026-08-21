@@ -81,11 +81,12 @@
   aspect-ratio: 500 / 950;
   border-radius: var(--radius-xl);
 
-  /* Aislamiento de layout y estilo para rendimiento sin recortar outlines, sombras o 3D */
-  contain: layout style;
-  /* Renderizado perezoso optimizado (Chromium) con tamaño intrínseco estimado */
+  /* Aislamiento para evitar repintados en el resto de la página */
+  contain: layout paint style;
+  /* Renderizado perezoso hiper-optimizado (Chromium) */
+
   content-visibility: auto;
-  contain-intrinsic-size: auto 380px;
+
 
 
   /* Animación de entrada escalonada (Staggered) */
