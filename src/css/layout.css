@@ -92,19 +92,18 @@ body.sidebar-is-open .sidebar {
 /* --- 4. LA CUADRÍCULA (El muro de películas) --- */
 
 .grid-container {
-  display: grid; justify-content: center; gap: var(--space-xs);
+  display: grid; justify-content: center; gap: var(--space-sm);
   contain: layout; /* Evita que el navegador recalcule todo si algo cambia dentro */
-  grid-template-columns: repeat(2, minmax(0, 1fr)); /* Móvil por defecto: 2 columnas compactas */
+  grid-template-columns: repeat(2, 1fr); /* Móvil por defecto: 2 columnas */
 
   &.is-fetching { opacity: 0.6; pointer-events: none; cursor: wait; transition: opacity 0.2s ease-out; }
   
-  @media (min-width: 440px) { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: var(--space-sm); }
-  @media (min-width: 600px) { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-md); }
+  @media (min-width: 400px) { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: var(--space-md); }
 }
 
 /* Modo Muro (Tarjetas pequeñas que no giran) */
 :where(body.rotation-disabled) .grid-container {
-  grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--space-xxs) + 3px) calc(var(--space-xs) + 3px);
+  grid-template-columns: repeat(3, 1fr); gap: calc(var(--space-xxs) + 3px) calc(var(--space-xs) + 3px);
   @media (min-width: 400px) { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); }
 }
 

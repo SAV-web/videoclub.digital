@@ -80,15 +80,13 @@
   /* Contexto de apilamiento local */
   aspect-ratio: 500 / 950;
   border-radius: var(--radius-xl);
-  width: 100%;
-  max-width: 220px;
-  margin-inline: auto;
 
   /* Aislamiento de layout y estilo para rendimiento sin recortar outlines, sombras o 3D */
   contain: layout style;
   /* Renderizado perezoso optimizado (Chromium) con tamaño intrínseco estimado */
   content-visibility: auto;
-  contain-intrinsic-size: auto 340px;
+  contain-intrinsic-size: auto 380px;
+
 
   /* Animación de entrada escalonada (Staggered) */
   animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
