@@ -18,9 +18,9 @@
 /* --- 3. COMPONENTES (Estructura Micro: UI Específica) --- */
 @import "components/button.css";
 @import "components/auth.css"; /* Modal de autenticación eager para evitar FOUC */
+@import "components/modal.css"; /* Modal de vista rápida eager para evitar FOUC y renderizado sin estilos */
 @import "components/card.css";
 @import "components/header.css"; /* Estilos internos del header */
-/* modal.css se importa dinámicamente en modal.ts para Code-Splitting sin FOUC */
 @import "components/rating.css"; /* Sistema de estrellas reutilizable */
 @import "components/sidebar.css"; /* Mantenido eager para prevenir FOUC en recarga inicial */
 @import "components/ui.css";

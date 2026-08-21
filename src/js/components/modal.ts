@@ -7,7 +7,7 @@
 //  RESPONSABILIDAD: Gestión de vista detallada, navegación y gestos.
 // =================================================================
 
-import "../../css/components/modal.css";
+// modal.css se importa de forma eager en main.css para prevenir FOUC
 import { openAccessibleModal, closeAccessibleModal, setIsClosingModalViaHistory } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
 
