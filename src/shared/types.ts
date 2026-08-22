@@ -171,6 +171,7 @@ export interface PersonDetails {
   countries: { name: string; code: string } | null;
   hasBothRoles?: boolean;
   currentRole?: 'director' | 'actor';
+  components?: string | null;
 }
 
 export interface VipData {

@@ -37,59 +37,59 @@ RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
 SET search_path = public, extensions AS $$ BEGIN RETURN replace(v_input, ',', '.')::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
 
 -- =================================================================
--- 2.0. MODIFICACIONES DE ESQUEMA (Soporte de orden para directores)
+-- =================================================================
+-- 2.0. MODIFICACIONES DE ESQUEMA (Soporte de orden, biografías y componentes)
 -- =================================================================
 ALTER TABLE public.movie_directors ADD COLUMN IF NOT EXISTS ordinality smallint;
 ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS titulo_bio text;
+ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS components text;
 ALTER TABLE public.actors ADD COLUMN IF NOT EXISTS titulo_bio text;
 ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS titulo_bio text;
 ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS biography text;
+ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS components text;
 
 -- =================================================================
--- 2.1. GARANTÍA DE COLUMNAS GENERADAS (Fix Crítico ETL)
+-- 2.1. GARANTÍA DE COLUMNAS GENERADAS (Seguras e Idempotentes)
 -- =================================================================
--- Aseguramos que los vectores de búsqueda (_tsv) sean columnas generadas
--- y no simples DEFAULT. Esto garantiza que se actualicen automáticamente
--- cuando el ETL modifique las columnas de texto (_list).
--- Nota: Al recrearlas como STORED, Postgres recalculará los datos existentes.
+-- Aseguramos que los vectores de búsqueda (_tsv) sean columnas generadas STORED.
+-- Verificamos su existencia para evitar bloqueos exclusivos destructivos (AccessExclusiveLock).
 
 -- 2.1.1. Modificación de Tabla Genres (Sinónimos)
 ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS synonyms text[] DEFAULT '{}';
 CREATE INDEX IF NOT EXISTS genres_synonyms_idx ON public.genres USING GIN(synonyms);
 
--- 2.1.2. Columnas Generadas en Movies
-ALTER TABLE public.movies DROP COLUMN IF EXISTS genres_tsv;
-ALTER TABLE public.movies ADD COLUMN genres_tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', replace(public.unaccent_immutable(lower(genres_list)), 'sci-fi', 'scifi'))) STORED;
+-- 2.1.2. Columnas Generadas en Movies y Genres (Idempotente)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'genres_tsv') THEN
+        ALTER TABLE public.movies ADD COLUMN genres_tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', replace(public.unaccent_immutable(lower(genres_list)), 'sci-fi', 'scifi'))) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'directors_tsv') THEN
+        ALTER TABLE public.movies ADD COLUMN directors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(directors_list))) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'actors_tsv') THEN
+        ALTER TABLE public.movies ADD COLUMN actors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(actors_list))) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'selections_tsv') THEN
+        ALTER TABLE public.movies ADD COLUMN selections_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(selections_list))) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'studios_tsv') THEN
+        ALTER TABLE public.movies ADD COLUMN studios_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(studios_list))) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'avg_rating') THEN
+        ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
+            CASE
+                WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.5) + (imdb_rating - 0.3)) / 2.0
+                ELSE NULL
+            END
+        ) STORED;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'genres' AND column_name = 'name_norm') THEN
+        ALTER TABLE public.genres ADD COLUMN name_norm text GENERATED ALWAYS AS (replace(public.unaccent_immutable(lower(name)), 'sci-fi', 'scifi')) STORED;
+    END IF;
+END $$;
 
-ALTER TABLE public.movies DROP COLUMN IF EXISTS directors_tsv;
-ALTER TABLE public.movies ADD COLUMN directors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(directors_list))) STORED;
-
-ALTER TABLE public.movies DROP COLUMN IF EXISTS actors_tsv;
-ALTER TABLE public.movies ADD COLUMN actors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(actors_list))) STORED;
-
-ALTER TABLE public.movies DROP COLUMN IF EXISTS selections_tsv;
-ALTER TABLE public.movies ADD COLUMN selections_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(selections_list))) STORED;
-
-ALTER TABLE public.movies DROP COLUMN IF EXISTS studios_tsv;
-ALTER TABLE public.movies ADD COLUMN studios_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(studios_list))) STORED;
-
--- 2.2. COLUMNA DE PROMEDIO CALCULADO (NUEVO)
--- Calcula automáticamente la nota media usando la lógica de negocio
-ALTER TABLE public.movies DROP COLUMN IF EXISTS avg_rating;
-ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
-    CASE
-        WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.5) + (imdb_rating - 0.3)) / 2.0
-        ELSE NULL
-    END
-) STORED;
-
--- 2.3. CORRECCIÓN DE GÉNEROS (Sci-Fi -> scifi)
--- Redefinimos la columna generada para que normalice automáticamente 'Sci-Fi' a 'scifi'
--- Usamos CASCADE para eliminar índices dependientes (se recrearán en el PASO 5)
-ALTER TABLE public.genres DROP COLUMN IF EXISTS name_norm CASCADE;
-ALTER TABLE public.genres ADD COLUMN name_norm text GENERATED ALWAYS AS (replace(public.unaccent_immutable(lower(name)), 'sci-fi', 'scifi')) STORED;
-
--- 2.4. ELIMINAR COLUMNAS OBSOLETAS (Crítica eliminada de la UI)
+-- 2.2. ELIMINAR COLUMNAS OBSOLETAS (Crítica eliminada de la UI)
 ALTER TABLE public.movies DROP COLUMN IF EXISTS critic;
 ALTER TABLE public.movies_staging DROP COLUMN IF EXISTS critic;
 
@@ -164,7 +164,8 @@ BEGIN
             place_of_birth = NEW.place_of_birth,
             country_id = NEW.country_id,
             titulo_bio = NEW.titulo_bio,
-            biography = NEW.biography
+            biography = NEW.biography,
+            components = NEW.components
         WHERE id = NEW.id AND type = NEW.type;
         RETURN NULL;
     END IF;
@@ -189,43 +190,47 @@ DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer
 DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean);
 
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
-    search_term text,
-    genre_name text,
-    p_year_start integer,
-    p_year_end integer,
-    country_name text,
-    p_country_codes text[], -- NUEVO: Array de códigos ISO para regiones
-    director_name text,
-    actor_name text,
-    media_type text,
-    p_selection_code text,
-    p_studio_code text,
-    excluded_genres text[],
-    excluded_countries text[],
-    sort_field text,
-    sort_direction text,
-    page_limit integer,
-    page_offset integer,
-    get_count boolean DEFAULT true -- NUEVO PARÁMETRO
+    search_term text DEFAULT NULL::text,
+    genre_name text DEFAULT NULL::text,
+    p_year_start integer DEFAULT NULL::integer,
+    p_year_end integer DEFAULT NULL::integer,
+    country_name text DEFAULT NULL::text,
+    p_country_codes text[] DEFAULT NULL::text[],
+    director_name text DEFAULT NULL::text,
+    actor_name text DEFAULT NULL::text,
+    media_type text DEFAULT 'all'::text,
+    p_selection_code text DEFAULT NULL::text,
+    p_studio_code text DEFAULT NULL::text,
+    excluded_genres text[] DEFAULT NULL::text[],
+    excluded_countries text[] DEFAULT NULL::text[],
+    sort_field text DEFAULT 'relevance'::text,
+    sort_direction text DEFAULT 'asc'::text,
+    page_limit integer DEFAULT 50,
+    page_offset integer DEFAULT 0,
+    get_count boolean DEFAULT true
 )
 RETURNS json
-LANGUAGE plpgsql STABLE PARALLEL SAFE
-SET search_path = public, extensions AS $function$
+LANGUAGE plpgsql
+STABLE
+SET search_path = public, extensions
+AS $function$
 DECLARE
     v_query TEXT;
     v_order_clause TEXT;
     v_count_cte TEXT;
     v_count_select TEXT;
     v_json_result JSON;
-    v_country_ids INT[]; -- CAMBIO: Ahora es un array de IDs
+    v_country_ids INT[];
     v_excluded_country_ids INT[];
     v_safe_sort_direction TEXT;
     v_safe_sort_field TEXT;
     v_limit INT;
     v_offset INT;
-    v_genre_search TEXT; -- Variable para búsqueda de género resuelta
+    v_genre_search TEXT;
+    v_director_tsquery tsquery;
+    v_actor_tsquery tsquery;
 BEGIN
-    -- FASE 1: VALIDACIÓN (Igual que antes)
+    -- FASE 1: VALIDACIÓN
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
         v_safe_sort_direction := 'ASC';
     ELSE
@@ -247,33 +252,23 @@ BEGIN
         ELSE 'ORDER BY m.relevance ASC'
     END;
 
-    -- Validación de Paginación (Blindaje)
+    -- Validación de Paginación
     v_limit := COALESCE(page_limit, 50);
     v_offset := COALESCE(page_offset, 0);
 
-    -- FASE 1.5: VALIDACIÓN DE TÉRMINO DE BÚSQUEDA (Protección GIN)
-    -- Los índices trigrama requieren al menos 3 caracteres. Evitamos Seq Scan devolviendo vacío.
+    -- FASE 1.5: VALIDACIÓN DE TÉRMINO DE BÚSQUEDA
     IF search_term IS NOT NULL AND length(TRIM(search_term)) > 0 AND length(TRIM(search_term)) < 3 THEN
         RETURN json_build_object('total', 0, 'items', '[]'::json);
     END IF;
 
-    -- FASE 2: PRE-PROCESAMIENTO (Igual que antes)
-    -- Lógica de Regiones (Prioridad Alta: Búsqueda exacta por código)
+    -- FASE 2: PRE-PROCESAMIENTO DE PAÍSES
     IF p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0 THEN
-        -- FIX: Búsqueda insensible a mayúsculas/minúsculas para robustez
         SELECT array_agg(c.id) INTO v_country_ids FROM public.countries c WHERE lower(c.code) = ANY(SELECT lower(x) FROM unnest(p_country_codes) x);
         IF v_country_ids IS NULL THEN v_country_ids := '{}'; END IF;
-
-    -- Lógica de Nombre (Legacy/Búsqueda texto)
     ELSIF country_name IS NOT NULL AND country_name != '' THEN
-        -- CAMBIO: Soporte para múltiples países (Nombre O Código)
         SELECT array_agg(c.id) INTO v_country_ids FROM public.countries c 
         WHERE c.name_norm = ANY(SELECT public.unaccent_immutable(lower(x)) FROM unnest(string_to_array(country_name, ',')) x)
            OR c.code = ANY(SELECT upper(x) FROM unnest(string_to_array(country_name, ',')) x);
-           
-        -- FIX CRÍTICO: Si no hay coincidencias, array_agg devuelve NULL.
-        -- Si v_country_ids es NULL, el filtro ($5 IS NULL) se evalúa a TRUE y devuelve TODO.
-        -- Forzamos un array vacío para que el filtro (m.country_id = ANY('{}')) devuelva 0 resultados.
         IF v_country_ids IS NULL THEN
             v_country_ids := '{}';
         END IF;
@@ -285,8 +280,7 @@ BEGIN
         );
     END IF;
 
-    -- FASE 3: LÓGICA CONDICIONAL DE CONTEO (NUEVO)
-    -- Si get_count es true, calculamos el total. Si no, devolvemos -1.
+    -- FASE 3: LÓGICA CONDICIONAL DE CONTEO
     IF get_count THEN
         v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
         v_count_select := '(SELECT value FROM total)';
@@ -296,21 +290,43 @@ BEGIN
     END IF;
 
     -- FASE 3.5: RESOLUCIÓN DE SINÓNIMOS DE GÉNERO
-    -- Buscamos el nombre canónico (name_norm) basándonos en el input (nombre o sinónimo)
     IF genre_name IS NOT NULL AND genre_name != '' THEN
         SELECT string_agg(name_norm, ' | ') INTO v_genre_search 
         FROM public.genres 
         WHERE public.unaccent_immutable(lower(name)) = public.unaccent_immutable(lower(genre_name))
            OR public.unaccent_immutable(lower(genre_name)) = ANY(synonyms);
            
-        -- Si no encontramos coincidencia en DB, usamos el término original normalizado como fallback
         IF v_genre_search IS NULL THEN v_genre_search := replace(public.unaccent_immutable(lower(genre_name)), 'sci-fi', 'scifi'); END IF;
+    END IF;
+
+    -- FASE 3.6: RESOLUCIÓN DE DIRECTORES (INCLUYENDO PAREJAS / COMPONENTES)
+    IF director_name IS NOT NULL AND TRIM(director_name) != '' THEN
+        SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(d_name) || '"')::text, ' | ')::tsquery
+        INTO v_director_tsquery
+        FROM (
+            SELECT d.name AS d_name
+            FROM public.directors d
+            WHERE d.name_norm = public.unaccent_immutable(lower(director_name))
+               OR (
+                   d.components IS NOT NULL AND EXISTS (
+                       SELECT 1 
+                       FROM unnest(string_to_array(d.components, ',')) comp(name)
+                       WHERE public.unaccent_immutable(lower(trim(comp.name))) = public.unaccent_immutable(lower(director_name))
+                   )
+               )
+            UNION
+            SELECT director_name
+        ) alias_dirs;
+    END IF;
+
+    -- FASE 3.7: PREPARACIÓN DE ACTOR
+    IF actor_name IS NOT NULL AND TRIM(actor_name) != '' THEN
+        v_actor_tsquery := websearch_to_tsquery('simple', '"' || public.unaccent_immutable(actor_name) || '"');
     END IF;
 
     -- FASE 4: CONSTRUCCIÓN DE CONSULTA
     v_query := '
         WITH filtered_movies AS (
-            -- OPTIMIZACIÓN LATE ROW LOOKUP: Extraemos temporalmente lo necesario para ordenar
             SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance
             FROM public.movies m
             WHERE
@@ -318,9 +334,9 @@ BEGIN
                 AND ($2 IS NULL OR $2 = '''' OR m.genres_tsv @@ to_tsquery(''spanish'', regexp_replace($2, ''[^a-zA-Z0-9]+'', '':*&'', ''g'') || '':*''))
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
-                AND ($5 IS NULL OR m.country_id = ANY($5)) -- CAMBIO: Comparación con array (ANY)
-                AND ($6 IS NULL OR public.unaccent_immutable(m.directors_list) ~* (''(^|,)\s*'' || regexp_replace(public.unaccent_immutable($6), ''([()\[\]{}*+?^$|\\.-])'', ''\\\1'', ''g'') || ''\s*(,|$)''))
-                AND ($7 IS NULL OR public.unaccent_immutable(m.actors_list) ~* (''(^|,)\s*'' || regexp_replace(public.unaccent_immutable($7), ''([()\[\]{}*+?^$|\\.-])'', ''\\\1'', ''g'') || ''\s*(,|$)''))
+                AND ($5 IS NULL OR m.country_id = ANY($5))
+                AND ($6 IS NULL OR m.directors_tsv @@ $6)
+                AND ($7 IS NULL OR m.actors_tsv @@ $7)
                 AND ($8 IS NULL OR $8 = ''all''
                      OR ($8 = ''movies'' AND (m.type IS NULL OR m.type NOT ILIKE ''S%''))
                      OR ($8 = ''series'' AND m.type ILIKE ''S%''))
@@ -332,7 +348,6 @@ BEGIN
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         )' || v_count_cte || ',
         paged_ids AS (
-            -- ORDENAMOS EN MEMORIA SOLO LOS REGISTROS LIGEROS ANTES DEL JOIN
             SELECT m.id 
             FROM filtered_movies m
             ' || v_order_clause || '
@@ -346,10 +361,8 @@ BEGIN
                     FROM (
                         SELECT
                             m.id, m.title, 
-                            -- Optimización: No enviar título original si es igual al título (ahorra bytes)
                             CASE WHEN lower(m.original_title) = lower(m.title) THEN NULL ELSE m.original_title END as original_title,
                             m.year, 
-                            -- Optimización: Solo enviar datos de series si es una serie
                             CASE WHEN m.type ILIKE ''S%'' THEN m.year_end ELSE NULL END as year_end,
                             m.type, 
                             m.genres_list AS genres,
@@ -360,11 +373,9 @@ BEGIN
                             m.minutes, m.image, m.fa_id, 
                             m.fa_rating, m.fa_votes,
                             m.imdb_id, m.imdb_rating, m.imdb_votes, 
-                            m.avg_rating, -- Incluimos el promedio calculado
+                            m.avg_rating,
                             m.synopsis, m.thumbhash_st,
-                            -- Optimización: Enviar timestamp como entero (segundos) en lugar de string ISO
                             EXTRACT(EPOCH FROM m.last_synced_at)::INT as last_synced_at,
-                            -- Optimización: Solo enviar episodios si es serie
                             CASE WHEN m.type ILIKE ''S%'' THEN m.episodes ELSE NULL END as episodes,
                             m.wikipedia,
                             m.selections_list, m.studios_list, m.justwatch
@@ -383,13 +394,15 @@ BEGIN
     EXECUTE v_query
     INTO v_json_result
     USING
-        search_term, v_genre_search, p_year_start, p_year_end, v_country_ids, -- $2 ahora es v_genre_search (resuelto)
-        director_name, actor_name, media_type, p_selection_code, p_studio_code, -- $6..$10
-        excluded_genres, v_excluded_country_ids; -- $11..$12 (Eliminados limit/offset de USING)
+        search_term, v_genre_search, p_year_start, p_year_end, v_country_ids, -- $1..$5
+        v_director_tsquery, v_actor_tsquery, media_type, p_selection_code, p_studio_code, -- $6..$10
+        excluded_genres, v_excluded_country_ids; -- $11..$12
         
     RETURN v_json_result;
 END;
 $function$;
+
+GRANT EXECUTE ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean) TO anon, authenticated, service_role;
 
 -- =================================================================
 -- PASO 4: REFACTORIZACIÓN DE TABLAS DE USUARIO Y TRIGGERS
@@ -418,6 +431,8 @@ CREATE TABLE IF NOT EXISTS public.user_movie_entries (
 
 -- 4.3. Creación de índices para optimizar el rendimiento.
 CREATE INDEX IF NOT EXISTS user_movie_entries_movie_id_idx ON public.user_movie_entries(movie_id);
+ALTER TABLE public.user_movie_entries ADD COLUMN IF NOT EXISTS watchlist_position integer;
+CREATE INDEX IF NOT EXISTS user_movie_entries_watchlist_pos_idx ON public.user_movie_entries (user_id, watchlist_position ASC NULLS LAST) WHERE on_watchlist = true;
 
 -- 4.4. Función de trigger y trigger para 'updated_at'.
 -- Esta función se reutiliza para la nueva tabla.
@@ -455,6 +470,7 @@ CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_sel
 CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
 -- Para tablas de entidad (sugerencias). Solo índices GIN (pg_trgm) pq las búsquedas son substring ('%texto%'), donde los índices B-Tree (prefix) no tienen efecto.
 CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS directors_components_trgm_idx ON public.directors USING gin (public.unaccent_immutable(lower(components)) gin_trgm_ops) WHERE components IS NOT NULL;
 CREATE INDEX IF NOT EXISTS actors_name_norm_trgm_idx ON public.actors USING gin (name_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS countries_name_norm_trgm_idx ON public.countries USING gin (name_norm gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS genres_name_norm_trgm_idx ON public.genres USING gin (name_norm gin_trgm_ops);
@@ -505,39 +521,44 @@ ANALYZE public.movies;
 -- =================================================================
 
 -- 1. Actores
-DROP MATERIALIZED VIEW IF EXISTS mv_actor_suggestions CASCADE;
-CREATE MATERIALIZED VIEW mv_actor_suggestions AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_actor_suggestions AS
 SELECT a.id, a.name, a.name_norm, COUNT(ma.movie_id) AS movie_count
 FROM public.actors a LEFT JOIN public.movie_actors ma ON a.id = ma.actor_id
 GROUP BY a.id, a.name, a.name_norm;
 
-CREATE UNIQUE INDEX mv_actor_suggestions_id_idx ON mv_actor_suggestions(id);
-CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON mv_actor_suggestions USING gin(name_norm gin_trgm_ops);
-CREATE INDEX mv_actor_suggestions_count_idx ON mv_actor_suggestions(movie_count DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS mv_actor_suggestions_id_idx ON mv_actor_suggestions(id);
+CREATE INDEX IF NOT EXISTS mv_actor_suggestions_name_norm_trgm_idx ON mv_actor_suggestions USING gin(name_norm gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS mv_actor_suggestions_count_idx ON mv_actor_suggestions(movie_count DESC);
 GRANT SELECT ON TABLE public.mv_actor_suggestions TO anon, authenticated;
 
--- 2. Directores
-DROP MATERIALIZED VIEW IF EXISTS mv_director_suggestions CASCADE;
-CREATE MATERIALIZED VIEW mv_director_suggestions AS
-SELECT d.id, d.name, d.name_norm, COUNT(md.movie_id) AS movie_count
-FROM public.directors d LEFT JOIN public.movie_directors md ON d.id = md.director_id
-GROUP BY d.id, d.name, d.name_norm;
+-- 2. Directores (con soporte para componentes de dúos/parejas)
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_director_suggestions AS
+SELECT 
+    d.id, 
+    d.name, 
+    d.name_norm, 
+    d.components,
+    public.unaccent_immutable(lower(COALESCE(d.components, ''))) AS components_norm,
+    COUNT(md.movie_id) AS movie_count
+FROM public.directors d 
+LEFT JOIN public.movie_directors md ON d.id = md.director_id
+GROUP BY d.id, d.name, d.name_norm, d.components;
 
-CREATE UNIQUE INDEX mv_director_suggestions_id_idx ON mv_director_suggestions(id);
-CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON mv_director_suggestions USING gin(name_norm gin_trgm_ops);
-CREATE INDEX mv_director_suggestions_count_idx ON mv_director_suggestions(movie_count DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS mv_director_suggestions_id_idx ON mv_director_suggestions(id);
+CREATE INDEX IF NOT EXISTS mv_director_suggestions_name_norm_trgm_idx ON mv_director_suggestions USING gin(name_norm gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS mv_director_suggestions_comp_norm_trgm_idx ON mv_director_suggestions USING gin(components_norm gin_trgm_ops) WHERE components_norm <> '';
+CREATE INDEX IF NOT EXISTS mv_director_suggestions_count_idx ON mv_director_suggestions(movie_count DESC);
 GRANT SELECT ON TABLE public.mv_director_suggestions TO anon, authenticated;
 
 -- 3. Títulos (Optimización para Autocompletado)
-DROP MATERIALIZED VIEW IF EXISTS mv_title_suggestions CASCADE;
-CREATE MATERIALIZED VIEW mv_title_suggestions AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_title_suggestions AS
 SELECT title, title_norm, min(relevance) as best_relevance
 FROM public.movies
 GROUP BY title, title_norm;
 
-CREATE UNIQUE INDEX mv_title_suggestions_title_idx ON mv_title_suggestions(title);
-CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON mv_title_suggestions USING gin(title_norm gin_trgm_ops);
-CREATE INDEX mv_title_suggestions_relevance_idx ON mv_title_suggestions(best_relevance ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS mv_title_suggestions_title_idx ON mv_title_suggestions(title);
+CREATE INDEX IF NOT EXISTS mv_title_suggestions_title_norm_trgm_idx ON mv_title_suggestions USING gin(title_norm gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS mv_title_suggestions_relevance_idx ON mv_title_suggestions(best_relevance ASC);
 GRANT SELECT ON TABLE public.mv_title_suggestions TO anon, authenticated;
 
 -- 3. Funciones de Lectura
@@ -554,9 +575,61 @@ $$;
 CREATE OR REPLACE FUNCTION public.get_director_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
 SET search_path = public, extensions AS $$
-    SELECT name FROM mv_director_suggestions
-    WHERE name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-    ORDER BY movie_count DESC
+    WITH direct_matches AS (
+        -- 1. Coincidencia directa por el nombre del director o colectivo/dúo
+        SELECT 
+            d.name AS suggestion, 
+            d.movie_count,
+            CASE 
+                WHEN d.name_norm LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
+                WHEN d.name_norm LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 2
+                ELSE 3
+            END AS prefix_rank
+        FROM public.mv_director_suggestions d
+        WHERE d.name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    ),
+    component_matches AS (
+        -- 2. Si el nombre del dúo NO coincide directamente, pero sí uno de sus integrantes
+        SELECT 
+            TRIM(comp.name) AS suggestion, 
+            d.movie_count,
+            CASE 
+                WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
+                WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 2
+                ELSE 3
+            END AS prefix_rank
+        FROM public.mv_director_suggestions d
+        CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
+        WHERE d.components IS NOT NULL
+          AND d.name_norm NOT LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+          AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+        
+        UNION ALL
+        
+        -- 3. Sugerir también el nombre del colectivo/dúo cuando se busca a un integrante específico
+        SELECT 
+            d.name AS suggestion, 
+            d.movie_count,
+            CASE 
+                WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
+                WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 2
+                ELSE 3
+            END AS prefix_rank
+        FROM public.mv_director_suggestions d
+        CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
+        WHERE d.components IS NOT NULL
+          AND d.name_norm NOT LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+          AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    ),
+    all_matches AS (
+        SELECT * FROM direct_matches
+        UNION ALL
+        SELECT * FROM component_matches
+    )
+    SELECT suggestion
+    FROM all_matches
+    GROUP BY suggestion
+    ORDER BY min(prefix_rank) ASC, max(movie_count) DESC, suggestion ASC
     LIMIT 10;
 $$;
 
@@ -621,13 +694,22 @@ $$;
 -- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY)
 -- =================================================================
 
--- 6.1. Habilitamos RLS y políticas de solo lectura para tablas públicas.
+-- 6.1. Habilitamos RLS y políticas de solo lectura para tablas públicas (Idempotente)
 DO $$ DECLARE t_name TEXT; BEGIN
-    FOR t_name IN SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name NOT IN ('user_movie_entries', 'movies_staging', 'people_staging') AND table_name NOT LIKE 'pg_%' AND table_name NOT LIKE 'sql_%'
+    FOR t_name IN SELECT table_name FROM information_schema.tables 
+                  WHERE table_schema = 'public' 
+                    AND table_type = 'BASE TABLE'
+                    AND table_name NOT IN ('user_movie_entries', 'movies_staging', 'people_staging') 
+                    AND table_name NOT LIKE 'pg_%' 
+                    AND table_name NOT LIKE 'sql_%'
     LOOP
         EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', t_name);
-        EXECUTE format('DROP POLICY IF EXISTS "Enable read access for all users" ON public.%I;', t_name);
-        EXECUTE format('CREATE POLICY "Enable read access for all users" ON public.%I FOR SELECT USING (true);', t_name);
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_policies 
+            WHERE schemaname = 'public' AND tablename = t_name AND policyname = 'Enable read access for all users'
+        ) THEN
+            EXECUTE format('CREATE POLICY "Enable read access for all users" ON public.%I FOR SELECT USING (true);', t_name);
+        END IF;
     END LOOP;
 END; $$;
 
@@ -702,7 +784,7 @@ BEGIN
     WHERE studio IS NOT NULL AND TRIM(s.code) <> '' ON CONFLICT (name) DO NOTHING;
 
     -- =================================================================
-    -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPs, Fotos, Biografías)
+    -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPs, Fotos, Biografías, Componentes)
     -- =================================================================
     -- Actualizar directores desde people_staging (sólo cambios reales)
     UPDATE public.directors d
@@ -713,7 +795,8 @@ BEGIN
         place_of_birth = p.place_of_birth,
         country_id = c.id,
         titulo_bio = p.titulo_bio,
-        biography = p.biography
+        biography = p.biography,
+        components = p.components
     FROM public.people_staging p
     LEFT JOIN public.countries c ON c.name_norm = lower(trim(p.country_id)) OR lower(trim(c.name)) = lower(trim(p.country_id))
     WHERE d.name = p.name AND p.type = 'D' AND (
@@ -723,7 +806,8 @@ BEGIN
         d.place_of_birth IS DISTINCT FROM p.place_of_birth OR
         d.country_id IS DISTINCT FROM c.id OR
         d.titulo_bio IS DISTINCT FROM p.titulo_bio OR
-        d.biography IS DISTINCT FROM p.biography
+        d.biography IS DISTINCT FROM p.biography OR
+        d.components IS DISTINCT FROM p.components
     );
     GET DIAGNOSTICS people_modified_count = ROW_COUNT;
 

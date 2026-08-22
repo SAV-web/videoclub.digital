@@ -332,9 +332,8 @@ export function fetchMovies(
           );
         }
         if (normFilters.director) {
-          const targetDirectorNorm = normalizeText(normFilters.director);
           result.items = result.items.filter(m =>
-            m.parsedDirectors && m.parsedDirectors.some(d => normalizeText(d) === targetDirectorNorm)
+            m.parsedDirectors && m.parsedDirectors.length > 0
           );
         }
       }
@@ -484,21 +483,38 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
 
   try {
     const supabase = await getSupabase();
+    const safeNameNorm = `"${nameNorm.replace(/"/g, '""')}"`;
+    const safeNameLike = `"%${name.replace(/"/g, '""')}%"`;
 
-    const [primaryRes, otherRes] = await Promise.all([
-      supabase
-        .from(table)
-        .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
-        .eq('name_norm', nameNorm)
-        .single(),
-      supabase
-        .from(otherTable)
-        .select('id')
-        .eq('name_norm', nameNorm)
-        .limit(1)
-    ]);
+    const primaryQuery = type === 'director'
+      ? supabase
+          .from('directors')
+          .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components')
+          .or(`name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}`)
+          .limit(1)
+      : supabase
+          .from('actors')
+          .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
+          .eq('name_norm', nameNorm)
+          .limit(1);
 
-    if (primaryRes.error || !primaryRes.data) {
+    const otherQuery = type === 'director'
+      ? supabase
+          .from('actors')
+          .select('id')
+          .eq('name_norm', nameNorm)
+          .limit(1)
+      : supabase
+          .from('directors')
+          .select('id')
+          .or(`name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}`)
+          .limit(1);
+
+    const [primaryRes, otherRes] = await Promise.all([primaryQuery, otherQuery]);
+
+    const rowData = primaryRes.data && Array.isArray(primaryRes.data) ? primaryRes.data[0] : primaryRes.data;
+
+    if (primaryRes.error || !rowData) {
       if (primaryRes.error && import.meta.env.DEV) {
         console.warn(`[API] Error al cargar detalles de la persona (${type}: ${name}):`, primaryRes.error);
       }
@@ -508,7 +524,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
 
     const hasBothRoles = !otherRes.error && Array.isArray(otherRes.data) && otherRes.data.length > 0;
     const personData: PersonDetails = {
-      ...(primaryRes.data as unknown as PersonDetails),
+      ...(rowData as unknown as PersonDetails),
       hasBothRoles,
       currentRole: type
     };
