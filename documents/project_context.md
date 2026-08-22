@@ -65,7 +65,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 - `actors`, `directors`: Entidades de los VIPs.
 - Relaciones N:M: `movie_actors`, `movie_directors`, `movie_genres`, `movie_selections`, `movie_studios`.
 - `user_movie_entries`: Almacena las valoraciones (1-10) y la Watchlist (boolean) por usuario.
-- Tablas `_staging`: Usadas exclusivamente para el proceso ETL (ingesta masiva desde CSV) mediante Triggers de `UPSERT`.
+- Tablas `_staging`: Usadas para el proceso ETL (ingesta masiva desde CSV) mediante Triggers de `UPSERT` (compatibilidad con Supabase Studio) y la función diferencial `process_staging_data()`.
 
 ### Lógica Avanzada SQL (`documents/script_sql.txt` y `documents/contexto_sql.txt`)
 - **Columnas Generadas (`GENERATED ALWAYS AS ... STORED`)**: Usadas para calcular campos `tsvector` de búsqueda en tiempo de inserción, descargando al procesador durante las consultas `SELECT`. También se usa para normalizar textos (`unaccent`).
