@@ -185,11 +185,11 @@ export function syncStateWithUrlParams(queryString: string): void {
   resetFiltersState();
   const params = new URLSearchParams(queryString);
   
-  setCurrentPage(params.get("p"));
+  setCurrentPage(params.get("p") || params.get("page"));
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
     if (stateKey === "page") return;
-    const val = params.get(shortKey);
+    const val = params.get(shortKey) ?? params.get(stateKey);
     if (val !== null) {
       if (["excludedGenres", "excludedCountries"].includes(stateKey)) {
         setFilter(stateKey, val.split(","), true);

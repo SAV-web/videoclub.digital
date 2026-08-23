@@ -311,14 +311,40 @@ export function fetchMovies(
         return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
       }
 
-      // MODO B: CATÁLOGO PÚBLICO (Motor potente)
+      // MODO B: CATÁLOGO PÚBLICO (Motor potente con reintento resiliente para cold-starts)
       const rpcParams = stateToRpcParams(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
-      let query = supabase.rpc("search_movies_offset", rpcParams);
-      if (signal) query = query.abortSignal(signal);
+      let data: any = null;
+      let error: any = null;
+      const MAX_RETRIES = 2;
 
-      const { data, error } = await query;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        if (signal?.aborted) throw { name: "AbortError" };
 
-      if (error) throw (isAbortError(error, signal) ? { name: "AbortError" } : createAppError(ERROR_CODES.DATABASE, "Fallo en la BD", error));
+        let query = supabase.rpc("search_movies_offset", rpcParams);
+        if (signal) query = query.abortSignal(signal);
+
+        const response = await query;
+        data = response.data;
+        error = response.error;
+
+        if (!error) break;
+
+        // Si fue cancelado por el usuario o por cambio de navegación, salir sin reintentar
+        if (isAbortError(error, signal)) {
+          throw { name: "AbortError" };
+        }
+
+        // Si no es el último intento, esperar antes de reintentar (300ms, 600ms)
+        if (attempt < MAX_RETRIES) {
+          const delay = (attempt + 1) * 300;
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+
+      if (error) {
+        if (isAbortError(error, signal)) throw { name: "AbortError" };
+        throw createAppError(ERROR_CODES.DATABASE, "No se pudo conectar con el catálogo. Inténtalo de nuevo.", error);
+      }
 
       const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: data?.items }, mapMoviePayload);
 

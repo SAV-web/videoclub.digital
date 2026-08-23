@@ -78,11 +78,20 @@ export const createAppError = (code: ErrorCode, message: string, cause: unknown 
   new AppError(code, message, cause);
 
 export function isAbortError(error: unknown, signal?: AbortSignal | null): boolean {
+  if (signal?.aborted) return true;
   const err = error as Record<string, unknown> | null | undefined;
-  return err?.name === "AbortError" ||
-    err?.code === ERROR_CODES.ABORTED ||
-    !!(signal?.aborted) ||
-    !!(typeof err?.message === "string" && err.message.toLowerCase().includes("abort"));
+  if (!err) return false;
+  return err.name === "AbortError" ||
+    err.code === ERROR_CODES.ABORTED ||
+    (typeof err.message === "string" && (
+      err.message.toLowerCase().includes("abort") ||
+      err.message.toLowerCase().includes("cancel")
+    )) ||
+    (typeof (err.details) === "string" && (
+      (err.details as string).toLowerCase().includes("abort") ||
+      (err.details as string).toLowerCase().includes("cancel")
+    )) ||
+    (err.cause ? isAbortError(err.cause) : false);
 }
 
 export function toAppError(

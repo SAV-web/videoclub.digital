@@ -125,6 +125,35 @@ function applyPendingYearFilters(): void {
   }
 }
 
+// Actualiza el icono y los atributos de accesibilidad del botón rewind/colapso
+function updateRewindButtonState(isOpen: boolean): void {
+  if (dom.rewindButton) {
+    dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
+    const label = isOpen ? "Cerrar menú" : "Abrir menú";
+    Object.assign(dom.rewindButton, { title: label, ariaLabel: label, ariaExpanded: isOpen });
+  }
+  if (dom.mobileSidebarToggle) {
+    dom.mobileSidebarToggle.setAttribute('aria-expanded', String(isOpen));
+    dom.mobileSidebarToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
+  }
+}
+
+// Sincroniza el estado visual del sidebar y de sus botones según el viewport (móvil vs escritorio/apaisado)
+export function syncSidebarResponsiveState(): void {
+  const isMobile = isMobileLayout();
+  if (isMobile) {
+    updateDrawerWidth();
+    const isMobileOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
+    updateRewindButtonState(isMobileOpen);
+  } else {
+    document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
+    if (dom.sidebar) dom.sidebar.style.transform = '';
+    touchState.currentTranslate = -DRAWER_WIDTH;
+    const isDesktopOpen = !document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
+    updateRewindButtonState(isDesktopOpen);
+  }
+}
+
 // Abre o cierra el cajón izquierdo
 function setSidebarState(isOpen: boolean): void {
   if (isMobileLayout() && dom.sidebar) {
@@ -139,15 +168,7 @@ function setSidebarState(isOpen: boolean): void {
     }
   }
 
-  if (dom.rewindButton) {
-    dom.rewindButton.innerHTML = isOpen ? ICONS.REWIND : ICONS.FORWARD;
-    const label = isOpen ? "Cerrar menú" : "Abrir menú";
-    Object.assign(dom.rewindButton, { title: label, ariaLabel: label, ariaExpanded: isOpen });
-  }
-  if (dom.mobileSidebarToggle) {
-    dom.mobileSidebarToggle.setAttribute('aria-expanded', String(isOpen));
-    dom.mobileSidebarToggle.setAttribute('aria-label', isOpen ? 'Cerrar menú' : 'Abrir menú');
-  }
+  updateRewindButtonState(isOpen);
 }
 
 export const openMobileDrawer = (): void => setSidebarState(true);
@@ -282,20 +303,19 @@ function initTouchGestures(): void {
   document.addEventListener("touchcancel", tEnd, { passive: true });
 
   const handleResize = debounce(() => {
-    if (isMobileLayout()) updateDrawerWidth();
-    else {
-      document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
-      if (dom.sidebar) dom.sidebar.style.transform = "";
-      touchState.currentTranslate = -DRAWER_WIDTH;
-    }
-  }, 250);
+    syncSidebarResponsiveState();
+  }, 100);
+
+  const handleOrientation = () => {
+    syncSidebarResponsiveState();
+  };
 
   window.addEventListener("resize", handleResize);
 
   if (typeof screen !== "undefined" && screen?.orientation) {
-    screen.orientation.addEventListener("change", handleResize);
+    screen.orientation.addEventListener("change", handleOrientation);
   } else if (typeof window !== "undefined") {
-    window.addEventListener("orientationchange", handleResize);
+    window.addEventListener("orientationchange", handleOrientation);
   }
 
   sidebarUnsubscribers.push(() => {
@@ -304,9 +324,9 @@ function initTouchGestures(): void {
     document.removeEventListener("touchcancel", tEnd);
     window.removeEventListener("resize", handleResize);
     if (typeof screen !== "undefined" && screen?.orientation) {
-      screen.orientation.removeEventListener("change", handleResize);
+      screen.orientation.removeEventListener("change", handleOrientation);
     } else if (typeof window !== "undefined") {
-      window.removeEventListener("orientationchange", handleResize);
+      window.removeEventListener("orientationchange", handleOrientation);
     }
     handleResize.cancel();
   });
@@ -787,7 +807,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
   const targetPage = isYearFilter ? getCurrentPage() : 1;
 
   try {
-    await loadAndRenderMovies(targetPage, { isYearFilter, replaceHistory: isYearFilter });
+    await loadAndRenderMovies(targetPage, { isYearFilter });
   } catch (error: unknown) {
     if ((error as Error)?.name === "AbortError") return;
     if (import.meta.env.DEV) console.error("Fallo al aplicar filtro:", error);
@@ -1288,6 +1308,8 @@ function setupEventListeners(): void {
       header.setAttribute('aria-expanded', String(isNowActive));
       dom.sidebarInnerWrapper?.classList.toggle("is-compact", isNowActive || hasCompactTriggeringFilters());
 
+      updatePillVisibility();
+
       if (isNowActive) {
         const gen = sidebarLifecycleGen;
         const timeoutId = setTimeout(() => {
@@ -1344,6 +1366,8 @@ export function initSidebar(): void {
   } else if (window.innerWidth <= 1024 && window.innerHeight > MOBILE_HEIGHT_LIMIT) {
     document.body.classList.add(CSS_CLASSES.SIDEBAR_COLLAPSED);
     setSidebarState(false);
+  } else {
+    syncSidebarResponsiveState();
   }
 
   const populateFilterSection = (filterType: string) => {

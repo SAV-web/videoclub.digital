@@ -5,7 +5,7 @@
 // RESPONSABILIDAD: Gestión de componentes UI globales en TypeScript.
 // =================================================================
 
-import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS } from "./constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS, FILTER_CONFIG, STUDIO_DATA, REGIONAL_GROUPS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw } from "./utils.js";
 import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
@@ -596,48 +596,100 @@ export function updateMobileStatusBar(
 
   const filters = getActiveFilters();
 
-  // 1. Tipo dinámico basado en resultados
-  let typeText = totalMovies === 1 ? "peli o serie" : "pelis y series";
+  const sortMap: Record<string, string> = {
+    "relevance,asc": "votos FA",
+    "fa_votes,desc": "votos FA",
+    "fa_rating,desc": "nota FA",
+    "imdb_votes,desc": "votos IMDb",
+    "imdb_rating,desc": "nota IMDb",
+    "year,desc": "más recientes",
+    "year,asc": "más antiguas"
+  };
 
-  if (filters.mediaType === "movies") {
-    typeText = totalMovies === 1 ? "película" : "películas";
-  } else if (filters.mediaType === "series") {
-    typeText = totalMovies === 1 ? "serie" : "series";
-  } else if (movies && movies.length > 0) {
-    // Analizar la muestra actual de resultados si el filtro es "all"
-    const hasMovies = movies.some(m => !m.isSeries);
-    const hasSeries = movies.some(m => m.isSeries);
+  const sortLabel = sortMap[filters.sort] || "votos FA";
 
-    if (hasMovies && !hasSeries) typeText = totalMovies === 1 ? "película" : "películas";
-    else if (hasSeries && !hasMovies) typeText = totalMovies === 1 ? "serie" : "series";
-  }
+  const hasActiveFilters = showTotalCount || hasActiveMeaningfulFilters() || (filters.mediaType && filters.mediaType !== 'all') || (filters.sort && filters.sort !== DEFAULTS.SORT);
 
-  // 2. Orden (Si no es el default 'relevance')
-  let text = typeText;
-  if (filters.sort !== DEFAULTS.SORT) {
-    const sortMap: Record<string, string> = {
-      "year,desc": "más recientes",
-      "year,asc": "más antiguas",
-      "fa_rating,desc": "nota FA",
-      "fa_votes,desc": "votos FA",
-      "imdb_rating,desc": "nota IMDb",
-      "imdb_votes,desc": "votos IMDb"
-    };
+  // Si hay algún filtro activo o se debe mostrar el contador detallado
+  if (hasActiveFilters) {
+    const countText = `${totalMovies.toLocaleString("es-ES")} ${totalMovies === 1 ? "título" : "títulos"}`;
+    const segments: string[] = [countText];
 
-    const sortLabel = sortMap[filters.sort];
-    if (sortLabel) {
-      text += `, orden: ${sortLabel}`;
+    // 1. Director o Actor
+    if (filters.director) {
+      segments.push("filtro director");
+    } else if (filters.actor) {
+      segments.push("filtro actor");
     }
+
+    // 2. Estudio
+    if (filters.studio) {
+      const studioName = FILTER_CONFIG.studio?.items[filters.studio] || STUDIO_DATA[filters.studio]?.title || filters.studio;
+      segments.push(`estudio ${studioName}`);
+    }
+
+    // 3. Selección
+    if (filters.selection) {
+      const selName = FILTER_CONFIG.selection?.items[filters.selection] || filters.selection;
+      segments.push(`selección ${selName}`);
+    }
+
+    // 4. Género e inclusiones/exclusiones
+    if (filters.genre) {
+      segments.push(filters.genre);
+    }
+    if (filters.excludedGenres && filters.excludedGenres.length > 0) {
+      filters.excludedGenres.forEach(g => segments.push(`(no ${g})`));
+    }
+
+    // 5. País / Región e inclusiones/exclusiones
+    if (filters.country) {
+      const region = Object.values(REGIONAL_GROUPS).find(r => r.value === filters.country);
+      const countryLabel = region ? region.label : filters.country;
+      segments.push(countryLabel);
+    }
+    if (filters.excludedCountries && filters.excludedCountries.length > 0) {
+      filters.excludedCountries.forEach(c => segments.push(`(no ${c})`));
+    }
+
+    // 6. Rango de Años
+    if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
+      segments.push(filters.year);
+    }
+
+    // 7. Búsqueda por texto libre
+    if (filters.searchTerm && filters.searchTerm.trim()) {
+      segments.push(`"${filters.searchTerm.trim()}"`);
+    }
+
+    // 8. Mi lista
+    if (filters.myList) {
+      const listLabels: Record<string, string> = {
+        rated: "mis valoraciones",
+        watchlist: "pendientes",
+        mixed: "mi lista"
+      };
+      if (listLabels[filters.myList]) {
+        segments.push(listLabels[filters.myList]);
+      }
+    }
+
+    // 9. Tipo de medio específico
+    if (filters.mediaType === "movies") {
+      segments.push("películas");
+    } else if (filters.mediaType === "series") {
+      segments.push("series");
+    }
+
+    // 10. Criterio de Orden
+    segments.push(`orden ${sortLabel}`);
+
+    mobileStatusBar.textContent = `${segments.join(", ")}.`;
+    return;
   }
 
-  // 3. Total (Usando la lógica unificada de rango de años)
-  if (showTotalCount) {
-    text = `${totalMovies.toLocaleString("es-ES")} ${text}`;
-  } else {
-    text = text.charAt(0).toUpperCase() + text.slice(1);
-  }
-
-  mobileStatusBar.textContent = text;
+  // Si no hay filtros aplicados (Catálogo completo inicial sin filtros)
+  mobileStatusBar.textContent = "";
 }
 
 // =================================================================

@@ -9,7 +9,7 @@
 // =================================================================
 
 import { CONFIG } from "./constants.js";
-import { ERROR_CODES, parseYearRangeRaw } from "./contracts.js";
+import { ERROR_CODES, isAbortError, parseYearRangeRaw } from "./contracts.js";
 export { parseYearRangeRaw };
 import flagSpriteUrl from "../flags.svg";
 import { Movie, MappedMovie } from "./types.js";
@@ -174,10 +174,9 @@ export const debounce = <T extends (...args: never[]) => void>(
 
 // Traduce errores raros en algo que un humano pueda entender
 export const getFriendlyErrorMessage = (e: unknown): string | null => {
+  if (isAbortError(e)) return null;
   const err = e as Record<string, unknown> | null | undefined;
-  return err?.name === "AbortError" ? null : 
-    err?.code === ERROR_CODES.ABORTED ? null :
-    err?.code === ERROR_CODES.AUTH_REQUIRED ? String(err.message) :
+  return err?.code === ERROR_CODES.AUTH_REQUIRED ? String(err.message) :
     err?.code === ERROR_CODES.CONFIGURATION ? String(err.message) :
     err?.code === ERROR_CODES.DATABASE ? String(err.message) :
     err?.code === ERROR_CODES.VALIDATION ? String(err.message) :

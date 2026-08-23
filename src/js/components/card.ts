@@ -1208,7 +1208,7 @@ function createGroupCardElement(
   }
 
   const subtitleEl = card.querySelector('[data-template="subtitle"]');
-  if (subtitleEl) subtitleEl.textContent = isStudio ? "Estudio / Productora" : "Selección / Saga";
+  if (subtitleEl) subtitleEl.textContent = isStudio ? "Estudio / Productora" : "Selección";
 
   const wallNameEl = card.querySelector('[data-template="wall-name"]');
   if (wallNameEl) wallNameEl.textContent = shortName;

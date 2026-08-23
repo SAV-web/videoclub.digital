@@ -984,12 +984,17 @@ function setupAuthSystem(): void {
   }
 
   let authSubscription: { unsubscribe: () => void } | null = null;
+  let authSafetyTimeout: ReturnType<typeof setTimeout> | null = null;
   const authGen = mainLifecycleGen;
 
   getSupabase().then(supabase => {
     if (authGen !== mainLifecycleGen) return;
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (authGen !== mainLifecycleGen) return;
+      if (authSafetyTimeout) {
+        clearTimeout(authSafetyTimeout);
+        authSafetyTimeout = null;
+      }
       const currentUser = session?.user || null;
       const currentUserId = currentUser?.id || null;
 
@@ -1066,7 +1071,7 @@ function setupAuthSystem(): void {
 
   // Temporizador de seguridad: garantizar que la página de inicio cargue si el evento auth no dispara la carga
   const safetyGen = mainLifecycleGen;
-  const authSafetyTimeout = setTimeout(() => {
+  authSafetyTimeout = setTimeout(() => {
     if (safetyGen !== mainLifecycleGen) return;
     if (!initialLoadHandled) {
       initialLoadHandled = true;

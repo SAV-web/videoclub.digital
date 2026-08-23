@@ -14,18 +14,24 @@
 
 - 🔍 **Filtrado Avanzado & Multinivel**:
   - Filtros combinados por Estudio (Universal, Warner, etc.), Género, País, Colecciones/Sagas y Rango de Años (Dual Slider).
-  - Búsqueda exacta de Directores y Actores con tarjetas informativas dedicadas (Visions/VIP Cards).
+  - Búsqueda exacta de Directores y Actores con tarjetas informativas dedicadas (*VIP Cards* / Biografías).
+  - Soporte para **colectivos y dúos cinematográficos** (ej. Hermanos Russo $\leftrightarrow$ Joe y Anthony Russo) con búsqueda e indexación bidireccional.
+  - **Insignias de Doble Rol VIP** (`(D)` en fichas de actor, `(A)` en fichas de director) para alternar filmografías con un solo clic.
   - Píldoras dinámicas de exclusión (ej. `(NO España) x`).
 - ⚡ **Rendimiento Extraordinario (PWA Mobile-First)**:
   - Carga masiva en la cuadrícula por lotes priorizados (`yieldToMain`).
   - Animaciones de portada fluidas con **View Transitions API** nativa.
-  - Caché inteligente en memoria LRU y Service Worker propio offline.
+  - Caché inteligente en memoria LRU multiescala con deduplicación de peticiones en vuelo y reintentos automáticos progresivos (*backoff*) ante arranques en frío (*cold-starts*).
+  - Sincronización determinista de estado y botones responsive ante rotaciones de pantalla (*portrait/landscape*).
+  - Service Worker propio con invalidación automatizada por compilación.
 - ⭐ **Gestión de Usuario & Exclusividad**:
   - Autenticación con Supabase Auth.
   - Gestión de puntuaciones personalizadas y Watchlist (pendientes de ver) con reglas estrictas de exclusividad mutua.
 - 📱 **Experiencia Móvil Nativa**:
   - Interfaz responsiva con Container Queries.
   - Menú lateral deslizante (*Drawer*) y modales *Bottom Sheet* con física de arrastre (*swipe-to-dismiss*) y respuesta háptica.
+- 🧹 **Gestión de Ciclo de Vida y Limpieza (Teardown)**:
+  - Funciones de desmontaje explícito (`disposeApp`, `disposeCardEvents`, `disposeModalEvents`, etc.) y bus de eventos global seguro para garantizar cero fugas de memoria (*zero memory leaks*).
 
 ---
 
@@ -36,10 +42,11 @@
 | **Frontend Core (SPA)** | TypeScript (ES2022+), HTML5 Semántico |
 | **Estilos (CSS)** | Vanilla CSS3 (Variables, Grid, Flexbox, Container Queries, `contain: layout paint`) |
 | **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
+| **Fuente Única de Verdad (SSOT)** | Módulos compartidos en `src/shared/` para reglas de negocio y formateadores |
 | **Subsistema SEO (SSG)** | Astro 5+ en [`seo-site/`](seo-site/) (Generación estática de fichas públicas, sitemaps y JSON-LD) |
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
-| **Caché Local** | `lru-cache` en memoria para búsquedas/filtros + `localStorage` versionado |
+| **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
 | **Testing** | Node.js Test Runner nativo (`node --test`) + Vite SSR Server para aislamiento |
 
 ---
@@ -60,15 +67,18 @@ VIDEOCLUB.DIGITAL/
 │   │   ├── globals.css          # Estilos globales y reset
 │   │   ├── layout.css           # Estructura principal y grid adaptativo
 │   │   └── components/          # Estilos scopeados por componente (card, modal, sidebar, etc.)
-│   └── js/                      # Lógica de la aplicación en TypeScript
-│       ├── main.ts              # Orquestador del DOM y flujo de renderizado
-│       ├── state.ts             # Estado inmutable global y sincronización con URL
-│       ├── api.ts               # Capa de datos, deduplicación e integración Supabase (LRU Cache)
-│       ├── contracts.ts         # Contratos, guardas de tipos y normalizadores puros
-│       ├── types.ts             # Interfaces TypeScript centralizadas
-│       ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
-│       ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación)
-│       └── components/          # Módulos UI (card, modal, sidebar, rating, yearSlider)
+│   ├── js/                      # Lógica de la aplicación en TypeScript
+│   │   ├── main.ts              # Orquestador del DOM y flujo de renderizado
+│   │   ├── state.ts             # Estado inmutable global y sincronización con URL
+│   │   ├── api.ts               # Capa de datos, reintentos, deduplicación e integración Supabase
+│   │   ├── contracts.ts         # Contratos, guardas de tipos y normalizadores puros
+│   │   ├── types.ts             # Interfaces TypeScript centralizadas
+│   │   ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
+│   │   ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación)
+│   │   └── components/          # Módulos UI (card, modal, sidebar, rating, yearSlider)
+│   └── shared/                  # Fuente Única de Verdad (SSOT) compartida entre SPA y SEO
+│       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
+│       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
 ├── seo-site/                    # Subsistema Astro para generación estática (SSG) de SEO
 │   ├── astro.config.mjs         # Configuración del generador estático
 │   ├── src/pages/               # Páginas públicas indexables (/titulo/[slugId], /director/[slug], etc.)
@@ -126,7 +136,7 @@ Genera la carpeta `dist/` optimizada e inyecta la versión del Service Worker.
 Para más detalles sobre la arquitectura interna y decisiones de diseño técnico, consulta la carpeta [`docs/`](docs/):
 
 - 📘 [**Project Context & Architecture**](docs/project_context.md): Explicación exhaustiva del stack, estructura y patrones de rendimiento.
-- 📐 [**Contratos de Datos**](docs/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, `UserMovieEntry` y gestión de errores.
+- 📐 [**Contratos de Datos**](docs/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, `UserMovieEntry`, `VipData` y gestión de errores.
 - 🔄 [**Estrategia de Invalidación del Service Worker**](docs/service_worker_invalidation.md): Explicación de políticas de caché y despliegue.
-- 🗄️ [**Script SQL & Backend Schema**](docs/script.sql): Código de la función RPC `search_movies_offset`, índices trigrama y Row Level Security.
+- 🗄️ [**Script SQL & Backend Schema**](docs/script.sql): Código de la función RPC `search_movies_offset`, ETL diferencial e índices trigrama.
 - 🗃️ [**Contexto SQL & DDL Schema**](docs/schema.sql): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.
