@@ -93,7 +93,33 @@ Reglas:
 - Las escrituras remotas deben pasar por `setUserMovieDataAPI`.
 - Al puntuar una película, la mutación elimina la película de la Watchlist (`resolveWatchlistMutationOnRate`). De forma recíproca, al añadir una película a la Watchlist, se borra la puntuación existente (`resolveRatingMutationOnWatchlist`).
 
-## 5. Errores
+## 5. Entidades de Personas y Doble Rol (VIPs)
+
+`PersonDetails` y `VipData` (definidos en `src/js/types.ts`):
+
+```ts
+interface PersonDetails {
+  name: string;
+  photo: string | null;
+  birthday: string | null;
+  deathday: string | null;
+  place_of_birth: string | null;
+  country_name: string | null;
+  country_flag: string | null;
+  titulo_bio: string | null;
+  biography: string | null;
+  components?: string | null;
+  role: 'director' | 'actor';
+  otherRoleCount?: number;
+}
+```
+
+Reglas:
+- Si una persona tiene títulos computados tanto como actor como director, `otherRoleCount` refleja el total de obras en el rol alternativo.
+- Si `otherRoleCount > 0`, la UI renderiza la insignia interactiva `(D)` (en fichas de actor) o `(A)` (en fichas de director), permitiendo alternar la filmografía instantáneamente.
+- Para directores colectivos o dúos (ej. Hermanos Russo), `components` almacena los nombres individuales separados por coma, activando el autocompletado y búsqueda bidireccional.
+
+## 6. Errores
 
 Los errores de aplicación usan `AppError`:
 
@@ -116,7 +142,7 @@ Códigos permitidos (`ERROR_CODES` en `contracts.ts`):
 - `VALIDATION`: datos inválidos antes de llamar a la API.
 - `UNKNOWN`: error no clasificado.
 
-## 6. Regla de Arquitectura
+## 7. Regla de Arquitectura
 
 Las fronteras obligatorias son:
 

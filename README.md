@@ -76,12 +76,12 @@ VIDEOCLUB.DIGITAL/
 ├── tests/                       # Suite de pruebas unitarias
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   └── *.test.mjs               # Archivos de test unitarios (api, state, rating, seo, utils)
-└── documents/                   # Documentación técnica detallada de arquitectura
+└── docs/                        # Documentación técnica detallada de arquitectura
     ├── project_context.md       # Contexto global y mapa del proyecto
     ├── contracts.md             # Especificación de contratos de datos y fronteras
     ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
-    ├── script_sql.txt           # Esquema SQL, funciones RPC e índices de Supabase
-    └── contexto_sql.txt         # Esquema DDL de tablas y restricciones relacionales
+    ├── script.sql               # Esquema SQL, funciones RPC e índices de Supabase
+    └── schema.sql               # Esquema DDL de tablas y restricciones relacionales
 ```
 
 ---
@@ -123,10 +123,10 @@ Genera la carpeta `dist/` optimizada e inyecta la versión del Service Worker.
 
 ## 📖 Documentación Adicional
 
-Para más detalles sobre la arquitectura interna y decisiones de diseño técnico, consulta la carpeta [`documents/`](documents/):
+Para más detalles sobre la arquitectura interna y decisiones de diseño técnico, consulta la carpeta [`docs/`](docs/):
 
-- 📘 [**Project Context & Architecture**](documents/project_context.md): Explicación exhaustiva del stack, estructura y patrones de rendimiento.
-- 📐 [**Contratos de Datos**](documents/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, `UserMovieEntry` y gestión de errores.
-- 🔄 [**Estrategia de Invalidación del Service Worker**](documents/service_worker_invalidation.md): Explicación de políticas de caché y despliegue.
-- 🗄️ [**Script SQL & Backend Schema**](documents/script_sql.txt): Código de la función RPC `search_movies_offset`, índices trigrama y Row Level Security.
-- 🗃️ [**Contexto SQL & DDL Schema**](documents/contexto_sql.txt): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.
+- 📘 [**Project Context & Architecture**](docs/project_context.md): Explicación exhaustiva del stack, estructura y patrones de rendimiento.
+- 📐 [**Contratos de Datos**](docs/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, `UserMovieEntry` y gestión de errores.
+- 🔄 [**Estrategia de Invalidación del Service Worker**](docs/service_worker_invalidation.md): Explicación de políticas de caché y despliegue.
+- 🗄️ [**Script SQL & Backend Schema**](docs/script.sql): Código de la función RPC `search_movies_offset`, índices trigrama y Row Level Security.
+- 🗃️ [**Contexto SQL & DDL Schema**](docs/schema.sql): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.

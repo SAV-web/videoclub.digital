@@ -1,22 +1,23 @@
 -- =================================================================
--- SCRIPT DE CONFIGURACIÓN COMPLETO PARA VIDEOCLUB.DIGITAL
+-- SCRIPT MAESTRO DE CONFIGURACIÓN Y MIGRACIÓN - VIDEOCLUB.DIGITAL
 -- =================================================================
--- Este script es idempotente y se puede ejecutar de forma segura. Orden de ejecución:
--- 1. Habilitación de Extensiones
--- 2. Creación de Funciones Auxiliares y modificaciones esquema/tabla
--- 3. Definición de la Lógica de Negocio (Función de búsqueda ultra-optimizada)
--- 4. Creación de Tablas de Usuario y Triggers
--- 5. Optimización de Rendimiento (Índices y Columnas Generadas)
--- 6. Configuración de Seguridad (Row Level Security)
--- 7. Función de Ingesta de Datos (ETL) con fase de Desnormalización
+-- Script idempotente y determinista. Estructura de ejecución:
+-- 1. Habilitación de Extensiones y Espacio de Búsqueda
+-- 2. Funciones Auxiliares, Esquema Base y Triggers de Staging
+-- 3. Función de Búsqueda Principal (search_movies_offset)
+-- 4. Tablas de Usuario y Triggers (user_movie_entries)
+-- 5. Optimización de Rendimiento (Índices y Vistas Materializadas)
+-- 6. Configuración de Seguridad (Row Level Security & Permisos)
+-- 7. Ingesta Diferencial ETL (process_staging_data)
+-- 8. Protocolo Post-Commit y Mantenimiento de Catálogo
 -- =================================================================
 
 -- =================================================================
 -- PASO 1: HABILITACIÓN DE EXTENSIONES Y ESPACIO DE BÚSQUEDA
 -- =================================================================
 CREATE SCHEMA IF NOT EXISTS extensions;
-CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA extensions; -- Para búsquedas insensibles a acentos.
-CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA extensions;  -- Para búsquedas por similitud y `ILIKE` rápido.
+CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA extensions; -- Búsqueda insensible a diacríticos/acentos
+CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA extensions;  -- Búsqueda por trigramas y similitud de texto
 
 -- Garantiza que las clases de operadores de extensiones se resuelvan en cualquier entorno o instalación limpia
 SET search_path = pg_catalog, public, extensions;
@@ -76,8 +77,7 @@ EXCEPTION WHEN OTHERS THEN
 END; $$;
 
 -- =================================================================
--- =================================================================
--- 2.0. MODIFICACIONES DE ESQUEMA (Soporte de orden, biografías y componentes)
+-- 2.1. MODIFICACIONES DE ESQUEMA (Orden, biografías y colectivos)
 -- =================================================================
 ALTER TABLE public.movie_directors ADD COLUMN IF NOT EXISTS ordinality smallint;
 ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS titulo_bio text;
@@ -88,15 +88,10 @@ ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS biography text;
 ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS components text;
 
 -- =================================================================
--- 2.1. GARANTÍA DE COLUMNAS GENERADAS (Seguras e Idempotentes)
+-- 2.2. COLUMNAS GENERADAS (STORED) Y VECTORES DE BÚSQUEDA TSVECTOR
 -- =================================================================
--- Aseguramos que los vectores de búsqueda (_tsv) sean columnas generadas STORED.
--- Verificamos su existencia para evitar bloqueos exclusivos destructivos (AccessExclusiveLock).
-
--- 2.1.1. Modificación de Tabla Genres (Sinónimos)
 ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS synonyms text[] DEFAULT '{}';
 
--- 2.1.2. Columnas Generadas en Movies y Genres (Idempotente)
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'genres_tsv') THEN
@@ -128,21 +123,9 @@ BEGIN
 END $$;
 
 -- =================================================================
--- 2.3. GESTIÓN DE UPSERT EN STAGING (COMPATIBILIDAD CSV DASHBOARD)
+-- 2.3. TRIGGERS DE UPSERT EN STAGING (Compatibilidad Supabase CSV Import)
 -- =================================================================
--- NOTA ARQUITECTÓNICA Y DE CONCURRENCIA:
--- Estos triggers existen EXCLUSIVAMENTE para dar compatibilidad al importador web
--- de Supabase Studio ("Import data via CSV"), el cual ejecuta INSERTs estándar sin
--- cláusula ON CONFLICT. El trigger intercepta duplicados y los convierte en UPDATE.
---
--- ADVERTENCIA DE CONCURRENCIA:
--- El patrón "IF EXISTS -> UPDATE -> RETURN NULL" es adecuado para cargas manuales
--- monohilo desde la interfaz web, pero NO es atómico bajo inserciones altamente
--- concurrentes en paralelo (riesgo de race conditions / error 23505).
--- Para scripts automatizados, APIs o ETLs externos, se debe utilizar SIEMPRE la
--- sintaxis nativa atómica de PostgreSQL:
---   INSERT INTO public.movies_staging (...) VALUES (...) ON CONFLICT (image) DO UPDATE ...;
--- =================================================================
+-- Intercepta inserciones estándar del importador CSV web y las convierte en UPDATE por clave primaria.
 
 CREATE OR REPLACE FUNCTION public.handle_movies_staging_upsert()
 RETURNS TRIGGER LANGUAGE plpgsql
@@ -221,14 +204,11 @@ BEFORE INSERT ON public.people_staging
 FOR EACH ROW EXECUTE PROCEDURE public.handle_people_staging_upsert();
 
 -- =================================================================
--- FUNCIÓN DE BÚSQUEDA OPTIMIZADA (v3.0 - Smart Counting)
+-- PASO 3: FUNCIÓN DE BÚSQUEDA PRINCIPAL (SEARCH_MOVIES_OFFSET)
 -- =================================================================
--- Limpieza de versiones anteriores (por firma específica para evitar error de ambigüedad)
--- 1. Versión antigua (sin country_codes ni get_count)
+-- Limpieza de sobrecargas de versiones anteriores
 DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text, text, text, text, text, text[], text[], text, text, integer, integer);
--- 2. Versión intermedia (con country_codes, sin get_count)
 DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer);
--- 3. Versión actual (con todo)
 DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean);
 
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
@@ -498,39 +478,34 @@ BEFORE UPDATE ON public.user_movie_entries
 FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- =================================================================
--- PASO 5: OPTIMIZACIÓN DE RENDIMIENTO (ÍNDICES)
+-- PASO 5: OPTIMIZACIÓN DE RENDIMIENTO (ÍNDICES Y VISTAS MATERIALIZADAS)
 -- =================================================================
--- Índice GIN (Generalized Inverted Index) sobre la columna normalizada para búsqueda por substring
+
+-- 5.1. Índices en Tablas Principales y Relaciones N:M
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm extensions.gin_trgm_ops);
--- Índice único para la columna image, necesario para la cláusula ON CONFLICT (image) en staging/ETL
 CREATE UNIQUE INDEX IF NOT EXISTS movies_image_unique_idx ON public.movies(image);
--- Para campos de ordenación principales y desempate por relevancia
 CREATE INDEX IF NOT EXISTS movies_relevance_idx ON public.movies(relevance ASC);
 CREATE INDEX IF NOT EXISTS movies_year_idx ON public.movies(year DESC);
 CREATE INDEX IF NOT EXISTS movies_avg_rating_idx ON public.movies(avg_rating DESC NULLS LAST, relevance ASC);
 CREATE INDEX IF NOT EXISTS movies_fa_votes_idx ON public.movies(fa_votes DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_imdb_votes_idx ON public.movies(imdb_votes DESC NULLS LAST);
 
--- Para tablas de relación N:M
 CREATE INDEX IF NOT EXISTS movie_genres_genre_id_idx ON public.movie_genres(genre_id);
 CREATE INDEX IF NOT EXISTS movie_directors_director_id_idx ON public.movie_directors(director_id);
 CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(actor_id);
 CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_selections(selection_id);
 CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
 
--- Para tablas de entidad (búsqueda y autocompletado con clase de operador cualificada)
 CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm extensions.gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS directors_components_trgm_idx ON public.directors USING gin (public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
 CREATE INDEX IF NOT EXISTS actors_name_norm_trgm_idx ON public.actors USING gin (name_norm extensions.gin_trgm_ops);
 
--- Índices GIN de texto completo (_tsv) para filtros facetados
 CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
 CREATE INDEX IF NOT EXISTS movies_directors_tsv_idx ON public.movies USING GIN(directors_tsv);
 CREATE INDEX IF NOT EXISTS movies_actors_tsv_idx ON public.movies USING GIN(actors_tsv);
 CREATE INDEX IF NOT EXISTS movies_selections_tsv_idx ON public.movies USING GIN(selections_tsv);
 CREATE INDEX IF NOT EXISTS movies_studios_tsv_idx ON public.movies USING GIN(studios_tsv);
 
--- Índices compuestos para combinaciones de filtros habituales (País, Tipo, Año, Relevancia, Votos)
 CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx ON public.movies(country_id, year DESC);
 CREATE INDEX IF NOT EXISTS movies_country_relevance_idx ON public.movies(country_id, relevance ASC);
 CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_id, fa_votes DESC NULLS LAST);
@@ -539,16 +514,10 @@ CREATE INDEX IF NOT EXISTS movies_country_type_year_idx ON public.movies(country
 
 ANALYZE public.movies;
 
--- Actualizamos las funciones de sugerencias para que usen la nueva arquitectura.
--- OPTIMIZACIÓN: Pasamos a LANGUAGE SQL para permitir inlining y reducir overhead.
-
 -- =================================================================
--- VISTAS MATERIALIZADAS PARA SUGERENCIAS (Optimización, Auto-Convergencia y Encapsulamiento)
+-- 5.2. VISTAS MATERIALIZADAS PARA SUGERENCIAS (Auto-Convergencia Segura)
 -- =================================================================
--- NOTA DE CONVERGENCIA DECLARATIVA:
--- CREATE MATERIALIZED VIEW IF NOT EXISTS ignora si el SELECT subyacente ha cambiado.
--- Estos bloques DO comprueban la presencia de todas las columnas esperadas.
--- Si la vista no existe o su esquema es obsoleto, la recrean automáticamente con sus índices y permisos.
+-- Comprueba la existencia de la estructura esperada y recrea con RESTRICT si está obsoleta.
 
 -- 1. Actores (Auto-convergencia segura)
 DO $$
@@ -812,10 +781,10 @@ REVOKE ALL ON FUNCTION public.get_random_top_directors(int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_random_top_directors(int) TO anon, authenticated, service_role;
 
 -- =================================================================
--- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY)
+-- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY & PERMISOS)
 -- =================================================================
 
--- 6.1. Habilitamos RLS y políticas de solo lectura para la lista explícita de tablas públicas
+-- 6.1. Habilitamos RLS y lectura pública en tablas de catálogo
 DO $$ 
 DECLARE 
     t_name TEXT; 
@@ -848,28 +817,26 @@ CREATE POLICY "Staging access restricted to service_role" ON public.movies_stagi
 DROP POLICY IF EXISTS "People staging access restricted to service_role" ON public.people_staging;
 CREATE POLICY "People staging access restricted to service_role" ON public.people_staging FOR ALL TO service_role USING (true);
 
--- 6.3. Políticas de seguridad específicas para la tabla 'user_movie_entries'.
+-- 6.3. Políticas RLS consolidadas para la tabla 'user_movie_entries'
 ALTER TABLE public.user_movie_entries ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Los usuarios pueden gestionar sus propias entradas" ON public.user_movie_entries;
 DROP POLICY IF EXISTS "Los usuarios pueden leer sus propias entradas" ON public.user_movie_entries;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_movie_entries; -- SEGURIDAD CRÍTICA: Eliminar política global si existe por error
+DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_movie_entries;
 
--- Política única y consolidada para todo el ciclo CRUD (SELECT, INSERT, UPDATE, DELETE)
 CREATE POLICY "Los usuarios pueden gestionar sus propias entradas"
 ON public.user_movie_entries FOR ALL
 USING ( auth.uid() = user_id )
 WITH CHECK ( auth.uid() = user_id );
 
 -- =================================================================
--- PASO 7: FUNCIÓN DE INGESTA (ETL) DIFERENCIAL Y ESTABLE (v3.0)
+-- PASO 7: INGESTA DIFERENCIAL ETL (PROCESS_STAGING_DATA)
 -- =================================================================
--- v3.0: Pipeline diferencial idempotente:
--- 1. Bloqueo transaccional con pg_advisory_xact_lock para evitar ejecuciones concurrentes.
--- 2. Actualización diferencial de personas (actors y directors) desde people_staging (fotos, bios, fechas).
--- 3. UPSERT diferencial en movies con detección de cambios mediante IS DISTINCT FROM.
--- 4. Reconciliación diferencial de relaciones M:N sin DELETE ciego ni vaciado masivo.
--- 5. Retorna métricas de cambios en JSON para orquestar el refresco sólo si hubo cambios reales.
+-- Pipeline transaccional idempotente:
+-- 1. Bloqueo transaccional de exclusión mutua (pg_advisory_xact_lock).
+-- 2. Actualización diferencial de personas VIPs (fotos, biografías, componentes).
+-- 3. UPSERT diferencial en catálogo movies con detección de cambios reales.
+-- 4. Reconciliación N:M mediante tabla temporal y pre-agregación lineal O(N1 + N2 + ...).
 
 CREATE OR REPLACE FUNCTION public.process_staging_data()
 RETURNS json
@@ -1197,34 +1164,22 @@ REVOKE ALL ON FUNCTION public.process_staging_data() FROM PUBLIC, anon, authenti
 GRANT EXECUTE ON FUNCTION public.process_staging_data() TO service_role;
 
 -- =================================================================
--- PROTOCOLO DE REFRESCO Y MANTENIMIENTO POST-COMMIT (FASE 2)
+-- PASO 8: PROTOCOLO POST-COMMIT Y MANTENIMIENTO DE CATÁLOGO
 -- =================================================================
 -- NOTA ARQUITECTÓNICA Y POLÍTICA DE DATOS:
--- 1. REFRESH MATERIALIZED VIEW CONCURRENTLY NO debe ejecutarse dentro de una función
---    RPC o transacción activa (PostgreSQL genera ERROR: 25001).
--- 2. POLÍTICA DE DATOS EN STAGING Y FILTRO DE ADMISIÓN (SHOW = 'S'):
---    - Los CSVs de ingesta proporcionan siempre la información completa y consolidada de cada película.
---    - La ausencia de una película en movies_staging se interpreta como "Carga Incremental / Sin Cambios".
---    - La columna show = 'S' actúa estrictamente como un Filtro de Admisión (Gatekeeper) de importación
---      (las filas con show <> 'S' son descartadas en la fase de carga y no ingresan al catálogo activo).
---    - NO se ejecutan DELETEs ciegos de películas para blindar la integridad referencial y las listas/valoraciones
---      de los usuarios (user_movie_entries). La baja o archivado de títulos existentes se gestiona
---      mediante procedimientos administrativos explícitos.
+-- 1. REFRESH MATERIALIZED VIEW CONCURRENTLY no se ejecuta dentro de transacciones activas.
+-- 2. Los CSVs de ingesta contienen siempre la información consolidada de cada película.
+-- 3. La columna show = 'S' opera como Filtro de Admisión (Gatekeeper) en la carga.
+-- 4. La ausencia en staging se interpreta como carga incremental; no se ejecutan DELETEs ciegos.
 --
--- El pipeline de ingesta se compone de DOS FASES COMPLETAMENTE DESACOPLADAS:
---
--- FASE 1 (Ingesta Transaccional):
+-- FASE 1: Ingesta Transaccional
 --   SELECT public.process_staging_data();
---   (Termina y confirma el COMMIT en la base de datos, retornando JSON con has_changes).
 --
--- FASE 2 (Refresco Concurrente y Mantenimiento de Estadísticas - Solo si has_changes = true):
---   Ejecutado desde un worker externo, script SQL independiente o pg_cron:
---
+-- FASE 2: Refresco Concurrente y Mantenimiento de Estadísticas (Worker o SQL Editor)
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_actor_suggestions;
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_director_suggestions;
 --   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_title_suggestions;
 --
---   -- Actualización exhaustiva de estadísticas para el optimizador (Tablas principales, Pivots y Vistas)
 --   ANALYZE public.mv_actor_suggestions;
 --   ANALYZE public.mv_director_suggestions;
 --   ANALYZE public.mv_title_suggestions;
@@ -1236,12 +1191,8 @@ GRANT EXECUTE ON FUNCTION public.process_staging_data() TO service_role;
 --   ANALYZE public.movie_actors;
 --   ANALYZE public.movie_selections;
 --   ANALYZE public.movie_studios;
--- =================================================================
-
--- =================================================================
--- PASO 8: MANTENIMIENTO (Actualización de sinónimos de géneros)
--- =================================================================
--- Actualizaciones idempotentes: sólo escriben en disco si los sinónimos han cambiado.
+--
+-- 8.1. Actualización de Sinónimos de Géneros (Idempotente)
 UPDATE public.genres SET synonyms = ARRAY['action', 'adrenalina'] WHERE name = 'Acción' AND synonyms IS DISTINCT FROM ARRAY['action', 'adrenalina'];
 UPDATE public.genres SET synonyms = ARRAY['adventure', 'epico'] WHERE name = 'Aventuras' AND synonyms IS DISTINCT FROM ARRAY['adventure', 'epico'];
 UPDATE public.genres SET synonyms = ARRAY['animation', 'animado', 'dibujos', 'cgi'] WHERE name = 'Animación' AND synonyms IS DISTINCT FROM ARRAY['animation', 'animado', 'dibujos', 'cgi'];

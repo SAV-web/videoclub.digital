@@ -25,7 +25,9 @@ CREATE TABLE public.directors (
   place_of_birth text,
   country_id bigint,
   photo text,
+  titulo_bio text,
   biography text,
+  components text,
   CONSTRAINT directors_pkey PRIMARY KEY (id),
   CONSTRAINT directors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
@@ -126,6 +128,7 @@ CREATE TABLE public.actors (
   place_of_birth text,
   country_id bigint,
   photo text,
+  titulo_bio text,
   biography text,
   CONSTRAINT actors_pkey PRIMARY KEY (id),
   CONSTRAINT actors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
@@ -186,7 +189,10 @@ CREATE TABLE public.people_staging (
   birthday text,
   deathday text,
   place_of_birth text,
-  country_id text
+  country_id text,
+  titulo_bio text,
+  biography text,
+  components text
 );
 
 CREATE INDEX IF NOT EXISTS idx_actors_country_id ON public.actors(country_id);

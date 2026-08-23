@@ -20,7 +20,7 @@
   - *Stale-While-Revalidate* (`CACHE_DYNAMIC` para assets estáticos JS/CSS).
   - *Cache First* (`CACHE_DYNAMIC` para pósters de Supabase Storage con límite FIFO).
   - *Exclusiones de API*: Las llamadas RPC y Auth viajan vía POST o manejan datos vivos; se gestionan mediante `lru-cache` en el cliente (`src/js/api.ts`).
-  - Estrategia de invalidación documentada en `documents/service_worker_invalidation.md`.
+  - Estrategia de invalidación documentada en `docs/service_worker_invalidation.md`.
 
 ### 2. Frontend TS (`src/js/`)
 Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegación de eventos.
@@ -36,9 +36,9 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 - **`types.ts`**: Interfaces TypeScript centralizadas (`MappedMovie`, `ActiveFilters`, `UserMovieEntry`, `PersonDetails`, `VipData`).
 
 ### 3. Componentes TS (`src/js/components/`)
-- **`card.ts`**: Renderizador masivo de la cuadrícula (*Grid*). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Controla interacciones hápticas y de *hover/flip*. En el reverso, los géneros se muestran como texto plano informativo no clickable, y al pulsar `+` en la línea de reparto se despliega el panel superpuesto (`.actors-scrollable-content`) con **Géneros interactivos arriba** y **Reparto de actores abajo**.
-- **`modal.ts`**: Vista rápida (*Quick View*). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (*landscape*), y formato *Bottom Sheet* en móviles verticales con física de arrastre (*swipe-to-dismiss*) y *View Transitions API* para el efecto *Hero* desde la tarjeta. Los enlaces dentro de la modal (géneros, directores, actores, año) son interactivos y cierran automáticamente la modal al aplicarse.
-- **`sidebar.ts`**: Menú lateral de filtrado avanzado. Incluye autocompletado en tiempo real, control de rango con slider, acordeones CSS nativos y gestos de *swipe* para abrir/cerrar. Implementa reconciliación de píldoras DOM y exclusiones visuales (`(NO País) x`).
+- **`card.ts`**: Renderizador masivo de la cuadrícula (*Grid*). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Controla interacciones hápticas y de *hover/flip*. En el reverso, los géneros se muestran como texto plano informativo no clickable, y al pulsar `+` en la línea de reparto se despliega el panel superpuesto (`.actors-scrollable-content`) con **Géneros interactivos arriba** y **Reparto de actores abajo**. Incorpora tarjetas especiales VIP para personas con soporte de **Insignias de Doble Rol** (`(D)` en ficha de actor, `(A)` en ficha de director) que permiten alternar su filmografía entre roles con un solo clic.
+- **`modal.ts`**: Vista rápida (*Quick View*). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (*landscape*), y formato *Bottom Sheet* en móviles verticales con física de arrastre (*swipe-to-dismiss*) y *View Transitions API* para el efecto *Hero* desde la tarjeta. Los enlaces dentro de la modal (géneros, directores, actores, año, insignias de rol cruzado) son interactivos y cierran automáticamente la modal al aplicarse.
+- **`sidebar.ts`**: Menú lateral de filtrado avanzado. Incluye autocompletado en tiempo real con guardias de longitud mínima (`>= 2`), debouncing y soporte bidireccional para **colectivos y dúos cinematográficos** (ej. buscar "Hermanos Russo" sugiere a Joe y Anthony Russo, y viceversa), control de rango con slider, acordeones CSS nativos y gestos de *swipe* para abrir/cerrar. Implementa reconciliación de píldoras DOM y exclusiones visuales (`(NO País) x`).
 - **`rating.ts`**: Lógica visual del sistema de puntuación por estrellas y lógica de votación de usuario (optimista), manteniendo la exclusividad mutua con la Watchlist.
 - **`yearSlider.ts`**: Componente nativo de control de rango de años doble (*DualRangeSlider*) con soporte táctil, arrastre fluido de pivotes, cálculos precisos de porcentaje y sin dependencias externas.
 
@@ -67,14 +67,16 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 - `user_movie_entries`: Almacena las valoraciones (1-10) y la Watchlist (boolean) por usuario.
 - Tablas `_staging`: Usadas para el proceso ETL (ingesta masiva desde CSV con datos consolidados completos) mediante Triggers de `UPSERT` (compatibilidad con Supabase Studio) y la función diferencial `process_staging_data()`. La columna `show = 'S'` actúa como filtro de admisión (gatekeeper) para la carga al catálogo consolidado.
 
-### Lógica Avanzada SQL (`documents/script_sql.txt` y `documents/contexto_sql.txt`)
+### Lógica Avanzada SQL (`docs/script.sql` y `docs/schema.sql`)
 - **Columnas Generadas (`GENERATED ALWAYS AS ... STORED`)**: Usadas para calcular campos `tsvector` de búsqueda en tiempo de inserción, descargando al procesador durante las consultas `SELECT`. También se usa para normalizar textos (`unaccent`).
-- **Índices**: 
-  - Índices GIN con Trigramas (`pg_trgm`) para autocompletado ultra-rápido en nombres de actores/directores.
+- **Índices y Operadores Cualificados**: 
+  - Índices GIN con Trigramas cualificados (`extensions.gin_trgm_ops`) para autocompletado ultra-rápido en nombres de actores, directores y componentes de colectivos.
   - Índices compuestos para consultas habituales (Ej: `country_id, type, year DESC`).
-- **Vistas Materializadas (`mv_*`)**: Caché pre-calculada de las sugerencias del buscador para no saturar la CPU de la base de datos contando películas.
-- **RPC Principal (`search_movies_offset`)**: Función PL/pgSQL responsable de toda la lógica de filtrado del backend. Implementa patrón **"Late Row Lookup"**: ordena solo IDs y métricas ligeras y *luego* hace JOIN con textos pesados (sinopsis, arrays) y empaqueta en JSON puro (`json_build_object`).
-- **Seguridad (RLS)**: Row Level Security habilitado en todo. Lectura pública general; `user_movie_entries` bloqueada estrictamente al `auth.uid()`.
+- **Vistas Materializadas (`mv_*`)**: Caché pre-calculada de las sugerencias del buscador para no saturar la CPU de la base de datos contando películas. Auto-convergencia segura con `RESTRICT` e índices dedicados.
+- **RPC Principal (`search_movies_offset`)**: Función PL/pgSQL responsable de toda la lógica de filtrado del backend. Implementa patrón **"Late Row Lookup"**: ordena solo IDs y métricas ligeras con **desempate determinista (`m.id ASC`)** para evitar saltos entre páginas, y *luego* hace JOIN con textos pesados (sinopsis, arrays) y empaqueta en JSON puro (`json_build_object`).
+- **ETL Diferencial de Alto Rendimiento (`process_staging_data`)**: Pipeline transaccional con tabla temporal en memoria (`tmp_affected_staging`) y **pre-agregación lineal $O(N_1 + N_2 + ...)$** que elimina la multiplicación por producto cartesiano en relaciones N:M.
+- **Seguridad (RLS & DCL)**: Row Level Security habilitado en todas las tablas. Lectura pública general; `user_movie_entries` protegida con política unificada `FOR ALL` al `auth.uid()`; tablas de staging restringidas exclusivamente a `service_role` mediante DCL (`REVOKE ALL`).
+- **`search_path` Seguro**: Fijado estrictamente en todas las funciones `SECURITY DEFINER` (`SET search_path = pg_catalog, public, extensions, pg_temp;`).
 
 ## ⚡ Patrones de Rendimiento y Arquitectura (Performance)
 
@@ -88,3 +90,5 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
    Animaciones nativas para transicionar del grid a la vista de detalle, con fallback seguro para navegadores antiguos.
 5. **Aislamiento de Renderizado CSS:**
    Uso intensivo de la propiedad `contain` y `will-change: transform` para evitar que las animaciones locales provoquen recálculos globales en la pantalla.
+6. **Gestión de Ciclo de Vida y Limpieza de Memoria (Teardown):**
+   Todos los módulos (`card.ts`, `modal.ts`, `sidebar.ts`, `main.ts`) implementan funciones de desmontaje explícito (`disposeCardEvents`, `disposeModalEvents`, `disposeSidebarEvents`, `disposeMainEvents`, `disposeApp`) y un bus de eventos global con desuscripción limpia (`appEvents.off`, `appEvents.clearAll`) para prevenir *memory leaks* y listeners huérfanos.
