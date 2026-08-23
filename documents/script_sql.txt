@@ -25,16 +25,52 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA extensions;  -- Para búsquedas po
 -- Función "wrapper" inmutable para `unaccent`, necesaria para crear índices funcionales.
 CREATE OR REPLACE FUNCTION public.unaccent_immutable(text)
 RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE
-SET search_path = public, extensions AS
+SET search_path = pg_catalog, public, extensions, pg_temp AS
 $$ SELECT extensions.unaccent('extensions.unaccent', $1); $$;
+
 -- Función para convertir texto a INTEGER de forma segura, devolviendo NULL en caso de error.
 CREATE OR REPLACE FUNCTION public.to_integer_safe(v_input TEXT)
 RETURNS INTEGER LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
-SET search_path = public, extensions AS $$ BEGIN RETURN regexp_replace(v_input, '[^0-9-]', '', 'g')::INTEGER; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$ 
+BEGIN 
+    RETURN regexp_replace(v_input, '[^0-9-]', '', 'g')::INTEGER; 
+EXCEPTION WHEN OTHERS THEN 
+    RETURN NULL; 
+END; $$;
+
 -- Función para convertir texto a REAL de forma segura, devolviendo NULL en caso de error.
 CREATE OR REPLACE FUNCTION public.to_real_safe(v_input TEXT)
 RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
-SET search_path = public, extensions AS $$ BEGIN RETURN replace(v_input, ',', '.')::REAL; EXCEPTION WHEN OTHERS THEN RETURN NULL; END; $$;
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$ 
+BEGIN 
+    RETURN replace(v_input, ',', '.')::REAL; 
+EXCEPTION WHEN OTHERS THEN 
+    RETURN NULL; 
+END; $$;
+
+-- Función para convertir texto a DATE de forma segura, soportando seriales Excel y formatos estándar.
+CREATE OR REPLACE FUNCTION public.to_date_safe(v_input TEXT)
+RETURNS DATE LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
+DECLARE
+    v_clean text := TRIM(v_input);
+BEGIN
+    IF v_clean IS NULL OR v_clean = '' OR v_clean = '.' THEN
+        RETURN NULL;
+    END IF;
+    IF v_clean ~ '^[0-9]{4,6}$' THEN
+        RETURN DATE '1899-12-30' + v_clean::INTEGER;
+    END IF;
+    IF v_clean ~ '^[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{4}$' THEN
+        RETURN TO_DATE(v_clean, 'DD/MM/YYYY');
+    END IF;
+    IF v_clean ~ '^[0-9]{4}[/-][0-9]{1,2}[/-][0-9]{1,2}$' THEN
+        RETURN TO_DATE(v_clean, 'YYYY-MM-DD');
+    END IF;
+    RETURN v_clean::DATE;
+EXCEPTION WHEN OTHERS THEN
+    RETURN NULL;
+END; $$;
 
 -- =================================================================
 -- =================================================================
@@ -56,7 +92,6 @@ ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS components text;
 
 -- 2.1.1. Modificación de Tabla Genres (Sinónimos)
 ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS synonyms text[] DEFAULT '{}';
-CREATE INDEX IF NOT EXISTS genres_synonyms_idx ON public.genres USING GIN(synonyms);
 
 -- 2.1.2. Columnas Generadas en Movies y Genres (Idempotente)
 DO $$
@@ -108,7 +143,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.handle_movies_staging_upsert()
 RETURNS TRIGGER LANGUAGE plpgsql
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
 BEGIN
     -- Si ya existe un registro con la misma imagen (PK), lo actualizamos
     IF EXISTS (SELECT 1 FROM public.movies_staging WHERE image = NEW.image) THEN
@@ -156,7 +191,7 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_movies_staging_upsert();
 -- Trigger de UPSERT para people_staging
 CREATE OR REPLACE FUNCTION public.handle_people_staging_upsert()
 RETURNS TRIGGER LANGUAGE plpgsql
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
 BEGIN
     IF EXISTS (SELECT 1 FROM public.people_staging WHERE id = NEW.id AND type = NEW.type) THEN
         UPDATE public.people_staging SET
@@ -216,7 +251,7 @@ CREATE OR REPLACE FUNCTION public.search_movies_offset(
 RETURNS json
 LANGUAGE plpgsql
 STABLE
-SET search_path = public, extensions
+SET search_path = pg_catalog, public, extensions, pg_temp
 AS $function$
 DECLARE
     v_query TEXT;
@@ -247,13 +282,13 @@ BEGIN
     END IF;
 
     v_order_clause := CASE v_safe_sort_field
-        WHEN 'year' THEN format('ORDER BY m.year %s, m.relevance ASC', v_safe_sort_direction)
-        WHEN 'fa_rating' THEN format('ORDER BY m.fa_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
-        WHEN 'imdb_rating' THEN format('ORDER BY m.imdb_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
-        WHEN 'fa_votes' THEN format('ORDER BY m.fa_votes %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
-        WHEN 'imdb_votes' THEN format('ORDER BY m.imdb_votes %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
-        WHEN 'avg_rating' THEN format('ORDER BY m.avg_rating %s NULLS LAST, m.relevance ASC', v_safe_sort_direction)
-        ELSE 'ORDER BY m.relevance ASC'
+        WHEN 'year' THEN format('ORDER BY m.year %s, m.relevance ASC, m.id ASC', v_safe_sort_direction)
+        WHEN 'fa_rating' THEN format('ORDER BY m.fa_rating %s NULLS LAST, m.relevance ASC, m.id ASC', v_safe_sort_direction)
+        WHEN 'imdb_rating' THEN format('ORDER BY m.imdb_rating %s NULLS LAST, m.relevance ASC, m.id ASC', v_safe_sort_direction)
+        WHEN 'fa_votes' THEN format('ORDER BY m.fa_votes %s NULLS LAST, m.relevance ASC, m.id ASC', v_safe_sort_direction)
+        WHEN 'imdb_votes' THEN format('ORDER BY m.imdb_votes %s NULLS LAST, m.relevance ASC, m.id ASC', v_safe_sort_direction)
+        WHEN 'avg_rating' THEN format('ORDER BY m.avg_rating %s NULLS LAST, m.relevance ASC, m.id ASC', v_safe_sort_direction)
+        ELSE 'ORDER BY m.relevance ASC, m.id ASC'
     END;
 
     -- Validación y Blindaje de Paginación (evita límites abusivos o negativos)
@@ -415,6 +450,7 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean) TO anon, authenticated, service_role;
 
 -- =================================================================
@@ -446,7 +482,7 @@ CREATE INDEX IF NOT EXISTS user_movie_entries_watchlist_pos_idx ON public.user_m
 -- Esta función se reutiliza para la nueva tabla.
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
@@ -497,7 +533,6 @@ CREATE INDEX IF NOT EXISTS movies_country_relevance_idx ON public.movies(country
 CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_id, fa_votes DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_country_imdb_votes_idx ON public.movies(country_id, imdb_votes DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_country_type_year_idx ON public.movies(country_id, type, year DESC);
-CREATE INDEX IF NOT EXISTS movies_studios_type_idx ON public.movies USING GIN(studios_tsv) WHERE type IS NOT NULL;
 
 ANALYZE public.movies;
 
@@ -505,49 +540,109 @@ ANALYZE public.movies;
 -- OPTIMIZACIÓN: Pasamos a LANGUAGE SQL para permitir inlining y reducir overhead.
 
 -- =================================================================
--- VISTAS MATERIALIZADAS PARA SUGERENCIAS (Optimización y Encapsulamiento)
+-- VISTAS MATERIALIZADAS PARA SUGERENCIAS (Optimización, Auto-Convergencia y Encapsulamiento)
 -- =================================================================
+-- NOTA DE CONVERGENCIA DECLARATIVA:
+-- CREATE MATERIALIZED VIEW IF NOT EXISTS ignora si el SELECT subyacente ha cambiado.
+-- Estos bloques DO comprueban la presencia de todas las columnas esperadas.
+-- Si la vista no existe o su esquema es obsoleto, la recrean automáticamente con sus índices y permisos.
 
--- 1. Actores
-CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_actor_suggestions AS
-SELECT a.id, a.name, a.name_norm, COUNT(ma.movie_id) AS movie_count
-FROM public.actors a LEFT JOIN public.movie_actors ma ON a.id = ma.actor_id
-GROUP BY a.id, a.name, a.name_norm;
+-- 1. Actores (Auto-convergencia)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_actor_suggestions'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'mv_actor_suggestions' AND column_name = 'movie_count'
+    ) THEN
+        RAISE NOTICE 'Definición obsoleta detectada en mv_actor_suggestions. Recreando...';
+        DROP MATERIALIZED VIEW public.mv_actor_suggestions CASCADE;
+    END IF;
 
-CREATE UNIQUE INDEX IF NOT EXISTS mv_actor_suggestions_id_idx ON mv_actor_suggestions(id);
-CREATE INDEX IF NOT EXISTS mv_actor_suggestions_name_norm_trgm_idx ON mv_actor_suggestions USING gin(name_norm gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS mv_actor_suggestions_count_idx ON mv_actor_suggestions(movie_count DESC);
-REVOKE ALL ON TABLE public.mv_actor_suggestions FROM anon, authenticated, PUBLIC;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_actor_suggestions'
+    ) THEN
+        CREATE MATERIALIZED VIEW public.mv_actor_suggestions AS
+        SELECT a.id, a.name, a.name_norm, COUNT(ma.movie_id) AS movie_count
+        FROM public.actors a LEFT JOIN public.movie_actors ma ON a.id = ma.actor_id
+        GROUP BY a.id, a.name, a.name_norm;
 
--- 2. Directores (con soporte para componentes de dúos/parejas)
-CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_director_suggestions AS
-SELECT 
-    d.id, 
-    d.name, 
-    d.name_norm, 
-    d.components,
-    public.unaccent_immutable(lower(COALESCE(d.components, ''))) AS components_norm,
-    COUNT(md.movie_id) AS movie_count
-FROM public.directors d 
-LEFT JOIN public.movie_directors md ON d.id = md.director_id
-GROUP BY d.id, d.name, d.name_norm, d.components;
+        CREATE UNIQUE INDEX mv_actor_suggestions_id_idx ON public.mv_actor_suggestions(id);
+        CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON public.mv_actor_suggestions USING gin(name_norm gin_trgm_ops);
+        CREATE INDEX mv_actor_suggestions_count_idx ON public.mv_actor_suggestions(movie_count DESC);
+        REVOKE ALL ON TABLE public.mv_actor_suggestions FROM anon, authenticated, PUBLIC;
+    END IF;
+END $$;
 
-CREATE UNIQUE INDEX IF NOT EXISTS mv_director_suggestions_id_idx ON mv_director_suggestions(id);
-CREATE INDEX IF NOT EXISTS mv_director_suggestions_name_norm_trgm_idx ON mv_director_suggestions USING gin(name_norm gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS mv_director_suggestions_comp_norm_trgm_idx ON mv_director_suggestions USING gin(components_norm gin_trgm_ops) WHERE components_norm <> '';
-CREATE INDEX IF NOT EXISTS mv_director_suggestions_count_idx ON mv_director_suggestions(movie_count DESC);
-REVOKE ALL ON TABLE public.mv_director_suggestions FROM anon, authenticated, PUBLIC;
+-- 2. Directores (Auto-convergencia: verifica components y components_norm)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_director_suggestions'
+    ) AND (
+        NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = 'mv_director_suggestions' AND column_name = 'components_norm'
+        ) OR NOT EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = 'mv_director_suggestions' AND column_name = 'components'
+        )
+    ) THEN
+        RAISE NOTICE 'Definición obsoleta detectada en mv_director_suggestions. Recreando...';
+        DROP MATERIALIZED VIEW public.mv_director_suggestions CASCADE;
+    END IF;
 
--- 3. Títulos (Optimización para Autocompletado)
-CREATE MATERIALIZED VIEW IF NOT EXISTS public.mv_title_suggestions AS
-SELECT title, title_norm, min(relevance) as best_relevance
-FROM public.movies
-GROUP BY title, title_norm;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_director_suggestions'
+    ) THEN
+        CREATE MATERIALIZED VIEW public.mv_director_suggestions AS
+        SELECT 
+            d.id, 
+            d.name, 
+            d.name_norm, 
+            d.components,
+            public.unaccent_immutable(lower(COALESCE(d.components, ''))) AS components_norm,
+            COUNT(md.movie_id) AS movie_count
+        FROM public.directors d 
+        LEFT JOIN public.movie_directors md ON d.id = md.director_id
+        GROUP BY d.id, d.name, d.name_norm, d.components;
 
-CREATE UNIQUE INDEX IF NOT EXISTS mv_title_suggestions_title_idx ON mv_title_suggestions(title);
-CREATE INDEX IF NOT EXISTS mv_title_suggestions_title_norm_trgm_idx ON mv_title_suggestions USING gin(title_norm gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS mv_title_suggestions_relevance_idx ON mv_title_suggestions(best_relevance ASC);
-REVOKE ALL ON TABLE public.mv_title_suggestions FROM anon, authenticated, PUBLIC;
+        CREATE UNIQUE INDEX mv_director_suggestions_id_idx ON public.mv_director_suggestions(id);
+        CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON public.mv_director_suggestions USING gin(name_norm gin_trgm_ops);
+        CREATE INDEX mv_director_suggestions_comp_norm_trgm_idx ON public.mv_director_suggestions USING gin(components_norm gin_trgm_ops) WHERE components_norm <> '';
+        CREATE INDEX mv_director_suggestions_count_idx ON public.mv_director_suggestions(movie_count DESC);
+        REVOKE ALL ON TABLE public.mv_director_suggestions FROM anon, authenticated, PUBLIC;
+    END IF;
+END $$;
+
+-- 3. Títulos (Auto-convergencia: verifica best_relevance)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_title_suggestions'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'mv_title_suggestions' AND column_name = 'best_relevance'
+    ) THEN
+        RAISE NOTICE 'Definición obsoleta detectada en mv_title_suggestions. Recreando...';
+        DROP MATERIALIZED VIEW public.mv_title_suggestions CASCADE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_title_suggestions'
+    ) THEN
+        CREATE MATERIALIZED VIEW public.mv_title_suggestions AS
+        SELECT title, title_norm, min(relevance) as best_relevance
+        FROM public.movies
+        GROUP BY title, title_norm;
+
+        CREATE UNIQUE INDEX mv_title_suggestions_title_idx ON public.mv_title_suggestions(title);
+        CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON public.mv_title_suggestions USING gin(title_norm gin_trgm_ops);
+        CREATE INDEX mv_title_suggestions_relevance_idx ON public.mv_title_suggestions(best_relevance ASC);
+        REVOKE ALL ON TABLE public.mv_title_suggestions FROM anon, authenticated, PUBLIC;
+    END IF;
+END $$;
 
 -- =================================================================
 -- FUNCIONES DE LECTURA Y SUGERENCIAS (SECURITY DEFINER)
@@ -555,16 +650,17 @@ REVOKE ALL ON TABLE public.mv_title_suggestions FROM anon, authenticated, PUBLIC
 
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINER
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     SELECT name FROM public.mv_actor_suggestions
-    WHERE name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
+      AND name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ORDER BY movie_count DESC
     LIMIT 10;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_director_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINER
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     WITH direct_matches AS (
         -- 1. Coincidencia directa por el nombre del director o colectivo/dúo
         SELECT 
@@ -576,10 +672,12 @@ SET search_path = public, extensions AS $$
                 ELSE 3
             END AS prefix_rank
         FROM public.mv_director_suggestions d
-        WHERE d.name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+        WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
+          AND d.name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ),
     component_matches AS (
         -- 2. Si el nombre del dúo NO coincide directamente, pero sí uno de sus integrantes
+        -- Filtramos primero por d.components_norm con el índice GIN trigrama antes del unnest
         SELECT 
             TRIM(comp.name) AS suggestion, 
             d.movie_count,
@@ -590,7 +688,9 @@ SET search_path = public, extensions AS $$
             END AS prefix_rank
         FROM public.mv_director_suggestions d
         CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
-        WHERE d.components IS NOT NULL
+        WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
+          AND d.components IS NOT NULL
+          AND d.components_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
           AND d.name_norm NOT LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
           AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
         
@@ -607,7 +707,9 @@ SET search_path = public, extensions AS $$
             END AS prefix_rank
         FROM public.mv_director_suggestions d
         CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
-        WHERE d.components IS NOT NULL
+        WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
+          AND d.components IS NOT NULL
+          AND d.components_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
           AND d.name_norm NOT LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
           AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ),
@@ -625,29 +727,33 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_title_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINER
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     SELECT title FROM public.mv_title_suggestions
-    WHERE title_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+    WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
+      AND title_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
     ORDER BY best_relevance ASC
     LIMIT 10;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_genre_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     SELECT name FROM public.genres
-    WHERE 
-        name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-        OR EXISTS (SELECT 1 FROM unnest(synonyms) s WHERE public.unaccent_immutable(lower(s)) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
+    WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
+      AND (
+          name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+          OR EXISTS (SELECT 1 FROM unnest(synonyms) s WHERE public.unaccent_immutable(lower(s)) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%')
+      )
     ORDER BY length(name) ASC
     LIMIT 5;
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_country_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     SELECT name FROM public.countries
-    WHERE similarity(name_norm, public.unaccent_immutable(lower(search_term))) > 0.2
+    WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
+      AND similarity(name_norm, public.unaccent_immutable(lower(search_term))) > 0.2
     ORDER BY similarity(name_norm, public.unaccent_immutable(lower(search_term))) DESC
     LIMIT 5;
 $$;
@@ -658,35 +764,48 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.get_random_top_actors(limit_count int DEFAULT 5)
 RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE SECURITY DEFINER
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     WITH top_actors AS (
         SELECT name
         FROM public.mv_actor_suggestions
         ORDER BY movie_count DESC
         LIMIT 200
     )
-    SELECT name FROM top_actors ORDER BY random() LIMIT limit_count;
+    SELECT name FROM top_actors ORDER BY random() LIMIT LEAST(GREATEST(COALESCE(limit_count, 5), 1), 20);
 $$;
 
 CREATE OR REPLACE FUNCTION public.get_random_top_directors(limit_count int DEFAULT 5)
 RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE SECURITY DEFINER
-SET search_path = public, extensions AS $$
+SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     WITH top_directors AS (
         SELECT name
         FROM public.mv_director_suggestions
         ORDER BY movie_count DESC
         LIMIT 200
     )
-    SELECT name FROM top_directors ORDER BY random() LIMIT limit_count;
+    SELECT name FROM top_directors ORDER BY random() LIMIT LEAST(GREATEST(COALESCE(limit_count, 5), 1), 20);
 $$;
 
--- Permisos explícitos de ejecución RPC
+-- Revocación de permisos por defecto a PUBLIC y concesión explícita controlada
+REVOKE ALL ON FUNCTION public.get_actor_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_actor_suggestions(text) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.get_director_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_director_suggestions(text) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.get_title_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_title_suggestions(text) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.get_genre_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_genre_suggestions(text) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.get_country_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_country_suggestions(text) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.get_random_top_actors(int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_random_top_actors(int) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.get_random_top_directors(int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_random_top_directors(int) TO anon, authenticated, service_role;
 
 -- =================================================================
@@ -716,6 +835,9 @@ END; $$;
 -- 6.2. Seguridad estricta para tablas de staging (Acceso exclusivo a service_role)
 ALTER TABLE public.movies_staging ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.people_staging ENABLE ROW LEVEL SECURITY;
+
+REVOKE ALL ON TABLE public.movies_staging, public.people_staging FROM anon, authenticated, PUBLIC;
+GRANT ALL ON TABLE public.movies_staging, public.people_staging TO service_role;
 
 DROP POLICY IF EXISTS "Staging access restricted to service_role" ON public.movies_staging;
 CREATE POLICY "Staging access restricted to service_role" ON public.movies_staging FOR ALL TO service_role USING (true);
@@ -752,7 +874,7 @@ WITH CHECK ( auth.uid() = user_id );
 CREATE OR REPLACE FUNCTION public.process_staging_data()
 RETURNS json
 LANGUAGE plpgsql
-SET search_path TO 'public', 'extensions'
+SET search_path = pg_catalog, public, extensions, pg_temp
 AS $function$
 DECLARE
     sync_timestamp TIMESTAMP WITH TIME ZONE := NOW();
@@ -904,127 +1026,159 @@ BEGIN
     SELECT array_agg(id) INTO affected_movie_ids FROM upserted_movies;
 
     -- =================================================================
-    -- FASE 3: RELACIONES DIFERENCIALES (SÓLO PARA PELÍCULAS AFECTADAS)
+    -- FASE 3: RELACIONES DIFERENCIALES CON TABLA TEMPORAL Y PRE-AGREGACIÓN LINEAL
     -- =================================================================
     IF affected_movie_ids IS NOT NULL AND array_length(affected_movie_ids, 1) > 0 THEN
-        -- Inserción / actualización de relaciones
+        -- Creamos tabla temporal de trabajo con las películas afectadas para evitar 10 escaneos a staging
+        CREATE TEMP TABLE tmp_affected_staging ON COMMIT DROP AS
+        SELECT s.*, m.id AS movie_id
+        FROM public.movies_staging s
+        JOIN public.movies m ON TRIM(s.image) = m.image
+        WHERE m.id = ANY(affected_movie_ids);
+
+        -- Inserciones desde tabla temporal
         INSERT INTO public.movie_genres (movie_id, genre_id)
-        SELECT m.id, g.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS genre_name(name) JOIN public.genres g ON g.name = TRIM(genre_name.name)
-        WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, genre_id) DO NOTHING;
+        SELECT t.movie_id, g.id
+        FROM tmp_affected_staging t
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.genre, ',')) AS genre_name(name)
+        JOIN public.genres g ON g.name = TRIM(genre_name.name)
+        ON CONFLICT (movie_id, genre_id) DO NOTHING;
 
         INSERT INTO public.movie_directors (movie_id, director_id, ordinality)
-        SELECT DISTINCT ON (m.id, d.id) m.id, d.id, director_name.ordinality FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) WITH ORDINALITY AS director_name(name, ordinality) JOIN public.directors d ON d.name = TRIM(director_name.name)
-        WHERE m.id = ANY(affected_movie_ids)
-        ORDER BY m.id, d.id, director_name.ordinality ASC ON CONFLICT (movie_id, director_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
+        SELECT DISTINCT ON (t.movie_id, d.id) t.movie_id, d.id, director_name.ordinality
+        FROM tmp_affected_staging t
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.directors, ', ', ','), ',')) WITH ORDINALITY AS director_name(name, ordinality)
+        JOIN public.directors d ON d.name = TRIM(director_name.name)
+        ORDER BY t.movie_id, d.id, director_name.ordinality ASC
+        ON CONFLICT (movie_id, director_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
 
         INSERT INTO public.movie_actors (movie_id, actor_id, ordinality)
-        SELECT DISTINCT ON (m.id, a.id) m.id, a.id, actor_name.ordinality FROM public.movies_staging s
-        JOIN public.movies m ON TRIM(s.image) = m.image
-        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) WITH ORDINALITY AS actor_name(name, ordinality) JOIN public.actors a ON a.name = TRIM(actor_name.name)
-        WHERE m.id = ANY(affected_movie_ids) AND s.actors <> '(A)'
-        ORDER BY m.id, a.id, actor_name.ordinality ASC ON CONFLICT (movie_id, actor_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
+        SELECT DISTINCT ON (t.movie_id, a.id) t.movie_id, a.id, actor_name.ordinality
+        FROM tmp_affected_staging t
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.actors, ', ', ','), ',')) WITH ORDINALITY AS actor_name(name, ordinality)
+        JOIN public.actors a ON a.name = TRIM(actor_name.name)
+        WHERE t.actors <> '(A)'
+        ORDER BY t.movie_id, a.id, actor_name.ordinality ASC
+        ON CONFLICT (movie_id, actor_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
 
         INSERT INTO public.movie_selections (movie_id, selection_id)
-        SELECT m.id, c.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS sel_code(code) JOIN public.selections c ON c.code = TRIM(sel_code.code)
-        WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, selection_id) DO NOTHING;
+        SELECT t.movie_id, c.id
+        FROM tmp_affected_staging t
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS sel_code(code)
+        JOIN public.selections c ON c.code = TRIM(sel_code.code)
+        ON CONFLICT (movie_id, selection_id) DO NOTHING;
 
         INSERT INTO public.movie_studios (movie_id, studio_id)
-        SELECT m.id, st.id FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.studio, ',')) AS stu_code(code) JOIN public.studios st ON st.code = TRIM(stu_code.code)
-        WHERE m.id = ANY(affected_movie_ids) ON CONFLICT (movie_id, studio_id) DO NOTHING;
+        SELECT t.movie_id, st.id
+        FROM tmp_affected_staging t
+        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
+        JOIN public.studios st ON st.code = TRIM(stu_code.code)
+        ON CONFLICT (movie_id, studio_id) DO NOTHING;
 
-        -- Eliminación de relaciones retiradas (sólo para las películas modificadas)
+        -- Borrados diferenciales desde tabla temporal
         DELETE FROM public.movie_genres mg
         WHERE mg.movie_id = ANY(affected_movie_ids)
           AND NOT EXISTS (
-            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS g_name(name) JOIN public.genres g ON g.name = TRIM(g_name.name)
-            WHERE m.id = mg.movie_id AND g.id = mg.genre_id
+            SELECT 1 FROM tmp_affected_staging t
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.genre, ',')) AS g_name(name)
+            JOIN public.genres g ON g.name = TRIM(g_name.name)
+            WHERE t.movie_id = mg.movie_id AND g.id = mg.genre_id
           );
 
         DELETE FROM public.movie_directors md
         WHERE md.movie_id = ANY(affected_movie_ids)
           AND NOT EXISTS (
-            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.directors, ', ', ','), ',')) AS d_name(name) JOIN public.directors d ON d.name = TRIM(d_name.name)
-            WHERE m.id = md.movie_id AND d.id = md.director_id
+            SELECT 1 FROM tmp_affected_staging t
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.directors, ', ', ','), ',')) AS d_name(name)
+            JOIN public.directors d ON d.name = TRIM(d_name.name)
+            WHERE t.movie_id = md.movie_id AND d.id = md.director_id
           );
 
         DELETE FROM public.movie_actors ma
         WHERE ma.movie_id = ANY(affected_movie_ids)
           AND NOT EXISTS (
-            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(s.actors, ', ', ','), ',')) AS a_name(name) JOIN public.actors a ON a.name = TRIM(a_name.name)
-            WHERE m.id = ma.movie_id AND a.id = ma.actor_id
+            SELECT 1 FROM tmp_affected_staging t
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.actors, ', ', ','), ',')) AS a_name(name)
+            JOIN public.actors a ON a.name = TRIM(a_name.name)
+            WHERE t.movie_id = ma.movie_id AND a.id = ma.actor_id
           );
 
         DELETE FROM public.movie_selections ms
         WHERE ms.movie_id = ANY(affected_movie_ids)
           AND NOT EXISTS (
-            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.collection, ',')) AS s_code(code) JOIN public.selections sel ON sel.code = TRIM(s_code.code)
-            WHERE m.id = ms.movie_id AND sel.id = ms.selection_id
+            SELECT 1 FROM tmp_affected_staging t
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS s_code(code)
+            JOIN public.selections sel ON sel.code = TRIM(s_code.code)
+            WHERE t.movie_id = ms.movie_id AND sel.id = ms.selection_id
           );
 
         DELETE FROM public.movie_studios mst
         WHERE mst.movie_id = ANY(affected_movie_ids)
           AND NOT EXISTS (
-            SELECT 1 FROM public.movies_staging s JOIN public.movies m ON TRIM(s.image) = m.image
-            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(s.studio, ',')) AS stu_code(code) JOIN public.studios stu ON stu.code = TRIM(stu_code.code)
-            WHERE m.id = mst.movie_id AND stu.id = mst.studio_id
+            SELECT 1 FROM tmp_affected_staging t
+            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
+            JOIN public.studios stu ON stu.code = TRIM(stu_code.code)
+            WHERE t.movie_id = mst.movie_id AND stu.id = mst.studio_id
           );
 
-        -- Reagregación de listas denormalizadas en movies
-        WITH aggregated_data AS (
-            SELECT
-                m.id,
-                STRING_AGG(DISTINCT g.name, ', ' ORDER BY g.name) AS genres,
-                (
-                    SELECT STRING_AGG(director_name, ', ' ORDER BY ordinality)
-                    FROM (
-                        SELECT DISTINCT ON (d.name) d.name as director_name, md.ordinality
-                        FROM public.movie_directors md
-                        JOIN public.directors d ON md.director_id = d.id
-                        WHERE md.movie_id = m.id
-                        ORDER BY d.name, md.ordinality
-                    ) AS unique_directors
-                ) AS directors,
-                STRING_AGG(DISTINCT sel.code, ',') AS selections,
-                STRING_AGG(DISTINCT stu.code, ',') AS studios,
-                (
-                    SELECT STRING_AGG(actor_name, ', ' ORDER BY ordinality)
-                    FROM (
-                        SELECT DISTINCT ON (a.name) a.name as actor_name, ma.ordinality
-                        FROM public.movie_actors ma
-                        JOIN public.actors a ON ma.actor_id = a.id
-                        WHERE ma.movie_id = m.id
-                        ORDER BY a.name, ma.ordinality
-                    ) AS unique_actors
-                ) AS actors
-            FROM public.movies m
-            LEFT JOIN public.movie_genres mg ON m.id = mg.movie_id
-            LEFT JOIN public.genres g ON mg.genre_id = g.id
-            LEFT JOIN public.movie_directors md ON m.id = md.movie_id
-            LEFT JOIN public.directors d ON md.director_id = d.id
-            LEFT JOIN public.movie_selections ms ON m.id = ms.movie_id
-            LEFT JOIN public.selections sel ON ms.selection_id = sel.id
-            LEFT JOIN public.movie_studios mst ON m.id = mst.movie_id
-            LEFT JOIN public.studios stu ON mst.studio_id = stu.id
-            WHERE m.id = ANY(affected_movie_ids)
-            GROUP BY m.id
+        -- Reagregación lineal sin producto cartesiano
+        WITH agg_genres AS (
+            SELECT mg.movie_id, STRING_AGG(g.name, ', ' ORDER BY g.name) AS genres
+            FROM public.movie_genres mg
+            JOIN public.genres g ON mg.genre_id = g.id
+            WHERE mg.movie_id = ANY(affected_movie_ids)
+            GROUP BY mg.movie_id
+        ),
+        agg_directors AS (
+            SELECT movie_id, STRING_AGG(director_name, ', ' ORDER BY min_ordinality) AS directors
+            FROM (
+                SELECT md.movie_id, d.name AS director_name, MIN(md.ordinality) AS min_ordinality
+                FROM public.movie_directors md
+                JOIN public.directors d ON md.director_id = d.id
+                WHERE md.movie_id = ANY(affected_movie_ids)
+                GROUP BY md.movie_id, d.name
+            ) unique_dirs
+            GROUP BY movie_id
+        ),
+        agg_actors AS (
+            SELECT movie_id, STRING_AGG(actor_name, ', ' ORDER BY min_ordinality) AS actors
+            FROM (
+                SELECT ma.movie_id, a.name AS actor_name, MIN(ma.ordinality) AS min_ordinality
+                FROM public.movie_actors ma
+                JOIN public.actors a ON ma.actor_id = a.id
+                WHERE ma.movie_id = ANY(affected_movie_ids)
+                GROUP BY ma.movie_id, a.name
+            ) unique_acts
+            GROUP BY movie_id
+        ),
+        agg_selections AS (
+            SELECT ms.movie_id, STRING_AGG(DISTINCT sel.code, ',') AS selections
+            FROM public.movie_selections ms
+            JOIN public.selections sel ON ms.selection_id = sel.id
+            WHERE ms.movie_id = ANY(affected_movie_ids)
+            GROUP BY ms.movie_id
+        ),
+        agg_studios AS (
+            SELECT mst.movie_id, STRING_AGG(DISTINCT stu.code, ',') AS studios
+            FROM public.movie_studios mst
+            JOIN public.studios stu ON mst.studio_id = stu.id
+            WHERE mst.movie_id = ANY(affected_movie_ids)
+            GROUP BY mst.movie_id
         )
         UPDATE public.movies m
         SET
-            genres_list = ad.genres,
-            directors_list = ad.directors,
-            actors_list = ad.actors,
-            selections_list = ad.selections,
-            studios_list = ad.studios
-        FROM aggregated_data ad
-        WHERE m.id = ad.id;
+            genres_list = COALESCE(ag.genres, ''),
+            directors_list = COALESCE(ad.directors, ''),
+            actors_list = COALESCE(aa.actors, ''),
+            selections_list = ags.selections,
+            studios_list = astu.studios
+        FROM (SELECT unnest(affected_movie_ids) AS id) aff
+        LEFT JOIN agg_genres ag ON ag.movie_id = aff.id
+        LEFT JOIN agg_directors ad ON ad.movie_id = aff.id
+        LEFT JOIN agg_actors aa ON aa.movie_id = aff.id
+        LEFT JOIN agg_selections ags ON ags.movie_id = aff.id
+        LEFT JOIN agg_studios astu ON astu.movie_id = aff.id
+        WHERE m.id = aff.id;
     END IF;
 
     -- =================================================================
@@ -1039,27 +1193,46 @@ BEGIN
 END;
 $function$;
 
+REVOKE ALL ON FUNCTION public.process_staging_data() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.process_staging_data() TO service_role;
 
 -- =================================================================
--- FUNCIÓN DE REFRESCO DE VISTAS MATERIALIZADAS (Mantenimiento de Caché)
+-- PROTOCOLO DE REFRESCO Y MANTENIMIENTO POST-COMMIT (FASE 2)
 -- =================================================================
-CREATE OR REPLACE FUNCTION public.refresh_suggestion_views()
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions AS $$
-BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_actor_suggestions;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_director_suggestions;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_title_suggestions;
-    ANALYZE public.movies;
-    ANALYZE public.actors;
-    ANALYZE public.directors;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.refresh_suggestion_views() TO service_role;
+-- NOTA ARQUITECTÓNICA Y POLÍTICA DE DATOS:
+-- 1. REFRESH MATERIALIZED VIEW CONCURRENTLY NO debe ejecutarse dentro de una función
+--    RPC o transacción activa (PostgreSQL genera ERROR: 25001).
+-- 2. POLÍTICA DE AUSENCIA EN STAGING:
+--    La ausencia de una película en movies_staging se interpreta como "Carga Incremental / Sin Cambios".
+--    NO se ejecutan DELETEs ciegos de películas para preservar el historial y listas de usuarios (user_movie_entries).
+--    La ocultación de títulos se gestiona explícitamente mediante el flag show = 'N'.
+--
+-- El pipeline de ingesta se compone de DOS FASES COMPLETAMENTE DESACOPLADAS:
+--
+-- FASE 1 (Ingesta Transaccional):
+--   SELECT public.process_staging_data();
+--   (Termina y confirma el COMMIT en la base de datos, retornando JSON con has_changes).
+--
+-- FASE 2 (Refresco Concurrente y Mantenimiento de Estadísticas - Solo si has_changes = true):
+--   Ejecutado desde un worker externo, script SQL independiente o pg_cron:
+--
+--   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_actor_suggestions;
+--   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_director_suggestions;
+--   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_title_suggestions;
+--
+--   -- Actualización exhaustiva de estadísticas para el optimizador (Tablas principales, Pivots y Vistas)
+--   ANALYZE public.mv_actor_suggestions;
+--   ANALYZE public.mv_director_suggestions;
+--   ANALYZE public.mv_title_suggestions;
+--   ANALYZE public.movies;
+--   ANALYZE public.actors;
+--   ANALYZE public.directors;
+--   ANALYZE public.movie_genres;
+--   ANALYZE public.movie_directors;
+--   ANALYZE public.movie_actors;
+--   ANALYZE public.movie_selections;
+--   ANALYZE public.movie_studios;
+-- =================================================================
 
 -- =================================================================
 -- PASO 8: MANTENIMIENTO (Actualización de sinónimos de géneros)
