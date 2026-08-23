@@ -12,11 +12,14 @@
 -- =================================================================
 
 -- =================================================================
--- PASO 1: HABILITACIÓN DE EXTENSIONES
+-- PASO 1: HABILITACIÓN DE EXTENSIONES Y ESPACIO DE BÚSQUEDA
 -- =================================================================
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA extensions; -- Para búsquedas insensibles a acentos.
 CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA extensions;  -- Para búsquedas por similitud y `ILIKE` rápido.
+
+-- Garantiza que las clases de operadores de extensiones se resuelvan en cualquier entorno o instalación limpia
+SET search_path = pg_catalog, public, extensions;
 
 -- =================================================================
 -- PASO 2: CREACIÓN DE FUNCIONES AUXILIARES Y DE UTILIDAD
@@ -498,7 +501,7 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 -- PASO 5: OPTIMIZACIÓN DE RENDIMIENTO (ÍNDICES)
 -- =================================================================
 -- Índice GIN (Generalized Inverted Index) sobre la columna normalizada para búsqueda por substring
-CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm extensions.gin_trgm_ops);
 -- Índice único para la columna image, necesario para la cláusula ON CONFLICT (image) en staging/ETL
 CREATE UNIQUE INDEX IF NOT EXISTS movies_image_unique_idx ON public.movies(image);
 -- Para campos de ordenación principales y desempate por relevancia
@@ -515,10 +518,10 @@ CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(acto
 CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_selections(selection_id);
 CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
 
--- Para tablas de entidad (búsqueda y autocompletado)
-CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS directors_components_trgm_idx ON public.directors USING gin (public.unaccent_immutable(lower(components)) gin_trgm_ops) WHERE components IS NOT NULL;
-CREATE INDEX IF NOT EXISTS actors_name_norm_trgm_idx ON public.actors USING gin (name_norm gin_trgm_ops);
+-- Para tablas de entidad (búsqueda y autocompletado con clase de operador cualificada)
+CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm extensions.gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS directors_components_trgm_idx ON public.directors USING gin (public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
+CREATE INDEX IF NOT EXISTS actors_name_norm_trgm_idx ON public.actors USING gin (name_norm extensions.gin_trgm_ops);
 
 -- Índices GIN de texto completo (_tsv) para filtros facetados
 CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
@@ -547,7 +550,7 @@ ANALYZE public.movies;
 -- Estos bloques DO comprueban la presencia de todas las columnas esperadas.
 -- Si la vista no existe o su esquema es obsoleto, la recrean automáticamente con sus índices y permisos.
 
--- 1. Actores (Auto-convergencia)
+-- 1. Actores (Auto-convergencia segura)
 DO $$
 BEGIN
     IF EXISTS (
@@ -557,7 +560,7 @@ BEGIN
         WHERE table_schema = 'public' AND table_name = 'mv_actor_suggestions' AND column_name = 'movie_count'
     ) THEN
         RAISE NOTICE 'Definición obsoleta detectada en mv_actor_suggestions. Recreando...';
-        DROP MATERIALIZED VIEW public.mv_actor_suggestions CASCADE;
+        DROP MATERIALIZED VIEW public.mv_actor_suggestions RESTRICT;
     END IF;
 
     IF NOT EXISTS (
@@ -569,13 +572,13 @@ BEGIN
         GROUP BY a.id, a.name, a.name_norm;
 
         CREATE UNIQUE INDEX mv_actor_suggestions_id_idx ON public.mv_actor_suggestions(id);
-        CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON public.mv_actor_suggestions USING gin(name_norm gin_trgm_ops);
+        CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON public.mv_actor_suggestions USING gin(name_norm extensions.gin_trgm_ops);
         CREATE INDEX mv_actor_suggestions_count_idx ON public.mv_actor_suggestions(movie_count DESC);
         REVOKE ALL ON TABLE public.mv_actor_suggestions FROM anon, authenticated, PUBLIC;
     END IF;
 END $$;
 
--- 2. Directores (Auto-convergencia: verifica components y components_norm)
+-- 2. Directores (Auto-convergencia segura: verifica components y components_norm)
 DO $$
 BEGIN
     IF EXISTS (
@@ -590,7 +593,7 @@ BEGIN
         )
     ) THEN
         RAISE NOTICE 'Definición obsoleta detectada en mv_director_suggestions. Recreando...';
-        DROP MATERIALIZED VIEW public.mv_director_suggestions CASCADE;
+        DROP MATERIALIZED VIEW public.mv_director_suggestions RESTRICT;
     END IF;
 
     IF NOT EXISTS (
@@ -609,14 +612,14 @@ BEGIN
         GROUP BY d.id, d.name, d.name_norm, d.components;
 
         CREATE UNIQUE INDEX mv_director_suggestions_id_idx ON public.mv_director_suggestions(id);
-        CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON public.mv_director_suggestions USING gin(name_norm gin_trgm_ops);
-        CREATE INDEX mv_director_suggestions_comp_norm_trgm_idx ON public.mv_director_suggestions USING gin(components_norm gin_trgm_ops) WHERE components_norm <> '';
+        CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON public.mv_director_suggestions USING gin(name_norm extensions.gin_trgm_ops);
+        CREATE INDEX mv_director_suggestions_comp_norm_trgm_idx ON public.mv_director_suggestions USING gin(components_norm extensions.gin_trgm_ops) WHERE components_norm <> '';
         CREATE INDEX mv_director_suggestions_count_idx ON public.mv_director_suggestions(movie_count DESC);
         REVOKE ALL ON TABLE public.mv_director_suggestions FROM anon, authenticated, PUBLIC;
     END IF;
 END $$;
 
--- 3. Títulos (Auto-convergencia: verifica best_relevance)
+-- 3. Títulos (Auto-convergencia segura: verifica best_relevance)
 DO $$
 BEGIN
     IF EXISTS (
@@ -626,7 +629,7 @@ BEGIN
         WHERE table_schema = 'public' AND table_name = 'mv_title_suggestions' AND column_name = 'best_relevance'
     ) THEN
         RAISE NOTICE 'Definición obsoleta detectada en mv_title_suggestions. Recreando...';
-        DROP MATERIALIZED VIEW public.mv_title_suggestions CASCADE;
+        DROP MATERIALIZED VIEW public.mv_title_suggestions RESTRICT;
     END IF;
 
     IF NOT EXISTS (
@@ -638,7 +641,7 @@ BEGIN
         GROUP BY title, title_norm;
 
         CREATE UNIQUE INDEX mv_title_suggestions_title_idx ON public.mv_title_suggestions(title);
-        CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON public.mv_title_suggestions USING gin(title_norm gin_trgm_ops);
+        CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON public.mv_title_suggestions USING gin(title_norm extensions.gin_trgm_ops);
         CREATE INDEX mv_title_suggestions_relevance_idx ON public.mv_title_suggestions(best_relevance ASC);
         REVOKE ALL ON TABLE public.mv_title_suggestions FROM anon, authenticated, PUBLIC;
     END IF;
@@ -852,12 +855,9 @@ DROP POLICY IF EXISTS "Los usuarios pueden gestionar sus propias entradas" ON pu
 DROP POLICY IF EXISTS "Los usuarios pueden leer sus propias entradas" ON public.user_movie_entries;
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_movie_entries; -- SEGURIDAD CRÍTICA: Eliminar política global si existe por error
 
-CREATE POLICY "Los usuarios pueden leer sus propias entradas"
-ON public.user_movie_entries FOR SELECT
-USING ( auth.uid() = user_id );
-
+-- Política única y consolidada para todo el ciclo CRUD (SELECT, INSERT, UPDATE, DELETE)
 CREATE POLICY "Los usuarios pueden gestionar sus propias entradas"
-ON public.user_movie_entries FOR ALL -- (INSERT, UPDATE, DELETE)
+ON public.user_movie_entries FOR ALL
 USING ( auth.uid() = user_id )
 WITH CHECK ( auth.uid() = user_id );
 
@@ -1202,10 +1202,14 @@ GRANT EXECUTE ON FUNCTION public.process_staging_data() TO service_role;
 -- NOTA ARQUITECTÓNICA Y POLÍTICA DE DATOS:
 -- 1. REFRESH MATERIALIZED VIEW CONCURRENTLY NO debe ejecutarse dentro de una función
 --    RPC o transacción activa (PostgreSQL genera ERROR: 25001).
--- 2. POLÍTICA DE AUSENCIA EN STAGING:
---    La ausencia de una película en movies_staging se interpreta como "Carga Incremental / Sin Cambios".
---    NO se ejecutan DELETEs ciegos de películas para preservar el historial y listas de usuarios (user_movie_entries).
---    La ocultación de títulos se gestiona explícitamente mediante el flag show = 'N'.
+-- 2. POLÍTICA DE DATOS EN STAGING Y FILTRO DE ADMISIÓN (SHOW = 'S'):
+--    - Los CSVs de ingesta proporcionan siempre la información completa y consolidada de cada película.
+--    - La ausencia de una película en movies_staging se interpreta como "Carga Incremental / Sin Cambios".
+--    - La columna show = 'S' actúa estrictamente como un Filtro de Admisión (Gatekeeper) de importación
+--      (las filas con show <> 'S' son descartadas en la fase de carga y no ingresan al catálogo activo).
+--    - NO se ejecutan DELETEs ciegos de películas para blindar la integridad referencial y las listas/valoraciones
+--      de los usuarios (user_movie_entries). La baja o archivado de títulos existentes se gestiona
+--      mediante procedimientos administrativos explícitos.
 --
 -- El pipeline de ingesta se compone de DOS FASES COMPLETAMENTE DESACOPLADAS:
 --
