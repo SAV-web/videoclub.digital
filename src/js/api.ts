@@ -75,7 +75,7 @@ export function getSupabase(): Promise<SupabaseClient> {
           const p = Promise.resolve({
             data: null,
             error: createAppError(ERROR_CODES.CONFIGURATION, "Supabase no configurado (Faltan credenciales)")
-          }) as Promise<{ data: null; error: Error }> & { abortSignal: (s: unknown) => unknown };
+          }) as unknown as Promise<{ data: null; error: Error }> & { abortSignal: (s: unknown) => unknown };
           p.abortSignal = () => p;
           return p;
         };
