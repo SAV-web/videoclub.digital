@@ -25,7 +25,7 @@ import {
   toAppError,
 } from "./contracts.js";
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 
 
@@ -64,7 +64,6 @@ export function getSupabase(): Promise<SupabaseClient> {
       const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = CONFIG;
 
       if (url && key && !isTestEnv) {
-        const { createClient } = await import("@supabase/supabase-js");
         return createClient(url, key, {
           auth: {
             persistSession: true,
@@ -72,16 +71,38 @@ export function getSupabase(): Promise<SupabaseClient> {
           }
         });
       } else {
+        const createMockQuery = () => {
+          const p = Promise.resolve({
+            data: null,
+            error: createAppError(ERROR_CODES.CONFIGURATION, "Supabase no configurado (Faltan credenciales)")
+          }) as Promise<{ data: null; error: Error }> & { abortSignal: (s: unknown) => unknown };
+          p.abortSignal = () => p;
+          return p;
+        };
+
         const mockClient = {
           // Mock falso para que la web arranque aunque no haya claves de BD puestas
-          rpc: notConfiguredError,
-          from: () => ({ select: notConfiguredError, upsert: notConfiguredError }),
+          rpc: createMockQuery,
+          from: () => {
+            const queryObj: Record<string, unknown> = {
+              select: () => queryObj,
+              eq: () => queryObj,
+              not: () => queryObj,
+              or: () => queryObj,
+              ilike: () => queryObj,
+              order: () => queryObj,
+              abortSignal: () => queryObj,
+              range: () => Promise.resolve({ data: [], error: null, count: 0 }),
+              upsert: createMockQuery
+            };
+            return queryObj;
+          },
           auth: {
             getSession: () => Promise.resolve({ data: { session: null }, error: null }),
             onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
             signInWithPassword: notConfiguredError,
             signUp: notConfiguredError,
-            signOut: notConfiguredError,
+            signOut: () => Promise.resolve({ error: null }),
             resetPasswordForEmail: notConfiguredError,
             updateUser: notConfiguredError
           }

@@ -619,6 +619,13 @@ END $$;
 -- =================================================================
 -- FUNCIONES DE LECTURA Y SUGERENCIAS (SECURITY DEFINER)
 -- =================================================================
+DROP FUNCTION IF EXISTS public.get_actor_suggestions(text);
+DROP FUNCTION IF EXISTS public.get_director_suggestions(text);
+DROP FUNCTION IF EXISTS public.get_title_suggestions(text);
+DROP FUNCTION IF EXISTS public.get_genre_suggestions(text);
+DROP FUNCTION IF EXISTS public.get_country_suggestions(text);
+DROP FUNCTION IF EXISTS public.get_random_top_actors(int);
+DROP FUNCTION IF EXISTS public.get_random_top_directors(int);
 
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINER
@@ -837,6 +844,8 @@ WITH CHECK ( auth.uid() = user_id );
 -- 2. Actualización diferencial de personas VIPs (fotos, biografías, componentes).
 -- 3. UPSERT diferencial en catálogo movies con detección de cambios reales.
 -- 4. Reconciliación N:M mediante tabla temporal y pre-agregación lineal O(N1 + N2 + ...).
+
+DROP FUNCTION IF EXISTS public.process_staging_data() CASCADE;
 
 CREATE OR REPLACE FUNCTION public.process_staging_data()
 RETURNS json

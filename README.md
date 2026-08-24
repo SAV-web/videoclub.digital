@@ -86,12 +86,12 @@ VIDEOCLUB.DIGITAL/
 ├── tests/                       # Suite de pruebas unitarias
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   └── *.test.mjs               # Archivos de test unitarios (api, state, rating, seo, utils)
-└── docs/                        # Documentación técnica detallada de arquitectura
     ├── project_context.md       # Contexto global y mapa del proyecto
     ├── contracts.md             # Especificación de contratos de datos y fronteras
     ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
-    ├── script.sql               # Esquema SQL, funciones RPC e índices de Supabase
-    └── schema.sql               # Esquema DDL de tablas y restricciones relacionales
+    ├── script.sql               # Esquema SQL completo, funciones RPC e índices
+    ├── schema.sql               # Esquema DDL de tablas y restricciones relacionales
+    └── ingest.sql               # Script post-CSV: ETL diferencial, vistas y estadísticas
 ```
 
 ---

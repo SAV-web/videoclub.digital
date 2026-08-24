@@ -928,8 +928,7 @@ function setupAuthSystem(): void {
   const logoutButton = document.getElementById("logout-button");
   const loginButton = document.getElementById("login-button");
   const userSessionGroup = document.getElementById("user-session-group");
-  let initialLoadHandled = false;
-  let lastUserId: string | null = null;
+  let lastUserId: string | null | undefined = undefined;
 
   async function onLogin(user: User) {
     document.body.classList.add(CSS_CLASSES.USER_LOGGED_IN);
@@ -950,7 +949,6 @@ function setupAuthSystem(): void {
     } catch (err) {
       if (import.meta.env.DEV) console.error("Error al sincronizar catálogo del usuario:", err);
     }
-
 
     appEvents.emit("userDataUpdated");
   }
@@ -984,17 +982,12 @@ function setupAuthSystem(): void {
   }
 
   let authSubscription: { unsubscribe: () => void } | null = null;
-  let authSafetyTimeout: ReturnType<typeof setTimeout> | null = null;
   const authGen = mainLifecycleGen;
 
   getSupabase().then(supabase => {
     if (authGen !== mainLifecycleGen) return;
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (authGen !== mainLifecycleGen) return;
-      if (authSafetyTimeout) {
-        clearTimeout(authSafetyTimeout);
-        authSafetyTimeout = null;
-      }
       const currentUser = session?.user || null;
       const currentUserId = currentUser?.id || null;
 
@@ -1018,22 +1011,14 @@ function setupAuthSystem(): void {
 
       if (hasAuthHash && !window.location.hash.includes("type=recovery")) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+
+      // Si el usuario cambia realmente (login o logout manual) tras la carga inicial, refrescar grid
+      if (lastUserId !== undefined && currentUserId !== lastUserId) {
         lastUserId = currentUserId;
-        if (!initialLoadHandled) {
-          initialLoadHandled = true;
-          loadAndRenderMovies(1, { replaceHistory: true });
-        }
-      } else if (!initialLoadHandled) {
-        lastUserId = currentUserId;
-        initialLoadHandled = true;
-        loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
+        loadAndRenderMovies(getCurrentPage());
       } else {
-        // Solo recargamos si el usuario ha cambiado realmente (login o logout manual)
-        // para evitar recargas innecesarias al refrescar el token de sesión (event === "TOKEN_REFRESHED")
-        if (currentUserId !== lastUserId) {
-          lastUserId = currentUserId;
-          loadAndRenderMovies(getCurrentPage());
-        }
+        lastUserId = currentUserId;
       }
     });
 
@@ -1055,10 +1040,6 @@ function setupAuthSystem(): void {
         showToast("El enlace de autenticación no es válido o ha expirado.", "error");
       }
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      if (!initialLoadHandled) {
-        initialLoadHandled = true;
-        loadAndRenderMovies(1, { replaceHistory: true });
-      }
     }
   });
 
@@ -1067,20 +1048,6 @@ function setupAuthSystem(): void {
       authSubscription.unsubscribe();
       authSubscription = null;
     }
-  });
-
-  // Temporizador de seguridad: garantizar que la página de inicio cargue si el evento auth no dispara la carga
-  const safetyGen = mainLifecycleGen;
-  authSafetyTimeout = setTimeout(() => {
-    if (safetyGen !== mainLifecycleGen) return;
-    if (!initialLoadHandled) {
-      initialLoadHandled = true;
-      loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
-    }
-  }, 600);
-
-  mainUnsubscribers.push(() => {
-    if (authSafetyTimeout) clearTimeout(authSafetyTimeout);
   });
 }
 
@@ -1245,12 +1212,9 @@ export function init(): void {
   appEvents.emit("updateSidebarUI");
   checkAndOpenMovieFromUrl();
 
-
-  // Mostrar skeletons preliminares mientras se carga el catálogo (que se disparará inmediatamente por setupAuthSystem)
-  const skeletonGen = mainLifecycleGen;
-  loadCardModule().then(({ renderSkeletons }) => {
-    if (skeletonGen !== mainLifecycleGen) return;
-    renderSkeletons(dom.gridContainer, dom.paginationContainer);
+  // Iniciar la carga y renderizado del catálogo INMEDIATAMENTE
+  loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, forceSkeleton: true }).catch(err => {
+    if (import.meta.env.DEV) console.error("Error en carga inicial del catálogo:", err);
   });
 }
 
