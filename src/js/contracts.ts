@@ -172,9 +172,52 @@ export function normalizeNullableText(value: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
+const LEGACY_STUDIO_MAP: Record<string, string> = {
+  w: "warner",
+  u: "universal",
+  s: "sony",
+  p: "paramount",
+  d: "disney",
+  n: "netflix",
+  z: "amazon",
+  f: "fox",
+  l: "lionsgate",
+  c: "canalplus",
+  b: "bbc",
+  x: "miramax",
+  t: "a24",
+  o: "movistar",
+  a: "apple"
+};
+
+const LEGACY_SELECTION_MAP: Record<string, string> = {
+  m: "1001movies",
+  p: "tspdt",
+  c: "criterion",
+  k: "kinolorber",
+  s: "toptv",
+  h: "hbo",
+  t: "acontra",
+  a: "arrow",
+  e: "eureka",
+  i: "imprint"
+};
+
+export function normalizeStudioCode(value: unknown): string | null {
+  const text = normalizeTextValue(value).toLowerCase();
+  if (!text) return null;
+  return LEGACY_STUDIO_MAP[text] || text;
+}
+
+export function normalizeSelectionCode(value: unknown): string | null {
+  const text = normalizeTextValue(value).toLowerCase();
+  if (!text) return null;
+  return LEGACY_SELECTION_MAP[text] || text;
+}
+
 export function normalizeCodeValue(value: unknown): string | null {
-  const text = normalizeTextValue(value);
-  return text.length > 0 ? text.toUpperCase() : null;
+  const text = normalizeTextValue(value).toLowerCase();
+  return text.length > 0 ? text : null;
 }
 
 export function normalizeStringList(value: unknown): string[] {
@@ -190,7 +233,8 @@ export function normalizeFilterValue(key: string, value: unknown): unknown {
   if (key === "mediaType") return normalizeMediaType(value);
   if (key === "myList") return normalizeMyList(value);
   if (key === "year") return normalizeYearRange(value);
-  if (key === "selection" || key === "studio") return normalizeCodeValue(value);
+  if (key === "studio") return normalizeStudioCode(value);
+  if (key === "selection") return normalizeSelectionCode(value);
   if (LIST_FILTER_KEYS.has(key)) return normalizeStringList(value);
   if (key === "searchTerm") return normalizeTextValue(value);
   if (TEXT_FILTER_KEYS.has(key)) return normalizeNullableText(value);
@@ -205,8 +249,8 @@ export function normalizeActiveFilters(filters: Partial<ActiveFilters> = {}): Ac
     country: normalizeNullableText(filters.country),
     director: normalizeNullableText(filters.director),
     actor: normalizeNullableText(filters.actor),
-    selection: normalizeCodeValue(filters.selection),
-    studio: normalizeCodeValue(filters.studio),
+    selection: normalizeSelectionCode(filters.selection),
+    studio: normalizeStudioCode(filters.studio),
     sort: normalizeSort(filters.sort),
     mediaType: normalizeMediaType(filters.mediaType),
     excludedGenres: normalizeStringList(filters.excludedGenres),

@@ -322,14 +322,14 @@ describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
   });
 
   test("STUDIO_DATA contiene mapeos canónicos de estudios cinematográficos", () => {
-    assert.ok(sharedConstants.STUDIO_DATA.D);
-    assert.equal(sharedConstants.STUDIO_DATA.D.title, "Disney");
-    assert.ok(sharedConstants.STUDIO_DATA.W);
-    assert.equal(sharedConstants.STUDIO_DATA.W.title, "Warner Bros.");
-    assert.ok(sharedConstants.STUDIO_DATA.U);
-    assert.equal(sharedConstants.STUDIO_DATA.U.title, "Universal");
-    assert.ok(sharedConstants.STUDIO_DATA.N);
-    assert.equal(sharedConstants.STUDIO_DATA.N.title, "Netflix");
+    assert.ok(sharedConstants.STUDIO_DATA.disney);
+    assert.equal(sharedConstants.STUDIO_DATA.disney.title, "Disney");
+    assert.ok(sharedConstants.STUDIO_DATA.warner);
+    assert.equal(sharedConstants.STUDIO_DATA.warner.title, "Warner Bros.");
+    assert.ok(sharedConstants.STUDIO_DATA.universal);
+    assert.equal(sharedConstants.STUDIO_DATA.universal.title, "Universal");
+    assert.ok(sharedConstants.STUDIO_DATA.netflix);
+    assert.equal(sharedConstants.STUDIO_DATA.netflix.title, "Netflix");
   });
 
 

@@ -179,6 +179,19 @@ CREATE TABLE public.movie_studios (
   CONSTRAINT movie_studios_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id),
   CONSTRAINT movie_studios_studio_id_fkey FOREIGN KEY (studio_id) REFERENCES public.studios(id)
 );
+CREATE TABLE public.selections (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL UNIQUE,
+  code text,
+  CONSTRAINT selections_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.movie_selections (
+  movie_id bigint NOT NULL,
+  selection_id bigint NOT NULL,
+  CONSTRAINT movie_selections_pkey PRIMARY KEY (movie_id, selection_id),
+  CONSTRAINT movie_selections_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id),
+  CONSTRAINT movie_selections_selection_id_fkey FOREIGN KEY (selection_id) REFERENCES public.selections(id)
+);
 CREATE TABLE public.people_staging (
   id text NOT NULL,
   name text NOT NULL,

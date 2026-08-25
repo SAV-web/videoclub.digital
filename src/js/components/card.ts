@@ -1174,8 +1174,8 @@ function createGroupCardElement(
   }
 
   if (img) {
-    const prefix = isStudio ? "studio" : "collection";
-    const label = isStudio ? "Estudio" : "Colección";
+    const prefix = isStudio ? "studio" : "selection";
+    const label = isStudio ? "Estudio" : "Selección";
     img.alt = `${label} ${fullName}`;
     img.loading = "eager";
     img.decoding = "async";

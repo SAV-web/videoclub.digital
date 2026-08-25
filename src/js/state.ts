@@ -170,7 +170,7 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
           (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`)) return;
       
       const valToSet = (key === "selection" || key === "studio")
-        ? value.toUpperCase()
+        ? value.toLowerCase()
         : (TEXT_FILTER_KEYS.has(key) ? normalizeText(value) : value);
       params.set(shortKey, valToSet);
     }

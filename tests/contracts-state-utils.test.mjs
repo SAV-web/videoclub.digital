@@ -180,14 +180,21 @@ describe("state.js", () => {
     assert.equal(filters.sort, constants.DEFAULTS.SORT);
     assert.equal(filters.mediaType, constants.DEFAULTS.MEDIA_TYPE);
 
-    // Exclusividad mutua entre selection y studio
-    state.setFilter("studio", "W", true);
-    assert.equal(state.getActiveFilters().studio, "W");
+    // Exclusividad mutua entre selection y studio y normalización de slugs
+    state.setFilter("studio", "warner", true);
+    assert.equal(state.getActiveFilters().studio, "warner");
     assert.equal(state.getActiveFilters().selection, null);
 
-    state.setFilter("selection", "C", true);
-    assert.equal(state.getActiveFilters().selection, "C");
+    state.setFilter("selection", "criterion", true);
+    assert.equal(state.getActiveFilters().selection, "criterion");
     assert.equal(state.getActiveFilters().studio, null);
+
+    // Retrocompatibilidad con códigos legacy de 1 letra
+    state.setFilter("studio", "W", true);
+    assert.equal(state.getActiveFilters().studio, "warner");
+
+    state.setFilter("selection", "C", true);
+    assert.equal(state.getActiveFilters().selection, "criterion");
   });
 
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {
