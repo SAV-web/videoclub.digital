@@ -728,12 +728,12 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
       if (movie.hasBothRoles) {
         const isDirector = movie.currentRole === "director";
         const targetRole = isDirector ? "actor" : "director";
-        const targetLetter = isDirector ? "A" : "D";
+        const currentLetter = isDirector ? "D" : "A";
         const tooltipText = isDirector
           ? `Ver películas de ${movie.name} como Actor`
           : `Ver películas de ${movie.name} como Director`;
 
-        roleLetterEl.textContent = targetLetter;
+        roleLetterEl.textContent = currentLetter;
         roleToggleBtn.title = tooltipText;
         roleToggleBtn.setAttribute("aria-label", tooltipText);
         roleToggleBtn.style.display = "flex";

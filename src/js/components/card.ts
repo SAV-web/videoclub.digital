@@ -1128,12 +1128,12 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
     if (person.hasBothRoles) {
       const isDirector = person.currentRole === "director";
       const targetRole = isDirector ? "actor" : "director";
-      const targetLetter = isDirector ? "A" : "D";
+      const currentLetter = isDirector ? "D" : "A";
       const tooltipText = isDirector
         ? `Ver películas de ${person.name} como Actor`
         : `Ver películas de ${person.name} como Director`;
 
-      roleLetterEl.textContent = targetLetter;
+      roleLetterEl.textContent = currentLetter;
       roleToggleBtn.title = tooltipText;
       roleToggleBtn.setAttribute("aria-label", tooltipText);
       roleToggleBtn.style.display = "flex";

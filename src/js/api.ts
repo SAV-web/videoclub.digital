@@ -559,12 +559,12 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     const otherQuery = type === 'director'
       ? supabase
           .from('actors')
-          .select('id')
+          .select('id, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
           .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast}`)
           .limit(1)
       : supabase
           .from('directors')
-          .select('id')
+          .select('id, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
           .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast},components.ilike.${safeNameLike}`)
           .limit(1);
 
@@ -580,9 +580,22 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       return null;
     }
 
-    const hasBothRoles = !otherRes.error && Array.isArray(otherRes.data) && otherRes.data.length > 0;
+    const otherRow = otherRes.data && Array.isArray(otherRes.data) && otherRes.data.length > 0 ? otherRes.data[0] : null;
+    const hasBothRoles = Boolean(otherRow && otherRow.id);
+
+    const rawCountries = (rowData as unknown as { countries?: unknown }).countries || (otherRow as unknown as { countries?: unknown })?.countries || null;
+    const countries = (Array.isArray(rawCountries) ? rawCountries[0] || null : rawCountries) as { name: string; code: string } | null;
+
     const personData: PersonDetails = {
       ...(rowData as unknown as PersonDetails),
+      photo: (rowData.photo || otherRow?.photo || null) as string | null,
+      thumbhash_st: (rowData.thumbhash_st || otherRow?.thumbhash_st || null) as string | null,
+      birthday: (rowData.birthday || otherRow?.birthday || null) as string | null,
+      deathday: (rowData.deathday || otherRow?.deathday || null) as string | null,
+      place_of_birth: (rowData.place_of_birth || otherRow?.place_of_birth || null) as string | null,
+      biography: (rowData.biography || otherRow?.biography || null) as string | null,
+      titulo_bio: (rowData.titulo_bio || otherRow?.titulo_bio || null) as string | null,
+      countries,
       hasBothRoles,
       currentRole: type
     };

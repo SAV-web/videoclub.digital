@@ -147,14 +147,15 @@ CREATE TABLE public.selections (
   code text NOT NULL UNIQUE,
   letter text UNIQUE,
   thumbhash_st text,
+  thumbhash text,
   CONSTRAINT selections_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.movie_selections (
   movie_id bigint NOT NULL,
   selection_id bigint NOT NULL,
   CONSTRAINT movie_selections_pkey PRIMARY KEY (movie_id, selection_id),
-  CONSTRAINT movie_collections_collection_id_fkey FOREIGN KEY (selection_id) REFERENCES public.selections(id),
-  CONSTRAINT movie_collections_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id)
+  CONSTRAINT movie_selections_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE,
+  CONSTRAINT movie_selections_selection_id_fkey FOREIGN KEY (selection_id) REFERENCES public.selections(id) ON DELETE CASCADE
 );
 CREATE TABLE public.user_movie_entries (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -171,30 +172,18 @@ CREATE TABLE public.user_movie_entries (
 CREATE TABLE public.studios (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
-  code text UNIQUE,
+  code text NOT NULL UNIQUE,
   letter text UNIQUE,
   thumbhash_st text,
+  thumbhash text,
   CONSTRAINT studios_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.movie_studios (
   movie_id bigint NOT NULL,
   studio_id bigint NOT NULL,
   CONSTRAINT movie_studios_pkey PRIMARY KEY (movie_id, studio_id),
-  CONSTRAINT movie_studios_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id),
-  CONSTRAINT movie_studios_studio_id_fkey FOREIGN KEY (studio_id) REFERENCES public.studios(id)
-);
-CREATE TABLE public.selections (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  name text NOT NULL UNIQUE,
-  code text,
-  CONSTRAINT selections_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.movie_selections (
-  movie_id bigint NOT NULL,
-  selection_id bigint NOT NULL,
-  CONSTRAINT movie_selections_pkey PRIMARY KEY (movie_id, selection_id),
-  CONSTRAINT movie_selections_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id),
-  CONSTRAINT movie_selections_selection_id_fkey FOREIGN KEY (selection_id) REFERENCES public.selections(id)
+  CONSTRAINT movie_studios_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE,
+  CONSTRAINT movie_studios_studio_id_fkey FOREIGN KEY (studio_id) REFERENCES public.studios(id) ON DELETE CASCADE
 );
 CREATE TABLE public.people_staging (
   id text NOT NULL,

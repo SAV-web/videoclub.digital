@@ -1261,8 +1261,8 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   bottom: 8px;
   right: 8px;
   z-index: 10;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--color-surface, #1e1e1e);
   color: var(--color-accent);
@@ -1379,6 +1379,12 @@ body.rotation-disabled .movie-card.person-card .wall-person-name {
   /* Margen de seguridad inferior */
   transform: translateY(-4px) !important;
   /* Ajuste óptico: subida estática para igualar el solapamiento de la nota */
+}
+
+/* Posición del botón de rol en Modo Muro (se eleva por encima del bloque de nombre para quedar dentro de la foto) */
+body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .person-role-toggle-btn {
+  bottom: calc(26px + 8px);
+  right: 8px;
 }
 
 /* Titular previo al texto de la biografía en directores/actores */

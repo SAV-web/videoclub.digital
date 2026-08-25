@@ -828,11 +828,11 @@
   }
 
   & .person-role-toggle-btn {
-    bottom: 12px !important;
-    right: 12px !important;
-    width: 34px !important;
-    height: 34px !important;
-    font-size: 1rem !important;
+    bottom: 8px !important;
+    right: 8px !important;
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 0.85rem !important;
   }
 
   /* Estructura alineada al modal de películas en escritorio con reparto 40%/60% */
