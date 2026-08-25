@@ -330,7 +330,7 @@ BEGIN
         ) terms;
     END IF;
 
-    -- FASE 3.6: RESOLUCIÓN DE DIRECTORES (INCLUYENDO PAREJAS / COMPONENTES)
+    -- FASE 3.6: RESOLUCIÓN DE DIRECTORES (INCLUYENDO PAREJAS / COMPONENTES Y ALFANUMÉRICO)
     IF director_name IS NOT NULL AND TRIM(director_name) != '' THEN
         SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(d_name) || '"')::text, ' | ')::tsquery
         INTO v_director_tsquery
@@ -338,11 +338,13 @@ BEGIN
             SELECT d.name AS d_name
             FROM public.directors d
             WHERE d.name_norm = public.unaccent_immutable(lower(director_name))
+               OR regexp_replace(d.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
                OR (
                    d.components IS NOT NULL AND EXISTS (
                        SELECT 1 
                        FROM unnest(string_to_array(d.components, ',')) comp(name)
                        WHERE public.unaccent_immutable(lower(trim(comp.name))) = public.unaccent_immutable(lower(director_name))
+                          OR regexp_replace(public.unaccent_immutable(lower(trim(comp.name))), '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
                    )
                )
             UNION
@@ -350,9 +352,18 @@ BEGIN
         ) alias_dirs;
     END IF;
 
-    -- FASE 3.7: PREPARACIÓN DE ACTOR
+    -- FASE 3.7: PREPARACIÓN DE ACTOR (RESOLUCIÓN ALFANUMÉRICA Y DE NOMBRE CANÓNICO)
     IF actor_name IS NOT NULL AND TRIM(actor_name) != '' THEN
-        v_actor_tsquery := websearch_to_tsquery('simple', '"' || public.unaccent_immutable(actor_name) || '"');
+        SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(a_name) || '"')::text, ' | ')::tsquery
+        INTO v_actor_tsquery
+        FROM (
+            SELECT a.name AS a_name
+            FROM public.actors a
+            WHERE a.name_norm = public.unaccent_immutable(lower(actor_name))
+               OR regexp_replace(a.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(actor_name)), '[^a-z0-9]', '', 'g')
+            UNION
+            SELECT actor_name
+        ) alias_acts;
     END IF;
 
     -- FASE 4: CONSTRUCCIÓN DE CONSULTA
@@ -885,14 +896,6 @@ BEGIN
     INSERT INTO public.actors (name)
     SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
     WHERE p.type = 'A' AND TRIM(p.name) <> '' ON CONFLICT (name) DO NOTHING;
-    
-    INSERT INTO public.selections (code, name)
-    SELECT DISTINCT TRIM(s.code), TRIM(s.code) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(collection, ',')) AS s(code)
-    WHERE collection IS NOT NULL AND TRIM(s.code) <> '' ON CONFLICT (code) DO NOTHING;
-
-    INSERT INTO public.studios (code, name)
-    SELECT DISTINCT TRIM(s.code), TRIM(s.code) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(studio, ',')) AS s(code)
-    WHERE studio IS NOT NULL AND TRIM(s.code) <> '' ON CONFLICT (name) DO NOTHING;
 
     -- =================================================================
     -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPs, Fotos, Biografías, Componentes)
@@ -952,27 +955,23 @@ BEGIN
     WITH upserted_movies AS (
         INSERT INTO public.movies (
             relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
-            original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch,
-            genres_list, directors_list, actors_list, selections_list, studios_list
+            original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch
         )
         SELECT
             public.to_integer_safe(s.relevance::TEXT), TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
-            s.imdb_id, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia), TRIM(s.justwatch),
-            s.genre, s.directors, s.actors, s.collection, s.studio
+            s.imdb_id, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia), TRIM(s.justwatch)
         FROM public.movies_staging s
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
-        WHERE s.image IS NOT NULL AND TRIM(s.image) <> '' AND s.show = 'S'
+        WHERE s.image IS NOT NULL AND TRIM(s.image) <> '' AND (s.show::text IN ('1', 't', 'true', 'S', 's', 'TRUE'))
         ON CONFLICT (image) DO UPDATE SET
             relevance = EXCLUDED.relevance, title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
             fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id, last_synced_at = sync_timestamp,
-            episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia, justwatch = EXCLUDED.justwatch,
-            genres_list = EXCLUDED.genres_list, directors_list = EXCLUDED.directors_list, actors_list = EXCLUDED.actors_list,
-            selections_list = EXCLUDED.selections_list, studios_list = EXCLUDED.studios_list
+            episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia, justwatch = EXCLUDED.justwatch
         WHERE
             movies.relevance IS DISTINCT FROM EXCLUDED.relevance OR
             movies.title IS DISTINCT FROM EXCLUDED.title OR
@@ -992,11 +991,27 @@ BEGIN
             movies.episodes IS DISTINCT FROM EXCLUDED.episodes OR
             movies.wikipedia IS DISTINCT FROM EXCLUDED.wikipedia OR
             movies.justwatch IS DISTINCT FROM EXCLUDED.justwatch OR
-            movies.genres_list IS DISTINCT FROM EXCLUDED.genres_list OR
-            movies.directors_list IS DISTINCT FROM EXCLUDED.directors_list OR
-            movies.actors_list IS DISTINCT FROM EXCLUDED.actors_list OR
-            movies.selections_list IS DISTINCT FROM EXCLUDED.selections_list OR
-            movies.studios_list IS DISTINCT FROM EXCLUDED.studios_list
+            movies.genres_list IS DISTINCT FROM s.genre OR
+            movies.directors_list IS DISTINCT FROM s.directors OR
+            movies.actors_list IS DISTINCT FROM s.actors OR
+            EXISTS (
+                SELECT 1 FROM UNNEST(STRING_TO_ARRAY(s.studio, ',')) stu(code)
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM public.movie_studios ms
+                    JOIN public.studios st ON ms.studio_id = st.id
+                    WHERE ms.movie_id = movies.id 
+                      AND (st.letter = UPPER(TRIM(stu.code)) OR st.code = LOWER(TRIM(stu.code)))
+                )
+            ) OR
+            EXISTS (
+                SELECT 1 FROM UNNEST(STRING_TO_ARRAY(s.collection, ',')) sel(code)
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM public.movie_selections ms
+                    JOIN public.selections sc ON ms.selection_id = sc.id
+                    WHERE ms.movie_id = movies.id 
+                      AND (sc.letter = UPPER(TRIM(sel.code)) OR sc.code = LOWER(TRIM(sel.code)))
+                )
+            )
         RETURNING id
     )
     SELECT array_agg(id) INTO affected_movie_ids FROM upserted_movies;
@@ -1041,14 +1056,14 @@ BEGIN
         SELECT t.movie_id, c.id
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS sel_code(code)
-        JOIN public.selections c ON c.code = TRIM(sel_code.code)
+        JOIN public.selections c ON (c.letter = UPPER(TRIM(sel_code.code)) OR c.code = LOWER(TRIM(sel_code.code)))
         ON CONFLICT (movie_id, selection_id) DO NOTHING;
 
         INSERT INTO public.movie_studios (movie_id, studio_id)
         SELECT t.movie_id, st.id
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-        JOIN public.studios st ON st.code = TRIM(stu_code.code)
+        JOIN public.studios st ON (st.letter = UPPER(TRIM(stu_code.code)) OR st.code = LOWER(TRIM(stu_code.code)))
         ON CONFLICT (movie_id, studio_id) DO NOTHING;
 
         -- Borrados diferenciales desde tabla temporal
@@ -1084,7 +1099,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS s_code(code)
-            JOIN public.selections sel ON sel.code = TRIM(s_code.code)
+            JOIN public.selections sel ON (sel.letter = UPPER(TRIM(s_code.code)) OR sel.code = LOWER(TRIM(s_code.code)))
             WHERE t.movie_id = ms.movie_id AND sel.id = ms.selection_id
           );
 
@@ -1093,7 +1108,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-            JOIN public.studios stu ON stu.code = TRIM(stu_code.code)
+            JOIN public.studios stu ON (stu.letter = UPPER(TRIM(stu_code.code)) OR stu.code = LOWER(TRIM(stu_code.code)))
             WHERE t.movie_id = mst.movie_id AND stu.id = mst.studio_id
           );
 

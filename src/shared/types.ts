@@ -179,4 +179,5 @@ export interface VipData {
   data?: PersonDetails | Record<string, unknown> | null;
   code?: string;
   total?: number;
+  thumbhash_st?: string | null;
 }

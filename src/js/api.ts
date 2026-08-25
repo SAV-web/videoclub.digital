@@ -373,14 +373,18 @@ export function fetchMovies(
       // (Evita que buscar "Yuna" devuelva a "Madeleine Yuna Voyles")
       if (result.items && result.items.length > 0) {
         if (normFilters.actor) {
-          const targetActorNorm = normalizeText(normFilters.actor);
+          const targetActorClean = normalizeText(normFilters.actor).replace(/[^a-z0-9]/g, "");
           result.items = result.items.filter(m =>
-            m.parsedActors && m.parsedActors.some(a => normalizeText(a) === targetActorNorm)
+            m.parsedActors && m.parsedActors.some(a => normalizeText(a).replace(/[^a-z0-9]/g, "") === targetActorClean)
           );
         }
         if (normFilters.director) {
+          const targetDirClean = normalizeText(normFilters.director).replace(/[^a-z0-9]/g, "");
           result.items = result.items.filter(m =>
-            m.parsedDirectors && m.parsedDirectors.length > 0
+            m.parsedDirectors && m.parsedDirectors.some(d => {
+              const cleanD = normalizeText(d).replace(/[^a-z0-9]/g, "");
+              return cleanD === targetDirClean || cleanD.includes(targetDirClean) || targetDirClean.includes(cleanD);
+            })
           );
         }
       }
@@ -527,34 +531,41 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
   const table = type === 'director' ? 'directors' : 'actors';
   const otherTable = type === 'director' ? 'actors' : 'directors';
   const nameNorm = normalizeText(name);
+  const words = nameNorm.split(/[\s-]+/).filter(w => w.length > 0);
+  const wildcardPattern = words.length > 0 ? `%${words.join('%')}%` : `%${nameNorm}%`;
+  const firstWord = words[0] || nameNorm;
+  const lastWord = words.length > 1 ? words[words.length - 1].replace(/^o|^d/, "") : "";
+  const firstLastPattern = lastWord ? `%${firstWord}%${lastWord}%` : wildcardPattern;
 
   try {
     const supabase = await getSupabase();
     const safeNameNorm = `"${nameNorm.replace(/"/g, '""')}"`;
+    const safeWildcard = `"${wildcardPattern.replace(/"/g, '""')}"`;
+    const safeFirstLast = `"${firstLastPattern.replace(/"/g, '""')}"`;
     const safeNameLike = `"%${name.replace(/"/g, '""')}%"`;
 
     const primaryQuery = type === 'director'
       ? supabase
           .from('directors')
           .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components')
-          .or(`name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}`)
+          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast},components.ilike.${safeNameLike}`)
           .limit(1)
       : supabase
           .from('actors')
           .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
-          .eq('name_norm', nameNorm)
+          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast}`)
           .limit(1);
 
     const otherQuery = type === 'director'
       ? supabase
           .from('actors')
           .select('id')
-          .eq('name_norm', nameNorm)
+          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast}`)
           .limit(1)
       : supabase
           .from('directors')
           .select('id')
-          .or(`name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}`)
+          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast},components.ilike.${safeNameLike}`)
           .limit(1);
 
     const [primaryRes, otherRes] = await Promise.all([primaryQuery, otherQuery]);
@@ -583,6 +594,52 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       console.error(`[API] Excepción capturada en fetchPersonDetails (${type}: ${name}):`, e);
     }
     personCache.set(key, NOT_FOUND);
+    return null;
+  }
+}
+
+const groupDetailsCache = new Map<string, { thumbhash_st: string | null } | null>();
+
+/**
+ * Consulta los detalles (incluyendo thumbhash_st / thumbhash) de un estudio o selección en BD.
+ */
+export async function fetchGroupDetails(
+  type: "studio" | "selection",
+  code: string
+): Promise<{ thumbhash_st: string | null } | null> {
+  const normCode = code.toLowerCase().trim();
+  const cacheKey = `${type}:${normCode}`;
+  if (groupDetailsCache.has(cacheKey)) {
+    return groupDetailsCache.get(cacheKey) || null;
+  }
+
+  const supabase = await getSupabase();
+  if (!supabase) return null;
+
+  try {
+    const table = type === "studio" ? "studios" : "selections";
+    const { data, error } = await supabase
+      .from(table)
+      .select("code, thumbhash_st, thumbhash")
+      .eq("code", normCode)
+      .maybeSingle();
+
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.warn(`[API] Error consultando ${table} (${normCode}):`, error.message);
+      }
+      return null;
+    }
+
+    const row = data as { thumbhash_st?: string | null; thumbhash?: string | null } | null;
+    const thumbhash_st = row ? (row.thumbhash_st || row.thumbhash || null) : null;
+    const result = { thumbhash_st };
+    groupDetailsCache.set(cacheKey, result);
+    return result;
+  } catch (e) {
+    if (import.meta.env.DEV) {
+      console.error(`[API] Excepción capturada en fetchGroupDetails (${type}: ${normCode}):`, e);
+    }
     return null;
   }
 }

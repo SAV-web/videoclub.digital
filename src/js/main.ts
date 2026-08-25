@@ -23,6 +23,7 @@ import {
   getSupabase,
   fetchUserMovieDataForIds,
   fetchPersonDetails,
+  fetchGroupDetails,
   fetchAllUserMovieData,
   fetchMovieById
 } from "./api.js";
@@ -196,10 +197,24 @@ export async function loadAndRenderMovies(
 
         }
       } else if (activeFilters.selection) {
-        if (page === 1) vipData = { type: "collection", code: activeFilters.selection };
+        const groupDetails = await fetchGroupDetails("selection", activeFilters.selection);
+        if (page === 1) {
+          vipData = {
+            type: "collection",
+            code: activeFilters.selection,
+            thumbhash_st: groupDetails?.thumbhash_st || null
+          };
+        }
         hasVip = true;
       } else if (activeFilters.studio) {
-        if (page === 1) vipData = { type: "studio", code: activeFilters.studio };
+        const groupDetails = await fetchGroupDetails("studio", activeFilters.studio);
+        if (page === 1) {
+          vipData = {
+            type: "studio",
+            code: activeFilters.studio,
+            thumbhash_st: groupDetails?.thumbhash_st || null
+          };
+        }
         hasVip = true;
       }
     }

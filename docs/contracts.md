@@ -58,7 +58,8 @@ Reglas:
 - **Estructura Canónica de URLs (*Pretty Paths*)**:
   - Los 3 filtros de catálogo principales (`genre`, `country`, `selection`/`studio`) se serializan en los segmentos del `pathname`: `/{genre}/{country}/{studio_or_selection}/`.
   - Las entidades de personas se serializan con prefijo canónico dedicado: `/director/{slug}/` o `/actor/{slug}/` (ej. `/director/brian-de-palma/`, `/actor/clint-eastwood/`).
-  - Los parámetros técnicos, temporales y de paginación se serializan en el `query string`: `?year=1900-2007&sort=fa_votes,desc&p=3`.
+  - Los parámetros técnicos, temporales y de paginación se serializan en el `query string` usando slugs amigables para el orden: `?year=1900-2007&sort=votos-fa&p=3`.
+  - Slugs de ordenación: `recientes` (`year,desc`), `antiguas` (`year,asc`), `nota-fa` (`fa_rating,desc`), `nota-imdb` (`imdb_rating,desc`), `votos-fa` (`fa_votes,desc`), `votos-imdb` (`imdb_votes,desc`).
   - Sin retrocompatibilidad: las entidades de catálogo o personas no se leen desde query params ni se aceptan códigos legacy.
 
 ## 3. Respuestas de API

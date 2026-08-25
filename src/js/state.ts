@@ -23,6 +23,7 @@ import {
   normalizeUserMovieData,
   normalizeUserMovieEntry,
   parsePrettyPath,
+  REVERSE_SORT_SLUG_MAP,
 } from "./contracts.js";
 import { ActiveFilters, UserMovieEntry } from "./types.js";
 
@@ -185,6 +186,12 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
           (key === "sort" && value === DEFAULTS.SORT) ||
           (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`)) return;
       
+      if (key === "sort") {
+        const slug = REVERSE_SORT_SLUG_MAP[value] || value;
+        params.set(shortKey, slug);
+        return;
+      }
+
       const valToSet = TEXT_FILTER_KEYS.has(key) ? normalizeText(value) : value;
       params.set(shortKey, valToSet);
     }

@@ -115,7 +115,7 @@ CREATE TABLE public.movies_staging (
   relevance text,
   studio text,
   justwatch text,
-  show text,
+  show boolean,
   CONSTRAINT movies_staging_pkey PRIMARY KEY (image)
 );
 CREATE TABLE public.actors (
@@ -144,7 +144,9 @@ CREATE TABLE public.movie_actors (
 CREATE TABLE public.selections (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
-  code character NOT NULL UNIQUE,
+  code text NOT NULL UNIQUE,
+  letter text UNIQUE,
+  thumbhash_st text,
   CONSTRAINT selections_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.movie_selections (
@@ -169,7 +171,9 @@ CREATE TABLE public.user_movie_entries (
 CREATE TABLE public.studios (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
-  code text,
+  code text UNIQUE,
+  letter text UNIQUE,
+  thumbhash_st text,
   CONSTRAINT studios_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.movie_studios (

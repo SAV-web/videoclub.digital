@@ -962,9 +962,9 @@ export async function renderMovieGrid(
     if (vipData.type === 'person' && vipData.data) {
       container.appendChild(createPersonCardElement(vipData.data as PersonDetails));
     } else if (vipData.type === 'collection' && vipData.code) {
-      container.appendChild(createCollectionCardElement(vipData.code, vipData.total));
+      container.appendChild(createCollectionCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
     } else if (vipData.type === 'studio' && vipData.code) {
-      container.appendChild(createStudioCardElement(vipData.code, vipData.total));
+      container.appendChild(createStudioCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
     }
   }
 
@@ -1150,7 +1150,8 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
 function createGroupCardElement(
   kind: 'collection' | 'studio',
   code: string,
-  totalMovies: number = 0
+  totalMovies: number = 0,
+  thumbhash_st?: string | null
 ): DocumentFragment {
   if (!collectionTemplate) return document.createDocumentFragment();
   const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
@@ -1176,30 +1177,51 @@ function createGroupCardElement(
   if (img) {
     const prefix = isStudio ? "studio" : "selection";
     const label = isStudio ? "Estudio" : "Selección";
+    const fullUrl = `${CONFIG.PROFILE_BASE_URL}${prefix}_${code.toLowerCase()}.webp`;
+
     img.alt = `${label} ${fullName}`;
     img.loading = "eager";
     img.decoding = "async";
     img.setAttribute("fetchpriority", "high");
-    img.classList.remove(CSS_CLASSES.LOADED);
-    img.classList.add(CSS_CLASSES.LAZY_LQIP);
 
-    img.onload = () => {
-      requestAnimationFrame(() => {
+    if (thumbhash_st) {
+      img.src = thumbhash_st;
+      img.classList.remove(CSS_CLASSES.LOADED);
+      img.classList.add(CSS_CLASSES.LAZY_LQIP);
+
+      const highResImg = new Image();
+      highResImg.onload = () => {
+        img.src = fullUrl;
+        requestAnimationFrame(() => {
+          img.classList.add(CSS_CLASSES.LOADED);
+        });
+      };
+      highResImg.onerror = () => {
+        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
         img.classList.add(CSS_CLASSES.LOADED);
-      });
-    };
-    img.onerror = () => {
-      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-      img.classList.add(CSS_CLASSES.LOADED);
-      img.onerror = null;
-    };
+      };
+      highResImg.src = fullUrl;
+    } else {
+      img.classList.remove(CSS_CLASSES.LOADED);
+      img.classList.add(CSS_CLASSES.LAZY_LQIP);
 
-    img.src = `${CONFIG.PROFILE_BASE_URL}${prefix}_${code.toLowerCase()}.webp`;
-    if (img.complete) {
-      img.classList.add(CSS_CLASSES.LOADED);
+      img.onload = () => {
+        requestAnimationFrame(() => {
+          img.classList.add(CSS_CLASSES.LOADED);
+        });
+      };
+      img.onerror = () => {
+        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+        img.classList.add(CSS_CLASSES.LOADED);
+        img.onerror = null;
+      };
+
+      img.src = fullUrl;
+      if (img.complete) {
+        img.classList.add(CSS_CLASSES.LOADED);
+      }
     }
   }
-
 
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
   if (titleEl) {
@@ -1216,12 +1238,12 @@ function createGroupCardElement(
   return clone;
 }
 
-function createCollectionCardElement(selectionCode: string, totalMovies: number = 0): DocumentFragment {
-  return createGroupCardElement('collection', selectionCode, totalMovies);
+function createCollectionCardElement(selectionCode: string, totalMovies: number = 0, thumbhash_st?: string | null): DocumentFragment {
+  return createGroupCardElement('collection', selectionCode, totalMovies, thumbhash_st);
 }
 
-function createStudioCardElement(studioCode: string, totalMovies: number = 0): DocumentFragment {
-  return createGroupCardElement('studio', studioCode, totalMovies);
+function createStudioCardElement(studioCode: string, totalMovies: number = 0, thumbhash_st?: string | null): DocumentFragment {
+  return createGroupCardElement('studio', studioCode, totalMovies, thumbhash_st);
 }
 
 // Skeletons y Estados Vacíos

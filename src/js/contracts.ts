@@ -131,9 +131,24 @@ export function normalizeOffset(value: unknown): number | null {
   return Number.isFinite(offset) && offset >= 0 ? offset : null;
 }
 
+export const SORT_SLUG_MAP: Record<string, string> = {
+  recientes: "year,desc",
+  antiguas: "year,asc",
+  "nota-fa": "fa_rating,desc",
+  "nota-imdb": "imdb_rating,desc",
+  "votos-fa": "fa_votes,desc",
+  "votos-imdb": "imdb_votes,desc",
+};
+
+export const REVERSE_SORT_SLUG_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(SORT_SLUG_MAP).map(([slug, val]) => [val, slug])
+);
+
 export function normalizeSort(value: unknown): string {
-  const strValue = String(value ?? "");
-  return SORT_VALUES.has(strValue) ? strValue : DEFAULTS.SORT;
+  const strValue = String(value ?? "").trim().toLowerCase();
+  if (SORT_SLUG_MAP[strValue]) return SORT_SLUG_MAP[strValue];
+  if (SORT_VALUES.has(strValue)) return strValue;
+  return DEFAULTS.SORT;
 }
 
 export function normalizeMediaType(value: unknown): "all" | "movies" | "series" {
@@ -178,9 +193,7 @@ export function toSlug(text: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .replace(/[\s_-]+/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 

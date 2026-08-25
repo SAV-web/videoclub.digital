@@ -175,6 +175,10 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(contracts.toSlug("España"), "espana");
     assert.equal(contracts.toSlug("Corea del Sur"), "corea-del-sur");
     assert.equal(contracts.toSlug("1001 Movies"), "1001-movies");
+    assert.equal(contracts.toSlug("Daniel Day-Lewis"), "daniel-day-lewis");
+    assert.equal(contracts.toSlug("Vincent D'Onofrio"), "vincent-d-onofrio");
+    assert.equal(contracts.toSlug("Chris O'Dowd"), "chris-o-dowd");
+    assert.equal(contracts.toSlug("Jean-Luc Godard"), "jean-luc-godard");
   });
 
   test("buildPrettyPath construye rutas canónicas ordenadas y parsePrettyPath las resuelve", () => {
@@ -271,11 +275,11 @@ describe("state.js y Pretty Paths", () => {
 
     const { pathname, search } = state.stateToPrettyUrl(state.getActiveFilters(), state.getCurrentPage());
     assert.equal(pathname, "/drama/eeuu/criterion/");
-    assert.equal(search, "year=1900-2007&sort=fa_votes%2Cdesc&p=3");
+    assert.equal(search, "year=1900-2007&sort=votos-fa&p=3");
 
-    // Sincronización inversa
+    // Sincronización inversa desde slug amigable
     state.resetFiltersState();
-    state.syncStateWithUrl("/drama/eeuu/criterion/", "?year=1900-2007&sort=fa_votes%2Cdesc&p=3");
+    state.syncStateWithUrl("/drama/eeuu/criterion/", "?year=1900-2007&sort=votos-fa&p=3");
 
     const active = state.getActiveFilters();
     assert.equal(active.genre, "Drama");
@@ -294,14 +298,31 @@ describe("state.js y Pretty Paths", () => {
 
     const dirUrl = state.stateToPrettyUrl(state.getActiveFilters(), state.getCurrentPage());
     assert.equal(dirUrl.pathname, "/director/brian-de-palma/");
-    assert.equal(dirUrl.search, "sort=fa_votes%2Cdesc&p=2");
+    assert.equal(dirUrl.search, "sort=votos-fa&p=2");
 
     state.resetFiltersState();
-    state.syncStateWithUrl("/director/brian-de-palma/", "?sort=fa_votes%2Cdesc&p=2");
+    state.syncStateWithUrl("/director/brian-de-palma/", "?sort=votos-fa&p=2");
     assert.equal(state.getActiveFilters().director, "brian de palma");
     assert.equal(state.getActiveFilters().genre, null);
     assert.equal(state.getActiveFilters().country, null);
     assert.equal(state.getCurrentPage(), 2);
+
+    // Prueba de todos los slugs amigables de ordenación
+    const slugMap = {
+      recientes: "year,desc",
+      antiguas: "year,asc",
+      "nota-fa": "fa_rating,desc",
+      "nota-imdb": "imdb_rating,desc",
+      "votos-fa": "fa_votes,desc",
+      "votos-imdb": "imdb_votes,desc",
+    };
+    for (const [slug, internalValue] of Object.entries(slugMap)) {
+      state.resetFiltersState();
+      state.syncStateWithUrl("/", `?sort=${slug}`);
+      assert.equal(state.getActiveFilters().sort, internalValue);
+      const url = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+      assert.equal(url.search, `sort=${slug}`);
+    }
   });
 
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {
