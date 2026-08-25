@@ -296,6 +296,10 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
     if (type === 'excludedGenres' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.genre = null;
     if (type === 'excludedCountries' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.country = null;
 
+    // Selección y Estudio son mutuamente excluyentes entre sí
+    if (type === 'selection') state.activeFilters.studio = null;
+    if (type === 'studio') state.activeFilters.selection = null;
+
     // Director y Actor son 100% excluyentes con cualquier otra categoría
     if (type === 'director' || type === 'actor') {
       state.activeFilters.genre = null;

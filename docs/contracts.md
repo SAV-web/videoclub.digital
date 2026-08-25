@@ -53,6 +53,7 @@ Reglas:
 - `excludedGenres` y `excludedCountries` son arrays únicos, sin valores vacíos.
 - `myList` solo acepta `rated`, `watchlist`, `mixed` o `null`.
 - **Exclusividad de Personas**: `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con `genre`, `country`, `selection`, `studio`, `excludedGenres` y `excludedCountries`.
+- **Exclusividad de Selección y Estudio**: `selection` y `studio` son mutuamente excluyentes entre sí (ambos representan entidades VIP de grupo y ocupan la cabecera destacada de catálogo). Al seleccionar una saga/colección se limpia el estudio activo, y al seleccionar un estudio se limpia la selección activa.
 - **Exclusividad de Género**: Al asignar `genre`, se limpian `director` y `actor`, pero se conservan `year`, `selection`, `studio` y `country`.
 
 ## 3. Respuestas de API

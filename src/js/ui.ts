@@ -597,7 +597,6 @@ export function updateMobileStatusBar(
   const filters = getActiveFilters();
 
   const sortMap: Record<string, string> = {
-    "relevance,asc": "votos FA",
     "fa_votes,desc": "votos FA",
     "fa_rating,desc": "nota FA",
     "imdb_votes,desc": "votos IMDb",
@@ -605,8 +604,6 @@ export function updateMobileStatusBar(
     "year,desc": "más recientes",
     "year,asc": "más antiguas"
   };
-
-  const sortLabel = sortMap[filters.sort] || "votos FA";
 
   const hasActiveFilters = showTotalCount || hasActiveMeaningfulFilters() || (filters.mediaType && filters.mediaType !== 'all') || (filters.sort && filters.sort !== DEFAULTS.SORT);
 
@@ -681,8 +678,10 @@ export function updateMobileStatusBar(
       segments.push("series");
     }
 
-    // 10. Criterio de Orden
-    segments.push(`orden ${sortLabel}`);
+    // 10. Criterio de Orden (solo si no es el orden predeterminado "Orden")
+    if (filters.sort && filters.sort !== DEFAULTS.SORT && sortMap[filters.sort]) {
+      segments.push(`orden ${sortMap[filters.sort]}`);
+    }
 
     mobileStatusBar.textContent = `${segments.join(", ")}.`;
     return;

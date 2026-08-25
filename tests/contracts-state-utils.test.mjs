@@ -179,6 +179,15 @@ describe("state.js", () => {
     assert.deepEqual(filters.excludedGenres, ["Terror"]);
     assert.equal(filters.sort, constants.DEFAULTS.SORT);
     assert.equal(filters.mediaType, constants.DEFAULTS.MEDIA_TYPE);
+
+    // Exclusividad mutua entre selection y studio
+    state.setFilter("studio", "W", true);
+    assert.equal(state.getActiveFilters().studio, "W");
+    assert.equal(state.getActiveFilters().selection, null);
+
+    state.setFilter("selection", "C", true);
+    assert.equal(state.getActiveFilters().selection, "C");
+    assert.equal(state.getActiveFilters().studio, null);
   });
 
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {
