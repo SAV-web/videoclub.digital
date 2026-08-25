@@ -144,8 +144,6 @@ let state = makeReactive<AppState>({
 export const URL_PARAM_MAP: Record<string, keyof ActiveFilters | "page"> = {
   q: "searchTerm",
   year: "year",
-  dir: "director",
-  actor: "actor",
   sort: "sort",
   type: "mediaType",
   p: "page",
@@ -171,8 +169,8 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
   const params = new URLSearchParams();
 
   Object.entries(activeFilters).forEach(([key, value]) => {
-    // genre, country, selection y studio van exclusivamente en el pathname
-    if (key === "genre" || key === "country" || key === "selection" || key === "studio") return;
+    // genre, country, selection, studio, director y actor van exclusivamente en el pathname
+    if (key === "genre" || key === "country" || key === "selection" || key === "studio" || key === "director" || key === "actor") return;
 
     const shortKey = REVERSE_URL_PARAM_MAP[key as keyof ActiveFilters];
     if (!shortKey) return;
@@ -200,8 +198,10 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
 export function syncStateWithUrl(pathname: string = "/", queryString: string = ""): void {
   resetFiltersState();
 
-  // 1. Sincronizar filtros de catálogo desde los segmentos del pathname
+  // 1. Sincronizar filtros de catálogo o personas desde los segmentos del pathname
   const pathFilters = parsePrettyPath(pathname);
+  if (pathFilters.director) setFilter("director", pathFilters.director, true);
+  if (pathFilters.actor) setFilter("actor", pathFilters.actor, true);
   if (pathFilters.genre) setFilter("genre", pathFilters.genre, true);
   if (pathFilters.country) setFilter("country", pathFilters.country, true);
   if (pathFilters.selection) setFilter("selection", pathFilters.selection, true);

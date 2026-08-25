@@ -284,12 +284,31 @@ export function countryToSlug(country: string | null | undefined): string | null
   return toSlug(country);
 }
 
+export function slugToPersonQuery(slug: string): string {
+  if (!slug) return "";
+  return slug.replace(/-/g, " ").trim();
+}
+
 export function buildPrettyPath(filters: {
   genre?: string | null;
   country?: string | null;
   studio?: string | null;
   selection?: string | null;
+  director?: string | null;
+  actor?: string | null;
 }): string {
+  // 1. Prioridad: Entidades VIP de Persona (excluyentes de catálogo)
+  if (filters.director) {
+    const dirSlug = toSlug(filters.director);
+    return dirSlug ? `/director/${dirSlug}/` : "/";
+  }
+
+  if (filters.actor) {
+    const actSlug = toSlug(filters.actor);
+    return actSlug ? `/actor/${actSlug}/` : "/";
+  }
+
+  // 2. Jerarquía de Catálogo
   const segments: string[] = [];
 
   const genreSlug = genreToSlug(filters.genre);
@@ -315,12 +334,16 @@ export function parsePrettyPath(pathname: string): {
   country: string | null;
   studio: string | null;
   selection: string | null;
+  director: string | null;
+  actor: string | null;
 } {
   const result = {
     genre: null as string | null,
     country: null as string | null,
     studio: null as string | null,
-    selection: null as string | null
+    selection: null as string | null,
+    director: null as string | null,
+    actor: null as string | null
   };
 
   if (!pathname || pathname === "/") return result;
@@ -331,7 +354,20 @@ export function parsePrettyPath(pathname: string): {
   }
 
   const rawSegments = cleanPath.split("/").map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (rawSegments.length === 0) return result;
 
+  // 1. Detección de prefijo de persona /director/{slug}/ o /actor/{slug}/
+  if (rawSegments[0] === "director" && rawSegments.length >= 2) {
+    result.director = slugToPersonQuery(rawSegments.slice(1).join("-"));
+    return result;
+  }
+
+  if (rawSegments[0] === "actor" && rawSegments.length >= 2) {
+    result.actor = slugToPersonQuery(rawSegments.slice(1).join("-"));
+    return result;
+  }
+
+  // 2. Detección de filtros de catálogo posicionales/semánticos
   for (const seg of rawSegments) {
     if (SELECTION_SLUGS.has(seg)) {
       result.selection = seg;

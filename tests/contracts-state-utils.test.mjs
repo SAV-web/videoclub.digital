@@ -196,6 +196,12 @@ describe("state.js y Pretty Paths", () => {
     // 6. Género + Estudio
     assert.equal(contracts.buildPrettyPath({ genre: "Sci-Fi", studio: "disney" }), "/sci-fi/disney/");
 
+    // 7. Director (excluyente con catálogo)
+    assert.equal(contracts.buildPrettyPath({ director: "Brian De Palma" }), "/director/brian-de-palma/");
+
+    // 8. Actor (excluyente con catálogo)
+    assert.equal(contracts.buildPrettyPath({ actor: "Clint Eastwood" }), "/actor/clint-eastwood/");
+
     // Parsing inverso semántico
     const p1 = contracts.parsePrettyPath("/drama/eeuu/criterion/");
     assert.equal(p1.genre, "Drama");
@@ -217,6 +223,16 @@ describe("state.js y Pretty Paths", () => {
     const p4 = contracts.parsePrettyPath("/videoclub.digital/comedia/francia/");
     assert.equal(p4.genre, "Comedia");
     assert.equal(p4.country, "Francia");
+
+    // Parsing de personas
+    const p5 = contracts.parsePrettyPath("/director/brian-de-palma/");
+    assert.equal(p5.director, "brian de palma");
+    assert.equal(p5.actor, null);
+    assert.equal(p5.genre, null);
+
+    const p6 = contracts.parsePrettyPath("/actor/clint-eastwood/");
+    assert.equal(p6.actor, "clint eastwood");
+    assert.equal(p6.director, null);
   });
 
   test("setters mantienen el contrato de filtros y exclusividad mutua", () => {
@@ -269,6 +285,23 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(active.year, "1900-2007");
     assert.equal(active.sort, "fa_votes,desc");
     assert.equal(state.getCurrentPage(), 3);
+
+    // Prueba con Director
+    state.resetFiltersState();
+    state.setFilter("director", "Brian De Palma", true);
+    state.setSort("fa_votes,desc");
+    state.setCurrentPage(2);
+
+    const dirUrl = state.stateToPrettyUrl(state.getActiveFilters(), state.getCurrentPage());
+    assert.equal(dirUrl.pathname, "/director/brian-de-palma/");
+    assert.equal(dirUrl.search, "sort=fa_votes%2Cdesc&p=2");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/director/brian-de-palma/", "?sort=fa_votes%2Cdesc&p=2");
+    assert.equal(state.getActiveFilters().director, "brian de palma");
+    assert.equal(state.getActiveFilters().genre, null);
+    assert.equal(state.getActiveFilters().country, null);
+    assert.equal(state.getCurrentPage(), 2);
   });
 
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {

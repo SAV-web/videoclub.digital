@@ -56,9 +56,10 @@ Reglas:
 - **Exclusividad de Selección y Estudio**: `selection` y `studio` son mutuamente excluyentes entre sí (ambos representan entidades VIP de grupo y ocupan la cabecera destacada de catálogo). Al seleccionar una saga/colección se limpia el estudio activo, y al seleccionar un estudio se limpia la selección activa.
 - **Exclusividad de Género**: Al asignar `genre`, se limpian `director` y `actor`, pero se conservan `year`, `selection`, `studio` y `country`.
 - **Estructura Canónica de URLs (*Pretty Paths*)**:
-  - Los 3 filtros de catálogo principales (`genre`, `country`, `selection`/`studio`) se serializan exclusivamente en los segmentos del `pathname`: `/{genre}/{country}/{studio_or_selection}/`.
+  - Los 3 filtros de catálogo principales (`genre`, `country`, `selection`/`studio`) se serializan en los segmentos del `pathname`: `/{genre}/{country}/{studio_or_selection}/`.
+  - Las entidades de personas se serializan con prefijo canónico dedicado: `/director/{slug}/` o `/actor/{slug}/` (ej. `/director/brian-de-palma/`, `/actor/clint-eastwood/`).
   - Los parámetros técnicos, temporales y de paginación se serializan en el `query string`: `?year=1900-2007&sort=fa_votes,desc&p=3`.
-  - Sin retrocompatibilidad: las entidades de catálogo no se leen desde query params ni se aceptan códigos legacy de 1 letra.
+  - Sin retrocompatibilidad: las entidades de catálogo o personas no se leen desde query params ni se aceptan códigos legacy.
 
 ## 3. Respuestas de API
 
