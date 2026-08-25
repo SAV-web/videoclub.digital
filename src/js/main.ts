@@ -60,7 +60,9 @@ import {
   resetFiltersState,
   setUserMovieData,
   clearUserMovieData,
+  syncStateWithUrl,
   syncStateWithUrlParams,
+  stateToPrettyUrl,
   stateToUrlParams,
   appEvents,
   updateUserDataForMovie
@@ -1054,7 +1056,7 @@ function setupAuthSystem(): void {
 
 
 function readUrlAndSetState(): void {
-  syncStateWithUrlParams(window.location.search);
+  syncStateWithUrl(window.location.pathname, window.location.search);
 
   const activeFilters = getActiveFilters();
   if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
@@ -1064,10 +1066,11 @@ function readUrlAndSetState(): void {
 }
 
 function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
-  const params = stateToUrlParams(getActiveFilters(), getCurrentPage());
+  const { pathname, search } = stateToPrettyUrl(getActiveFilters(), getCurrentPage());
+  const newUrl = search ? `${pathname}?${search}` : pathname;
+  const currentFullUrl = `${window.location.pathname}${window.location.search}`;
 
-  const newUrl = params.toString() ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
-  if (newUrl !== `${window.location.pathname}${window.location.search}`) {
+  if (newUrl !== currentFullUrl) {
     if (replace) {
       history.replaceState({ path: newUrl }, "", newUrl);
     } else {

@@ -6,10 +6,19 @@
   <title>Videoclub Digital</title>
   <script>
     (function () {
-      var pathname = window.location.pathname;
-      var isGitHubPages = pathname.startsWith('/videoclub.digital/');
-      var targetUrl = isGitHubPages ? '/videoclub.digital/' : '/';
-      window.location.replace(targetUrl);
+      var l = window.location;
+      var pathname = l.pathname;
+      var isRepoSubpath = pathname.startsWith('/videoclub.digital/');
+      var repoPrefix = isRepoSubpath ? '/videoclub.digital' : '';
+      var route = pathname.slice(repoPrefix.length);
+      var query = l.search ? l.search.slice(1) : '';
+      var hash = l.hash || '';
+
+      var redirectUrl = repoPrefix + '/?_p=' + encodeURIComponent(route) +
+        (query ? '&_q=' + encodeURIComponent(query) : '') +
+        hash;
+
+      window.location.replace(redirectUrl);
     })();
   </script>
 </head>

@@ -167,8 +167,59 @@ describe("normalización de filtros", () => {
   });
 });
 
-describe("state.js", () => {
-  test("setters mantienen el contrato de filtros", () => {
+describe("state.js y Pretty Paths", () => {
+  test("toSlug normaliza acentos, mayúsculas y caracteres especiales", () => {
+    assert.equal(contracts.toSlug("Ciencia Ficción"), "ciencia-ficcion");
+    assert.equal(contracts.toSlug("Acción"), "accion");
+    assert.equal(contracts.toSlug("Bélico"), "belico");
+    assert.equal(contracts.toSlug("España"), "espana");
+    assert.equal(contracts.toSlug("Corea del Sur"), "corea-del-sur");
+    assert.equal(contracts.toSlug("1001 Movies"), "1001-movies");
+  });
+
+  test("buildPrettyPath construye rutas canónicas ordenadas y parsePrettyPath las resuelve", () => {
+    // 1. Catálogo completo
+    assert.equal(contracts.buildPrettyPath({}), "/");
+
+    // 2. Solo género
+    assert.equal(contracts.buildPrettyPath({ genre: "Drama" }), "/drama/");
+
+    // 3. Género + País
+    assert.equal(contracts.buildPrettyPath({ genre: "Acción", country: "España" }), "/accion/espana/");
+
+    // 4. Género + País + Selección
+    assert.equal(contracts.buildPrettyPath({ genre: "Drama", country: "EEUU", selection: "criterion" }), "/drama/eeuu/criterion/");
+
+    // 5. Solo Estudio
+    assert.equal(contracts.buildPrettyPath({ studio: "warner" }), "/warner/");
+
+    // 6. Género + Estudio
+    assert.equal(contracts.buildPrettyPath({ genre: "Sci-Fi", studio: "disney" }), "/sci-fi/disney/");
+
+    // Parsing inverso semántico
+    const p1 = contracts.parsePrettyPath("/drama/eeuu/criterion/");
+    assert.equal(p1.genre, "Drama");
+    assert.equal(p1.country, "EEUU");
+    assert.equal(p1.selection, "criterion");
+    assert.equal(p1.studio, null);
+
+    const p2 = contracts.parsePrettyPath("/warner/");
+    assert.equal(p2.studio, "warner");
+    assert.equal(p2.genre, null);
+    assert.equal(p2.country, null);
+    assert.equal(p2.selection, null);
+
+    const p3 = contracts.parsePrettyPath("/espana/accion/");
+    assert.equal(p3.genre, "Acción");
+    assert.equal(p3.country, "España");
+
+    // Soporte con subpath de GitHub Pages
+    const p4 = contracts.parsePrettyPath("/videoclub.digital/comedia/francia/");
+    assert.equal(p4.genre, "Comedia");
+    assert.equal(p4.country, "Francia");
+  });
+
+  test("setters mantienen el contrato de filtros y exclusividad mutua", () => {
     assert.equal(state.setFilter("year", `${constants.CONFIG.YEAR_MIN - 1}-${constants.CONFIG.YEAR_MAX + 1}`, true), true);
     assert.equal(state.setFilter("excludedGenres", [" Terror ", "Terror", ""], true), true);
     state.setSort("unknown,desc");
@@ -180,7 +231,7 @@ describe("state.js", () => {
     assert.equal(filters.sort, constants.DEFAULTS.SORT);
     assert.equal(filters.mediaType, constants.DEFAULTS.MEDIA_TYPE);
 
-    // Exclusividad mutua entre selection y studio y normalización de slugs
+    // Exclusividad mutua entre selection y studio
     state.setFilter("studio", "warner", true);
     assert.equal(state.getActiveFilters().studio, "warner");
     assert.equal(state.getActiveFilters().selection, null);
@@ -189,12 +240,35 @@ describe("state.js", () => {
     assert.equal(state.getActiveFilters().selection, "criterion");
     assert.equal(state.getActiveFilters().studio, null);
 
-    // Retrocompatibilidad con códigos legacy de 1 letra
-    state.setFilter("studio", "W", true);
-    assert.equal(state.getActiveFilters().studio, "warner");
+    // Sin retrocompatibilidad: códigos de 1 letra desconocidos no se aplican
+    assert.equal(contracts.normalizeStudioCode("W"), null);
+    assert.equal(contracts.normalizeSelectionCode("C"), null);
+  });
 
-    state.setFilter("selection", "C", true);
-    assert.equal(state.getActiveFilters().selection, "criterion");
+  test("stateToPrettyUrl y syncStateWithUrl sincronizan estado bidireccionalmente", () => {
+    state.setFilter("genre", "Drama", true);
+    state.setFilter("country", "EEUU", true);
+    state.setFilter("selection", "criterion", true);
+    state.setFilter("year", "1900-2007", true);
+    state.setSort("fa_votes,desc");
+    state.setCurrentPage(3);
+
+    const { pathname, search } = state.stateToPrettyUrl(state.getActiveFilters(), state.getCurrentPage());
+    assert.equal(pathname, "/drama/eeuu/criterion/");
+    assert.equal(search, "year=1900-2007&sort=fa_votes%2Cdesc&p=3");
+
+    // Sincronización inversa
+    state.resetFiltersState();
+    state.syncStateWithUrl("/drama/eeuu/criterion/", "?year=1900-2007&sort=fa_votes%2Cdesc&p=3");
+
+    const active = state.getActiveFilters();
+    assert.equal(active.genre, "Drama");
+    assert.equal(active.country, "EEUU");
+    assert.equal(active.selection, "criterion");
+    assert.equal(active.studio, null);
+    assert.equal(active.year, "1900-2007");
+    assert.equal(active.sort, "fa_votes,desc");
+    assert.equal(state.getCurrentPage(), 3);
   });
 
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {
@@ -233,7 +307,7 @@ describe("state.js", () => {
   });
 
   test("sincroniza URL con estado seguro", () => {
-    state.syncStateWithUrlParams("?p=-10&type=bad&sort=bad&list=true&year=1800-3000&exg=Drama,,Drama");
+    state.syncStateWithUrl("/", "?p=-10&type=bad&sort=bad&list=true&year=1800-3000&exg=Drama,,Drama");
 
     const snapshot = state.getState();
     assert.equal(snapshot.currentPage, 1);

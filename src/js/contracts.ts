@@ -172,47 +172,193 @@ export function normalizeNullableText(value: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
-const LEGACY_STUDIO_MAP: Record<string, string> = {
-  w: "warner",
-  u: "universal",
-  s: "sony",
-  p: "paramount",
-  d: "disney",
-  n: "netflix",
-  z: "amazon",
-  f: "fox",
-  l: "lionsgate",
-  c: "canalplus",
-  b: "bbc",
-  x: "miramax",
-  t: "a24",
-  o: "movistar",
-  a: "apple"
+export function toSlug(text: string): string {
+  if (!text) return "";
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export const GENRE_SLUG_MAP: Record<string, string> = {
+  drama: "Drama",
+  comedia: "Comedia",
+  "sci-fi": "Sci-Fi",
+  terror: "Terror",
+  thriller: "Thriller",
+  accion: "Acción",
+  animacion: "Animación",
+  documental: "Documental",
+  aventuras: "Aventuras",
+  belico: "Bélico",
+  crimen: "Crimen",
+  fantastico: "Fantástico",
+  romance: "Romance",
+  western: "Western",
+  musical: "Musical",
+  misterio: "Misterio",
+  "cine-negro": "Cine negro"
 };
 
-const LEGACY_SELECTION_MAP: Record<string, string> = {
-  m: "1001movies",
-  p: "tspdt",
-  c: "criterion",
-  k: "kinolorber",
-  s: "toptv",
-  h: "hbo",
-  t: "acontra",
-  a: "arrow",
-  e: "eureka",
-  i: "imprint"
+export const COUNTRY_SLUG_MAP: Record<string, string> = {
+  eeuu: "EEUU",
+  espana: "España",
+  uk: "UK",
+  francia: "Francia",
+  japon: "Japón",
+  italia: "Italia",
+  alemania: "Alemania",
+  canada: "Canadá",
+  australia: "Australia",
+  "corea-del-sur": "Corea del Sur",
+  "hong-kong": "Hong Kong",
+  mexico: "México",
+  argentina: "Argentina",
+  suecia: "Suecia",
+  dinamarca: "Dinamarca",
+  noruega: "Noruega",
+  polonia: "Polonia",
+  rusia: "Rusia",
+  "union-sovietica": "Unión Soviética",
+  irlanda: "Irlanda",
+  belgica: "Bélgica",
+  austria: "Austria",
+  "paises-bajos": "Países Bajos",
+  suiza: "Suiza",
+  portugal: "Portugal",
+  grecia: "Grecia",
+  "rep-checa": "Rep. Checa",
+  hungria: "Hungría",
+  rumania: "Rumanía",
+  brasil: "Brasil",
+  chile: "Chile",
+  colombia: "Colombia",
+  cuba: "Cuba",
+  india: "India",
+  china: "China",
+  taiwan: "Taiwán",
+  iran: "Irán",
+  turquia: "Turquía",
+  "nueva-zelanda": "Nueva Zelanda",
+  islandia: "Islandia",
+  finlandia: "Finlandia",
+  sudafrica: "Sudáfrica",
+  israel: "Israel",
+  libano: "Líbano",
+  egipto: "Egipto",
+  tailandia: "Tailandia",
+  indonesia: "Indonesia",
+  filipinas: "Filipinas",
+  latam: "latam",
+  nordic: "nordic"
 };
+
+export const STUDIO_SLUGS: ReadonlySet<string> = new Set([
+  "warner", "universal", "sony", "paramount", "disney", "netflix",
+  "amazon", "fox", "lionsgate", "canalplus", "bbc", "miramax",
+  "a24", "movistar", "apple"
+]);
+
+export const SELECTION_SLUGS: ReadonlySet<string> = new Set([
+  "1001movies", "tspdt", "criterion", "kinolorber", "toptv",
+  "hbo", "acontra", "arrow", "eureka", "imprint"
+]);
+
+export function genreToSlug(genre: string | null | undefined): string | null {
+  if (!genre) return null;
+  const norm = genre.trim().toLowerCase();
+  const direct = Object.keys(GENRE_SLUG_MAP).find(slug => GENRE_SLUG_MAP[slug].toLowerCase() === norm);
+  if (direct) return direct;
+  return toSlug(genre);
+}
+
+export function countryToSlug(country: string | null | undefined): string | null {
+  if (!country) return null;
+  const norm = country.trim().toLowerCase();
+  const direct = Object.keys(COUNTRY_SLUG_MAP).find(slug => COUNTRY_SLUG_MAP[slug].toLowerCase() === norm);
+  if (direct) return direct;
+  return toSlug(country);
+}
+
+export function buildPrettyPath(filters: {
+  genre?: string | null;
+  country?: string | null;
+  studio?: string | null;
+  selection?: string | null;
+}): string {
+  const segments: string[] = [];
+
+  const genreSlug = genreToSlug(filters.genre);
+  if (genreSlug) segments.push(genreSlug);
+
+  const countrySlug = countryToSlug(filters.country);
+  if (countrySlug) segments.push(countrySlug);
+
+  if (filters.selection) {
+    const selCode = filters.selection.toLowerCase().trim();
+    if (SELECTION_SLUGS.has(selCode)) segments.push(selCode);
+  } else if (filters.studio) {
+    const stuCode = filters.studio.toLowerCase().trim();
+    if (STUDIO_SLUGS.has(stuCode)) segments.push(stuCode);
+  }
+
+  if (segments.length === 0) return "/";
+  return `/${segments.join("/")}/`;
+}
+
+export function parsePrettyPath(pathname: string): {
+  genre: string | null;
+  country: string | null;
+  studio: string | null;
+  selection: string | null;
+} {
+  const result = {
+    genre: null as string | null,
+    country: null as string | null,
+    studio: null as string | null,
+    selection: null as string | null
+  };
+
+  if (!pathname || pathname === "/") return result;
+
+  let cleanPath = pathname;
+  if (cleanPath.startsWith("/videoclub.digital/")) {
+    cleanPath = cleanPath.slice("/videoclub.digital".length);
+  }
+
+  const rawSegments = cleanPath.split("/").map(s => s.trim().toLowerCase()).filter(Boolean);
+
+  for (const seg of rawSegments) {
+    if (SELECTION_SLUGS.has(seg)) {
+      result.selection = seg;
+      result.studio = null;
+    } else if (STUDIO_SLUGS.has(seg)) {
+      result.studio = seg;
+      result.selection = null;
+    } else if (GENRE_SLUG_MAP[seg]) {
+      result.genre = GENRE_SLUG_MAP[seg];
+    } else if (COUNTRY_SLUG_MAP[seg]) {
+      result.country = COUNTRY_SLUG_MAP[seg];
+    }
+  }
+
+  return result;
+}
 
 export function normalizeStudioCode(value: unknown): string | null {
   const text = normalizeTextValue(value).toLowerCase();
-  if (!text) return null;
-  return LEGACY_STUDIO_MAP[text] || text;
+  if (!text || !STUDIO_SLUGS.has(text)) return null;
+  return text;
 }
 
 export function normalizeSelectionCode(value: unknown): string | null {
   const text = normalizeTextValue(value).toLowerCase();
-  if (!text) return null;
-  return LEGACY_SELECTION_MAP[text] || text;
+  if (!text || !SELECTION_SLUGS.has(text)) return null;
+  return text;
 }
 
 export function normalizeCodeValue(value: unknown): string | null {

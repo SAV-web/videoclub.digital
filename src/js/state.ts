@@ -12,6 +12,7 @@ import { DEFAULTS, CONFIG, TEXT_FILTER_KEYS } from "./constants.js";
 import { normalizeText } from "./utils.js";
 import {
   areContractValuesEqual,
+  buildPrettyPath,
   normalizeActiveFilters,
   normalizeFilterValue,
   normalizeMovieId,
@@ -21,6 +22,7 @@ import {
   normalizeTotalMovies,
   normalizeUserMovieData,
   normalizeUserMovieEntry,
+  parsePrettyPath,
 } from "./contracts.js";
 import { ActiveFilters, UserMovieEntry } from "./types.js";
 
@@ -140,10 +142,15 @@ let state = makeReactive<AppState>({
 // =================================================================
 
 export const URL_PARAM_MAP: Record<string, keyof ActiveFilters | "page"> = {
-  q: "searchTerm", genre: "genre", year: "year", country: "country",
-  dir: "director", actor: "actor", sel: "selection", stu: "studio",
-  sort: "sort", type: "mediaType", p: "page",
-  exg: "excludedGenres", exc: "excludedCountries",
+  q: "searchTerm",
+  year: "year",
+  dir: "director",
+  actor: "actor",
+  sort: "sort",
+  type: "mediaType",
+  p: "page",
+  exg: "excludedGenres",
+  exc: "excludedCountries",
   list: "myList"
 };
 
@@ -151,11 +158,22 @@ export const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 ) as Record<keyof ActiveFilters | "page", string>;
 
-// Convierte el estado actual en texto para la URL (?genre=Accion&p=2)
+// Convierte el estado actual en Pretty URL ({ pathname: '/drama/eeuu/', search: 'sort=fa_votes,desc&p=2' })
+export function stateToPrettyUrl(activeFilters: ActiveFilters, currentPage: number): { pathname: string; search: string } {
+  const pathname = buildPrettyPath(activeFilters);
+  const params = stateToUrlParams(activeFilters, currentPage);
+  const search = params.toString();
+  return { pathname, search };
+}
+
+// Convierte los filtros no posicionales en parámetros para la query string
 export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: number): URLSearchParams {
   const params = new URLSearchParams();
 
   Object.entries(activeFilters).forEach(([key, value]) => {
+    // genre, country, selection y studio van exclusivamente en el pathname
+    if (key === "genre" || key === "country" || key === "selection" || key === "studio") return;
+
     const shortKey = REVERSE_URL_PARAM_MAP[key as keyof ActiveFilters];
     if (!shortKey) return;
     
@@ -169,9 +187,7 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
           (key === "sort" && value === DEFAULTS.SORT) ||
           (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`)) return;
       
-      const valToSet = (key === "selection" || key === "studio")
-        ? value.toLowerCase()
-        : (TEXT_FILTER_KEYS.has(key) ? normalizeText(value) : value);
+      const valToSet = TEXT_FILTER_KEYS.has(key) ? normalizeText(value) : value;
       params.set(shortKey, valToSet);
     }
   });
@@ -180,11 +196,19 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
   return params;
 }
 
-// Lee la URL y actualiza el estado
-export function syncStateWithUrlParams(queryString: string): void {
+// Lee la URL completa (pathname + search) y actualiza el estado de la aplicación
+export function syncStateWithUrl(pathname: string = "/", queryString: string = ""): void {
   resetFiltersState();
+
+  // 1. Sincronizar filtros de catálogo desde los segmentos del pathname
+  const pathFilters = parsePrettyPath(pathname);
+  if (pathFilters.genre) setFilter("genre", pathFilters.genre, true);
+  if (pathFilters.country) setFilter("country", pathFilters.country, true);
+  if (pathFilters.selection) setFilter("selection", pathFilters.selection, true);
+  if (pathFilters.studio) setFilter("studio", pathFilters.studio, true);
+
+  // 2. Sincronizar parámetros técnicos desde la query string
   const params = new URLSearchParams(queryString);
-  
   setCurrentPage(params.get("p") || params.get("page"));
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
@@ -209,6 +233,11 @@ export function syncStateWithUrlParams(queryString: string): void {
   
   if (!state.activeFilters.sort) setSort(DEFAULTS.SORT);
   if (!state.activeFilters.mediaType) setMediaType(DEFAULTS.MEDIA_TYPE);
+}
+
+// Helper para sincronizar sólo desde query string
+export function syncStateWithUrlParams(queryString: string): void {
+  syncStateWithUrl(typeof window !== "undefined" ? window.location.pathname : "/", queryString);
 }
 
 // =================================================================

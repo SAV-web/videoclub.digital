@@ -12,6 +12,32 @@
       }
     </script>
 
+    <!-- Restauración de Pretty Path tras redirección SPA 404 -->
+    <script>
+      (function () {
+        var search = window.location.search;
+        if (search.includes('_p=')) {
+          var params = new URLSearchParams(search);
+          var route = params.get('_p');
+          var extraQuery = params.get('_q');
+          params.delete('_p');
+          params.delete('_q');
+
+          var finalQuery = [];
+          if (extraQuery) finalQuery.push(extraQuery);
+          var remaining = params.toString();
+          if (remaining) finalQuery.push(remaining);
+
+          var cleanSearch = finalQuery.length > 0 ? '?' + finalQuery.join('&') : '';
+          var basePrefix = window.location.pathname.startsWith('/videoclub.digital') ? '/videoclub.digital' : '';
+          var cleanRoute = route ? (route.startsWith('/') ? route : '/' + route) : '/';
+          var restoredUrl = basePrefix + cleanRoute + cleanSearch + window.location.hash;
+
+          window.history.replaceState(null, '', restoredUrl);
+        }
+      })();
+    </script>
+
 <!-- === 1. METADATOS Y CONFIGURACIÓN === -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
