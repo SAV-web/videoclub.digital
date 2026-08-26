@@ -955,14 +955,16 @@ BEGIN
     WITH upserted_movies AS (
         INSERT INTO public.movies (
             relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
-            original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch
+            original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch,
+            genres_list, directors_list, actors_list
         )
         SELECT
             public.to_integer_safe(s.relevance::TEXT), TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
-            s.imdb_id, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia), TRIM(s.justwatch)
+            s.imdb_id, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia), TRIM(s.justwatch),
+            s.genre, s.directors, CASE WHEN s.actors = '(A)' THEN '' ELSE s.actors END
         FROM public.movies_staging s
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
         WHERE s.image IS NOT NULL AND TRIM(s.image) <> '' AND (s.show::text IN ('1', 't', 'true', 'S', 's', 'TRUE'))
@@ -971,7 +973,8 @@ BEGIN
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
             fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id, last_synced_at = sync_timestamp,
-            episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia, justwatch = EXCLUDED.justwatch
+            episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia, justwatch = EXCLUDED.justwatch,
+            genres_list = EXCLUDED.genres_list, directors_list = EXCLUDED.directors_list, actors_list = EXCLUDED.actors_list
         WHERE
             movies.relevance IS DISTINCT FROM EXCLUDED.relevance OR
             movies.title IS DISTINCT FROM EXCLUDED.title OR
@@ -991,12 +994,15 @@ BEGIN
             movies.episodes IS DISTINCT FROM EXCLUDED.episodes OR
             movies.wikipedia IS DISTINCT FROM EXCLUDED.wikipedia OR
             movies.justwatch IS DISTINCT FROM EXCLUDED.justwatch OR
-            movies.genres_list IS DISTINCT FROM s.genre OR
-            movies.directors_list IS DISTINCT FROM s.directors OR
-            movies.actors_list IS DISTINCT FROM s.actors OR
+            movies.genres_list IS DISTINCT FROM EXCLUDED.genres_list OR
+            movies.directors_list IS DISTINCT FROM EXCLUDED.directors_list OR
+            movies.actors_list IS DISTINCT FROM EXCLUDED.actors_list OR
             EXISTS (
-                SELECT 1 FROM UNNEST(STRING_TO_ARRAY(s.studio, ',')) stu(code)
-                WHERE NOT EXISTS (
+                SELECT 1
+                FROM public.movies_staging chk
+                CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(chk.studio, ',')) stu(code)
+                WHERE TRIM(chk.image) = movies.image
+                AND NOT EXISTS (
                     SELECT 1 FROM public.movie_studios ms
                     JOIN public.studios st ON ms.studio_id = st.id
                     WHERE ms.movie_id = movies.id 
@@ -1004,8 +1010,11 @@ BEGIN
                 )
             ) OR
             EXISTS (
-                SELECT 1 FROM UNNEST(STRING_TO_ARRAY(s.collection, ',')) sel(code)
-                WHERE NOT EXISTS (
+                SELECT 1
+                FROM public.movies_staging chk
+                CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(chk.collection, ',')) sel(code)
+                WHERE TRIM(chk.image) = movies.image
+                AND NOT EXISTS (
                     SELECT 1 FROM public.movie_selections ms
                     JOIN public.selections sc ON ms.selection_id = sc.id
                     WHERE ms.movie_id = movies.id 

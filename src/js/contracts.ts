@@ -8,6 +8,10 @@
 
 import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
 import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
+import { toSlug, GENRE_SLUG_MAP, genreToSlug } from "../shared/slugs.js";
+
+// Re-exportamos para que los módulos SPA que ya importan de contracts no se rompan
+export { toSlug, GENRE_SLUG_MAP, genreToSlug };
 
 const SORT_VALUES = new Set<string>([
   "relevance,asc",
@@ -187,35 +191,7 @@ export function normalizeNullableText(value: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
-export function toSlug(text: string): string {
-  if (!text) return "";
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-export const GENRE_SLUG_MAP: Record<string, string> = {
-  drama: "Drama",
-  comedia: "Comedia",
-  "sci-fi": "Sci-Fi",
-  terror: "Terror",
-  thriller: "Thriller",
-  accion: "Acción",
-  animacion: "Animación",
-  documental: "Documental",
-  aventuras: "Aventuras",
-  belico: "Bélico",
-  crimen: "Crimen",
-  fantastico: "Fantástico",
-  romance: "Romance",
-  western: "Western",
-  musical: "Musical",
-  misterio: "Misterio",
-  "cine-negro": "Cine negro"
-};
+// toSlug y GENRE_SLUG_MAP importados de ../shared/slugs.js (ver imports arriba)
 
 export const COUNTRY_SLUG_MAP: Record<string, string> = {
   eeuu: "EEUU",
@@ -281,13 +257,7 @@ export const SELECTION_SLUGS: ReadonlySet<string> = new Set([
   "hbo", "acontra", "arrow", "eureka", "imprint"
 ]);
 
-export function genreToSlug(genre: string | null | undefined): string | null {
-  if (!genre) return null;
-  const norm = genre.trim().toLowerCase();
-  const direct = Object.keys(GENRE_SLUG_MAP).find(slug => GENRE_SLUG_MAP[slug].toLowerCase() === norm);
-  if (direct) return direct;
-  return toSlug(genre);
-}
+// genreToSlug importada de ../shared/slugs.js (ver imports arriba)
 
 export function countryToSlug(country: string | null | undefined): string | null {
   if (!country) return null;
