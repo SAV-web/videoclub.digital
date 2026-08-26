@@ -259,12 +259,17 @@ export const SELECTION_SLUGS: ReadonlySet<string> = new Set([
 
 // genreToSlug importada de ../shared/slugs.js (ver imports arriba)
 
+/**
+ * Convierte el nombre de un país a su slug canónico registrado en COUNTRY_SLUG_MAP.
+ * Si el valor no está en el mapa, devuelve null (whitelist estricta).
+ * Ej: "España" → "espana", "EEUU" → "eeuu"
+ *     "Kazajistán" → null  (valor desconocido: no genera segmento en la URL)
+ */
 export function countryToSlug(country: string | null | undefined): string | null {
   if (!country) return null;
   const norm = country.trim().toLowerCase();
   const direct = Object.keys(COUNTRY_SLUG_MAP).find(slug => COUNTRY_SLUG_MAP[slug].toLowerCase() === norm);
-  if (direct) return direct;
-  return toSlug(country);
+  return direct ?? null;
 }
 
 export function slugToPersonQuery(slug: string): string {
@@ -279,6 +284,8 @@ export function buildPrettyPath(filters: {
   selection?: string | null;
   director?: string | null;
   actor?: string | null;
+  excludedGenres?: string[];
+  excludedCountries?: string[];
 }): string {
   // 1. Prioridad: Entidades VIP de Persona (excluyentes de catálogo)
   if (filters.director) {
@@ -308,6 +315,20 @@ export function buildPrettyPath(filters: {
     if (STUDIO_SLUGS.has(stuCode)) segments.push(stuCode);
   }
 
+  if (Array.isArray(filters.excludedGenres)) {
+    filters.excludedGenres.forEach(g => {
+      const slug = genreToSlug(g);
+      if (slug) segments.push(`no-${slug}`);
+    });
+  }
+
+  if (Array.isArray(filters.excludedCountries)) {
+    filters.excludedCountries.forEach(c => {
+      const slug = countryToSlug(c);
+      if (slug) segments.push(`no-${slug}`);
+    });
+  }
+
   if (segments.length === 0) return "/";
   return `/${segments.join("/")}/`;
 }
@@ -319,6 +340,8 @@ export function parsePrettyPath(pathname: string): {
   selection: string | null;
   director: string | null;
   actor: string | null;
+  excludedGenres: string[];
+  excludedCountries: string[];
 } {
   const result = {
     genre: null as string | null,
@@ -326,7 +349,9 @@ export function parsePrettyPath(pathname: string): {
     studio: null as string | null,
     selection: null as string | null,
     director: null as string | null,
-    actor: null as string | null
+    actor: null as string | null,
+    excludedGenres: [] as string[],
+    excludedCountries: [] as string[]
   };
 
   if (!pathname || pathname === "/") return result;
@@ -350,9 +375,16 @@ export function parsePrettyPath(pathname: string): {
     return result;
   }
 
-  // 2. Detección de filtros de catálogo posicionales/semánticos
+  // 2. Detección de filtros de catálogo posicionales/semánticos y exclusiones
   for (const seg of rawSegments) {
-    if (SELECTION_SLUGS.has(seg)) {
+    if (seg.startsWith("no-")) {
+      const noSlug = seg.slice(3);
+      if (GENRE_SLUG_MAP[noSlug]) {
+        result.excludedGenres.push(GENRE_SLUG_MAP[noSlug]);
+      } else if (COUNTRY_SLUG_MAP[noSlug]) {
+        result.excludedCountries.push(COUNTRY_SLUG_MAP[noSlug]);
+      }
+    } else if (SELECTION_SLUGS.has(seg)) {
       result.selection = seg;
       result.studio = null;
     } else if (STUDIO_SLUGS.has(seg)) {

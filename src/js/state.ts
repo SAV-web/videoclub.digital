@@ -143,7 +143,7 @@ let state = makeReactive<AppState>({
 // =================================================================
 
 export const URL_PARAM_MAP: Record<string, keyof ActiveFilters | "page"> = {
-  q: "searchTerm",
+  buscar: "searchTerm",
   year: "year",
   sort: "sort",
   type: "mediaType",
@@ -170,8 +170,8 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
   const params = new URLSearchParams();
 
   Object.entries(activeFilters).forEach(([key, value]) => {
-    // genre, country, selection, studio, director y actor van exclusivamente en el pathname
-    if (key === "genre" || key === "country" || key === "selection" || key === "studio" || key === "director" || key === "actor") return;
+    // genre, country, selection, studio, director, actor, excludedGenres y excludedCountries van exclusivamente en el pathname
+    if (key === "genre" || key === "country" || key === "selection" || key === "studio" || key === "director" || key === "actor" || key === "excludedGenres" || key === "excludedCountries") return;
 
     const shortKey = REVERSE_URL_PARAM_MAP[key as keyof ActiveFilters];
     if (!shortKey) return;
@@ -212,7 +212,7 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   // Si venimos de redirección SPA 404 (ej. GitHub Pages: ?_p=/director/brian-de-palma/)
   const effectivePathname = routeParam ? (routeParam.startsWith("/") ? routeParam : `/${routeParam}`) : pathname;
 
-  // 1. Sincronizar filtros de catálogo o personas desde los segmentos del pathname
+  // 1. Sincronizar filtros de catálogo, personas o exclusiones desde los segmentos del pathname
   const pathFilters = parsePrettyPath(effectivePathname);
   if (pathFilters.director) setFilter("director", pathFilters.director, true);
   if (pathFilters.actor) setFilter("actor", pathFilters.actor, true);
@@ -220,6 +220,8 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   if (pathFilters.country) setFilter("country", pathFilters.country, true);
   if (pathFilters.selection) setFilter("selection", pathFilters.selection, true);
   if (pathFilters.studio) setFilter("studio", pathFilters.studio, true);
+  if (pathFilters.excludedGenres.length > 0) setFilter("excludedGenres", pathFilters.excludedGenres, true);
+  if (pathFilters.excludedCountries.length > 0) setFilter("excludedCountries", pathFilters.excludedCountries, true);
 
   // 2. Sincronizar parámetros técnicos desde la query string
   const effectiveParams = extraQuery ? new URLSearchParams(extraQuery) : params;
@@ -227,7 +229,7 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
     if (stateKey === "page") return;
-    const val = effectiveParams.get(shortKey) ?? effectiveParams.get(stateKey);
+    const val = effectiveParams.get(shortKey) ?? (stateKey === "searchTerm" ? effectiveParams.get("q") : null) ?? effectiveParams.get(stateKey);
     if (val !== null) {
       if (["excludedGenres", "excludedCountries"].includes(stateKey)) {
         setFilter(stateKey, val.split(","), true);
@@ -261,6 +263,58 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
 // Helper para sincronizar sólo desde query string
 export function syncStateWithUrlParams(queryString: string): void {
   syncStateWithUrl(typeof window !== "undefined" ? window.location.pathname : "/", queryString);
+}
+
+/**
+ * canonicalizeCurrentUrl()
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Asegura que la URL visible en el navegador sea siempre la forma canónica del
+ * estado activo. Se ejecuta DESPUÉS de haber sincronizado el estado con la URL
+ * entrante (syncStateWithUrl), y realiza 4 pasos:
+ *
+ *  1. Leer el estado normalizado que ya está en memoria.
+ *  2. Re-serializarlo con stateToPrettyUrl() -> genera la URL canónica.
+ *  3. Comparar con window.location (pathname + search).
+ *  4. Si difieren, ejecutar history.replaceState() para sustituir la entrada
+ *     actual del historial sin añadir una nueva (el botón "Atrás" no se rompe).
+ *
+ * Casos que corrige automáticamente:
+ *  - Parámetros alias:    ?page=2 -> ?p=2  |  ?q=x -> ?buscar=x
+ *  - Sort interno:        ?sort=fa_rating,desc -> ?sort=nota-fa
+ *  - Segmentos invertidos:/uk/drama/ -> /drama/uk/
+ *  - Trailing slash:      /drama/uk  -> /drama/uk/
+ *  - Exclusiones en QS:   ?exg=Animación -> /no-animacion/
+ *
+ * @returns true si se realizó una sustitución, false si ya era canónica.
+ */
+export function canonicalizeCurrentUrl(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const activeFilters = getActiveFilters();
+  const currentPage = getCurrentPage();
+
+  const { pathname: canonPath, search: canonSearch } = stateToPrettyUrl(activeFilters, currentPage);
+
+  // Construir la URL canónica completa (con hash preservado)
+  const canonFull = canonSearch
+    ? `${canonPath}?${canonSearch}${window.location.hash}`
+    : `${canonPath}${window.location.hash}`;
+
+  // URL actual sin base-prefix de GitHub Pages
+  let currentPath = window.location.pathname;
+  const basePrefix = currentPath.startsWith("/videoclub.digital") ? "/videoclub.digital" : "";
+  if (basePrefix) currentPath = currentPath.slice(basePrefix.length) || "/";
+  const currentSearch = window.location.search;
+  const currentFull = currentSearch
+    ? `${currentPath}${currentSearch}${window.location.hash}`
+    : `${currentPath}${window.location.hash}`;
+
+  if (canonFull === currentFull) return false;
+
+  // Reemplazar la entrada actual sin añadir al historial
+  const finalUrl = `${basePrefix}${canonFull}`;
+  window.history.replaceState(window.history.state, "", finalUrl);
+  return true;
 }
 
 // =================================================================

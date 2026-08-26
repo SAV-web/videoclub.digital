@@ -46,14 +46,14 @@ export const GENRE_SLUG_MAP: Record<string, string> = {
 };
 
 /**
- * Convierte el nombre de un género a su slug canónico.
- * Busca primero en el diccionario; si no lo encuentra, genera un slug algorítmico.
+ * Convierte el nombre de un género a su slug canónico registrado en GENRE_SLUG_MAP.
+ * Si el valor no está en el mapa, devuelve null (whitelist estricta).
  * Ej: "Acción" → "accion", "Sci-Fi" → "sci-fi", "Drama" → "drama"
+ *     "Experimental" → null  (valor desconocido: no genera segmento en la URL)
  */
 export function genreToSlug(genre: string | null | undefined): string | null {
   if (!genre) return null;
   const norm = genre.trim().toLowerCase();
   const direct = Object.keys(GENRE_SLUG_MAP).find(slug => GENRE_SLUG_MAP[slug].toLowerCase() === norm);
-  if (direct) return direct;
-  return toSlug(genre);
+  return direct ?? null;
 }

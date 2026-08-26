@@ -33,7 +33,7 @@
 
 <!-- === 3. MANIFEST === -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","url":"https://videoclub.digital/","name":"videoclub.digital","description":"Explora, filtra y descubre miles de películas y series...","potentialAction":{"@type":"SearchAction","target":"https://videoclub.digital/?q={search_term_string}","query-input":"required name=search_term_string"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","url":"https://videoclub.digital/","name":"videoclub.digital","description":"Explora, filtra y descubre miles de películas y series...","potentialAction":{"@type":"SearchAction","target":"https://videoclub.digital/?buscar={search_term_string}","query-input":"required name=search_term_string"}}</script>
 
 <!-- === 4. OPTIMIZACIÓN (RESOURCE HINTS) === -->
     <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
@@ -128,20 +128,20 @@
         </header>
         <nav class="play-button-container" aria-label="Controles principales">
           <button id="play-button" type="button" class="sidebar-control-button" title="Limpiar filtros" aria-label="Limpiar filtros">
-            <svg class="sidebar-icon" aria-hidden="true"><use href="/src/sprite.svg#icon-play-filter"></use></svg>
+            <svg class="sidebar-icon" aria-hidden="true"><use href="/sprite.svg#icon-play-filter"></use></svg>
           </button>
           
           <button id="toggle-rotation-btn" type="button" class="sidebar-control-button" title="Rotación" aria-label="Pausar rotación" aria-pressed="false">
-            <svg class="sidebar-icon" aria-hidden="true"><use href="/src/sprite.svg#icon-pause"></use></svg>
+            <svg class="sidebar-icon" aria-hidden="true"><use href="/sprite.svg#icon-pause"></use></svg>
           </button>
           
           <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Modo oscuro" aria-label="Modo oscuro" aria-pressed="false">
-            <svg class="theme-icon moon-icon" aria-hidden="true"><use href="/src/sprite.svg#icon-moon"></use></svg>
-            <svg class="theme-icon sun-icon" aria-hidden="true"><use href="/src/sprite.svg#icon-sun"></use></svg>
+            <svg class="theme-icon moon-icon" aria-hidden="true"><use href="/sprite.svg#icon-moon"></use></svg>
+            <svg class="theme-icon sun-icon" aria-hidden="true"><use href="/sprite.svg#icon-sun"></use></svg>
           </button>
           
           <button id="rewind-button" type="button" class="sidebar-control-button" title="Cerrar sidebar" aria-label="Cerrar sidebar" aria-controls="sidebar" aria-expanded="true">
-            <svg class="sidebar-icon" aria-hidden="true"><use href="/src/sprite.svg#icon-rewind"></use></svg>
+            <svg class="sidebar-icon" aria-hidden="true"><use href="/sprite.svg#icon-rewind"></use></svg>
           </button>
         </nav>
         
@@ -391,20 +391,20 @@
                 data-action="set-rating-estrellas"
               >
                 <svg class="star-icon" data-rating-level="1">
-                    <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star"></use>
                 </svg>
                 <svg class="star-icon" data-rating-level="2">
-                    <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star"></use>
                 </svg>
                 <svg class="star-icon" data-rating-level="3">
-                    <use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star"></use>
                 </svg>
               </div>
             <span class="wall-rating-number" data-template="wall-rating"></span>
-            <button type="button" class="card-action-btn" data-action="toggle-watchlist" aria-label="Añadir a mi lista"><svg class="icon-watchlist"><use href="/src/sprite.svg#icon-bookmark-plus"></use></svg></button>
+            <button type="button" class="card-action-btn" data-action="toggle-watchlist" aria-label="Añadir a mi lista"><svg class="icon-watchlist"><use href="/sprite.svg#icon-bookmark-plus"></use></svg></button>
             </div>
           </div>
 
@@ -440,7 +440,7 @@
       title="Ver en JustWatch"
     >
       <svg class="rating-icon" data-template="justwatch-icon" fill="#9A1485">
-        <use href="/src/sprite.svg#icon-justwatch"></use>
+        <use href="/sprite.svg#icon-justwatch"></use>
       </svg>
     </a>
     <!-- 3. Wikipedia (Al final, derecha) -->
@@ -453,7 +453,7 @@
       title="Ver en Wikipedia"
     >
       <svg class="rating-icon" data-template="wikipedia-icon" fill="#B3404A">
-        <use href="/src/sprite.svg#icon-wikipedia"></use>
+        <use href="/sprite.svg#icon-wikipedia"></use>
       </svg>
     </a>
   </div>
@@ -464,7 +464,7 @@
   <div class="rating-line"> <!-- Antes era <a>, ahora <div> -->
     <a target="_blank" rel="noopener noreferrer" class="rating-left" data-template="fa-link">
       <svg class="rating-icon" data-template="fa-icon">
-        <use href="/src/sprite.svg#icon-filmaffinity"></use>
+        <use href="/sprite.svg#icon-filmaffinity"></use>
       </svg>
       <span data-template="fa-rating"></span>
     </a>
@@ -478,7 +478,7 @@
   <div class="rating-line"> <!-- Antes era <a>, ahora <div> -->
     <a target="_blank" rel="noopener noreferrer" class="rating-left" data-template="imdb-link">
       <svg class="rating-icon" data-template="imdb-icon" fill="#F5C618">
-        <use href="/src/sprite.svg#icon-imdb"></use>
+        <use href="/sprite.svg#icon-imdb"></use>
       </svg>
       <span data-template="imdb-rating"></span>
     </a>
@@ -490,15 +490,15 @@
 </div>
           <div class="details-list">
             <div class="detail-item" data-template="genre-container">
-              <span class="detail-label" title="Género"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/src/sprite.svg#icon-clapperboard"></use></svg></span><span class="detail-data" data-template="genre"></span>
+              <span class="detail-label" title="Género"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-clapperboard"></use></svg></span><span class="detail-data" data-template="genre"></span>
             </div>
             <div class="detail-item" data-template="actors-container">
-              <span class="detail-label" title="Reparto"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/src/sprite.svg#icon-cast"></use></svg></span><span class="detail-data" data-template="actors"></span>
+              <span class="detail-label" title="Reparto"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-cast"></use></svg></span><span class="detail-data" data-template="actors"></span>
             </div>
           </div>
           <div class="scrollable-content">
             <div class="plot-summary-final" title="Sinopsis">
-              <span class="detail-label" title="Sinopsis"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/src/sprite.svg#icon-synopsis"></use></svg></span><span data-template="synopsis"></span>
+              <span class="detail-label" title="Sinopsis"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-synopsis"></use></svg></span><span data-template="synopsis"></span>
             </div>
           </div>
 
@@ -592,11 +592,11 @@
             <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
               <div class="star-rating-container is-interactive" data-template="average-rating-stars" data-action="set-rating-estrellas">
-                <svg class="star-icon" data-rating-level="1"><use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use></svg>
-                <svg class="star-icon" data-rating-level="2"><use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use></svg>
-                <svg class="star-icon" data-rating-level="3"><use class="star-icon-path star-icon-path--empty" href="/src/sprite.svg#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="/src/sprite.svg#icon-star"></use></svg>
+                <svg class="star-icon" data-rating-level="1"><use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star"></use></svg>
+                <svg class="star-icon" data-rating-level="2"><use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star"></use></svg>
+                <svg class="star-icon" data-rating-level="3"><use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star"></use></svg>
               </div>
-              <button type="button" class="card-action-btn" data-action="toggle-watchlist" aria-label="Añadir a mi lista"><svg class="icon-watchlist"><use href="/src/sprite.svg#icon-bookmark-plus"></use></svg></button>
+              <button type="button" class="card-action-btn" data-action="toggle-watchlist" aria-label="Añadir a mi lista"><svg class="icon-watchlist"><use href="/sprite.svg#icon-bookmark-plus"></use></svg></button>
             </div>
           </div>
           <div class="movie-summary">
@@ -616,18 +616,18 @@
             <div class="episode-duration-group">
               <span data-template="episodes"></span>
               <span data-template="duration"></span>
-              <a target="_blank" rel="noopener noreferrer" class="rating-line" data-template="justwatch-link" hidden title="Ver en JustWatch"><svg class="rating-icon" fill="#9A1485"><use href="/src/sprite.svg#icon-justwatch"></use></svg></a>
-              <a target="_blank" rel="noopener noreferrer" class="rating-line" data-template="wikipedia-link" hidden title="Ver en Wikipedia"><svg class="rating-icon" fill="#B3404A"><use href="/src/sprite.svg#icon-wikipedia"></use></svg></a>
+              <a target="_blank" rel="noopener noreferrer" class="rating-line" data-template="justwatch-link" hidden title="Ver en JustWatch"><svg class="rating-icon" fill="#9A1485"><use href="/sprite.svg#icon-justwatch"></use></svg></a>
+              <a target="_blank" rel="noopener noreferrer" class="rating-line" data-template="wikipedia-link" hidden title="Ver en Wikipedia"><svg class="rating-icon" fill="#B3404A"><use href="/sprite.svg#icon-wikipedia"></use></svg></a>
             </div>
           </div>
           <div class="ratings-container">
             <div class="rating-line">
-              <a target="_blank" rel="noopener noreferrer" class="rating-left" data-template="fa-link"><svg class="rating-icon"><use href="/src/sprite.svg#icon-filmaffinity"></use></svg><span data-template="fa-rating"></span></a>
+              <a target="_blank" rel="noopener noreferrer" class="rating-left" data-template="fa-link"><svg class="rating-icon"><use href="/sprite.svg#icon-filmaffinity"></use></svg><span data-template="fa-rating"></span></a>
               <span class="rating-votes-count" data-template="fa-votes-count"></span>
               <div class="rating-bar-container" data-template="fa-votes-bar-container"><div class="rating-bar" data-template="fa-votes-bar"></div></div>
             </div>
             <div class="rating-line">
-              <a target="_blank" rel="noopener noreferrer" class="rating-left" data-template="imdb-link"><svg class="rating-icon" fill="#F5C618"><use href="/src/sprite.svg#icon-imdb"></use></svg><span data-template="imdb-rating"></span></a>
+              <a target="_blank" rel="noopener noreferrer" class="rating-left" data-template="imdb-link"><svg class="rating-icon" fill="#F5C618"><use href="/sprite.svg#icon-imdb"></use></svg><span data-template="imdb-rating"></span></a>
               <span class="rating-votes-count" data-template="imdb-votes-count"></span>
               <div class="rating-bar-container" data-template="imdb-votes-bar-container"><div class="rating-bar" data-template="imdb-votes-bar"></div></div>
             </div>
@@ -637,11 +637,11 @@
           </div>
           <div class="front-director-info" data-template="director"></div>
           <div class="details-list">
-            <div class="detail-item" data-template="genre-container"><span class="detail-label"><svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="/src/sprite.svg#icon-clapperboard"></use></svg></span><strong class="detail-label-title">Género.</strong><span class="detail-data" data-template="genre"></span></div>
-            <div class="detail-item" data-template="actors-container"><span class="detail-label"><svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="/src/sprite.svg#icon-cast"></use></svg></span><strong class="detail-label-title">Reparto.</strong><span class="detail-data" data-template="actors"></span></div>
+            <div class="detail-item" data-template="genre-container"><span class="detail-label"><svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-clapperboard"></use></svg></span><strong class="detail-label-title">Género.</strong><span class="detail-data" data-template="genre"></span></div>
+            <div class="detail-item" data-template="actors-container"><span class="detail-label"><svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-cast"></use></svg></span><strong class="detail-label-title">Reparto.</strong><span class="detail-data" data-template="actors"></span></div>
           </div>
           <div class="scrollable-content">
-            <div class="plot-summary-final" title="Sinopsis"><span class="detail-label"><svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="/src/sprite.svg#icon-synopsis"></use></svg></span><strong class="detail-label-title">Sinopsis.</strong><span data-template="synopsis"></span></div>
+            <div class="plot-summary-final" title="Sinopsis"><span class="detail-label"><svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-synopsis"></use></svg></span><strong class="detail-label-title">Sinopsis.</strong><span data-template="synopsis"></span></div>
           </div>
 
 

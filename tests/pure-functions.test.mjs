@@ -137,12 +137,29 @@ describe("seo.ts (Metadatos SEO y Esquemas JSON-LD)", () => {
     assert.strictEqual(schema.itemListElement[1].item.name, "Interstellar");
   });
 
-  test("buildBreadcrumbSchema genera la estructura de migas de pan correcta", () => {
-    const schema = seoModule.buildBreadcrumbSchema({ genre: "Ciencia Ficción" });
+  test("buildBreadcrumbSchema genera la estructura de migas de pan correcta y URLs canónicas", () => {
+    // 1. Género Sci-Fi
+    const schemaGenre = seoModule.buildBreadcrumbSchema({ genre: "Sci-Fi" });
+    assert.strictEqual(schemaGenre["@type"], "BreadcrumbList");
+    assert.strictEqual(schemaGenre.itemListElement.length, 3);
+    assert.strictEqual(schemaGenre.itemListElement[0].name, "Inicio");
+    assert.strictEqual(schemaGenre.itemListElement[0].item, "https://videoclub.digital/");
+    assert.strictEqual(schemaGenre.itemListElement[1].name, "Catálogo");
+    assert.strictEqual(schemaGenre.itemListElement[1].item, "https://videoclub.digital/");
+    assert.strictEqual(schemaGenre.itemListElement[2].name, "Sci-Fi");
+    assert.strictEqual(schemaGenre.itemListElement[2].item, "https://videoclub.digital/sci-fi/");
 
-    assert.strictEqual(schema["@type"], "BreadcrumbList");
-    assert.strictEqual(schema.itemListElement.length, 3);
-    assert.strictEqual(schema.itemListElement[2].name, "Ciencia Ficción");
+    // 2. Director + Películas
+    const schemaDir = seoModule.buildBreadcrumbSchema({ director: "Lars von Trier", mediaType: "movies" }, "https://videoclub.digital/");
+    assert.strictEqual(schemaDir.itemListElement[1].name, "Películas");
+    assert.strictEqual(schemaDir.itemListElement[1].item, "https://videoclub.digital/?type=movies");
+    assert.strictEqual(schemaDir.itemListElement[2].name, "Lars von Trier");
+    assert.strictEqual(schemaDir.itemListElement[2].item, "https://videoclub.digital/director/lars-von-trier/?type=movies");
+
+    // 3. Estudio Warner
+    const schemaStudio = seoModule.buildBreadcrumbSchema({ studio: "warner" }, "https://videoclub.digital/");
+    assert.strictEqual(schemaStudio.itemListElement[2].name, "Warner Bros.");
+    assert.strictEqual(schemaStudio.itemListElement[2].item, "https://videoclub.digital/warner/");
   });
 
   test("buildSeoDescription genera meta descripción dentro del límite de 160 caracteres", () => {

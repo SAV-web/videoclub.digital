@@ -2,7 +2,7 @@
 
 // src/js/seo.ts
 import { CONFIG, FILTER_CONFIG, STUDIO_DATA } from "./constants.js";
-import { getActiveFilters } from "./state.js";
+import { getActiveFilters, stateToPrettyUrl } from "./state.js";
 import { capitalizeWords, getHqPosterUrl } from "./utils.js";
 import { ActiveFilters, Movie, MappedMovie } from "./types.js";
 
@@ -130,29 +130,37 @@ export function buildItemListSchema(movies: Array<Movie | MappedMovie> | null | 
   };
 }
 
-export function buildBreadcrumbSchema(filters: ActiveFilters, baseUrl: string): Record<string, unknown> | null {
-  const items = [
+function formatBreadcrumbUrl(baseUrl: string, pathname: string, search: string): string {
+  const cleanBase = baseUrl ? (baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl) : "https://videoclub.digital";
+  const cleanPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const fullPath = cleanPath === "/" ? `${cleanBase}/` : `${cleanBase}${cleanPath}`;
+  return search ? `${fullPath}?${search}` : fullPath;
+}
+
+export function buildBreadcrumbSchema(filters: ActiveFilters = {} as ActiveFilters, baseUrl: string = "https://videoclub.digital/"): Record<string, unknown> | null {
+  const cleanBase = baseUrl || "https://videoclub.digital/";
+  const items: Array<{ "@type": string; position: number; name: string; item: string }> = [
     {
       "@type": "ListItem",
       "position": 1,
       "name": "Inicio",
-      "item": baseUrl
+      "item": cleanBase.endsWith("/") ? cleanBase : `${cleanBase}/`
     }
   ];
 
-  // Nivel 2: Tipo de Medio
+  // Nivel 2: Tipo de Medio / Catálogo
   let typeName = "Catálogo";
-  let typeParam = "type=all";
+  let typeUrl = formatBreadcrumbUrl(cleanBase, "/", "");
   
-  if (filters.mediaType === 'movies') {
+  if (filters.mediaType === "movies") {
     typeName = "Películas";
-    typeParam = "type=movies";
-  } else if (filters.mediaType === 'series') {
+    const { pathname, search } = stateToPrettyUrl({ mediaType: "movies" } as ActiveFilters, 1);
+    typeUrl = formatBreadcrumbUrl(cleanBase, pathname, search);
+  } else if (filters.mediaType === "series") {
     typeName = "Series";
-    typeParam = "type=series";
+    const { pathname, search } = stateToPrettyUrl({ mediaType: "series" } as ActiveFilters, 1);
+    typeUrl = formatBreadcrumbUrl(cleanBase, pathname, search);
   }
-
-  const typeUrl = `${baseUrl}?${typeParam}`;
 
   items.push({
     "@type": "ListItem",
@@ -163,45 +171,38 @@ export function buildBreadcrumbSchema(filters: ActiveFilters, baseUrl: string): 
 
   // Nivel 3: Filtro Específico (Prioridad jerárquica)
   let filterName: string | null = null;
-  let filterQuery = "";
 
   if (filters.myList) {
-     filterName = "Mi Lista";
-     filterQuery = `&list=${filters.myList}`;
+    filterName = "Mi Lista";
   } else if (filters.searchTerm) {
     filterName = `"${filters.searchTerm}"`;
-    filterQuery = `&q=${encodeURIComponent(filters.searchTerm)}`;
   } else if (filters.selection) {
-     const config = FILTER_CONFIG.selection;
-     filterName = config.titles?.[filters.selection as keyof typeof config.titles] || config.items[filters.selection as keyof typeof config.items] || filters.selection;
-     filterQuery = `&sel=${filters.selection}`;
-   } else if (filters.studio) {
-      const studioInfo = STUDIO_DATA[filters.studio as keyof typeof STUDIO_DATA];
-      filterName = (studioInfo && studioInfo.title) ? studioInfo.title : filters.studio;
-      filterQuery = `&stu=${filters.studio}`;
-  } else if (filters.genre) {
-    filterName = filters.genre;
-    filterQuery = `&genre=${encodeURIComponent(filters.genre)}`;
+    const config = FILTER_CONFIG.selection;
+    filterName = config.titles?.[filters.selection as keyof typeof config.titles] || config.items[filters.selection as keyof typeof config.items] || filters.selection;
+  } else if (filters.studio) {
+    const studioInfo = STUDIO_DATA[filters.studio as keyof typeof STUDIO_DATA];
+    filterName = (studioInfo && studioInfo.title) ? studioInfo.title : filters.studio;
   } else if (filters.director) {
     filterName = filters.director;
-    filterQuery = `&dir=${encodeURIComponent(filters.director)}`;
   } else if (filters.actor) {
     filterName = filters.actor;
-    filterQuery = `&actor=${encodeURIComponent(filters.actor)}`;
+  } else if (filters.genre) {
+    filterName = filters.genre;
   } else if (filters.country) {
     filterName = filters.country;
-    filterQuery = `&country=${encodeURIComponent(filters.country)}`;
   } else if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
     filterName = filters.year;
-    filterQuery = `&year=${filters.year}`;
   }
 
   if (filterName) {
+    const { pathname, search } = stateToPrettyUrl(filters, 1);
+    const filterUrl = formatBreadcrumbUrl(cleanBase, pathname, search);
+
     items.push({
       "@type": "ListItem",
       "position": 3,
       "name": filterName,
-      "item": `${typeUrl}${filterQuery}`
+      "item": filterUrl
     });
   }
 
@@ -271,7 +272,10 @@ export function updateStructuredData(movies: Movie[], totalMovies: number): void
 }
 
 export function updateBreadcrumbData(filters: ActiveFilters): void {
-  const baseUrl = window.location.origin + window.location.pathname;
+  const baseEnv = import.meta.env.BASE_URL || "/";
+  const normalizedBase = baseEnv.endsWith("/") ? baseEnv : `${baseEnv}/`;
+  const baseUrl = `${window.location.origin}${normalizedBase}`;
   const schema = buildBreadcrumbSchema(filters, baseUrl);
   injectJsonLd("dynamic-breadcrumbs-json-ld", schema);
 }
+

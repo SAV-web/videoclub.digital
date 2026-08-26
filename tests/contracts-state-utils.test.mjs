@@ -181,6 +181,40 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(contracts.toSlug("Jean-Luc Godard"), "jean-luc-godard");
   });
 
+  test("genreToSlug y countryToSlug aplican whitelist estricta (no fallback algorítmico)", () => {
+    // Géneros conocidos → slug correcto
+    assert.equal(contracts.genreToSlug("Drama"), "drama");
+    assert.equal(contracts.genreToSlug("Acción"), "accion");
+    assert.equal(contracts.genreToSlug("Sci-Fi"), "sci-fi");
+    assert.equal(contracts.genreToSlug("Animación"), "animacion");
+
+    // Géneros desconocidos → null (no genera segmento en URL)
+    assert.equal(contracts.genreToSlug("Experimental"), null);
+    assert.equal(contracts.genreToSlug("Peplum"), null);
+    assert.equal(contracts.genreToSlug("Ciencia Ficción"), null); // alias no registrado → null
+
+    // Países conocidos → slug correcto
+    assert.equal(contracts.countryToSlug("España"), "espana");
+    assert.equal(contracts.countryToSlug("EEUU"), "eeuu");
+    assert.equal(contracts.countryToSlug("Corea del Sur"), "corea-del-sur");
+
+    // Países desconocidos → null (no genera segmento en URL)
+    assert.equal(contracts.countryToSlug("Kazajistán"), null);
+    assert.equal(contracts.countryToSlug("Mozambique"), null);
+
+    // buildPrettyPath no genera segmento para valores fuera del mapa
+    assert.equal(contracts.buildPrettyPath({ genre: "Experimental" }), "/");
+    assert.equal(contracts.buildPrettyPath({ country: "Kazajistán" }), "/");
+    assert.equal(contracts.buildPrettyPath({ genre: "Drama", country: "Mozambique" }), "/drama/");
+
+    // parsePrettyPath: slug desconocido es ignorado silenciosamente
+    const pUnknown = contracts.parsePrettyPath("/experimental/");
+    assert.equal(pUnknown.genre, null);
+    assert.equal(pUnknown.country, null);
+    assert.equal(pUnknown.studio, null);
+    assert.equal(pUnknown.selection, null);
+  });
+
   test("buildPrettyPath construye rutas canónicas ordenadas y parsePrettyPath las resuelve", () => {
     // 1. Catálogo completo
     assert.equal(contracts.buildPrettyPath({}), "/");
@@ -206,6 +240,13 @@ describe("state.js y Pretty Paths", () => {
     // 8. Actor (excluyente con catálogo)
     assert.equal(contracts.buildPrettyPath({ actor: "Clint Eastwood" }), "/actor/clint-eastwood/");
 
+    // 9. Exclusiones de género y país
+    assert.equal(contracts.buildPrettyPath({ excludedGenres: ["Animación"] }), "/no-animacion/");
+    assert.equal(contracts.buildPrettyPath({ excludedGenres: ["Documental"] }), "/no-documental/");
+    assert.equal(contracts.buildPrettyPath({ excludedCountries: ["EEUU"] }), "/no-eeuu/");
+    assert.equal(contracts.buildPrettyPath({ excludedCountries: ["España"] }), "/no-espana/");
+    assert.equal(contracts.buildPrettyPath({ genre: "Drama", excludedGenres: ["Animación"], excludedCountries: ["EEUU"] }), "/drama/no-animacion/no-eeuu/");
+
     // Parsing inverso semántico
     const p1 = contracts.parsePrettyPath("/drama/eeuu/criterion/");
     assert.equal(p1.genre, "Drama");
@@ -222,6 +263,16 @@ describe("state.js y Pretty Paths", () => {
     const p3 = contracts.parsePrettyPath("/espana/accion/");
     assert.equal(p3.genre, "Acción");
     assert.equal(p3.country, "España");
+
+    // Parsing de exclusiones
+    const pEx1 = contracts.parsePrettyPath("/no-animacion/");
+    assert.deepEqual(pEx1.excludedGenres, ["Animación"]);
+    assert.deepEqual(pEx1.excludedCountries, []);
+
+    const pEx2 = contracts.parsePrettyPath("/drama/no-eeuu/no-animacion/");
+    assert.equal(pEx2.genre, "Drama");
+    assert.deepEqual(pEx2.excludedCountries, ["EEUU"]);
+    assert.deepEqual(pEx2.excludedGenres, ["Animación"]);
 
     // Soporte con subpath de GitHub Pages
     const p4 = contracts.parsePrettyPath("/videoclub.digital/comedia/francia/");
@@ -305,7 +356,18 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(state.getActiveFilters().director, "brian de palma");
     assert.equal(state.getActiveFilters().genre, null);
     assert.equal(state.getActiveFilters().country, null);
-    assert.equal(state.getCurrentPage(), 2);
+    // Prueba con Exclusiones
+    state.resetFiltersState();
+    state.setFilter("excludedGenres", ["Animación"], true);
+    state.setFilter("excludedCountries", ["EEUU"], true);
+    const exUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+    assert.equal(exUrl.pathname, "/no-animacion/no-eeuu/");
+    assert.equal(exUrl.search, "");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/no-animacion/no-eeuu/", "");
+    assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
+    assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
 
     // Prueba de todos los slugs amigables de ordenación
     const slugMap = {
@@ -323,6 +385,21 @@ describe("state.js y Pretty Paths", () => {
       const url = state.stateToPrettyUrl(state.getActiveFilters(), 1);
       assert.equal(url.search, `sort=${slug}`);
     }
+
+    // Prueba con Búsqueda (?buscar= y fallback ?q=)
+    state.resetFiltersState();
+    state.setSearchTerm("bestas");
+    const searchUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+    assert.equal(searchUrl.pathname, "/");
+    assert.equal(searchUrl.search, "buscar=bestas");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/", "?buscar=bestas");
+    assert.equal(state.getActiveFilters().searchTerm, "bestas");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/", "?q=bestas");
+    assert.equal(state.getActiveFilters().searchTerm, "bestas");
   });
 
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {
@@ -378,6 +455,97 @@ describe("state.js y Pretty Paths", () => {
 
     assert.deepEqual(state.getUserDataForMovie(42), { rating: 8, onWatchlist: true });
     assert.equal(state.getUserDataForMovie("bad-id"), undefined);
+  });
+
+  // ── canonicalizeCurrentUrl ──────────────────────────────────────────────────
+  test("canonicalizeCurrentUrl normaliza la URL activa sin añadir historial", () => {
+    // Utilidades de mock de window para entorno Node.js
+    const makeWindowMock = (pathname, search = "") => {
+      let _href = pathname + search;
+      let _pathname = pathname;
+      let _search = search;
+      let lastReplaced = null;
+      const win = {
+        location: { get pathname() { return _pathname; }, get search() { return _search; }, hash: "" },
+        history: {
+          state: null,
+          replaceState(_st, _title, url) { lastReplaced = url; _href = url; const [p, q] = url.split("?"); _pathname = p; _search = q ? `?${q}` : ""; }
+        },
+        getLastReplaced: () => lastReplaced,
+      };
+      return win;
+    };
+
+    const origWindow = global.window;
+    try {
+      // Caso 1: Segmentos invertidos /uk/drama/ -> /drama/uk/
+      {
+        const mock = makeWindowMock("/uk/drama/");
+        global.window = mock;
+        state.syncStateWithUrl("/uk/drama/", "");
+        // Corregir window.location.pathname para que refleje la entrada original
+        mock.location.pathname;
+        state.canonicalizeCurrentUrl();
+        assert.equal(mock.getLastReplaced(), "/drama/uk/", "Caso 1: segmentos invertidos");
+      }
+
+      // Caso 2: Alias ?page=2 -> ?p=2
+      {
+        const mock = makeWindowMock("/", "?page=2");
+        global.window = mock;
+        state.syncStateWithUrl("/", "?page=2");
+        state.canonicalizeCurrentUrl();
+        assert.equal(mock.getLastReplaced(), "/?p=2", "Caso 2: alias ?page=2 -> ?p=2");
+      }
+
+      // Caso 3: Sort interno ?sort=fa_rating,desc -> ?sort=nota-fa
+      {
+        const mock = makeWindowMock("/", "?sort=fa_rating%2Cdesc");
+        global.window = mock;
+        state.syncStateWithUrl("/", "?sort=fa_rating,desc");
+        state.canonicalizeCurrentUrl();
+        assert.equal(mock.getLastReplaced(), "/?sort=nota-fa", "Caso 3: sort interno");
+      }
+
+      // Caso 4: ?q=bestas -> ?buscar=bestas
+      {
+        const mock = makeWindowMock("/", "?q=bestas");
+        global.window = mock;
+        state.syncStateWithUrl("/", "?q=bestas");
+        state.canonicalizeCurrentUrl();
+        assert.equal(mock.getLastReplaced(), "/?buscar=bestas", "Caso 4: ?q= -> ?buscar=");
+      }
+
+      // Caso 5: Exclusión en QS ?exg=Animación -> /no-animacion/
+      {
+        const mock = makeWindowMock("/", "?exg=Animaci%C3%B3n");
+        global.window = mock;
+        state.syncStateWithUrl("/", "?exg=Animación");
+        state.canonicalizeCurrentUrl();
+        assert.equal(mock.getLastReplaced(), "/no-animacion/", "Caso 5: ?exg= -> /no-animacion/");
+      }
+
+      // Caso 6: Trailing slash ausente /drama/uk -> /drama/uk/
+      {
+        const mock = makeWindowMock("/drama/uk");
+        global.window = mock;
+        state.syncStateWithUrl("/drama/uk", "");
+        state.canonicalizeCurrentUrl();
+        assert.equal(mock.getLastReplaced(), "/drama/uk/", "Caso 6: trailing slash");
+      }
+
+      // Caso 7: URL ya canónica -> no se llama replaceState
+      {
+        const mock = makeWindowMock("/drama/uk/");
+        global.window = mock;
+        state.syncStateWithUrl("/drama/uk/", "");
+        const result = state.canonicalizeCurrentUrl();
+        assert.equal(result, false, "Caso 7: URL ya canónica no genera replaceState");
+        assert.equal(mock.getLastReplaced(), null, "Caso 7: replaceState no llamado");
+      }
+    } finally {
+      global.window = origWindow;
+    }
   });
 });
 

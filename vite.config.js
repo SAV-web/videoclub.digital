@@ -64,8 +64,35 @@ function serveSeoSitePlugin() {
   };
 }
 
+function syncPublicSpritesPlugin() {
+  const sync = () => {
+    const publicDir = path.resolve(__dirname, 'public');
+    const srcDir = path.resolve(__dirname, 'src');
+    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+    
+    ['sprite.svg', 'flags.svg'].forEach(file => {
+      const srcPath = path.join(srcDir, file);
+      const destPath = path.join(publicDir, file);
+      if (fs.existsSync(srcPath)) {
+        const content = fs.readFileSync(srcPath, 'utf-8').replace('style="display: none;"', '');
+        fs.writeFileSync(destPath, content, 'utf-8');
+      }
+    });
+  };
+
+  return {
+    name: 'sync-public-sprites-plugin',
+    buildStart() {
+      sync();
+    },
+    configureServer() {
+      sync();
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [swVersionPlugin(), serveSeoSitePlugin()],
+  plugins: [syncPublicSpritesPlugin(), swVersionPlugin(), serveSeoSitePlugin()],
   // Ignorar seo-site/dist y dist en el watcher de Vite para evitar fugas de memoria con 13.488 archivos
   server: {
     watch: {

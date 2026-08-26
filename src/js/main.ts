@@ -63,6 +63,7 @@ import {
   clearUserMovieData,
   syncStateWithUrl,
   syncStateWithUrlParams,
+  canonicalizeCurrentUrl,
   stateToPrettyUrl,
   stateToUrlParams,
   appEvents,
@@ -1072,6 +1073,8 @@ function setupAuthSystem(): void {
 
 function readUrlAndSetState(): void {
   syncStateWithUrl(window.location.pathname, window.location.search);
+  // Canonicalizar la URL después de normalizar el estado (sin añadir entrada al historial)
+  canonicalizeCurrentUrl();
 
   const activeFilters = getActiveFilters();
   if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
@@ -1177,7 +1180,7 @@ export function init(): void {
       return;
     }
 
-    readUrlAndSetState();
+    readUrlAndSetState(); // incluye canonicalizeCurrentUrl() internamente
     appEvents.emit("updateSidebarUI");
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
   };
