@@ -11,6 +11,8 @@ const CRITICAL_ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./sprite.svg",
+  "./flags.svg"
 ];
 
 // --- 2. HELPERS DE ESTRATEGIAS ---
