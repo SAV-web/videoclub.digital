@@ -36,13 +36,29 @@ export const ERROR_CODES = {
 } as const;
 
 /**
- * Convierte una cadena de filtro de año (ej: "1980-2020", "1995" o null) en una tupla [minYear, maxYear].
+ * Convierte una cadena de filtro de año en una tupla [minYear, maxYear].
+ * Soporta rangos cerrados ("1980-2020"), abiertos ("2011-", "-1970"), años individuales ("1995") o null.
  */
 export function parseYearRangeRaw(yearStr?: string | null): [number, number] {
   if (!yearStr || !yearStr.trim()) return [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX];
-  const parts = yearStr.split("-").map(Number);
-  const min = isNaN(parts[0]) ? CONFIG.YEAR_MIN : parts[0];
-  const max = parts.length > 1 ? (isNaN(parts[1]) ? CONFIG.YEAR_MAX : parts[1]) : min;
+  const trimmed = yearStr.trim();
+
+  if (!trimmed.includes("-")) {
+    const singleYear = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(singleYear)) return [CONFIG.YEAR_MIN, CONFIG.YEAR_MAX];
+    return [singleYear, singleYear];
+  }
+
+  const parts = trimmed.split("-");
+  const rawStart = parts[0].trim();
+  const rawEnd = parts.slice(1).join("-").trim();
+
+  const startNum = rawStart ? Number.parseInt(rawStart, 10) : NaN;
+  const endNum = rawEnd ? Number.parseInt(rawEnd, 10) : NaN;
+
+  const min = Number.isFinite(startNum) ? startNum : CONFIG.YEAR_MIN;
+  const max = Number.isFinite(endNum) ? endNum : CONFIG.YEAR_MAX;
+
   return [min, max];
 }
 
@@ -179,7 +195,28 @@ export function normalizeYearRange(value: unknown): string | null {
   const orderedStart = Math.min(start, end);
   const orderedEnd = Math.max(start, end);
 
-  return orderedStart === orderedEnd ? String(orderedStart) : `${orderedStart}-${orderedEnd}`;
+  // Si cubre todo el rango disponible (ej: 1900 a YEAR_MAX), se considera sin filtro activo
+  if (orderedStart <= minYear && orderedEnd >= maxYear) {
+    return null;
+  }
+
+  // Un solo año exacto: "1995"
+  if (orderedStart === orderedEnd) {
+    return String(orderedStart);
+  }
+
+  // Rango abierto hacia el futuro: desde un año hasta el máximo actual (ej: "2011-")
+  if (orderedStart > minYear && orderedEnd >= maxYear) {
+    return `${orderedStart}-`;
+  }
+
+  // Rango abierto hacia el pasado: desde el origen hasta un año tope (ej: "-1970")
+  if (orderedStart <= minYear && orderedEnd < maxYear) {
+    return `-${orderedEnd}`;
+  }
+
+  // Rango cerrado intermedio (ej: "1990-2005")
+  return `${orderedStart}-${orderedEnd}`;
 }
 
 export function normalizeTextValue(value: unknown): string {

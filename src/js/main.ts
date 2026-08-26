@@ -183,6 +183,14 @@ export async function loadAndRenderMovies(
       if (vipType && vipName) {
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
+          // Si el nombre canónico de la BD difiere del filtro reconstruido desde URL (ej. guiones o mayúsculas),
+          // restauramos el nombre canónico en el estado activo para que UI, títulos y metadatos lo muestren exacto.
+          if (personData.name && personData.name !== vipName) {
+            setFilter(vipType, personData.name, true);
+            updatePageTitle();
+            updateBreadcrumbData(getActiveFilters());
+          }
+
           const hasPhoto = personData.photo && personData.photo !== "NOT_FOUND";
           if (hasPhoto) {
             let photoName = personData.photo as string;
@@ -195,7 +203,6 @@ export async function loadAndRenderMovies(
             hasVip = true;
             if (page === 1) vipData = { type: "person", data: personData };
           }
-
         }
       } else if (activeFilters.selection) {
         const groupDetails = await fetchGroupDetails("selection", activeFilters.selection);

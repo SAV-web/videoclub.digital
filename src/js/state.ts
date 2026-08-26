@@ -184,7 +184,7 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
       // No ponemos en la URL los valores por defecto
       if ((key === "mediaType" && value === DEFAULTS.MEDIA_TYPE) ||
           (key === "sort" && value === DEFAULTS.SORT) ||
-          (key === "year" && value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`)) return;
+          (key === "year" && (!value || value === `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}` || value === `${CONFIG.YEAR_MIN}-` || value === `-${CONFIG.YEAR_MAX}`))) return;
       
       if (key === "sort") {
         const slug = REVERSE_SORT_SLUG_MAP[value] || value;

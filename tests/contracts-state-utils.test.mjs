@@ -121,8 +121,21 @@ describe("normalización de filtros", () => {
   test("parseYearRangeRaw convierte cadenas de año en tuplas [min, max]", () => {
     assert.deepEqual(contracts.parseYearRangeRaw("1990-2010"), [1990, 2010]);
     assert.deepEqual(contracts.parseYearRangeRaw("1995"), [1995, 1995]);
+    assert.deepEqual(contracts.parseYearRangeRaw("2011-"), [2011, constants.CONFIG.YEAR_MAX]);
+    assert.deepEqual(contracts.parseYearRangeRaw("-1970"), [constants.CONFIG.YEAR_MIN, 1970]);
     assert.deepEqual(contracts.parseYearRangeRaw(""), [constants.CONFIG.YEAR_MIN, constants.CONFIG.YEAR_MAX]);
     assert.deepEqual(contracts.parseYearRangeRaw(null), [constants.CONFIG.YEAR_MIN, constants.CONFIG.YEAR_MAX]);
+  });
+
+  test("normalizeYearRange produce formas canónicas y rangos abiertos limpios", () => {
+    assert.equal(contracts.normalizeYearRange("2011-"), "2011-");
+    assert.equal(contracts.normalizeYearRange(`2011-${constants.CONFIG.YEAR_MAX}`), "2011-");
+    assert.equal(contracts.normalizeYearRange("-1970"), "-1970");
+    assert.equal(contracts.normalizeYearRange("1900-1970"), "-1970");
+    assert.equal(contracts.normalizeYearRange("1995"), "1995");
+    assert.equal(contracts.normalizeYearRange("1990-2010"), "1990-2010");
+    assert.equal(contracts.normalizeYearRange(`${constants.CONFIG.YEAR_MIN}-${constants.CONFIG.YEAR_MAX}`), null);
+    assert.equal(contracts.normalizeYearRange(""), null);
   });
 
   test("aplica valores por defecto ante sort, mediaType y myList inválidos", () => {
@@ -139,12 +152,12 @@ describe("normalización de filtros", () => {
 
   test("limita años y deduplica listas de filtros", () => {
     const filters = contracts.normalizeActiveFilters({
-      year: `${constants.CONFIG.YEAR_MIN - 50}-${constants.CONFIG.YEAR_MAX + 50}`,
+      year: "1990-2005",
       excludedGenres: [" Drama ", "", "Drama"],
       excludedCountries: "España,,España,Francia",
     });
 
-    assert.equal(filters.year, `${constants.CONFIG.YEAR_MIN}-${constants.CONFIG.YEAR_MAX}`);
+    assert.equal(filters.year, "1990-2005");
     assert.deepEqual(filters.excludedGenres, ["Drama"]);
     assert.deepEqual(filters.excludedCountries, ["España", "Francia"]);
   });
@@ -291,13 +304,13 @@ describe("state.js y Pretty Paths", () => {
   });
 
   test("setters mantienen el contrato de filtros y exclusividad mutua", () => {
-    assert.equal(state.setFilter("year", `${constants.CONFIG.YEAR_MIN - 1}-${constants.CONFIG.YEAR_MAX + 1}`, true), true);
+    assert.equal(state.setFilter("year", "1990-2005", true), true);
     assert.equal(state.setFilter("excludedGenres", [" Terror ", "Terror", ""], true), true);
     state.setSort("unknown,desc");
     state.setMediaType("clips");
 
     const filters = state.getActiveFilters();
-    assert.equal(filters.year, `${constants.CONFIG.YEAR_MIN}-${constants.CONFIG.YEAR_MAX}`);
+    assert.equal(filters.year, "1990-2005");
     assert.deepEqual(filters.excludedGenres, ["Terror"]);
     assert.equal(filters.sort, constants.DEFAULTS.SORT);
     assert.equal(filters.mediaType, constants.DEFAULTS.MEDIA_TYPE);
@@ -320,26 +333,45 @@ describe("state.js y Pretty Paths", () => {
     state.setFilter("genre", "Drama", true);
     state.setFilter("country", "EEUU", true);
     state.setFilter("selection", "criterion", true);
-    state.setFilter("year", "1900-2007", true);
+    state.setFilter("year", "1980-2007", true);
     state.setSort("fa_votes,desc");
     state.setCurrentPage(3);
 
     const { pathname, search } = state.stateToPrettyUrl(state.getActiveFilters(), state.getCurrentPage());
     assert.equal(pathname, "/drama/eeuu/criterion/");
-    assert.equal(search, "year=1900-2007&sort=votos-fa&p=3");
+    assert.equal(search, "year=1980-2007&sort=votos-fa&p=3");
 
     // Sincronización inversa desde slug amigable
     state.resetFiltersState();
-    state.syncStateWithUrl("/drama/eeuu/criterion/", "?year=1900-2007&sort=votos-fa&p=3");
+    state.syncStateWithUrl("/drama/eeuu/criterion/", "?year=1980-2007&sort=votos-fa&p=3");
 
     const active = state.getActiveFilters();
     assert.equal(active.genre, "Drama");
     assert.equal(active.country, "EEUU");
     assert.equal(active.selection, "criterion");
     assert.equal(active.studio, null);
-    assert.equal(active.year, "1900-2007");
+    assert.equal(active.year, "1980-2007");
     assert.equal(active.sort, "fa_votes,desc");
     assert.equal(state.getCurrentPage(), 3);
+
+    // Prueba con Rangos de Año Abiertos (year=2011- y year=-1970)
+    state.resetFiltersState();
+    state.setFilter("year", "2011-", true);
+    const urlOpenFuture = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+    assert.equal(urlOpenFuture.search, "year=2011-");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/", "?year=2011-");
+    assert.equal(state.getActiveFilters().year, "2011-");
+
+    state.resetFiltersState();
+    state.setFilter("year", "-1970", true);
+    const urlOpenPast = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+    assert.equal(urlOpenPast.search, "year=-1970");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/", "?year=-1970");
+    assert.equal(state.getActiveFilters().year, "-1970");
 
     // Prueba con Director
     state.resetFiltersState();
@@ -445,7 +477,7 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(snapshot.activeFilters.mediaType, constants.DEFAULTS.MEDIA_TYPE);
     assert.equal(snapshot.activeFilters.sort, constants.DEFAULTS.SORT);
     assert.equal(snapshot.activeFilters.myList, "mixed");
-    assert.equal(snapshot.activeFilters.year, `${constants.CONFIG.YEAR_MIN}-${constants.CONFIG.YEAR_MAX}`);
+    assert.equal(snapshot.activeFilters.year, null);
     assert.deepEqual(snapshot.activeFilters.excludedGenres, ["Drama"]);
   });
 
