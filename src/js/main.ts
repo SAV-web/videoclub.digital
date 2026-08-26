@@ -1135,7 +1135,9 @@ export function init(): void {
 
   if ("serviceWorker" in navigator) {
     const onSwLoad = () => {
-      navigator.serviceWorker.register("sw.js").catch(err => {
+      const isSubpath = window.location.pathname.startsWith("/videoclub.digital");
+      const swPath = isSubpath ? "/videoclub.digital/sw.js" : "/sw.js";
+      navigator.serviceWorker.register(swPath).catch(err => {
         if (import.meta.env.DEV) console.error("Fallo SW:", err);
       });
     };

@@ -205,8 +205,15 @@ export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: numb
 export function syncStateWithUrl(pathname: string = "/", queryString: string = ""): void {
   resetFiltersState();
 
+  const params = new URLSearchParams(queryString);
+  const routeParam = params.get("_p");
+  const extraQuery = params.get("_q");
+
+  // Si venimos de redirección SPA 404 (ej. GitHub Pages: ?_p=/director/brian-de-palma/)
+  const effectivePathname = routeParam ? (routeParam.startsWith("/") ? routeParam : `/${routeParam}`) : pathname;
+
   // 1. Sincronizar filtros de catálogo o personas desde los segmentos del pathname
-  const pathFilters = parsePrettyPath(pathname);
+  const pathFilters = parsePrettyPath(effectivePathname);
   if (pathFilters.director) setFilter("director", pathFilters.director, true);
   if (pathFilters.actor) setFilter("actor", pathFilters.actor, true);
   if (pathFilters.genre) setFilter("genre", pathFilters.genre, true);
@@ -215,12 +222,12 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   if (pathFilters.studio) setFilter("studio", pathFilters.studio, true);
 
   // 2. Sincronizar parámetros técnicos desde la query string
-  const params = new URLSearchParams(queryString);
-  setCurrentPage(params.get("p") || params.get("page"));
+  const effectiveParams = extraQuery ? new URLSearchParams(extraQuery) : params;
+  setCurrentPage(effectiveParams.get("p") || effectiveParams.get("page"));
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
     if (stateKey === "page") return;
-    const val = params.get(shortKey) ?? params.get(stateKey);
+    const val = effectiveParams.get(shortKey) ?? effectiveParams.get(stateKey);
     if (val !== null) {
       if (["excludedGenres", "excludedCountries"].includes(stateKey)) {
         setFilter(stateKey, val.split(","), true);
@@ -240,6 +247,15 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   
   if (!state.activeFilters.sort) setSort(DEFAULTS.SORT);
   if (!state.activeFilters.mediaType) setMediaType(DEFAULTS.MEDIA_TYPE);
+
+  // Si había parámetro _p, restaurar la URL limpia en el historial ahora que los módulos JS ya cargaron
+  if (routeParam && typeof window !== "undefined") {
+    const basePrefix = window.location.pathname.startsWith("/videoclub.digital") ? "/videoclub.digital" : "";
+    const cleanRoute = routeParam.startsWith("/") ? routeParam : `/${routeParam}`;
+    const searchString = extraQuery ? `?${extraQuery}` : "";
+    const restoredUrl = `${basePrefix}${cleanRoute}${searchString}${window.location.hash}`;
+    window.history.replaceState(null, "", restoredUrl);
+  }
 }
 
 // Helper para sincronizar sólo desde query string
