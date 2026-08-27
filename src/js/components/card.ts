@@ -8,7 +8,7 @@
 // =================================================================
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
@@ -743,7 +743,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
 
         const link = createElement("a", {
           textContent: displayText,
-          href: `?dir=${encodeURIComponent(info.fullName)}`,
+          href: buildFilterUrl("director", info.fullName),
           dataset: { directorName: info.fullName }
         });
         dirCont.append(link, i < directorsInfo.length - 1 ? ", " : "");
@@ -760,7 +760,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     if (movie.year) {
       const yearLink = createElement("a", {
         textContent: String(movie.year),
-        href: `?year=${movie.year}`,
+        href: buildFilterUrl("year", String(movie.year)),
         className: "year-link",
         dataset: { yearValue: `${movie.year}` }
       });

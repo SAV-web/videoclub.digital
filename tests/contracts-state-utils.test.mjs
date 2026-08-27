@@ -195,16 +195,95 @@ describe("state.js y Pretty Paths", () => {
   });
 
   test("genreToSlug y countryToSlug aplican whitelist estricta (no fallback algorítmico)", () => {
-    // Géneros conocidos → slug correcto
-    assert.equal(contracts.genreToSlug("Drama"), "drama");
-    assert.equal(contracts.genreToSlug("Acción"), "accion");
-    assert.equal(contracts.genreToSlug("Sci-Fi"), "sci-fi");
-    assert.equal(contracts.genreToSlug("Animación"), "animacion");
+    // Catálogo canónico de 21 géneros
+    const EXPECTED_GENRES = {
+      "Acción": "accion",
+      "Animación": "animacion",
+      "Aventuras": "aventuras",
+      "Bélico": "belico",
+      "Biografía": "biografia",
+      "Noir": "noir",
+      "Cine negro": "noir",
+      "Comedia": "comedia",
+      "Crimen": "crimen",
+      "Deporte": "deporte",
+      "Documental": "documental",
+      "Drama": "drama",
+      "Familiar": "familiar",
+      "Fantasía": "fantasia",
+      "Histórico": "historico",
+      "Intriga": "intriga",
+      "Música": "musica",
+      "Romance": "romance",
+      "Sci-Fi": "sci-fi",
+      "Terror": "terror",
+      "Thriller": "thriller",
+      "Western": "western",
+    };
 
-    // Géneros desconocidos → null (no genera segmento en URL)
+    for (const [name, expectedSlug] of Object.entries(EXPECTED_GENRES)) {
+      assert.equal(contracts.genreToSlug(name), expectedSlug, `Género: ${name}`);
+      assert.equal(contracts.buildFilterUrl("genre", name), `/${expectedSlug}/`, `URL: ${name}`);
+    }
+
+    // Aliases oficiales adicionales (inglés y términos temáticos de la tabla oficial)
+    assert.equal(contracts.genreToSlug("Action"), "accion");
+    assert.equal(contracts.genreToSlug("adrenalina"), "accion");
+    assert.equal(contracts.genreToSlug("dibujos"), "animacion");
+    assert.equal(contracts.genreToSlug("cgi"), "animacion");
+    assert.equal(contracts.genreToSlug("épico"), "aventuras");
+    assert.equal(contracts.genreToSlug("guerra"), "belico");
+    assert.equal(contracts.genreToSlug("Biopic"), "biografia");
+    assert.equal(contracts.genreToSlug("biográfico"), "biografia");
+    assert.equal(contracts.genreToSlug("FilmNoir"), "noir");
+    assert.equal(contracts.genreToSlug("neo-noir"), "noir");
+    assert.equal(contracts.genreToSlug("cine negro"), "noir");
+    assert.equal(contracts.genreToSlug("humor"), "comedia");
+    assert.equal(contracts.genreToSlug("cómico"), "comedia");
+    assert.equal(contracts.genreToSlug("policiaco"), "crimen");
+    assert.equal(contracts.genreToSlug("mafia"), "crimen");
+    assert.equal(contracts.genreToSlug("delito"), "crimen");
+    assert.equal(contracts.genreToSlug("Sport"), "deporte");
+    assert.equal(contracts.genreToSlug("Deportes"), "deporte");
+    assert.equal(contracts.genreToSlug("Family"), "familiar");
+    assert.equal(contracts.genreToSlug("Infantil"), "familiar");
+    assert.equal(contracts.genreToSlug("Fantasy"), "fantasia");
+    assert.equal(contracts.genreToSlug("Fantástico"), "fantasia");
+    assert.equal(contracts.genreToSlug("época"), "historico");
+    assert.equal(contracts.genreToSlug("misterio"), "intriga");
+    assert.equal(contracts.genreToSlug("enigma"), "intriga");
+    assert.equal(contracts.genreToSlug("investigación"), "intriga");
+    assert.equal(contracts.genreToSlug("Musical"), "musica");
+    assert.equal(contracts.genreToSlug("canciones"), "musica");
+    assert.equal(contracts.genreToSlug("romántico"), "romance");
+    assert.equal(contracts.genreToSlug("amor"), "romance");
+    assert.equal(contracts.genreToSlug("Ciencia Ficción"), "sci-fi");
+    assert.equal(contracts.genreToSlug("futurista"), "sci-fi");
+    assert.equal(contracts.genreToSlug("distopía"), "sci-fi");
+    assert.equal(contracts.genreToSlug("Horror"), "terror");
+    assert.equal(contracts.genreToSlug("miedo"), "terror");
+    assert.equal(contracts.genreToSlug("psicológico"), "thriller");
+    assert.equal(contracts.genreToSlug("tensión"), "thriller");
+    assert.equal(contracts.genreToSlug("suspense"), "thriller");
+    assert.equal(contracts.genreToSlug("oeste"), "western");
+    assert.equal(contracts.genreToSlug("vaqueros"), "western");
+
+    // Expansión para la consulta en Base de Datos PostgreSQL (21 géneros con español, inglés y aliases)
+    assert.equal(contracts.expandGenreForDb("Música"), "Música,Musica,Music,Musical,Canciones");
+    assert.equal(contracts.expandGenreForDb("Music"), "Música,Musica,Music,Musical,Canciones");
+    assert.equal(contracts.expandGenreForDb("Musical"), "Música,Musica,Music,Musical,Canciones");
+    assert.equal(contracts.expandGenreForDb("Noir"), "Noir,FilmNoir,Film-Noir,Cine negro,Negro,Neo-Noir");
+    assert.equal(contracts.expandGenreForDb("Action"), "Acción,Action,Adrenalina");
+    assert.equal(contracts.expandGenreForDb("Animation"), "Animación,Animation,Animado,Dibujos,CGI");
+    assert.equal(contracts.expandGenreForDb("Familiar"), "Familiar,Family,Infantil,Niños,Ninos");
+    assert.equal(contracts.expandGenreForDb("Fantasía"), "Fantasía,Fantasia,Fantasy,Fantástico,Fantastico");
+    assert.equal(contracts.expandGenreForDb("Sci-Fi"), "Sci-Fi,Scifi,Ciencia ficción,Ciencia ficcion,Ciencia-Ficción,Futurista,Distopía,Distopia");
+    assert.equal(contracts.expandGenreForDb("Documentary"), "Documental,Documentary");
+    assert.equal(contracts.expandGenreForDb("Drama"), "Drama");
+
+    // Géneros desconocidos fuera del catálogo → null (no genera segmento en URL)
     assert.equal(contracts.genreToSlug("Experimental"), null);
     assert.equal(contracts.genreToSlug("Peplum"), null);
-    assert.equal(contracts.genreToSlug("Ciencia Ficción"), null); // alias no registrado → null
 
     // Países conocidos → slug correcto
     assert.equal(contracts.countryToSlug("España"), "espana");
@@ -301,6 +380,25 @@ describe("state.js y Pretty Paths", () => {
     const p6 = contracts.parsePrettyPath("/actor/clint-eastwood/");
     assert.equal(p6.actor, "clint eastwood");
     assert.equal(p6.director, null);
+
+    // Parsing de aliases en URLs hacia el género oficial
+    assert.equal(contracts.parsePrettyPath("/sport/").genre, "Deporte");
+    assert.equal(contracts.parsePrettyPath("/action/").genre, "Acción");
+    assert.equal(contracts.parsePrettyPath("/dibujos/").genre, "Animación");
+    assert.equal(contracts.parsePrettyPath("/musical/").genre, "Música");
+    assert.equal(contracts.parsePrettyPath("/filmnoir/").genre, "Noir");
+    assert.equal(contracts.parsePrettyPath("/scifi/").genre, "Sci-Fi");
+    assert.deepEqual(contracts.parsePrettyPath("/no-dibujos/").excludedGenres, ["Animación"]);
+  });
+
+  test("buildFilterUrl genera URLs canónicas y absolutas para enlaces de entidades", () => {
+    assert.equal(contracts.buildFilterUrl("director", "Robert Zemeckis"), "/director/robert-zemeckis/");
+    assert.equal(contracts.buildFilterUrl("actor", "Tom Hanks"), "/actor/tom-hanks/");
+    assert.equal(contracts.buildFilterUrl("genre", "Comedia"), "/comedia/");
+    assert.equal(contracts.buildFilterUrl("country", "España"), "/espana/");
+    assert.equal(contracts.buildFilterUrl("studio", "warner"), "/warner/");
+    assert.equal(contracts.buildFilterUrl("selection", "criterion"), "/criterion/");
+    assert.equal(contracts.buildFilterUrl("year", "1994"), "/?year=1994");
   });
 
   test("setters mantienen el contrato de filtros y exclusividad mutua", () => {
@@ -399,6 +497,18 @@ describe("state.js y Pretty Paths", () => {
     state.resetFiltersState();
     state.syncStateWithUrl("/no-animacion/no-eeuu/", "");
     assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
+    assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
+
+    // Prueba de coexistencia de género positivo y exclusión (/drama/no-animacion/)
+    state.resetFiltersState();
+    state.syncStateWithUrl("/drama/no-animacion/", "");
+    assert.equal(state.getActiveFilters().genre, "Drama");
+    assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
+
+    // Prueba de coexistencia de país positivo y exclusión (/espana/no-eeuu/)
+    state.resetFiltersState();
+    state.syncStateWithUrl("/espana/no-eeuu/", "");
+    assert.equal(state.getActiveFilters().country, "España");
     assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
 
     // Prueba de todos los slugs amigables de ordenación

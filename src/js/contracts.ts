@@ -8,10 +8,10 @@
 
 import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
 import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
-import { toSlug, GENRE_SLUG_MAP, genreToSlug } from "../shared/slugs.js";
+import { toSlug, GENRE_SLUG_MAP, genreToSlug, expandGenreForDb, slugToGenre } from "../shared/slugs.js";
 
 // Re-exportamos para que los módulos SPA que ya importan de contracts no se rompan
-export { toSlug, GENRE_SLUG_MAP, genreToSlug };
+export { toSlug, GENRE_SLUG_MAP, genreToSlug, expandGenreForDb, slugToGenre };
 
 const SORT_VALUES = new Set<string>([
   "relevance,asc",
@@ -416,8 +416,9 @@ export function parsePrettyPath(pathname: string): {
   for (const seg of rawSegments) {
     if (seg.startsWith("no-")) {
       const noSlug = seg.slice(3);
-      if (GENRE_SLUG_MAP[noSlug]) {
-        result.excludedGenres.push(GENRE_SLUG_MAP[noSlug]);
+      const exGenre = slugToGenre(noSlug);
+      if (exGenre) {
+        result.excludedGenres.push(exGenre);
       } else if (COUNTRY_SLUG_MAP[noSlug]) {
         result.excludedCountries.push(COUNTRY_SLUG_MAP[noSlug]);
       }
@@ -427,14 +428,66 @@ export function parsePrettyPath(pathname: string): {
     } else if (STUDIO_SLUGS.has(seg)) {
       result.studio = seg;
       result.selection = null;
-    } else if (GENRE_SLUG_MAP[seg]) {
-      result.genre = GENRE_SLUG_MAP[seg];
-    } else if (COUNTRY_SLUG_MAP[seg]) {
-      result.country = COUNTRY_SLUG_MAP[seg];
+    } else {
+      const g = slugToGenre(seg);
+      if (g) {
+        result.genre = g;
+      } else if (COUNTRY_SLUG_MAP[seg]) {
+        result.country = COUNTRY_SLUG_MAP[seg];
+      }
     }
   }
 
   return result;
+}
+
+/**
+ * Detecta y devuelve el prefijo base de la aplicación (ej: "/videoclub.digital" en GitHub Pages o "" en dominio raíz).
+ */
+export function getAppBasePath(): string {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/videoclub.digital")) {
+    return "/videoclub.digital";
+  }
+  return "";
+}
+
+/**
+ * Genera la URL absoluta/canónica para un enlace de filtro individual (Director, Actor, Género, Año, etc.)
+ * Garantiza que al hacer clic o hover, la URL apunte al path canónico desde la raíz del dominio:
+ *  - director: "/director/robert-zemeckis/"
+ *  - actor:    "/actor/tom-hanks/"
+ *  - genre:    "/comedia/"
+ *  - year:     "/?year=1994"
+ *  - country:  "/espana/"
+ *  - studio:   "/warner/"
+ *  - selection:"/criterion/"
+ */
+export function buildFilterUrl(type: string, value: string): string {
+  const basePrefix = getAppBasePath();
+  if (!value) return `${basePrefix}/`;
+
+  if (type === "director") {
+    return `${basePrefix}${buildPrettyPath({ director: value })}`;
+  }
+  if (type === "actor") {
+    return `${basePrefix}${buildPrettyPath({ actor: value })}`;
+  }
+  if (type === "genre") {
+    return `${basePrefix}${buildPrettyPath({ genre: value })}`;
+  }
+  if (type === "country") {
+    return `${basePrefix}${buildPrettyPath({ country: value })}`;
+  }
+  if (type === "studio") {
+    return `${basePrefix}${buildPrettyPath({ studio: value })}`;
+  }
+  if (type === "selection") {
+    return `${basePrefix}${buildPrettyPath({ selection: value })}`;
+  }
+  if (type === "year") {
+    return `${basePrefix}/?year=${encodeURIComponent(value)}`;
+  }
+  return `${basePrefix}/`;
 }
 
 export function normalizeStudioCode(value: unknown): string | null {

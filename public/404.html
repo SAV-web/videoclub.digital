@@ -1,27 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Videoclub Digital</title>
+  <meta charset="utf-8">
+  <title>videoclub.digital</title>
   <script>
-    (function () {
-      var l = window.location;
-      var pathname = l.pathname;
-      var isRepoSubpath = pathname.startsWith('/videoclub.digital/');
-      var repoPrefix = isRepoSubpath ? '/videoclub.digital' : '';
-      var route = pathname.slice(repoPrefix.length);
-      var query = l.search ? l.search.slice(1) : '';
-      var hash = l.hash || '';
-
-      var redirectUrl = repoPrefix + '/?_p=' + encodeURIComponent(route) +
-        (query ? '&_q=' + encodeURIComponent(query) : '') +
-        hash;
-
-      window.location.replace(redirectUrl);
-    })();
+    // GitHub Pages SPA 404 Fallback: convierte rutas no encontradas en parámetros ?_p y ?_q
+    var pathSegmentsToKeep = window.location.pathname.startsWith('/videoclub.digital') ? 1 : 0;
+    var path = window.location.pathname.split('/').slice(1 + pathSegmentsToKeep).join('/');
+    var search = window.location.search ? window.location.search.slice(1) : '';
+    var hash = window.location.hash || '';
+    var base = pathSegmentsToKeep > 0 ? '/videoclub.digital/' : '/';
+    var redirectUrl = base + '?_p=/' + path + (search ? '&_q=' + encodeURIComponent(search) : '') + hash;
+    window.location.replace(redirectUrl);
   </script>
 </head>
-<body>
-</body>
+<body></body>
 </html>

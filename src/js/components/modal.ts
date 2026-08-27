@@ -15,7 +15,7 @@ import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rat
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
 
 import { fetchUserMovieDataForIds } from "../api.js";
-import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass } from "../utils.js";
+import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl } from "../utils.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
 
 
@@ -388,11 +388,10 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
 // =================================================================
 
 const createLink = (text: string, type: 'director' | 'actor' | 'genre'): HTMLAnchorElement => {
-  const param = type === 'director' ? 'dir' : (type === 'actor' ? 'actor' : 'genre');
   const dataAttr = type === 'director' ? 'directorName' : (type === 'actor' ? 'actorName' : 'genreName');
   return createElement("a", {
     textContent: preserveHyphenatedWords(text),
-    href: `?${param}=${encodeURIComponent(text)}`,
+    href: buildFilterUrl(type, text),
     dataset: { [dataAttr]: text }
   }) as HTMLAnchorElement;
 };
@@ -489,7 +488,7 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
     if (movie.year) {
       const yearLink = createElement("a", {
         textContent: String(movie.year),
-        href: `?year=${movie.year}`,
+        href: buildFilterUrl("year", String(movie.year)),
         className: "year-link",
         dataset: { yearValue: `${movie.year}` }
       });

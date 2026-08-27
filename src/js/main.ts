@@ -28,7 +28,7 @@ import {
   fetchMovieById
 } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
-import { isAbortError } from "./contracts.js";
+import { isAbortError, getAppBasePath } from "./contracts.js";
 import {
   dom,
   renderPagination,
@@ -1091,8 +1091,10 @@ function readUrlAndSetState(): void {
 }
 
 function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
+  const basePrefix = getAppBasePath();
   const { pathname, search } = stateToPrettyUrl(getActiveFilters(), getCurrentPage());
-  const newUrl = search ? `${pathname}?${search}` : pathname;
+  const cleanPath = search ? `${pathname}?${search}` : pathname;
+  const newUrl = `${basePrefix}${cleanPath}`;
   const currentFullUrl = `${window.location.pathname}${window.location.search}`;
 
   if (newUrl !== currentFullUrl) {
@@ -1108,10 +1110,13 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
  * Detecta si la URL contiene un parámetro ?movie={id} o ?m={id} al cargar la SPA
  * y abre de forma automática el modal con la película correspondiente.
  */
-async function checkAndOpenMovieFromUrl(): Promise<void> {
+async function checkAndOpenMovieFromUrl(explicitMovieId?: string | number | null): Promise<void> {
   const checkGen = mainLifecycleGen;
-  const params = new URLSearchParams(window.location.search);
-  const movieId = params.get("movie") || params.get("m");
+  let movieId = explicitMovieId;
+  if (!movieId && typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    movieId = params.get("movie") || params.get("m");
+  }
   if (!movieId) return;
 
   try {
@@ -1145,8 +1150,8 @@ export function init(): void {
 
   if ("serviceWorker" in navigator) {
     const onSwLoad = () => {
-      const isSubpath = window.location.pathname.startsWith("/videoclub.digital");
-      const swPath = isSubpath ? "/videoclub.digital/sw.js" : "/sw.js";
+      const basePrefix = getAppBasePath();
+      const swPath = basePrefix ? `${basePrefix}/sw.js` : "/sw.js";
       navigator.serviceWorker.register(swPath).catch(err => {
         if (import.meta.env.DEV) console.error("Fallo SW:", err);
       });
@@ -1238,9 +1243,16 @@ export function init(): void {
   document.addEventListener("visibilitychange", handleMainVisibilityChange);
   mainUnsubscribers.push(() => document.removeEventListener("visibilitychange", handleMainVisibilityChange));
 
+  // Capturar posible película inicial (?movie= / ?m=) antes de que la canonicalización normalice la URL
+  const initialSearch = typeof window !== "undefined" ? window.location.search : "";
+  const initialParams = new URLSearchParams(initialSearch);
+  const initialMovieId = initialParams.get("movie") || initialParams.get("m");
+
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
-  checkAndOpenMovieFromUrl();
+  if (initialMovieId) {
+    checkAndOpenMovieFromUrl(initialMovieId);
+  }
 
   // Iniciar la carga y renderizado del catálogo INMEDIATAMENTE
   loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, forceSkeleton: true }).catch(err => {

@@ -9,8 +9,8 @@
 // =================================================================
 
 import { CONFIG } from "./constants.js";
-import { ERROR_CODES, isAbortError, parseYearRangeRaw } from "./contracts.js";
-export { parseYearRangeRaw };
+import { ERROR_CODES, isAbortError, parseYearRangeRaw, buildFilterUrl } from "./contracts.js";
+export { parseYearRangeRaw, buildFilterUrl };
 import flagSpriteUrl from "../flags.svg";
 import { Movie, MappedMovie } from "./types.js";
 

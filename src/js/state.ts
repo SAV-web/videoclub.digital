@@ -13,6 +13,7 @@ import { normalizeText } from "./utils.js";
 import {
   areContractValuesEqual,
   buildPrettyPath,
+  getAppBasePath,
   normalizeActiveFilters,
   normalizeFilterValue,
   normalizeMovieId,
@@ -252,7 +253,7 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
 
   // Si había parámetro _p, restaurar la URL limpia en el historial ahora que los módulos JS ya cargaron
   if (routeParam && typeof window !== "undefined") {
-    const basePrefix = window.location.pathname.startsWith("/videoclub.digital") ? "/videoclub.digital" : "";
+    const basePrefix = getAppBasePath();
     const cleanRoute = routeParam.startsWith("/") ? routeParam : `/${routeParam}`;
     const searchString = extraQuery ? `?${extraQuery}` : "";
     const restoredUrl = `${basePrefix}${cleanRoute}${searchString}${window.location.hash}`;
@@ -302,7 +303,7 @@ export function canonicalizeCurrentUrl(): boolean {
 
   // URL actual sin base-prefix de GitHub Pages
   let currentPath = window.location.pathname;
-  const basePrefix = currentPath.startsWith("/videoclub.digital") ? "/videoclub.digital" : "";
+  const basePrefix = getAppBasePath();
   if (basePrefix) currentPath = currentPath.slice(basePrefix.length) || "/";
   const currentSearch = window.location.search;
   const currentFull = currentSearch
@@ -397,10 +398,22 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
 
   // Reglas de Exclusividad de Negocio
   if (normalizedValue) {
-    if (type === 'genre') state.activeFilters.excludedGenres = [];
-    if (type === 'country') state.activeFilters.excludedCountries = [];
-    if (type === 'excludedGenres' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.genre = null;
-    if (type === 'excludedCountries' && Array.isArray(normalizedValue) && normalizedValue.length > 0) state.activeFilters.country = null;
+    if (type === 'genre' && typeof normalizedValue === 'string') {
+      state.activeFilters.excludedGenres = state.activeFilters.excludedGenres.filter(g => g !== normalizedValue);
+    }
+    if (type === 'country' && typeof normalizedValue === 'string') {
+      state.activeFilters.excludedCountries = state.activeFilters.excludedCountries.filter(c => c !== normalizedValue);
+    }
+    if (type === 'excludedGenres' && Array.isArray(normalizedValue) && state.activeFilters.genre) {
+      if (normalizedValue.includes(state.activeFilters.genre)) {
+        state.activeFilters.genre = null;
+      }
+    }
+    if (type === 'excludedCountries' && Array.isArray(normalizedValue) && state.activeFilters.country) {
+      if (normalizedValue.includes(state.activeFilters.country)) {
+        state.activeFilters.country = null;
+      }
+    }
 
     // Selección y Estudio son mutuamente excluyentes entre sí
     if (type === 'selection') state.activeFilters.studio = null;
