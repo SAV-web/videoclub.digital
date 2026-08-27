@@ -134,9 +134,11 @@ export async function loadAndRenderMovies(
 ): Promise<void> {
   const signal = createAbortableRequest("movie-grid-load").signal;
 
+  // 1. Actualizar estado -> 2. Actualizar URL -> 3. Actualizar SEO -> 4. Lanzar fetch
   setCurrentPage(page);
-  updatePageTitle();
   updateUrl({ replace: replaceHistory });
+  updatePageTitle();
+  updateBreadcrumbData(getActiveFilters());
 
   document.body.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer?.classList.add(CSS_CLASSES.IS_FETCHING);

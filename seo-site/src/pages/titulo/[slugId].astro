@@ -1172,12 +1172,19 @@ const jsonLd = {
                   </span>
                   <strong class="detail-label-title">Género.</strong>
                   <span class="detail-data" data-template="genre">
-                    {genres.map((name, i) => (
-                      <>
-                        <a href={`${baseUrl}${genreToSlug(name)}/`}>{preserveHyphenatedWords(name)}</a>
-                        {i < genres.length - 1 ? ', ' : ''}
-                      </>
-                    ))}
+                    {genres.map((name, i) => {
+                      const slug = genreToSlug(name);
+                      return (
+                        <>
+                          {slug ? (
+                            <a href={`${baseUrl}${slug}/`}>{preserveHyphenatedWords(name)}</a>
+                          ) : (
+                            <span>{preserveHyphenatedWords(name)}</span>
+                          )}
+                          {i < genres.length - 1 ? ', ' : ''}
+                        </>
+                      );
+                    })}
                   </span>
                 </div>
               )}

@@ -238,13 +238,24 @@ const injectJsonLd = (scriptId: string, schema: Record<string, unknown> | null):
   }
 };
 
+import { getAppBasePath } from "./contracts.js";
+import { getCurrentPage } from "./state.js";
+
 // =================================================================
 //          3. ORQUESTADORES PÚBLICOS
 // =================================================================
 
+export function getCanonicalUrl(filters: ActiveFilters = getActiveFilters(), page: number = getCurrentPage()): string {
+  if (typeof window === "undefined") return "https://videoclub.digital/";
+  const { pathname, search } = stateToPrettyUrl(filters, page);
+  const basePrefix = getAppBasePath();
+  const cleanPath = search ? `${pathname}?${search}` : pathname;
+  return `${window.location.origin}${basePrefix}${cleanPath}`;
+}
+
 export function updatePageTitle(movies: Movie[] = []): void {
   const filters = getActiveFilters();
-  const currentUrl = window.location.href;
+  const canonicalUrl = getCanonicalUrl(filters, getCurrentPage());
   
   const { pageTitle, ogTitle, baseNoun } = buildSeoTitle(filters);
   const description = buildSeoDescription(baseNoun, filters, movies);
@@ -253,7 +264,7 @@ export function updatePageTitle(movies: Movie[] = []): void {
   setMeta('meta[name="description"]', description);
   setMeta('meta[property="og:title"]', ogTitle);
   setMeta('meta[property="og:description"]', description);
-  setMeta('meta[property="og:url"]', currentUrl);
+  setMeta('meta[property="og:url"]', canonicalUrl);
   
   let canonical = document.querySelector("link[rel='canonical']") as HTMLLinkElement | null;
   if (!canonical) {
@@ -261,13 +272,14 @@ export function updatePageTitle(movies: Movie[] = []): void {
     canonical.rel = "canonical";
     document.head.appendChild(canonical);
   }
-  if (canonical.href !== currentUrl) {
-    canonical.href = currentUrl;
+  if (canonical.href !== canonicalUrl) {
+    canonical.href = canonicalUrl;
   }
 }
 
 export function updateStructuredData(movies: Movie[], totalMovies: number): void {
-  const schema = buildItemListSchema(movies, totalMovies, window.location.href);
+  const canonicalUrl = getCanonicalUrl(getActiveFilters(), getCurrentPage());
+  const schema = buildItemListSchema(movies, totalMovies, canonicalUrl);
   injectJsonLd("dynamic-json-ld", schema);
 }
 
