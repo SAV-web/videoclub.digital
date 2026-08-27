@@ -2,28 +2,30 @@
 -- Table order and constraints may not be valid for execution.
 
 CREATE TABLE public.countries (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id smallint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   code text NOT NULL UNIQUE,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
   CONSTRAINT countries_pkey PRIMARY KEY (id)
 );
+
 CREATE TABLE public.genres (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id smallint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
-  synonyms ARRAY DEFAULT '{}'::text[],
+  synonyms text[] DEFAULT '{}'::text[],
   name_norm text DEFAULT replace(unaccent_immutable(lower(name)), 'sci-fi'::text, 'scifi'::text),
   CONSTRAINT genres_pkey PRIMARY KEY (id)
 );
+
 CREATE TABLE public.directors (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
   profile_path text,
   birthday date,
   deathday date,
   place_of_birth text,
-  country_id bigint,
+  country_id smallint,
   photo text,
   titulo_bio text,
   biography text,
@@ -31,11 +33,12 @@ CREATE TABLE public.directors (
   CONSTRAINT directors_pkey PRIMARY KEY (id),
   CONSTRAINT directors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
+
 CREATE TABLE public.movies (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   title text NOT NULL,
-  year integer,
+  year smallint,
   year_end text,
   type text,
   fa_rating real,
@@ -43,20 +46,20 @@ CREATE TABLE public.movies (
   imdb_rating real,
   imdb_votes integer,
   original_title text,
-  minutes integer,
+  minutes smallint,
   synopsis text,
   fa_id text,
   imdb_id text,
   image text NOT NULL,
   thumbhash_st text,
-  country_id bigint,
+  country_id smallint,
   last_synced_at timestamp with time zone,
-  episodes integer,
+  episodes smallint,
   wikipedia text,
   genres_list text,
   directors_list text,
   actors_list text,
-  relevance integer,
+  relevance smallint,
   selections_list text,
   studios_list text,
   justwatch text,
@@ -75,21 +78,24 @@ END,
   CONSTRAINT movies_pkey PRIMARY KEY (id),
   CONSTRAINT movies_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
+
 CREATE TABLE public.movie_genres (
-  movie_id bigint NOT NULL,
-  genre_id bigint NOT NULL,
+  movie_id integer NOT NULL,
+  genre_id smallint NOT NULL,
   CONSTRAINT movie_genres_pkey PRIMARY KEY (movie_id, genre_id),
   CONSTRAINT movie_genres_genre_id_fkey FOREIGN KEY (genre_id) REFERENCES public.genres(id),
   CONSTRAINT movie_genres_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id)
 );
+
 CREATE TABLE public.movie_directors (
-  movie_id bigint NOT NULL,
-  director_id bigint NOT NULL,
+  movie_id integer NOT NULL,
+  director_id integer NOT NULL,
   ordinality smallint,
   CONSTRAINT movie_directors_pkey PRIMARY KEY (movie_id, director_id),
   CONSTRAINT movie_directors_director_id_fkey FOREIGN KEY (director_id) REFERENCES public.directors(id),
   CONSTRAINT movie_directors_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id)
 );
+
 CREATE TABLE public.movies_staging (
   title text,
   year text,
@@ -115,34 +121,37 @@ CREATE TABLE public.movies_staging (
   relevance text,
   studio text,
   justwatch text,
-  show boolean,
+  show text,
   CONSTRAINT movies_staging_pkey PRIMARY KEY (image)
 );
+
 CREATE TABLE public.actors (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
   profile_path text,
   birthday date,
   deathday date,
   place_of_birth text,
-  country_id bigint,
+  country_id smallint,
   photo text,
   titulo_bio text,
   biography text,
   CONSTRAINT actors_pkey PRIMARY KEY (id),
   CONSTRAINT actors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
+
 CREATE TABLE public.movie_actors (
-  movie_id bigint NOT NULL,
-  actor_id bigint NOT NULL,
+  movie_id integer NOT NULL,
+  actor_id integer NOT NULL,
   ordinality smallint,
   CONSTRAINT movie_actors_pkey PRIMARY KEY (movie_id, actor_id),
   CONSTRAINT movie_actors_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.actors(id),
   CONSTRAINT movie_actors_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id)
 );
+
 CREATE TABLE public.selections (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id smallint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   code text NOT NULL UNIQUE,
   letter text UNIQUE,
@@ -150,27 +159,34 @@ CREATE TABLE public.selections (
   thumbhash text,
   CONSTRAINT selections_pkey PRIMARY KEY (id)
 );
+
 CREATE TABLE public.movie_selections (
-  movie_id bigint NOT NULL,
-  selection_id bigint NOT NULL,
+  movie_id integer NOT NULL,
+  selection_id smallint NOT NULL,
   CONSTRAINT movie_selections_pkey PRIMARY KEY (movie_id, selection_id),
   CONSTRAINT movie_selections_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE,
   CONSTRAINT movie_selections_selection_id_fkey FOREIGN KEY (selection_id) REFERENCES public.selections(id) ON DELETE CASCADE
 );
+
 CREATE TABLE public.user_movie_entries (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   user_id uuid NOT NULL,
-  movie_id bigint NOT NULL,
-  on_watchlist boolean DEFAULT false,
+  movie_id integer NOT NULL,
+  on_watchlist boolean NOT NULL DEFAULT false,
   rating smallint CHECK (rating >= 1 AND rating <= 10),
+  watchlist_position integer,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT user_movie_entries_pkey PRIMARY KEY (id),
-  CONSTRAINT user_movie_entries_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id),
-  CONSTRAINT user_movie_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+  CONSTRAINT user_movie_entries_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE,
+  CONSTRAINT user_movie_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT user_movie_entry_unique UNIQUE (user_id, movie_id),
+  CONSTRAINT check_user_entry_has_action CHECK (rating IS NOT NULL OR on_watchlist = true),
+  CONSTRAINT check_user_entry_exclusive CHECK (NOT (rating IS NOT NULL AND on_watchlist = true))
 );
+
 CREATE TABLE public.studios (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  id smallint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   code text NOT NULL UNIQUE,
   letter text UNIQUE,
@@ -178,13 +194,15 @@ CREATE TABLE public.studios (
   thumbhash text,
   CONSTRAINT studios_pkey PRIMARY KEY (id)
 );
+
 CREATE TABLE public.movie_studios (
-  movie_id bigint NOT NULL,
-  studio_id bigint NOT NULL,
+  movie_id integer NOT NULL,
+  studio_id smallint NOT NULL,
   CONSTRAINT movie_studios_pkey PRIMARY KEY (movie_id, studio_id),
   CONSTRAINT movie_studios_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE,
   CONSTRAINT movie_studios_studio_id_fkey FOREIGN KEY (studio_id) REFERENCES public.studios(id) ON DELETE CASCADE
 );
+
 CREATE TABLE public.people_staging (
   id text NOT NULL,
   name text NOT NULL,

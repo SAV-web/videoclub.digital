@@ -16,8 +16,10 @@
 -- PASO 1: HABILITACIÓN DE EXTENSIONES Y ESPACIO DE BÚSQUEDA
 -- =================================================================
 CREATE SCHEMA IF NOT EXISTS extensions;
+GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
+
 CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA extensions; -- Búsqueda insensible a diacríticos/acentos
-CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA extensions;  -- Búsqueda por trigramas y similitud de texto
+CREATE EXTENSION IF NOT EXISTS pg_trgm  SCHEMA extensions; -- Búsqueda por trigramas y similitud de texto
 
 -- Garantiza que las clases de operadores de extensiones se resuelvan en cualquier entorno o instalación limpia
 SET search_path = pg_catalog, public, extensions;
@@ -123,93 +125,22 @@ BEGIN
 END $$;
 
 -- =================================================================
--- 2.3. TRIGGERS DE UPSERT EN STAGING (Compatibilidad Supabase CSV Import)
--- =================================================================
--- Intercepta inserciones estándar del importador CSV web y las convierte en UPDATE por clave primaria.
-
-CREATE OR REPLACE FUNCTION public.handle_movies_staging_upsert()
-RETURNS TRIGGER LANGUAGE plpgsql
-SET search_path = pg_catalog, public, extensions, pg_temp AS $$
-BEGIN
-    -- Si ya existe un registro con la misma imagen (PK), lo actualizamos
-    IF EXISTS (SELECT 1 FROM public.movies_staging WHERE image = NEW.image) THEN
-        UPDATE public.movies_staging SET
-            title = NEW.title,
-            year = NEW.year,
-            year_end = NEW.year_end,
-            type = NEW.type,
-            fa_rating = NEW.fa_rating,
-            fa_votes = NEW.fa_votes,
-            imdb_rating = NEW.imdb_rating,
-            imdb_votes = NEW.imdb_votes,
-            original_title = NEW.original_title,
-            country = NEW.country,
-            minutes = NEW.minutes,
-            directors = NEW.directors,
-            actors = NEW.actors,
-            genre = NEW.genre,
-            synopsis = NEW.synopsis,
-            fa_id = NEW.fa_id,
-            imdb_id = NEW.imdb_id,
-            collection = NEW.collection,
-            episodes = NEW.episodes,
-            wikipedia = NEW.wikipedia,
-            relevance = NEW.relevance,
-            studio = NEW.studio,
-            justwatch = NEW.justwatch,
-            show = NEW.show
-        WHERE image = NEW.image;
-        
-        -- Retornamos NULL para cancelar la inserción original y evitar el error de PK
-        RETURN NULL;
-    END IF;
-    
-    -- Si no existe, procedemos con la inserción normal
-    RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS on_movies_staging_upsert ON public.movies_staging;
-CREATE TRIGGER on_movies_staging_upsert
-BEFORE INSERT ON public.movies_staging
-FOR EACH ROW EXECUTE PROCEDURE public.handle_movies_staging_upsert();
-
--- Trigger de UPSERT para people_staging
-CREATE OR REPLACE FUNCTION public.handle_people_staging_upsert()
-RETURNS TRIGGER LANGUAGE plpgsql
-SET search_path = pg_catalog, public, extensions, pg_temp AS $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM public.people_staging WHERE id = NEW.id AND type = NEW.type) THEN
-        UPDATE public.people_staging SET
-            name = NEW.name,
-            name_norm = NEW.name_norm,
-            photo = NEW.photo,
-            birthday = NEW.birthday,
-            deathday = NEW.deathday,
-            place_of_birth = NEW.place_of_birth,
-            country_id = NEW.country_id,
-            titulo_bio = NEW.titulo_bio,
-            biography = NEW.biography,
-            components = NEW.components
-        WHERE id = NEW.id AND type = NEW.type;
-        RETURN NULL;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS on_people_staging_upsert ON public.people_staging;
-CREATE TRIGGER on_people_staging_upsert
-BEFORE INSERT ON public.people_staging
-FOR EACH ROW EXECUTE PROCEDURE public.handle_people_staging_upsert();
-
--- =================================================================
 -- PASO 3: FUNCIÓN DE BÚSQUEDA PRINCIPAL (SEARCH_MOVIES_OFFSET)
 -- =================================================================
--- Limpieza de sobrecargas de versiones anteriores
-DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text, text, text, text, text, text[], text[], text, text, integer, integer);
-DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer);
-DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean);
+-- Limpieza dinámica de cualquier sobrecarga previa de search_movies_offset
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT oid::regprocedure AS func_signature
+        FROM pg_proc
+        WHERE proname = 'search_movies_offset'
+          AND pronamespace = 'public'::regnamespace
+    ) LOOP
+        EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_signature || ' CASCADE;';
+    END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
     search_term text DEFAULT NULL::text,
@@ -453,18 +384,20 @@ GRANT EXECUTE ON FUNCTION public.search_movies_offset(text, text, integer, integ
 
 -- 4.1. Creación de la tabla consolidada 'user_movie_entries'
 CREATE TABLE IF NOT EXISTS public.user_movie_entries (
-    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    movie_id BIGINT NOT NULL REFERENCES public.movies(id) ON DELETE CASCADE,
+    movie_id INTEGER NOT NULL REFERENCES public.movies(id) ON DELETE CASCADE,
     
-    on_watchlist BOOLEAN DEFAULT false,
+    on_watchlist BOOLEAN NOT NULL DEFAULT false,
     rating SMALLINT CHECK (rating >= 1 AND rating <= 10),
     watchlist_position INTEGER,
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
 
-    CONSTRAINT user_movie_entry_unique UNIQUE (user_id, movie_id)
+    CONSTRAINT user_movie_entry_unique UNIQUE (user_id, movie_id),
+    CONSTRAINT check_user_entry_has_action CHECK (rating IS NOT NULL OR on_watchlist = true),
+    CONSTRAINT check_user_entry_exclusive CHECK (NOT (rating IS NOT NULL AND on_watchlist = true))
 );
 
 -- 4.2. Creación de índices para optimizar el rendimiento de usuario
@@ -877,13 +810,14 @@ BEGIN
     -- =================================================================
     -- FASE 0: POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE MOVIES_STAGING Y PEOPLE_STAGING
     -- =================================================================
+    -- Solo se extraen entidades de películas formalmente admitidas en el catálogo (show = '1')
     INSERT INTO public.genres (name)
     SELECT DISTINCT TRIM(g.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(genre, ',')) AS g(name)
-    WHERE genre IS NOT NULL AND TRIM(g.name) <> '' ON CONFLICT (name) DO NOTHING;
+    WHERE TRIM(show::text) = '1' AND genre IS NOT NULL AND TRIM(g.name) <> '' ON CONFLICT (name) DO NOTHING;
 
     INSERT INTO public.directors (name)
     SELECT DISTINCT TRIM(d.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(directors, ',')) AS d(name)
-    WHERE directors IS NOT NULL AND TRIM(d.name) <> '' ON CONFLICT (name) DO NOTHING;
+    WHERE TRIM(show::text) = '1' AND directors IS NOT NULL AND TRIM(d.name) <> '' ON CONFLICT (name) DO NOTHING;
 
     INSERT INTO public.directors (name)
     SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
@@ -891,7 +825,7 @@ BEGIN
 
     INSERT INTO public.actors (name)
     SELECT DISTINCT TRIM(a.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(actors, ',')) AS a(name)
-    WHERE actors IS NOT NULL AND TRIM(a.name) <> '' AND actors <> '(A)' ON CONFLICT (name) DO NOTHING;
+    WHERE TRIM(show::text) = '1' AND actors IS NOT NULL AND TRIM(a.name) <> '' AND actors <> '(A)' ON CONFLICT (name) DO NOTHING;
 
     INSERT INTO public.actors (name)
     SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
@@ -900,51 +834,86 @@ BEGIN
     -- =================================================================
     -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPs, Fotos, Biografías, Componentes)
     -- =================================================================
-    -- Actualizar directores desde people_staging (sólo cambios reales)
+    -- 1.1. Actualizar directores desde people_staging (deduplicado y normalizado)
+    WITH dedup_directors AS (
+        SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
+            p.name,
+            public.unaccent_immutable(lower(trim(p.name))) AS p_name_norm,
+            p.photo,
+            public.to_date_safe(p.birthday) AS birthday_date,
+            public.to_date_safe(p.deathday) AS deathday_date,
+            p.place_of_birth,
+            c.id AS resolved_country_id,
+            p.titulo_bio,
+            p.biography,
+            p.components
+        FROM public.people_staging p
+        LEFT JOIN public.countries c 
+            ON c.code = UPPER(TRIM(p.country_id)) 
+            OR c.name_norm = public.unaccent_immutable(LOWER(TRIM(p.country_id)))
+        WHERE p.type = 'D' AND p.name IS NOT NULL AND TRIM(p.name) <> ''
+        ORDER BY public.unaccent_immutable(lower(trim(p.name))), p.id DESC
+    )
     UPDATE public.directors d
     SET
-        photo = p.photo,
-        birthday = public.to_date_safe(p.birthday),
-        deathday = public.to_date_safe(p.deathday),
-        place_of_birth = p.place_of_birth,
-        country_id = c.id,
-        titulo_bio = p.titulo_bio,
-        biography = p.biography,
-        components = p.components
-    FROM public.people_staging p
-    LEFT JOIN public.countries c ON c.name_norm = lower(trim(p.country_id)) OR lower(trim(c.name)) = lower(trim(p.country_id))
-    WHERE d.name = p.name AND p.type = 'D' AND (
-        d.photo IS DISTINCT FROM p.photo OR
-        d.birthday IS DISTINCT FROM public.to_date_safe(p.birthday) OR
-        d.deathday IS DISTINCT FROM public.to_date_safe(p.deathday) OR
-        d.place_of_birth IS DISTINCT FROM p.place_of_birth OR
-        d.country_id IS DISTINCT FROM c.id OR
-        d.titulo_bio IS DISTINCT FROM p.titulo_bio OR
-        d.biography IS DISTINCT FROM p.biography OR
-        d.components IS DISTINCT FROM p.components
+        photo = src.photo,
+        birthday = src.birthday_date,
+        deathday = src.deathday_date,
+        place_of_birth = src.place_of_birth,
+        country_id = src.resolved_country_id,
+        titulo_bio = src.titulo_bio,
+        biography = src.biography,
+        components = src.components
+    FROM dedup_directors src
+    WHERE d.name_norm = src.p_name_norm AND (
+        d.photo IS DISTINCT FROM src.photo OR
+        d.birthday IS DISTINCT FROM src.birthday_date OR
+        d.deathday IS DISTINCT FROM src.deathday_date OR
+        d.place_of_birth IS DISTINCT FROM src.place_of_birth OR
+        d.country_id IS DISTINCT FROM src.resolved_country_id OR
+        d.titulo_bio IS DISTINCT FROM src.titulo_bio OR
+        d.biography IS DISTINCT FROM src.biography OR
+        d.components IS DISTINCT FROM src.components
     );
     GET DIAGNOSTICS directors_modified_count = ROW_COUNT;
 
-    -- Actualizar actores desde people_staging (sólo cambios reales)
+    -- 1.2. Actualizar actores desde people_staging (deduplicado y normalizado)
+    WITH dedup_actors AS (
+        SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
+            p.name,
+            public.unaccent_immutable(lower(trim(p.name))) AS p_name_norm,
+            p.photo,
+            public.to_date_safe(p.birthday) AS birthday_date,
+            public.to_date_safe(p.deathday) AS deathday_date,
+            p.place_of_birth,
+            c.id AS resolved_country_id,
+            p.titulo_bio,
+            p.biography
+        FROM public.people_staging p
+        LEFT JOIN public.countries c 
+            ON c.code = UPPER(TRIM(p.country_id)) 
+            OR c.name_norm = public.unaccent_immutable(LOWER(TRIM(p.country_id)))
+        WHERE p.type = 'A' AND p.name IS NOT NULL AND TRIM(p.name) <> ''
+        ORDER BY public.unaccent_immutable(lower(trim(p.name))), p.id DESC
+    )
     UPDATE public.actors a
     SET
-        photo = p.photo,
-        birthday = public.to_date_safe(p.birthday),
-        deathday = public.to_date_safe(p.deathday),
-        place_of_birth = p.place_of_birth,
-        country_id = c.id,
-        titulo_bio = p.titulo_bio,
-        biography = p.biography
-    FROM public.people_staging p
-    LEFT JOIN public.countries c ON c.name_norm = lower(trim(p.country_id)) OR lower(trim(c.name)) = lower(trim(p.country_id))
-    WHERE a.name = p.name AND p.type = 'A' AND (
-        a.photo IS DISTINCT FROM p.photo OR
-        a.birthday IS DISTINCT FROM public.to_date_safe(p.birthday) OR
-        a.deathday IS DISTINCT FROM public.to_date_safe(p.deathday) OR
-        a.place_of_birth IS DISTINCT FROM p.place_of_birth OR
-        a.country_id IS DISTINCT FROM c.id OR
-        a.titulo_bio IS DISTINCT FROM p.titulo_bio OR
-        a.biography IS DISTINCT FROM p.biography
+        photo = src.photo,
+        birthday = src.birthday_date,
+        deathday = src.deathday_date,
+        place_of_birth = src.place_of_birth,
+        country_id = src.resolved_country_id,
+        titulo_bio = src.titulo_bio,
+        biography = src.biography
+    FROM dedup_actors src
+    WHERE a.name_norm = src.p_name_norm AND (
+        a.photo IS DISTINCT FROM src.photo OR
+        a.birthday IS DISTINCT FROM src.birthday_date OR
+        a.deathday IS DISTINCT FROM src.deathday_date OR
+        a.place_of_birth IS DISTINCT FROM src.place_of_birth OR
+        a.country_id IS DISTINCT FROM src.resolved_country_id OR
+        a.titulo_bio IS DISTINCT FROM src.titulo_bio OR
+        a.biography IS DISTINCT FROM src.biography
     );
     GET DIAGNOSTICS actors_modified_count = ROW_COUNT;
     people_modified_count := directors_modified_count + actors_modified_count;
@@ -956,7 +925,7 @@ BEGIN
         INSERT INTO public.movies (
             relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
             original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch,
-            genres_list, directors_list, actors_list
+            genres_list, directors_list, actors_list, selections_list, studios_list
         )
         SELECT
             public.to_integer_safe(s.relevance::TEXT), TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
@@ -964,17 +933,18 @@ BEGIN
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
             s.imdb_id, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia), TRIM(s.justwatch),
-            s.genre, s.directors, CASE WHEN s.actors = '(A)' THEN '' ELSE s.actors END
+            s.genre, s.directors, CASE WHEN s.actors = '(A)' THEN '' ELSE s.actors END, s.collection, s.studio
         FROM public.movies_staging s
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
-        WHERE s.image IS NOT NULL AND TRIM(s.image) <> '' AND (s.show::text IN ('1', 't', 'true', 'S', 's', 'TRUE'))
+        WHERE s.image IS NOT NULL AND TRIM(s.image) <> '' AND TRIM(s.show::text) = '1'
         ON CONFLICT (image) DO UPDATE SET
             relevance = EXCLUDED.relevance, title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
             fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id, last_synced_at = sync_timestamp,
             episodes = EXCLUDED.episodes, wikipedia = EXCLUDED.wikipedia, justwatch = EXCLUDED.justwatch,
-            genres_list = EXCLUDED.genres_list, directors_list = EXCLUDED.directors_list, actors_list = EXCLUDED.actors_list
+            genres_list = EXCLUDED.genres_list, directors_list = EXCLUDED.directors_list, actors_list = EXCLUDED.actors_list,
+            selections_list = EXCLUDED.selections_list, studios_list = EXCLUDED.studios_list
         WHERE
             movies.relevance IS DISTINCT FROM EXCLUDED.relevance OR
             movies.title IS DISTINCT FROM EXCLUDED.title OR
@@ -997,30 +967,8 @@ BEGIN
             movies.genres_list IS DISTINCT FROM EXCLUDED.genres_list OR
             movies.directors_list IS DISTINCT FROM EXCLUDED.directors_list OR
             movies.actors_list IS DISTINCT FROM EXCLUDED.actors_list OR
-            EXISTS (
-                SELECT 1
-                FROM public.movies_staging chk
-                CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(chk.studio, ',')) stu(code)
-                WHERE TRIM(chk.image) = movies.image
-                AND NOT EXISTS (
-                    SELECT 1 FROM public.movie_studios ms
-                    JOIN public.studios st ON ms.studio_id = st.id
-                    WHERE ms.movie_id = movies.id 
-                      AND (st.letter = UPPER(TRIM(stu.code)) OR st.code = LOWER(TRIM(stu.code)))
-                )
-            ) OR
-            EXISTS (
-                SELECT 1
-                FROM public.movies_staging chk
-                CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(chk.collection, ',')) sel(code)
-                WHERE TRIM(chk.image) = movies.image
-                AND NOT EXISTS (
-                    SELECT 1 FROM public.movie_selections ms
-                    JOIN public.selections sc ON ms.selection_id = sc.id
-                    WHERE ms.movie_id = movies.id 
-                      AND (sc.letter = UPPER(TRIM(sel.code)) OR sc.code = LOWER(TRIM(sel.code)))
-                )
-            )
+            movies.selections_list IS DISTINCT FROM EXCLUDED.selections_list OR
+            movies.studios_list IS DISTINCT FROM EXCLUDED.studios_list
         RETURNING id
     )
     SELECT array_agg(id) INTO affected_movie_ids FROM upserted_movies;
@@ -1029,12 +977,19 @@ BEGIN
     -- FASE 3: RELACIONES DIFERENCIALES CON TABLA TEMPORAL Y PRE-AGREGACIÓN LINEAL
     -- =================================================================
     IF affected_movie_ids IS NOT NULL AND array_length(affected_movie_ids, 1) > 0 THEN
+        -- Asegurar reentrancia idempotente si la tabla ya existiera en la misma sesión
+        DROP TABLE IF EXISTS tmp_affected_staging;
+
         -- Creamos tabla temporal de trabajo con las películas afectadas para evitar 10 escaneos a staging
         CREATE TEMP TABLE tmp_affected_staging ON COMMIT DROP AS
         SELECT s.*, m.id AS movie_id
         FROM public.movies_staging s
         JOIN public.movies m ON TRIM(s.image) = m.image
         WHERE m.id = ANY(affected_movie_ids);
+
+        -- Indexación y estadísticas para acelerar los 10 cruces relacionales posteriores
+        CREATE INDEX IF NOT EXISTS idx_tmp_affected_staging_movie_id ON tmp_affected_staging(movie_id);
+        ANALYZE tmp_affected_staging;
 
         -- Inserciones desde tabla temporal
         INSERT INTO public.movie_genres (movie_id, genre_id)
@@ -1152,14 +1107,14 @@ BEGIN
             GROUP BY movie_id
         ),
         agg_selections AS (
-            SELECT ms.movie_id, STRING_AGG(DISTINCT sel.code, ',') AS selections
+            SELECT ms.movie_id, STRING_AGG(DISTINCT sel.code, ',' ORDER BY sel.code) AS selections
             FROM public.movie_selections ms
             JOIN public.selections sel ON ms.selection_id = sel.id
             WHERE ms.movie_id = ANY(affected_movie_ids)
             GROUP BY ms.movie_id
         ),
         agg_studios AS (
-            SELECT mst.movie_id, STRING_AGG(DISTINCT stu.code, ',') AS studios
+            SELECT mst.movie_id, STRING_AGG(DISTINCT stu.code, ',' ORDER BY stu.code) AS studios
             FROM public.movie_studios mst
             JOIN public.studios stu ON mst.studio_id = stu.id
             WHERE mst.movie_id = ANY(affected_movie_ids)
@@ -1197,54 +1152,26 @@ REVOKE ALL ON FUNCTION public.process_staging_data() FROM PUBLIC, anon, authenti
 GRANT EXECUTE ON FUNCTION public.process_staging_data() TO service_role;
 
 -- =================================================================
--- PASO 8: PROTOCOLO POST-COMMIT Y MANTENIMIENTO DE CATÁLOGO
+-- PASO 8: POBLADO DE SINÓNIMOS DE GÉNEROS (AUTOCOMPLETADO)
 -- =================================================================
--- NOTA ARQUITECTÓNICA Y POLÍTICA DE DATOS:
--- 1. REFRESH MATERIALIZED VIEW CONCURRENTLY no se ejecuta dentro de transacciones activas.
--- 2. Los CSVs de ingesta contienen siempre la información consolidada de cada película.
--- 3. La columna show = 'S' opera como Filtro de Admisión (Gatekeeper) en la carga.
--- 4. La ausencia en staging se interpreta como carga incremental; no se ejecutan DELETEs ciegos.
---
--- FASE 1: Ingesta Transaccional
---   SELECT public.process_staging_data();
---
--- FASE 2: Refresco Concurrente y Mantenimiento de Estadísticas (Worker o SQL Editor)
---   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_actor_suggestions;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_director_suggestions;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_title_suggestions;
---
---   ANALYZE public.mv_actor_suggestions;
---   ANALYZE public.mv_director_suggestions;
---   ANALYZE public.mv_title_suggestions;
---   ANALYZE public.movies;
---   ANALYZE public.actors;
---   ANALYZE public.directors;
---   ANALYZE public.movie_genres;
---   ANALYZE public.movie_directors;
---   ANALYZE public.movie_actors;
---   ANALYZE public.movie_selections;
---   ANALYZE public.movie_studios;
---
--- 8.1. Actualización de Sinónimos de Géneros (Idempotente)
 UPDATE public.genres SET synonyms = ARRAY['action', 'adrenalina'] WHERE name = 'Acción' AND synonyms IS DISTINCT FROM ARRAY['action', 'adrenalina'];
-UPDATE public.genres SET synonyms = ARRAY['adventure', 'epico'] WHERE name = 'Aventuras' AND synonyms IS DISTINCT FROM ARRAY['adventure', 'epico'];
 UPDATE public.genres SET synonyms = ARRAY['animation', 'animado', 'dibujos', 'cgi'] WHERE name = 'Animación' AND synonyms IS DISTINCT FROM ARRAY['animation', 'animado', 'dibujos', 'cgi'];
+UPDATE public.genres SET synonyms = ARRAY['adventure', 'epico'] WHERE name = 'Aventuras' AND synonyms IS DISTINCT FROM ARRAY['adventure', 'epico'];
+UPDATE public.genres SET synonyms = ARRAY['war', 'guerra'] WHERE name = 'Bélico' AND synonyms IS DISTINCT FROM ARRAY['war', 'guerra'];
 UPDATE public.genres SET synonyms = ARRAY['biography', 'biografico', 'biopic'] WHERE name = 'Biografía' AND synonyms IS DISTINCT FROM ARRAY['biography', 'biografico', 'biopic'];
+UPDATE public.genres SET synonyms = ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro'] WHERE name = 'Noir' AND synonyms IS DISTINCT FROM ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro'];
 UPDATE public.genres SET synonyms = ARRAY['comedy', 'humor', 'comico'] WHERE name = 'Comedia' AND synonyms IS DISTINCT FROM ARRAY['comedy', 'humor', 'comico'];
 UPDATE public.genres SET synonyms = ARRAY['crime', 'policiaco', 'policial', 'criminal', 'delito', 'mafia'] WHERE name = 'Crimen' AND synonyms IS DISTINCT FROM ARRAY['crime', 'policiaco', 'policial', 'criminal', 'delito', 'mafia'];
+UPDATE public.genres SET synonyms = ARRAY['sport', 'deportes'] WHERE name = 'Deporte' AND synonyms IS DISTINCT FROM ARRAY['sport', 'deportes'];
 UPDATE public.genres SET synonyms = ARRAY['documentary'] WHERE name = 'Documental' AND synonyms IS DISTINCT FROM ARRAY['documentary'];
 UPDATE public.genres SET synonyms = ARRAY['dramatico'] WHERE name = 'Drama' AND synonyms IS DISTINCT FROM ARRAY['dramatico'];
-UPDATE public.genres SET synonyms = ARRAY['family'] WHERE name = 'Familiar' AND synonyms IS DISTINCT FROM ARRAY['family'];
+UPDATE public.genres SET synonyms = ARRAY['family', 'infantil'] WHERE name = 'Familiar' AND synonyms IS DISTINCT FROM ARRAY['family', 'infantil'];
 UPDATE public.genres SET synonyms = ARRAY['fantasy', 'fantastico'] WHERE name = 'Fantasía' AND synonyms IS DISTINCT FROM ARRAY['fantasy', 'fantastico'];
-UPDATE public.genres SET synonyms = ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro'] WHERE name = 'Noir' AND synonyms IS DISTINCT FROM ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro'];
 UPDATE public.genres SET synonyms = ARRAY['history', 'epoca'] WHERE name = 'Histórico' AND synonyms IS DISTINCT FROM ARRAY['history', 'epoca'];
-UPDATE public.genres SET synonyms = ARRAY['horror', 'miedo'] WHERE name = 'Terror' AND synonyms IS DISTINCT FROM ARRAY['horror', 'miedo'];
-UPDATE public.genres SET synonyms = ARRAY['music', 'canciones'] WHERE name = 'Música' AND synonyms IS DISTINCT FROM ARRAY['music', 'canciones'];
 UPDATE public.genres SET synonyms = ARRAY['mystery', 'misterio', 'enigma', 'investigacion'] WHERE name = 'Intriga' AND synonyms IS DISTINCT FROM ARRAY['mystery', 'misterio', 'enigma', 'investigacion'];
-UPDATE public.genres SET synonyms = ARRAY['love', 'romantico', 'amor'] WHERE name = 'Romance' AND synonyms IS DISTINCT FROM ARRAY['love', 'romantico', 'amor'];
-UPDATE public.genres SET synonyms = ARRAY['scifi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'] WHERE name = 'Sci-Fi' AND synonyms IS DISTINCT FROM ARRAY['scifi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'];
-UPDATE public.genres SET synonyms = ARRAY['short', 'cortometraje'] WHERE name = 'Corto' AND synonyms IS DISTINCT FROM ARRAY['short', 'cortometraje'];
-UPDATE public.genres SET synonyms = ARRAY['sport'] WHERE name = 'Deporte' AND synonyms IS DISTINCT FROM ARRAY['sport'];
+UPDATE public.genres SET synonyms = ARRAY['music', 'musical', 'canciones'] WHERE name = 'Música' AND synonyms IS DISTINCT FROM ARRAY['music', 'musical', 'canciones'];
+UPDATE public.genres SET synonyms = ARRAY['romance', 'love', 'romantico', 'amor'] WHERE name = 'Romance' AND synonyms IS DISTINCT FROM ARRAY['romance', 'love', 'romantico', 'amor'];
+UPDATE public.genres SET synonyms = ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'] WHERE name = 'Sci-Fi' AND synonyms IS DISTINCT FROM ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'];
+UPDATE public.genres SET synonyms = ARRAY['horror', 'miedo'] WHERE name = 'Terror' AND synonyms IS DISTINCT FROM ARRAY['horror', 'miedo'];
 UPDATE public.genres SET synonyms = ARRAY['suspense', 'psicologico', 'tension'] WHERE name = 'Thriller' AND synonyms IS DISTINCT FROM ARRAY['suspense', 'psicologico', 'tension'];
-UPDATE public.genres SET synonyms = ARRAY['war', 'guerra'] WHERE name = 'Bélico' AND synonyms IS DISTINCT FROM ARRAY['war', 'guerra'];
-UPDATE public.genres SET synonyms = ARRAY['oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['oeste', 'vaqueros'];
+UPDATE public.genres SET synonyms = ARRAY['western', 'oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['western', 'oeste', 'vaqueros'];

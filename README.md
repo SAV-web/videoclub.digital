@@ -59,6 +59,7 @@ VIDEOCLUB.DIGITAL/
 ├── vite.config.js               # Configuración de Vite y plugin inyector de Service Worker
 ├── package.json                 # Dependencias y scripts de desarrollo/test
 ├── public/
+│   ├── 404.html                 # Fallback SPA para GitHub Pages (?_p y ?_q)
 │   ├── sw.js                    # Service Worker interceptor (CACHE_STATIC y CACHE_DYNAMIC)
 │   └── manifest.webmanifest     # Manifiesto PWA
 ├── src/
@@ -71,12 +72,13 @@ VIDEOCLUB.DIGITAL/
 │   │   ├── main.ts              # Orquestador del DOM y flujo de renderizado
 │   │   ├── state.ts             # Estado inmutable global y sincronización con URL
 │   │   ├── api.ts               # Capa de datos, reintentos, deduplicación e integración Supabase
-│   │   ├── contracts.ts         # Contratos, guardas de tipos y normalizadores puros
+│   │   ├── contracts.ts         # Contratos, guardas de tipos, getAppBasePath() y normalizadores
 │   │   ├── types.ts             # Interfaces TypeScript centralizadas
 │   │   ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
 │   │   ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación)
 │   │   └── components/          # Módulos UI (card, modal, sidebar, rating, yearSlider)
 │   └── shared/                  # Fuente Única de Verdad (SSOT) compartida entre SPA y SEO
+│       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
 │       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
 │       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
 ├── seo-site/                    # Subsistema Astro para generación estática (SSG) de SEO
@@ -86,6 +88,7 @@ VIDEOCLUB.DIGITAL/
 ├── tests/                       # Suite de pruebas unitarias
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   └── *.test.mjs               # Archivos de test unitarios (api, state, rating, seo, utils)
+└── docs/                        # Documentación técnica y de arquitectura
     ├── project_context.md       # Contexto global y mapa del proyecto
     ├── contracts.md             # Especificación de contratos de datos y fronteras
     ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW

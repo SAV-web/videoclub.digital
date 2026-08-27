@@ -381,14 +381,24 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(p6.actor, "clint eastwood");
     assert.equal(p6.director, null);
 
-    // Parsing de aliases en URLs hacia el género oficial
-    assert.equal(contracts.parsePrettyPath("/sport/").genre, "Deporte");
-    assert.equal(contracts.parsePrettyPath("/action/").genre, "Acción");
-    assert.equal(contracts.parsePrettyPath("/dibujos/").genre, "Animación");
-    assert.equal(contracts.parsePrettyPath("/musical/").genre, "Música");
-    assert.equal(contracts.parsePrettyPath("/filmnoir/").genre, "Noir");
-    assert.equal(contracts.parsePrettyPath("/scifi/").genre, "Sci-Fi");
-    assert.deepEqual(contracts.parsePrettyPath("/no-dibujos/").excludedGenres, ["Animación"]);
+    // Parsing de los 21 slugs canónicos oficiales hacia su nombre oficial
+    assert.equal(contracts.parsePrettyPath("/deporte/").genre, "Deporte");
+    assert.equal(contracts.parsePrettyPath("/accion/").genre, "Acción");
+    assert.equal(contracts.parsePrettyPath("/animacion/").genre, "Animación");
+    assert.equal(contracts.parsePrettyPath("/musica/").genre, "Música");
+    assert.equal(contracts.parsePrettyPath("/noir/").genre, "Noir");
+    assert.equal(contracts.parsePrettyPath("/sci-fi/").genre, "Sci-Fi");
+    assert.deepEqual(contracts.parsePrettyPath("/no-animacion/").excludedGenres, ["Animación"]);
+
+    // Términos no canónicos/aliases en URL no se reconocen como géneros (pertenecen al buscador)
+    assert.equal(contracts.parsePrettyPath("/sport/").genre, null);
+    assert.equal(contracts.parsePrettyPath("/dibujos/").genre, null);
+    assert.equal(contracts.parsePrettyPath("/humor/").genre, null);
+    assert.equal(contracts.parsePrettyPath("/epico/").genre, null);
+
+    // Expansión para búsqueda SQL en PostgreSQL preserva todos los términos
+    assert.equal(contracts.expandGenreForDb("Deporte"), "Deporte,Deportes,Sport,Sports,Deportivo");
+    assert.equal(contracts.expandGenreForDb("Animación"), "Animación,Animation,Animado,Dibujos,CGI");
   });
 
   test("buildFilterUrl genera URLs canónicas y absolutas para enlaces de entidades", () => {

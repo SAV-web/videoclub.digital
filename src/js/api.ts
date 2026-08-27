@@ -672,6 +672,16 @@ export async function setUserMovieDataAPI(movieId: number | string, partialData:
   const currentState = getUserDataForMovie(normalizedMovieId) || { rating: null, onWatchlist: false };
   const mergedData = normalizeUserMovieEntry({ ...currentState, ...partialData });
 
+  // Si ambas acciones quedan inactivas (sin nota y sin watchlist), eliminamos la fila para no dejar filas vacías
+  if (mergedData.rating === null && !mergedData.onWatchlist) {
+    const { error } = await supabase
+      .from('user_movie_entries')
+      .delete()
+      .match({ user_id: session.user.id, movie_id: normalizedMovieId });
+    if (error) throw createAppError(ERROR_CODES.DATABASE, "No se pudo actualizar tu acción.", error);
+    return;
+  }
+
   const payload = {
     user_id: session.user.id,
     movie_id: normalizedMovieId,

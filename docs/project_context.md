@@ -15,23 +15,29 @@
 ### 1. Archivos Raíz y Configuración
 - `index.html`: Punto de entrada. Contiene el CSS crítico (*Above the Fold*), preloads, meta tags SEO, y los `<template>` de los componentes para instanciación rápida.
 - `vite.config.js`: Configurado para generar código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase) e inyección automática de versión de Service Worker (`injectSwVersion`).
+- `public/404.html`: Fallback SPA para GitHub Pages. Intercepta rutas directas y recargas (`F5`) no coincidentes y redirige a la raíz preservando la ruta y query string mediante `?_p=` y `?_q=`.
 - `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`) y estrategias: 
   - *Network First* (`CACHE_STATIC` para navegación HTML y App Shell).
-  - *Stale-While-Revalidate* (`CACHE_DYNAMIC` para assets estáticos JS/CSS).
+  - *Stale-While-Revalidate* (`CACHE_DYNAMIC` para assets estáticos JS/CSS y precacheo de `./sprite.svg` y `./flags.svg` en `CRITICAL_ASSETS`).
   - *Cache First* (`CACHE_DYNAMIC` para pósters de Supabase Storage con límite FIFO).
   - *Exclusiones de API*: Las llamadas RPC y Auth viajan vía POST o manejan datos vivos; se gestionan mediante `lru-cache` en el cliente (`src/js/api.ts`).
   - Estrategia de invalidación documentada en `docs/service_worker_invalidation.md`.
 
-### 2. Frontend TS (`src/js/`)
+### 2. Módulos Compartidos SSOT (`src/shared/`)
+- **`slugs.ts`**: Fuente Única de Verdad para slugs canónicos. Mapea y normaliza los 21 géneros canónicos (`GENRE_SLUG_MAP`), resuelve aliases oficiales en inglés y sinónimos temáticos (`slugToGenre`), y expande los términos para búsquedas Full-Text en PostgreSQL (`expandGenreForDb`).
+- **`constants.ts`**: Constantes globales compartidas, límites de años dinámicos y taxonomías.
+- **`formatters.ts`**: Funciones puras de formateo, puntuación y normalización de texto.
+
+### 3. Frontend TS (`src/js/`)
 Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegación de eventos.
-- **`main.ts`**: Orquestador principal. Maneja el scroll global (Batched Reads/Writes para evitar *Layout Thrashing*), hidratación inicial y la orquestación de la carga de la cuadrícula (`loadAndRenderMovies`).
-- **`state.ts`**: Gestor de estado global inmutable. Sincroniza la URL (QueryParams) con el estado de la aplicación (`activeFilters`, `currentPage`, `userMovieData`).
-- **`api.ts`**: Capa de acceso a datos. Implementa deduplicación de peticiones (*In-flight requests*), `AbortController` para cancelar consultas obsoletas y memoria LRU (`queryCache`, `suggestionsCache`).
+- **`main.ts`**: Orquestador principal. Maneja el scroll global (Batched Reads/Writes para evitar *Layout Thrashing*), hidratación inicial, preservación de parámetros efímeros (`?movie=123`) y la orquestación de la carga de la cuadrícula (`loadAndRenderMovies`) con secuencia determinista (Estado $\to$ URL $\to$ SEO $\to$ Fetch $\to$ Render).
+- **`state.ts`**: Gestor de estado global inmutable. Sincroniza la URL (*Pretty Paths* y QueryParams) con el estado de la aplicación (`activeFilters`, `currentPage`, `userMovieData`), y ejecuta `canonicalizeCurrentUrl()` para garantizar URLs canónicas estrictas.
+- **`contracts.ts`**: Definición central de contratos de datos, códigos de error (`ERROR_CODES`), detección unificada del base path (`getAppBasePath()`), generación de URLs canónicas de filtros (`buildFilterUrl`), guardas de tipos y normalizadores puros de bajo nivel (`parseYearRangeRaw`, `normalizeMovieId`).
+- **`api.ts`**: Capa de acceso a datos. Implementa deduplicación de peticiones (*In-flight requests*), `AbortController` para cancelar consultas obsoletas, memoria LRU (`queryCache`, `suggestionsCache`, `personCache`) y expansión de términos para SQL vía `expandGenreForDb()`.
 - **`ui.ts`**: Controladores genéricos del DOM. Maneja Toasts, esqueletos de carga (*Skeletons*), paginación y las trampas de foco (*Focus Trap*) para modales.
-- **`seo.ts`**: Generador dinámico de `JSON-LD` (Schema.org), títulos y breadcrumbs para SEO en clientes con JS habilitado.
+- **`seo.ts`**: Generador dinámico de `JSON-LD` (Schema.org), títulos, breadcrumbs, `og:url` y canonical tags siempre referenciados a la URL canónica pura vía `getCanonicalUrl()`.
 - **`utils.ts`**: Herramientas puras de alto rendimiento. Incluye creadores de nodos DOM veloces (`createElement` vía `Object.assign`), normalización de texto (eliminación de acentos), formateadores y gestión segura de `localStorage`.
 - **`constants.ts`**: Fuente única de la verdad. Almacena mapeos de clases CSS, selectores del DOM, SVG sprites integrados (`ICONS`), límites de paginación y mapeos de plataformas (Netflix, HBO, etc).
-- **`contracts.ts`**: Definición central de contratos de datos, códigos de error (`ERROR_CODES`), guardas de tipos y normalizadores puros de bajo nivel (`parseYearRangeRaw`, `normalizeMovieId`).
 - **`auth.ts`**: Lógica de registro y login delegada a Supabase Auth.
 - **`types.ts`**: Interfaces TypeScript centralizadas (`MappedMovie`, `ActiveFilters`, `UserMovieEntry`, `PersonDetails`, `VipData`).
 

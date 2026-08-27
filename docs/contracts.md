@@ -47,20 +47,26 @@ Reglas:
 Reglas:
 
 - Los textos se recortan con `trim`; textos vacíos pasan a `null`, salvo `searchTerm`, que pasa a `""`.
-- `year` acepta `YYYY` o `YYYY-YYYY` y se limita al rango `CONFIG.YEAR_MIN` - `CONFIG.YEAR_MAX`. La función pura de parseo `parseYearRangeRaw` reside de forma única en `contracts.ts` para evitar duplicidades o dependencias circulares.
+- `year` acepta `YYYY`, `YYYY-` (hasta el año máximo), `-YYYY` (desde 1900) o `YYYY-YYYY` y se limita al rango `CONFIG.YEAR_MIN` - `CONFIG.YEAR_MAX`. Si el rango abarca el periodo completo por defecto, se omite de la URL (`null`). La función pura de parseo `parseYearRangeRaw` reside de forma única en `contracts.ts` para evitar duplicidades o dependencias circulares.
 - `sort` solo acepta valores presentes en el selector de ordenación de `index.html`.
 - `mediaType` solo acepta `all`, `movies` o `series`.
 - `excludedGenres` y `excludedCountries` son arrays únicos, sin valores vacíos.
 - `myList` solo acepta `rated`, `watchlist`, `mixed` o `null`.
 - **Exclusividad de Personas**: `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con `genre`, `country`, `selection`, `studio`, `excludedGenres` y `excludedCountries`.
 - **Exclusividad de Selección y Estudio**: `selection` y `studio` son mutuamente excluyentes entre sí (ambos representan entidades VIP de grupo y ocupan la cabecera destacada de catálogo). Al seleccionar una saga/colección se limpia el estudio activo, y al seleccionar un estudio se limpia la selección activa.
-- **Exclusividad de Género**: Al asignar `genre`, se limpian `director` y `actor`, pero se conservan `year`, `selection`, `studio` y `country`.
+- **Coexistencia y Exclusividad de Géneros y Países**:
+  - `genre` y `excludedGenres` pueden coexistir de forma no conflictiva (ej: `/drama/no-animacion/` = Drama excluyendo Animación). Un género solo se anula si se incluye explícitamente en su propio array de exclusión.
+  - `country` y `excludedCountries` pueden coexistir pacíficamente (ej: `/espana/no-eeuu/` = Cine español excluyendo producciones con EEUU).
 - **Estructura Canónica de URLs (*Pretty Paths*)**:
-  - Los 3 filtros de catálogo principales (`genre`, `country`, `selection`/`studio`) se serializan en los segmentos del `pathname`: `/{genre}/{country}/{studio_or_selection}/`.
+  - Los filtros de catálogo principales (`genre`, `country`, `selection`/`studio`, `excludedGenres`, `excludedCountries`) se serializan en los segmentos del `pathname`: `/{genre}/{country}/{studio_or_selection}/no-{exg}/no-{exc}/`.
   - Las entidades de personas se serializan con prefijo canónico dedicado: `/director/{slug}/` o `/actor/{slug}/` (ej. `/director/brian-de-palma/`, `/actor/clint-eastwood/`).
-  - Los parámetros técnicos, temporales y de paginación se serializan en el `query string` usando slugs amigables para el orden: `?year=1900-2007&sort=votos-fa&p=3`.
+  - Los parámetros técnicos, temporales y de paginación se serializan en el `query string` usando slugs amigables para el orden: `?year=2011-&sort=votos-fa&p=3`.
+  - Parámetro canónico de búsqueda: `?buscar={termino}` (con compatibilidad de lectura para `?q=`).
   - Slugs de ordenación: `recientes` (`year,desc`), `antiguas` (`year,asc`), `nota-fa` (`fa_rating,desc`), `nota-imdb` (`imdb_rating,desc`), `votos-fa` (`fa_votes,desc`), `votos-imdb` (`imdb_votes,desc`).
-  - Sin retrocompatibilidad: las entidades de catálogo o personas no se leen desde query params ni se aceptan códigos legacy.
+  - **Catálogo Canónico de 21 Géneros**: Definido de forma compartida en `src/shared/slugs.ts` con soporte de aliases oficiales en inglés (`Action`, `Animation`, `Adventure`, `War`, `Biography`, `FilmNoir`, `Comedy`, `Crime`, `Sport`, `Documentary`, `Family`, `Fantasy`, `History`, `Mystery`, `Music`, `Romance`, `Horror`, `Western`) y términos temáticos (`adrenalina`, `dibujos`, `épico`, `guerra`, `biopic`, `cine negro`, `humor`, `policiaco`, `infantil`, `fantástico`, `época`, `misterio`, `musical`, `canciones`, `ciencia ficción`, `futurista`, `psicológico`, `suspense`, `oeste`, etc.).
+  - **Resolución de Base Path**: La función `getAppBasePath()` centraliza la detección del prefijo de entorno (ej: `/videoclub.digital` en GitHub Pages o `""` en dominio raíz).
+  - **Fallback SPA**: `public/404.html` intercepta peticiones directas y recargas (`F5`) en GitHub Pages y las reconduce a la SPA mediante `?_p=` y `?_q=`.
+  - **Preservación de Parámetros de Acción**: Parámetros efímeros de interacción (`?movie=123` / `?m=123`) son capturados durante el arranque antes de la canonicalización para permitir la apertura inmediata de la ficha/modal correspondiente.
 
 ## 3. Respuestas de API
 
