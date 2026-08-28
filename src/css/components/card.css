@@ -1381,6 +1381,11 @@ body.rotation-disabled .movie-card.person-card .wall-person-name {
   /* Ajuste óptico: subida estática para igualar el solapamiento de la nota */
 }
 
+/* Si la persona no tiene biografía específica, el cursor en Modo Muro es normal */
+body.rotation-disabled .movie-card.person-card.no-bio {
+  cursor: default;
+}
+
 /* Posición del botón de rol en Modo Muro (se eleva por encima del bloque de nombre para quedar dentro de la foto) */
 body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .person-role-toggle-btn {
   bottom: calc(26px + 8px);

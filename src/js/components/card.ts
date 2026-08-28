@@ -53,7 +53,11 @@ export const isMobileViewport = (): boolean => mobileQuery ? mobileQuery.matches
 // =================================================================
 
 async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
-  if (cardElement.classList.contains('collection-card')) return;
+  if (cardElement.classList.contains('collection-card') || cardElement.classList.contains('studio-card')) return;
+  if (cardElement.classList.contains('person-card')) {
+    const personData = cardElement.movieData as PersonDetails | undefined;
+    if (!personData?.biography || !personData.biography.trim()) return;
+  }
   const { openModal, initQuickView } = await import("./modal.js");
   const win = window as unknown as Record<string, unknown>;
   if (!win[QUICK_VIEW_INIT_FLAG]) {
@@ -1012,6 +1016,11 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const clone = personTemplate.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.person-card') as MovieCardElement | null;
   if (!card) return clone;
+
+  const hasBio = Boolean(person.biography && person.biography.trim());
+  if (!hasBio) {
+    card.classList.add('no-bio');
+  }
 
   card.dataset.movieId = `person-${person.id}`;
   card.movieData = { ...person, isPerson: true };

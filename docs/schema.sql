@@ -63,18 +63,20 @@ CREATE TABLE public.movies (
   selections_list text,
   studios_list text,
   justwatch text,
-  title_norm text DEFAULT unaccent_immutable(lower(title)),
-  slug text DEFAULT TRIM(BOTH '-'::text FROM regexp_replace(((lower(unaccent_immutable(title)) || '-'::text) || COALESCE((year)::text, ''::text)), '[^a-z0-9]+'::text, '-'::text, 'g'::text)),
-  genres_tsv tsvector DEFAULT to_tsvector('spanish'::regconfig, replace(unaccent_immutable(lower(genres_list)), 'sci-fi'::text, 'scifi'::text)),
-  directors_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(directors_list)),
-  actors_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(actors_list)),
-  selections_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(selections_list)),
-  studios_tsv tsvector DEFAULT to_tsvector('simple'::regconfig, unaccent_immutable(studios_list)),
-  avg_rating real DEFAULT 
-CASE
-    WHEN ((fa_rating IS NOT NULL) AND (fa_rating > (0)::double precision) AND ((imdb_rating IS NOT NULL) AND (imdb_rating > (0)::double precision))) THEN (((fa_rating + (0.5)::double precision) + (imdb_rating - (0.3)::double precision)) / (2.0)::double precision)
-    ELSE NULL::double precision
-END,
+  title_norm text GENERATED ALWAYS AS (unaccent_immutable(lower(title))) STORED,
+  slug text GENERATED ALWAYS AS (TRIM(BOTH '-' FROM regexp_replace(lower(unaccent_immutable(title)) || '-' || COALESCE(year::text, ''), '[^a-z0-9]+', '-', 'g'))) STORED,
+  genres_tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', replace(unaccent_immutable(lower(genres_list)), 'sci-fi', 'scifi'))) STORED,
+  directors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', unaccent_immutable(directors_list))) STORED,
+  actors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', unaccent_immutable(actors_list))) STORED,
+  selections_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', unaccent_immutable(selections_list))) STORED,
+  studios_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', unaccent_immutable(studios_list))) STORED,
+  avg_rating real GENERATED ALWAYS AS (
+    CASE
+      WHEN fa_rating IS NOT NULL AND fa_rating > 0 AND imdb_rating IS NOT NULL AND imdb_rating > 0
+      THEN ((fa_rating + 0.5 + imdb_rating - 0.3) / 2.0)
+      ELSE NULL
+    END
+  ) STORED,
   CONSTRAINT movies_pkey PRIMARY KEY (id),
   CONSTRAINT movies_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );

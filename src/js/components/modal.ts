@@ -878,6 +878,10 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
  * Útil para la apertura automática desde URLs ?movie={id}.
  */
 export function openModalForMovie(movie: MappedMovie | Movie): void {
+  if ((movie as unknown as { isPerson?: boolean })?.isPerson) {
+    const person = movie as unknown as { biography?: string | null };
+    if (!person.biography || !person.biography.trim()) return;
+  }
   const dummyCard = document.createElement("div") as MovieCardElement;
   dummyCard.className = "movie-card";
   dummyCard.movieData = "posterUrl" in movie ? movie : mapMoviePayload(movie);
@@ -891,6 +895,13 @@ export function openModalForMovie(movie: MappedMovie | Movie): void {
  */
 export function openModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   if (!cardElement) return;
+
+  const isPerson = cardElement.classList.contains('person-card') || Boolean((cardElement.movieData as { isPerson?: boolean } | undefined)?.isPerson);
+  if (isPerson) {
+    const personData = cardElement.movieData as { biography?: string | null } | undefined;
+    if (!personData?.biography || !personData.biography.trim()) return;
+  }
+
   const { modal, overlay, content } = getDom();
   if (!modal || !overlay) return;
 

@@ -243,18 +243,11 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(contracts.genreToSlug("miedo"), null);
     assert.equal(contracts.genreToSlug("vaqueros"), null);
 
-    // Expansión para la consulta en Base de Datos PostgreSQL (21 géneros con español, inglés y aliases)
-    assert.equal(contracts.expandGenreForDb("Música"), "Música,Musica,Music,Musical,Canciones");
-    assert.equal(contracts.expandGenreForDb("Music"), "Música,Musica,Music,Musical,Canciones");
-    assert.equal(contracts.expandGenreForDb("Musical"), "Música,Musica,Music,Musical,Canciones");
-    assert.equal(contracts.expandGenreForDb("Noir"), "Noir,FilmNoir,Film-Noir,Cine negro,Negro,Neo-Noir");
-    assert.equal(contracts.expandGenreForDb("Action"), "Acción,Action,Adrenalina");
-    assert.equal(contracts.expandGenreForDb("Animation"), "Animación,Animation,Animado,Dibujos,CGI");
-    assert.equal(contracts.expandGenreForDb("Familiar"), "Familiar,Family,Infantil,Niños,Ninos");
-    assert.equal(contracts.expandGenreForDb("Fantasía"), "Fantasía,Fantasia,Fantasy,Fantástico,Fantastico");
-    assert.equal(contracts.expandGenreForDb("Sci-Fi"), "Sci-Fi,Scifi,Ciencia ficción,Ciencia ficcion,Ciencia-Ficción,Futurista,Distopía,Distopia");
-    assert.equal(contracts.expandGenreForDb("Documentary"), "Documental,Documentary");
-    assert.equal(contracts.expandGenreForDb("Drama"), "Drama");
+    // Normalización de género antes de enviar a PostgreSQL (PostgreSQL resuelve sinónimos dinámicamente)
+    assert.equal(contracts.expandGenreForDb("  Música  "), "Música");
+    assert.equal(contracts.expandGenreForDb("Action"), "Action");
+    assert.equal(contracts.expandGenreForDb(""), null);
+    assert.equal(contracts.expandGenreForDb(null), null);
 
     // Géneros desconocidos fuera del catálogo → null (no genera segmento en URL)
     assert.equal(contracts.genreToSlug("Experimental"), null);
@@ -264,15 +257,17 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(contracts.countryToSlug("España"), "espana");
     assert.equal(contracts.countryToSlug("EEUU"), "eeuu");
     assert.equal(contracts.countryToSlug("Corea del Sur"), "corea-del-sur");
+    assert.equal(contracts.countryToSlug("Kazajistán"), "kazajistan");
+    assert.equal(contracts.countryToSlug("Mozambique"), "mozambique");
 
-    // Países desconocidos → null (no genera segmento en URL)
-    assert.equal(contracts.countryToSlug("Kazajistán"), null);
-    assert.equal(contracts.countryToSlug("Mozambique"), null);
+    // Países desconocidos / no catalogados → null (no genera segmento en URL)
+    assert.equal(contracts.countryToSlug("Atlantida"), null);
+    assert.equal(contracts.countryToSlug("Narnia"), null);
 
     // buildPrettyPath no genera segmento para valores fuera del mapa
     assert.equal(contracts.buildPrettyPath({ genre: "Experimental" }), "/");
-    assert.equal(contracts.buildPrettyPath({ country: "Kazajistán" }), "/");
-    assert.equal(contracts.buildPrettyPath({ genre: "Drama", country: "Mozambique" }), "/drama/");
+    assert.equal(contracts.buildPrettyPath({ country: "Atlantida" }), "/");
+    assert.equal(contracts.buildPrettyPath({ genre: "Drama", country: "Narnia" }), "/drama/");
 
     // parsePrettyPath: slug desconocido es ignorado silenciosamente
     const pUnknown = contracts.parsePrettyPath("/experimental/");
@@ -370,10 +365,6 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(contracts.parsePrettyPath("/dibujos/").genre, null);
     assert.equal(contracts.parsePrettyPath("/humor/").genre, null);
     assert.equal(contracts.parsePrettyPath("/epico/").genre, null);
-
-    // Expansión para búsqueda SQL en PostgreSQL preserva todos los términos
-    assert.equal(contracts.expandGenreForDb("Deporte"), "Deporte,Deportes,Sport,Sports,Deportivo");
-    assert.equal(contracts.expandGenreForDb("Animación"), "Animación,Animation,Animado,Dibujos,CGI");
   });
 
   test("buildFilterUrl genera URLs canónicas y absolutas para enlaces de entidades", () => {

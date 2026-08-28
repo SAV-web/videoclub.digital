@@ -595,8 +595,8 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       birthday: (rowData.birthday || otherRow?.birthday || null) as string | null,
       deathday: (rowData.deathday || otherRow?.deathday || null) as string | null,
       place_of_birth: (rowData.place_of_birth || otherRow?.place_of_birth || null) as string | null,
-      biography: (rowData.biography || otherRow?.biography || null) as string | null,
-      titulo_bio: (rowData.titulo_bio || otherRow?.titulo_bio || null) as string | null,
+      biography: (rowData.biography || null) as string | null,
+      titulo_bio: (rowData.titulo_bio || null) as string | null,
       countries,
       hasBothRoles,
       currentRole: type

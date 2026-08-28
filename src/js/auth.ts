@@ -10,6 +10,7 @@
 import type { AuthError } from "@supabase/supabase-js";
 import { getSupabase } from "./api.js";
 import { openAuthModal, closeAuthModal, showToast } from "./ui.js";
+import { getAppBasePath } from "./contracts.js";
 
 interface AuthDom {
   vLogin: HTMLElement | null;
@@ -280,8 +281,9 @@ async function handleRecoverSubmit(e: Event): Promise<void> {
     btn,
     async () => {
       const supabase = await getSupabase();
+      const basePrefix = getAppBasePath();
       return await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/#reset-password`
+        redirectTo: `${window.location.origin}${basePrefix}/#reset-password`
       });
     },
     () => {

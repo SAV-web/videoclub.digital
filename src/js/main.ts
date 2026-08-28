@@ -1182,19 +1182,24 @@ export function init(): void {
       return;
     }
 
-    // Comprobar si los parámetros reales de la URL han cambiado respecto al estado actual
-    const currentParams = stateToUrlParams(getActiveFilters(), getCurrentPage()).toString();
+    // Comprobar si la URL canónica actual difiere de la URL a la que navegó el usuario
+    const basePrefix = getAppBasePath();
+    const { pathname: canonPath, search: canonSearch } = stateToPrettyUrl(getActiveFilters(), getCurrentPage());
+    const canonFull = `${basePrefix}${canonPath}${canonSearch ? `?${canonSearch}` : ""}`;
+
+    const incomingPath = window.location.pathname;
     const incomingParams = new URLSearchParams(window.location.search);
     incomingParams.delete("movie");
     incomingParams.delete("m");
     const normalizedIncomingQuery = incomingParams.toString();
+    const incomingFull = `${incomingPath}${normalizedIncomingQuery ? `?${normalizedIncomingQuery}` : ""}`;
 
-    // Si los filtros y página son exactamente los mismos, no recargar el grid
-    if (currentParams === normalizedIncomingQuery) {
+    // Si los filtros, ruta y página son exactamente los mismos, no recargar el grid
+    if (canonFull === incomingFull) {
       return;
     }
 
-    readUrlAndSetState(); // incluye canonicalizeCurrentUrl() internamente
+    readUrlAndSetState(); // sincroniza estado con la nueva URL e invoca canonicalizeCurrentUrl()
     appEvents.emit("updateSidebarUI");
     loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
   };

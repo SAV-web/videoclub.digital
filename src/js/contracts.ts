@@ -8,10 +8,34 @@
 
 import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
 import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
-import { toSlug, GENRE_SLUG_MAP, genreToSlug, expandGenreForDb, slugToGenre } from "../shared/slugs.js";
+import {
+  toSlug,
+  GENRE_SLUG_MAP,
+  genreToSlug,
+  expandGenreForDb,
+  slugToGenre,
+  COUNTRY_SLUG_MAP,
+  countryToSlug,
+  slugToCountry,
+  STUDIO_SLUGS,
+  SELECTION_SLUGS,
+  slugToPersonQuery,
+} from "../shared/slugs.js";
 
 // Re-exportamos para que los módulos SPA que ya importan de contracts no se rompan
-export { toSlug, GENRE_SLUG_MAP, genreToSlug, expandGenreForDb, slugToGenre };
+export {
+  toSlug,
+  GENRE_SLUG_MAP,
+  genreToSlug,
+  expandGenreForDb,
+  slugToGenre,
+  COUNTRY_SLUG_MAP,
+  countryToSlug,
+  slugToCountry,
+  STUDIO_SLUGS,
+  SELECTION_SLUGS,
+  slugToPersonQuery,
+};
 
 const SORT_VALUES = new Set<string>([
   "relevance,asc",
@@ -228,91 +252,8 @@ export function normalizeNullableText(value: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
-// toSlug y GENRE_SLUG_MAP importados de ../shared/slugs.js (ver imports arriba)
-
-export const COUNTRY_SLUG_MAP: Record<string, string> = {
-  eeuu: "EEUU",
-  espana: "España",
-  uk: "UK",
-  francia: "Francia",
-  japon: "Japón",
-  italia: "Italia",
-  alemania: "Alemania",
-  canada: "Canadá",
-  australia: "Australia",
-  "corea-del-sur": "Corea del Sur",
-  "hong-kong": "Hong Kong",
-  mexico: "México",
-  argentina: "Argentina",
-  suecia: "Suecia",
-  dinamarca: "Dinamarca",
-  noruega: "Noruega",
-  polonia: "Polonia",
-  rusia: "Rusia",
-  "union-sovietica": "Unión Soviética",
-  irlanda: "Irlanda",
-  belgica: "Bélgica",
-  austria: "Austria",
-  "paises-bajos": "Países Bajos",
-  suiza: "Suiza",
-  portugal: "Portugal",
-  grecia: "Grecia",
-  "rep-checa": "Rep. Checa",
-  hungria: "Hungría",
-  rumania: "Rumanía",
-  brasil: "Brasil",
-  chile: "Chile",
-  colombia: "Colombia",
-  cuba: "Cuba",
-  india: "India",
-  china: "China",
-  taiwan: "Taiwán",
-  iran: "Irán",
-  turquia: "Turquía",
-  "nueva-zelanda": "Nueva Zelanda",
-  islandia: "Islandia",
-  finlandia: "Finlandia",
-  sudafrica: "Sudáfrica",
-  israel: "Israel",
-  libano: "Líbano",
-  egipto: "Egipto",
-  tailandia: "Tailandia",
-  indonesia: "Indonesia",
-  filipinas: "Filipinas",
-  latam: "latam",
-  nordic: "nordic"
-};
-
-export const STUDIO_SLUGS: ReadonlySet<string> = new Set([
-  "warner", "universal", "sony", "paramount", "disney", "netflix",
-  "amazon", "fox", "lionsgate", "canalplus", "bbc", "miramax",
-  "a24", "movistar", "apple"
-]);
-
-export const SELECTION_SLUGS: ReadonlySet<string> = new Set([
-  "1001movies", "tspdt", "criterion", "kinolorber", "toptv",
-  "hbo", "acontra", "arrow", "eureka", "imprint"
-]);
-
-// genreToSlug importada de ../shared/slugs.js (ver imports arriba)
-
-/**
- * Convierte el nombre de un país a su slug canónico registrado en COUNTRY_SLUG_MAP.
- * Si el valor no está en el mapa, devuelve null (whitelist estricta).
- * Ej: "España" → "espana", "EEUU" → "eeuu"
- *     "Kazajistán" → null  (valor desconocido: no genera segmento en la URL)
- */
-export function countryToSlug(country: string | null | undefined): string | null {
-  if (!country) return null;
-  const norm = country.trim().toLowerCase();
-  const direct = Object.keys(COUNTRY_SLUG_MAP).find(slug => COUNTRY_SLUG_MAP[slug].toLowerCase() === norm);
-  return direct ?? null;
-}
-
-export function slugToPersonQuery(slug: string): string {
-  if (!slug) return "";
-  return slug.replace(/-/g, " ").trim();
-}
+// Los mapas canónicos de slugs (GENRE_SLUG_MAP, COUNTRY_SLUG_MAP, STUDIO_SLUGS, SELECTION_SLUGS)
+// y sus funciones asociadas se gestionan de forma centralizada en ../shared/slugs.js y se re-exportan arriba.
 
 export function buildPrettyPath(filters: {
   genre?: string | null;

@@ -556,8 +556,21 @@ BEGIN
         CREATE UNIQUE INDEX mv_title_suggestions_title_idx ON public.mv_title_suggestions(title);
         CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON public.mv_title_suggestions USING gin(title_norm extensions.gin_trgm_ops);
         CREATE INDEX mv_title_suggestions_relevance_idx ON public.mv_title_suggestions(best_relevance ASC);
-        REVOKE ALL ON TABLE public.mv_title_suggestions FROM anon, authenticated, PUBLIC;
     END IF;
+END $$;
+
+-- Revocación incondicional de acceso público directo a las vistas materializadas
+-- (El acceso se realiza exclusivamente a través de las funciones RPC SECURITY DEFINER)
+DO $$
+DECLARE
+    mv_name TEXT;
+    matviews TEXT[] := ARRAY['mv_actor_suggestions', 'mv_director_suggestions', 'mv_title_suggestions'];
+BEGIN
+    FOREACH mv_name IN ARRAY matviews LOOP
+        IF EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = mv_name) THEN
+            EXECUTE format('REVOKE ALL ON TABLE public.%I FROM anon, authenticated, PUBLIC;', mv_name);
+        END IF;
+    END LOOP;
 END $$;
 
 -- =================================================================
@@ -799,9 +812,12 @@ AS $function$
 DECLARE
     sync_timestamp TIMESTAMP WITH TIME ZONE := NOW();
     affected_movie_ids INT[];
+    directors_created_count INT := 0;
+    actors_created_count INT := 0;
     directors_modified_count INT := 0;
     actors_modified_count INT := 0;
     people_modified_count INT := 0;
+    v_rows_count INT := 0;
 BEGIN
     -- 1. BLOQUEO TRANSACCIONAL DE EXCLUSIÓN MUTUA
     -- Evita que dos sincronizaciones de staging se ejecuten concurrentemente
@@ -818,18 +834,26 @@ BEGIN
     INSERT INTO public.directors (name)
     SELECT DISTINCT TRIM(d.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(directors, ',')) AS d(name)
     WHERE TRIM(show::text) = '1' AND directors IS NOT NULL AND TRIM(d.name) <> '' ON CONFLICT (name) DO NOTHING;
+    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
+    directors_created_count := directors_created_count + v_rows_count;
 
     INSERT INTO public.directors (name)
     SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
     WHERE p.type = 'D' AND TRIM(p.name) <> '' ON CONFLICT (name) DO NOTHING;
+    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
+    directors_created_count := directors_created_count + v_rows_count;
 
     INSERT INTO public.actors (name)
     SELECT DISTINCT TRIM(a.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(actors, ',')) AS a(name)
     WHERE TRIM(show::text) = '1' AND actors IS NOT NULL AND TRIM(a.name) <> '' AND actors <> '(A)' ON CONFLICT (name) DO NOTHING;
+    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
+    actors_created_count := actors_created_count + v_rows_count;
 
     INSERT INTO public.actors (name)
     SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
     WHERE p.type = 'A' AND TRIM(p.name) <> '' ON CONFLICT (name) DO NOTHING;
+    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
+    actors_created_count := actors_created_count + v_rows_count;
 
     -- =================================================================
     -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPs, Fotos, Biografías, Componentes)
@@ -916,7 +940,7 @@ BEGIN
         a.biography IS DISTINCT FROM src.biography
     );
     GET DIAGNOSTICS actors_modified_count = ROW_COUNT;
-    people_modified_count := directors_modified_count + actors_modified_count;
+    people_modified_count := directors_created_count + actors_created_count + directors_modified_count + actors_modified_count;
 
     -- =================================================================
     -- FASE 2: UPSERT DIFERENCIAL DE PELÍCULAS
