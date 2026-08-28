@@ -61,12 +61,11 @@ Reglas:
   - Los filtros de catálogo principales (`genre`, `country`, `selection`/`studio`, `excludedGenres`, `excludedCountries`) se serializan en los segmentos del `pathname`: `/{genre}/{country}/{studio_or_selection}/no-{exg}/no-{exc}/`.
   - Las entidades de personas se serializan con prefijo canónico dedicado: `/director/{slug}/` o `/actor/{slug}/` (ej. `/director/brian-de-palma/`, `/actor/clint-eastwood/`).
   - Los parámetros técnicos, temporales y de paginación se serializan en el `query string` usando slugs amigables para el orden: `?year=2011-&sort=votos-fa&p=3`.
-  - Parámetro canónico de búsqueda: `?buscar={termino}` (con compatibilidad de lectura para `?q=`).
+  - Parámetro canónico de búsqueda: `?search={termino}` (con compatibilidad de lectura para `?buscar=` y `?q=`).
   - Slugs de ordenación: `recientes` (`year,desc`), `antiguas` (`year,asc`), `nota-fa` (`fa_rating,desc`), `nota-imdb` (`imdb_rating,desc`), `votos-fa` (`fa_votes,desc`), `votos-imdb` (`imdb_votes,desc`).
   - **Catálogo Canónico de 21 Géneros**: Definido de forma compartida en `src/shared/slugs.ts` (`GENRE_SLUG_MAP`) con relación estricta 1:1 para URLs públicas (`/accion/`, `/belico/`, `/sci-fi/`, etc.). La resolución de sinónimos temáticos y multilingües para búsqueda se delega dinámicamente a la base de datos (`genres.synonyms`).
   - **Resolución de Base Path**: La función `getAppBasePath()` centraliza la detección del prefijo de entorno (ej: `/videoclub.digital` en GitHub Pages o `""` en dominio raíz).
   - **Fallback SPA**: `public/404.html` intercepta peticiones directas y recargas (`F5`) en GitHub Pages y las reconduce a la SPA mediante `?_p=` y `?_q=`.
-  - **Preservación de Parámetros de Acción**: Parámetros efímeros de interacción (`?movie=123` / `?m=123`) son capturados durante el arranque antes de la canonicalización para permitir la apertura inmediata de la ficha/modal correspondiente.
 
 ## 3. Respuestas de API
 

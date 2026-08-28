@@ -172,8 +172,6 @@ export const createCanonicalCacheKey = (filters: ActiveFilters & { explicitOffse
   return JSON.stringify({ filters: norm, page, pageSize });
 };
 
-import { expandGenreForDb } from "../shared/slugs.js";
-
 // Traduce lo que pide el usuario al idioma que entiende el servidor SQL
 export function stateToRpcParams(
   activeFilters: ActiveFilters,
@@ -190,7 +188,7 @@ export function stateToRpcParams(
 
   return {
     search_term: activeFilters.searchTerm || null,
-    genre_name: expandGenreForDb(activeFilters.genre),
+    genre_name: activeFilters.genre ? activeFilters.genre.trim() || null : null,
     p_year_start: yearStart,
     p_year_end: yearEnd,
     country_name: region ? null : activeFilters.country,

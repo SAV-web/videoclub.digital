@@ -36,7 +36,7 @@
 
 Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegación de eventos.
 
-- **`main.ts`**: Orquestador principal. Maneja el scroll global (Batched Reads/Writes para evitar _Layout Thrashing_), hidratación inicial, preservación de parámetros efímeros (`?movie=123`) y la orquestación de la carga de la cuadrícula (`loadAndRenderMovies`) con secuencia determinista (Estado $\to$ URL $\to$ SEO $\to$ Fetch $\to$ Render).
+- **`main.ts`**: Orquestador principal. Maneja el scroll global (Batched Reads/Writes para evitar _Layout Thrashing_), hidratación inicial y la orquestación de la carga de la cuadrícula (`loadAndRenderMovies`) con secuencia determinista (Estado $\to$ URL $\to$ SEO $\to$ Fetch $\to$ Render).
 - **`state.ts`**: Gestor de estado global inmutable. Sincroniza la URL (_Pretty Paths_ y QueryParams) con el estado de la aplicación (`activeFilters`, `currentPage`, `userMovieData`), y ejecuta `canonicalizeCurrentUrl()` para garantizar URLs canónicas estrictas.
 - **`contracts.ts`**: Definición central de contratos de datos, códigos de error (`ERROR_CODES`), detección unificada del base path (`getAppBasePath()`), generación de URLs canónicas de filtros (`buildFilterUrl`), guardas de tipos y normalizadores puros de bajo nivel (`parseYearRangeRaw`, `normalizeMovieId`).
 - **`api.ts`**: Capa de acceso a datos. Implementa deduplicación de peticiones (_In-flight requests_), `AbortController` para cancelar consultas obsoletas, memoria LRU (`queryCache`, `suggestionsCache`, `personCache`) y normalización de parámetros para el RPC `search_movies_offset`.

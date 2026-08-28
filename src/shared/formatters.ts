@@ -140,6 +140,27 @@ export function formatYear(
 }
 
 /**
+ * Formatea un rango de años de filtro para la interfaz de usuario:
+ * - "2005-" -> "desde 2005"
+ * - "-2005" -> "hasta 2005"
+ * - "1990-2005" -> "1990-2005"
+ * - "2005" -> "2005"
+ */
+export function formatYearRangeLabel(year: string | null | undefined): string {
+  if (!year) return "";
+  const trimmed = year.trim();
+  if (trimmed.startsWith("-")) {
+    const end = trimmed.slice(1);
+    return end ? `hasta ${end}` : "";
+  }
+  if (trimmed.endsWith("-")) {
+    const start = trimmed.slice(0, -1);
+    return start ? `desde ${start}` : "";
+  }
+  return trimmed;
+}
+
+/**
  * Devuelve la clase CSS correspondiente según la longitud del título (para Modal y fichas SSG).
  */
 export function getTitleLengthClass(title: string | null | undefined): string {

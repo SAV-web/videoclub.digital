@@ -89,6 +89,14 @@ describe("utils.js", () => {
     assert.equal(deceased.ageStr, "(70 ✝)");
   });
 
+  test("formatYearRangeLabel formatea rangos abiertos para UI móvil", () => {
+    assert.equal(utils.formatYearRangeLabel("2005-"), "desde 2005");
+    assert.equal(utils.formatYearRangeLabel("-2005"), "hasta 2005");
+    assert.equal(utils.formatYearRangeLabel("1990-2005"), "1990-2005");
+    assert.equal(utils.formatYearRangeLabel("2005"), "2005");
+    assert.equal(utils.formatYearRangeLabel(null), "");
+  });
+
   test("applyLengthBasedClass aplica dinámicamente clases CSS por longitud de texto", () => {
     const mockEl = {
       className: "initial-class",
@@ -242,12 +250,6 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(contracts.genreToSlug("Musical"), null);
     assert.equal(contracts.genreToSlug("miedo"), null);
     assert.equal(contracts.genreToSlug("vaqueros"), null);
-
-    // Normalización de género antes de enviar a PostgreSQL (PostgreSQL resuelve sinónimos dinámicamente)
-    assert.equal(contracts.expandGenreForDb("  Música  "), "Música");
-    assert.equal(contracts.expandGenreForDb("Action"), "Action");
-    assert.equal(contracts.expandGenreForDb(""), null);
-    assert.equal(contracts.expandGenreForDb(null), null);
 
     // Géneros desconocidos fuera del catálogo → null (no genera segmento en URL)
     assert.equal(contracts.genreToSlug("Experimental"), null);
@@ -504,12 +506,16 @@ describe("state.js y Pretty Paths", () => {
       assert.equal(url.search, `sort=${slug}`);
     }
 
-    // Prueba con Búsqueda (?buscar= y fallback ?q=)
+    // Prueba con Búsqueda (?search= y fallbacks ?buscar= / ?q=)
     state.resetFiltersState();
     state.setSearchTerm("bestas");
     const searchUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
     assert.equal(searchUrl.pathname, "/");
-    assert.equal(searchUrl.search, "buscar=bestas");
+    assert.equal(searchUrl.search, "search=bestas");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/", "?search=bestas");
+    assert.equal(state.getActiveFilters().searchTerm, "bestas");
 
     state.resetFiltersState();
     state.syncStateWithUrl("/", "?buscar=bestas");
@@ -625,13 +631,19 @@ describe("state.js y Pretty Paths", () => {
         assert.equal(mock.getLastReplaced(), "/?sort=nota-fa", "Caso 3: sort interno");
       }
 
-      // Caso 4: ?q=bestas -> ?buscar=bestas
+      // Caso 4: ?q=bestas o ?buscar=bestas -> ?search=bestas
       {
         const mock = makeWindowMock("/", "?q=bestas");
         global.window = mock;
         state.syncStateWithUrl("/", "?q=bestas");
         state.canonicalizeCurrentUrl();
-        assert.equal(mock.getLastReplaced(), "/?buscar=bestas", "Caso 4: ?q= -> ?buscar=");
+        assert.equal(mock.getLastReplaced(), "/?search=bestas", "Caso 4: ?q= -> ?search=");
+
+        const mock2 = makeWindowMock("/", "?buscar=bestas");
+        global.window = mock2;
+        state.syncStateWithUrl("/", "?buscar=bestas");
+        state.canonicalizeCurrentUrl();
+        assert.equal(mock2.getLastReplaced(), "/?search=bestas", "Caso 4b: ?buscar= -> ?search=");
       }
 
       // Caso 5: Exclusión en QS ?exg=Animación -> /no-animacion/

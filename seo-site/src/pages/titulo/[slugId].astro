@@ -984,7 +984,7 @@ const jsonLd = {
         <span class="logo-line-2">.digital</span>
       </a>
       <div class="header-controls">
-        <a href={`${baseUrl}?movie=${movie.id}`} class="btn-header-cta" title="Abrir en la App" aria-label="Abrir en la App">
+        <a href={baseUrl} class="btn-header-cta" title="Ir al Catálogo" aria-label="Ir al Catálogo">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
           </svg>
@@ -1026,7 +1026,7 @@ const jsonLd = {
 
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
-                <a href={`${baseUrl}?movie=${movie.id}`} class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
+                <a href={baseUrl} class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Explorar en Videoclub Digital" aria-label="Explorar en Videoclub Digital">
                   <svg class="star-icon" data-rating-level="1" style={isSuspenso || avgStars > 0 ? "opacity: 1;" : "opacity: 0;"}>
                     <use class="star-icon-path star-icon-path--empty" href={`${baseUrl}sprite.svg#icon-star`}></use>
                     <use class="star-icon-path star-icon-path--filled" href={`${baseUrl}sprite.svg#icon-star`} style={`clip-path: inset(0 ${clip1}% 0 0);`}></use>
@@ -1044,7 +1044,7 @@ const jsonLd = {
 
                 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->
-                <a href={`${baseUrl}?movie=${movie.id}`} class="card-action-btn" title="Abrir en Videoclub Digital" aria-label="Abrir en la App">
+                <a href={baseUrl} class="card-action-btn" title="Ir al Catálogo" aria-label="Ir al Catálogo">
                   <svg class="icon-watchlist"><use href={`${baseUrl}sprite.svg#icon-bookmark-plus`}></use></svg>
                 </a>
               </div>

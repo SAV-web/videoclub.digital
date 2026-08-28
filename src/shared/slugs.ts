@@ -27,33 +27,23 @@ export function toSlug(text: string): string {
 // =================================================================
 
 /**
+ * Catálogo canónico de los 21 géneros oficiales del catálogo.
+ */
+export const OFFICIAL_GENRES = [
+  "Acción", "Animación", "Aventuras", "Bélico", "Biografía", "Noir",
+  "Comedia", "Crimen", "Deporte", "Documental", "Drama", "Familiar",
+  "Fantasía", "Histórico", "Intriga", "Música", "Romance", "Sci-Fi",
+  "Terror", "Thriller", "Western"
+] as const;
+
+/**
  * Diccionario canónico estricto (1:1): slug canónico → nombre oficial del género.
- * Representa los 21 géneros canónicos oficiales del catálogo.
+ * Generado de forma determinista mediante `toSlug(name)`.
  * Usado por parsePrettyPath (lectura de URLs) y genreToSlug (escritura de URLs).
  */
-export const GENRE_SLUG_MAP: Record<string, string> = {
-  accion: "Acción",
-  animacion: "Animación",
-  aventuras: "Aventuras",
-  belico: "Bélico",
-  biografia: "Biografía",
-  noir: "Noir",
-  comedia: "Comedia",
-  crimen: "Crimen",
-  deporte: "Deporte",
-  documental: "Documental",
-  drama: "Drama",
-  familiar: "Familiar",
-  fantasia: "Fantasía",
-  historico: "Histórico",
-  intriga: "Intriga",
-  musica: "Música",
-  romance: "Romance",
-  "sci-fi": "Sci-Fi",
-  terror: "Terror",
-  thriller: "Thriller",
-  western: "Western",
-};
+export const GENRE_SLUG_MAP: Record<string, string> = Object.fromEntries(
+  OFFICIAL_GENRES.map(g => [toSlug(g), g])
+);
 
 /**
  * Convierte el nombre de un género a su slug canónico registrado en GENRE_SLUG_MAP.
@@ -79,17 +69,6 @@ export function slugToGenre(slug: string | null | undefined): string | null {
   if (!slug) return null;
   const clean = toSlug(slug);
   return GENRE_SLUG_MAP[clean] || null;
-}
-
-/**
- * Normaliza el nombre del género antes de enviarlo al RPC de PostgreSQL.
- * La resolución y expansión de sinónimos se delega dinámicamente a la tabla
- * `public.genres.synonyms` en la base de datos (Single Source of Truth).
- */
-export function expandGenreForDb(genre: string | null | undefined): string | null {
-  if (!genre) return null;
-  const trimmed = genre.trim();
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 // =================================================================
@@ -160,7 +139,14 @@ export const SELECTION_SLUGS: ReadonlySet<string> = new Set([
 
 /**
  * Convierte un slug de director/actor a texto legible para consultas SQL.
- * Ej: "christopher-nolan" → "christopher nolan"
+ * Ej: "christopher-nolan" → "christopher nolan", "hermanos-russo" → "hermanos russo"
+ *
+ * NOTA DE ARQUITECTURA (Dependencia con Base de Datos):
+ * El frontend envía este texto sin resolver colectivos ni variantes alfanuméricas.
+ * La resolución exhaustiva se delega a PostgreSQL en `search_movies_offset`:
+ *   - FASE 3.6 (Directores): Coincidencia insensible a acentos, fallback alfanumérico
+ *     y expansión automática de colectivos/dúos vía `directors.components`.
+ *   - FASE 3.7 (Actores): Coincidencia canónica insensible a acentos y fallback alfanumérico.
  */
 export function slugToPersonQuery(slug: string): string {
   if (!slug) return "";

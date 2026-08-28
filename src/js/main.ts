@@ -24,8 +24,7 @@ import {
   fetchUserMovieDataForIds,
   fetchPersonDetails,
   fetchGroupDetails,
-  fetchAllUserMovieData,
-  fetchMovieById
+  fetchAllUserMovieData
 } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { isAbortError, getAppBasePath } from "./contracts.js";
@@ -1108,31 +1107,6 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
   }
 }
 
-/**
- * Detecta si la URL contiene un parámetro ?movie={id} o ?m={id} al cargar la SPA
- * y abre de forma automática el modal con la película correspondiente.
- */
-async function checkAndOpenMovieFromUrl(explicitMovieId?: string | number | null): Promise<void> {
-  const checkGen = mainLifecycleGen;
-  let movieId = explicitMovieId;
-  if (!movieId && typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    movieId = params.get("movie") || params.get("m");
-  }
-  if (!movieId) return;
-
-  try {
-    const movie = await fetchMovieById(movieId);
-    if (checkGen !== mainLifecycleGen) return;
-    if (!movie) return;
-
-    const { openModalForMovie } = await import("./components/modal.js");
-    if (checkGen !== mainLifecycleGen) return;
-    openModalForMovie(movie);
-  } catch (err) {
-    if (import.meta.env.DEV) console.error("Error al abrir película desde URL:", err);
-  }
-}
 
 export function init(): void {
   if (isMainInitialized) return;
@@ -1189,8 +1163,6 @@ export function init(): void {
 
     const incomingPath = window.location.pathname;
     const incomingParams = new URLSearchParams(window.location.search);
-    incomingParams.delete("movie");
-    incomingParams.delete("m");
     const normalizedIncomingQuery = incomingParams.toString();
     const incomingFull = `${incomingPath}${normalizedIncomingQuery ? `?${normalizedIncomingQuery}` : ""}`;
 
@@ -1250,16 +1222,8 @@ export function init(): void {
   document.addEventListener("visibilitychange", handleMainVisibilityChange);
   mainUnsubscribers.push(() => document.removeEventListener("visibilitychange", handleMainVisibilityChange));
 
-  // Capturar posible película inicial (?movie= / ?m=) antes de que la canonicalización normalice la URL
-  const initialSearch = typeof window !== "undefined" ? window.location.search : "";
-  const initialParams = new URLSearchParams(initialSearch);
-  const initialMovieId = initialParams.get("movie") || initialParams.get("m");
-
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
-  if (initialMovieId) {
-    checkAndOpenMovieFromUrl(initialMovieId);
-  }
 
   // Iniciar la carga y renderizado del catálogo INMEDIATAMENTE
   loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, forceSkeleton: true }).catch(err => {

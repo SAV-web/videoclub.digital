@@ -7,7 +7,7 @@
 
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS, FILTER_CONFIG, STUDIO_DATA, REGIONAL_GROUPS } from "./constants.js";
 import { fetchMovies } from "./api.js";
-import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw } from "./utils.js";
+import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
 import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
 
@@ -651,7 +651,7 @@ export function updateMobileStatusBar(
 
     // 6. Rango de Años
     if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
-      segments.push(filters.year);
+      segments.push(formatYearRangeLabel(filters.year));
     }
 
     // 7. Búsqueda por texto libre

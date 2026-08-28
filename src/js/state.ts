@@ -144,7 +144,7 @@ let state = makeReactive<AppState>({
 // =================================================================
 
 export const URL_PARAM_MAP: Record<string, keyof ActiveFilters | "page"> = {
-  buscar: "searchTerm",
+  search: "searchTerm",
   year: "year",
   sort: "sort",
   type: "mediaType",
@@ -230,7 +230,10 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
     if (stateKey === "page") return;
-    const val = effectiveParams.get(shortKey) ?? (stateKey === "searchTerm" ? effectiveParams.get("q") : null) ?? effectiveParams.get(stateKey);
+    const val = effectiveParams.get(shortKey) ??
+      (stateKey === "searchTerm" ? (effectiveParams.get("buscar") ?? effectiveParams.get("q")) : null) ??
+      (stateKey === "sort" ? effectiveParams.get("orden") : null) ??
+      effectiveParams.get(stateKey);
     if (val !== null) {
       if (["excludedGenres", "excludedCountries"].includes(stateKey)) {
         setFilter(stateKey, val.split(","), true);

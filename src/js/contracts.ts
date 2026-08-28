@@ -10,9 +10,9 @@ import { CONFIG, DEFAULTS, TEXT_FILTER_KEYS } from "./constants.js";
 import { ActiveFilters, Movie, UserMovieEntry } from "./types.js";
 import {
   toSlug,
+  OFFICIAL_GENRES,
   GENRE_SLUG_MAP,
   genreToSlug,
-  expandGenreForDb,
   slugToGenre,
   COUNTRY_SLUG_MAP,
   countryToSlug,
@@ -25,9 +25,9 @@ import {
 // Re-exportamos para que los módulos SPA que ya importan de contracts no se rompan
 export {
   toSlug,
+  OFFICIAL_GENRES,
   GENRE_SLUG_MAP,
   genreToSlug,
-  expandGenreForDb,
   slugToGenre,
   COUNTRY_SLUG_MAP,
   countryToSlug,
@@ -343,6 +343,9 @@ export function parsePrettyPath(pathname: string): {
   if (rawSegments.length === 0) return result;
 
   // 1. Detección de prefijo de persona /director/{slug}/ o /actor/{slug}/
+  // NOTA: El texto extraído (ej. "hermanos russo", "jean luc godard") se envía directamente al RPC.
+  // La resolución alfanumérica y la expansión de colectivos/dúos se ejecuta en backend
+  // mediante search_movies_offset (Fases 3.6 y 3.7 en script.sql).
   if (rawSegments[0] === "director" && rawSegments.length >= 2) {
     result.director = slugToPersonQuery(rawSegments.slice(1).join("-"));
     return result;

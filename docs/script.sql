@@ -1,15 +1,16 @@
 -- =================================================================
 -- SCRIPT MAESTRO DE CONFIGURACIÓN Y MIGRACIÓN - VIDEOCLUB.DIGITAL
 -- =================================================================
--- Script idempotente y determinista. Estructura de ejecución:
+-- Script idempotente y determinista para Supabase / PostgreSQL.
+-- Estructura de ejecución secuencial:
 -- 1. Habilitación de Extensiones y Espacio de Búsqueda
--- 2. Funciones Auxiliares, Esquema Base y Triggers de Staging
+-- 2. Funciones Auxiliares Inmutables y Casts Seguros
 -- 3. Función de Búsqueda Principal (search_movies_offset)
 -- 4. Tablas de Usuario y Triggers (user_movie_entries)
--- 5. Optimización de Rendimiento (Índices y Vistas Materializadas)
+-- 5. Rendimiento: Índices, Vistas Materializadas y Funciones RPC de Sugerencias
 -- 6. Configuración de Seguridad (Row Level Security & Permisos)
--- 7. Ingesta Diferencial ETL (process_staging_data)
--- 8. Protocolo Post-Commit y Mantenimiento de Catálogo
+-- 7. Ingesta Transaccional Diferencial ETL (process_staging_data)
+-- 8. Poblado de Sinónimos de Géneros (Búsqueda y Autocompletado)
 -- =================================================================
 
 -- =================================================================
@@ -21,20 +22,20 @@ GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA extensions; -- Búsqueda insensible a diacríticos/acentos
 CREATE EXTENSION IF NOT EXISTS pg_trgm  SCHEMA extensions; -- Búsqueda por trigramas y similitud de texto
 
--- Garantiza que las clases de operadores de extensiones se resuelvan en cualquier entorno o instalación limpia
+-- Garantiza que las clases de operadores de extensiones se resuelvan en cualquier entorno
 SET search_path = pg_catalog, public, extensions;
 
 -- =================================================================
--- PASO 2: CREACIÓN DE FUNCIONES AUXILIARES Y DE UTILIDAD
--- MODIFICACIONES DE ESQUEMA Y ESTRUCTURA DE TABLAS
+-- PASO 2: FUNCIONES AUXILIARES INMUTABLES Y CASTS SEGUROS
 -- =================================================================
--- Función "wrapper" inmutable para `unaccent`, necesaria para crear índices funcionales.
+
+-- 2.1. Función "wrapper" inmutable para `unaccent`, necesaria para índices funcionales y columnas generadas
 CREATE OR REPLACE FUNCTION public.unaccent_immutable(text)
 RETURNS text LANGUAGE sql IMMUTABLE PARALLEL SAFE
 SET search_path = pg_catalog, public, extensions, pg_temp AS
 $$ SELECT extensions.unaccent('extensions.unaccent', $1); $$;
 
--- Función para convertir texto a INTEGER de forma segura, devolviendo NULL en caso de error.
+-- 2.2. Conversión segura de texto a INTEGER (devuelve NULL ante error)
 CREATE OR REPLACE FUNCTION public.to_integer_safe(v_input TEXT)
 RETURNS INTEGER LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$ 
@@ -44,7 +45,7 @@ EXCEPTION WHEN OTHERS THEN
     RETURN NULL; 
 END; $$;
 
--- Función para convertir texto a REAL de forma segura, devolviendo NULL en caso de error.
+-- 2.3. Conversión segura de texto a REAL (soporta coma decimal y devuelve NULL ante error)
 CREATE OR REPLACE FUNCTION public.to_real_safe(v_input TEXT)
 RETURNS REAL LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$ 
@@ -54,7 +55,7 @@ EXCEPTION WHEN OTHERS THEN
     RETURN NULL; 
 END; $$;
 
--- Función para convertir texto a DATE de forma segura, soportando seriales Excel y formatos estándar.
+-- 2.4. Conversión segura de texto a DATE (soporta números seriales de Excel y formatos estándar DD/MM/YYYY y YYYY-MM-DD)
 CREATE OR REPLACE FUNCTION public.to_date_safe(v_input TEXT)
 RETURNS DATE LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$
@@ -79,55 +80,10 @@ EXCEPTION WHEN OTHERS THEN
 END; $$;
 
 -- =================================================================
--- 2.1. MODIFICACIONES DE ESQUEMA (Orden, biografías y colectivos)
--- =================================================================
-ALTER TABLE public.movie_directors ADD COLUMN IF NOT EXISTS ordinality smallint;
-ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS titulo_bio text;
-ALTER TABLE public.directors ADD COLUMN IF NOT EXISTS components text;
-ALTER TABLE public.actors ADD COLUMN IF NOT EXISTS titulo_bio text;
-ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS titulo_bio text;
-ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS biography text;
-ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS components text;
-
--- =================================================================
--- 2.2. COLUMNAS GENERADAS (STORED) Y VECTORES DE BÚSQUEDA TSVECTOR
--- =================================================================
-ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS synonyms text[] DEFAULT '{}';
-
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'genres_tsv') THEN
-        ALTER TABLE public.movies ADD COLUMN genres_tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', replace(public.unaccent_immutable(lower(genres_list)), 'sci-fi', 'scifi'))) STORED;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'directors_tsv') THEN
-        ALTER TABLE public.movies ADD COLUMN directors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(directors_list))) STORED;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'actors_tsv') THEN
-        ALTER TABLE public.movies ADD COLUMN actors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(actors_list))) STORED;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'selections_tsv') THEN
-        ALTER TABLE public.movies ADD COLUMN selections_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(selections_list))) STORED;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'studios_tsv') THEN
-        ALTER TABLE public.movies ADD COLUMN studios_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', public.unaccent_immutable(studios_list))) STORED;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'movies' AND column_name = 'avg_rating') THEN
-        ALTER TABLE public.movies ADD COLUMN avg_rating real GENERATED ALWAYS AS (
-            CASE
-                WHEN (fa_rating IS NOT NULL AND fa_rating > 0) AND (imdb_rating IS NOT NULL AND imdb_rating > 0) THEN ((fa_rating + 0.5) + (imdb_rating - 0.3)) / 2.0
-                ELSE NULL
-            END
-        ) STORED;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'genres' AND column_name = 'name_norm') THEN
-        ALTER TABLE public.genres ADD COLUMN name_norm text GENERATED ALWAYS AS (replace(public.unaccent_immutable(lower(name)), 'sci-fi', 'scifi')) STORED;
-    END IF;
-END $$;
-
--- =================================================================
 -- PASO 3: FUNCIÓN DE BÚSQUEDA PRINCIPAL (SEARCH_MOVIES_OFFSET)
 -- =================================================================
--- Limpieza dinámica de cualquier sobrecarga previa de search_movies_offset
+
+-- 3.1. Limpieza preventiva de sobrecargas previas de search_movies_offset
 DO $$
 DECLARE
     r RECORD;
@@ -142,6 +98,7 @@ BEGIN
     END LOOP;
 END $$;
 
+-- 3.2. Definición de la función RPC search_movies_offset
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
     search_term text DEFAULT NULL::text,
     genre_name text DEFAULT NULL::text,
@@ -183,7 +140,7 @@ DECLARE
     v_director_tsquery tsquery;
     v_actor_tsquery tsquery;
 BEGIN
-    -- FASE 1: VALIDACIÓN
+    -- FASE 1: VALIDACIÓN Y ORDENACIÓN
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
         v_safe_sort_direction := 'ASC';
     ELSE
@@ -205,16 +162,16 @@ BEGIN
         ELSE 'ORDER BY m.relevance ASC, m.id ASC'
     END;
 
-    -- Validación y Blindaje de Paginación (evita límites abusivos o negativos)
+    -- Validación de límites de paginación (evita valores negativos o abusivos)
     v_limit := LEAST(GREATEST(COALESCE(page_limit, 50), 1), 100);
     v_offset := GREATEST(COALESCE(page_offset, 0), 0);
 
-    -- FASE 1.5: VALIDACIÓN DE TÉRMINO DE BÚSQUEDA
+    -- FASE 1.5: VALIDACIÓN DE LONGITUD MÍNIMA DE TÉRMINO DE BÚSQUEDA
     IF search_term IS NOT NULL AND length(TRIM(search_term)) > 0 AND length(TRIM(search_term)) < 3 THEN
         RETURN json_build_object('total', 0, 'items', '[]'::json);
     END IF;
 
-    -- FASE 2: PRE-PROCESAMIENTO DE PAÍSES
+    -- FASE 2: PRE-PROCESAMIENTO DE PAÍSES Y GRUPOS REGIONALES
     IF p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0 THEN
         SELECT array_agg(c.id) INTO v_country_ids FROM public.countries c WHERE lower(c.code) = ANY(SELECT lower(x) FROM unnest(p_country_codes) x);
         IF v_country_ids IS NULL THEN v_country_ids := '{}'; END IF;
@@ -242,7 +199,10 @@ BEGIN
         v_count_select := '-1';
     END IF;
 
+    -- =========================================================================================
     -- FASE 3.5: RESOLUCIÓN DE GÉNEROS Y SINÓNIMOS A TSQUERY
+    -- =========================================================================================
+    -- Expande dinámicamente el género recibido contra la tabla `public.genres` y sus sinónimos (`genres.synonyms`).
     IF genre_name IS NOT NULL AND TRIM(genre_name) != '' THEN
         SELECT string_agg(plainto_tsquery('spanish', replace(public.unaccent_immutable(lower(g_term)), 'sci-fi', 'scifi'))::text, ' | ')::tsquery
         INTO v_genre_tsquery
@@ -261,7 +221,17 @@ BEGIN
         ) terms;
     END IF;
 
-    -- FASE 3.6: RESOLUCIÓN DE DIRECTORES (INCLUYENDO PAREJAS / COMPONENTES Y ALFANUMÉRICO)
+    -- =========================================================================================
+    -- FASE 3.6: RESOLUCIÓN DE DIRECTORES (INCLUYENDO PAREJAS / COLECTIVOS Y ALFANUMÉRICO)
+    -- =========================================================================================
+    -- CONTRATO CON EL FRONTEND (slugToPersonQuery / parsePrettyPath en contracts.ts):
+    -- El cliente web envía el texto limpio extraído del slug (ej. "hermanos russo", "jean luc godard").
+    -- Esta fase resuelve:
+    --   1. Coincidencia directa insensible a mayúsculas y acentos (d.name_norm).
+    --   2. Fallback alfanumérico estricto (regexp_replace) para emparejar guiones y apóstrofes.
+    --   3. Expansión bidireccional de colectivos y dúos vía `directors.components` (ej. "Hermanos Russo"
+    --      expande a "Anthony Russo" y "Joe Russo", devolviendo películas de ambos).
+    -- Combina todos los alias en un tsquery con operador OR (' | ') usando websearch_to_tsquery.
     IF director_name IS NOT NULL AND TRIM(director_name) != '' THEN
         SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(d_name) || '"')::text, ' | ')::tsquery
         INTO v_director_tsquery
@@ -283,7 +253,12 @@ BEGIN
         ) alias_dirs;
     END IF;
 
+    -- =========================================================================================
     -- FASE 3.7: PREPARACIÓN DE ACTOR (RESOLUCIÓN ALFANUMÉRICA Y DE NOMBRE CANÓNICO)
+    -- =========================================================================================
+    -- CONTRATO CON EL FRONTEND (slugToPersonQuery / parsePrettyPath en contracts.ts):
+    -- Resuelve el nombre del actor normalizando acentos (a.name_norm) y aplicando fallback
+    -- alfanumérico para mitigar discrepancias de puntuación entre slugs y nombres en créditos.
     IF actor_name IS NOT NULL AND TRIM(actor_name) != '' THEN
         SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(a_name) || '"')::text, ' | ')::tsquery
         INTO v_actor_tsquery
@@ -297,7 +272,7 @@ BEGIN
         ) alias_acts;
     END IF;
 
-    -- FASE 4: CONSTRUCCIÓN DE CONSULTA
+    -- FASE 4: CONSTRUCCIÓN DINÁMICA DE LA CONSULTA SQL
     v_query := '
         WITH filtered_movies AS (
             SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance
@@ -363,7 +338,7 @@ BEGIN
         );
     ';
     
-    -- FASE 5: EJECUCIÓN
+    -- FASE 5: EJECUCIÓN Y RETORNO JSON
     EXECUTE v_query
     INTO v_json_result
     USING
@@ -375,11 +350,12 @@ BEGIN
 END;
 $function$;
 
+-- 3.3. Permisos de ejecución para search_movies_offset
 REVOKE ALL ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean) TO anon, authenticated, service_role;
 
 -- =================================================================
--- PASO 4: TABLAS DE USUARIO Y TRIGGERS
+-- PASO 4: TABLAS DE USUARIO Y TRIGGERS (USER_MOVIE_ENTRIES)
 -- =================================================================
 
 -- 4.1. Creación de la tabla consolidada 'user_movie_entries'
@@ -400,13 +376,12 @@ CREATE TABLE IF NOT EXISTS public.user_movie_entries (
     CONSTRAINT check_user_entry_exclusive CHECK (NOT (rating IS NOT NULL AND on_watchlist = true))
 );
 
--- 4.2. Creación de índices para optimizar el rendimiento de usuario
+-- 4.2. Índices para optimizar consultas de usuario y ordenación de Watchlist
 CREATE INDEX IF NOT EXISTS user_movie_entries_movie_id_idx ON public.user_movie_entries(movie_id);
 ALTER TABLE public.user_movie_entries ADD COLUMN IF NOT EXISTS watchlist_position integer;
 CREATE INDEX IF NOT EXISTS user_movie_entries_watchlist_pos_idx ON public.user_movie_entries (user_id, watchlist_position ASC NULLS LAST) WHERE on_watchlist = true;
 
--- 4.3. Función de trigger y trigger para 'updated_at'.
--- Esta función se reutiliza para la nueva tabla.
+-- 4.3. Función y trigger para actualización automática de 'updated_at'
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$
@@ -422,10 +397,10 @@ BEFORE UPDATE ON public.user_movie_entries
 FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- =================================================================
--- PASO 5: OPTIMIZACIÓN DE RENDIMIENTO (ÍNDICES Y VISTAS MATERIALIZADAS)
+-- PASO 5: RENDIMIENTO (ÍNDICES, VISTAS MATERIALIZADAS Y SUGERENCIAS)
 -- =================================================================
 
--- 5.1. Índices en Tablas Principales y Relaciones N:M
+-- 5.1. Índices en Tablas Principales y Tablas de Unión N:M
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm extensions.gin_trgm_ops);
 CREATE UNIQUE INDEX IF NOT EXISTS movies_image_unique_idx ON public.movies(image);
 CREATE INDEX IF NOT EXISTS movies_relevance_idx ON public.movies(relevance ASC);
@@ -458,12 +433,9 @@ CREATE INDEX IF NOT EXISTS movies_country_type_year_idx ON public.movies(country
 
 ANALYZE public.movies;
 
--- =================================================================
--- 5.2. VISTAS MATERIALIZADAS PARA SUGERENCIAS (Auto-Convergencia Segura)
--- =================================================================
--- Comprueba la existencia de la estructura esperada y recrea con RESTRICT si está obsoleta.
+-- 5.2. Vistas Materializadas para Sugerencias y Autocompletado (Auto-Convergencia Segura)
 
--- 1. Actores (Auto-convergencia segura)
+-- 1. Sugerencias de Actores
 DO $$
 BEGIN
     IF EXISTS (
@@ -491,7 +463,7 @@ BEGIN
     END IF;
 END $$;
 
--- 2. Directores (Auto-convergencia segura: verifica components y components_norm)
+-- 2. Sugerencias de Directores (Verifica components y components_norm)
 DO $$
 BEGIN
     IF EXISTS (
@@ -532,7 +504,7 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Títulos (Auto-convergencia segura: verifica best_relevance)
+-- 3. Sugerencias de Títulos de Películas (Verifica best_relevance)
 DO $$
 BEGIN
     IF EXISTS (
@@ -559,7 +531,7 @@ BEGIN
     END IF;
 END $$;
 
--- Revocación incondicional de acceso público directo a las vistas materializadas
+-- 5.3. Revocación incondicional de acceso público directo a las vistas materializadas
 -- (El acceso se realiza exclusivamente a través de las funciones RPC SECURITY DEFINER)
 DO $$
 DECLARE
@@ -573,9 +545,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- =================================================================
--- FUNCIONES DE LECTURA Y SUGERENCIAS (SECURITY DEFINER)
--- =================================================================
+-- 5.4. Funciones RPC de Sugerencias y Autocompletado (SECURITY DEFINER)
 DROP FUNCTION IF EXISTS public.get_actor_suggestions(text);
 DROP FUNCTION IF EXISTS public.get_director_suggestions(text);
 DROP FUNCTION IF EXISTS public.get_title_suggestions(text);
@@ -613,7 +583,6 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     ),
     component_matches AS (
         -- 2. Si el nombre del dúo NO coincide directamente, pero sí uno de sus integrantes
-        -- Filtramos primero por d.components_norm con el índice GIN trigrama antes del unnest
         SELECT 
             TRIM(comp.name) AS suggestion, 
             d.movie_count,
@@ -694,10 +663,7 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     LIMIT 5;
 $$;
 
--- =================================================================
--- FUNCIONES PARA FILTROS DINÁMICOS (TOP 100 ALEATORIO)
--- =================================================================
-
+-- 5.5. Funciones para Filtros Dinámicos Aleatorios (Top 200)
 CREATE OR REPLACE FUNCTION public.get_random_top_actors(limit_count int DEFAULT 5)
 RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE SECURITY DEFINER
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$
@@ -722,7 +688,7 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     SELECT name FROM top_directors ORDER BY random() LIMIT LEAST(GREATEST(COALESCE(limit_count, 5), 1), 20);
 $$;
 
--- Revocación de permisos por defecto a PUBLIC y concesión explícita controlada
+-- 5.6. Revocación de permisos por defecto a PUBLIC y concesión explícita controlada
 REVOKE ALL ON FUNCTION public.get_actor_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_actor_suggestions(text) TO anon, authenticated, service_role;
 
@@ -748,7 +714,7 @@ GRANT EXECUTE ON FUNCTION public.get_random_top_directors(int) TO anon, authenti
 -- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY & PERMISOS)
 -- =================================================================
 
--- 6.1. Habilitamos RLS y lectura pública en tablas de catálogo
+-- 6.1. Habilitación de RLS y lectura pública para tablas de catálogo
 DO $$ 
 DECLARE 
     t_name TEXT; 
@@ -782,6 +748,9 @@ DROP POLICY IF EXISTS "People staging access restricted to service_role" ON publ
 CREATE POLICY "People staging access restricted to service_role" ON public.people_staging FOR ALL TO service_role USING (true);
 
 -- 6.3. Políticas RLS consolidadas para la tabla 'user_movie_entries'
+-- Optimización de Rendimiento: Se utiliza `(select auth.uid())` en lugar de `auth.uid()` directo.
+-- Esto permite que PostgreSQL trate la llamada como un `InitPlan` (evaluado 1 sola vez por consulta)
+-- en lugar de reevaluar la función por cada fila escaneada, maximizando el uso de índices.
 ALTER TABLE public.user_movie_entries ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Los usuarios pueden gestionar sus propias entradas" ON public.user_movie_entries;
@@ -790,17 +759,18 @@ DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_movie_en
 
 CREATE POLICY "Los usuarios pueden gestionar sus propias entradas"
 ON public.user_movie_entries FOR ALL
-USING ( auth.uid() = user_id )
-WITH CHECK ( auth.uid() = user_id );
+USING ( (select auth.uid()) = user_id )
+WITH CHECK ( (select auth.uid()) = user_id );
 
 -- =================================================================
--- PASO 7: INGESTA DIFERENCIAL ETL (PROCESS_STAGING_DATA)
+-- PASO 7: INGESTA TRANSACCIONAL DIFERENCIAL ETL (PROCESS_STAGING_DATA)
 -- =================================================================
 -- Pipeline transaccional idempotente:
 -- 1. Bloqueo transaccional de exclusión mutua (pg_advisory_xact_lock).
--- 2. Actualización diferencial de personas VIPs (fotos, biografías, componentes).
--- 3. UPSERT diferencial en catálogo movies con detección de cambios reales.
--- 4. Reconciliación N:M mediante tabla temporal y pre-agregación lineal O(N1 + N2 + ...).
+-- 2. Poblado de entidades base con filtro de admisión (show = '1').
+-- 3. Actualización diferencial de personas VIPs (fotos, biografías, componentes).
+-- 4. UPSERT diferencial en catálogo movies con detección de cambios reales.
+-- 5. Reconciliación N:M mediante tabla temporal y reagregación lineal O(N).
 
 DROP FUNCTION IF EXISTS public.process_staging_data() CASCADE;
 
@@ -824,7 +794,7 @@ BEGIN
     PERFORM pg_advisory_xact_lock(hashtext('cinelog_staging_sync'));
 
     -- =================================================================
-    -- FASE 0: POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE MOVIES_STAGING Y PEOPLE_STAGING
+    -- FASE 0: POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE STAGING
     -- =================================================================
     -- Solo se extraen entidades de películas formalmente admitidas en el catálogo (show = '1')
     INSERT INTO public.genres (name)
@@ -856,7 +826,7 @@ BEGIN
     actors_created_count := actors_created_count + v_rows_count;
 
     -- =================================================================
-    -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPs, Fotos, Biografías, Componentes)
+    -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPS, BIOGRAFÍAS, COMPONENTES)
     -- =================================================================
     -- 1.1. Actualizar directores desde people_staging (deduplicado y normalizado)
     WITH dedup_directors AS (
@@ -943,7 +913,7 @@ BEGIN
     people_modified_count := directors_created_count + actors_created_count + directors_modified_count + actors_modified_count;
 
     -- =================================================================
-    -- FASE 2: UPSERT DIFERENCIAL DE PELÍCULAS
+    -- FASE 2: UPSERT DIFERENCIAL DE PELÍCULAS (PUBLIC.MOVIES)
     -- =================================================================
     WITH upserted_movies AS (
         INSERT INTO public.movies (
@@ -998,20 +968,20 @@ BEGIN
     SELECT array_agg(id) INTO affected_movie_ids FROM upserted_movies;
 
     -- =================================================================
-    -- FASE 3: RELACIONES DIFERENCIALES CON TABLA TEMPORAL Y PRE-AGREGACIÓN LINEAL
+    -- FASE 3: RECONCILIACIÓN N:M CON TABLA TEMPORAL Y PRE-AGREGACIÓN LINEAL
     -- =================================================================
     IF affected_movie_ids IS NOT NULL AND array_length(affected_movie_ids, 1) > 0 THEN
         -- Asegurar reentrancia idempotente si la tabla ya existiera en la misma sesión
         DROP TABLE IF EXISTS tmp_affected_staging;
 
-        -- Creamos tabla temporal de trabajo con las películas afectadas para evitar 10 escaneos a staging
+        -- Creamos tabla temporal de trabajo con las películas afectadas para evitar múltiples escaneos a staging
         CREATE TEMP TABLE tmp_affected_staging ON COMMIT DROP AS
         SELECT s.*, m.id AS movie_id
         FROM public.movies_staging s
         JOIN public.movies m ON TRIM(s.image) = m.image
         WHERE m.id = ANY(affected_movie_ids);
 
-        -- Indexación y estadísticas para acelerar los 10 cruces relacionales posteriores
+        -- Indexación y estadísticas para acelerar los cruces relacionales posteriores
         CREATE INDEX IF NOT EXISTS idx_tmp_affected_staging_movie_id ON tmp_affected_staging(movie_id);
         ANALYZE tmp_affected_staging;
 
@@ -1161,7 +1131,7 @@ BEGIN
     END IF;
 
     -- =================================================================
-    -- RETORNO INFORMATIVO DE LA INGESTA DIFERENCIAL
+    -- FASE 4: RETORNO INFORMATIVO DE LA INGESTA DIFERENCIAL
     -- =================================================================
     RETURN json_build_object(
         'movies_affected', COALESCE(array_length(affected_movie_ids, 1), 0),
@@ -1172,12 +1142,14 @@ BEGIN
 END;
 $function$;
 
+-- 7.2. Permisos de ejecución de la ingesta (exclusivo para service_role)
 REVOKE ALL ON FUNCTION public.process_staging_data() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.process_staging_data() TO service_role;
 
 -- =================================================================
--- PASO 8: POBLADO DE SINÓNIMOS DE GÉNEROS (AUTOCOMPLETADO)
+-- PASO 8: POBLADO DE SINÓNIMOS DE GÉNEROS (AUTOCOMPLETADO Y BÚSQUEDA)
 -- =================================================================
+-- Poblado determinista e idempotente del array `genres.synonyms` para los 21 géneros oficiales.
 UPDATE public.genres SET synonyms = ARRAY['action', 'adrenalina'] WHERE name = 'Acción' AND synonyms IS DISTINCT FROM ARRAY['action', 'adrenalina'];
 UPDATE public.genres SET synonyms = ARRAY['animation', 'animado', 'dibujos', 'cgi'] WHERE name = 'Animación' AND synonyms IS DISTINCT FROM ARRAY['animation', 'animado', 'dibujos', 'cgi'];
 UPDATE public.genres SET synonyms = ARRAY['adventure', 'epico'] WHERE name = 'Aventuras' AND synonyms IS DISTINCT FROM ARRAY['adventure', 'epico'];
@@ -1198,4 +1170,4 @@ UPDATE public.genres SET synonyms = ARRAY['romance', 'love', 'romantico', 'amor'
 UPDATE public.genres SET synonyms = ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'] WHERE name = 'Sci-Fi' AND synonyms IS DISTINCT FROM ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'];
 UPDATE public.genres SET synonyms = ARRAY['horror', 'miedo'] WHERE name = 'Terror' AND synonyms IS DISTINCT FROM ARRAY['horror', 'miedo'];
 UPDATE public.genres SET synonyms = ARRAY['suspense', 'psicologico', 'tension'] WHERE name = 'Thriller' AND synonyms IS DISTINCT FROM ARRAY['suspense', 'psicologico', 'tension'];
-UPDATE public.genres SET synonyms = ARRAY['western', 'oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['western', 'oeste', 'vaqueros'];
+UPDATE public.genres SET synonyms = ARRAY['western', 'oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['western', 'oeste', 'vaqueros'];
