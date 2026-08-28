@@ -85,6 +85,137 @@ export function slugToGenre(slug: string | null | undefined): string | null {
   return GENRE_SLUG_MAP[clean] || null;
 }
 
+// Mapeo interno de sinónimos y variantes para expansión de base de datos (NO para URLs)
+const GENRE_ALIASES_TO_CANONICAL_SLUG: Record<string, string> = {
+  action: "accion",
+  adrenalina: "accion",
+  animation: "animacion",
+  animado: "animacion",
+  dibujos: "animacion",
+  cgi: "animacion",
+  adventure: "aventuras",
+  aventura: "aventuras",
+  epico: "aventuras",
+  war: "belico",
+  guerra: "belico",
+  biography: "biografia",
+  biografico: "biografia",
+  biopic: "biografia",
+  filmnoir: "noir",
+  "film-noir": "noir",
+  "cine-negro": "noir",
+  negro: "noir",
+  "neo-noir": "noir",
+  comedy: "comedia",
+  humor: "comedia",
+  comico: "comedia",
+  crime: "crimen",
+  policiaco: "crimen",
+  policial: "crimen",
+  criminal: "crimen",
+  delito: "crimen",
+  mafia: "crimen",
+  sport: "deporte",
+  sports: "deporte",
+  deportes: "deporte",
+  deportivo: "deporte",
+  documentary: "documental",
+  family: "familiar",
+  infantil: "familiar",
+  ninos: "familiar",
+  fantasy: "fantasia",
+  fantastico: "fantasia",
+  history: "historico",
+  historia: "historico",
+  epoca: "historico",
+  mystery: "intriga",
+  misterio: "intriga",
+  enigma: "intriga",
+  investigacion: "intriga",
+  music: "musica",
+  musical: "musica",
+  canciones: "musica",
+  love: "romance",
+  romantico: "romance",
+  amor: "romance",
+  scifi: "sci-fi",
+  "ciencia-ficcion": "sci-fi",
+  futurista: "sci-fi",
+  distopia: "sci-fi",
+  horror: "terror",
+  miedo: "terror",
+  suspense: "thriller",
+  psicologico: "thriller",
+  tension: "thriller",
+  oeste: "western",
+  vaqueros: "western",
+};
+
+const EXPANSIONS: Record<string, string> = {
+  // 1. Acción
+  accion: "Acción,Action,Adrenalina",
+
+  // 2. Animación
+  animacion: "Animación,Animation,Animado,Dibujos,CGI",
+
+  // 3. Aventuras
+  aventuras: "Aventuras,Aventura,Adventure,Épico,Epico",
+
+  // 4. Bélico
+  belico: "Bélico,Belico,War,Guerra",
+
+  // 5. Biografía
+  biografia: "Biografía,Biografia,Biography,Biográfico,Biografico,Biopic",
+
+  // 6. Noir
+  noir: "Noir,FilmNoir,Film-Noir,Cine negro,Negro,Neo-Noir",
+
+  // 7. Comedia
+  comedia: "Comedia,Comedy,Humor,Cómico,Comico",
+
+  // 8. Crimen
+  crimen: "Crimen,Crime,Policiaco,Policial,Criminal,Delito,Mafia",
+
+  // 9. Deporte
+  deporte: "Deporte,Deportes,Sport,Sports,Deportivo",
+
+  // 10. Documental
+  documental: "Documental,Documentary",
+
+  // 11. Drama
+  drama: "Drama",
+
+  // 12. Familiar
+  familiar: "Familiar,Family,Infantil,Niños,Ninos",
+
+  // 13. Fantasía
+  fantasia: "Fantasía,Fantasia,Fantasy,Fantástico,Fantastico",
+
+  // 14. Histórico
+  historico: "Histórico,Historico,History,Historia,Época,Epoca",
+
+  // 15. Intriga
+  intriga: "Intriga,Mystery,Misterio,Enigma,Investigación,Investigacion",
+
+  // 16. Música
+  musica: "Música,Musica,Music,Musical,Canciones",
+
+  // 17. Romance
+  romance: "Romance,Romántico,Romantico,Amor",
+
+  // 18. Sci-Fi
+  "sci-fi": "Sci-Fi,Scifi,Ciencia ficción,Ciencia ficcion,Ciencia-Ficción,Futurista,Distopía,Distopia",
+
+  // 19. Terror
+  terror: "Terror,Horror,Miedo",
+
+  // 20. Thriller
+  thriller: "Thriller,Psicológico,Psicologico,Tensión,Tension,Suspense",
+
+  // 21. Western
+  western: "Western,Oeste,Vaqueros",
+};
+
 /**
  * Expande el nombre canónico de un género a todas las etiquetas y variantes almacenadas en PostgreSQL
  * para que las consultas Full-Text en search_movies_offset recuperen todas las películas asociadas.
@@ -92,72 +223,8 @@ export function slugToGenre(slug: string | null | undefined): string | null {
  */
 export function expandGenreForDb(genre: string | null | undefined): string | null {
   if (!genre) return null;
-  const slug = toSlug(genre);
+  const rawSlug = toSlug(genre);
+  const canonicalSlug = EXPANSIONS[rawSlug] ? rawSlug : GENRE_ALIASES_TO_CANONICAL_SLUG[rawSlug];
 
-  const EXPANSIONS: Record<string, string> = {
-    // 1. Acción
-    accion: "Acción,Action,Adrenalina",
-
-    // 2. Animación
-    animacion: "Animación,Animation,Animado,Dibujos,CGI",
-
-    // 3. Aventuras
-    aventuras: "Aventuras,Aventura,Adventure,Épico,Epico",
-
-    // 4. Bélico
-    belico: "Bélico,Belico,War,Guerra",
-
-    // 5. Biografía
-    biografia: "Biografía,Biografia,Biography,Biográfico,Biografico,Biopic",
-
-    // 6. Noir
-    noir: "Noir,FilmNoir,Film-Noir,Cine negro,Negro,Neo-Noir",
-
-    // 7. Comedia
-    comedia: "Comedia,Comedy,Humor,Cómico,Comico",
-
-    // 8. Crimen
-    crimen: "Crimen,Crime,Policiaco,Policial,Criminal,Delito,Mafia",
-
-    // 9. Deporte
-    deporte: "Deporte,Deportes,Sport,Sports,Deportivo",
-
-    // 10. Documental
-    documental: "Documental,Documentary",
-
-    // 11. Drama
-    drama: "Drama",
-
-    // 12. Familiar
-    familiar: "Familiar,Family,Infantil,Niños,Ninos",
-
-    // 13. Fantasía
-    fantasia: "Fantasía,Fantasia,Fantasy,Fantástico,Fantastico",
-
-    // 14. Histórico
-    historico: "Histórico,Historico,History,Historia,Época,Epoca",
-
-    // 15. Intriga
-    intriga: "Intriga,Mystery,Misterio,Enigma,Investigación,Investigacion",
-
-    // 16. Música
-    musica: "Música,Musica,Music,Musical,Canciones",
-
-    // 17. Romance
-    romance: "Romance,Romántico,Romantico,Amor",
-
-    // 18. Sci-Fi
-    "sci-fi": "Sci-Fi,Scifi,Ciencia ficción,Ciencia ficcion,Ciencia-Ficción,Futurista,Distopía,Distopia",
-
-    // 19. Terror
-    terror: "Terror,Horror,Miedo",
-
-    // 20. Thriller
-    thriller: "Thriller,Psicológico,Psicologico,Tensión,Tension,Suspense",
-
-    // 21. Western
-    western: "Western,Oeste,Vaqueros",
-  };
-
-  return EXPANSIONS[slug] || genre;
+  return (canonicalSlug && EXPANSIONS[canonicalSlug]) || EXPANSIONS[rawSlug] || genre;
 }

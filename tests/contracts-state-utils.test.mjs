@@ -195,7 +195,7 @@ describe("state.js y Pretty Paths", () => {
   });
 
   test("genreToSlug y countryToSlug aplican whitelist estricta (no fallback algorítmico)", () => {
-    // Catálogo canónico de 21 géneros
+    // Catálogo canónico oficial de 21 géneros (1:1 con slugs oficiales)
     const EXPECTED_GENRES = {
       "Acción": "accion",
       "Animación": "animacion",
@@ -203,7 +203,6 @@ describe("state.js y Pretty Paths", () => {
       "Bélico": "belico",
       "Biografía": "biografia",
       "Noir": "noir",
-      "Cine negro": "noir",
       "Comedia": "comedia",
       "Crimen": "crimen",
       "Deporte": "deporte",
@@ -226,47 +225,23 @@ describe("state.js y Pretty Paths", () => {
       assert.equal(contracts.buildFilterUrl("genre", name), `/${expectedSlug}/`, `URL: ${name}`);
     }
 
-    // Aliases oficiales adicionales (inglés y términos temáticos de la tabla oficial)
-    assert.equal(contracts.genreToSlug("Action"), "accion");
-    assert.equal(contracts.genreToSlug("adrenalina"), "accion");
-    assert.equal(contracts.genreToSlug("dibujos"), "animacion");
-    assert.equal(contracts.genreToSlug("cgi"), "animacion");
-    assert.equal(contracts.genreToSlug("épico"), "aventuras");
-    assert.equal(contracts.genreToSlug("guerra"), "belico");
-    assert.equal(contracts.genreToSlug("Biopic"), "biografia");
-    assert.equal(contracts.genreToSlug("biográfico"), "biografia");
-    assert.equal(contracts.genreToSlug("FilmNoir"), "noir");
-    assert.equal(contracts.genreToSlug("neo-noir"), "noir");
-    assert.equal(contracts.genreToSlug("cine negro"), "noir");
-    assert.equal(contracts.genreToSlug("humor"), "comedia");
-    assert.equal(contracts.genreToSlug("cómico"), "comedia");
-    assert.equal(contracts.genreToSlug("policiaco"), "crimen");
-    assert.equal(contracts.genreToSlug("mafia"), "crimen");
-    assert.equal(contracts.genreToSlug("delito"), "crimen");
-    assert.equal(contracts.genreToSlug("Sport"), "deporte");
-    assert.equal(contracts.genreToSlug("Deportes"), "deporte");
-    assert.equal(contracts.genreToSlug("Family"), "familiar");
-    assert.equal(contracts.genreToSlug("Infantil"), "familiar");
-    assert.equal(contracts.genreToSlug("Fantasy"), "fantasia");
-    assert.equal(contracts.genreToSlug("Fantástico"), "fantasia");
-    assert.equal(contracts.genreToSlug("época"), "historico");
-    assert.equal(contracts.genreToSlug("misterio"), "intriga");
-    assert.equal(contracts.genreToSlug("enigma"), "intriga");
-    assert.equal(contracts.genreToSlug("investigación"), "intriga");
-    assert.equal(contracts.genreToSlug("Musical"), "musica");
-    assert.equal(contracts.genreToSlug("canciones"), "musica");
-    assert.equal(contracts.genreToSlug("romántico"), "romance");
-    assert.equal(contracts.genreToSlug("amor"), "romance");
-    assert.equal(contracts.genreToSlug("Ciencia Ficción"), "sci-fi");
-    assert.equal(contracts.genreToSlug("futurista"), "sci-fi");
-    assert.equal(contracts.genreToSlug("distopía"), "sci-fi");
-    assert.equal(contracts.genreToSlug("Horror"), "terror");
-    assert.equal(contracts.genreToSlug("miedo"), "terror");
-    assert.equal(contracts.genreToSlug("psicológico"), "thriller");
-    assert.equal(contracts.genreToSlug("tensión"), "thriller");
-    assert.equal(contracts.genreToSlug("suspense"), "thriller");
-    assert.equal(contracts.genreToSlug("oeste"), "western");
-    assert.equal(contracts.genreToSlug("vaqueros"), "western");
+    // Los aliases y etiquetas temáticas NO generan URLs (devuelven null en genreToSlug)
+    assert.equal(contracts.genreToSlug("Cine negro"), null);
+    assert.equal(contracts.genreToSlug("Action"), null);
+    assert.equal(contracts.genreToSlug("adrenalina"), null);
+    assert.equal(contracts.genreToSlug("dibujos"), null);
+    assert.equal(contracts.genreToSlug("cgi"), null);
+    assert.equal(contracts.genreToSlug("épico"), null);
+    assert.equal(contracts.genreToSlug("guerra"), null);
+    assert.equal(contracts.genreToSlug("Biopic"), null);
+    assert.equal(contracts.genreToSlug("FilmNoir"), null);
+    assert.equal(contracts.genreToSlug("humor"), null);
+    assert.equal(contracts.genreToSlug("policiaco"), null);
+    assert.equal(contracts.genreToSlug("Sport"), null);
+    assert.equal(contracts.genreToSlug("Family"), null);
+    assert.equal(contracts.genreToSlug("Musical"), null);
+    assert.equal(contracts.genreToSlug("miedo"), null);
+    assert.equal(contracts.genreToSlug("vaqueros"), null);
 
     // Expansión para la consulta en Base de Datos PostgreSQL (21 géneros con español, inglés y aliases)
     assert.equal(contracts.expandGenreForDb("Música"), "Música,Musica,Music,Musical,Canciones");
