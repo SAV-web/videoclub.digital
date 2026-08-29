@@ -224,12 +224,14 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
 let isCardEventsInitialized = false;
 let cardLifecycleGen = 0;
 let cardUnsubscribers: Array<() => void> = [];
+const initializedContainers = new Set<HTMLElement>();
 
 export function disposeCardEvents(): void {
   cardLifecycleGen++;
   cardUnsubscribers.forEach(unsub => unsub());
 
   cardUnsubscribers = [];
+  initializedContainers.clear();
   unflipAllCards();
   if (hoverTimeout) {
     clearTimeout(hoverTimeout);
@@ -261,8 +263,8 @@ export function disposeCardEvents(): void {
 
 
 export function initCardInteractions(gridContainer: HTMLElement): void {
-  if (isCardEventsInitialized || !gridContainer) return;
-  isCardEventsInitialized = true;
+  if (!gridContainer || initializedContainers.has(gridContainer)) return;
+  initializedContainers.add(gridContainer);
 
   // --- Hover (Desktop) ---
   const handlePointerOver = (e: PointerEvent) => {
@@ -395,18 +397,19 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
   gridContainer.addEventListener('pointerdown', handlePointerDown, { passive: true });
   gridContainer.addEventListener('pointerup', handlePointerUp);
 
-  if (typeof document !== "undefined") {
+  if (!isCardEventsInitialized && typeof document !== "undefined") {
     document.addEventListener("visibilitychange", handleCardVisibilityChange);
+    cardUnsubscribers.push(() => {
+      document.removeEventListener("visibilitychange", handleCardVisibilityChange);
+    });
   }
 
   cardUnsubscribers.push(() => {
     gridContainer.removeEventListener('pointerdown', handlePointerDown);
     gridContainer.removeEventListener('pointerup', handlePointerUp);
-    if (typeof document !== "undefined") {
-      document.removeEventListener("visibilitychange", handleCardVisibilityChange);
-    }
     if (tapTimeout) clearTimeout(tapTimeout);
   });
+  isCardEventsInitialized = true;
 }
 
 
@@ -677,7 +680,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   const hqPoster = getHqPosterUrl(movie.image);
   img.alt = `Póster de ${movie.title}`;
 
-  const priorityCount = isMobileViewport() ? 6 : 2;
+  const priorityCount = isMobileViewport() ? 6 : (CONFIG.CARD_BATCH_SIZE || 12);
   const isFirstPage = getCurrentPage() === 1;
 
   if (isFirstPage && index < priorityCount) {

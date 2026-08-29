@@ -20,8 +20,11 @@
   /* Aísla el cálculo de anchura del resto de la página (Súper rápido) */
   container-type: inline-size;
   transition: padding 0.3s ease;
-  padding: calc(var(--mobile-header-height) + var(--space-md) + env(safe-area-inset-top)) var(--space-md) calc(var(--space-md) + env(safe-area-inset-bottom));
+  padding: var(--space-xs) var(--space-xs) calc(var(--space-md) + env(safe-area-inset-bottom));
 
+  @media (min-width: 769px) and (min-height: 501px) {
+    padding: var(--space-md) var(--space-lg) var(--space-xs);
+  }
   @media (min-width: 1200px) { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
   @media (min-width: 1600px) { max-width: 1800px; }
 }
@@ -78,11 +81,11 @@ body.sidebar-is-open .sidebar {
 
 .main-header {
   display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-xs);
-  position: fixed; top: 0; inset-inline: 0; z-index: var(--z-index-header);
+  position: sticky; top: 0; inset-inline: 0; z-index: var(--z-index-header);
   padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-xs) var(--space-xs);
 
   @media (min-width: 769px) and (min-height: 501px) {
-    position: sticky; padding: var(--space-lg); gap: var(--space-md) var(--space-lg);
+    padding: var(--space-lg); gap: var(--space-md) var(--space-lg);
   }
   @media (min-width: 1200px) { padding-inline: var(--space-xxl); }
 }

@@ -622,7 +622,7 @@ export function updateMobileStatusBar(
     // 2. Estudio
     if (filters.studio) {
       const studioName = FILTER_CONFIG.studio?.items[filters.studio] || STUDIO_DATA[filters.studio]?.title || filters.studio;
-      segments.push(`estudio ${studioName}`);
+      segments.push(`© ${studioName}`);
     }
 
     // 3. Selección

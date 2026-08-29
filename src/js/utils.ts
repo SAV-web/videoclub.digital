@@ -377,14 +377,16 @@ export interface ViewTransition {
 }
 
 // Animaciones de Hollywood (cuando pinchas una peli y se hace grande)
-export function executeViewTransition(updateDomCallback: () => void): ViewTransition | { finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void> } {
+export function executeViewTransition(updateDomCallback: () => void | Promise<void>): ViewTransition | { finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void> } {
   if (!document.startViewTransition || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    updateDomCallback();
-    const resolved = Promise.resolve();
+    const res = updateDomCallback();
+    const resolved = res instanceof Promise ? res : Promise.resolve();
     return { finished: resolved, ready: resolved, updateCallbackDone: resolved };
   }
   
-  return document.startViewTransition(updateDomCallback);
+  return document.startViewTransition(async () => {
+    await updateDomCallback();
+  });
 }
 
 // Calcula el número total de páginas reales tras absorber los elementos huérfanos de la última página (1 o 2 elementos)

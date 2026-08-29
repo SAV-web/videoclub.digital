@@ -71,6 +71,17 @@ import {
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 import { MappedMovie, ActiveFilters, VipData } from "./types.js";
 import type { User } from "@supabase/supabase-js";
+import {
+  renderMovieGrid,
+  renderNoResults,
+  renderSkeletons,
+  renderErrorState,
+  runFlipOnboarding,
+  handleCardClick,
+  initCardInteractions,
+  updateCardUI,
+  disposeCardEvents
+} from "./components/card.js";
 
 
 // Interfaces para carga dinámica de módulos
@@ -79,17 +90,6 @@ interface SidebarModule {
   closeMobileDrawer(): void;
   openMobileDrawer(): void;
   collapseAllSections(): void;
-}
-
-interface CardModule {
-  renderMovieGrid(container: HTMLElement | null, movies: MappedMovie[], vipData: VipData | null): Promise<void>;
-  renderNoResults(gridContainer: HTMLElement | null, paginationContainer: HTMLElement | null, filters: ActiveFilters): void;
-  renderSkeletons(gridContainer: HTMLElement | null, paginationContainer: HTMLElement | null): void;
-  runFlipOnboarding(gridContainer: HTMLElement | null): void;
-  handleCardClick(this: HTMLElement, e: Event): void;
-  initCardInteractions(gridContainer: HTMLElement | null): void;
-  updateCardUI(cardElement: HTMLElement): void;
-  renderErrorState?(container: HTMLElement | null, pagContainer: HTMLElement | null, message: string): void;
 }
 
 // Módulos que cargamos más tarde para que la web arranque al instante
@@ -117,9 +117,6 @@ async function loadSidebar(): Promise<SidebarModule | null> {
 
 
 
-const loadCardModule = (): Promise<CardModule> =>
-  import("./components/card.js") as unknown as Promise<CardModule>;
-
 export interface RenderOptions {
   replaceHistory?: boolean;
   forceSkeleton?: boolean;
@@ -143,11 +140,8 @@ export async function loadAndRenderMovies(
   dom.gridContainer?.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer?.setAttribute("aria-busy", "true");
 
-  const cardModulePromise = loadCardModule();
-
   let skeletonTimeout: ReturnType<typeof setTimeout> | null = null;
   if (forceSkeleton) {
-    const { renderSkeletons } = await cardModulePromise;
     renderSkeletons(dom.gridContainer, dom.paginationContainer);
   } else {
     interface NetworkInfo {
@@ -162,8 +156,7 @@ export async function loadAndRenderMovies(
     const effType = connection?.effectiveType;
     const skeletonDelay = isYearFilter ? 300 : (effType === "slow-2g" ? 0 : effType === "2g" ? 50 : effType === "3g" ? 100 : 150);
 
-    skeletonTimeout = setTimeout(async () => {
-      const { renderSkeletons } = await cardModulePromise;
+    skeletonTimeout = setTimeout(() => {
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
     }, skeletonDelay);
   }
@@ -286,14 +279,11 @@ export async function loadAndRenderMovies(
 
         updateUrl({ replace: replaceHistory });
 
-        const cardModule = await cardModulePromise;
-        let renderPromise: Promise<void> | undefined = undefined;
-        const transition = executeViewTransition(() => {
-          renderPromise = updateDomWithResults(p1Movies, effectiveTotal, cardModule, vipData, hasVip);
+        const transition = executeViewTransition(async () => {
+          await updateDomWithResults(p1Movies, effectiveTotal, vipData, hasVip);
           window.scrollTo({ top: 0, behavior: "auto" });
         });
         await transition.updateCallbackDone;
-        if (renderPromise) await renderPromise;
         return;
       }
 
@@ -355,19 +345,13 @@ export async function loadAndRenderMovies(
       }
     }
 
-    const cardModule = await cardModulePromise;
-
     // Pinta con efecto cine
-    let renderPromise: Promise<void> | undefined = undefined;
-    const transition = executeViewTransition(() => {
-      renderPromise = updateDomWithResults(movies, effectiveTotal, cardModule, vipData, hasVip);
+    const transition = executeViewTransition(async () => {
+      await updateDomWithResults(movies, effectiveTotal, vipData, hasVip);
       window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
     });
 
     await transition.updateCallbackDone;
-    if (renderPromise) {
-      await renderPromise;
-    }
 
   } catch (error: unknown) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
@@ -375,10 +359,7 @@ export async function loadAndRenderMovies(
 
     const msg = getFriendlyErrorMessage(error);
     if (msg) showToast(msg, "error");
-    const { renderErrorState } = await cardModulePromise;
-    if (renderErrorState) {
-      renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
-    }
+    renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
 
     // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
     if (msg) throw new Error(msg);
@@ -395,11 +376,9 @@ export async function loadAndRenderMovies(
 async function updateDomWithResults(
   movies: MappedMovie[],
   totalMovies: number,
-  cardModule: CardModule,
   vipData: VipData | null = null,
   hasVip = false
 ): Promise<void> {
-  const { renderMovieGrid, renderNoResults, renderSkeletons, runFlipOnboarding } = cardModule;
   setTotalMovies(totalMovies);
   updateTotalResultsUI(totalMovies, movies);
 
@@ -768,7 +747,6 @@ export async function disposeApp(): Promise<void> {
   } catch (e) { }
 
   try {
-    const { disposeCardEvents } = await import("./components/card.js");
     disposeCardEvents();
   } catch (e) { }
 
@@ -829,8 +807,7 @@ function setupGlobalListeners(): void {
           e.preventDefault();
         }
 
-        const { handleCardClick } = await loadCardModule();
-        handleCardClick.call(cardElement, e);
+        handleCardClick.call(cardElement, e as MouseEvent);
         return;
       }
 
@@ -844,18 +821,14 @@ function setupGlobalListeners(): void {
   }
 
   // Interacciones Card (Hover, Tap)
-  const cardInteractionsGen = mainLifecycleGen;
-  loadCardModule().then(({ initCardInteractions }) => {
-    if (cardInteractionsGen !== mainLifecycleGen) return;
-    if (dom.gridContainer) initCardInteractions(dom.gridContainer);
-  });
-
+  if (dom.gridContainer) {
+    initCardInteractions(dom.gridContainer);
+  }
 
   const quickViewContent = document.getElementById("quick-view-content");
   if (quickViewContent) {
-    const handleQuickViewClick = async function (this: HTMLElement, e: Event) {
-      const { handleCardClick } = await loadCardModule();
-      handleCardClick.call(this, e);
+    const handleQuickViewClick = function (this: HTMLElement, e: Event) {
+      handleCardClick.call(this, e as MouseEvent);
     };
 
     quickViewContent.addEventListener("click", handleQuickViewClick);
@@ -892,16 +865,14 @@ function setupGlobalListeners(): void {
   document.addEventListener("keydown", handleEscKey);
   mainUnsubscribers.push(() => document.removeEventListener("keydown", handleEscKey));
 
-  const handleDataRefresh = async () => {
-    const { updateCardUI } = await loadCardModule();
+  const handleDataRefresh = () => {
     document.querySelectorAll(".movie-card").forEach((el) => updateCardUI(el as HTMLElement));
   };
 
   // Eventos Personalizados de la App
   mainUnsubscribers.push(
-    appEvents.on("card:requestUpdate", async (data: { cardElement: HTMLElement }) => {
+    appEvents.on("card:requestUpdate", (data: { cardElement: HTMLElement }) => {
       if (data && data.cardElement) {
-        const { updateCardUI } = await loadCardModule();
         updateCardUI(data.cardElement);
       }
     }),
