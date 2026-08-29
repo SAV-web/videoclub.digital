@@ -20,7 +20,6 @@ import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo } from "../constants.js";
 import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
 import { loadAndRenderMovies } from "../main.js";
-import spriteUrl from "../../sprite.svg";
 import { ActiveFilters } from '../types.js';
 
 // --- Constantes Locales ---
@@ -1412,7 +1411,7 @@ export function initSidebar(): void {
           svg.setAttribute("viewBox", iconData.vb || "0 0 24 24");
           svg.setAttribute("class", `sidebar-platform-icon ${iconData.class || ''}`);
           svg.setAttribute("fill", "currentColor");
-          svg.innerHTML = `<use href="${spriteUrl}#${iconData.id}"></use>`;
+          svg.innerHTML = `<use href="#${iconData.id}"></use>`;
           link.appendChild(svg);
         }
 

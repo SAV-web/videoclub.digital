@@ -64,6 +64,40 @@ function serveSeoSitePlugin() {
   };
 }
 
+function inlineSvgSpritesPlugin() {
+  return {
+    name: 'inline-svg-sprites-plugin',
+    transformIndexHtml(html) {
+      const srcDir = path.resolve(__dirname, 'src');
+      const spritePath = path.join(srcDir, 'sprite.svg');
+      const flagsPath = path.join(srcDir, 'flags.svg');
+      
+      let spriteSymbols = '';
+      let flagsSymbols = '';
+
+      if (fs.existsSync(spritePath)) {
+        spriteSymbols = fs.readFileSync(spritePath, 'utf-8')
+          .replace(/<\?xml[^>]*\?>/gi, '')
+          .replace(/<svg[^>]*>/i, '')
+          .replace(/<\/svg>\s*$/i, '')
+          .trim();
+      }
+
+      if (fs.existsSync(flagsPath)) {
+        flagsSymbols = fs.readFileSync(flagsPath, 'utf-8')
+          .replace(/<\?xml[^>]*\?>/gi, '')
+          .replace(/<svg[^>]*>/i, '')
+          .replace(/<\/svg>\s*$/i, '')
+          .trim();
+      }
+
+      const inlinedSvg = `\n  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;" aria-hidden="true">\n${spriteSymbols}\n${flagsSymbols}\n  </svg>\n`;
+
+      return html.replace('<body>', `<body>${inlinedSvg}`);
+    }
+  };
+}
+
 function syncPublicSpritesPlugin() {
   const sync = () => {
     const publicDir = path.resolve(__dirname, 'public');
@@ -92,7 +126,7 @@ function syncPublicSpritesPlugin() {
 }
 
 export default defineConfig({
-  plugins: [syncPublicSpritesPlugin(), swVersionPlugin(), serveSeoSitePlugin()],
+  plugins: [inlineSvgSpritesPlugin(), syncPublicSpritesPlugin(), swVersionPlugin(), serveSeoSitePlugin()],
   // Ignorar seo-site/dist y dist en el watcher de Vite para evitar fugas de memoria con 13.488 archivos
   server: {
     watch: {

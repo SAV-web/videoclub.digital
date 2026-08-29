@@ -20,7 +20,6 @@ import { preserveHyphenatedWords } from "../../shared/formatters.js";
 
 
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES, CONFIG } from "../constants.js";
-import spriteUrl from "../../sprite.svg";
 import { Movie, MappedMovie, MovieCardElement } from "../types.js";
 
 interface MovieContentElement extends HTMLElement {
@@ -522,7 +521,7 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
         svg.setAttribute("width", String(conf.w || "24")); svg.setAttribute("height", String(conf.h || "24"));
         svg.setAttribute("fill", "currentColor"); svg.setAttribute("viewBox", conf.vb || "0 0 24 24");
         const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        use.setAttribute("href", `${spriteUrl}#${conf.id}`);
+        use.setAttribute("href", `#${conf.id}`);
         svg.appendChild(use); span.appendChild(svg);
         nodes.iconsContainer?.appendChild(span);
       }

@@ -15,7 +15,6 @@ import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import { normalizeMovieId } from "../contracts.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
-import spriteUrl from "../../sprite.svg";
 
 import { MappedMovie, ActiveFilters, UserMovieEntry, PersonDetails, VipData, MovieCardElement } from "../types.js";
 
@@ -799,7 +798,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
       if (conf) {
         iconsHtml += `<span class="platform-icon ${conf.class || ''}" title="${conf.title}">
           <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="${conf.vb || "0 0 24 24"}">
-            <use href="${spriteUrl}#${conf.id}"></use>
+            <use href="#${conf.id}"></use>
           </svg>
         </span>`;
       }

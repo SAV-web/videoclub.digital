@@ -11,7 +11,6 @@
 import { CONFIG } from "./constants.js";
 import { ERROR_CODES, isAbortError, parseYearRangeRaw, buildFilterUrl } from "./contracts.js";
 export { parseYearRangeRaw, buildFilterUrl };
-import flagSpriteUrl from "../flags.svg";
 import { Movie, MappedMovie } from "./types.js";
 
 // --- IMPORTACIÓN Y RE-EXPORTACIÓN DE LA FUENTE ÚNICA DE FORMATEADORES (SSOT) ---
@@ -217,7 +216,7 @@ export function renderCountryFlag(
     // Creamos SVG seguro contra inyección de código (XSS)
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", "16"); svg.setAttribute("height", "16");
-    svg.innerHTML = `<use href="${flagSpriteUrl}#flag-${countryCode.toLowerCase()}"></use>`;
+    svg.innerHTML = `<use href="#flag-${countryCode.toLowerCase()}"></use>`;
     flagSpan.appendChild(svg);
   } else {
     container.style.display = "none";
