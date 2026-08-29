@@ -709,7 +709,6 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   const isFirstPage = getCurrentPage() === 1;
 
   if (isFirstPage && index < priorityCount) {
-    card.style.animation = "none";
     img.loading = "eager";
     img.decoding = "async";
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
@@ -974,50 +973,34 @@ export async function renderMovieGrid(
   unflipAllCards();
   if (!container) return;
 
-  const BATCH_SIZE = CONFIG.CARD_BATCH_SIZE || 12;
+  const hasVip = Boolean(vipData && (
+    (vipData.type === 'person' && vipData.data) ||
+    (vipData.type === 'collection' && vipData.code) ||
+    (vipData.type === 'studio' && vipData.code)
+  ));
+  const offset = hasVip ? 1 : 0;
 
-  // Lote 1: Renderizado inmediato inicial para FCP ultra-rápido (primeras 12 tarjetas)
-  const firstBatchLimit = Math.min(BATCH_SIZE, movies.length);
   const fragment = document.createDocumentFragment();
 
-  for (let i = 0; i < firstBatchLimit; i++) {
-    fragment.appendChild(createCardElement(movies[i], i));
+  if (vipData) {
+    if (vipData.type === 'person' && vipData.data) {
+      fragment.appendChild(createPersonCardElement(vipData.data as PersonDetails));
+    } else if (vipData.type === 'collection' && vipData.code) {
+      fragment.appendChild(createCollectionCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
+    } else if (vipData.type === 'studio' && vipData.code) {
+      fragment.appendChild(createStudioCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
+    }
+  }
+
+  for (let i = 0; i < movies.length; i++) {
+    fragment.appendChild(createCardElement(movies[i], i + offset));
   }
 
   if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
 
   cleanupLazyImages(container);
   container.textContent = "";
-
-  if (vipData) {
-    if (vipData.type === 'person' && vipData.data) {
-      container.appendChild(createPersonCardElement(vipData.data as PersonDetails));
-    } else if (vipData.type === 'collection' && vipData.code) {
-      container.appendChild(createCollectionCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
-    } else if (vipData.type === 'studio' && vipData.code) {
-      container.appendChild(createStudioCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
-    }
-  }
-
   container.appendChild(fragment);
-
-  // Lotes siguientes: Ceder control al Main Thread (yieldToMain) entre cada lote de 12 tarjetas
-  for (let index = BATCH_SIZE; index < movies.length; index += BATCH_SIZE) {
-    if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
-
-    await yieldToMain();
-
-    if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
-
-    const limit = Math.min(index + BATCH_SIZE, movies.length);
-    const batchFragment = document.createDocumentFragment();
-
-    for (let i = index; i < limit; i++) {
-      batchFragment.appendChild(createCardElement(movies[i], i));
-    }
-
-    container.appendChild(batchFragment);
-  }
 }
 
 function createCardElement(movie: MappedMovie, index: number): DocumentFragment {
@@ -1029,7 +1012,7 @@ function createCardElement(movie: MappedMovie, index: number): DocumentFragment 
   if (card) {
     card.dataset.movieId = String(movie.id);
     card.movieData = movie;
-    card.style.setProperty("--card-index", String(Math.min(index, 20)));
+    card.style.setProperty("--card-index", String(Math.min(index, 24)));
 
     populateCard(card, movie, index);
     updateCardUI(card);
@@ -1053,6 +1036,7 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
 
   card.dataset.movieId = `person-${person.id}`;
   card.movieData = { ...person, isPerson: true };
+  card.style.setProperty("--card-index", "0");
 
   const img = card.querySelector('img');
 
@@ -1194,8 +1178,10 @@ function createGroupCardElement(
   const template = getCollectionTemplate();
   if (!template) return document.createDocumentFragment();
   const clone = template.content.cloneNode(true) as DocumentFragment;
-  const card = clone.querySelector('.collection-card');
+  const card = clone.querySelector<HTMLElement>('.collection-card');
   if (!card) return clone;
+
+  card.style.setProperty("--card-index", "0");
 
   const isStudio = kind === 'studio';
   const img = card.querySelector('img');

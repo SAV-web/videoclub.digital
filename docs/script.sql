@@ -793,9 +793,7 @@ BEGIN
     -- Evita que dos sincronizaciones de staging se ejecuten concurrentemente
     PERFORM pg_advisory_xact_lock(hashtext('cinelog_staging_sync'));
 
-    -- =================================================================
-    -- FASE 0: POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE STAGING
-    -- =================================================================
+    -- 2. POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE STAGING
     -- Solo se extraen entidades de películas formalmente admitidas en el catálogo (show IS TRUE)
     INSERT INTO public.genres (name)
     SELECT DISTINCT TRIM(g.name) FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS g(name)
@@ -825,10 +823,8 @@ BEGIN
     GET DIAGNOSTICS v_rows_count = ROW_COUNT;
     actors_created_count := actors_created_count + v_rows_count;
 
-    -- =================================================================
-    -- FASE 1: ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPS, BIOGRAFÍAS, COMPONENTES)
-    -- =================================================================
-    -- 1.1. Actualizar directores desde people_staging (deduplicado y normalizado)
+    -- 3. ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPS, BIOGRAFÍAS, COMPONENTES)
+    -- 3.1. Actualizar directores desde people_staging (deduplicado y normalizado)
     WITH dedup_directors AS (
         SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
             p.name,
@@ -871,7 +867,7 @@ BEGIN
     );
     GET DIAGNOSTICS directors_modified_count = ROW_COUNT;
 
-    -- 1.2. Actualizar actores desde people_staging (deduplicado y normalizado)
+    -- 3.2. Actualizar actores desde people_staging (deduplicado y normalizado)
     WITH dedup_actors AS (
         SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
             p.name,
@@ -912,9 +908,7 @@ BEGIN
     GET DIAGNOSTICS actors_modified_count = ROW_COUNT;
     people_modified_count := directors_created_count + actors_created_count + directors_modified_count + actors_modified_count;
 
-    -- =================================================================
-    -- FASE 2: UPSERT DIFERENCIAL DE PELÍCULAS (PUBLIC.MOVIES)
-    -- =================================================================
+    -- 4: UPSERT DIFERENCIAL DE PELÍCULAS (PUBLIC.MOVIES)
     WITH upserted_movies AS (
         INSERT INTO public.movies (
             id, relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
@@ -969,9 +963,7 @@ BEGIN
     )
     SELECT array_agg(id) INTO affected_movie_ids FROM upserted_movies;
 
-    -- =================================================================
-    -- FASE 3: RECONCILIACIÓN N:M CON TABLA TEMPORAL Y PRE-AGREGACIÓN LINEAL
-    -- =================================================================
+    -- 5: RECONCILIACIÓN N:M CON TABLA TEMPORAL Y PRE-AGREGACIÓN LINEAL
     IF affected_movie_ids IS NOT NULL AND array_length(affected_movie_ids, 1) > 0 THEN
         -- Asegurar reentrancia idempotente si la tabla ya existiera en la misma sesión
         DROP TABLE IF EXISTS tmp_affected_staging;

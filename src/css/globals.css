@@ -51,16 +51,24 @@ body {
   overflow-x: hidden; /* Evita scroll horizontal accidental */
   overscroll-behavior-y: contain; /* Desactiva Pull-to-Refresh nativo del navegador */
   
-  /* Renderizado de texto */
+  /* Renderizado de texto y balance tipográfico moderno */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* text-rendering: optimizeLegibility; ELIMINADO: Destruye los FPS en móviles al hacer scroll masivo */
   font-feature-settings: "cv05", "calt", "case", "liga", "kern";
 
   /* Transición de tema suave (Solo colores base) */
   transition: 
     background-color var(--transition-duration-normal) var(--transition-timing-function),
     color var(--transition-duration-normal) var(--transition-timing-function);
+}
+
+/* 3.1 Tipografía y Balance de Texto Moderno (Modern Web Guidance) */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+
+p, blockquote {
+  text-wrap: pretty;
 }
 
 /* 4. Reset de Imágenes y Medios */

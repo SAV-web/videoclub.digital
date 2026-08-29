@@ -32,3 +32,7 @@ dist-ssr
 seo-site/public/*.svg
 seo-site/dist
 seo-site/.astro
+
+# Agentes locales y skills
+.agents/
+skills-lock.json

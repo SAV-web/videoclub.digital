@@ -6,15 +6,15 @@
    1. ANIMACIONES Y KEYFRAMES
    ================================================================= */
 
-@keyframes card-appear {
-  from {
+@keyframes card-cascade-appear {
+  0% {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(24px) scale(0.96);
   }
 
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -89,9 +89,15 @@
 
 
 
-  /* Animación de entrada escalonada (Staggered) */
-  animation: card-appear var(--duration-quick) var(--ease-smooth-out) backwards;
-  animation-delay: calc(var(--card-index, 0) * 40ms);
+  /* Animación de entrada en Cascada Suave (Smooth Staggered Cascade) */
+  animation: card-cascade-appear 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--card-index, 0) * 45ms);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 
   transition: transform var(--duration-quick) var(--ease-spring);
 

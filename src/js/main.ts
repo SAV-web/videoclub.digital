@@ -24,7 +24,8 @@ import {
   fetchUserMovieDataForIds,
   fetchPersonDetails,
   fetchGroupDetails,
-  fetchAllUserMovieData
+  fetchAllUserMovieData,
+  fetchMovieById
 } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { isAbortError, getAppBasePath } from "./contracts.js";
@@ -70,7 +71,7 @@ import {
   updateUserDataForMovie
 } from "./state.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
-import { MappedMovie, ActiveFilters, VipData } from "./types.js";
+import { MappedMovie, ActiveFilters, VipData, MovieCardElement } from "./types.js";
 import type { User } from "@supabase/supabase-js";
 import {
   renderMovieGrid,
@@ -280,11 +281,8 @@ export async function loadAndRenderMovies(
 
         updateUrl({ replace: replaceHistory });
 
-        const transition = executeViewTransition(async () => {
-          await updateDomWithResults(p1Movies, effectiveTotal, vipData, hasVip);
-          window.scrollTo({ top: 0, behavior: "auto" });
-        });
-        await transition.updateCallbackDone;
+        await updateDomWithResults(p1Movies, effectiveTotal, vipData, hasVip);
+        window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
 
@@ -346,13 +344,9 @@ export async function loadAndRenderMovies(
       }
     }
 
-    // Pinta con efecto cine
-    const transition = executeViewTransition(async () => {
-      await updateDomWithResults(movies, effectiveTotal, vipData, hasVip);
-      window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
-    });
-
-    await transition.updateCallbackDone;
+    // Pinta la cuadrícula con efecto cascada
+    await updateDomWithResults(movies, effectiveTotal, vipData, hasVip);
+    window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
 
   } catch (error: unknown) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
@@ -1199,13 +1193,33 @@ export function init(): void {
   document.addEventListener("visibilitychange", handleMainVisibilityChange);
   mainUnsubscribers.push(() => document.removeEventListener("visibilitychange", handleMainVisibilityChange));
 
+  const initialUrlParams = new URLSearchParams(window.location.search);
+  const targetMovieId = initialUrlParams.get("movie") || initialUrlParams.get("peli");
+
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
 
   // Iniciar la carga y renderizado del catálogo INMEDIATAMENTE
-  loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, forceSkeleton: true }).catch(err => {
-    if (import.meta.env.DEV) console.error("Error en carga inicial del catálogo:", err);
-  });
+  loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, forceSkeleton: true })
+    .then(async () => {
+      if (targetMovieId) {
+        const grid = dom.gridContainer || document.getElementById("grid-container");
+        const cards = grid ? Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]")) : [];
+        const card = grid?.querySelector<MovieCardElement>(`.movie-card[data-movie-id="${targetMovieId}"]`);
+        const { openModal, openModalForMovie } = await import("./components/modal.js");
+        if (card && card.movieData) {
+          openModal(card, cards);
+        } else {
+          const movie = await fetchMovieById(targetMovieId);
+          if (movie) {
+            openModalForMovie(movie);
+          }
+        }
+      }
+    })
+    .catch(err => {
+      if (import.meta.env.DEV) console.error("Error en carga inicial del catálogo:", err);
+    });
 }
 
 
