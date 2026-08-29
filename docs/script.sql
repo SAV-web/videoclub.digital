@@ -796,14 +796,14 @@ BEGIN
     -- =================================================================
     -- FASE 0: POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE STAGING
     -- =================================================================
-    -- Solo se extraen entidades de películas formalmente admitidas en el catálogo (show = '1')
+    -- Solo se extraen entidades de películas formalmente admitidas en el catálogo (show IS TRUE)
     INSERT INTO public.genres (name)
-    SELECT DISTINCT TRIM(g.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(genre, ',')) AS g(name)
-    WHERE TRIM(show::text) = '1' AND genre IS NOT NULL AND TRIM(g.name) <> '' ON CONFLICT (name) DO NOTHING;
+    SELECT DISTINCT TRIM(g.name) FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS g(name)
+    WHERE s.show IS TRUE AND s.genre IS NOT NULL AND TRIM(g.name) <> '' ON CONFLICT (name) DO NOTHING;
 
     INSERT INTO public.directors (name)
-    SELECT DISTINCT TRIM(d.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(directors, ',')) AS d(name)
-    WHERE TRIM(show::text) = '1' AND directors IS NOT NULL AND TRIM(d.name) <> '' ON CONFLICT (name) DO NOTHING;
+    SELECT DISTINCT TRIM(d.name) FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.directors, ',')) AS d(name)
+    WHERE s.show IS TRUE AND s.directors IS NOT NULL AND TRIM(d.name) <> '' ON CONFLICT (name) DO NOTHING;
     GET DIAGNOSTICS v_rows_count = ROW_COUNT;
     directors_created_count := directors_created_count + v_rows_count;
 
@@ -814,8 +814,8 @@ BEGIN
     directors_created_count := directors_created_count + v_rows_count;
 
     INSERT INTO public.actors (name)
-    SELECT DISTINCT TRIM(a.name) FROM public.movies_staging, UNNEST(STRING_TO_ARRAY(actors, ',')) AS a(name)
-    WHERE TRIM(show::text) = '1' AND actors IS NOT NULL AND TRIM(a.name) <> '' AND actors <> '(A)' ON CONFLICT (name) DO NOTHING;
+    SELECT DISTINCT TRIM(a.name) FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.actors, ',')) AS a(name)
+    WHERE s.show IS TRUE AND s.actors IS NOT NULL AND TRIM(a.name) <> '' AND s.actors <> '(A)' ON CONFLICT (name) DO NOTHING;
     GET DIAGNOSTICS v_rows_count = ROW_COUNT;
     actors_created_count := actors_created_count + v_rows_count;
 
@@ -917,12 +917,12 @@ BEGIN
     -- =================================================================
     WITH upserted_movies AS (
         INSERT INTO public.movies (
-            relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
+            id, relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
             original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch,
             genres_list, directors_list, actors_list, selections_list, studios_list
         )
         SELECT
-            public.to_integer_safe(s.relevance::TEXT), TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
+            public.to_integer_safe(s.id::TEXT), public.to_integer_safe(s.relevance::TEXT), TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
@@ -930,8 +930,9 @@ BEGIN
             s.genre, s.directors, CASE WHEN s.actors = '(A)' THEN '' ELSE s.actors END, s.collection, s.studio
         FROM public.movies_staging s
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
-        WHERE s.image IS NOT NULL AND TRIM(s.image) <> '' AND TRIM(s.show::text) = '1'
-        ON CONFLICT (image) DO UPDATE SET
+        WHERE public.to_integer_safe(s.id::TEXT) IS NOT NULL AND s.show IS TRUE
+        ON CONFLICT (id) DO UPDATE SET
+            image = EXCLUDED.image,
             relevance = EXCLUDED.relevance, title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
@@ -940,6 +941,7 @@ BEGIN
             genres_list = EXCLUDED.genres_list, directors_list = EXCLUDED.directors_list, actors_list = EXCLUDED.actors_list,
             selections_list = EXCLUDED.selections_list, studios_list = EXCLUDED.studios_list
         WHERE
+            movies.image IS DISTINCT FROM EXCLUDED.image OR
             movies.relevance IS DISTINCT FROM EXCLUDED.relevance OR
             movies.title IS DISTINCT FROM EXCLUDED.title OR
             movies.year IS DISTINCT FROM EXCLUDED.year OR
@@ -978,7 +980,7 @@ BEGIN
         CREATE TEMP TABLE tmp_affected_staging ON COMMIT DROP AS
         SELECT s.*, m.id AS movie_id
         FROM public.movies_staging s
-        JOIN public.movies m ON TRIM(s.image) = m.image
+        JOIN public.movies m ON public.to_integer_safe(s.id::TEXT) = m.id
         WHERE m.id = ANY(affected_movie_ids);
 
         -- Indexación y estadísticas para acelerar los cruces relacionales posteriores
@@ -1170,4 +1172,4 @@ UPDATE public.genres SET synonyms = ARRAY['romance', 'love', 'romantico', 'amor'
 UPDATE public.genres SET synonyms = ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'] WHERE name = 'Sci-Fi' AND synonyms IS DISTINCT FROM ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'];
 UPDATE public.genres SET synonyms = ARRAY['horror', 'miedo'] WHERE name = 'Terror' AND synonyms IS DISTINCT FROM ARRAY['horror', 'miedo'];
 UPDATE public.genres SET synonyms = ARRAY['suspense', 'psicologico', 'tension'] WHERE name = 'Thriller' AND synonyms IS DISTINCT FROM ARRAY['suspense', 'psicologico', 'tension'];
-UPDATE public.genres SET synonyms = ARRAY['western', 'oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['western', 'oeste', 'vaqueros'];
+UPDATE public.genres SET synonyms = ARRAY['western', 'oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['western', 'oeste', 'vaqueros'];

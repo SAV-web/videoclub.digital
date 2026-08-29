@@ -22,10 +22,31 @@ import { MappedMovie, ActiveFilters, UserMovieEntry, PersonDetails, VipData, Mov
 //          CONSTANTES Y ESTADO
 // =================================================================
 
-// Cachear templates una sola vez
-const cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE) as HTMLTemplateElement | null;
-const personTemplate = document.querySelector(SELECTORS.PERSON_CARD_TEMPLATE) as HTMLTemplateElement | null;
-const collectionTemplate = document.querySelector("#collection-card-template") as HTMLTemplateElement | null;
+// Cachear templates bajo demanda (Lazy Getters) para asegurar reentrancia y evitar nulls en cold boots
+let cardTemplate: HTMLTemplateElement | null = null;
+let personTemplate: HTMLTemplateElement | null = null;
+let collectionTemplate: HTMLTemplateElement | null = null;
+
+function getCardTemplate(): HTMLTemplateElement | null {
+  if (!cardTemplate && typeof document !== "undefined") {
+    cardTemplate = document.querySelector(SELECTORS.MOVIE_CARD_TEMPLATE) as HTMLTemplateElement | null;
+  }
+  return cardTemplate;
+}
+
+function getPersonTemplate(): HTMLTemplateElement | null {
+  if (!personTemplate && typeof document !== "undefined") {
+    personTemplate = document.querySelector(SELECTORS.PERSON_CARD_TEMPLATE) as HTMLTemplateElement | null;
+  }
+  return personTemplate;
+}
+
+function getCollectionTemplate(): HTMLTemplateElement | null {
+  if (!collectionTemplate && typeof document !== "undefined") {
+    collectionTemplate = document.querySelector("#collection-card-template") as HTMLTemplateElement | null;
+  }
+  return collectionTemplate;
+}
 
 // Estado de Renderizado
 let currentRenderRequestId = 0;
@@ -996,8 +1017,9 @@ export async function renderMovieGrid(
 }
 
 function createCardElement(movie: MappedMovie, index: number): DocumentFragment {
-  if (!cardTemplate) return document.createDocumentFragment();
-  const clone = cardTemplate.content.cloneNode(true) as DocumentFragment;
+  const template = getCardTemplate();
+  if (!template) return document.createDocumentFragment();
+  const clone = template.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector(`.${CSS_CLASSES.MOVIE_CARD}`) as MovieCardElement | null;
 
   if (card) {
@@ -1014,8 +1036,9 @@ function createCardElement(movie: MappedMovie, index: number): DocumentFragment 
 }
 
 function createPersonCardElement(person: PersonDetails): DocumentFragment {
-  if (!personTemplate) return document.createDocumentFragment();
-  const clone = personTemplate.content.cloneNode(true) as DocumentFragment;
+  const template = getPersonTemplate();
+  if (!template) return document.createDocumentFragment();
+  const clone = template.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.person-card') as MovieCardElement | null;
   if (!card) return clone;
 
@@ -1164,8 +1187,9 @@ function createGroupCardElement(
   totalMovies: number = 0,
   thumbhash_st?: string | null
 ): DocumentFragment {
-  if (!collectionTemplate) return document.createDocumentFragment();
-  const clone = collectionTemplate.content.cloneNode(true) as DocumentFragment;
+  const template = getCollectionTemplate();
+  if (!template) return document.createDocumentFragment();
+  const clone = template.content.cloneNode(true) as DocumentFragment;
   const card = clone.querySelector('.collection-card');
   if (!card) return clone;
 
