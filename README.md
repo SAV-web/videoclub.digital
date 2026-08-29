@@ -13,13 +13,15 @@
 ## 🚀 Características Principales
 
 - 🔍 **Filtrado Avanzado & Multinivel**:
-  - Filtros combinados por Estudio (Universal, Warner, etc.), Género, País, Colecciones/Sagas y Rango de Años (Dual Slider).
+  - Filtros combinados por Estudio (© Universal, Warner, etc.), Género, País (banderas interactivas en fichas y modal), Colecciones/Sagas y Rango de Años (Dual Slider).
   - Búsqueda exacta de Directores y Actores con tarjetas informativas dedicadas (*VIP Cards* / Biografías).
   - Soporte para **colectivos y dúos cinematográficos** (ej. Hermanos Russo $\leftrightarrow$ Joe y Anthony Russo) con búsqueda e indexación bidireccional.
   - **Insignias de Doble Rol VIP** (`(D)` en fichas de actor, `(A)` en fichas de director) para alternar filmografías con un solo clic.
+  - Notificaciones informativas automáticas al conmutar filtros de persona excluyendo categorías previas incompatibles.
   - Píldoras dinámicas de exclusión (ej. `(NO España) x`).
 - ⚡ **Rendimiento Extraordinario (PWA Mobile-First)**:
-  - Carga masiva en la cuadrícula por lotes priorizados (`yieldToMain`).
+  - Carga masiva en la cuadrícula por lotes priorizados (`yieldToMain`) y resolución de plantillas mediante *Lazy Getters* a prueba de arranques en frío (*cold boots*).
+  - Micro-animaciones de elevación primaveral en todas las tarjetas al pasar el ratón, con supresión de recuadro en fichas VIP.
   - Animaciones de portada fluidas con **View Transitions API** nativa.
   - Caché inteligente en memoria LRU multiescala con deduplicación de peticiones en vuelo y reintentos automáticos progresivos (*backoff*) ante arranques en frío (*cold-starts*).
   - Sincronización determinista de estado y botones responsive ante rotaciones de pantalla (*portrait/landscape*).
@@ -28,7 +30,8 @@
   - Autenticación con Supabase Auth.
   - Gestión de puntuaciones personalizadas y Watchlist (pendientes de ver) con reglas estrictas de exclusividad mutua.
 - 📱 **Experiencia Móvil Nativa**:
-  - Interfaz responsiva con Container Queries.
+  - Interfaz responsiva con Container Queries y cabecera elástica *sticky* sin solapamientos.
+  - Línea informativa en cabecera estructurada 1:1 con la jerarquía canónica de las URLs.
   - Menú lateral deslizante (*Drawer*) y modales *Bottom Sheet* con física de arrastre (*swipe-to-dismiss*) y respuesta háptica.
 - 🧹 **Gestión de Ciclo de Vida y Limpieza (Teardown)**:
   - Funciones de desmontaje explícito (`disposeApp`, `disposeCardEvents`, `disposeModalEvents`, etc.) y bus de eventos global seguro para garantizar cero fugas de memoria (*zero memory leaks*).

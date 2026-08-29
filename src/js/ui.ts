@@ -166,6 +166,41 @@ export function showToast(message: string, type: "error" | "info" | "success" = 
   toastContainer.appendChild(toastElement);
 }
 
+/**
+ * Notifica al usuario de los filtros incompatibles que se han eliminado al seleccionar un director o actor.
+ */
+export function notifyRemovedPersonIncompatibleFilters(previousFilters: ActiveFilters): void {
+  const removed: string[] = [];
+  if (previousFilters.genre || (previousFilters.excludedGenres && previousFilters.excludedGenres.length > 0)) {
+    removed.push("género");
+  }
+  if (previousFilters.country || (previousFilters.excludedCountries && previousFilters.excludedCountries.length > 0)) {
+    removed.push("país");
+  }
+  if (previousFilters.studio) {
+    removed.push("estudio");
+  }
+  if (previousFilters.selection) {
+    removed.push("selección");
+  }
+  if (previousFilters.year && previousFilters.year !== "") {
+    removed.push("año");
+  }
+
+  if (removed.length === 0) return;
+
+  let message = "";
+  if (removed.length === 1) {
+    message = `Eliminado filtro de ${removed[0]}.`;
+  } else {
+    const last = removed[removed.length - 1];
+    const rest = removed.slice(0, -1).join(", ");
+    message = `Eliminados filtros de ${rest} y ${last}.`;
+  }
+
+  showToast(message, "info");
+}
+
 // =================================================================
 //          2. GESTIÓN DE PAGINACIÓN (UI)
 // =================================================================
@@ -612,26 +647,14 @@ export function updateMobileStatusBar(
     const countText = `${totalMovies.toLocaleString("es-ES")} ${totalMovies === 1 ? "título" : "títulos"}`;
     const segments: string[] = [countText];
 
-    // 1. Director o Actor
+    // 1. Director o Actor (VIP prioritario)
     if (filters.director) {
       segments.push("filtro director");
     } else if (filters.actor) {
       segments.push("filtro actor");
     }
 
-    // 2. Estudio
-    if (filters.studio) {
-      const studioName = FILTER_CONFIG.studio?.items[filters.studio] || STUDIO_DATA[filters.studio]?.title || filters.studio;
-      segments.push(`© ${studioName}`);
-    }
-
-    // 3. Selección
-    if (filters.selection) {
-      const selName = FILTER_CONFIG.selection?.items[filters.selection] || filters.selection;
-      segments.push(`selección ${selName}`);
-    }
-
-    // 4. Género e inclusiones/exclusiones
+    // 2. Género e inclusiones/exclusiones
     if (filters.genre) {
       segments.push(filters.genre);
     }
@@ -639,7 +662,7 @@ export function updateMobileStatusBar(
       filters.excludedGenres.forEach(g => segments.push(`(no ${g})`));
     }
 
-    // 5. País / Región e inclusiones/exclusiones
+    // 3. País / Región e inclusiones/exclusiones
     if (filters.country) {
       const region = Object.values(REGIONAL_GROUPS).find(r => r.value === filters.country);
       const countryLabel = region ? region.label : filters.country;
@@ -649,17 +672,21 @@ export function updateMobileStatusBar(
       filters.excludedCountries.forEach(c => segments.push(`(no ${c})`));
     }
 
-    // 6. Rango de Años
-    if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
-      segments.push(formatYearRangeLabel(filters.year));
+    // 4. Selección o Estudio
+    if (filters.selection) {
+      const selName = FILTER_CONFIG.selection?.items[filters.selection] || filters.selection;
+      segments.push(`selección ${selName}`);
+    } else if (filters.studio) {
+      const studioName = FILTER_CONFIG.studio?.items[filters.studio] || STUDIO_DATA[filters.studio]?.title || filters.studio;
+      segments.push(`© ${studioName}`);
     }
 
-    // 7. Búsqueda por texto libre
+    // 5. Búsqueda por texto libre
     if (filters.searchTerm && filters.searchTerm.trim()) {
       segments.push(`"${filters.searchTerm.trim()}"`);
     }
 
-    // 8. Mi lista
+    // 6. Mi lista
     if (filters.myList) {
       const listLabels: Record<string, string> = {
         rated: "mis valoraciones",
@@ -671,16 +698,21 @@ export function updateMobileStatusBar(
       }
     }
 
+    // 7. Rango de Años
+    if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
+      segments.push(formatYearRangeLabel(filters.year));
+    }
+
+    // 8. Criterio de Orden (solo si no es el orden predeterminado "Orden")
+    if (filters.sort && filters.sort !== DEFAULTS.SORT && sortMap[filters.sort]) {
+      segments.push(`orden ${sortMap[filters.sort]}`);
+    }
+
     // 9. Tipo de medio específico
     if (filters.mediaType === "movies") {
       segments.push("películas");
     } else if (filters.mediaType === "series") {
       segments.push("series");
-    }
-
-    // 10. Criterio de Orden (solo si no es el orden predeterminado "Orden")
-    if (filters.sort && filters.sort !== DEFAULTS.SORT && sortMap[filters.sort]) {
-      segments.push(`orden ${sortMap[filters.sort]}`);
     }
 
     mobileStatusBar.textContent = `${segments.join(", ")}.`;

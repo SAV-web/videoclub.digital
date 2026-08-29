@@ -205,6 +205,35 @@ CREATE TABLE public.movie_studios (
   CONSTRAINT movie_studios_studio_id_fkey FOREIGN KEY (studio_id) REFERENCES public.studios(id) ON DELETE CASCADE
 );
 
+CREATE TABLE public.movies_staging (
+  id text,
+  image text,
+  title text,
+  relevance text,
+  year text,
+  year_end text,
+  type text,
+  fa_rating text,
+  fa_votes text,
+  imdb_rating text,
+  imdb_votes text,
+  original_title text,
+  country text,
+  minutes text,
+  synopsis text,
+  fa_id text,
+  imdb_id text,
+  episodes text,
+  wikipedia text,
+  justwatch text,
+  genre text,
+  directors text,
+  actors text,
+  collection text,
+  studio text,
+  show boolean
+);
+
 CREATE TABLE public.people_staging (
   id text NOT NULL,
   name text NOT NULL,

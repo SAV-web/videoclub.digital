@@ -598,7 +598,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   }
 
   // 5. Enlaces Filtros
-  const filterLink = target.closest<HTMLElement>("[data-director-name], [data-actor-name], [data-year-value], [data-genre-name]");
+  const filterLink = target.closest<HTMLElement>("[data-director-name], [data-actor-name], [data-year-value], [data-genre-name], [data-country-name]");
   if (filterLink) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
@@ -606,6 +606,10 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     event.stopPropagation();
     if (filterLink.dataset.genreName) {
       appEvents.emit("filter:apply", { type: "genre", value: filterLink.dataset.genreName });
+      return;
+    }
+    if (filterLink.dataset.countryName) {
+      appEvents.emit("filter:apply", { type: "country", value: filterLink.dataset.countryName });
       return;
     }
 

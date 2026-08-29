@@ -158,8 +158,9 @@ function handleMetadataClick(event: MouseEvent): void {
   const actorLink = target.closest<HTMLElement>('[data-template="actors"] a[data-actor-name]');
   const genreLink = target.closest<HTMLElement>('[data-template="genre"] a[data-genre-name]');
   const yearLink = target.closest<HTMLElement>("a[data-year-value]");
+  const countryLink = target.closest<HTMLElement>("[data-country-name]");
 
-  if (directorLink || actorLink || genreLink || yearLink) {
+  if (directorLink || actorLink || genreLink || yearLink || countryLink) {
     // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
@@ -168,6 +169,11 @@ function handleMetadataClick(event: MouseEvent): void {
 
     if (genreLink && genreLink.dataset.genreName) {
       appEvents.emit("filter:apply", { type: "genre", value: genreLink.dataset.genreName });
+      return;
+    }
+
+    if (countryLink && countryLink.dataset.countryName) {
+      appEvents.emit("filter:apply", { type: "country", value: countryLink.dataset.countryName });
       return;
     }
 

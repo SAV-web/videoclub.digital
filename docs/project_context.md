@@ -49,8 +49,8 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 
 ### 3. Componentes TS (`src/js/components/`)
 
-- **`card.ts`**: Renderizador masivo de la cuadrícula (_Grid_). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Controla interacciones hápticas y de _hover/flip_. En el reverso, los géneros se muestran como texto plano informativo no clickable, y al pulsar `+` en la línea de reparto se despliega el panel superpuesto (`.actors-scrollable-content`) con **Géneros interactivos arriba** y **Reparto de actores abajo**. Incorpora tarjetas especiales VIP para personas con soporte de **Insignias de Doble Rol** (`(D)` en ficha de actor, `(A)` en ficha de director) que permiten alternar su filmografía entre roles con un solo clic.
-- **`modal.ts`**: Vista rápida (_Quick View_). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (_landscape_), y formato _Bottom Sheet_ en móviles verticales con física de arrastre (_swipe-to-dismiss_) y _View Transitions API_ para el efecto _Hero_ desde la tarjeta. Los enlaces dentro de la modal (géneros, directores, actores, año, insignias de rol cruzado) son interactivos y cierran automáticamente la modal al aplicarse.
+- **`card.ts`**: Renderizador masivo de la cuadrícula (_Grid_). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Implementa **Getters Perezosos (*Lazy Getters*)** para resolver las plantillas `<template>` bajo demanda y prevenir condiciones de carrera en arranques limpios (*cold boot*). Controla interacciones hápticas y de _hover/flip_. En el reverso, los géneros se muestran como texto plano informativo no clickable, y al pulsar `+` en la línea de reparto se despliega el panel superpuesto (`.actors-scrollable-content`) con **Géneros interactivos arriba** y **Reparto de actores abajo**. Incorpora tarjetas especiales VIP para personas con soporte de **Insignias de Doble Rol** (`(D)` en ficha de actor, `(A)` en ficha de director) que permiten alternar su filmografía entre roles con un solo clic. En desktop, las tarjetas VIP comparten la micro-animación de elevación primaveral (`transform: translateY(-4px) scale(1.01)`) suprimiendo el recuadro perimetral (*outline*). Las banderas de país son interactivas (`<a>` con `[data-country-name]`) y aplican el filtro de país directamente.
+- **`modal.ts`**: Vista rápida (_Quick View_). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (_landscape_), y formato _Bottom Sheet_ en móviles verticales con física de arrastre (_swipe-to-dismiss_) y _View Transitions API_ para el efecto _Hero_ desde la tarjeta. Los enlaces dentro de la modal (géneros, países, directores, actores, año, insignias de rol cruzado) son interactivos y cierran automáticamente la modal al aplicarse.
 - **`sidebar.ts`**: Menú lateral de filtrado avanzado. Incluye autocompletado en tiempo real con guardias de longitud mínima (`>= 2`), debouncing y soporte bidireccional para **colectivos y dúos cinematográficos** (ej. buscar "Hermanos Russo" sugiere a Joe y Anthony Russo, y viceversa), control de rango con slider, acordeones CSS nativos y gestos de _swipe_ para abrir/cerrar. Implementa reconciliación de píldoras DOM y exclusiones visuales (`(NO País) x`).
 - **`rating.ts`**: Lógica visual del sistema de puntuación por estrellas y lógica de votación de usuario (optimista), manteniendo la exclusividad mutua con la Watchlist.
 - **`yearSlider.ts`**: Componente nativo de control de rango de años doble (_DualRangeSlider_) con soporte táctil, arrastre fluido de pivotes, cálculos precisos de porcentaje y sin dependencias externas.
@@ -66,7 +66,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 
 - **`variables.css`**: Design tokens. Fuentes (Inter), paleta de colores adaptable (Tema Claro/Oscuro dinámico con tokens como `--color-rating-star` y `--color-accent-darker`) y duraciones de animación (_Quiet Luxury easing_).
 - **`globals.css`**: Reset, utilidades generales y scrollbars personalizados.
-- **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`) y CSS Grid para la cuadrícula principal adaptativa.
+- **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`), cabecera fija elástica (`position: sticky; top: 0;`) y CSS Grid para la cuadrícula principal adaptativa.
 - **`components/*.css`**: CSS scopeado a componentes. Uso intensivo de `contain: layout paint style` y `content-visibility: auto` para máximo rendimiento. Evita transicionar propiedades pesadas (`width`, `padding`) en móviles, priorizando `transform` y `opacity` (GPU).
 
 ### 6. Suite de Tests (`tests/`)
@@ -78,11 +78,11 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 
 ### Tablas Principales
 
-- `movies`: Núcleo central. Almacena metadatos, valoraciones (FA, IMDb, y `avg_rating` calculada automáticamente) y campos de vectores de texto (`_tsv`) para búsqueda rápida.
+- `movies`: Núcleo central. Identificador inmutable `id` (`PRIMARY KEY`), metadatos, valoraciones (FA, IMDb, y `avg_rating` calculada automáticamente) y campos de vectores de texto (`_tsv`) para búsqueda rápida.
 - `actors`, `directors`: Entidades de los VIPs.
 - Relaciones N:M: `movie_actors`, `movie_directors`, `movie_genres`, `movie_selections`, `movie_studios`.
 - `user_movie_entries`: Almacena las valoraciones (1-10) y la Watchlist (boolean) por usuario con exclusividad mutua.
-- Tablas `_staging`: Usadas para el proceso ETL (ingesta masiva desde CSV con datos consolidados completos) mediante la función diferencial `process_staging_data()`. La columna `show = '1'` actúa como filtro de admisión (gatekeeper) para la carga al catálogo consolidado.
+- Tablas `_staging`: Usadas para el proceso ETL (ingesta masiva desde CSV con datos consolidados completos) mediante la función diferencial `process_staging_data()`. La columna `show IS TRUE` actúa como filtro de admisión (gatekeeper) para la carga al catálogo consolidado cruzando por clave primaria inmutable `id`.
 
 ### Lógica Avanzada SQL (`docs/script.sql` y `docs/schema.sql`)
 
@@ -92,7 +92,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
   - Índices compuestos para consultas habituales (Ej: `country_id, type, year DESC`).
 - **Vistas Materializadas (`mv_*`)**: Caché pre-calculada de las sugerencias del buscador para no saturar la CPU de la base de datos contando películas. Auto-convergencia segura con `RESTRICT` e índices dedicados.
 - **RPC Principal (`search_movies_offset`)**: Función PL/pgSQL responsable de toda la lógica de filtrado del backend. Implementa patrón **"Late Row Lookup"**: ordena solo IDs y métricas ligeras con **desempate determinista (`m.id ASC`)** para evitar saltos entre páginas, y _luego_ hace JOIN con textos pesados (sinopsis, arrays) y empaqueta en JSON puro (`json_build_object`).
-- **ETL Diferencial de Alto Rendimiento (`process_staging_data`)**: Pipeline transaccional con tabla temporal en memoria (`tmp_affected_staging`) y **pre-agregación lineal $O(N_1 + N_2 + ...)$** que elimina la multiplicación por producto cartesiano en relaciones N:M.
+- **ETL Diferencial de Alto Rendimiento (`process_staging_data`)**: Pipeline transaccional con tabla temporal en memoria (`tmp_affected_staging`), cruce por clave primaria inmutable `id` (`ON CONFLICT (id) DO UPDATE`), admisión por `show IS TRUE` y **pre-agregación lineal $O(N_1 + N_2 + ...)$** que elimina la multiplicación por producto cartesiano en relaciones N:M.
 - **Seguridad (RLS & DCL)**: Row Level Security habilitado en todas las tablas. Lectura pública general; `user_movie_entries` protegida con política unificada `FOR ALL` al `auth.uid()`; tablas de staging restringidas exclusivamente a `service_role` mediante DCL (`REVOKE ALL`).
 - **`search_path` Seguro**: Fijado estrictamente en todas las funciones `SECURITY DEFINER` (`SET search_path = pg_catalog, public, extensions, pg_temp;`).
 

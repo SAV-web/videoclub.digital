@@ -18,7 +18,7 @@ import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, appEvents } from "../state.js";
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo } from "../constants.js";
-import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
+import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked, notifyRemovedPersonIncompatibleFilters } from "../ui.js";
 import { loadAndRenderMovies } from "../main.js";
 import { ActiveFilters } from '../types.js';
 
@@ -746,6 +746,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
   const previousFilters = getActiveFilters();
 
   if (value && (type === 'actor' || type === 'director')) {
+    notifyRemovedPersonIncompatibleFilters(previousFilters);
     const currentSort = previousFilters.sort;
     const currentMediaType = previousFilters.mediaType;
 

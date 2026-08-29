@@ -199,7 +199,7 @@ export function createAbortableRequest(key: string): AbortController {
 //          4. MANIPULACIÓN VISUAL (DOM, Táctil y CSS)
 // =================================================================
 
-// Pinta la banderita del país
+// Pinta la banderita del país y permite hacer clic para filtrar por país
 export function renderCountryFlag(
   container: HTMLElement | null, 
   flagSpan: HTMLElement | null, 
@@ -208,14 +208,30 @@ export function renderCountryFlag(
 ): void {
   if (!container || !flagSpan) return;
   if (countryCode) {
-    container.style.display = "flex"; 
+    container.style.display = "inline-flex"; 
     flagSpan.className = "country-flag-icon";
-    flagSpan.title = countryName || "";
     flagSpan.textContent = "";
+
+    if (countryName) {
+      container.setAttribute("data-country-name", countryName);
+      container.title = countryName;
+      container.setAttribute("aria-label", `Ver títulos de ${countryName}`);
+      if (container instanceof HTMLAnchorElement) {
+        container.href = buildFilterUrl("country", countryName);
+      }
+    } else {
+      delete container.dataset.countryName;
+      container.removeAttribute("title");
+      container.removeAttribute("aria-label");
+      if (container instanceof HTMLAnchorElement) {
+        container.removeAttribute("href");
+      }
+    }
     
     // Creamos SVG seguro contra inyección de código (XSS)
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("width", "16"); svg.setAttribute("height", "16");
+    svg.setAttribute("aria-hidden", "true");
     svg.innerHTML = `<use href="#flag-${countryCode.toLowerCase()}"></use>`;
     flagSpan.appendChild(svg);
   } else {

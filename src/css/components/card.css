@@ -101,17 +101,25 @@
   /* Interacciones Desktop */
   @media (hover: hover) and (pointer: fine) {
     &:hover {
-      outline: 2px solid var(--color-accent);
-      outline-offset: 4px;
-      border-radius: var(--radius-xl);
       z-index: 10;
       transform: translateY(-4px) scale(1.01);
       will-change: transform;
     }
 
-    :where(html.dark-mode) &:hover {
+    &:not(.person-card):not(.collection-card):not(.studio-card):hover {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 4px;
+      border-radius: var(--radius-xl);
+    }
+
+    :where(html.dark-mode) &:not(.person-card):not(.collection-card):not(.studio-card):hover {
       outline: 2px solid rgba(255, 255, 255, 0.7);
       outline-offset: 4px;
+    }
+
+    /* Las fichas VIP (persona, colección, estudio) no se recuadran al pasar el ratón */
+    &:is(.person-card, .collection-card, .studio-card):hover {
+      outline: none;
     }
 
     &:not(.is-flipped):hover {
@@ -370,9 +378,25 @@
 }
 
 .country-info {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-xxs);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 3px);
+  transition: transform var(--duration-fast) ease, opacity var(--duration-fast) ease;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: scale(1.18);
+      opacity: 0.85;
+    }
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
 }
 
 .country-flag-icon svg {

@@ -52,8 +52,11 @@ Reglas:
 - `mediaType` solo acepta `all`, `movies` o `series`.
 - `excludedGenres` y `excludedCountries` son arrays únicos, sin valores vacíos.
 - `myList` solo acepta `rated`, `watchlist`, `mixed` o `null`.
-- **Exclusividad de Personas**: `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con `genre`, `country`, `selection`, `studio`, `excludedGenres` y `excludedCountries`.
+- **Exclusividad de Personas y Notificación de Filtros Eliminados**: `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con `genre`, `country`, `selection`, `studio`, `excludedGenres`, `excludedCountries` y `year`. Al activar una persona (desde autocompletado, enlaces de tarjeta, vista rápida o insignia de rol), el sistema evalúa los filtros incompatibles activos y notifica al usuario mediante un mensaje informativo contextual (`notifyRemovedPersonIncompatibleFilters`, ej: `"Eliminados filtros de género, país y estudio."`).
 - **Exclusividad de Selección y Estudio**: `selection` y `studio` son mutuamente excluyentes entre sí (ambos representan entidades VIP de grupo y ocupan la cabecera destacada de catálogo). Al seleccionar una saga/colección se limpia el estudio activo, y al seleccionar un estudio se limpia la selección activa.
+- **Banderas de País Interactivas**: Todas las banderas de país (en tarjetas, tarjetas VIP y modal) se generan como enlaces interactivos (`<a>` con `[data-country-name]`) que emiten `filter:apply` con `{ type: "country", value: countryName }`, permitiendo filtrado instantáneo por país.
+- **Línea Informativa del Header (*Status Bar*)**: Sigue estrictamente la jerarquía canónica de las URLs:
+  $$\text{Total títulos} \to \text{Persona VIP} \to \text{Género} \to \text{País} \to \text{Selección/Estudio} \to \text{Búsqueda} \to \text{Mi Lista} \to \text{Año} \to \text{Orden} \to \text{Tipo}$$
 - **Coexistencia y Exclusividad de Géneros y Países**:
   - `genre` y `excludedGenres` pueden coexistir de forma no conflictiva (ej: `/drama/no-animacion/` = Drama excluyendo Animación). Un género solo se anula si se incluye explícitamente en su propio array de exclusión.
   - `country` y `excludedCountries` pueden coexistir pacíficamente (ej: `/espana/no-eeuu/` = Cine español excluyendo producciones con EEUU).

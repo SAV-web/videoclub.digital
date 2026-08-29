@@ -40,6 +40,7 @@ import {
   showToast,
   initThemeToggle,
   updateMobileStatusBar,
+  notifyRemovedPersonIncompatibleFilters,
   isAuthModalOpen,
   closeAuthModal,
   consumeIsClosingModalViaHistory
@@ -546,7 +547,11 @@ function handleGlobalScroll(): void {
 // Limpia todo (Botón Play o Atrás completo)
 function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: unknown } }): void {
   const { keepSort, newFilter } = data || {};
-  const currentSort = keepSort ? getActiveFilters().sort : DEFAULTS.SORT;
+  const currentFilters = getActiveFilters();
+  if (newFilter && (newFilter.type === 'director' || newFilter.type === 'actor')) {
+    notifyRemovedPersonIncompatibleFilters(currentFilters);
+  }
+  const currentSort = keepSort ? currentFilters.sort : DEFAULTS.SORT;
 
   resetFiltersState();
   setSort(currentSort);
@@ -585,6 +590,7 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
     if (currentFilters.director) setFilter('director', null);
   } else {
     // Si se activa una persona, se limpian todas las demás categorías
+    notifyRemovedPersonIncompatibleFilters(currentFilters);
     resetFiltersState();
   }
 
