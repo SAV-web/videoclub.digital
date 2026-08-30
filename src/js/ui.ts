@@ -644,14 +644,34 @@ export function updateMobileStatusBar(
 
   // Si hay algún filtro activo o se debe mostrar el contador detallado
   if (hasActiveFilters) {
-    const countText = `${totalMovies.toLocaleString("es-ES")} ${totalMovies === 1 ? "título" : "títulos"}`;
-    const segments: string[] = [countText];
+    const segments: string[] = [];
+
+    // Conteo de títulos (solo visible cuando no supere los 100 títulos)
+    if (totalMovies > 0 && totalMovies <= 100) {
+      let noun = totalMovies === 1 ? "título" : "títulos";
+      if (filters.mediaType === "series") {
+        noun = totalMovies === 1 ? "serie" : "series";
+      } else if (filters.mediaType === "movies") {
+        noun = totalMovies === 1 ? "película" : "películas";
+      }
+      segments.push(`${totalMovies.toLocaleString("es-ES")} ${noun}`);
+    }
 
     // 1. Director o Actor (VIP prioritario)
     if (filters.director) {
-      segments.push("filtro director");
+      const directorName = filters.director
+        .trim()
+        .split(/\s+/)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      segments.push(`${directorName} (D)`);
     } else if (filters.actor) {
-      segments.push("filtro actor");
+      const actorName = filters.actor
+        .trim()
+        .split(/\s+/)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+      segments.push(`${actorName} (A)`);
     }
 
     // 2. Género e inclusiones/exclusiones
@@ -708,14 +728,14 @@ export function updateMobileStatusBar(
       segments.push(`orden ${sortMap[filters.sort]}`);
     }
 
-    // 9. Tipo de medio específico
-    if (filters.mediaType === "movies") {
-      segments.push("películas");
-    } else if (filters.mediaType === "series") {
-      segments.push("series");
+    if (segments.length === 0) {
+      mobileStatusBar.textContent = "";
+      return;
     }
 
-    mobileStatusBar.textContent = `${segments.join(", ")}.`;
+    let text = segments.join(", ");
+    text = text.charAt(0).toUpperCase() + text.slice(1);
+    mobileStatusBar.textContent = `${text}.`;
     return;
   }
 

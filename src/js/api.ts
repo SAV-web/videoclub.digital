@@ -372,7 +372,8 @@ export function fetchMovies(
         throw createAppError(ERROR_CODES.DATABASE, "No se pudo conectar con el catálogo. Inténtalo de nuevo.", error);
       }
 
-      const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: data?.items }, mapMoviePayload);
+      const rawItems = (data?.items || []).map((mRaw: unknown) => shapeRawMovieRow(mRaw));
+      const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: rawItems }, mapMoviePayload);
 
       // Filtro de precisión para garantizar que el nombre del actor o director coincida exactamente con una de las personas de la lista
       // (Evita que buscar "Yuna" devuelva a "Madeleine Yuna Voyles")

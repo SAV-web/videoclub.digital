@@ -9,7 +9,7 @@
 // =================================================================
 
 import { CONFIG } from "./constants.js";
-import { ERROR_CODES, isAbortError, parseYearRangeRaw, buildFilterUrl } from "./contracts.js";
+import { ERROR_CODES, isAbortError, parseYearRangeRaw, buildFilterUrl, toSlug } from "./contracts.js";
 export { parseYearRangeRaw, buildFilterUrl };
 import { Movie, MappedMovie } from "./types.js";
 
@@ -71,14 +71,19 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
   const actorsStr = movie.actors || movie.actors_list || "";
   const studiosStr = movie.studios_list || "";
 
+  const slug = (typeof movie.slug === "string" && movie.slug.length > 0)
+    ? movie.slug
+    : (title ? `${toSlug(title)}${movie.year ? `-${movie.year}` : ""}` : "");
+
   return {
     ...movie,
+    slug,
     genres: genresStr,
     directors: directorsStr,
     actors: actorsStr,
     isSeries,
     displayYear: formatYear(movie.year, movie.year_end, isSeries, "N/A"),
-    posterUrl: getPosterUrl(movie.slug),
+    posterUrl: getPosterUrl(slug),
     displayOriginalTitle: hasOrig ? origTitle : title,
     hasOriginalTitle: hasOrig,
     displayEpisodes: isSeries && movie.episodes ? `${movie.episodes} x` : "",
