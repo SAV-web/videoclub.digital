@@ -114,7 +114,7 @@ export function buildItemListSchema(movies: Array<Movie | MappedMovie> | null | 
       "item": {
         "@type": movie.type && movie.type.toLowerCase().startsWith('s') ? "TVSeries" : "Movie",
         "name": movie.title,
-        "image": ("posterUrl" in movie ? movie.posterUrl : (movie.image ? getHqPosterUrl(movie.image) : undefined)) || undefined,
+        "image": ("posterUrl" in movie ? movie.posterUrl : (movie.slug ? getHqPosterUrl(movie.slug) : undefined)) || undefined,
         "dateCreated": movie.year ? String(movie.year) : undefined,
         "director": movie.directors_list ? movie.directors_list.split(",").map(d => ({ "@type": "Person", "name": d.trim() })) : undefined,
         "actor": movie.actors_list ? movie.actors_list.split(",").map(a => ({ "@type": "Person", "name": a.trim() })) : undefined,

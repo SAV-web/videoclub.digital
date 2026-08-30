@@ -36,7 +36,6 @@ CREATE TABLE public.directors (
 
 CREATE TABLE public.movies (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
   title text NOT NULL,
   year smallint,
   year_end text,
@@ -50,7 +49,6 @@ CREATE TABLE public.movies (
   synopsis text,
   fa_id text,
   imdb_id text,
-  image text NOT NULL,
   thumbhash_st text,
   country_id smallint,
   last_synced_at timestamp with time zone,

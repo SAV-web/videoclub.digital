@@ -702,7 +702,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   const img = card.querySelector<HTMLImageElement>("img");
   if (!img) return;
 
-  const hqPoster = getHqPosterUrl(movie.image);
+  const hqPoster = movie.posterUrl || getHqPosterUrl(movie.slug);
   img.alt = `Póster de ${movie.title}`;
 
   const priorityCount = isMobileViewport() ? 6 : (CONFIG.CARD_BATCH_SIZE || 12);

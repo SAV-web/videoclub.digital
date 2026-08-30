@@ -402,20 +402,16 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
   // Reglas de Exclusividad de Negocio
   if (normalizedValue) {
     if (type === 'genre' && typeof normalizedValue === 'string') {
-      state.activeFilters.excludedGenres = state.activeFilters.excludedGenres.filter(g => g !== normalizedValue);
+      state.activeFilters.excludedGenres = [];
     }
     if (type === 'country' && typeof normalizedValue === 'string') {
-      state.activeFilters.excludedCountries = state.activeFilters.excludedCountries.filter(c => c !== normalizedValue);
+      state.activeFilters.excludedCountries = [];
     }
     if (type === 'excludedGenres' && Array.isArray(normalizedValue) && state.activeFilters.genre) {
-      if (normalizedValue.includes(state.activeFilters.genre)) {
-        state.activeFilters.genre = null;
-      }
+      state.activeFilters.genre = null;
     }
     if (type === 'excludedCountries' && Array.isArray(normalizedValue) && state.activeFilters.country) {
-      if (normalizedValue.includes(state.activeFilters.country)) {
-        state.activeFilters.country = null;
-      }
+      state.activeFilters.country = null;
     }
 
     // Selección y Estudio son mutuamente excluyentes entre sí
@@ -480,10 +476,12 @@ export function toggleExcludedFilter(type: string, value: unknown): boolean {
     // Si ya está excluido, lo quitamos de la lista
     state.activeFilters[listKey] = [];
   } else {
-    // Sólo 1 bento por menú: reemplazamos por el nuevo y limpiamos el positivo de esa categoría
+    // Sólo 1 bento por menú: reemplazamos por el nuevo y limpiamos el positivo de esa categoría y las entidades de persona
     state.activeFilters[listKey] = [normalizedValue];
     if (type === 'genre') state.activeFilters.genre = null;
     if (type === 'country') state.activeFilters.country = null;
+    state.activeFilters.director = null;
+    state.activeFilters.actor = null;
   }
   state.totalMovies = 0;
   return true;

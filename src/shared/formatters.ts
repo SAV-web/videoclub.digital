@@ -7,12 +7,11 @@
 import { POSTER_BASE_URL } from "./constants.js";
 
 /**
- * Obtiene la URL completa del póster WebP optimizado.
- * Respeta el centinela '.' utilizado en base de datos para películas sin póster.
+ * Obtiene la URL completa del póster WebP optimizado a partir del slug de la película.
  */
-export function getPosterUrl(image: string | null | undefined): string {
-  if (!image || image === ".") return "";
-  return `${POSTER_BASE_URL}${image}.webp`;
+export function getPosterUrl(slug: string | null | undefined): string {
+  if (!slug) return "";
+  return `${POSTER_BASE_URL}${slug}.webp`;
 }
 
 /**

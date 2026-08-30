@@ -34,13 +34,12 @@ after(async () => {
 });
 
 describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartidas)", () => {
-  test("getPosterUrl maneja el centinela '.' y genera URLs válidas", () => {
+  test("getPosterUrl genera URLs válidas a partir del slug", () => {
     assert.equal(sharedFormatters.getPosterUrl(null), "");
     assert.equal(sharedFormatters.getPosterUrl(""), "");
-    assert.equal(sharedFormatters.getPosterUrl("."), "");
     assert.equal(
-      sharedFormatters.getPosterUrl("poster123"),
-      "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/poster123.webp",
+      sharedFormatters.getPosterUrl("matrix-1999"),
+      "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/matrix-1999.webp",
     );
   });
 
@@ -299,13 +298,12 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
   });
 
   test("Compatibilidad directa entre SPA y Astro (seo-site/src/lib/format.ts)", () => {
-    // 1. getPosterUrl en Astro Pick<MovieRow, 'image'> vs SPA getPosterUrl(image)
+    // 1. getPosterUrl en Astro Pick<MovieRow, 'slug'> vs SPA getPosterUrl(slug)
     assert.equal(
-      astroFormatModule.getPosterUrl({ image: "matrix_1999" }),
-      sharedFormatters.getPosterUrl("matrix_1999"),
+      astroFormatModule.getPosterUrl({ slug: "matrix-1999" }),
+      sharedFormatters.getPosterUrl("matrix-1999"),
     );
-    assert.equal(astroFormatModule.getPosterUrl({ image: "." }), "");
-    assert.equal(astroFormatModule.getPosterUrl({ image: "" }), "");
+    assert.equal(astroFormatModule.getPosterUrl({ slug: "" }), "");
 
     // 2. parseList re-exportado en Astro
     assert.deepEqual(

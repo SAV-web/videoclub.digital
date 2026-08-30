@@ -23,6 +23,7 @@ import {
   normalizeUserMovieData,
   normalizeUserMovieEntry,
   toAppError,
+  toSlug,
 } from "./contracts.js";
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -231,8 +232,12 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
   }
 
   const isSeries = m.type && String(m.type).toLowerCase().startsWith("s");
+  const fallbackSlug = m.title ? `${toSlug(String(m.title))}${m.year ? `-${m.year}` : ""}` : "";
+  const slug = (typeof m.slug === "string" && m.slug.length > 0) ? m.slug : fallbackSlug;
+
   const item: Record<string, unknown> = {
     ...m,
+    slug,
     genres: (m.genres || m.genres_list || null),
     directors: (m.directors || m.directors_list || null),
     actors: (m.actors || m.actors_list || null),

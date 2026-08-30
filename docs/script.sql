@@ -318,7 +318,7 @@ BEGIN
                             m.actors_list AS actors, 
                             c.name AS country,
                             c.code AS country_code, 
-                            m.minutes, m.image, m.fa_id, 
+                            m.minutes, m.fa_id, 
                             m.fa_rating, m.fa_votes,
                             m.imdb_id, m.imdb_rating, m.imdb_votes, 
                             m.avg_rating,
@@ -326,7 +326,7 @@ BEGIN
                             EXTRACT(EPOCH FROM m.last_synced_at)::INT as last_synced_at,
                             CASE WHEN m.type ILIKE ''S%'' THEN m.episodes ELSE NULL END as episodes,
                             m.wikipedia,
-                            m.selections_list, m.studios_list, m.justwatch
+                            m.selections_list, m.studios_list, m.justwatch, m.slug
                         FROM paged_ids fm
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id
@@ -911,12 +911,12 @@ BEGIN
     -- 4: UPSERT DIFERENCIAL DE PELÍCULAS (PUBLIC.MOVIES)
     WITH upserted_movies AS (
         INSERT INTO public.movies (
-            id, relevance, image, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
+            id, relevance, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
             original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch,
             genres_list, directors_list, actors_list, selections_list, studios_list
         )
         SELECT
-            public.to_integer_safe(s.id::TEXT), public.to_integer_safe(s.relevance::TEXT), TRIM(s.image), s.title, public.to_integer_safe(s.year::TEXT),
+            public.to_integer_safe(s.id::TEXT), public.to_integer_safe(s.relevance::TEXT), s.title, public.to_integer_safe(s.year::TEXT),
             s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
@@ -926,7 +926,6 @@ BEGIN
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
         WHERE public.to_integer_safe(s.id::TEXT) IS NOT NULL AND s.show IS TRUE
         ON CONFLICT (id) DO UPDATE SET
-            image = EXCLUDED.image,
             relevance = EXCLUDED.relevance, title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
@@ -935,7 +934,6 @@ BEGIN
             genres_list = EXCLUDED.genres_list, directors_list = EXCLUDED.directors_list, actors_list = EXCLUDED.actors_list,
             selections_list = EXCLUDED.selections_list, studios_list = EXCLUDED.studios_list
         WHERE
-            movies.image IS DISTINCT FROM EXCLUDED.image OR
             movies.relevance IS DISTINCT FROM EXCLUDED.relevance OR
             movies.title IS DISTINCT FROM EXCLUDED.title OR
             movies.year IS DISTINCT FROM EXCLUDED.year OR

@@ -78,7 +78,7 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
     actors: actorsStr,
     isSeries,
     displayYear: formatYear(movie.year, movie.year_end, isSeries, "N/A"),
-    posterUrl: getPosterUrl(movie.image),
+    posterUrl: getPosterUrl(movie.slug),
     displayOriginalTitle: hasOrig ? origTitle : title,
     hasOriginalTitle: hasOrig,
     displayEpisodes: isSeries && movie.episodes ? `${movie.episodes} x` : "",
@@ -269,7 +269,7 @@ export function preloadLcpImage(target: Partial<MappedMovie> | string | null | u
   if (!target) return;
   const imageUrl = typeof target === "string"
     ? target
-    : (target.posterUrl || getHqPosterUrl(target.image));
+    : (target.posterUrl || (target.slug ? getHqPosterUrl(target.slug) : undefined));
   if (!imageUrl) return;
 
   if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) return;

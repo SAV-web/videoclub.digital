@@ -123,12 +123,29 @@ export interface RenderOptions {
   replaceHistory?: boolean;
   forceSkeleton?: boolean;
   isYearFilter?: boolean;
+  restoreScrollY?: number | null;
+}
+
+const scrollPositionsCache = new Map<string, number>();
+
+export function saveCurrentScrollPosition(): void {
+  if (typeof window === "undefined") return;
+  const currentKey = `${window.location.pathname}${window.location.search}`;
+  const scrollY = Math.max(0, window.scrollY);
+  scrollPositionsCache.set(currentKey, scrollY);
+
+  try {
+    const currentState = window.history.state || {};
+    if (currentState.scrollY !== scrollY) {
+      window.history.replaceState({ ...currentState, scrollY }, "", window.location.href);
+    }
+  } catch {}
 }
 
 // --- 1. MOTOR PRINCIPAL (Cargar y Pintar Películas) ---
 export async function loadAndRenderMovies(
   page = 1,
-  { replaceHistory = false, forceSkeleton = false, isYearFilter = false }: RenderOptions = {}
+  { replaceHistory = false, forceSkeleton = false, isYearFilter = false, restoreScrollY = null }: RenderOptions = {}
 ): Promise<void> {
   const signal = createAbortableRequest("movie-grid-load").signal;
 
@@ -282,7 +299,8 @@ export async function loadAndRenderMovies(
         updateUrl({ replace: replaceHistory });
 
         await updateDomWithResults(p1Movies, effectiveTotal, vipData, hasVip);
-        window.scrollTo({ top: 0, behavior: "auto" });
+        const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
+        window.scrollTo({ top: targetScroll, behavior: "auto" });
         return;
       }
 
@@ -346,7 +364,8 @@ export async function loadAndRenderMovies(
 
     // Pinta la cuadrícula con efecto cascada
     await updateDomWithResults(movies, effectiveTotal, vipData, hasVip);
-    window.scrollTo({ top: 0, behavior: "auto" }); // Sube arriba de todo
+    const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
+    window.scrollTo({ top: targetScroll, behavior: "auto" });
 
   } catch (error: unknown) {
     if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
@@ -478,9 +497,17 @@ async function handleSearchInput(): Promise<void> {
 let isTicking = false;
 let lastScrollY = 0;
 let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+let scrollSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let scrollRafId: number | null = null;
 
 function handleGlobalScroll(): void {
+  if (scrollSaveTimer) {
+    clearTimeout(scrollSaveTimer);
+  }
+  scrollSaveTimer = setTimeout(() => {
+    saveCurrentScrollPosition();
+  }, 100);
+
   if (scrollTimer) {
     clearTimeout(scrollTimer);
     scrollTimer = null;
@@ -583,9 +610,13 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
     if (currentFilters.actor) setFilter('actor', null);
     if (currentFilters.director) setFilter('director', null);
   } else {
-    // Si se activa una persona, se limpian todas las demás categorías
+    // Si se activa una persona (o se alterna D <-> A), se limpian las categorías incompatibles preservando el orden y el tipo de medio
     notifyRemovedPersonIncompatibleFilters(currentFilters);
+    const currentSort = currentFilters.sort;
+    const currentMediaType = currentFilters.mediaType;
     resetFiltersState();
+    setSort(currentSort);
+    setMediaType(currentMediaType);
   }
 
   if (!setFilter(type, value, force)) {
@@ -1070,10 +1101,13 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
   const currentFullUrl = `${window.location.pathname}${window.location.search}`;
 
   if (newUrl !== currentFullUrl) {
-    if (replace) {
-      history.replaceState({ path: newUrl }, "", newUrl);
-    } else {
-      history.pushState({ path: newUrl }, "", newUrl);
+    saveCurrentScrollPosition();
+    if (typeof window !== "undefined" && window.history) {
+      if (replace) {
+        window.history.replaceState({ ...window.history.state, path: newUrl }, "", newUrl);
+      } else {
+        window.history.pushState({ path: newUrl, scrollY: 0 }, "", newUrl);
+      }
     }
   }
 }
@@ -1082,6 +1116,10 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
 export function init(): void {
   if (isMainInitialized) return;
   isMainInitialized = true;
+
+  if (typeof window !== "undefined" && window.history && "scrollRestoration" in window.history) {
+    window.history.scrollRestoration = "manual";
+  }
 
   requestAnimationFrame(() => {
     document.querySelectorAll("[data-loading]").forEach(el => {
@@ -1142,9 +1180,14 @@ export function init(): void {
       return;
     }
 
+    const historyState = window.history.state as { scrollY?: number } | null;
+    const targetScrollY = (typeof historyState?.scrollY === "number")
+      ? historyState.scrollY
+      : (scrollPositionsCache.get(incomingFull) ?? 0);
+
     readUrlAndSetState(); // sincroniza estado con la nueva URL e invoca canonicalizeCurrentUrl()
     appEvents.emit("updateSidebarUI");
-    loadAndRenderMovies(getCurrentPage(), { replaceHistory: true });
+    loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, restoreScrollY: targetScrollY });
   };
 
 
@@ -1195,12 +1238,13 @@ export function init(): void {
 
   const initialUrlParams = new URLSearchParams(window.location.search);
   const targetMovieId = initialUrlParams.get("movie") || initialUrlParams.get("peli");
+  const initialScrollY = typeof window.history.state?.scrollY === "number" ? window.history.state.scrollY : null;
 
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
 
   // Iniciar la carga y renderizado del catálogo INMEDIATAMENTE
-  loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, forceSkeleton: true })
+  loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, forceSkeleton: true, restoreScrollY: initialScrollY })
     .then(async () => {
       if (targetMovieId) {
         const grid = dom.gridContainer || document.getElementById("grid-container");

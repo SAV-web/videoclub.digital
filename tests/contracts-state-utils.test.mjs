@@ -47,7 +47,7 @@ describe("utils.js", () => {
       year: 2017,
       year_end: 2020,
       type: "S",
-      image: "dark-poster",
+      slug: "dark-2017",
       actors: "Lisa Vicari, Louis Hofmann",
       directors: "Baran bo Odar",
       studios_list: "N,D",
@@ -62,7 +62,7 @@ describe("utils.js", () => {
     assert.deepEqual(movie.parsedActors, ["Lisa Vicari", "Louis Hofmann"]);
     assert.deepEqual(movie.parsedDirectors, ["Baran bo Odar"]);
     assert.deepEqual(movie.studioList, ["N", "D"]);
-    assert.equal(movie.posterUrl.endsWith("/dark-poster.webp"), true);
+    assert.equal(movie.posterUrl.endsWith("/dark-2017.webp"), true);
   });
 
   test("traduce AppError a mensajes accionables", () => {
@@ -400,6 +400,21 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(state.getActiveFilters().selection, "criterion");
     assert.equal(state.getActiveFilters().studio, null);
 
+    // toggleExcludedFilter limpia director y actor
+    state.setFilter("director", "Christopher Nolan", true);
+    assert.equal(state.getActiveFilters().director, "Christopher Nolan");
+    state.toggleExcludedFilter("genre", "Terror");
+    assert.deepEqual(state.getActiveFilters().excludedGenres, ["Terror"]);
+    assert.equal(state.getActiveFilters().director, null);
+    assert.equal(state.getActiveFilters().actor, null);
+
+    state.setFilter("actor", "Leonardo DiCaprio", true);
+    assert.equal(state.getActiveFilters().actor, "Leonardo DiCaprio");
+    state.toggleExcludedFilter("country", "EEUU");
+    assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
+    assert.equal(state.getActiveFilters().director, null);
+    assert.equal(state.getActiveFilters().actor, null);
+
     // Sin retrocompatibilidad: códigos de 1 letra desconocidos no se aplican
     assert.equal(contracts.normalizeStudioCode("W"), null);
     assert.equal(contracts.normalizeSelectionCode("C"), null);
@@ -477,16 +492,16 @@ describe("state.js y Pretty Paths", () => {
     assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
     assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
 
-    // Prueba de coexistencia de género positivo y exclusión (/drama/no-animacion/)
+    // Prueba de exclusividad: si hay género positivo y exclusión de género, prevalece la última (/drama/no-animacion/ -> no-animacion anula drama)
     state.resetFiltersState();
     state.syncStateWithUrl("/drama/no-animacion/", "");
-    assert.equal(state.getActiveFilters().genre, "Drama");
+    assert.equal(state.getActiveFilters().genre, null);
     assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
 
-    // Prueba de coexistencia de país positivo y exclusión (/espana/no-eeuu/)
+    // Prueba de exclusividad: si hay país positivo y exclusión de país, prevalece la última (/espana/no-eeuu/ -> no-eeuu anula espana)
     state.resetFiltersState();
     state.syncStateWithUrl("/espana/no-eeuu/", "");
-    assert.equal(state.getActiveFilters().country, "España");
+    assert.equal(state.getActiveFilters().country, null);
     assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
 
     // Prueba de todos los slugs amigables de ordenación
