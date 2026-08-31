@@ -9,7 +9,7 @@
 
 import { DualRangeSlider } from './yearSlider.js';
 import { CONFIG } from "../constants.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, normalizeGenreText, executeViewTransition, runWhenIdle, parseYearRangeRaw } from "../utils.js";
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, LocalStore, normalizeText, executeViewTransition, runWhenIdle, parseYearRangeRaw } from "../utils.js";
 import {
   fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions,
   fetchRandomTopActors, fetchRandomTopDirectors
@@ -507,7 +507,7 @@ function updateAllFilterControls(): void {
   for (const k in activeFilters) {
     const val = activeFilters[k as keyof ActiveFilters];
     if (!val || Array.isArray(val)) continue;
-    normActiveFilters[k] = k === 'genre' ? normalizeGenreText(val as string) : normalizeText(val as string);
+    normActiveFilters[k] = normalizeText(val as string);
   }
 
   const filterLinks = document.getElementsByClassName("filter-link") as HTMLCollectionOf<HTMLElement & { _normValue?: string }>;
@@ -521,7 +521,7 @@ function updateAllFilterControls(): void {
 
     let normValue = link._normValue;
     if (normValue === undefined) {
-      normValue = type === 'genre' ? normalizeGenreText(value) : normalizeText(value);
+      normValue = normalizeText(value);
       link._normValue = normValue;
     }
 

@@ -386,11 +386,14 @@
 .country-info {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-xxs);
   text-decoration: none;
   color: inherit;
   cursor: pointer;
   border-radius: var(--radius-sm, 3px);
+  padding: 2px;
+  margin: -2px;
   transition: transform var(--duration-fast) ease, opacity var(--duration-fast) ease;
 
   @media (hover: hover) and (pointer: fine) {
@@ -402,6 +405,14 @@
 
   &:active {
     transform: scale(0.92);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm, 3px);
+    transform: scale(1.15);
+    z-index: 10;
   }
 }
 

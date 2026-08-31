@@ -52,6 +52,16 @@
   transition: transform 50ms var(--ease-bounce-sharp);
 }
 
+/* Accesibilidad por teclado (Focus) */
+.star-icon:focus-visible {
+  outline: 2px solid var(--color-star-gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+  transform: scale(1.25);
+  z-index: 25;
+  filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
+}
+
 /* Efecto de Confirmación (Post-Tap) */
 .star-icon.just-rated {
   animation: star-vote-success 0.6s var(--ease-bounce-in) !important;

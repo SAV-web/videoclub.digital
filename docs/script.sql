@@ -11,6 +11,7 @@
 -- 6. Configuración de Seguridad (Row Level Security & Permisos)
 -- 7. Ingesta Transaccional Diferencial ETL (process_staging_data)
 -- 8. Poblado de Sinónimos de Géneros (Búsqueda y Autocompletado)
+-- 9. Observabilidad y Telemetría (pg_stat_statements)
 -- =================================================================
 
 -- =================================================================
@@ -21,6 +22,7 @@ GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 
 CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA extensions; -- Búsqueda insensible a diacríticos/acentos
 CREATE EXTENSION IF NOT EXISTS pg_trgm  SCHEMA extensions; -- Búsqueda por trigramas y similitud de texto
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements SCHEMA extensions; -- Telemetría y diagnóstico de consultas lentas
 
 -- Garantiza que las clases de operadores de extensiones se resuelvan en cualquier entorno
 SET search_path = pg_catalog, public, extensions;
@@ -402,7 +404,7 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 
 -- 5.1. Índices en Tablas Principales y Tablas de Unión N:M
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm extensions.gin_trgm_ops);
-CREATE UNIQUE INDEX IF NOT EXISTS movies_image_unique_idx ON public.movies(image);
+CREATE INDEX IF NOT EXISTS movies_slug_idx ON public.movies(slug);
 CREATE INDEX IF NOT EXISTS movies_relevance_idx ON public.movies(relevance ASC);
 CREATE INDEX IF NOT EXISTS movies_year_idx ON public.movies(year DESC);
 CREATE INDEX IF NOT EXISTS movies_avg_rating_idx ON public.movies(avg_rating DESC NULLS LAST, relevance ASC);
@@ -425,6 +427,7 @@ CREATE INDEX IF NOT EXISTS movies_actors_tsv_idx ON public.movies USING GIN(acto
 CREATE INDEX IF NOT EXISTS movies_selections_tsv_idx ON public.movies USING GIN(selections_tsv);
 CREATE INDEX IF NOT EXISTS movies_studios_tsv_idx ON public.movies USING GIN(studios_tsv);
 
+CREATE INDEX IF NOT EXISTS movies_country_covering_idx ON public.movies(country_id) INCLUDE (year, avg_rating, fa_rating, imdb_rating, fa_votes, imdb_votes, relevance, type);
 CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx ON public.movies(country_id, year DESC);
 CREATE INDEX IF NOT EXISTS movies_country_relevance_idx ON public.movies(country_id, relevance ASC);
 CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_id, fa_votes DESC NULLS LAST);
@@ -1163,3 +1166,46 @@ UPDATE public.genres SET synonyms = ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 
 UPDATE public.genres SET synonyms = ARRAY['horror', 'miedo'] WHERE name = 'Terror' AND synonyms IS DISTINCT FROM ARRAY['horror', 'miedo'];
 UPDATE public.genres SET synonyms = ARRAY['suspense', 'psicologico', 'tension'] WHERE name = 'Thriller' AND synonyms IS DISTINCT FROM ARRAY['suspense', 'psicologico', 'tension'];
 UPDATE public.genres SET synonyms = ARRAY['western', 'oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['western', 'oeste', 'vaqueros'];
+
+-- =================================================================
+-- PASO 9: OBSERVABILIDAD Y TELEMETRÍA (pg_stat_statements)
+-- =================================================================
+-- Consultas prefabricadas para monitorizar el rendimiento de la base de datos
+-- y auditar cuellos de botella en la RPC `search_movies_offset`.
+
+-- 9.1. Vista de Diagnóstico: Top 10 Consultas con Mayor Tiempo Medio
+-- Identifica qué combinaciones de filtros o queries tardan más por ejecución.
+CREATE OR REPLACE VIEW public.view_slow_queries AS
+SELECT 
+    round(mean_exec_time::numeric, 2) AS tiempo_medio_ms,
+    round(total_exec_time::numeric, 2) AS tiempo_total_ms,
+    calls AS veces_ejecutada,
+    round((100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0))::numeric, 1) AS hit_ratio_pct,
+    query
+FROM extensions.pg_stat_statements
+ORDER BY mean_exec_time DESC
+LIMIT 10;
+
+-- 9.2. Vista de Diagnóstico: Top 10 Consultas que más CPU Acumulan
+-- Identifica las consultas con mayor impacto total en los recursos del servidor.
+CREATE OR REPLACE VIEW public.view_top_cpu_queries AS
+SELECT 
+    round(total_exec_time::numeric, 2) AS tiempo_total_ms,
+    calls AS veces_ejecutada,
+    round(mean_exec_time::numeric, 2) AS tiempo_medio_ms,
+    round((100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0))::numeric, 1) AS hit_ratio_pct,
+    query
+FROM extensions.pg_stat_statements
+ORDER BY total_exec_time DESC
+LIMIT 10;
+
+-- 9.3. Permisos de Visualización
+GRANT SELECT ON public.view_slow_queries TO service_role;
+GRANT SELECT ON public.view_top_cpu_queries TO service_role;
+
+-- GUÍA DE MANTENIMIENTO:
+-- 1. Consultar lentitud de search_movies_offset:
+--    SELECT * FROM public.view_slow_queries WHERE query ILIKE '%search_movies_offset%';
+--
+-- 2. Resetear estadísticas tras crear índices nuevos:
+--    SELECT extensions.pg_stat_statements_reset();

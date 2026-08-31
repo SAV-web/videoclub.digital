@@ -94,22 +94,6 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
 }
 
 
-const GENRES: ReadonlyArray<readonly [RegExp, string]> = [
-  [/scifi|ciencia[\s-]?ficcion|futurista|distopia/g, "scifi"], [/filmnoir|negro|neo[\s-]?noir/g, "noir"],
-  [/action|adrenalina/g, "accion"], [/adventure|epico/g, "aventuras"], [/animation|animado|dibujos|cgi/g, "animacion"],
-  [/biography|biografico|biopic/g, "biografia"], [/comedy|humor|comico/g, "comedia"],
-  [/crime|policiaco|policial|criminal|delito|mafia/g, "crimen"], [/documentary/g, "documental"],
-  [/dramatico/g, "drama"], [/family/g, "familiar"], [/fantasy|fantastico/g, "fantasia"],
-  [/history|epoca/g, "historico"], [/horror|miedo/g, "terror"], [/music\b/g, "musica"],
-  [/canciones/g, "musical"], [/mystery|misterio|enigma|investigacion/g, "intriga"],
-  [/love|romantico|amor/g, "romance"], [/short|cortometraje/g, "corto"], [/sport/g, "deporte"],
-  [/suspense|psicologico|tension/g, "thriller"], [/war|guerra/g, "belico"], [/oeste|vaqueros/g, "western"]
-];
-
-// Limpia un género y unifica palabras clave ("ciencia ficcion" -> "scifi")
-export const normalizeGenreText = (t: string | null | undefined): string => 
-  GENRES.reduce((acc, [p, r]) => acc.replace(p, r), normalizeText(t));
-
 // Protege contra símbolos raros en el buscador (Previene ataques ReDoS)
 export const escapeRegExp = (s: string): string => 
   s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

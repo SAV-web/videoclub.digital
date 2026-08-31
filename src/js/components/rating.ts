@@ -210,6 +210,53 @@ function handleRatingMouseLeave(event: MouseEvent): void {
   }
 }
 
+/**
+ * Maneja la interacción por teclado sobre las estrellas (Enter / Espacio).
+ */
+function handleRatingKeyDown(event: KeyboardEvent): void {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const target = event.target as HTMLElement;
+  const starIcon = target.closest<HTMLElement>(".star-icon[data-rating-level]");
+  if (!starIcon) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const card = starIcon.closest<MovieCardElement>(".movie-card");
+  if (!card) return;
+
+  const movieId = normalizeMovieId(card.dataset.movieId);
+  if (!movieId) return;
+
+  const currentRating = getUserDataForMovie(movieId)?.rating;
+  const level = parseInt(starIcon.dataset.ratingLevel || "0", 10);
+  const newRating = resolveNextRating(currentRating, level);
+
+  setRating(movieId, newRating, card);
+  triggerRatingAnimation(card, newRating, starIcon);
+}
+
+/**
+ * Feedback visual para navegación por teclado (FocusIn / FocusOut).
+ */
+function handleRatingFocusIn(event: FocusEvent): void {
+  const target = event.target as HTMLElement;
+  const starIcon = target.closest<HTMLElement>(".star-icon");
+  if (!starIcon) return;
+  
+  const starContainer = event.currentTarget as HTMLElement;
+  const hoverLevel = parseInt(starIcon.dataset.ratingLevel || "0", 10);
+  renderUserStars(starContainer, hoverLevel, false, false);
+}
+
+function handleRatingFocusOut(event: FocusEvent): void {
+  const starContainer = event.currentTarget as HTMLElement;
+  const cardElement = starContainer.closest<HTMLElement>(".movie-card");
+  if (cardElement) {
+    appEvents.emit("card:requestUpdate", { cardElement });
+  }
+}
+
 export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean): void {
   if (!isInteractive) return;
 
@@ -217,6 +264,9 @@ export function setupRatingListeners(starContainer: HTMLElement, isInteractive: 
 
   starContainer.addEventListener("mouseover", handleRatingMouseMove as EventListener, { passive: true });
   starContainer.addEventListener("mouseleave", handleRatingMouseLeave as EventListener, { passive: true });
+  starContainer.addEventListener("keydown", handleRatingKeyDown as EventListener);
+  starContainer.addEventListener("focusin", handleRatingFocusIn as EventListener);
+  starContainer.addEventListener("focusout", handleRatingFocusOut as EventListener);
 }
 
 // =================================================================

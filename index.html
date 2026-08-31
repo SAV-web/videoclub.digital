@@ -118,10 +118,13 @@
 </head>
 
 <body>
+  <!-- Enlace de salto de contenido (Accesibilidad WCAG 2.1 AA) -->
+  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
   <!-- Contenedor principal -->
   <div class="main-layout">
     <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar" data-loading>
+    <aside id="sidebar" class="sidebar" aria-label="Menú de filtros" data-loading>
       <div class="sidebar-inner-wrapper">
         <header class="logo-area">
             <h2 class="logo-title"><span class="logo-line-1">videoclub</span><span class="logo-line-2">.digital</span></h2>
@@ -190,7 +193,7 @@
     </aside>
 
     <!-- Contenido -->
-    <main class="main-content-wrapper">
+    <main id="main-content" class="main-content-wrapper" tabindex="-1">
       <header class="main-header" data-loading>
         <div class="main-header-primary-controls">
           <button id="mobile-sidebar-toggle" type="button" class="mobile-sidebar-toggle" aria-label="Abrir menú de filtros" aria-controls="sidebar" aria-expanded="false">
@@ -386,16 +389,18 @@
                 class="star-rating-container is-interactive"
                 data-template="average-rating-stars"
                 data-action="set-rating-estrellas"
+                role="group"
+                aria-label="Valoración con estrellas"
               >
-                <svg class="star-icon" data-rating-level="1">
+                <svg class="star-icon" data-rating-level="1" tabindex="0" role="button" aria-label="Valorar 1 estrella o suspenso">
                     <use class="star-icon-path star-icon-path--empty" href="#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="#icon-star"></use>
                 </svg>
-                <svg class="star-icon" data-rating-level="2">
+                <svg class="star-icon" data-rating-level="2" tabindex="0" role="button" aria-label="Valorar 2 estrellas">
                     <use class="star-icon-path star-icon-path--empty" href="#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="#icon-star"></use>
                 </svg>
-                <svg class="star-icon" data-rating-level="3">
+                <svg class="star-icon" data-rating-level="3" tabindex="0" role="button" aria-label="Valorar 3 estrellas">
                     <use class="star-icon-path star-icon-path--empty" href="#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="#icon-star"></use>
                 </svg>
@@ -588,10 +593,10 @@
             <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" class="lazy-image" width="400" height="496" decoding="async" />
             <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
-              <div class="star-rating-container is-interactive" data-template="average-rating-stars" data-action="set-rating-estrellas">
-                <svg class="star-icon" data-rating-level="1"><use class="star-icon-path star-icon-path--empty" href="#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="#icon-star"></use></svg>
-                <svg class="star-icon" data-rating-level="2"><use class="star-icon-path star-icon-path--empty" href="#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="#icon-star"></use></svg>
-                <svg class="star-icon" data-rating-level="3"><use class="star-icon-path star-icon-path--empty" href="#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="#icon-star"></use></svg>
+              <div class="star-rating-container is-interactive" data-template="average-rating-stars" data-action="set-rating-estrellas" role="group" aria-label="Valoración con estrellas">
+                <svg class="star-icon" data-rating-level="1" tabindex="0" role="button" aria-label="Valorar 1 estrella o suspenso"><use class="star-icon-path star-icon-path--empty" href="#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="#icon-star"></use></svg>
+                <svg class="star-icon" data-rating-level="2" tabindex="0" role="button" aria-label="Valorar 2 estrellas"><use class="star-icon-path star-icon-path--empty" href="#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="#icon-star"></use></svg>
+                <svg class="star-icon" data-rating-level="3" tabindex="0" role="button" aria-label="Valorar 3 estrellas"><use class="star-icon-path star-icon-path--empty" href="#icon-star"></use><use class="star-icon-path star-icon-path--filled" href="#icon-star"></use></svg>
               </div>
               <button type="button" class="card-action-btn" data-action="toggle-watchlist" aria-label="Añadir a mi lista"><svg class="icon-watchlist"><use href="#icon-bookmark-plus"></use></svg></button>
             </div>
@@ -603,7 +608,7 @@
             <div class="movie-meta">
               <div class="card-icons-line"></div> 
               <div class="modal-horizontal-divider"></div>
-              <div class="year-country-line"><div class="year-flag-group"><span data-template="year"></span><span class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></span></div>
+              <div class="year-country-line"><div class="year-flag-group"><span data-template="year"></span><a class="country-info" data-template="country-container"><span class="fi" data-template="country-flag"></span></a></div>
               </div>
             </div>
           </div>
