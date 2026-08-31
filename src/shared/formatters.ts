@@ -115,25 +115,37 @@ export function formatRuntime(minutes: string | number | null | undefined, isSer
 
 /**
  * Formatea el año o rango de años de emisión de una película o serie.
+ * Soporta códigos de tipo:
+ * - 'S', 'SA', 'SD': serie terminada ('2011-19')
+ * - 'S-': serie en emisión / no finalizada ('2022-')
+ * - 'SM', 'SAM', 'SDM': miniseries ('2019 (M)' o '2019-20 (M)')
  */
 export function formatYear(
   year: number | string | null | undefined,
-  yearEnd: string | null | undefined,
+  yearEnd: number | string | null | undefined,
   isSeries: boolean = false,
-  fallback: string = ""
+  fallback: string = "",
+  type?: string | null
 ): string {
   if (!year) return fallback;
   const text = String(year);
-  if (isSeries && yearEnd) {
-    const normEnd = String(yearEnd).trim().toLowerCase();
-    if (normEnd === "current" || normEnd === "present" || normEnd === "actualidad" || normEnd === "-") {
+  const typeUpper = (type || "").toUpperCase().trim();
+  const isMini = typeUpper === "SM" || typeUpper === "SAM" || typeUpper === "SDM" || String(yearEnd).trim().toUpperCase() === "M";
+  const isOngoing = typeUpper === "S-" || String(yearEnd).trim().toLowerCase() === "current" || String(yearEnd).trim().toLowerCase() === "present" || String(yearEnd).trim().toLowerCase() === "actualidad" || String(yearEnd).trim() === "-";
+
+  if (isSeries) {
+    if (isOngoing) {
       return `${text}-`;
     }
-    if (normEnd === "m") {
+    if (yearEnd && String(yearEnd).trim() !== "M" && String(yearEnd).trim() !== "") {
+      const normEnd = String(yearEnd).trim();
+      const endSuffix = normEnd.length === 4 ? normEnd.slice(-2) : normEnd;
+      const formatted = `${text}-${endSuffix}`;
+      return isMini ? `${formatted} (M)` : formatted;
+    }
+    if (isMini) {
       return `${text} (M)`;
     }
-    const endSuffix = normEnd.length === 4 ? normEnd.slice(-2) : normEnd;
-    return `${text}-${endSuffix}`;
   }
   return text;
 }

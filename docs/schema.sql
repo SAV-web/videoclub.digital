@@ -38,7 +38,7 @@ CREATE TABLE public.movies (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   title text NOT NULL,
   year smallint,
-  year_end text,
+  year_end smallint,
   type text,
   fa_rating real,
   fa_votes integer,
@@ -97,7 +97,10 @@ CREATE TABLE public.movie_directors (
 );
 
 CREATE TABLE public.movies_staging (
+  id text,
+  slug text,
   title text,
+  relevance text,
   year text,
   year_end text,
   type text,
@@ -108,21 +111,19 @@ CREATE TABLE public.movies_staging (
   original_title text,
   country text,
   minutes text,
-  directors text,
-  actors text,
-  genre text,
   synopsis text,
   fa_id text,
   imdb_id text,
-  image text NOT NULL,
-  collection text,
   episodes text,
   wikipedia text,
-  relevance text,
-  studio text,
   justwatch text,
+  genre text,
+  directors text,
+  actors text,
+  collection text,
+  studio text,
   show text,
-  CONSTRAINT movies_staging_pkey PRIMARY KEY (image)
+  CONSTRAINT movies_staging_pkey PRIMARY KEY (id)
 );
 
 CREATE TABLE public.actors (
@@ -203,34 +204,6 @@ CREATE TABLE public.movie_studios (
   CONSTRAINT movie_studios_studio_id_fkey FOREIGN KEY (studio_id) REFERENCES public.studios(id) ON DELETE CASCADE
 );
 
-CREATE TABLE public.movies_staging (
-  id text,
-  image text,
-  title text,
-  relevance text,
-  year text,
-  year_end text,
-  type text,
-  fa_rating text,
-  fa_votes text,
-  imdb_rating text,
-  imdb_votes text,
-  original_title text,
-  country text,
-  minutes text,
-  synopsis text,
-  fa_id text,
-  imdb_id text,
-  episodes text,
-  wikipedia text,
-  justwatch text,
-  genre text,
-  directors text,
-  actors text,
-  collection text,
-  studio text,
-  show boolean
-);
 
 CREATE TABLE public.people_staging (
   id text NOT NULL,

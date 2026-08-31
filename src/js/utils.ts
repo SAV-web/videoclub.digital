@@ -82,7 +82,7 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
     directors: directorsStr,
     actors: actorsStr,
     isSeries,
-    displayYear: formatYear(movie.year, movie.year_end, isSeries, "N/A"),
+    displayYear: formatYear(movie.year, movie.year_end, isSeries, "N/A", movie.type),
     posterUrl: getPosterUrl(slug),
     displayOriginalTitle: hasOrig ? origTitle : title,
     hasOriginalTitle: hasOrig,

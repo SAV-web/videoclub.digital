@@ -55,8 +55,16 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
 
   test("isSeriesType detecta correctamente series de televisión", () => {
     assert.equal(sharedFormatters.isSeriesType("S"), true);
+    assert.equal(sharedFormatters.isSeriesType("SM"), true);
+    assert.equal(sharedFormatters.isSeriesType("SA"), true);
+    assert.equal(sharedFormatters.isSeriesType("SD"), true);
+    assert.equal(sharedFormatters.isSeriesType("SAM"), true);
+    assert.equal(sharedFormatters.isSeriesType("SDM"), true);
+    assert.equal(sharedFormatters.isSeriesType("S-"), true);
     assert.equal(sharedFormatters.isSeriesType("series"), true);
     assert.equal(sharedFormatters.isSeriesType("SERIES"), true);
+    assert.equal(sharedFormatters.isSeriesType("D"), false);
+    assert.equal(sharedFormatters.isSeriesType("A"), false);
     assert.equal(sharedFormatters.isSeriesType("M"), false);
     assert.equal(sharedFormatters.isSeriesType("movie"), false);
     assert.equal(sharedFormatters.isSeriesType(null), false);
@@ -86,6 +94,12 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     );
     assert.equal(sharedFormatters.formatYear(2018, "-", true), "2018-");
     assert.equal(sharedFormatters.formatYear(2019, "M", true), "2019 (M)");
+    assert.equal(sharedFormatters.formatYear(2019, null, true, "", "SM"), "2019 (M)");
+    assert.equal(sharedFormatters.formatYear(2021, null, true, "", "SAM"), "2021 (M)");
+    assert.equal(sharedFormatters.formatYear(2023, null, true, "", "SDM"), "2023 (M)");
+    assert.equal(sharedFormatters.formatYear(2024, null, true, "", "S-"), "2024-");
+    assert.equal(sharedFormatters.formatYear(1994, null, false, "", "D"), "1994");
+    assert.equal(sharedFormatters.formatYear(1995, null, false, "", "A"), "1995");
     assert.equal(sharedFormatters.formatYear(null, null, false, "N/A"), "N/A");
   });
 

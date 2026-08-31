@@ -917,7 +917,7 @@ BEGIN
         )
         SELECT
             public.to_integer_safe(s.id::TEXT), public.to_integer_safe(s.relevance::TEXT), s.title, public.to_integer_safe(s.year::TEXT),
-            s.year_end, s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
+            public.to_integer_safe(s.year_end::TEXT), s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
             s.imdb_id, sync_timestamp, public.to_integer_safe(s.episodes::TEXT), TRIM(s.wikipedia), TRIM(s.justwatch),
