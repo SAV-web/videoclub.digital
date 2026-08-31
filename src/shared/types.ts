@@ -34,7 +34,6 @@ export interface SupabaseMovieRow {
   country?: string | null;
   country_code?: string | null;
   minutes: number | null;
-  image?: string | null;
   fa_id: string | null;
   fa_rating: number | null;
   fa_votes: number | null;

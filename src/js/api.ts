@@ -305,7 +305,7 @@ export function fetchMovies(
           .select(`
             id, title, original_title, year, year_end, type, 
             genres:genres_list, directors:directors_list, actors:actors_list, 
-            minutes, image, fa_id, fa_rating, fa_votes, 
+            minutes, slug, fa_id, fa_rating, fa_votes, 
             imdb_id, imdb_rating, imdb_votes, avg_rating, 
             synopsis, thumbhash_st, last_synced_at, 
             episodes, wikipedia, selections_list, studios_list, justwatch,
