@@ -15,7 +15,8 @@ import {
   LocalStore,
   executeViewTransition,
   getAdjustedTotalPages,
-  runWhenIdle
+  runWhenIdle,
+  normalizeText
 } from "./utils.js";
 
 import {
@@ -28,7 +29,8 @@ import {
   fetchMovieById
 } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
-import { isAbortError, getAppBasePath } from "./contracts.js";
+import { isAbortError, getAppBasePath, toSlug } from "./contracts.js";
+import { initOfflineSync } from "./offlineQueue.js";
 import {
   dom,
   renderPagination,
@@ -39,12 +41,15 @@ import {
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
   showToast,
+  clearToast,
   initThemeToggle,
   updateMobileStatusBar,
   notifyRemovedPersonIncompatibleFilters,
   isAuthModalOpen,
   closeAuthModal,
-  consumeIsClosingModalViaHistory
+  consumeIsClosingModalViaHistory,
+  updateAppBadge,
+  clearAppBadge
 } from "./ui.js";
 
 
@@ -183,6 +188,7 @@ export async function loadAndRenderMovies(
   const currentKnownTotal = getTotalMovies();
   const activeFilters = getActiveFilters();
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
+  updateTypeFilterUI(activeFilters.mediaType as "movies" | "series" | "all");
 
   try {
     let vipData: VipData | null = null;
@@ -197,11 +203,13 @@ export async function loadAndRenderMovies(
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
           // Si el nombre canónico de la BD difiere del filtro reconstruido desde URL (ej. guiones o mayúsculas),
-          // restauramos el nombre canónico en el estado activo para que UI, títulos y metadatos lo muestren exacto.
+          // restauramos el nombre canónico en el estado activo solo si representan la misma persona (mismo slug/normalización).
           if (personData.name && personData.name !== vipName) {
-            setFilter(vipType, personData.name, true);
-            updatePageTitle();
-            updateBreadcrumbData(getActiveFilters());
+            if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
+              setFilter(vipType, personData.name, true);
+              updatePageTitle();
+              updateBreadcrumbData(getActiveFilters());
+            }
           }
 
           const hasPhoto = personData.photo && personData.photo !== "NOT_FOUND";
@@ -448,6 +456,7 @@ async function updateDomWithResults(
 // --- 2. MANEJADORES DE UI (Clícs, Teclado) ---
 
 async function handleSortChange(event: Event): Promise<void> {
+  clearToast();
   const select = event.target as HTMLSelectElement;
   triggerPopAnimation(select);
   setSort(select.value);
@@ -456,6 +465,7 @@ async function handleSortChange(event: Event): Promise<void> {
 }
 
 async function handleMediaTypeToggle(event: Event): Promise<void> {
+  clearToast();
   const btn = event.currentTarget as HTMLElement;
   triggerPopAnimation(btn);
   appEvents.emit("uiActionTriggered");
@@ -469,6 +479,7 @@ async function handleMediaTypeToggle(event: Event): Promise<void> {
 }
 
 async function handleSearchInput(): Promise<void> {
+  clearToast();
   if (!dom.searchInput) return;
   const searchTerm = dom.searchInput.value.trim();
   const currentSearchTerm = getActiveFilters().searchTerm;
@@ -567,6 +578,7 @@ function handleGlobalScroll(): void {
 
 // Limpia todo (Botón Play o Atrás completo)
 function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: unknown } }): void {
+  clearToast();
   const { keepSort, newFilter } = data || {};
   const currentFilters = getActiveFilters();
   if (newFilter && (newFilter.type === 'director' || newFilter.type === 'actor')) {
@@ -591,6 +603,7 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
 // Aplica un filtro específico preservando las categorías activas (Años, Selección, Estudio, País)
 // pero respetando la exclusividad de Director/Actor (las personas son incompatibles con cualquier otra categoría)
 function handleFilterApply(data: { type: string; value: unknown; force?: boolean }): void {
+  clearToast();
   const { type, value, force = true } = data;
   if (!type || value === undefined) return;
 
@@ -610,13 +623,12 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
     if (currentFilters.actor) setFilter('actor', null);
     if (currentFilters.director) setFilter('director', null);
   } else {
-    // Si se activa una persona (o se alterna D <-> A), se limpian las categorías incompatibles preservando el orden y el tipo de medio
+    // Si se activa una persona (o se alterna D <-> A), se limpian las categorías incompatibles y el tipo de medio, preservando el orden
     notifyRemovedPersonIncompatibleFilters(currentFilters);
     const currentSort = currentFilters.sort;
-    const currentMediaType = currentFilters.mediaType;
     resetFiltersState();
     setSort(currentSort);
-    setMediaType(currentMediaType);
+    updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   }
 
   if (!setFilter(type, value, force)) {
@@ -898,6 +910,7 @@ function setupGlobalListeners(): void {
 
   const handleDataRefresh = () => {
     document.querySelectorAll(".movie-card").forEach((el) => updateCardUI(el as HTMLElement));
+    updateAppBadge();
   };
 
   // Eventos Personalizados de la App
@@ -919,6 +932,7 @@ function setupGlobalListeners(): void {
       handleDataRefresh();
     }),
 
+    appEvents.on("uiActionTriggered", clearToast),
     appEvents.on("filtersReset", handleFiltersReset),
     appEvents.on("filter:apply", handleFilterApply),
 
@@ -991,6 +1005,7 @@ function setupAuthSystem(): void {
       userAvatarInitials.title = "";
     }
     clearUserMovieData();
+    clearAppBadge();
     appEvents.emit("userDataUpdated");
     isAuthInitialized = true;
   }
@@ -1134,13 +1149,51 @@ export function init(): void {
   }
 
   if ("serviceWorker" in navigator) {
+    const notifySwUpdate = (worker: ServiceWorker) => {
+      showToast(
+        "Nueva versión disponible",
+        "info",
+        {
+          label: "Actualizar",
+          onClick: () => {
+            worker.postMessage({ type: "SKIP_WAITING" });
+          }
+        }
+      );
+    };
+
     const onSwLoad = () => {
       const basePrefix = getAppBasePath();
       const swPath = basePrefix ? `${basePrefix}/sw.js` : "/sw.js";
-      navigator.serviceWorker.register(swPath).catch(err => {
+      navigator.serviceWorker.register(swPath).then((registration) => {
+        // 1. Si ya hay un worker en espera (ej. otra pestaña instaló la actualización)
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          notifySwUpdate(registration.waiting);
+        }
+
+        // 2. Escuchar cuando un nuevo worker termina de instalarse
+        registration.addEventListener("updatefound", () => {
+          const installingWorker = registration.installing;
+          if (!installingWorker) return;
+
+          installingWorker.addEventListener("statechange", () => {
+            if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+              notifySwUpdate(installingWorker);
+            }
+          });
+        });
+      }).catch(err => {
         if (import.meta.env.DEV) console.error("Fallo SW:", err);
       });
+
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
     };
+
     window.addEventListener("load", onSwLoad);
     mainUnsubscribers.push(() => window.removeEventListener("load", onSwLoad));
   }
@@ -1235,6 +1288,8 @@ export function init(): void {
 
   document.addEventListener("visibilitychange", handleMainVisibilityChange);
   mainUnsubscribers.push(() => document.removeEventListener("visibilitychange", handleMainVisibilityChange));
+
+  mainUnsubscribers.push(initOfflineSync());
 
   const initialUrlParams = new URLSearchParams(window.location.search);
   const targetMovieId = initialUrlParams.get("movie") || initialUrlParams.get("peli");

@@ -10,6 +10,7 @@
 
 import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
+import { enqueueOfflineEntry, requestBackgroundSync } from "../offlineQueue.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
@@ -242,6 +243,12 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
     await setUserMovieDataAPI(movieId, newState);
     if (value !== null) triggerHapticFeedback("success");
   } catch (err: unknown) {
+    if (!navigator.onLine) {
+      await enqueueOfflineEntry(movieId, newState);
+      await requestBackgroundSync();
+      showToast("Guardado sin conexión. Se sincronizará automáticamente.", "info");
+      return;
+    }
     showToast(getFriendlyErrorMessage(err) || "No se pudo guardar la valoración.", "error");
     updateUserDataForMovie(movieId, { rating: previousRating });
     updateRatingUI(card);

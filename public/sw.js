@@ -98,7 +98,6 @@ async function cacheFirst(request, cacheName = CACHE_DYNAMIC) {
 
 self.addEventListener("install", (event) => {
   console.log(`[SW ${VERSION}] Instalando...`);
-  self.skipWaiting(); 
   
   event.waitUntil(
     caches.open(CACHE_STATIC).then((cache) => {
@@ -181,3 +180,25 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+// --- 7. BACKGROUND SYNC (Sincronización en segundo plano) ---
+
+self.addEventListener("sync", (event) => {
+  if (event.tag === "sync-ratings") {
+    event.waitUntil(
+      self.clients.matchAll({ type: "window" }).then((clients) => {
+        clients.forEach((client) => client.postMessage({ type: "SYNC_PENDING_ENTRIES" }));
+      })
+    );
+  }
+});
+
+// --- 8. MENSAJES (Activación bajo demanda) ---
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    console.log(`[SW ${VERSION}] skipWaiting recibido del cliente.`);
+    self.skipWaiting();
+  }
+});
+

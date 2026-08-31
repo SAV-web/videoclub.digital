@@ -426,6 +426,7 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
       state.activeFilters.studio = null;
       state.activeFilters.excludedGenres = [];
       state.activeFilters.excludedCountries = [];
+      state.activeFilters.mediaType = DEFAULTS.MEDIA_TYPE;
       if (type === 'director') state.activeFilters.actor = null;
       if (type === 'actor') state.activeFilters.director = null;
     } else if (type !== 'sort' && type !== 'mediaType' && type !== 'searchTerm' && type !== 'myList') {
@@ -520,4 +521,9 @@ export function updateUserDataForMovie(movieId: number | string, data: Partial<U
 export function clearUserMovieData(): void {
   state.userMovieData = {};
   clearCheckedUserMovieIds();
+}
+
+// Devuelve el número total de películas activas en la lista de seguimiento (Watchlist)
+export function getWatchlistCount(): number {
+  return Object.values(state.userMovieData).filter(entry => entry && entry.onWatchlist).length;
 }

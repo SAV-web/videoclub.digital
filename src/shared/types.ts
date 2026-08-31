@@ -21,7 +21,7 @@ export interface SupabaseMovieRow {
   title: string;
   original_title: string | null;
   year: number | null;
-  year_end: string | null;
+  year_end: number | null;
   type: string | null;
   genres_list?: string | null;
   directors_list?: string | null;
@@ -66,7 +66,7 @@ export interface Movie {
   title: string;
   original_title: string | null;
   year: number | null;
-  year_end: string | null;
+  year_end: number | null;
   type: string | null;
   genres_list?: string | null;
   directors_list?: string | null;

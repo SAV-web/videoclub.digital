@@ -131,7 +131,7 @@ export function formatYear(
   const text = String(year);
   const typeUpper = (type || "").toUpperCase().trim();
   const isMini = typeUpper === "SM" || typeUpper === "SAM" || typeUpper === "SDM" || String(yearEnd).trim().toUpperCase() === "M";
-  const isOngoing = typeUpper === "S-" || String(yearEnd).trim().toLowerCase() === "current" || String(yearEnd).trim().toLowerCase() === "present" || String(yearEnd).trim().toLowerCase() === "actualidad" || String(yearEnd).trim() === "-";
+  const isOngoing = (typeUpper.startsWith("S") && typeUpper.endsWith("-")) || String(yearEnd).trim().toLowerCase() === "current" || String(yearEnd).trim().toLowerCase() === "present" || String(yearEnd).trim().toLowerCase() === "actualidad" || String(yearEnd).trim() === "-";
 
   if (isSeries) {
     if (isOngoing) {

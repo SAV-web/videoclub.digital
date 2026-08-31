@@ -8,7 +8,7 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS, FILTER_CONFIG, STUDIO_DATA, REGIONAL_GROUPS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
-import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents } from "./state.js";
+import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents, getWatchlistCount } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
@@ -72,6 +72,8 @@ export const dom = new Proxy({} as DomElements, {
       return Reflect.get(target, prop);
     }
 
+    if (typeof document === "undefined") return null;
+
     const key = prop as keyof DomElements;
 
     // 1. Auto-Invalidación: Reutiliza caché solo si el nodo sigue conectado; si no, reconsulta.
@@ -112,7 +114,29 @@ function getCurrentPageSize(): number {
 //          1. SISTEMA DE NOTIFICACIONES (TOAST)
 // =================================================================
 
-export function showToast(message: string, type: "error" | "info" | "success" = "error"): void {
+export function clearToast(): void {
+  if (toastFallbackTimer) {
+    clearTimeout(toastFallbackTimer);
+    toastFallbackTimer = null;
+  }
+  const { toastContainer } = dom;
+  if (toastContainer) {
+    toastContainer.replaceChildren();
+  }
+  lastToastMessage = "";
+  lastToastTime = 0;
+}
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+export function showToast(
+  message: string,
+  type: "error" | "info" | "success" = "error",
+  action?: ToastAction
+): void {
   const { toastContainer } = dom;
   if (!toastContainer) return;
 
@@ -121,7 +145,7 @@ export function showToast(message: string, type: "error" | "info" | "success" = 
   const isSameMessage = message === lastToastMessage;
   const isRecent = (now - lastToastTime) < 2000; // 2 segundos
 
-  if (isSameMessage && isRecent) return;
+  if (isSameMessage && isRecent && !action) return;
 
   lastToastMessage = message;
   lastToastTime = now;
@@ -136,34 +160,96 @@ export function showToast(message: string, type: "error" | "info" | "success" = 
   const isError = type === "error";
 
   const toastElement = createElement("div", {
-    className: `toast toast--${type}`,
-    textContent: message,
+    className: `toast toast--${type}${action ? " toast--with-action" : ""}`,
     attributes: {
       role: isError ? "alert" : "status",
       "aria-live": isError ? "assertive" : "polite"
     }
   });
 
-  // Limpieza automática basada en animación CSS (más preciso que setTimeout)
-  toastElement.addEventListener("animationend", (e: AnimationEvent) => {
-    // Solo eliminar si es la animación de salida (la última definida en CSS)
-    if (e.animationName.includes("out")) {
+  const textSpan = createElement("span", {
+    className: "toast-text",
+    textContent: message
+  });
+  toastElement.appendChild(textSpan);
+
+  if (action) {
+    const actionBtn = createElement("button", {
+      type: "button",
+      className: "toast-action-btn",
+      textContent: action.label
+    });
+    actionBtn.addEventListener("click", (e: MouseEvent) => {
+      e.stopPropagation();
+      action.onClick();
       toastElement.remove();
-    }
-  });
+      if (toastFallbackTimer) clearTimeout(toastFallbackTimer);
+    });
+    toastElement.appendChild(actionBtn);
+  }
 
-  // Fallback: Eliminar tras 8s si falla la animación
-  toastFallbackTimer = setTimeout(() => {
-    if (toastElement.isConnected) toastElement.remove();
-  }, 8000);
+  if (!action) {
+    // Limpieza automática basada en animación CSS (más preciso que setTimeout)
+    toastElement.addEventListener("animationend", (e: AnimationEvent) => {
+      // Solo eliminar si es la animación de salida (la última definida en CSS)
+      if (e.animationName.includes("out")) {
+        toastElement.remove();
+      }
+    });
 
-  // Clic para cerrar inmediatamente
-  toastElement.addEventListener("click", () => {
-    toastElement.remove();
-    if (toastFallbackTimer) clearTimeout(toastFallbackTimer);
-  });
+    // Fallback: Eliminar tras 8s si falla la animación
+    toastFallbackTimer = setTimeout(() => {
+      if (toastElement.isConnected) toastElement.remove();
+    }, 8000);
+
+    // Clic para cerrar inmediatamente
+    toastElement.addEventListener("click", () => {
+      toastElement.remove();
+      if (toastFallbackTimer) clearTimeout(toastFallbackTimer);
+    });
+  }
 
   toastContainer.appendChild(toastElement);
+}
+
+// =================================================================
+//          2. BADGING API (Insignia en el icono de la PWA)
+// =================================================================
+
+/**
+ * Actualiza la insignia (badge) en el icono de la PWA según el total de películas en Watchlist.
+ * Funciona en navegadores Chromium (escritorio y Android) y Safari/iOS 16.4+ (PWA instalada).
+ */
+export async function updateAppBadge(): Promise<void> {
+  if (typeof navigator === "undefined" || !("setAppBadge" in navigator)) return;
+
+  try {
+    const count = getWatchlistCount();
+    if (count > 0) {
+      await (navigator as any).setAppBadge(count);
+    } else {
+      await (navigator as any).clearAppBadge();
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn("[Badging API] Error al actualizar insignia:", err);
+    }
+  }
+}
+
+/**
+ * Limpia la insignia del icono de la PWA (ej. al cerrar sesión).
+ */
+export async function clearAppBadge(): Promise<void> {
+  if (typeof navigator === "undefined" || !("clearAppBadge" in navigator)) return;
+
+  try {
+    await (navigator as any).clearAppBadge();
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.warn("[Badging API] Error al limpiar insignia:", err);
+    }
+  }
 }
 
 /**
@@ -185,6 +271,9 @@ export function notifyRemovedPersonIncompatibleFilters(previousFilters: ActiveFi
   }
   if (previousFilters.year && previousFilters.year !== "") {
     removed.push("año");
+  }
+  if (previousFilters.mediaType && previousFilters.mediaType !== DEFAULTS.MEDIA_TYPE) {
+    removed.push("tipo");
   }
 
   if (removed.length === 0) return;

@@ -539,44 +539,36 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
   const nameNorm = normalizeText(name);
   const words = nameNorm.split(/[\s-]+/).filter(w => w.length > 0);
   const wildcardPattern = words.length > 0 ? `%${words.join('%')}%` : `%${nameNorm}%`;
-  const firstWord = words[0] || nameNorm;
-  const lastWord = words.length > 1 ? words[words.length - 1].replace(/^o|^d/, "") : "";
-  const firstLastPattern = lastWord ? `%${firstWord}%${lastWord}%` : wildcardPattern;
 
   try {
     const supabase = await getSupabase();
     const safeNameNorm = `"${nameNorm.replace(/"/g, '""')}"`;
-    const safeWildcard = `"${wildcardPattern.replace(/"/g, '""')}"`;
-    const safeFirstLast = `"${firstLastPattern.replace(/"/g, '""')}"`;
     const safeNameLike = `"%${name.replace(/"/g, '""')}%"`;
 
-    const primaryQuery = type === 'director'
-      ? supabase
-          .from('directors')
-          .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components')
-          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast},components.ilike.${safeNameLike}`)
-          .limit(1)
-      : supabase
-          .from('actors')
-          .select('id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
-          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast}`)
-          .limit(1);
+    const selectFieldsPrimary = type === 'director'
+      ? 'id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components'
+      : 'id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
 
-    const otherQuery = type === 'director'
-      ? supabase
-          .from('actors')
-          .select('id, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
-          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast}`)
-          .limit(1)
-      : supabase
-          .from('directors')
-          .select('id, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)')
-          .or(`name_norm.eq.${safeNameNorm},name_norm.ilike.${safeWildcard},name_norm.ilike.${safeFirstLast},components.ilike.${safeNameLike}`)
-          .limit(1);
+    const selectFieldsOther = 'id, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
 
-    const [primaryRes, otherRes] = await Promise.all([primaryQuery, otherQuery]);
+    // 1. Intento de coincidencia exacta prioritario (name_norm o components para colectivos)
+    let primaryRes = await supabase
+      .from(table)
+      .select(selectFieldsPrimary)
+      .or(type === 'director' ? `name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}` : `name_norm.eq.${safeNameNorm}`)
+      .limit(1);
 
-    const rowData = primaryRes.data && Array.isArray(primaryRes.data) ? primaryRes.data[0] : primaryRes.data;
+    // 2. Si no hay coincidencia exacta (ej. slug parcial o variantes), fallback con todas las palabras
+    if (!primaryRes.data || (Array.isArray(primaryRes.data) && primaryRes.data.length === 0)) {
+      primaryRes = await supabase
+        .from(table)
+        .select(selectFieldsPrimary)
+        .ilike('name_norm', wildcardPattern)
+        .limit(1);
+    }
+
+    const rawData = primaryRes.data as unknown;
+    const rowData = (Array.isArray(rawData) ? rawData[0] : rawData) as Record<string, any> | null;
 
     if (primaryRes.error || !rowData) {
       if (primaryRes.error && import.meta.env.DEV) {
@@ -586,10 +578,20 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       return null;
     }
 
-    const otherRow = otherRes.data && Array.isArray(otherRes.data) && otherRes.data.length > 0 ? otherRes.data[0] : null;
+    const resolvedName = (rowData.name as string) || name;
+    const resolvedNameNorm = normalizeText(resolvedName);
+
+    const otherRes = await supabase
+      .from(otherTable)
+      .select(selectFieldsOther)
+      .eq('name_norm', resolvedNameNorm)
+      .limit(1);
+
+    const rawOtherData = otherRes.data as unknown;
+    const otherRow = (Array.isArray(rawOtherData) && rawOtherData.length > 0 ? rawOtherData[0] : null) as Record<string, any> | null;
     const hasBothRoles = Boolean(otherRow && otherRow.id);
 
-    const rawCountries = (rowData as unknown as { countries?: unknown }).countries || (otherRow as unknown as { countries?: unknown })?.countries || null;
+    const rawCountries = rowData.countries || otherRow?.countries || null;
     const countries = (Array.isArray(rawCountries) ? rawCountries[0] || null : rawCountries) as { name: string; code: string } | null;
 
     const personData: PersonDetails = {

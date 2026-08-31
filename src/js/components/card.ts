@@ -11,6 +11,7 @@ import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FIL
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
+import { enqueueOfflineEntry, requestBackgroundSync } from "../offlineQueue.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import { normalizeMovieId } from "../contracts.js";
@@ -457,6 +458,12 @@ export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: M
     await setUserMovieDataAPI(movieId, newState);
     triggerHapticFeedback("success");
   } catch (err: unknown) {
+    if (!navigator.onLine) {
+      await enqueueOfflineEntry(movieId, newState);
+      await requestBackgroundSync();
+      showToast("Guardado sin conexión. Se sincronizará automáticamente.", "info");
+      return;
+    }
     showToast(getFriendlyErrorMessage(err) || "Error al actualizar la lista.", "error");
     updateUserDataForMovie(movieId, prevState);
     updateCardUI(card);

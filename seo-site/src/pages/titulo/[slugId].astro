@@ -93,6 +93,48 @@ const jsonLd = {
       }
     : {}),
 };
+const primaryGenre = genres.length > 0 ? genres[0] : null;
+const primaryGenreSlug = primaryGenre ? genreToSlug(primaryGenre) : null;
+const siteOrigin = Astro.site ? Astro.site.origin : 'https://videoclub.digital';
+const mediaTypePath = isSeries ? 'series' : 'peliculas';
+const mediaTypeName = isSeries ? 'Series' : 'Películas';
+
+const breadcrumbElements = [
+  {
+    '@type': 'ListItem',
+    position: 1,
+    name: 'Inicio',
+    item: `${siteOrigin}/`,
+  },
+  {
+    '@type': 'ListItem',
+    position: 2,
+    name: mediaTypeName,
+    item: `${siteOrigin}/${mediaTypePath}/`,
+  },
+];
+
+if (primaryGenre && primaryGenreSlug) {
+  breadcrumbElements.push({
+    '@type': 'ListItem',
+    position: 3,
+    name: primaryGenre,
+    item: `${siteOrigin}/genero/${primaryGenreSlug}/${mediaTypePath}/`,
+  });
+}
+
+breadcrumbElements.push({
+  '@type': 'ListItem',
+  position: breadcrumbElements.length + 1,
+  name: movie.title,
+  item: canonicalUrl.href,
+});
+
+const breadcrumbLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: breadcrumbElements,
+};
 ---
 <!DOCTYPE html>
 <html lang="es">
@@ -142,6 +184,7 @@ const jsonLd = {
   <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
   <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(breadcrumbLd)} />
 
   <!-- Speculation Rules API: Prerender nativo instantáneo entre fichas de película (Chromium) -->
   <script type="speculationrules" is:inline>

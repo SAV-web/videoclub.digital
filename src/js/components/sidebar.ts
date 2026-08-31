@@ -17,8 +17,8 @@ import {
 import { unflipAllCards } from "./card.js";
 import { closeModal } from "./modal.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, appEvents } from "../state.js";
-import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo } from "../constants.js";
-import { showToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked, notifyRemovedPersonIncompatibleFilters } from "../ui.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo, DEFAULTS } from "../constants.js";
+import { showToast, clearToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI } from "../ui.js";
 import { loadAndRenderMovies } from "../main.js";
 import { ActiveFilters } from '../types.js';
 
@@ -716,6 +716,7 @@ async function handleMyListToggle(): Promise<void> {
   const nextIndex = (cycle.indexOf(current) + 1) % cycle.length;
   const nextState = cycle[nextIndex];
 
+  clearToast();
   triggerHapticFeedback('medium');
   if (dom.myListButton) triggerPopAnimation(dom.myListButton);
 
@@ -743,6 +744,7 @@ async function handleMyListToggle(): Promise<void> {
 }
 
 async function handleFilterChangeOptimistic(type: string, value: string | null, forceSet = false): Promise<void> {
+  clearToast();
   const previousFilters = getActiveFilters();
 
   if (value && (type === 'actor' || type === 'director')) {
@@ -784,6 +786,9 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
   if (newValue && type !== 'actor' && type !== 'director') {
     if (previousFilters.actor) setFilter('actor', null);
     if (previousFilters.director) setFilter('director', null);
+  } else if (newValue && (type === 'actor' || type === 'director')) {
+    notifyRemovedPersonIncompatibleFilters(previousFilters);
+    updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   }
 
   if (newValue) setFilter('myList', null);
@@ -824,6 +829,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
 }
 
 async function handleToggleExcludedFilterOptimistic(type: string, value: string): Promise<void> {
+  clearToast();
   const previousState = getActiveFilters();
 
   if (previousState.searchTerm) {
@@ -861,6 +867,7 @@ async function handleToggleExcludedFilterOptimistic(type: string, value: string)
 }
 
 function resetFilters(): void {
+  clearToast();
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
   appEvents.emit("filtersReset");

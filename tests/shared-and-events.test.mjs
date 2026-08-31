@@ -61,6 +61,8 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.isSeriesType("SAM"), true);
     assert.equal(sharedFormatters.isSeriesType("SDM"), true);
     assert.equal(sharedFormatters.isSeriesType("S-"), true);
+    assert.equal(sharedFormatters.isSeriesType("SA-"), true);
+    assert.equal(sharedFormatters.isSeriesType("SD-"), true);
     assert.equal(sharedFormatters.isSeriesType("series"), true);
     assert.equal(sharedFormatters.isSeriesType("SERIES"), true);
     assert.equal(sharedFormatters.isSeriesType("D"), false);
@@ -98,6 +100,8 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.formatYear(2021, null, true, "", "SAM"), "2021 (M)");
     assert.equal(sharedFormatters.formatYear(2023, null, true, "", "SDM"), "2023 (M)");
     assert.equal(sharedFormatters.formatYear(2024, null, true, "", "S-"), "2024-");
+    assert.equal(sharedFormatters.formatYear(2023, null, true, "", "SA-"), "2023-");
+    assert.equal(sharedFormatters.formatYear(2022, null, true, "", "SD-"), "2022-");
     assert.equal(sharedFormatters.formatYear(1994, null, false, "", "D"), "1994");
     assert.equal(sharedFormatters.formatYear(1995, null, false, "", "A"), "1995");
     assert.equal(sharedFormatters.formatYear(null, null, false, "N/A"), "N/A");
