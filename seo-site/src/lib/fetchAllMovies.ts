@@ -22,7 +22,6 @@ const MOVIE_PROJECTION = [
   'synopsis',
   'minutes',
   'episodes',
-  'image',
   'fa_id',
   'fa_rating',
   'fa_votes',
