@@ -155,6 +155,9 @@ CREATE TABLE public.selections (
   id smallint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   code text NOT NULL UNIQUE,
+  letter text UNIQUE,
+  thumbhash_st text,
+  thumbhash text,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
   description text,
   CONSTRAINT selections_pkey PRIMARY KEY (id)
@@ -189,6 +192,9 @@ CREATE TABLE public.studios (
   id smallint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
   code text NOT NULL UNIQUE,
+  letter text UNIQUE,
+  thumbhash_st text,
+  thumbhash text,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
   description text,
   CONSTRAINT studios_pkey PRIMARY KEY (id)

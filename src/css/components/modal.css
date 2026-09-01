@@ -939,10 +939,298 @@
     }
   }
 
-  /* Separación de foto y nombre en móvil */
+    /* Separación de foto y nombre en móvil */
   @media (max-width: 700px) {
     & .poster-container {
       margin-bottom: var(--space-lg) !important;
     }
   }
+}
+
+/* =================================================================
+ *                 MODAL LEGAL E INFORMATIVO
+ * =================================================================
+ * Secciones: Quiénes somos, Contacto, Aviso legal, Privacidad, Cookies
+ * ================================================================= */
+
+.legal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-index-overlay);
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px) saturate(85%);
+  -webkit-backdrop-filter: blur(6px) saturate(85%);
+  transition: opacity 0.3s ease;
+}
+
+.legal-modal {
+  position: fixed;
+  z-index: calc(var(--z-index-overlay) + 1);
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+}
+
+/* Modo Escritorio (> 700px): Modal centrado */
+@media (min-width: 701px) {
+  .legal-modal {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 640px;
+    max-height: 85vh;
+  }
+
+  .legal-box {
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    animation: auth-pop-in 0.3s var(--ease-snap);
+  }
+}
+
+/* Modo Móvil (<= 700px): Formato Bottom Sheet accesible */
+@media (max-width: 700px) {
+  .legal-modal {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 90vh;
+  }
+
+  .legal-box {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    background-color: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    animation: auth-slide-up 0.3s var(--ease-snap);
+  }
+}
+
+/* Cabecera del Modal */
+.legal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface-1);
+}
+
+.legal-logo {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary);
+
+  & span:first-child {
+    color: var(--color-text-primary);
+  }
+  & span:last-child {
+    color: var(--color-primary);
+  }
+}
+
+.legal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast), color var(--duration-fast);
+
+  &:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-text-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+  }
+}
+
+/* Barra de Pestañas de Navegación */
+.legal-nav {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  background-color: var(--color-surface-1);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.legal-tab-btn {
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration-fast), border-color var(--duration-fast);
+
+  &:hover {
+    color: var(--color-text-primary);
+  }
+
+  &.is-active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: var(--font-weight-bold);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Cuerpo del Contenido */
+.legal-body {
+  padding: var(--space-lg);
+  overflow-y: auto;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.legal-panel {
+  display: none;
+
+  &.is-active {
+    display: block;
+    animation: fade-in 0.25s ease-out;
+  }
+
+  & h3 {
+    margin: 0 0 var(--space-sm) 0;
+    font-family: var(--font-title);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+  }
+
+  & p {
+    margin: 0 0 var(--space-md) 0;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  & strong {
+    color: var(--color-text-primary);
+  }
+
+  & ul {
+    margin: 0 0 var(--space-md) 0;
+    padding-left: var(--space-lg);
+    
+    & li {
+      margin-bottom: var(--space-xs);
+    }
+  }
+
+  & a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color var(--duration-fast);
+
+    &:hover {
+      color: var(--color-text-primary);
+    }
+  }
+
+  & code {
+    padding: 2px 6px;
+    background-color: var(--color-surface-2);
+    border-radius: var(--radius-sm);
+    font-size: 0.9em;
+    color: var(--color-text-primary);
+  }
+}
+
+/* Tarjeta Destacada de Contacto */
+.legal-contact-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  margin: var(--space-md) 0;
+  background-color: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.legal-contact-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.legal-contact-link {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary) !important;
+  text-decoration: none !important;
+
+  &:hover {
+    text-decoration: underline !important;
+  }
+}
+
+.legal-small-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  opacity: 0.85;
+}
+
+/* Pie del Modal */
+.legal-box-footer {
+  padding: var(--space-sm) var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-surface-1);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }

@@ -419,16 +419,21 @@ CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_sel
 CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
 
 -- 5.0. Columnas Generadas de Slug Canónico e Índices para Directores y Actores
+-- IMPORTANTE: public.unaccent_immutable() debe aplicarse ANTES de regexp_replace,
+-- para que las vocales acentuadas (á, é, í, ó, ú, etc.) se conviertan en (a, e, i, o, u)
+-- y no sean sustituidas erróneamente por guiones '-'.
+ALTER TABLE public.directors DROP COLUMN IF EXISTS slug CASCADE;
 ALTER TABLE public.directors 
-ADD COLUMN IF NOT EXISTS slug TEXT GENERATED ALWAYS AS (
-    public.unaccent_immutable(lower(regexp_replace(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+ADD COLUMN slug TEXT GENERATED ALWAYS AS (
+    TRIM(BOTH '-' FROM regexp_replace(lower(public.unaccent_immutable(name)), '[^a-z0-9]+', '-', 'g'))
 ) STORED;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_directors_slug ON public.directors(slug);
+CREATE INDEX IF NOT EXISTS idx_directors_slug ON public.directors(slug);
 
+ALTER TABLE public.actors DROP COLUMN IF EXISTS slug CASCADE;
 ALTER TABLE public.actors 
-ADD COLUMN IF NOT EXISTS slug TEXT GENERATED ALWAYS AS (
-    public.unaccent_immutable(lower(regexp_replace(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+ADD COLUMN slug TEXT GENERATED ALWAYS AS (
+    TRIM(BOTH '-' FROM regexp_replace(lower(public.unaccent_immutable(name)), '[^a-z0-9]+', '-', 'g'))
 ) STORED;
 
 CREATE INDEX IF NOT EXISTS idx_actors_slug ON public.actors(slug);
@@ -1009,14 +1014,14 @@ BEGIN
         SELECT t.movie_id, c.id
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS sel_code(code)
-        JOIN public.selections c ON LOWER(c.code) = LOWER(TRIM(sel_code.code))
+        JOIN public.selections c ON (c.letter = UPPER(TRIM(sel_code.code)) OR c.code = LOWER(TRIM(sel_code.code)))
         ON CONFLICT (movie_id, selection_id) DO NOTHING;
 
         INSERT INTO public.movie_studios (movie_id, studio_id)
         SELECT t.movie_id, st.id
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-        JOIN public.studios st ON LOWER(st.code) = LOWER(TRIM(stu_code.code))
+        JOIN public.studios st ON (st.letter = UPPER(TRIM(stu_code.code)) OR st.code = LOWER(TRIM(stu_code.code)))
         ON CONFLICT (movie_id, studio_id) DO NOTHING;
 
         -- Borrados diferenciales desde tabla temporal
@@ -1052,7 +1057,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS s_code(code)
-            JOIN public.selections sel ON LOWER(sel.code) = LOWER(TRIM(s_code.code))
+            JOIN public.selections sel ON (sel.letter = UPPER(TRIM(s_code.code)) OR sel.code = LOWER(TRIM(s_code.code)))
             WHERE t.movie_id = ms.movie_id AND sel.id = ms.selection_id
           );
 
@@ -1061,7 +1066,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-            JOIN public.studios stu ON LOWER(stu.code) = LOWER(TRIM(stu_code.code))
+            JOIN public.studios stu ON (stu.letter = UPPER(TRIM(stu_code.code)) OR stu.code = LOWER(TRIM(stu_code.code)))
             WHERE t.movie_id = mst.movie_id AND stu.id = mst.studio_id
           );
 

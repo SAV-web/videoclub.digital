@@ -57,6 +57,23 @@
     --color-border: #2f2f2f; --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Skip link crítico fuera de flujo para evitar FOUC y empuje visual inicial */
+  .skip-link {
+    position: absolute;
+    top: -9999px;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10000;
+  }
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    top: var(--space-sm);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   body { background-color: var(--color-bg); color: var(--color-text-primary); font-family: var(--font-body); }
   .main-layout { display: flex; }
   .sidebar { position: fixed; left: 0; top: 0; width: 300px; height: 100vh; transform: translateX(-100%); background-color: var(--color-surface); border-right: 2px solid var(--color-border); z-index: var(--z-index-sidebar); }
@@ -68,7 +85,10 @@
     .main-header { position: sticky; top: 0; bottom: auto; left: 0; right: 0; border-radius: 0; border: none; padding: var(--space-lg) var(--space-xxl) var(--space-md); gap: var(--space-md) var(--space-lg); }
     .content { padding: var(--space-md) var(--space-xxl) var(--space-xs); }
   }
-  @media(min-width:769px) { .sidebar { position: sticky; transform: none; width: 200px; } }
+  @media(min-width:769px) { 
+    .sidebar { position: sticky; transform: none; width: 200px; flex-basis: 200px; flex-shrink: 0; }
+    body.sidebar-collapsed .sidebar { width: 65px; flex-basis: 65px; }
+  }
   
   .grid-container { display: grid; gap: var(--space-md); grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); justify-content: start; }
   .main-header-primary-controls, .search-and-theme-group { display: flex; align-items: center; gap: var(--space-md); }
@@ -243,11 +263,11 @@
         <footer class="site-footer" data-loading>
           <ul class="footer-links">
             <li class="footer-brand">videoclub.digital</li>
-            <li><a href="#">Quiénes somos</a></li>
-            <li><a href="#">Contacto</a></li>
-            <li><a href="#">Aviso legal</a></li>
-            <li><a href="#">Privacidad</a></li>
-            <li><a href="#">Cookies</a></li>
+            <li><button type="button" class="footer-legal-btn" data-legal-tab="about">Quiénes somos</button></li>
+            <li><button type="button" class="footer-legal-btn" data-legal-tab="contact">Contacto</button></li>
+            <li><button type="button" class="footer-legal-btn" data-legal-tab="legal">Aviso legal</button></li>
+            <li><button type="button" class="footer-legal-btn" data-legal-tab="privacy">Privacidad</button></li>
+            <li><button type="button" class="footer-legal-btn" data-legal-tab="cookies">Cookies</button></li>
             <li class="footer-copy">2025-2026 © Copyright.</li>
           </ul>
         </footer>
@@ -346,6 +366,89 @@
           </form>
         </section>
         <div id="auth-message" class="auth-message" hidden role="alert"></div>
+      </div>
+    </div>
+
+    <!-- Legal & Info Modal (Quiénes somos, Contacto, Aviso Legal, Privacidad, Cookies) -->
+    <div id="legal-overlay" class="legal-overlay" hidden aria-hidden="true"></div>
+    <div id="legal-modal" class="legal-modal" role="dialog" aria-modal="true" hidden aria-labelledby="legal-modal-title" tabindex="-1">
+      <div class="legal-box">
+        <header class="legal-header">
+          <div class="legal-header-brand">
+            <h2 id="legal-modal-title" class="legal-logo"><span>videoclub</span>.<span>digital</span></h2>
+          </div>
+          <button type="button" id="legal-close-btn" class="legal-close-btn" aria-label="Cerrar modal informativo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </header>
+
+        <nav class="legal-nav" role="tablist" aria-label="Secciones informativas y legales">
+          <button type="button" class="legal-tab-btn is-active" role="tab" id="tab-about" aria-selected="true" aria-controls="panel-about" data-tab="about">Quiénes somos</button>
+          <button type="button" class="legal-tab-btn" role="tab" id="tab-contact" aria-selected="false" aria-controls="panel-contact" data-tab="contact">Contacto</button>
+          <button type="button" class="legal-tab-btn" role="tab" id="tab-legal" aria-selected="false" aria-controls="panel-legal" data-tab="legal">Aviso legal</button>
+          <button type="button" class="legal-tab-btn" role="tab" id="tab-privacy" aria-selected="false" aria-controls="panel-privacy" data-tab="privacy">Privacidad</button>
+          <button type="button" class="legal-tab-btn" role="tab" id="tab-cookies" aria-selected="false" aria-controls="panel-cookies" data-tab="cookies">Cookies</button>
+        </nav>
+
+        <div class="legal-body">
+          <!-- 1. Quiénes somos -->
+          <section id="panel-about" class="legal-panel is-active" role="tabpanel" aria-labelledby="tab-about">
+            <h3>Quiénes somos</h3>
+            <p><strong>videoclub.digital</strong> es un archivo y catálogo cinematográfico digital independiente, diseñado para cinéfilos, investigadores y amantes del séptimo arte.</p>
+            <p>Nuestra misión es ofrecer un espacio de descubrimiento riguroso, facilitando la exploración de filmografías completas de directores y actores, selecciones temáticas, cinematografías de distintos países y períodos históricos.</p>
+            <p>El proyecto no aloja ni distribuye archivos audiovisuales de vídeo en streaming; funciona como una biblioteca de referencia, análisis y prescripción cultural de obras cinematográficas.</p>
+          </section>
+
+          <!-- 2. Contacto -->
+          <section id="panel-contact" class="legal-panel" role="tabpanel" aria-labelledby="tab-contact" hidden>
+            <h3>Contacto</h3>
+            <p>Para cualquier consulta, sugerencia de catálogo, propuesta de colaboración o notificación técnica, puedes escribirnos directamente a nuestro buzón de atención:</p>
+            <div class="legal-contact-card">
+              <span class="legal-contact-label">Correo electrónico oficial:</span>
+              <a href="mailto:contacto@videoclub.digital" class="legal-contact-link">contacto@videoclub.digital</a>
+            </div>
+            <p class="legal-small-note">Revisamos periódicamente todos los mensajes y respondemos con la mayor brevedad posible.</p>
+          </section>
+
+          <!-- 3. Aviso Legal -->
+          <section id="panel-legal" class="legal-panel" role="tabpanel" aria-labelledby="tab-legal" hidden>
+            <h3>Aviso legal</h3>
+            <p><strong>Titularidad:</strong> En cumplimiento de la normativa de la sociedad de la información y comercio electrónico, se informa que <em>videoclub.digital</em> es un proyecto de carácter informativo, divulgativo y de prescripción cinematográfica sin actividad comercial de venta directa de entradas ni suscripciones de pago.</p>
+            <p><strong>Propiedad Intelectual y Contenidos:</strong> Los títulos, sinopsis, nombres de películas y materiales promocionales (como pósters o imágenes de referencia) mostrados en la plataforma pertenecen a sus respectivos productores, distribuidores o titulares de derechos, y se utilizan bajo un propósito estrictamente divulgativo y de reseña cultural.</p>
+            <p><strong>Enlaces Externos:</strong> La web proporciona enlaces a fuentes externas de información y plataformas de streaming (como IMDb, FilmAffinity, JustWatch o Wikipedia). <em>videoclub.digital</em> no asume responsabilidad sobre la disponibilidad o contenidos de dichos sitios externos.</p>
+          </section>
+
+          <!-- 4. Privacidad -->
+          <section id="panel-privacy" class="legal-panel" role="tabpanel" aria-labelledby="tab-privacy" hidden>
+            <h3>Política de privacidad</h3>
+            <p>En <em>videoclub.digital</em> nos tomamos muy en serio la privacidad y la minimización de datos conforme al Reglamento General de Protección de Datos (RGPD):</p>
+            <ul>
+              <li><strong>Datos recogidos:</strong> Si decides crear una cuenta personal, únicamente almacenamos tu dirección de correo electrónico y las preferencias/puntuaciones de tu lista privada (watchlist y valoraciones).</li>
+              <li><strong>Finalidad:</strong> Permitir la autenticación segura y sincronizar tus películas guardadas en tus dispositivos.</li>
+              <li><strong>No cesión a terceros:</strong> Tus datos jamás se venden, ceden ni comparten con terceros para fines publicitarios o comerciales.</li>
+              <li><strong>Tus derechos:</strong> Puedes solicitar el acceso, rectificación o eliminación total de tu cuenta y datos asociados en cualquier momento escribiendo a <a href="mailto:contacto@videoclub.digital">contacto@videoclub.digital</a>.</li>
+            </ul>
+          </section>
+
+          <!-- 5. Cookies -->
+          <section id="panel-cookies" class="legal-panel" role="tabpanel" aria-labelledby="tab-cookies" hidden>
+            <h3>Política de cookies y almacenamiento</h3>
+            <p><strong>videoclub.digital no utiliza cookies de seguimiento publicitario ni tecnologías de rastreo de terceros con fines comerciales.</strong></p>
+            <p>Utilizamos únicamente tecnologías de almacenamiento local estrictamente técnicas y funcionales (como <code>localStorage</code> del navegador) indispensables para el correcto funcionamiento de la plataforma:</p>
+            <ul>
+              <li><strong>Sesión de usuario:</strong> Mantenimiento seguro de tu sesión cuando inicias sesión en la plataforma (gestionado por Supabase Auth).</li>
+              <li><strong>Preferencias de interfaz:</strong> Guardado de tu estado de filtros, ordenación y tema visual.</li>
+            </ul>
+            <p>Al ser mecanismos meramente técnicos y exentos de elaboración de perfiles publicitarios, no interfieren con tu privacidad.</p>
+          </section>
+        </div>
+
+        <footer class="legal-box-footer">
+          <small>2025-2026 © videoclub.digital. Todos los derechos reservados.</small>
+        </footer>
       </div>
     </div>
 

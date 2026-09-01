@@ -37,6 +37,7 @@ import {
   updateHeaderPaginationState,
   prefetchNextPage,
   setupAuthModal,
+  setupLegalModal,
   updateTypeFilterUI,
   updateTotalResultsUI,
   clearAllSidebarAutocomplete,
@@ -47,6 +48,8 @@ import {
   notifyRemovedPersonIncompatibleFilters,
   isAuthModalOpen,
   closeAuthModal,
+  isLegalModalOpen,
+  closeLegalModal,
   consumeIsClosingModalViaHistory,
   updateAppBadge,
   clearAppBadge
@@ -1208,6 +1211,11 @@ export function init(): void {
       modalWasOpen = true;
     }
 
+    if (isLegalModalOpen()) {
+      closeLegalModal({ fromPopstate: true });
+      modalWasOpen = true;
+    }
+
     // Si había una modal abierta o el popstate fue originado por un cierre de modal previo
     if (modalWasOpen || consumeIsClosingModalViaHistory()) {
       return;
@@ -1250,6 +1258,7 @@ export function init(): void {
       if (idleGen !== mainLifecycleGen) return;
       loadSidebar();
       setupAuthModal();
+      setupLegalModal();
     }, 1000)
   );
 

@@ -31,6 +31,8 @@ export interface DomElements {
   clearFiltersBtn: HTMLButtonElement | null;
   authModal: HTMLElement | null;
   authOverlay: HTMLElement | null;
+  legalModal: HTMLElement | null;
+  legalOverlay: HTMLElement | null;
   loginButton: HTMLButtonElement | null;
   toastContainer: HTMLElement | null;
   mobileSidebarToggle: HTMLButtonElement | null;
@@ -58,6 +60,8 @@ const domSelectors: Record<keyof DomElements, string> = {
   clearFiltersBtn: SELECTORS.CLEAR_FILTERS_BTN,
   authModal: "#auth-modal",
   authOverlay: "#auth-overlay",
+  legalModal: "#legal-modal",
+  legalOverlay: "#legal-overlay",
   loginButton: "#login-button",
   toastContainer: SELECTORS.TOAST_CONTAINER,
   mobileSidebarToggle: "#mobile-sidebar-toggle",
@@ -592,6 +596,107 @@ export function setupAuthModal(): void {
   authModal.addEventListener("touchcancel", endDrag, { passive: true });
 
   authModalInitialized = true;
+}
+
+// =================================================================
+//          3.2. MODAL LEGAL E INFORMATIVO
+// =================================================================
+
+export const isLegalModalOpen = (): boolean => {
+  return Boolean(dom.legalModal && !dom.legalModal.hidden);
+};
+
+export function switchLegalTab(tabName: string): void {
+  const modal = dom.legalModal;
+  if (!modal) return;
+
+  const tabs = modal.querySelectorAll<HTMLButtonElement>(".legal-tab-btn");
+  const panels = modal.querySelectorAll<HTMLElement>(".legal-panel");
+
+  let targetPanelId = `panel-${tabName}`;
+  let found = false;
+
+  tabs.forEach((tab) => {
+    const isTarget = tab.getAttribute("data-tab") === tabName;
+    tab.classList.toggle("is-active", isTarget);
+    tab.setAttribute("aria-selected", isTarget ? "true" : "false");
+    if (isTarget) found = true;
+  });
+
+  if (!found && tabs.length > 0) {
+    tabs[0].classList.add("is-active");
+    tabs[0].setAttribute("aria-selected", "true");
+    targetPanelId = tabs[0].getAttribute("aria-controls") || "panel-about";
+  }
+
+  panels.forEach((panel) => {
+    const isTarget = panel.id === targetPanelId;
+    panel.classList.toggle("is-active", isTarget);
+    panel.hidden = !isTarget;
+  });
+
+  // Reset scroll del contenedor de texto
+  const body = modal.querySelector<HTMLElement>(".legal-body");
+  if (body) body.scrollTop = 0;
+}
+
+export const closeLegalModal = (options?: { fromPopstate?: boolean } | Event): void => {
+  const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
+  if (dom.legalModal && !dom.legalModal.hidden) {
+    if (!isPopstate && window.history.state?.modalOpen) {
+      setIsClosingModalViaHistory();
+      window.history.back();
+    }
+  }
+  closeAccessibleModal(dom.legalModal, dom.legalOverlay);
+};
+
+export const openLegalModal = (tabName = "about"): void => {
+  if (!window.history.state?.modalOpen) {
+    window.history.pushState({ modalOpen: true }, "", window.location.href);
+  }
+  switchLegalTab(tabName);
+  openAccessibleModal(dom.legalModal, dom.legalOverlay, false);
+};
+
+let legalModalInitialized = false;
+
+export function setupLegalModal(): void {
+  if (legalModalInitialized) return;
+  const { legalModal, legalOverlay } = dom;
+  if (!legalModal) return;
+
+  // 1. Escuchar botones del pie de página (footer)
+  document.querySelectorAll<HTMLButtonElement>(".footer-legal-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.getAttribute("data-legal-tab") || "about";
+      openLegalModal(tab);
+    });
+  });
+
+  // 2. Escuchar botón de cierre
+  const closeBtn = document.getElementById("legal-close-btn");
+  closeBtn?.addEventListener("click", () => closeLegalModal());
+
+  // 3. Clic fuera (overlay)
+  legalOverlay?.addEventListener("click", () => closeLegalModal());
+
+  // 4. Tecla Escape
+  document.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Escape" && isLegalModalOpen()) {
+      closeLegalModal();
+    }
+  });
+
+  // 5. Cambio de pestañas dentro del modal
+  legalModal.querySelectorAll<HTMLButtonElement>(".legal-tab-btn").forEach((tabBtn) => {
+    tabBtn.addEventListener("click", () => {
+      const tab = tabBtn.getAttribute("data-tab");
+      if (tab) switchLegalTab(tab);
+    });
+  });
+
+  legalModalInitialized = true;
 }
 
 // =================================================================
