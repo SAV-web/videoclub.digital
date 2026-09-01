@@ -159,7 +159,7 @@ export type SearchResult<T = MappedMovie> = ApiResponse<T>;
 export interface PersonDetails {
   id: number;
   name: string;
-  photo: string | null;
+  slug?: string | null;
   thumbhash_st?: string | null;
   birthday: string | null;
   deathday: string | null;

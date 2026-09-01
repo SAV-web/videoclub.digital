@@ -8,7 +8,7 @@
 // =================================================================
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { setUserMovieDataAPI } from "../api.js";
 import { enqueueOfflineEntry, requestBackgroundSync } from "../offlineQueue.js";
@@ -1048,16 +1048,10 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const img = card.querySelector('img');
 
   if (img) {
-    let photoUrl = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-    if (person.photo && person.photo !== 'NOT_FOUND') {
-      let photoName = person.photo;
-      if (/\.(jpg|jpeg|png)$/i.test(photoName)) {
-        photoName = photoName.replace(/\.(jpg|jpeg|png)$/i, ".webp");
-      } else if (!photoName.endsWith(".webp")) {
-        photoName += ".webp";
-      }
-      photoUrl = `${CONFIG.PROFILE_BASE_URL}${photoName}`;
-    }
+    const personSlug = person.slug || toSlug(person.name);
+    const photoUrl = person.birthday
+      ? `${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`
+      : `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
 
     img.alt = `Foto de ${person.name}`;
     img.loading = "eager";

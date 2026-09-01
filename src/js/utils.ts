@@ -10,7 +10,7 @@
 
 import { CONFIG } from "./constants.js";
 import { ERROR_CODES, isAbortError, parseYearRangeRaw, buildFilterUrl, toSlug } from "./contracts.js";
-export { parseYearRangeRaw, buildFilterUrl };
+export { parseYearRangeRaw, buildFilterUrl, toSlug };
 import { Movie, MappedMovie } from "./types.js";
 
 // --- IMPORTACIÓN Y RE-EXPORTACIÓN DE LA FUENTE ÚNICA DE FORMATEADORES (SSOT) ---

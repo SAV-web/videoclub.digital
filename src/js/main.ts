@@ -212,15 +212,10 @@ export async function loadAndRenderMovies(
             }
           }
 
-          const hasPhoto = personData.photo && personData.photo !== "NOT_FOUND";
-          if (hasPhoto) {
-            let photoName = personData.photo as string;
-            if (/\.(jpg|jpeg|png)$/i.test(photoName)) {
-              photoName = photoName.replace(/\.(jpg|jpeg|png)$/i, ".webp");
-            } else if (!photoName.endsWith(".webp")) {
-              photoName += ".webp";
-            }
-            preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${photoName}`);
+          const isVip = Boolean(personData.birthday);
+          if (isVip) {
+            const personSlug = personData.slug || toSlug(personData.name);
+            preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
             hasVip = true;
             if (page === 1) vipData = { type: "person", data: personData };
           }

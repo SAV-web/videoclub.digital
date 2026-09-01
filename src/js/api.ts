@@ -546,10 +546,10 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     const safeNameLike = `"%${name.replace(/"/g, '""')}%"`;
 
     const selectFieldsPrimary = type === 'director'
-      ? 'id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components'
-      : 'id, name, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
+      ? 'id, name, slug, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components'
+      : 'id, name, slug, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
 
-    const selectFieldsOther = 'id, photo, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
+    const selectFieldsOther = 'id, slug, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
 
     // 1. Intento de coincidencia exacta prioritario (name_norm o components para colectivos)
     let primaryRes = await supabase
@@ -596,7 +596,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
 
     const personData: PersonDetails = {
       ...(rowData as unknown as PersonDetails),
-      photo: (rowData.photo || otherRow?.photo || null) as string | null,
+      slug: (rowData.slug || otherRow?.slug || null) as string | null,
       thumbhash_st: (rowData.thumbhash_st || otherRow?.thumbhash_st || null) as string | null,
       birthday: (rowData.birthday || otherRow?.birthday || null) as string | null,
       deathday: (rowData.deathday || otherRow?.deathday || null) as string | null,

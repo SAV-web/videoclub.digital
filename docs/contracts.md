@@ -115,7 +115,7 @@ Reglas:
 ```ts
 interface PersonDetails {
   name: string;
-  photo: string | null;
+  slug?: string | null;
   birthday: string | null;
   deathday: string | null;
   place_of_birth: string | null;

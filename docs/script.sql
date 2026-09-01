@@ -224,12 +224,12 @@ BEGIN
     END IF;
 
     -- =========================================================================================
-    -- FASE 3.6: RESOLUCIÓN DE DIRECTORES (INCLUYENDO PAREJAS / COLECTIVOS Y ALFANUMÉRICO)
+    -- FASE 3.6: RESOLUCIÓN DE DIRECTORES (INCLUYENDO SLUG, PAREJAS / COLECTIVOS Y ALFANUMÉRICO)
     -- =========================================================================================
     -- CONTRATO CON EL FRONTEND (slugToPersonQuery / parsePrettyPath en contracts.ts):
     -- El cliente web envía el texto limpio extraído del slug (ej. "hermanos russo", "jean luc godard").
     -- Esta fase resuelve:
-    --   1. Coincidencia directa insensible a mayúsculas y acentos (d.name_norm).
+    --   1. Coincidencia directa por slug indexado (d.slug) o nombre normalizado (d.name_norm).
     --   2. Fallback alfanumérico estricto (regexp_replace) para emparejar guiones y apóstrofes.
     --   3. Expansión bidireccional de colectivos y dúos vía `directors.components` (ej. "Hermanos Russo"
     --      expande a "Anthony Russo" y "Joe Russo", devolviendo películas de ambos).
@@ -240,7 +240,8 @@ BEGIN
         FROM (
             SELECT d.name AS d_name
             FROM public.directors d
-            WHERE d.name_norm = public.unaccent_immutable(lower(director_name))
+            WHERE d.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(director_name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+               OR d.name_norm = public.unaccent_immutable(lower(director_name))
                OR regexp_replace(d.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
                OR (
                    d.components IS NOT NULL AND EXISTS (
@@ -256,10 +257,10 @@ BEGIN
     END IF;
 
     -- =========================================================================================
-    -- FASE 3.7: PREPARACIÓN DE ACTOR (RESOLUCIÓN ALFANUMÉRICA Y DE NOMBRE CANÓNICO)
+    -- FASE 3.7: PREPARACIÓN DE ACTOR (RESOLUCIÓN POR SLUG, ALFANUMÉRICA Y DE NOMBRE CANÓNICO)
     -- =========================================================================================
     -- CONTRATO CON EL FRONTEND (slugToPersonQuery / parsePrettyPath en contracts.ts):
-    -- Resuelve el nombre del actor normalizando acentos (a.name_norm) y aplicando fallback
+    -- Resuelve el nombre del actor por slug indexado (a.slug), normalizando acentos (a.name_norm) y aplicando fallback
     -- alfanumérico para mitigar discrepancias de puntuación entre slugs y nombres en créditos.
     IF actor_name IS NOT NULL AND TRIM(actor_name) != '' THEN
         SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(a_name) || '"')::text, ' | ')::tsquery
@@ -267,7 +268,8 @@ BEGIN
         FROM (
             SELECT a.name AS a_name
             FROM public.actors a
-            WHERE a.name_norm = public.unaccent_immutable(lower(actor_name))
+            WHERE a.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(actor_name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+               OR a.name_norm = public.unaccent_immutable(lower(actor_name))
                OR regexp_replace(a.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(actor_name)), '[^a-z0-9]', '', 'g')
             UNION
             SELECT actor_name
@@ -380,7 +382,6 @@ CREATE TABLE IF NOT EXISTS public.user_movie_entries (
 
 -- 4.2. Índices para optimizar consultas de usuario y ordenación de Watchlist
 CREATE INDEX IF NOT EXISTS user_movie_entries_movie_id_idx ON public.user_movie_entries(movie_id);
-ALTER TABLE public.user_movie_entries ADD COLUMN IF NOT EXISTS watchlist_position integer;
 CREATE INDEX IF NOT EXISTS user_movie_entries_watchlist_pos_idx ON public.user_movie_entries (user_id, watchlist_position ASC NULLS LAST) WHERE on_watchlist = true;
 
 -- 4.3. Función y trigger para actualización automática de 'updated_at'
@@ -416,6 +417,21 @@ CREATE INDEX IF NOT EXISTS movie_directors_director_id_idx ON public.movie_direc
 CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(actor_id);
 CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_selections(selection_id);
 CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
+
+-- 5.0. Columnas Generadas de Slug Canónico e Índices para Directores y Actores
+ALTER TABLE public.directors 
+ADD COLUMN IF NOT EXISTS slug TEXT GENERATED ALWAYS AS (
+    public.unaccent_immutable(lower(regexp_replace(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+) STORED;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_directors_slug ON public.directors(slug);
+
+ALTER TABLE public.actors 
+ADD COLUMN IF NOT EXISTS slug TEXT GENERATED ALWAYS AS (
+    public.unaccent_immutable(lower(regexp_replace(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_actors_slug ON public.actors(slug);
 
 CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm extensions.gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS directors_components_trgm_idx ON public.directors USING gin (public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
@@ -462,7 +478,6 @@ BEGIN
         CREATE UNIQUE INDEX mv_actor_suggestions_id_idx ON public.mv_actor_suggestions(id);
         CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON public.mv_actor_suggestions USING gin(name_norm extensions.gin_trgm_ops);
         CREATE INDEX mv_actor_suggestions_count_idx ON public.mv_actor_suggestions(movie_count DESC);
-        REVOKE ALL ON TABLE public.mv_actor_suggestions FROM anon, authenticated, PUBLIC;
     END IF;
 END $$;
 
@@ -503,7 +518,6 @@ BEGIN
         CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON public.mv_director_suggestions USING gin(name_norm extensions.gin_trgm_ops);
         CREATE INDEX mv_director_suggestions_comp_norm_trgm_idx ON public.mv_director_suggestions USING gin(components_norm extensions.gin_trgm_ops) WHERE components_norm <> '';
         CREATE INDEX mv_director_suggestions_count_idx ON public.mv_director_suggestions(movie_count DESC);
-        REVOKE ALL ON TABLE public.mv_director_suggestions FROM anon, authenticated, PUBLIC;
     END IF;
 END $$;
 
@@ -552,10 +566,6 @@ END $$;
 DROP FUNCTION IF EXISTS public.get_actor_suggestions(text);
 DROP FUNCTION IF EXISTS public.get_director_suggestions(text);
 DROP FUNCTION IF EXISTS public.get_title_suggestions(text);
-DROP FUNCTION IF EXISTS public.get_genre_suggestions(text);
-DROP FUNCTION IF EXISTS public.get_country_suggestions(text);
-DROP FUNCTION IF EXISTS public.get_random_top_actors(int);
-DROP FUNCTION IF EXISTS public.get_random_top_directors(int);
 
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINER
@@ -757,8 +767,6 @@ CREATE POLICY "People staging access restricted to service_role" ON public.peopl
 ALTER TABLE public.user_movie_entries ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Los usuarios pueden gestionar sus propias entradas" ON public.user_movie_entries;
-DROP POLICY IF EXISTS "Los usuarios pueden leer sus propias entradas" ON public.user_movie_entries;
-DROP POLICY IF EXISTS "Enable read access for all users" ON public.user_movie_entries;
 
 CREATE POLICY "Los usuarios pueden gestionar sus propias entradas"
 ON public.user_movie_entries FOR ALL
@@ -771,11 +779,9 @@ WITH CHECK ( (select auth.uid()) = user_id );
 -- Pipeline transaccional idempotente:
 -- 1. Bloqueo transaccional de exclusión mutua (pg_advisory_xact_lock).
 -- 2. Poblado de entidades base con filtro de admisión (show = '1').
--- 3. Actualización diferencial de personas VIPs (fotos, biografías, componentes).
+-- 3. Actualización diferencial de personas VIPs (biografías, componentes).
 -- 4. UPSERT diferencial en catálogo movies con detección de cambios reales.
 -- 5. Reconciliación N:M mediante tabla temporal y reagregación lineal O(N).
-
-DROP FUNCTION IF EXISTS public.process_staging_data() CASCADE;
 
 CREATE OR REPLACE FUNCTION public.process_staging_data()
 RETURNS json
@@ -832,7 +838,6 @@ BEGIN
         SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
             p.name,
             public.unaccent_immutable(lower(trim(p.name))) AS p_name_norm,
-            p.photo,
             public.to_date_safe(p.birthday) AS birthday_date,
             public.to_date_safe(p.deathday) AS deathday_date,
             p.place_of_birth,
@@ -849,7 +854,6 @@ BEGIN
     )
     UPDATE public.directors d
     SET
-        photo = src.photo,
         birthday = src.birthday_date,
         deathday = src.deathday_date,
         place_of_birth = src.place_of_birth,
@@ -859,7 +863,6 @@ BEGIN
         components = src.components
     FROM dedup_directors src
     WHERE d.name_norm = src.p_name_norm AND (
-        d.photo IS DISTINCT FROM src.photo OR
         d.birthday IS DISTINCT FROM src.birthday_date OR
         d.deathday IS DISTINCT FROM src.deathday_date OR
         d.place_of_birth IS DISTINCT FROM src.place_of_birth OR
@@ -875,7 +878,6 @@ BEGIN
         SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
             p.name,
             public.unaccent_immutable(lower(trim(p.name))) AS p_name_norm,
-            p.photo,
             public.to_date_safe(p.birthday) AS birthday_date,
             public.to_date_safe(p.deathday) AS deathday_date,
             p.place_of_birth,
@@ -891,7 +893,6 @@ BEGIN
     )
     UPDATE public.actors a
     SET
-        photo = src.photo,
         birthday = src.birthday_date,
         deathday = src.deathday_date,
         place_of_birth = src.place_of_birth,
@@ -900,7 +901,6 @@ BEGIN
         biography = src.biography
     FROM dedup_actors src
     WHERE a.name_norm = src.p_name_norm AND (
-        a.photo IS DISTINCT FROM src.photo OR
         a.birthday IS DISTINCT FROM src.birthday_date OR
         a.deathday IS DISTINCT FROM src.deathday_date OR
         a.place_of_birth IS DISTINCT FROM src.place_of_birth OR
@@ -1009,14 +1009,14 @@ BEGIN
         SELECT t.movie_id, c.id
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS sel_code(code)
-        JOIN public.selections c ON (c.letter = UPPER(TRIM(sel_code.code)) OR c.code = LOWER(TRIM(sel_code.code)))
+        JOIN public.selections c ON LOWER(c.code) = LOWER(TRIM(sel_code.code))
         ON CONFLICT (movie_id, selection_id) DO NOTHING;
 
         INSERT INTO public.movie_studios (movie_id, studio_id)
         SELECT t.movie_id, st.id
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-        JOIN public.studios st ON (st.letter = UPPER(TRIM(stu_code.code)) OR st.code = LOWER(TRIM(stu_code.code)))
+        JOIN public.studios st ON LOWER(st.code) = LOWER(TRIM(stu_code.code))
         ON CONFLICT (movie_id, studio_id) DO NOTHING;
 
         -- Borrados diferenciales desde tabla temporal
@@ -1052,7 +1052,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS s_code(code)
-            JOIN public.selections sel ON (sel.letter = UPPER(TRIM(s_code.code)) OR sel.code = LOWER(TRIM(s_code.code)))
+            JOIN public.selections sel ON LOWER(sel.code) = LOWER(TRIM(s_code.code))
             WHERE t.movie_id = ms.movie_id AND sel.id = ms.selection_id
           );
 
@@ -1061,7 +1061,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-            JOIN public.studios stu ON (stu.letter = UPPER(TRIM(stu_code.code)) OR stu.code = LOWER(TRIM(stu_code.code)))
+            JOIN public.studios stu ON LOWER(stu.code) = LOWER(TRIM(stu_code.code))
             WHERE t.movie_id = mst.movie_id AND stu.id = mst.studio_id
           );
 
