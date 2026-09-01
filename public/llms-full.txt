@@ -1,0 +1,88 @@
+# VIDEOCLUB.DIGITAL — Especificación Completa del Catálogo (llms-full.txt)
+
+> Documentación de referencia exhaustiva para modelos de lenguaje (LLMs), agentes de búsqueda semántica y rastreadores de contenido sobre VIDEOCLUB.DIGITAL.
+
+---
+
+## 1. Misión y Alcance
+
+VIDEOCLUB.DIGITAL es un catálogo y motor de búsqueda cinematográfica en español enfocado en cine de autor, grandes clásicos de la historia del cine, cine de culto y títulos contemporáneos destacados. Cada entrada consolida metadatos técnicos, sinopsis, reparto completo, créditos de dirección, país de origen, año de estreno, duración, premios, enlaces externos (JustWatch, Wikipedia) y calificaciones ponderadas.
+
+---
+
+## 2. Taxonomías y Slugs Canónicos
+
+### A. Géneros Cinematográficos
+- `/accion/` — Acción
+- `/animacion/` — Animación
+- `/aventuras/` — Aventuras
+- `/belico/` — Bélico
+- `/ciencia-ficcion/` — Ciencia ficción
+- `/cine-negro/` — Cine negro / Film Noir
+- `/comedia/` — Comedia
+- `/documental/` — Documental
+- `/drama/` — Drama
+- `/fantastico/` — Fantástico
+- `/intriga/` — Intriga / Misterio
+- `/musical/` — Musical
+- `/romance/` — Romance
+- `/terror/` — Terror / Horror
+- `/thriller/` — Thriller
+- `/western/` — Western
+
+### B. Países y Regiones Principales
+- `/espana/` — España
+- `/estados-unidos/` — Estados Unidos
+- `/reino-unido/` — Reino Unido
+- `/francia/` — Francia
+- `/italia/` — Italia
+- `/alemania/` — Alemania
+- `/japon/` — Japón
+- `/corea-del-sur/` — Corea del Sur
+- `/mexico/` — México
+- `/argentina/` — Argentina
+
+### C. Plataformas de Streaming
+- `/netflix/` — Netflix
+- `/filmin/` — Filmin
+- `/prime-video/` — Prime Video
+- `/hbo-max/` — HBO Max
+- `/disney/` — Disney+
+- `/movistar/` — Movistar Plus+
+- `/apple-tv/` — Apple TV+
+
+### D. Listas Críticas y Selecciones
+- `/1001-peliculas/` — 1001 películas que hay que ver antes de morir
+- `/tspdt-top-1000/` — They Shoot Pictures, Don't They? (Top 1000)
+- `/criterion-collection/` — The Criterion Collection
+
+---
+
+## 3. Esquema de Datos y Metadatos de Ficha
+
+Cada título cinematográfico incluye los siguientes campos estructurados:
+
+- `id`: Identificador numérico único de la película.
+- `title`: Título en español para el mercado hispanohablante.
+- `original_title`: Título original en su idioma de producción.
+- `year`: Año de estreno oficial.
+- `runtime`: Duración en minutos.
+- `directors`: Lista de directores acreditados (con soporte de desambiguación para colectivos cinematográficos).
+- `cast`: Reparto principal y secundario.
+- `genres`: Lista de géneros asociados.
+- `country`: País de producción con código ISO y bandera.
+- `synopsis`: Sinopsis argumental en español.
+- `fa_rating`: Nota media de usuarios en FilmAffinity (0.0 - 10.0).
+- `fa_votes`: Número total de votos en FilmAffinity.
+- `imdb_rating`: Nota media de usuarios en IMDb (0.0 - 10.0).
+- `imdb_votes`: Número total de votos en IMDb.
+- `avg_rating`: Calificación media ponderada estadística.
+- `platforms`: Plataformas de vídeo bajo demanda (VOD / OTT) donde se encuentra disponible.
+
+---
+
+## 4. Políticas de Acceso y Buenas Prácticas para Agentes
+
+- **Acceso Web**: El sitio es público y abierto a la indexación de agentes y buscadores.
+- **Content Signals**: Declaración formal de consentimiento de búsqueda y lectura pública de contenido conforme a las directivas en `/robots.txt`.
+- **Sitemaps**: El índice completo de URLs canónicas está disponible y actualizado en `/sitemap-index.xml`.

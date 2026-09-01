@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 
+# Señal emergente de consentimiento de contenidos para IA (IETF AIPREF Draft - No vinculante)
+Content-Signal: search=yes, ai-train=no, ai-input=yes
+
 Sitemap: https://videoclub.digital/sitemap-index.xml

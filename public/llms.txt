@@ -1,0 +1,31 @@
+# VIDEOCLUB.DIGITAL
+
+> VIDEOCLUB.DIGITAL es una plataforma digital de exploración y descubrimiento cinematográfico en español que cataloga más de 3.000 títulos clásicos y contemporáneos, con puntuaciones consolidadas (FilmAffinity e IMDb), fichas técnicas enriquecidas y enlaces directos a plataformas de streaming.
+
+## Catálogo y Taxonomías
+
+- [Inicio / Catálogo Completo](https://videoclub.digital/): Rejilla interactiva de películas y series con filtrado multidimensional instantáneo.
+- [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice estructurado de páginas de películas, géneros, directores y países.
+
+## Estructura de URLs Canónicas
+
+La web emplea un sistema de rutas limpias jerárquicas y combinables:
+
+- **Géneros**: `/accion/`, `/drama/`, `/comedia/`, `/terror/`, `/ciencia-ficcion/`, `/cine-negro/`, `/thriller/`, `/animacion/`, `/documental/`, etc.
+- **Países**: `/espana/`, `/estados-unidos/`, `/reino-unido/`, `/francia/`, `/italia/`, `/japon/`, `/corea-del-sur/`, etc.
+- **Décadas y Años**: `/anos-70/`, `/anos-80/`, `/anos-90/`, `/2024/`, etc.
+- **Plataformas de Streaming**: `/netflix/`, `/filmin/`, `/prime-video/`, `/hbo-max/`, `/disney/`, `/movistar/`, `/apple-tv/`, etc.
+- **Selecciones y Colecciones**: `/1001-peliculas/`, `/tspdt-top-1000/`, `/criterion-collection/`, etc.
+- **Directores y Reparto**: `/?director=christopher-nolan`, `/?actor=al-pacino`.
+- **Ficha de Película**: `/?movie=123` (identificador canónico de título).
+
+## Sistema de Calificaciones
+
+- **FilmAffinity**: Puntuación sobre 10 y recuento de votos.
+- **IMDb**: Puntuación sobre 10 y recuento de votos.
+- **Nota Media Ponderada**: Cálculo logarítmico ponderado por volumen de votos para equilibrar la muestra estadística entre ambas plataformas.
+- **Sistema de 3 Estrellas**: Normalización visual en 3 niveles de valoración.
+
+## Documentación Completa
+
+- [Guía Exhaustiva para Modelos de Lenguaje (llms-full.txt)](https://videoclub.digital/llms-full.txt): Descripción técnica detallada de todas las taxonomías, operadores de consulta y metadatos disponibles.
