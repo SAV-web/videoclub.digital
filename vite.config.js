@@ -129,6 +129,16 @@ export default defineConfig({
   plugins: [inlineSvgSpritesPlugin(), syncPublicSpritesPlugin(), swVersionPlugin(), serveSeoSitePlugin()],
   // Ignorar seo-site/dist y dist en el watcher de Vite para evitar fugas de memoria con 13.488 archivos
   server: {
+    proxy: {
+      '/posters': {
+        target: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public',
+        changeOrigin: true,
+      },
+      '/vips': {
+        target: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public',
+        changeOrigin: true,
+      },
+    },
     watch: {
       ignored: ['**/seo-site/dist/**', '**/dist/**']
     }

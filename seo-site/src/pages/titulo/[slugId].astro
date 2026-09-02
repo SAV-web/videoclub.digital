@@ -23,6 +23,7 @@ const { movie } = Astro.props;
 
 const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 const posterUrl = getPosterUrl(movie);
+const absolutePosterUrl = posterUrl ? (posterUrl.startsWith('http') ? posterUrl : `https://videoclub.digital${posterUrl}`) : '';
 const genres = parseList(movie.genres_list);
 const directors = parseList(movie.directors_list);
 const actors = parseList(movie.actors_list);
@@ -79,7 +80,7 @@ const jsonLd = {
   ...(movie.original_title ? { alternateName: movie.original_title } : {}),
   ...(movie.year ? { datePublished: String(movie.year) } : {}),
   ...(movie.synopsis ? { description: movie.synopsis } : {}),
-  ...(posterUrl ? { image: posterUrl } : {}),
+  ...(absolutePosterUrl ? { image: absolutePosterUrl } : {}),
   ...(directors.length ? { director: directors.map((name) => ({ '@type': 'Person', name })) } : {}),
   ...(actors.length ? { actor: actors.map((name) => ({ '@type': 'Person', name })) } : {}),
   ...(movie.avg_rating
@@ -170,14 +171,14 @@ const breadcrumbLd = {
   <meta property="og:type" content="video.movie" />
   <meta property="og:title" content={pageTitle} />
   <meta property="og:description" content={description} />
-  {posterUrl && <meta property="og:image" content={posterUrl} />}
+  {absolutePosterUrl && <meta property="og:image" content={absolutePosterUrl} />}
   <meta property="og:url" content={canonicalUrl} />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={pageTitle} />
   <meta name="twitter:description" content={description} />
-  {posterUrl && <meta name="twitter:image" content={posterUrl} />}
+  {absolutePosterUrl && <meta name="twitter:image" content={absolutePosterUrl} />}
 
   <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
   <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />

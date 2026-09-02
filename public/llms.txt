@@ -2,30 +2,42 @@
 
 > VIDEOCLUB.DIGITAL es una plataforma digital de exploración y descubrimiento cinematográfico en español que cataloga más de 3.000 títulos clásicos y contemporáneos, con puntuaciones consolidadas (FilmAffinity e IMDb), fichas técnicas enriquecidas y enlaces directos a plataformas de streaming.
 
-## Catálogo y Taxonomías
+## Catálogo y Enlaces Principales
 
 - [Inicio / Catálogo Completo](https://videoclub.digital/): Rejilla interactiva de películas y series con filtrado multidimensional instantáneo.
-- [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice estructurado de páginas de películas, géneros, directores y países.
+- [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice de sitemaps estructurados para películas, directores, actores, géneros y países.
+- [Especificación Completa para Agentes (llms-full.txt)](https://videoclub.digital/llms-full.txt): Referencia exhaustiva con la totalidad de taxonomías, operadores y metadatos.
 
 ## Estructura de URLs Canónicas
 
-La web emplea un sistema de rutas limpias jerárquicas y combinables:
+La plataforma opera con un sistema de rutas canónicas limpias (Pretty Paths) deterministas y jerárquicas:
 
-- **Géneros**: `/accion/`, `/drama/`, `/comedia/`, `/terror/`, `/ciencia-ficcion/`, `/cine-negro/`, `/thriller/`, `/animacion/`, `/documental/`, etc.
-- **Países**: `/espana/`, `/estados-unidos/`, `/reino-unido/`, `/francia/`, `/italia/`, `/japon/`, `/corea-del-sur/`, etc.
-- **Décadas y Años**: `/anos-70/`, `/anos-80/`, `/anos-90/`, `/2024/`, etc.
-- **Plataformas de Streaming**: `/netflix/`, `/filmin/`, `/prime-video/`, `/hbo-max/`, `/disney/`, `/movistar/`, `/apple-tv/`, etc.
-- **Selecciones y Colecciones**: `/1001-peliculas/`, `/tspdt-top-1000/`, `/criterion-collection/`, etc.
-- **Directores y Reparto**: `/?director=christopher-nolan`, `/?actor=al-pacino`.
-- **Ficha de Película**: `/?movie=123` (identificador canónico de título).
+### 1. Entidades VIP (Personas)
+Las páginas de directores y actores utilizan siempre un segmento de ruta dedicado:
+- **Directores**: `/director/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`, `https://videoclub.digital/director/martin-scorsese/`)
+- **Actores**: `/actor/{slug}/` (ej: `https://videoclub.digital/actor/al-pacino/`, `https://videoclub.digital/actor/eduard-fernandez/`)
+*Nota: No se admiten parámetros tipo `?director=` ni `?actor=` en URLs canónicas.*
 
-## Sistema de Calificaciones
+### 2. Taxonomías de Catálogo (Rutas Canónicas)
+Jerarquía canónica en ruta: `/{genero}/{pais}/{estudio O seleccion}/`
+- **21 Géneros Canónicos**: `/accion/` (Acción), `/animacion/` (Animación), `/aventuras/` (Aventuras), `/belico/` (Bélico), `/biografia/` (Biografía), `/noir/` (Noir), `/comedia/` (Comedia), `/crimen/` (Crimen), `/deporte/` (Deporte), `/documental/` (Documental), `/drama/` (Drama), `/familiar/` (Familiar), `/fantasia/` (Fantasía), `/historico/` (Histórico), `/intriga/` (Intriga), `/musica/` (Música), `/romance/` (Romance), `/sci-fi/` (Sci-Fi), `/terror/` (Terror), `/thriller/` (Thriller), `/western/` (Western).
+- **Países y Regiones Principales**: `/eeuu/` (EEUU), `/espana/` (España), `/uk/` (Reino Unido), `/francia/` (Francia), `/japon/` (Japón), `/italia/` (Italia), `/alemania/` (Alemania), `/latam/` (Latinoamérica), `/nordic/` (Países Nórdicos).
+- **15 Estudios Cinematográficos**: `/warner/`, `/universal/`, `/sony/`, `/paramount/`, `/disney/`, `/netflix/`, `/amazon/`, `/fox/`, `/lionsgate/`, `/canalplus/`, `/bbc/`, `/miramax/`, `/a24/`, `/movistar/`, `/apple/`.
+- **10 Selecciones Críticas**: `/1001movies/`, `/tspdt/`, `/criterion/`, `/kinolorber/`, `/toptv/`, `/hbo/`, `/acontra/`, `/arrow/`, `/eureka/`, `/imprint/`.
+- **Exclusiones**: Se prefijan con `no-` dentro de la ruta (ej: `/comedia/no-eeuu/`, `/drama/no-terror/`).
+
+### 3. Parámetros de Consulta (Query Parameters)
+Los filtros no posicionales utilizan exclusivamente parámetros URL:
+- **Filtro Temporal**: `?year={ano}` o `?year={min}-{max}` (ej: `https://videoclub.digital/?year=1994`, `https://videoclub.digital/sci-fi/?year=1980-1989`). *Los años y décadas nunca forman parte de la ruta ni tienen segmentos URL propios.*
+- **Búsqueda**: `?search={termino}`
+- **Ordenación**: `?sort={criterio}` (`relevance,asc`, `year,desc`, `year,asc`, `fa_rating,desc`, `imdb_rating,desc`, `fa_votes,desc`, `imdb_votes,desc`)
+- **Tipo de Medio**: `?type={movies|series|all}`
+- **Paginación**: `?page={numero}` (ej: `?page=2`)
+- **Ficha Detallada**: `?movie={id}`
+
+## Calificaciones Consolidadas
 
 - **FilmAffinity**: Puntuación sobre 10 y recuento de votos.
 - **IMDb**: Puntuación sobre 10 y recuento de votos.
-- **Nota Media Ponderada**: Cálculo logarítmico ponderado por volumen de votos para equilibrar la muestra estadística entre ambas plataformas.
-- **Sistema de 3 Estrellas**: Normalización visual en 3 niveles de valoración.
-
-## Documentación Completa
-
-- [Guía Exhaustiva para Modelos de Lenguaje (llms-full.txt)](https://videoclub.digital/llms-full.txt): Descripción técnica detallada de todas las taxonomías, operadores de consulta y metadatos disponibles.
+- **Nota Media Ponderada**: Cálculo ponderado logarítmico para equilibrar diferencias de volumen muestral.
+- **Escala Visual de 3 Estrellas**: Normalización visual continua de 1 a 3 estrellas para evaluación cualitativa rápida.

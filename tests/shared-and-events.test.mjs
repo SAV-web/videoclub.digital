@@ -39,7 +39,7 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.getPosterUrl(""), "");
     assert.equal(
       sharedFormatters.getPosterUrl("matrix-1999"),
-      "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/matrix-1999.webp",
+      "/posters/matrix-1999.webp",
     );
   });
 

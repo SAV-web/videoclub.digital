@@ -20,7 +20,10 @@ export default {
     const acceptHeader = request.headers.get("Accept") || "";
 
     // 1. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs)
-    if (acceptHeader.includes("text/markdown") && !url.pathname.includes(".")) {
+    // Se acota estrictamente a la raíz del sitio ("/" o "") para no secuestrar
+    // fichas de películas (/titulo/...), páginas de filtro ni entidades VIP.
+    const isRootPath = url.pathname === "/" || url.pathname === "";
+    if (acceptHeader.includes("text/markdown") && isRootPath) {
       const llmsUrl = new URL("/llms.txt", url.origin);
       const llmsResponse = await fetch(llmsUrl.toString(), request);
       const headers = new Headers(llmsResponse.headers);

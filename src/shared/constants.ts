@@ -15,8 +15,8 @@ export interface StudioConfig {
   invertDark?: boolean;
 }
 
-export const POSTER_BASE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/posters/";
-export const PROFILE_BASE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/vips/";
+export const POSTER_BASE_URL = "/posters/";
+export const PROFILE_BASE_URL = "/vips/";
 
 export const SHARED_CONFIG = {
   YEAR_MIN: 1900,
