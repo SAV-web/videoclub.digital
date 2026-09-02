@@ -501,6 +501,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     if (isPerson) return;
     const movieId = normalizeMovieId(card.dataset.movieId);
     if (movieId) toggleWatchlist(movieId, watchlistBtn, card);
+    watchlistBtn.blur();
     return;
   }
 

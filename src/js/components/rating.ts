@@ -341,6 +341,7 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
 
     setRating(movieId, newRating, card);
     triggerRatingAnimation(card, newRating, starEl);
+    starEl.blur();
     
     return true;
   }
@@ -349,7 +350,8 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
     event.preventDefault(); event.stopPropagation();
     const newRating = resolveNextRating(currentRating, 1);
     setRating(movieId, newRating, card);
-    triggerRatingAnimation(card, newRating, starEl || undefined);
+    triggerRatingAnimation(card, newRating, undefined);
+    target.blur();
     return true;
   }
 

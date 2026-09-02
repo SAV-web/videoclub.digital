@@ -147,12 +147,15 @@ function isFormValid(form: HTMLFormElement): boolean {
   inputs.forEach(input => {
     if (input.type === "checkbox") return;
     
-    if (input.type === "email") {
+    const isEmail = input.type === "email" || input.name === "email" || input.id.includes("email");
+    const isPassword = input.name === "password" || input.type === "password" || input.id.includes("password");
+
+    if (isEmail) {
       const val = input.value.trim();
       const ok = validateEmail(val);
       updateFieldValidation(input, ok, "Introduce un correo válido.");
       if (!ok) allValid = false;
-    } else if (input.type === "password") {
+    } else if (isPassword) {
       const val = input.value.trim();
       const ok = val.length >= 6;
       updateFieldValidation(input, ok, "Debe tener al menos 6 caracteres.");
@@ -220,8 +223,8 @@ async function handleLoginRegisterSubmit(e: Event, isLogin: boolean): Promise<vo
 
   const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
   
-  const email = (form.querySelector('input[type="email"]') as HTMLInputElement | null)?.value.trim();
-  const pass = (form.querySelector('input[type="password"]') as HTMLInputElement | null)?.value.trim();
+  const email = (form.querySelector('input[name="email"], input[type="email"]') as HTMLInputElement | null)?.value.trim().toLowerCase();
+  const pass = (form.querySelector('input[name="password"], input[type="password"], .password-wrapper input') as HTMLInputElement | null)?.value.trim();
 
   if (!email || !pass) {
     setFeedback("Completa todos los campos.");
@@ -269,7 +272,7 @@ async function handleRecoverSubmit(e: Event): Promise<void> {
   }
 
   const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
-  const email = (form.querySelector('input[type="email"]') as HTMLInputElement | null)?.value.trim();
+  const email = (form.querySelector('input[name="email"], input[type="email"]') as HTMLInputElement | null)?.value.trim().toLowerCase();
 
   if (!email) {
     setFeedback("Introduce tu email.");
@@ -305,7 +308,7 @@ async function handleResetPasswordSubmit(e: Event): Promise<void> {
   }
 
   const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
-  const newPassword = (form.querySelector('input[type="password"]') as HTMLInputElement | null)?.value.trim();
+  const newPassword = (form.querySelector('input[name="password"], input[type="password"], .password-wrapper input') as HTMLInputElement | null)?.value.trim();
 
   if (!newPassword || newPassword.length < 6) {
     setFeedback("La contraseña debe tener al menos 6 caracteres.");
@@ -339,7 +342,7 @@ async function handleMagicLinkSubmit(e: Event): Promise<void> {
   const form = btn.closest("form") as HTMLFormElement | null;
   if (!form) return;
 
-  const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement | null;
+  const emailInput = form.querySelector('input[name="email"], input[type="email"]') as HTMLInputElement | null;
   if (!emailInput) return;
 
   const email = emailInput.value.trim();
@@ -472,11 +475,11 @@ export function initAuthForms(): void {
   dom.btnRecoverBack?.addEventListener("click", () => toggleView("login"));
 
   // Configurar validadores interactivos
-  const emailInputs = document.querySelectorAll('#auth-modal input[type="email"]');
-  emailInputs.forEach(input => setupEmailValidation(input as HTMLInputElement));
+  const emailInputs = document.querySelectorAll<HTMLInputElement>('#auth-modal input[name="email"], #auth-modal input[type="email"]');
+  emailInputs.forEach(input => setupEmailValidation(input));
 
-  const passwordInputs = document.querySelectorAll('#auth-modal input[type="password"]');
-  passwordInputs.forEach(input => setupPasswordValidation(input as HTMLInputElement));
+  const passwordInputs = document.querySelectorAll<HTMLInputElement>('#auth-modal input[name="password"], #auth-modal input[type="password"], #auth-modal .password-wrapper input');
+  passwordInputs.forEach(input => setupPasswordValidation(input));
 
   // Configurar botones de mostrar/ocultar contraseña
   const setupPasswordToggles = () => {
