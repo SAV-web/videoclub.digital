@@ -1259,7 +1259,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 
 .person-card .poster-container img {
   object-position: top center;
-  /* CRÍTICO: Evita cortar cabezas en recortes verticales (TMDB son 2:3) */
+  /* CRÍTICO: Evita cortar cabezas en recortes verticales (fotos en relación de aspecto 2:3) */
   /* Forzamos el borde para que envuelva SOLO a la imagen, incluso en Modo Muro */
   border: 3px solid var(--color-accent) !important;
 }

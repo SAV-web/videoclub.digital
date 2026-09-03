@@ -839,7 +839,7 @@ WITH CHECK ( (select auth.uid()) = user_id );
 -- =================================================================
 -- Pipeline transaccional idempotente:
 -- 1. Bloqueo transaccional de exclusión mutua (pg_advisory_xact_lock).
--- 2. Poblado de entidades base con filtro de admisión (show = '1').
+-- 2. Poblado de entidades base con filtro de admisión (show IS TRUE).
 -- 3. Actualización diferencial de personas VIPs (biografías, componentes).
 -- 4. UPSERT diferencial en catálogo movies con detección de cambios reales.
 -- 5. Reconciliación N:M mediante tabla temporal y reagregación lineal O(N).

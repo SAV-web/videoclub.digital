@@ -123,7 +123,7 @@ CREATE TABLE public.movies_staging (
   actors text,
   collection text,
   studio text,
-  show text,
+  show boolean,
   CONSTRAINT movies_staging_pkey PRIMARY KEY (id)
 );
 
