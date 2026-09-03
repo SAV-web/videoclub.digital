@@ -10,8 +10,8 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
-import { setUserMovieDataAPI } from "../api.js";
-import { enqueueOfflineEntry, requestBackgroundSync } from "../offlineQueue.js";
+import { saveLocalEntry } from "../localStore.js";
+import { scheduleSync } from "../syncManager.js";
 import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import { normalizeMovieId } from "../contracts.js";
@@ -443,31 +443,23 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
   const wasActive = btn.classList.contains("is-active");
   const newState: Partial<UserMovieEntry> = { onWatchlist: !wasActive };
-  const prevState = getUserDataForMovie(movieId) || { onWatchlist: false, rating: null };
 
   const ratingMutation = resolveRatingMutationOnWatchlist(newState.onWatchlist || false);
   if (ratingMutation !== undefined) {
     newState.rating = ratingMutation;
   }
 
+  // 1. Experiencia de usuario inmediata (0 ms de latencia)
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newState);
   updateCardUI(card);
 
-  try {
-    await setUserMovieDataAPI(movieId, newState);
-    triggerHapticFeedback("success");
-  } catch (err: unknown) {
-    if (!navigator.onLine) {
-      await enqueueOfflineEntry(movieId, newState);
-      await requestBackgroundSync();
-      showToast("Guardado sin conexión. Se sincronizará automáticamente.", "info");
-      return;
-    }
-    showToast(getFriendlyErrorMessage(err) || "Error al actualizar la lista.", "error");
-    updateUserDataForMovie(movieId, prevState);
-    updateCardUI(card);
-  }
+  // 2. Persistencia local inmediata (Local-First: nunca falla, nunca hace rollback)
+  await saveLocalEntry(movieId, newState);
+  triggerHapticFeedback("success");
+
+  // 3. Sincronización en segundo plano hacia Supabase
+  scheduleSync(200);
 }
 
 export function handleCardClick(this: MovieCardElement, event: MouseEvent): void {

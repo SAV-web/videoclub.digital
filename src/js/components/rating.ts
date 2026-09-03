@@ -9,8 +9,8 @@
 // =================================================================
 
 import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../state.js";
-import { setUserMovieDataAPI } from "../api.js";
-import { enqueueOfflineEntry, requestBackgroundSync } from "../offlineQueue.js";
+import { saveLocalEntry } from "../localStore.js";
+import { scheduleSync } from "../syncManager.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
@@ -285,24 +285,17 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
     newState.onWatchlist = watchlistMutation;
   }
 
+  // 1. Experiencia de usuario inmediata (0 ms de latencia)
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newState);
   updateRatingUI(card);
 
-  try {
-    await setUserMovieDataAPI(movieId, newState);
-    if (value !== null) triggerHapticFeedback("success");
-  } catch (err: unknown) {
-    if (!navigator.onLine) {
-      await enqueueOfflineEntry(movieId, newState);
-      await requestBackgroundSync();
-      showToast("Guardado sin conexión. Se sincronizará automáticamente.", "info");
-      return;
-    }
-    showToast(getFriendlyErrorMessage(err) || "No se pudo guardar la valoración.", "error");
-    updateUserDataForMovie(movieId, { rating: previousRating });
-    updateRatingUI(card);
-  }
+  // 2. Persistencia local inmediata (Local-First: nunca falla, nunca hace rollback)
+  await saveLocalEntry(movieId, newState);
+  if (value !== null) triggerHapticFeedback("success");
+
+  // 3. Sincronización en segundo plano hacia Supabase
+  scheduleSync(200);
 }
 
 function triggerRatingAnimation(card: MovieCardElement, newRating: number | null, fallbackEl?: HTMLElement): void {

@@ -30,7 +30,8 @@ import {
 } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { isAbortError, getAppBasePath, toSlug } from "./contracts.js";
-import { initOfflineSync } from "./offlineQueue.js";
+import { getAllLocalEntries } from "./localStore.js";
+import { mergeOnLogin, initSyncListeners, scheduleSync } from "./syncManager.js";
 import {
   dom,
   renderPagination,
@@ -983,9 +984,9 @@ function setupAuthSystem(): void {
     isAuthInitialized = true;
     clearCheckedUserMovieIds();
 
-    // Descargar el 100% de votos y lista del usuario al iniciar sesión o recargar la página
+    // Sincronización Local-First (Merge on Login): fusiona catálogo remoto con el local
     try {
-      await fetchAllUserMovieData();
+      await mergeOnLogin(user.id);
     } catch (err) {
       if (import.meta.env.DEV) console.error("Error al sincronizar catálogo del usuario:", err);
     }
@@ -1017,6 +1018,17 @@ function setupAuthSystem(): void {
     }
   }
 
+  const userProfileButton = document.getElementById("user-profile-button");
+
+  if (userProfileButton) {
+    const onProfileClick = async () => {
+      const { openProfileModal } = await import("./components/profile.js");
+      openProfileModal();
+    };
+    userProfileButton.addEventListener("click", onProfileClick);
+    mainUnsubscribers.push(() => userProfileButton.removeEventListener("click", onProfileClick));
+  }
+
   if (logoutButton) {
     logoutButton.addEventListener("click", handleLogout);
     mainUnsubscribers.push(() => logoutButton.removeEventListener("click", handleLogout));
@@ -1024,6 +1036,13 @@ function setupAuthSystem(): void {
 
   let authSubscription: { unsubscribe: () => void } | null = null;
   const authGen = mainLifecycleGen;
+
+  // Inicializar listeners del panel de perfil de usuario
+  import("./components/profile.js").then(({ setupProfileModal }) => {
+    if (authGen !== mainLifecycleGen) return;
+    const cleanupProfile = setupProfileModal();
+    mainUnsubscribers.push(cleanupProfile);
+  }).catch(() => {});
 
   getSupabase().then(supabase => {
     if (authGen !== mainLifecycleGen) return;
@@ -1146,6 +1165,18 @@ export function init(): void {
     document.body.classList.add(CSS_CLASSES.ROTATION_DISABLED);
   }
 
+  // Hidratación inmediata Local-First desde IndexedDB (0 ms de latencia inicial)
+  getAllLocalEntries().then(localEntries => {
+    if (Object.keys(localEntries).length > 0) {
+      setUserMovieData(localEntries);
+      appEvents.emit("userDataUpdated");
+    }
+  }).catch(() => {});
+
+  // Registrar listeners de sincronización de fondo (online, visibilitychange)
+  const cleanupSync = initSyncListeners();
+  mainUnsubscribers.push(cleanupSync);
+
   if ("serviceWorker" in navigator) {
     const notifySwUpdate = (worker: ServiceWorker) => {
       showToast(
@@ -1216,6 +1247,12 @@ export function init(): void {
       modalWasOpen = true;
     }
 
+    const { isProfileModalOpen, closeProfileModal } = await import("./components/profile.js");
+    if (isProfileModalOpen()) {
+      closeProfileModal(true);
+      modalWasOpen = true;
+    }
+
     // Si había una modal abierta o el popstate fue originado por un cierre de modal previo
     if (modalWasOpen || consumeIsClosingModalViaHistory()) {
       return;
@@ -1281,9 +1318,10 @@ export function init(): void {
     mainUnsubscribers.push(() => loginBtn.removeEventListener("click", onLoginClick));
   }
 
-  // Recuperar peticiones de red atascadas al recuperar el foco de la pestaña
+  // Recuperar peticiones de red atascadas y sincronizar datos de usuario al recuperar el foco de la pestaña
   const handleMainVisibilityChange = () => {
     if (document.visibilityState === "visible") {
+      scheduleSync(300);
       if (document.body.classList.contains(CSS_CLASSES.IS_FETCHING)) {
         loadAndRenderMovies(getCurrentPage());
       }
@@ -1292,8 +1330,6 @@ export function init(): void {
 
   document.addEventListener("visibilitychange", handleMainVisibilityChange);
   mainUnsubscribers.push(() => document.removeEventListener("visibilitychange", handleMainVisibilityChange));
-
-  mainUnsubscribers.push(initOfflineSync());
 
   const initialUrlParams = new URLSearchParams(window.location.search);
   const targetMovieId = initialUrlParams.get("movie") || initialUrlParams.get("peli");
