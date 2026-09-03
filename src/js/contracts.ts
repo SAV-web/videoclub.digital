@@ -279,10 +279,12 @@ export function buildPrettyPath(filters: {
   // 2. Jerarquía de Catálogo
   const segments: string[] = [];
 
-  const genreSlug = genreToSlug(filters.genre);
+  const hasExcludedGenres = Array.isArray(filters.excludedGenres) && filters.excludedGenres.length > 0;
+  const genreSlug = !hasExcludedGenres ? genreToSlug(filters.genre) : null;
   if (genreSlug) segments.push(genreSlug);
 
-  const countrySlug = countryToSlug(filters.country);
+  const hasExcludedCountries = Array.isArray(filters.excludedCountries) && filters.excludedCountries.length > 0;
+  const countrySlug = !hasExcludedCountries ? countryToSlug(filters.country) : null;
   if (countrySlug) segments.push(countrySlug);
 
   if (filters.selection) {
@@ -293,15 +295,15 @@ export function buildPrettyPath(filters: {
     if (STUDIO_SLUGS.has(stuCode)) segments.push(stuCode);
   }
 
-  if (Array.isArray(filters.excludedGenres)) {
-    filters.excludedGenres.forEach(g => {
+  if (hasExcludedGenres) {
+    filters.excludedGenres!.forEach(g => {
       const slug = genreToSlug(g);
       if (slug) segments.push(`no-${slug}`);
     });
   }
 
-  if (Array.isArray(filters.excludedCountries)) {
-    filters.excludedCountries.forEach(c => {
+  if (hasExcludedCountries) {
+    filters.excludedCountries!.forEach(c => {
       const slug = countryToSlug(c);
       if (slug) segments.push(`no-${slug}`);
     });
@@ -380,6 +382,15 @@ export function parsePrettyPath(pathname: string): {
         result.country = COUNTRY_SLUG_MAP[seg];
       }
     }
+  }
+
+  // Regla de exclusividad estricta: genre y excludedGenres NUNCA pueden coexistir.
+  // country y excludedCountries NUNCA pueden coexistir. La exclusión anula el positivo.
+  if (result.excludedGenres.length > 0) {
+    result.genre = null;
+  }
+  if (result.excludedCountries.length > 0) {
+    result.country = null;
   }
 
   return result;

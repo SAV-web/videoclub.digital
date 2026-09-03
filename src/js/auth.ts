@@ -126,15 +126,88 @@ function setupEmailValidation(input: HTMLInputElement): void {
   });
 }
 
-function setupPasswordValidation(input: HTMLInputElement, minLength: number = 6): void {
+export interface PasswordStrengthResult {
+  score: number; // 0 (vacía), 1 (débil), 2 (aceptable), 3 (segura), 4 (muy robusta)
+  label: string;
+}
+
+export function evaluatePasswordStrength(password: string): PasswordStrengthResult {
+  if (!password) {
+    return { score: 0, label: "" };
+  }
+
+  // NIST SP 800-63B: La longitud es el factor primordial
+  if (password.length < 8) {
+    return { score: 1, label: "Muy corta (mín. 8)" };
+  }
+
+  let points = 0;
+
+  // 1. Longitud progresiva
+  if (password.length >= 8) points += 1;
+  if (password.length >= 12) points += 1;
+  if (password.length >= 16) points += 1;
+
+  // 2. Diversidad de conjuntos de caracteres
+  let poolCount = 0;
+  if (/[a-z]/.test(password)) poolCount++;
+  if (/[A-Z]/.test(password)) poolCount++;
+  if (/[0-9]/.test(password)) poolCount++;
+  if (/[^a-zA-Z0-9]/.test(password)) poolCount++;
+
+  if (poolCount >= 3) points += 1;
+  if (poolCount >= 4) points += 1;
+
+  // 3. Penalizaciones por patrones evidentes
+  const isRepetitive = /(.)\1{2,}/.test(password);
+  const isSequential = /012|123|234|345|456|567|678|789|890|abc|bcd|cde|def/i.test(password);
+  const isCommonPattern = /password|contrase|videoclub|qwerty|asdfgh/i.test(password);
+
+  if (isRepetitive || isSequential || isCommonPattern) {
+    points = Math.max(1, points - 1);
+  }
+
+  if (points <= 1) {
+    return { score: 1, label: "Débil" };
+  } else if (points === 2) {
+    return { score: 2, label: "Aceptable" };
+  } else if (points <= 4) {
+    return { score: 3, label: "Segura" };
+  } else {
+    return { score: 4, label: "Muy robusta" };
+  }
+}
+
+function setupPasswordValidation(
+  input: HTMLInputElement,
+  minLength: number = 8,
+  strengthMeter?: HTMLElement | null
+): void {
   const validate = () => {
     const val = input.value.trim();
     if (val === "") {
       updateFieldValidation(input, false, "");
+      if (strengthMeter) {
+        strengthMeter.hidden = true;
+        strengthMeter.removeAttribute("data-strength");
+        const label = strengthMeter.querySelector(".strength-label");
+        if (label) label.textContent = "";
+      }
       return;
     }
+
     const isValid = val.length >= minLength;
     updateFieldValidation(input, isValid, `Debe tener al menos ${minLength} caracteres.`);
+
+    if (strengthMeter) {
+      const strength = evaluatePasswordStrength(val);
+      strengthMeter.hidden = false;
+      strengthMeter.setAttribute("data-strength", String(strength.score));
+      const label = strengthMeter.querySelector(".strength-label");
+      if (label) label.textContent = strength.label;
+      const progress = strengthMeter.querySelector(".strength-bars");
+      if (progress) progress.setAttribute("aria-valuenow", String(strength.score));
+    }
   };
 
   input.addEventListener("input", validate);
@@ -157,8 +230,8 @@ function isFormValid(form: HTMLFormElement): boolean {
       if (!ok) allValid = false;
     } else if (isPassword) {
       const val = input.value.trim();
-      const ok = val.length >= 6;
-      updateFieldValidation(input, ok, "Debe tener al menos 6 caracteres.");
+      const ok = val.length >= 8;
+      updateFieldValidation(input, ok, "Debe tener al menos 8 caracteres.");
       if (!ok) allValid = false;
     }
   });
@@ -171,6 +244,12 @@ function resetFormValidationState(form: HTMLFormElement): void {
   form.querySelectorAll(".validation-message").forEach(span => {
     span.textContent = "";
     span.classList.remove("is-valid", "is-invalid");
+  });
+  form.querySelectorAll<HTMLElement>(".password-strength-meter").forEach(meter => {
+    meter.hidden = true;
+    meter.removeAttribute("data-strength");
+    const label = meter.querySelector(".strength-label");
+    if (label) label.textContent = "";
   });
 }
 
@@ -303,15 +382,15 @@ async function handleResetPasswordSubmit(e: Event): Promise<void> {
 
   const form = e.currentTarget as HTMLFormElement;
   if (!isFormValid(form)) {
-    setFeedback("La contraseña debe tener al menos 6 caracteres.");
+    setFeedback("La contraseña debe tener al menos 8 caracteres.");
     return;
   }
 
   const btn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
   const newPassword = (form.querySelector('input[name="password"], input[type="password"], .password-wrapper input') as HTMLInputElement | null)?.value.trim();
 
-  if (!newPassword || newPassword.length < 6) {
-    setFeedback("La contraseña debe tener al menos 6 caracteres.");
+  if (!newPassword || newPassword.length < 8) {
+    setFeedback("La contraseña debe tener al menos 8 caracteres.");
     return;
   }
 
@@ -478,8 +557,19 @@ export function initAuthForms(): void {
   const emailInputs = document.querySelectorAll<HTMLInputElement>('#auth-modal input[name="email"], #auth-modal input[type="email"]');
   emailInputs.forEach(input => setupEmailValidation(input));
 
-  const passwordInputs = document.querySelectorAll<HTMLInputElement>('#auth-modal input[name="password"], #auth-modal input[type="password"], #auth-modal .password-wrapper input');
-  passwordInputs.forEach(input => setupPasswordValidation(input));
+  // Login: validación simple de presencia/longitud (sin medidor de fuerza)
+  const loginPass = document.querySelector<HTMLInputElement>('#login-form input[name="password"], #login-form input[type="password"]');
+  if (loginPass) setupPasswordValidation(loginPass, 8, null);
+
+  // Registro: con medidor de fuerza en tiempo real (NIST)
+  const regPass = document.querySelector<HTMLInputElement>('#register-form input[name="password"], #register-form input[type="password"]');
+  const regMeter = document.getElementById("register-password-strength");
+  if (regPass) setupPasswordValidation(regPass, 8, regMeter);
+
+  // Restablecer contraseña: con medidor de fuerza en tiempo real (NIST)
+  const resetPass = document.querySelector<HTMLInputElement>('#reset-password-form input[name="password"], #reset-password-form input[type="password"]');
+  const resetMeter = document.getElementById("reset-password-strength");
+  if (resetPass) setupPasswordValidation(resetPass, 8, resetMeter);
 
   // Configurar botones de mostrar/ocultar contraseña
   const setupPasswordToggles = () => {

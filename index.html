@@ -1131,7 +1131,7 @@
                   name="password"
                   autocomplete="new-password"
                   required
-                  minlength="6"
+                  minlength="8"
                 />
                 <button
                   type="button"
@@ -1154,8 +1154,17 @@
                   </svg>
                 </button>
               </div>
+              <div class="password-strength-meter" id="register-password-strength" hidden>
+                <div class="strength-bars" role="progressbar" aria-label="Seguridad de la contraseña" aria-valuenow="0" aria-valuemin="0" aria-valuemax="4">
+                  <div class="strength-bar"></div>
+                  <div class="strength-bar"></div>
+                  <div class="strength-bar"></div>
+                  <div class="strength-bar"></div>
+                </div>
+                <span class="strength-label" aria-live="polite"></span>
+              </div>
               <span class="validation-message" aria-live="polite"></span>
-              <small>Mínimo 6 caracteres.</small>
+              <small>Mínimo 8 caracteres (según estándar NIST).</small>
             </div>
             <button type="submit" class="auth-button">Crear Cuenta</button>
           </form>
@@ -1201,7 +1210,7 @@
                   name="password"
                   autocomplete="new-password"
                   required
-                  minlength="6"
+                  minlength="8"
                 />
                 <button
                   type="button"
@@ -1224,8 +1233,17 @@
                   </svg>
                 </button>
               </div>
+              <div class="password-strength-meter" id="reset-password-strength" hidden>
+                <div class="strength-bars" role="progressbar" aria-label="Seguridad de la contraseña" aria-valuenow="0" aria-valuemin="0" aria-valuemax="4">
+                  <div class="strength-bar"></div>
+                  <div class="strength-bar"></div>
+                  <div class="strength-bar"></div>
+                  <div class="strength-bar"></div>
+                </div>
+                <span class="strength-label" aria-live="polite"></span>
+              </div>
               <span class="validation-message" aria-live="polite"></span>
-              <small>Mínimo 6 caracteres.</small>
+              <small>Mínimo 8 caracteres (según estándar NIST).</small>
             </div>
             <button type="submit" class="auth-button">
               Guardar Contraseña
@@ -1409,27 +1427,34 @@
           >
             <h3>Aviso legal</h3>
             <p>
-              <strong>Titularidad:</strong> En cumplimiento de la normativa de
-              la sociedad de la información y comercio electrónico, se informa
-              que <em>videoclub.digital</em> es un proyecto de carácter
-              informativo, divulgativo y de prescripción cinematográfica sin
-              actividad comercial de venta directa de entradas ni suscripciones
-              de pago.
+              <strong>Titularidad y naturaleza del proyecto:</strong> videoclub.digital
+              es un proyecto personal, independiente y sin ánimo de lucro, gestionado
+              por una persona física a título particular. No constituye una empresa,
+              no ofrece bienes ni servicios de pago, no aloja publicidad de ningún
+              tipo, no obtiene ingresos por afiliación ni por ninguna otra vía
+              comercial, y no realiza actividad económica alguna. Por su naturaleza
+              estrictamente personal y no lucrativa, queda al margen del deber de
+              identificación empresarial recogido en el artículo 10 de la Ley
+              34/2002, de Servicios de la Sociedad de la Información y Comercio
+              Electrónico (LSSICE), reservado a prestadores con actividad comercial.
+            </p>
+            <p>
+              Contacto: <a href="mailto:sralbertvi@gmail.com">sralbertvi@gmail.com</a>
             </p>
             <p>
               <strong>Propiedad Intelectual y Contenidos:</strong> Los títulos,
               sinopsis, nombres de películas y materiales promocionales (como
               pósters o imágenes de referencia) mostrados en la plataforma
-              pertenecen a sus respectivos productores, distribuidores o
-              titulares de derechos, y se utilizan bajo un propósito
-              estrictamente divulgativo y de reseña cultural.
+              pertenecen a sus respectivos productores, distribuidores o titulares
+              de derechos, y se utilizan bajo un propósito estrictamente divulgativo
+              y de reseña cultural, sin ánimo de lucro.
             </p>
             <p>
               <strong>Enlaces Externos:</strong> La web proporciona enlaces a
               fuentes externas de información y plataformas de streaming (como
-              IMDb, FilmAffinity, JustWatch o Wikipedia).
-              <em>videoclub.digital</em> no asume responsabilidad sobre la
-              disponibilidad o contenidos de dichos sitios externos.
+              IMDb, FilmAffinity, JustWatch o Wikipedia). videoclub.digital no
+              asume responsabilidad sobre la disponibilidad o contenidos de dichos
+              sitios externos.
             </p>
           </section>
 
@@ -1443,31 +1468,53 @@
           >
             <h3>Política de privacidad</h3>
             <p>
-              En <em>videoclub.digital</em> nos tomamos muy en serio la
-              privacidad y la minimización de datos conforme al Reglamento
-              General de Protección de Datos (RGPD):
+              En videoclub.digital nos tomamos muy en serio la privacidad y la
+              minimización de datos conforme al Reglamento General de Protección
+              de Datos (RGPD, Reglamento UE 2016/679):
             </p>
             <ul>
               <li>
+                <strong>Responsable del tratamiento:</strong> Proyecto personal videoclub.digital · Contacto:
+                <a href="mailto:sralbertvi@gmail.com">sralbertvi@gmail.com</a>
+              </li>
+              <li>
                 <strong>Datos recogidos:</strong> Si decides crear una cuenta
-                personal, únicamente almacenamos tu dirección de correo
-                electrónico y las preferencias/puntuaciones de tu lista privada
-                (watchlist y valoraciones).
+                personal, únicamente almacenamos tu dirección de correo electrónico
+                y las preferencias/puntuaciones de tu lista privada (watchlist y
+                valoraciones).
               </li>
               <li>
                 <strong>Finalidad:</strong> Permitir la autenticación segura y
                 sincronizar tus películas guardadas en tus dispositivos.
               </li>
               <li>
-                <strong>No cesión a terceros:</strong> Tus datos jamás se
-                venden, ceden ni comparten con terceros para fines publicitarios
-                o comerciales.
+                <strong>Base jurídica:</strong> El tratamiento se basa en tu
+                consentimiento explícito al crear la cuenta (art. 6.1.a RGPD) y en
+                la ejecución del servicio que solicitas expresamente al guardar tus
+                valoraciones y watchlist (art. 6.1.b RGPD).
               </li>
               <li>
-                <strong>Tus derechos:</strong> Puedes solicitar el acceso,
-                rectificación o eliminación total de tu cuenta y datos asociados
-                en cualquier momento escribiendo a
-                <a href="mailto:sralbertvi@gmail.com">sralbertvi@gmail.com</a>.
+                <strong>Plazo de conservación:</strong> Tus datos se conservan
+                mientras tu cuenta permanezca activa. Si solicitas la eliminación
+                de tu cuenta, tus datos se borran de forma permanente en un plazo
+                máximo de 30 días.
+              </li>
+              <li>
+                <strong>No cesión a terceros:</strong> Tus datos jamás se venden,
+                ceden ni comparten con terceros para fines publicitarios o
+                comerciales.
+              </li>
+              <li>
+                <strong>Tus derechos:</strong> Puedes ejercer en cualquier momento
+                tus derechos de acceso, rectificación, supresión, oposición,
+                limitación del tratamiento y portabilidad de tus datos, escribiendo
+                a <a href="mailto:sralbertvi@gmail.com">sralbertvi@gmail.com</a>.
+              </li>
+              <li>
+                <strong>Derecho a reclamar:</strong> Si consideras que el
+                tratamiento de tus datos no se ajusta a la normativa, tienes
+                derecho a presentar una reclamación ante la Agencia Española de
+                Protección de Datos (<a href="https://www.aepd.es" target="_blank" rel="noopener">www.aepd.es</a>).
               </li>
             </ul>
           </section>
@@ -1482,32 +1529,71 @@
           >
             <h3>Política de cookies y almacenamiento</h3>
             <p>
-              <strong
-                >videoclub.digital no utiliza cookies de seguimiento
-                publicitario ni tecnologías de rastreo de terceros con fines
-                comerciales.</strong
-              >
+              <strong>videoclub.digital no utiliza cookies de seguimiento
+              publicitario ni tecnologías de rastreo de terceros con fines
+              comerciales.</strong> Utilizamos únicamente tecnologías de
+              almacenamiento local estrictamente técnicas y funcionales,
+              necesarias para el funcionamiento del servicio que solicitas al
+              usarlo, y por tanto exentas del deber de solicitar tu consentimiento
+              conforme a la Guía de Cookies de la Agencia Española de Protección
+              de Datos (AEPD).
             </p>
-            <p>
-              Utilizamos únicamente tecnologías de almacenamiento local
-              estrictamente técnicas y funcionales (como
-              <code>localStorage</code> del navegador) indispensables para el
-              correcto funcionamiento de la plataforma:
+            <p><strong>Inventario técnico detallado:</strong></p>
+            <div class="legal-table-wrapper">
+              <table class="legal-cookie-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nombre / Clave</th>
+                    <th scope="col">Tecnología</th>
+                    <th scope="col">Finalidad</th>
+                    <th scope="col">Duración</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>sb-*-auth-token</code></td>
+                    <td>localStorage o sessionStorage*</td>
+                    <td>Mantener tu sesión iniciada (gestionado por Supabase Auth)</td>
+                    <td>Hasta cierre de sesión o expiración del token</td>
+                  </tr>
+                  <tr>
+                    <td><code>videoclub:remember_me</code></td>
+                    <td>localStorage</td>
+                    <td>Recordar si elegiste mantener la sesión iniciada entre visitas</td>
+                    <td>Persistente hasta que la cambies</td>
+                  </tr>
+                  <tr>
+                    <td><code>theme</code></td>
+                    <td>localStorage</td>
+                    <td>Recordar tu preferencia de tema claro/oscuro</td>
+                    <td>Persistente hasta que la cambies</td>
+                  </tr>
+                  <tr>
+                    <td><code>rotationState</code></td>
+                    <td>localStorage</td>
+                    <td>Recordar tu preferencia de modo de visualización del catálogo</td>
+                    <td>Persistente hasta que la cambies</td>
+                  </tr>
+                  <tr>
+                    <td><code>videoclub_offline_db</code></td>
+                    <td>IndexedDB</td>
+                    <td>Guardar temporalmente tus valoraciones o cambios en la watchlist hechos sin conexión, para sincronizarlos automáticamente al recuperar internet</td>
+                    <td>Hasta que la sincronización se complete con éxito</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="legal-small-note">
+              *Si eliges "recordarme" al iniciar sesión, tu sesión se guarda en
+              <code>localStorage</code> (persiste entre visitas). Si no lo eliges,
+              se guarda en <code>sessionStorage</code> y se borra automáticamente
+              al cerrar la pestaña o el navegador.
             </p>
-            <ul>
-              <li>
-                <strong>Sesión de usuario:</strong> Mantenimiento seguro de tu
-                sesión cuando inicias sesión en la plataforma (gestionado por
-                Supabase Auth).
-              </li>
-              <li>
-                <strong>Preferencias de interfaz:</strong> Guardado de tu estado
-                de filtros, ordenación y tema visual.
-              </li>
-            </ul>
             <p>
               Al ser mecanismos meramente técnicos y exentos de elaboración de
-              perfiles publicitarios, no interfieren con tu privacidad.
+              perfiles publicitarios, no interfieren con tu privacidad, y no
+              requieren de un banner de consentimiento conforme a la normativa
+              vigente.
             </p>
           </section>
         </div>

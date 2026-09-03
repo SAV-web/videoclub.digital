@@ -21,7 +21,7 @@
 - `public/404.html`: Fallback SPA para GitHub Pages. Intercepta rutas directas y recargas (`F5`) no coincidentes y redirige a la raíz preservando la ruta y query string mediante `?_p=` y `?_q=`.
 - `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`) y estrategias:
   - _Network First_ (`CACHE_STATIC` para navegación HTML y App Shell).
-  - _Stale-While-Revalidate_ (`CACHE_DYNAMIC` para assets estáticos JS/CSS y precacheo de `./sprite.svg` y `./flags.svg` en `CRITICAL_ASSETS`).
+  - _Stale-While-Revalidate_ (`CACHE_DYNAMIC` para assets estáticos JS/CSS con precacheo de `./index.html` y `./manifest.webmanifest` en `CRITICAL_ASSETS`; los iconos SVG viajan inlined en el DOM).
   - _Cache First_ (`CACHE_DYNAMIC` para pósters de Supabase Storage con límite FIFO).
   - _Exclusiones de API_: Las llamadas RPC y Auth viajan vía POST o manejan datos vivos; se gestionan mediante `lru-cache` en el cliente (`src/js/api.ts`).
   - Estrategia de invalidación documentada en `docs/service_worker_invalidation.md`.

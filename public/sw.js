@@ -10,9 +10,7 @@ const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 const CRITICAL_ASSETS = [
   "./",
   "./index.html",
-  "./manifest.webmanifest",
-  "./sprite.svg",
-  "./flags.svg"
+  "./manifest.webmanifest"
 ];
 
 // --- 2. HELPERS DE ESTRATEGIAS ---

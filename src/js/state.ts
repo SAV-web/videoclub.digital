@@ -401,16 +401,18 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
 
   // Reglas de Exclusividad de Negocio
   if (normalizedValue) {
+    // Exclusividad Estricta: genre y excludedGenres NUNCA pueden coexistir.
+    // country y excludedCountries NUNCA pueden coexistir.
     if (type === 'genre' && typeof normalizedValue === 'string') {
       state.activeFilters.excludedGenres = [];
     }
     if (type === 'country' && typeof normalizedValue === 'string') {
       state.activeFilters.excludedCountries = [];
     }
-    if (type === 'excludedGenres' && Array.isArray(normalizedValue) && state.activeFilters.genre) {
+    if (type === 'excludedGenres' && Array.isArray(normalizedValue) && normalizedValue.length > 0) {
       state.activeFilters.genre = null;
     }
-    if (type === 'excludedCountries' && Array.isArray(normalizedValue) && state.activeFilters.country) {
+    if (type === 'excludedCountries' && Array.isArray(normalizedValue) && normalizedValue.length > 0) {
       state.activeFilters.country = null;
     }
 
@@ -424,6 +426,7 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
       state.activeFilters.country = null;
       state.activeFilters.selection = null;
       state.activeFilters.studio = null;
+      state.activeFilters.year = null;
       state.activeFilters.excludedGenres = [];
       state.activeFilters.excludedCountries = [];
       state.activeFilters.mediaType = DEFAULTS.MEDIA_TYPE;
@@ -477,7 +480,7 @@ export function toggleExcludedFilter(type: string, value: unknown): boolean {
     // Si ya está excluido, lo quitamos de la lista
     state.activeFilters[listKey] = [];
   } else {
-    // Sólo 1 bento por menú: reemplazamos por el nuevo y limpiamos el positivo de esa categoría y las entidades de persona
+    // Sólo 1 bento por menú: reemplazamos por el nuevo y limpiamos SIEMPRE el positivo de esa categoría y las entidades de persona
     state.activeFilters[listKey] = [normalizedValue];
     if (type === 'genre') state.activeFilters.genre = null;
     if (type === 'country') state.activeFilters.country = null;

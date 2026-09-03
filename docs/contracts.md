@@ -57,11 +57,11 @@ Reglas:
 - **Banderas de País Interactivas**: Todas las banderas de país (en tarjetas, tarjetas VIP y modal) se generan como enlaces interactivos (`<a>` con `[data-country-name]`) que emiten `filter:apply` con `{ type: "country", value: countryName }`, permitiendo filtrado instantáneo por país.
 - **Línea Informativa del Header (*Status Bar*)**: Sigue estrictamente la jerarquía canónica de las URLs:
   $$\text{Total títulos} \to \text{Persona VIP} \to \text{Género} \to \text{País} \to \text{Selección/Estudio} \to \text{Búsqueda} \to \text{Mi Lista} \to \text{Año} \to \text{Orden} \to \text{Tipo}$$
-- **Coexistencia y Exclusividad de Géneros y Países**:
-  - `genre` y `excludedGenres` pueden coexistir de forma no conflictiva (ej: `/drama/no-animacion/` = Drama excluyendo Animación). Un género solo se anula si se incluye explícitamente en su propio array de exclusión.
-  - `country` y `excludedCountries` pueden coexistir pacíficamente (ej: `/espana/no-eeuu/` = Cine español excluyendo producciones con EEUU).
+- **Exclusividad Estricta de Géneros y Países con sus Exclusiones**:
+  - `genre` y `excludedGenres` son **mutuamente excluyentes** y NUNCA pueden coexistir interactuando con la UI ni en las URLs (no debe poder elegirse `/drama/no-animacion/`). Al activar un género positivo se eliminan todas las exclusiones de género, y al activar una exclusión de género se anula cualquier género positivo activo.
+  - `country` y `excludedCountries` son **mutuamente excluyentes** y NUNCA pueden coexistir interactuando con la UI ni en las URLs (no debe poder elegirse `/uk/no-espana/`). Al activar un país positivo se eliminan todas las exclusiones de país, y al activar una exclusión de país se anula cualquier país positivo activo.
 - **Estructura Canónica de URLs (*Pretty Paths*)**:
-  - Los filtros de catálogo principales (`genre`, `country`, `selection`/`studio`, `excludedGenres`, `excludedCountries`) se serializan en los segmentos del `pathname`: `/{genre}/{country}/{studio_or_selection}/no-{exg}/no-{exc}/`.
+  - Los filtros de catálogo principales (`genre` o `excludedGenres`, `country` o `excludedCountries`, `selection`/`studio`) se serializan en los segmentos del `pathname`: `/{genre_o_no_exg}/{country_o_no_exc}/{studio_or_selection}/`. Si una URL externa incluye ambos simultáneamente, la exclusión tiene precedencia y el positivo es anulado de forma canónica.
   - Las entidades de personas se serializan con prefijo canónico dedicado: `/director/{slug}/` o `/actor/{slug}/` (ej. `/director/brian-de-palma/`, `/actor/clint-eastwood/`).
   - Los parámetros técnicos, temporales y de paginación se serializan en el `query string` usando slugs amigables para el orden: `?year=2011-&sort=votos-fa&p=3`.
   - Parámetro canónico de búsqueda: `?search={termino}` (con compatibilidad de lectura para `?buscar=` y `?q=`).

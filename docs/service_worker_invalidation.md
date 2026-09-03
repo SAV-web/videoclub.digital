@@ -19,7 +19,7 @@ Cada cambio de `VERSION` crea cachés nuevas y elimina todas las cachés cuyo no
 | Recurso | Estrategia | Cache / Destino | Invalidación |
 | --- | --- | --- | --- |
 | Navegación HTML | `Network First` | `CACHE_STATIC` | Se actualiza desde red siempre que haya conexión. Fallback a caché offline. |
-| `index.html`, manifiesto, `./sprite.svg` y `./flags.svg` | Precarga en `install` (`CRITICAL_ASSETS`) | `CACHE_STATIC` | Requiere subida de `VERSION` (automatizado en el build). |
+| `index.html` y manifiesto | Precarga en `install` (`CRITICAL_ASSETS`) | `CACHE_STATIC` | Requiere subida de `VERSION` (automatizado en el build). Los sprites e iconos SVG viajan inlined en el DOM de `index.html`. |
 | JS/CSS/fuentes/iconos | `Stale While Revalidate` | `CACHE_DYNAMIC` | Vite genera filenames con hash; el HTML nuevo referencia assets nuevos. |
 | Pósters Supabase Storage | `Cache First` | `CACHE_DYNAMIC` | Persisten hasta cambio de `VERSION` o expulsión FIFO por límite (200 items). |
 | Supabase RPC / Búsquedas | Memoria LRU Cliente | `src/js/api.ts` (`lru-cache`) | Excluidas de SW (viajan en POST, prohibido por W3C CacheStorage). Caché en memoria cliente multiescala (`queryCache` 30 min / 300 páginas, `suggestionsCache` 5 min / 100 items, `personCache` 1 h / 150 items) con deduplicación de peticiones en vuelo (`inFlightRequests`). |

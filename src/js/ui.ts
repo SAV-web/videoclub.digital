@@ -615,18 +615,23 @@ export function switchLegalTab(tabName: string): void {
 
   let targetPanelId = `panel-${tabName}`;
   let found = false;
+  let activeTab: HTMLButtonElement | null = null;
 
   tabs.forEach((tab) => {
     const isTarget = tab.getAttribute("data-tab") === tabName;
     tab.classList.toggle("is-active", isTarget);
     tab.setAttribute("aria-selected", isTarget ? "true" : "false");
-    if (isTarget) found = true;
+    if (isTarget) {
+      found = true;
+      activeTab = tab;
+    }
   });
 
   if (!found && tabs.length > 0) {
     tabs[0].classList.add("is-active");
     tabs[0].setAttribute("aria-selected", "true");
     targetPanelId = tabs[0].getAttribute("aria-controls") || "panel-about";
+    activeTab = tabs[0];
   }
 
   panels.forEach((panel) => {
@@ -638,6 +643,17 @@ export function switchLegalTab(tabName: string): void {
   // Reset scroll del contenedor de texto
   const body = modal.querySelector<HTMLElement>(".legal-body");
   if (body) body.scrollTop = 0;
+
+  // Auto-scroll para que la pestaña activa siempre sea visible en móvil
+  if (activeTab) {
+    requestAnimationFrame(() => {
+      activeTab?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    });
+  }
 }
 
 export const closeLegalModal = (options?: { fromPopstate?: boolean } | Event): void => {
@@ -655,8 +671,16 @@ export const openLegalModal = (tabName = "about"): void => {
   if (!window.history.state?.modalOpen) {
     window.history.pushState({ modalOpen: true }, "", window.location.href);
   }
-  switchLegalTab(tabName);
   openAccessibleModal(dom.legalModal, dom.legalOverlay, false);
+  switchLegalTab(tabName);
+  requestAnimationFrame(() => {
+    const activeTab = dom.legalModal?.querySelector<HTMLElement>(".legal-tab-btn.is-active");
+    activeTab?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  });
 };
 
 let legalModalInitialized = false;
