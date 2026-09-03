@@ -432,11 +432,9 @@
   text-decoration: none;
   transition: color var(--duration-fast, 0.15s) ease;
   cursor: pointer;
-  display: inline-block;
+  display: inline;
   white-space: nowrap;
   border-radius: var(--radius-sm, 3px);
-  padding: 1px 3px;
-  margin: -1px -3px;
 
   &:hover {
     color: var(--color-text-primary);
@@ -452,11 +450,9 @@
 }
 
 .is-quick-view .front-director-info a {
-  display: inline-block;
+  display: inline;
   white-space: nowrap;
   border-radius: var(--radius-sm, 3px);
-  padding: 1px 4px;
-  margin: -1px -4px;
 
   &:focus-visible {
     outline: 2px solid var(--color-accent);

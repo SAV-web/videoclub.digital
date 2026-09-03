@@ -84,7 +84,8 @@ export function formatVotesUnified(votes: number | string | null | undefined): s
  */
 export function preserveHyphenatedWords(text: string | null | undefined): string {
   if (!text) return "";
-  return text.replace(/([a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])-(?=[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])/g, "$1\u2011");
+  const sanitized = text.replace(/\s+([,.:;!?])/g, "$1");
+  return sanitized.replace(/([a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])-(?=[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])/g, "$1\u2011");
 }
 
 /**

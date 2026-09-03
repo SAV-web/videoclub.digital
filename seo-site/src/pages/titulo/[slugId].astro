@@ -1216,10 +1216,7 @@ const breadcrumbLd = {
             {directors.length > 0 && (
               <div class="front-director-info" data-template="director">
                 {directors.map((name, i) => (
-                  <>
-                    <a href={`${baseUrl}director/${toSlug(name)}/`}>{preserveHyphenatedWords(name)}</a>
-                    {i < directors.length - 1 ? ', ' : ''}
-                  </>
+                  <><a href={`${baseUrl}director/${toSlug(name)}/`}>{preserveHyphenatedWords(name)}</a>{i < directors.length - 1 ? ', ' : ''}</>
                 ))}
               </div>
             )}
@@ -1236,14 +1233,11 @@ const breadcrumbLd = {
                     {genres.map((name, i) => {
                       const slug = genreToSlug(name);
                       return (
-                        <>
-                          {slug ? (
-                            <a href={`${baseUrl}${slug}/`}>{preserveHyphenatedWords(name)}</a>
-                          ) : (
-                            <span>{preserveHyphenatedWords(name)}</span>
-                          )}
-                          {i < genres.length - 1 ? ', ' : ''}
-                        </>
+                        <>{slug ? (
+                          <a href={`${baseUrl}${slug}/`}>{preserveHyphenatedWords(name)}</a>
+                        ) : (
+                          <span>{preserveHyphenatedWords(name)}</span>
+                        )}{i < genres.length - 1 ? ', ' : ''}</>
                       );
                     })}
                   </span>
@@ -1257,10 +1251,7 @@ const breadcrumbLd = {
                   <strong class="detail-label-title">Reparto.</strong>
                   <span class="detail-data" data-template="actors">
                     {actors.map((name, i) => (
-                      <>
-                        <a href={`${baseUrl}actor/${toSlug(name)}/`}>{preserveHyphenatedWords(name)}</a>
-                        {i < actors.length - 1 ? ', ' : ''}
-                      </>
+                      <><a href={`${baseUrl}actor/${toSlug(name)}/`}>{preserveHyphenatedWords(name)}</a>{i < actors.length - 1 ? ', ' : ''}</>
                     ))}
                   </span>
                 </div>
