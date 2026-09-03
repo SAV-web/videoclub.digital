@@ -502,12 +502,12 @@ describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
     assert.ok(sharedConstants.IGNORED_ACTORS_SET.has("animacion"));
   });
 
-  test("REGIONAL_GROUPS contiene códigos ISO de país para filtrado en PostgreSQL", () => {
+  test("REGIONAL_GROUPS define los grupos regionales soportados en el catálogo", () => {
     assert.ok(sharedConstants.REGIONAL_GROUPS.NORDICS);
-    assert.ok(sharedConstants.REGIONAL_GROUPS.NORDICS.codes.includes("DK"));
-    assert.ok(sharedConstants.REGIONAL_GROUPS.NORDICS.codes.includes("NO"));
+    assert.strictEqual(sharedConstants.REGIONAL_GROUPS.NORDICS.value, "nordic");
+    assert.strictEqual(sharedConstants.REGIONAL_GROUPS.NORDICS.label, "Nordic");
     assert.ok(sharedConstants.REGIONAL_GROUPS.LATAM);
-    assert.ok(sharedConstants.REGIONAL_GROUPS.LATAM.codes.includes("AR"));
-    assert.ok(sharedConstants.REGIONAL_GROUPS.LATAM.codes.includes("MX"));
+    assert.strictEqual(sharedConstants.REGIONAL_GROUPS.LATAM.value, "latam");
+    assert.strictEqual(sharedConstants.REGIONAL_GROUPS.LATAM.label, "Latam");
   });
 });

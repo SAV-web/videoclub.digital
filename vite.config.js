@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { copyCleanSprites } from './scripts/sync-sprites.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -100,18 +101,7 @@ function inlineSvgSpritesPlugin() {
 
 function syncPublicSpritesPlugin() {
   const sync = () => {
-    const publicDir = path.resolve(__dirname, 'public');
-    const srcDir = path.resolve(__dirname, 'src');
-    if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
-    
-    ['sprite.svg', 'flags.svg'].forEach(file => {
-      const srcPath = path.join(srcDir, file);
-      const destPath = path.join(publicDir, file);
-      if (fs.existsSync(srcPath)) {
-        const content = fs.readFileSync(srcPath, 'utf-8').replace('style="display: none;"', '');
-        fs.writeFileSync(destPath, content, 'utf-8');
-      }
-    });
+    copyCleanSprites(path.resolve(__dirname, 'src'), path.resolve(__dirname, 'public'));
   };
 
   return {

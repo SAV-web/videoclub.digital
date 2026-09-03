@@ -664,6 +664,9 @@ const lazyLoadObserver: IntersectionObserver | null = typeof IntersectionObserve
         img.src = img.dataset.src;
         img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
         img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+        if (img.complete) {
+          img.classList.add(CSS_CLASSES.LOADED);
+        }
       }
       obs.unobserve(img);
     }
@@ -713,27 +716,36 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   const hqPoster = movie.posterUrl || getHqPosterUrl(movie.slug);
   img.alt = `Póster de ${movie.title}`;
 
+  // Uniformidad visual LQIP: Todas las tarjetas inician con thumbhash_st borroso
+  img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+  img.dataset.src = hqPoster;
+  img.decoding = "async";
+  img.classList.remove(CSS_CLASSES.LOADED);
+  if (movie.thumbhash_st) {
+    img.classList.add(CSS_CLASSES.LAZY_LQIP);
+  } else {
+    img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+  }
+
+  // Prioridad de red para el elemento principal del viewport (LCP)
+  if (index === 0) {
+    img.setAttribute("fetchpriority", "high");
+  } else {
+    img.removeAttribute("fetchpriority");
+  }
+
+  // Las tarjetas iniciales usan loading="eager" para acelerar la petición de red del póster HQ
   const priorityCount = isMobileViewport() ? 6 : (CONFIG.CARD_BATCH_SIZE || 12);
   const isFirstPage = getCurrentPage() === 1;
+  const isPriority = isFirstPage && index < priorityCount;
+  img.loading = isPriority ? "eager" : "lazy";
 
-  if (isFirstPage && index < priorityCount) {
-    img.loading = "eager";
-    img.decoding = "async";
-    img.classList.remove(CSS_CLASSES.LAZY_LQIP);
-    img.setAttribute("fetchpriority", index === 0 ? "high" : "auto");
-    img.src = hqPoster;
+  if (lazyLoadObserver) {
+    lazyLoadObserver.observe(img);
   } else {
-    img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-    img.dataset.src = hqPoster;
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.removeAttribute("fetchpriority");
-    if (movie.thumbhash_st) img.classList.add(CSS_CLASSES.LAZY_LQIP);
-    if (lazyLoadObserver) {
-      lazyLoadObserver.observe(img);
-    } else {
-      img.src = hqPoster;
-    }
+    img.src = hqPoster;
+    img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
+    img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
   }
 
 

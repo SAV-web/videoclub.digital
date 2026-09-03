@@ -129,6 +129,7 @@ AS $function$
 DECLARE
     v_query TEXT;
     v_order_clause TEXT;
+    v_outer_order_clause TEXT;
     v_count_cte TEXT;
     v_count_select TEXT;
     v_json_result JSON;
@@ -141,6 +142,9 @@ DECLARE
     v_genre_tsquery tsquery;
     v_director_tsquery tsquery;
     v_actor_tsquery tsquery;
+    v_enable_daily_showcase BOOLEAN := FALSE;
+    v_showcase_limit INT := 378;
+    v_rank_column TEXT := '';
 BEGIN
     -- FASE 1: VALIDACIÓN Y ORDENACIÓN
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
@@ -164,6 +168,47 @@ BEGIN
         ELSE 'ORDER BY m.relevance ASC, m.id ASC'
     END;
 
+    -- FASE 1.2: EVALUACIÓN DE DAILY SHOWCASE (Escaparate Diario Dinámico)
+    -- Aplica en relevancia por defecto si no hay búsqueda por texto ni filtro de personas VIP (director/actor)
+    IF v_safe_sort_field = 'relevance' 
+       AND (search_term IS NULL OR TRIM(search_term) = '')
+       AND (director_name IS NULL OR TRIM(director_name) = '')
+       AND (actor_name IS NULL OR TRIM(actor_name) = '') THEN
+        
+        v_enable_daily_showcase := TRUE;
+        
+        -- Si hay selección o estudio activo, la primera ficha de la UI la ocupa la tarjeta VIP (377 películas + 1 VIP = 378 slots)
+        -- En portada general o filtros de género/país, la ventana completa es de 378 películas (mcm de 42 y 54)
+        IF (p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '') 
+           OR (p_studio_code IS NOT NULL AND TRIM(p_studio_code) <> '') THEN
+            v_showcase_limit := 377;
+        ELSE
+            v_showcase_limit := 378;
+        END IF;
+
+        v_rank_column := ', ROW_NUMBER() OVER (ORDER BY m.relevance ASC, m.id ASC) AS natural_rank';
+
+        v_order_clause := format('
+            ORDER BY 
+                CASE WHEN m.natural_rank <= %s THEN 0 ELSE 1 END ASC,
+                CASE WHEN m.natural_rank <= %s 
+                     THEN hashtext(m.id::text || (CURRENT_TIMESTAMP AT TIME ZONE ''Europe/Madrid'')::date::text) 
+                END ASC,
+                m.natural_rank ASC
+        ', v_showcase_limit, v_showcase_limit);
+
+        v_outer_order_clause := format('
+            ORDER BY 
+                CASE WHEN fm.natural_rank <= %s THEN 0 ELSE 1 END ASC,
+                CASE WHEN fm.natural_rank <= %s 
+                     THEN hashtext(fm.id::text || (CURRENT_TIMESTAMP AT TIME ZONE ''Europe/Madrid'')::date::text) 
+                END ASC,
+                fm.natural_rank ASC
+        ', v_showcase_limit, v_showcase_limit);
+    ELSE
+        v_outer_order_clause := v_order_clause;
+    END IF;
+
     -- Validación de límites de paginación (evita valores negativos o abusivos)
     v_limit := LEAST(GREATEST(COALESCE(page_limit, 50), 1), 100);
     v_offset := GREATEST(COALESCE(page_offset, 0), 0);
@@ -179,17 +224,19 @@ BEGIN
         IF v_country_ids IS NULL THEN v_country_ids := '{}'; END IF;
     ELSIF country_name IS NOT NULL AND country_name != '' THEN
         SELECT array_agg(c.id) INTO v_country_ids FROM public.countries c 
-        WHERE c.name_norm = ANY(SELECT public.unaccent_immutable(lower(x)) FROM unnest(string_to_array(country_name, ',')) x)
-           OR c.code = ANY(SELECT upper(x) FROM unnest(string_to_array(country_name, ',')) x);
+        WHERE lower(c.region) = ANY(SELECT lower(trim(x)) FROM unnest(string_to_array(country_name, ',')) x)
+           OR c.name_norm = ANY(SELECT public.unaccent_immutable(lower(trim(x))) FROM unnest(string_to_array(country_name, ',')) x)
+           OR c.code = ANY(SELECT upper(trim(x)) FROM unnest(string_to_array(country_name, ',')) x);
         IF v_country_ids IS NULL THEN
             v_country_ids := '{}';
         END IF;
     END IF;
 
     IF excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 0 THEN
-        SELECT array_agg(c.id) INTO v_excluded_country_ids FROM public.countries c WHERE c.name_norm = ANY(
-            SELECT public.unaccent_immutable(lower(x)) FROM unnest(excluded_countries) x
-        );
+        SELECT array_agg(c.id) INTO v_excluded_country_ids FROM public.countries c 
+        WHERE lower(c.region) = ANY(SELECT lower(trim(x)) FROM unnest(excluded_countries) x)
+           OR c.name_norm = ANY(SELECT public.unaccent_immutable(lower(trim(x))) FROM unnest(excluded_countries) x)
+           OR c.code = ANY(SELECT upper(trim(x)) FROM unnest(excluded_countries) x);
     END IF;
 
     -- FASE 3: LÓGICA CONDICIONAL DE CONTEO
@@ -279,7 +326,7 @@ BEGIN
     -- FASE 4: CONSTRUCCIÓN DINÁMICA DE LA CONSULTA SQL
     v_query := '
         WITH filtered_movies AS (
-            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance
+            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance' || v_rank_column || '
             FROM public.movies m
             WHERE
                 ($1 IS NULL OR $1 = '''' OR m.title_norm LIKE ''%'' || public.unaccent_immutable(lower($1)) || ''%'')
@@ -300,7 +347,7 @@ BEGIN
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         )' || v_count_cte || ',
         paged_ids AS (
-            SELECT m.id 
+            SELECT m.id' || CASE WHEN v_enable_daily_showcase THEN ', m.natural_rank' ELSE '' END || ' 
             FROM filtered_movies m
             ' || v_order_clause || '
             LIMIT ' || v_limit || ' OFFSET ' || v_offset || '
@@ -334,7 +381,7 @@ BEGIN
                         FROM paged_ids fm
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id
-                        ' || v_order_clause || '
+                        ' || v_outer_order_clause || '
                     ) as rows
                 ),
                 ''[]''::json
@@ -455,6 +502,15 @@ CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_
 CREATE INDEX IF NOT EXISTS movies_country_imdb_votes_idx ON public.movies(country_id, imdb_votes DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS movies_country_type_year_idx ON public.movies(country_id, type, year DESC);
 
+-- 5.1b. Columna de Grupo Regional en Países e Índice B-Tree
+ALTER TABLE public.countries ADD COLUMN IF NOT EXISTS region text;
+CREATE INDEX IF NOT EXISTS idx_countries_region ON public.countries(lower(region)) WHERE region IS NOT NULL;
+
+-- Poblado inicial determinista de regiones (Single Source of Truth)
+UPDATE public.countries SET region = 'nordic' WHERE upper(code) IN ('DK', 'FI', 'IS', 'NO', 'SE') AND region IS DISTINCT FROM 'nordic';
+UPDATE public.countries SET region = 'latam' WHERE upper(code) IN ('AR', 'MX', 'BR', 'CL', 'CO', 'PE', 'UY', 'VE', 'CU', 'PY', 'BO', 'EC', 'CR', 'GT', 'DO', 'PA', 'PR') AND region IS DISTINCT FROM 'latam';
+
+ANALYZE public.countries;
 ANALYZE public.movies;
 
 -- 5.2. Vistas Materializadas para Sugerencias y Autocompletado (Auto-Convergencia Segura)

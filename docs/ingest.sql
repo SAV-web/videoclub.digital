@@ -28,3 +28,7 @@ ANALYZE public.movie_studios;
 ANALYZE public.mv_actor_suggestions;
 ANALYZE public.mv_director_suggestions;
 ANALYZE public.mv_title_suggestions;
+
+-- 4. Certificación Declarativa de Calidad de Datos (DataOps Tests)
+-- Ejecuta la suite de aserciones dbt-style y devuelve el reporte PASS/FAIL del catálogo
+SELECT * FROM public.run_data_tests();

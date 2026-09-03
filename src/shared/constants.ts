@@ -90,18 +90,15 @@ export const TEXT_FILTER_KEYS: ReadonlySet<string> = new Set([
 export interface RegionalGroup {
   readonly label: string;
   readonly value: string;
-  readonly codes: readonly string[];
 }
 
 export const REGIONAL_GROUPS: Record<string, RegionalGroup> = {
   NORDICS: {
     label: "Nordic",
-    value: "nordic",
-    codes: ["DK", "FI", "IS", "NO", "SE"]
+    value: "nordic"
   },
   LATAM: {
     label: "Latam",
-    value: "latam",
-    codes: ["AR", "MX", "BR", "CL", "CO", "PE", "UY", "VE", "CU", "PY", "BO", "EC", "CR", "GT", "DO"]
+    value: "latam"
   }
 } as const;

@@ -6,6 +6,7 @@ CREATE TABLE public.countries (
   name text NOT NULL UNIQUE,
   code text NOT NULL UNIQUE,
   name_norm text DEFAULT unaccent_immutable(lower(name)),
+  region text,
   CONSTRAINT countries_pkey PRIMARY KEY (id)
 );
 

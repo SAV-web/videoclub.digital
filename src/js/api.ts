@@ -7,7 +7,7 @@
 // recordar lo que ya ha descargado y no pedirlo dos veces.
 // =================================================================
 
-import { CONFIG, IGNORED_ACTORS, REGIONAL_GROUPS, TEXT_FILTER_KEYS } from "./constants.js";
+import { CONFIG, IGNORED_ACTORS, TEXT_FILTER_KEYS } from "./constants.js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
@@ -185,15 +185,13 @@ export function stateToRpcParams(
   const [sortField = "relevance", sortDirection = "asc"] = (activeFilters.sort || "relevance,asc").split(",");
   const offset = explicitOffset !== null ? explicitOffset : (currentPage - 1) * pageSize;
 
-  const region = Object.values(REGIONAL_GROUPS).find(r => r.value === activeFilters.country);
-
   return {
     search_term: activeFilters.searchTerm || null,
     genre_name: activeFilters.genre ? activeFilters.genre.trim() || null : null,
     p_year_start: yearStart,
     p_year_end: yearEnd,
-    country_name: region ? null : activeFilters.country,
-    p_country_codes: region ? region.codes : null,
+    country_name: activeFilters.country || null,
+    p_country_codes: null,
     director_name: activeFilters.director || null,
     actor_name: activeFilters.actor || null,
     media_type: activeFilters.mediaType || "all",
