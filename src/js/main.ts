@@ -30,7 +30,7 @@ import {
 } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { isAbortError, getAppBasePath, toSlug } from "./contracts.js";
-import { getAllLocalEntries } from "./localStore.js";
+import { getAllLocalEntries, clearLocalStore } from "./localStore.js";
 import { mergeOnLogin, initSyncListeners, scheduleSync } from "./syncManager.js";
 import {
   dom,
@@ -1004,6 +1004,7 @@ function setupAuthSystem(): void {
       userAvatarInitials.title = "";
     }
     clearUserMovieData();
+    clearLocalStore().catch(() => {});
     clearAppBadge();
     appEvents.emit("userDataUpdated");
     isAuthInitialized = true;

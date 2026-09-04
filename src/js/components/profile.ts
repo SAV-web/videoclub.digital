@@ -7,11 +7,11 @@
 // =================================================================
 
 import { getSupabase } from "../api.js";
-import { getAllUserMovieData, setFilter, appEvents } from "../state.js";
+import { getAllUserMovieData, appEvents } from "../state.js";
 import { openAccessibleModal, closeAccessibleModal, showToast } from "../ui.js";
 import { UserMovieEntry } from "../types.js";
-import { getPendingSyncEntries } from "../localStore.js";
-import { syncWithServer } from "../syncManager.js";
+import { getPendingSyncEntries, clearLocalStore } from "../localStore.js";
+import { syncWithServer, mergeOnLogin } from "../syncManager.js";
 import { calculateUserStars } from "../../shared/formatters.js";
 
 export interface UserMovieStats {
@@ -259,8 +259,19 @@ export async function openProfileModal(): Promise<void> {
   if (dom.emailTitle) dom.emailTitle.textContent = userEmail;
   if (dom.avatarLarge) dom.avatarLarge.textContent = initial;
 
-  // Calcular y pintar estadísticas en tiempo real
+  // Render inicial inmediato desde memoria (0 ms)
   renderProfileStats();
+
+  // Si hay sesión activa, verificar si los datos locales están vacíos o incompletos y refrescar
+  if (session?.user) {
+    const currentEntries = getAllUserMovieData();
+    if (Object.keys(currentEntries).length === 0) {
+      mergeOnLogin(session.user.id).then(() => {
+        renderProfileStats();
+        updateSyncStatusUI().catch(() => {});
+      }).catch(() => {});
+    }
+  }
 
   // Actualizar estado de sincronización Local-First
   await updateSyncStatusUI();
@@ -315,9 +326,10 @@ export function renderProfileStats(): void {
   }
   if (dom.averageStarsContainer) {
     renderFractionalStars(dom.averageStarsContainer, stats.averageStars || 0);
+    dom.averageStarsContainer.setAttribute("aria-label", `Promedio de valoración: ${stats.formattedStars}`);
   }
   if (dom.starsText) {
-    dom.starsText.textContent = stats.formattedStars;
+    dom.starsText.textContent = "";
   }
 
   if (dom.breakdownContainer) {
@@ -380,8 +392,12 @@ function evaluatePasswordScore(pwd: string): { score: number; label: string } {
  * Exporta la colección del usuario en formato JSON para máxima portabilidad de datos.
  */
 export function exportUserDataJson(): void {
-  const entries: Record<string, UserMovieEntry> = getAllUserMovieData();
-  const stats = computeUserMovieStats(entries);
+  const allEntries: Record<string, UserMovieEntry> = getAllUserMovieData();
+  const validEntries = Object.entries(allEntries).filter(
+    ([_, item]) => item && (item.rating !== null || item.onWatchlist)
+  );
+
+  const stats = computeUserMovieStats(allEntries);
 
   const exportData = {
     app: "videoclub.digital",
@@ -390,9 +406,16 @@ export function exportUserDataJson(): void {
     stats: {
       total_watchlist: stats.watchlistCount,
       total_rated: stats.ratedCount,
-      average_rating: stats.averageRating
+      average_rating: stats.averageRating,
+      average_stars: stats.averageStars,
+      breakdown: {
+        stars_3: stats.breakdown.level3.count,
+        stars_2: stats.breakdown.level2.count,
+        stars_1: stats.breakdown.level1.count,
+        stars_0: stats.breakdown.level0.count
+      }
     },
-    entries: Object.entries(entries).map(([movieId, item]) => ({
+    entries: validEntries.map(([movieId, item]) => ({
       movie_id: Number(movieId),
       rating: item?.rating ?? null,
       on_watchlist: Boolean(item?.onWatchlist)
@@ -437,7 +460,10 @@ export function setupProfileModal(): () => void {
   if (dom.exploreWatchlistBtn) {
     const onWatchlistClick = () => {
       closeProfileModal();
-      setFilter("myList", "watchlist");
+      appEvents.emit("filtersReset", {
+        keepSort: true,
+        newFilter: { type: "myList", value: "watchlist" }
+      });
     };
     dom.exploreWatchlistBtn.addEventListener("click", onWatchlistClick);
     unsubscribers.push(() => dom.exploreWatchlistBtn?.removeEventListener("click", onWatchlistClick));
@@ -446,7 +472,10 @@ export function setupProfileModal(): () => void {
   if (dom.exploreRatedBtn) {
     const onRatedClick = () => {
       closeProfileModal();
-      setFilter("myList", "rated");
+      appEvents.emit("filtersReset", {
+        keepSort: true,
+        newFilter: { type: "myList", value: "rated" }
+      });
     };
     dom.exploreRatedBtn.addEventListener("click", onRatedClick);
     unsubscribers.push(() => dom.exploreRatedBtn?.removeEventListener("click", onRatedClick));
@@ -540,7 +569,7 @@ export function setupProfileModal(): () => void {
     unsubscribers.push(() => dom.passwordForm?.removeEventListener("submit", onPasswordSubmit));
   }
 
-  // 7. Sincronizar Ahora
+  // 7. Sincronizar Ahora (Bidireccional: sube pendientes y descarga novedades de la nube)
   if (dom.forceSyncBtn) {
     const onForceSync = async () => {
       if (dom.forceSyncBtn) {
@@ -549,6 +578,11 @@ export function setupProfileModal(): () => void {
       }
       try {
         await syncWithServer();
+        const supabase = await getSupabase();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await mergeOnLogin(session.user.id);
+        }
         await updateSyncStatusUI();
         renderProfileStats();
         showToast("Sincronización completada con la nube.", "success");
@@ -576,6 +610,11 @@ export function setupProfileModal(): () => void {
   if (dom.logoutBtn) {
     const onLogout = async () => {
       closeProfileModal();
+      try {
+        await clearLocalStore();
+      } catch (err) {
+        console.error("Error al limpiar almacén local en logout:", err);
+      }
       const supabase = await getSupabase();
       await supabase.auth.signOut();
     };

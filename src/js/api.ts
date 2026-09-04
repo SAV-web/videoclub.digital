@@ -53,7 +53,6 @@ const customAuthStorage = {
 };
 
 let supabasePromise: Promise<SupabaseClient> | null = null;
-let cachedGlobalMovieCount: number | null = null;
 
 // 1. CARGA DIFERIDA DE LA BASE DE DATOS (Solo descarga Supabase cuando hace falta)
 export function getSupabase(): Promise<SupabaseClient> {
@@ -337,54 +336,10 @@ export function fetchMovies(
       }
 
       // MODO B: CATÁLOGO PÚBLICO (Motor potente con reintento resiliente para cold-starts)
-      const isCleanDefaultCatalog = Boolean(
-        !normFilters.searchTerm &&
-        !normFilters.genre &&
-        !normFilters.country &&
-        !normFilters.director &&
-        !normFilters.actor &&
-        !normFilters.selection &&
-        !normFilters.studio &&
-        (!normFilters.year || normFilters.year === "all") &&
-        (!normFilters.mediaType || normFilters.mediaType === "all") &&
-        (!normFilters.excludedGenres || normFilters.excludedGenres.length === 0) &&
-        (!normFilters.excludedCountries || normFilters.excludedCountries.length === 0) &&
-        (!normFilters.sort || normFilters.sort === "relevance,asc")
-      );
-
-      // Si no hay filtros activos (portada / cold-start), pedimos los ítems con get_count: false
-      // para evitar que la CTE pesada de count exceda el statement_timeout de 3s en Supabase.
-      // El total se resuelve en paralelo o desde memoria de forma instantánea (~200ms).
-      const shouldDelegateCount = isCleanDefaultCatalog && normRequestCount;
-      const effectiveRequestCount = shouldDelegateCount ? false : normRequestCount;
-
-      const rpcParams = stateToRpcParams(normFilters, normPage, normPageSize, effectiveRequestCount, normExplicitOffset);
+      const rpcParams = stateToRpcParams(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
       let data: any = null;
       let error: any = null;
       const MAX_RETRIES = 2;
-
-      // Lanzamos la consulta de conteo en paralelo si delegamos el count y no lo tenemos en caché
-      let parallelCountPromise: Promise<number | null> | null = null;
-      if (shouldDelegateCount) {
-        if (cachedGlobalMovieCount !== null && cachedGlobalMovieCount > 0) {
-          parallelCountPromise = Promise.resolve(cachedGlobalMovieCount);
-        } else {
-          parallelCountPromise = (async () => {
-            try {
-              let countQuery = supabase.from('movies').select('*', { count: 'exact', head: true });
-              if (signal) countQuery = countQuery.abortSignal(signal);
-              const { count, error: countErr } = await countQuery;
-              if (!countErr && typeof count === 'number' && count > 0) {
-                cachedGlobalMovieCount = count;
-                return count;
-              }
-            } catch {
-              // Fallback silencioso
-            }
-            return cachedGlobalMovieCount;
-          })();
-        }
-      }
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         if (signal?.aborted) throw { name: "AbortError" };
@@ -403,13 +358,6 @@ export function fetchMovies(
           throw { name: "AbortError" };
         }
 
-        // Si el fallo fue por timeout (código 57014 de PostgreSQL), desactivamos get_count
-        // en el siguiente intento para aligerar la query un 80% y evitar repetir el timeout.
-        const isTimeout = error?.code === '57014' || String(error?.message || '').toLowerCase().includes('timeout') || error?.status === 504;
-        if (isTimeout && rpcParams.get_count) {
-          rpcParams.get_count = false;
-        }
-
         // Si no es el último intento, esperar antes de reintentar (300ms, 600ms)
         if (attempt < MAX_RETRIES) {
           const delay = (attempt + 1) * 300;
@@ -422,20 +370,13 @@ export function fetchMovies(
         throw createAppError(ERROR_CODES.DATABASE, "No se pudo conectar con el catálogo. Inténtalo de nuevo.", error);
       }
 
-      // Si delegamos el count en paralelo, esperamos su resolución
-      if (parallelCountPromise && data) {
-        const resolvedCount = await parallelCountPromise;
-        if (typeof resolvedCount === 'number' && resolvedCount > 0) {
-          data.total = resolvedCount;
-        }
-      }
-
       const rawItems = (data?.items || []).map((mRaw: unknown) => shapeRawMovieRow(mRaw));
       const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: rawItems }, mapMoviePayload);
 
       // Filtro de precisión para garantizar que el nombre del actor o director coincida exactamente con una de las personas de la lista
-      // (Evita que buscar "Yuna" devuelva a "Madeleine Yuna Voyles")
+      // (Evita que buscar "Yuna" devuelva a "Madeleine Yuna Voyles" o que buscar "Daniels" devuelva a "Lee Daniels" o "Greg Daniels")
       if (result.items && result.items.length > 0) {
+        const initialCount = result.items.length;
         if (normFilters.actor) {
           const targetActorClean = normalizeText(normFilters.actor).replace(/[^a-z0-9]/g, "");
           result.items = result.items.filter(m =>
@@ -447,9 +388,17 @@ export function fetchMovies(
           result.items = result.items.filter(m =>
             m.parsedDirectors && m.parsedDirectors.some(d => {
               const cleanD = normalizeText(d).replace(/[^a-z0-9]/g, "");
-              return cleanD === targetDirClean || cleanD.includes(targetDirClean) || targetDirClean.includes(cleanD);
+              return cleanD === targetDirClean;
             })
           );
+        }
+
+        // Si se han descartado resultados espurios por imprecisión del tsquery del servidor,
+        // ajustamos el total cuando el lote de resultados original sea menor que el tamaño de página
+        if ((normFilters.director || normFilters.actor) && result.items.length < initialCount) {
+          if (rawItems.length < (normPageSize || 42)) {
+            result.total = result.items.length;
+          }
         }
       }
 
@@ -486,20 +435,33 @@ export async function fetchAllUserMovieData(): Promise<Record<string, UserMovieE
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return {};
 
-    const { data, error } = await supabase
-      .from('user_movie_entries')
-      .select('movie_id, rating, on_watchlist')
-      .eq('user_id', session.user.id);
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    const allData: Array<{ movie_id: number; rating: number | null; on_watchlist: boolean }> = [];
 
-    if (error || !data) {
-      if (import.meta.env.DEV) {
-        console.error("Error al descargar catálogo completo de usuario:", error);
+    while (true) {
+      const { data, error } = await supabase
+        .from('user_movie_entries')
+        .select('movie_id, rating, on_watchlist')
+        .eq('user_id', session.user.id)
+        .order('id', { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        if (import.meta.env.DEV) {
+          console.error("Error al descargar catálogo completo de usuario:", error);
+        }
+        break;
       }
-      return {};
+
+      if (!data || data.length === 0) break;
+      allData.push(...data);
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
     }
 
     const userMap: Record<string, UserMovieEntry> = {};
-    data.forEach(i => {
+    allData.forEach(i => {
       if (i.movie_id) {
         userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist };
         markMovieIdAsChecked(i.movie_id);

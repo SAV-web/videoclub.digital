@@ -93,4 +93,29 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
   test("isProfileModalOpen devuelve false cuando el modal no existe o está oculto", () => {
     assert.equal(profileModule.isProfileModalOpen(), false);
   });
+
+  test("computeUserMovieStats procesa fielmente catálogos masivos (>2.500 entradas) calculando nota sobre 10 y sobre 3", () => {
+    // Simulamos la colección real del usuario: 2.886 entradas (2.844 votadas y 42 en watchlist)
+    const massiveMockData = {};
+    for (let i = 1; i <= 42; i++) {
+      massiveMockData[`wl-${i}`] = { rating: null, onWatchlist: true };
+    }
+    for (let i = 1; i <= 2844; i++) {
+      // Alternamos notas entre 6, 7, 8, 9, 10
+      const rating = 6 + (i % 5);
+      massiveMockData[`rated-${i}`] = { rating, onWatchlist: false };
+    }
+
+    const stats = profileModule.computeUserMovieStats(massiveMockData);
+
+    assert.equal(stats.watchlistCount, 42, "Debe registrar con exactitud las 42 películas en watchlist");
+    assert.equal(stats.ratedCount, 2844, "Debe registrar con exactitud las 2.844 películas votadas");
+    assert.ok(stats.averageRating !== null && stats.averageRating >= 7 && stats.averageRating <= 9, "La nota media sobre 10 debe ser coherente");
+    assert.ok(stats.averageStars !== null && stats.averageStars >= 1.5 && stats.averageStars <= 3, "El promedio de estrellas debe ser coherente");
+    assert.equal(
+      stats.breakdown.level3.count + stats.breakdown.level2.count + stats.breakdown.level1.count + stats.breakdown.level0.count,
+      2844,
+      "La suma de los desgloses por estrella debe ser exactamente igual al total de votadas"
+    );
+  });
 });

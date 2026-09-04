@@ -7,6 +7,7 @@ let apiModule;
 let seoModule;
 let ratingModule;
 let stateModule;
+let utilsModule;
 
 before(async () => {
   viteEnv = await startViteSsrServer([
@@ -14,8 +15,9 @@ before(async () => {
     "/src/js/seo.ts",
     "/src/js/components/rating.ts",
     "/src/js/state.ts",
+    "/src/js/utils.ts",
   ]);
-  [apiModule, seoModule, ratingModule, stateModule] = viteEnv.modules;
+  [apiModule, seoModule, ratingModule, stateModule, utilsModule] = viteEnv.modules;
 });
 
 after(async () => {
@@ -109,6 +111,29 @@ describe("api.ts (Normalización de Caché y Parámetros RPC)", () => {
     assert.strictEqual(rpcParams.sort_direction, "desc");
     assert.strictEqual(rpcParams.page_limit, 42);
     assert.strictEqual(rpcParams.page_offset, 42);
+  });
+
+  test("filtro de precisión de directores discrimina de forma exacta y no confunde 'Daniels' con 'Lee Daniels' o 'Greg Daniels'", () => {
+    const rawMovies = [
+      utilsModule.mapMoviePayload(apiModule.shapeRawMovieRow({ id: 1, title: "Todo a la vez en todas partes", directors_list: "Dan Kwan, Daniel Scheinert, Daniels" })),
+      utilsModule.mapMoviePayload(apiModule.shapeRawMovieRow({ id: 2, title: "Swiss Army Man", directors_list: "Dan Kwan, Daniel Scheinert, Daniels" })),
+      utilsModule.mapMoviePayload(apiModule.shapeRawMovieRow({ id: 3, title: "Precious", directors_list: "Lee Daniels" })),
+      utilsModule.mapMoviePayload(apiModule.shapeRawMovieRow({ id: 4, title: "The Office", directors_list: "Greg Daniels, Ricky Gervais, Stephen Merchant" })),
+      utilsModule.mapMoviePayload(apiModule.shapeRawMovieRow({ id: 5, title: "Taxi", directors_list: "James L. Brooks, Stan Daniels" }))
+    ];
+
+    const targetDirClean = "daniels";
+    const filtered = rawMovies.filter(m =>
+      m.parsedDirectors && m.parsedDirectors.some(d => {
+        const cleanD = d.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return cleanD === targetDirClean;
+      })
+    );
+
+    assert.strictEqual(filtered.length, 2, "Solo deben coincidir las 2 películas de Daniels");
+    assert.strictEqual(filtered[0].id, 1);
+    assert.strictEqual(filtered[1].id, 2);
+    assert.ok(filtered.every(m => !m.directors_list.includes("Lee Daniels") && !m.directors_list.includes("Greg Daniels")));
   });
 });
 

@@ -141,6 +141,7 @@ DECLARE
     v_offset INT;
     v_genre_tsquery tsquery;
     v_director_tsquery tsquery;
+    v_director_names text[];
     v_actor_tsquery tsquery;
     v_enable_daily_showcase BOOLEAN := FALSE;
     v_showcase_limit INT := 378;
@@ -239,28 +240,10 @@ BEGIN
            OR c.code = ANY(SELECT upper(trim(x)) FROM unnest(excluded_countries) x);
     END IF;
 
-    -- FASE 3: LÓGICA CONDICIONAL DE CONTEO (Optimización de arranque en frío y sin filtros)
+    -- FASE 3: LÓGICA CONDICIONAL DE CONTEO
     IF get_count THEN
-        IF (search_term IS NULL OR TRIM(search_term) = '')
-           AND (genre_name IS NULL OR TRIM(genre_name) = '')
-           AND p_year_start IS NULL
-           AND p_year_end IS NULL
-           AND (country_name IS NULL OR TRIM(country_name) = '')
-           AND (p_country_codes IS NULL OR array_length(p_country_codes, 1) IS NULL)
-           AND (director_name IS NULL OR TRIM(director_name) = '')
-           AND (actor_name IS NULL OR TRIM(actor_name) = '')
-           AND (media_type IS NULL OR media_type = 'all')
-           AND (p_selection_code IS NULL OR TRIM(p_selection_code) = '')
-           AND (p_studio_code IS NULL OR TRIM(p_studio_code) = '')
-           AND (excluded_genres IS NULL OR array_length(excluded_genres, 1) IS NULL)
-           AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL) THEN
-            -- Sin filtros: conteo directo O(1) vía catálogo general, evitando materializar CTE con funciones ventana
-            v_count_cte := '';
-            v_count_select := '(SELECT count(*) FROM public.movies)';
-        ELSE
-            v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
-            v_count_select := '(SELECT value FROM total)';
-        END IF;
+        v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
+        v_count_select := '(SELECT value FROM total)';
     ELSE
         v_count_cte := '';
         v_count_select := '-1';
@@ -300,8 +283,9 @@ BEGIN
     --      expande a "Anthony Russo" y "Joe Russo", devolviendo películas de ambos).
     -- Combina todos los alias en un tsquery con operador OR (' | ') usando websearch_to_tsquery.
     IF director_name IS NOT NULL AND TRIM(director_name) != '' THEN
-        SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(d_name) || '"')::text, ' | ')::tsquery
-        INTO v_director_tsquery
+        SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(d_name) || '"')::text, ' | ')::tsquery,
+               array_agg(lower(public.unaccent_immutable(trim(d_name))))
+        INTO v_director_tsquery, v_director_names
         FROM (
             SELECT d.name AS d_name
             FROM public.directors d
@@ -352,7 +336,15 @@ BEGIN
                 AND ($3 IS NULL OR m.year >= $3)
                 AND ($4 IS NULL OR m.year <= $4)
                 AND ($5 IS NULL OR m.country_id = ANY($5))
-                AND ($6 IS NULL OR m.directors_tsv @@ $6)
+                AND ($6 IS NULL OR (
+                    m.directors_tsv @@ $6
+                    AND (
+                        $13 IS NULL OR EXISTS (
+                            SELECT 1 FROM unnest(string_to_array(m.directors_list, ',')) d_elem
+                            WHERE lower(public.unaccent_immutable(trim(d_elem))) = ANY($13)
+                        )
+                    )
+                ))
                 AND ($7 IS NULL OR m.actors_tsv @@ $7)
                 AND ($8 IS NULL OR $8 = ''all''
                      OR ($8 = ''movies'' AND (m.type IS NULL OR m.type NOT ILIKE ''S%''))
@@ -413,7 +405,7 @@ BEGIN
     USING
         search_term, v_genre_tsquery, p_year_start, p_year_end, v_country_ids, -- $1..$5
         v_director_tsquery, v_actor_tsquery, media_type, p_selection_code, p_studio_code, -- $6..$10
-        excluded_genres, v_excluded_country_ids; -- $11..$12
+        excluded_genres, v_excluded_country_ids, v_director_names; -- $11..$13
         
     RETURN v_json_result;
 END;
