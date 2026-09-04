@@ -239,10 +239,28 @@ BEGIN
            OR c.code = ANY(SELECT upper(trim(x)) FROM unnest(excluded_countries) x);
     END IF;
 
-    -- FASE 3: LÓGICA CONDICIONAL DE CONTEO
+    -- FASE 3: LÓGICA CONDICIONAL DE CONTEO (Optimización de arranque en frío y sin filtros)
     IF get_count THEN
-        v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
-        v_count_select := '(SELECT value FROM total)';
+        IF (search_term IS NULL OR TRIM(search_term) = '')
+           AND (genre_name IS NULL OR TRIM(genre_name) = '')
+           AND p_year_start IS NULL
+           AND p_year_end IS NULL
+           AND (country_name IS NULL OR TRIM(country_name) = '')
+           AND (p_country_codes IS NULL OR array_length(p_country_codes, 1) IS NULL)
+           AND (director_name IS NULL OR TRIM(director_name) = '')
+           AND (actor_name IS NULL OR TRIM(actor_name) = '')
+           AND (media_type IS NULL OR media_type = 'all')
+           AND (p_selection_code IS NULL OR TRIM(p_selection_code) = '')
+           AND (p_studio_code IS NULL OR TRIM(p_studio_code) = '')
+           AND (excluded_genres IS NULL OR array_length(excluded_genres, 1) IS NULL)
+           AND (excluded_countries IS NULL OR array_length(excluded_countries, 1) IS NULL) THEN
+            -- Sin filtros: conteo directo O(1) vía catálogo general, evitando materializar CTE con funciones ventana
+            v_count_cte := '';
+            v_count_select := '(SELECT count(*) FROM public.movies)';
+        ELSE
+            v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
+            v_count_select := '(SELECT value FROM total)';
+        END IF;
     ELSE
         v_count_cte := '';
         v_count_select := '-1';

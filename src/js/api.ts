@@ -53,6 +53,7 @@ const customAuthStorage = {
 };
 
 let supabasePromise: Promise<SupabaseClient> | null = null;
+let cachedGlobalMovieCount: number | null = null;
 
 // 1. CARGA DIFERIDA DE LA BASE DE DATOS (Solo descarga Supabase cuando hace falta)
 export function getSupabase(): Promise<SupabaseClient> {
@@ -336,10 +337,54 @@ export function fetchMovies(
       }
 
       // MODO B: CATÁLOGO PÚBLICO (Motor potente con reintento resiliente para cold-starts)
-      const rpcParams = stateToRpcParams(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
+      const isCleanDefaultCatalog = Boolean(
+        !normFilters.searchTerm &&
+        !normFilters.genre &&
+        !normFilters.country &&
+        !normFilters.director &&
+        !normFilters.actor &&
+        !normFilters.selection &&
+        !normFilters.studio &&
+        (!normFilters.year || normFilters.year === "all") &&
+        (!normFilters.mediaType || normFilters.mediaType === "all") &&
+        (!normFilters.excludedGenres || normFilters.excludedGenres.length === 0) &&
+        (!normFilters.excludedCountries || normFilters.excludedCountries.length === 0) &&
+        (!normFilters.sort || normFilters.sort === "relevance,asc")
+      );
+
+      // Si no hay filtros activos (portada / cold-start), pedimos los ítems con get_count: false
+      // para evitar que la CTE pesada de count exceda el statement_timeout de 3s en Supabase.
+      // El total se resuelve en paralelo o desde memoria de forma instantánea (~200ms).
+      const shouldDelegateCount = isCleanDefaultCatalog && normRequestCount;
+      const effectiveRequestCount = shouldDelegateCount ? false : normRequestCount;
+
+      const rpcParams = stateToRpcParams(normFilters, normPage, normPageSize, effectiveRequestCount, normExplicitOffset);
       let data: any = null;
       let error: any = null;
       const MAX_RETRIES = 2;
+
+      // Lanzamos la consulta de conteo en paralelo si delegamos el count y no lo tenemos en caché
+      let parallelCountPromise: Promise<number | null> | null = null;
+      if (shouldDelegateCount) {
+        if (cachedGlobalMovieCount !== null && cachedGlobalMovieCount > 0) {
+          parallelCountPromise = Promise.resolve(cachedGlobalMovieCount);
+        } else {
+          parallelCountPromise = (async () => {
+            try {
+              let countQuery = supabase.from('movies').select('*', { count: 'exact', head: true });
+              if (signal) countQuery = countQuery.abortSignal(signal);
+              const { count, error: countErr } = await countQuery;
+              if (!countErr && typeof count === 'number' && count > 0) {
+                cachedGlobalMovieCount = count;
+                return count;
+              }
+            } catch {
+              // Fallback silencioso
+            }
+            return cachedGlobalMovieCount;
+          })();
+        }
+      }
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         if (signal?.aborted) throw { name: "AbortError" };
@@ -358,6 +403,13 @@ export function fetchMovies(
           throw { name: "AbortError" };
         }
 
+        // Si el fallo fue por timeout (código 57014 de PostgreSQL), desactivamos get_count
+        // en el siguiente intento para aligerar la query un 80% y evitar repetir el timeout.
+        const isTimeout = error?.code === '57014' || String(error?.message || '').toLowerCase().includes('timeout') || error?.status === 504;
+        if (isTimeout && rpcParams.get_count) {
+          rpcParams.get_count = false;
+        }
+
         // Si no es el último intento, esperar antes de reintentar (300ms, 600ms)
         if (attempt < MAX_RETRIES) {
           const delay = (attempt + 1) * 300;
@@ -368,6 +420,14 @@ export function fetchMovies(
       if (error) {
         if (isAbortError(error, signal)) throw { name: "AbortError" };
         throw createAppError(ERROR_CODES.DATABASE, "No se pudo conectar con el catálogo. Inténtalo de nuevo.", error);
+      }
+
+      // Si delegamos el count en paralelo, esperamos su resolución
+      if (parallelCountPromise && data) {
+        const resolvedCount = await parallelCountPromise;
+        if (typeof resolvedCount === 'number' && resolvedCount > 0) {
+          data.total = resolvedCount;
+        }
       }
 
       const rawItems = (data?.items || []).map((mRaw: unknown) => shapeRawMovieRow(mRaw));
