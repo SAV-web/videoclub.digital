@@ -7,7 +7,7 @@
 // =================================================================
 
 import { getSupabase } from "../api.js";
-import { getAllUserMovieData, appEvents } from "../state.js";
+import { getAllUserMovieData, clearUserMovieData, appEvents } from "../state.js";
 import { openAccessibleModal, closeAccessibleModal, showToast } from "../ui.js";
 import { UserMovieEntry } from "../types.js";
 import { getPendingSyncEntries, clearLocalStore } from "../localStore.js";
@@ -166,8 +166,13 @@ interface ProfileDom {
   syncDot: HTMLElement | null;
   syncText: HTMLElement | null;
   forceSyncBtn: HTMLButtonElement | null;
-  exportJsonBtn: HTMLButtonElement | null;
+  exportCsvBtn: HTMLButtonElement | null;
   logoutBtn: HTMLButtonElement | null;
+  deleteAccountBtn: HTMLButtonElement | null;
+  dangerZone: HTMLElement | null;
+  cancelDeleteBtn: HTMLButtonElement | null;
+  confirmDeleteBtn: HTMLButtonElement | null;
+  deleteMessage: HTMLElement | null;
 }
 
 let profileDomCache: ProfileDom | null = null;
@@ -197,8 +202,13 @@ function getProfileDom(): ProfileDom {
       syncDot: null,
       syncText: null,
       forceSyncBtn: null,
-      exportJsonBtn: null,
-      logoutBtn: null
+      exportCsvBtn: null,
+      logoutBtn: null,
+      deleteAccountBtn: null,
+      dangerZone: null,
+      cancelDeleteBtn: null,
+      confirmDeleteBtn: null,
+      deleteMessage: null
     };
   }
 
@@ -225,8 +235,13 @@ function getProfileDom(): ProfileDom {
       syncDot: document.getElementById("profile-sync-dot"),
       syncText: document.getElementById("profile-sync-text"),
       forceSyncBtn: document.getElementById("profile-btn-force-sync") as HTMLButtonElement | null,
-      exportJsonBtn: document.getElementById("profile-btn-export-json") as HTMLButtonElement | null,
-      logoutBtn: document.getElementById("profile-btn-logout") as HTMLButtonElement | null
+      exportCsvBtn: (document.getElementById("profile-btn-export-csv") || document.getElementById("profile-btn-export-json")) as HTMLButtonElement | null,
+      logoutBtn: document.getElementById("profile-btn-logout") as HTMLButtonElement | null,
+      deleteAccountBtn: document.getElementById("profile-btn-delete-account") as HTMLButtonElement | null,
+      dangerZone: document.getElementById("profile-danger-zone"),
+      cancelDeleteBtn: document.getElementById("profile-btn-cancel-delete") as HTMLButtonElement | null,
+      confirmDeleteBtn: document.getElementById("profile-btn-confirm-delete") as HTMLButtonElement | null,
+      deleteMessage: document.getElementById("profile-delete-message")
     };
   }
   return profileDomCache;
@@ -284,6 +299,21 @@ export async function openProfileModal(): Promise<void> {
   }
   if (dom.passwordStrength) dom.passwordStrength.hidden = true;
 
+  // Resetear zona de peligro / baja de usuario
+  if (dom.dangerZone) dom.dangerZone.hidden = true;
+  if (dom.deleteAccountBtn) dom.deleteAccountBtn.hidden = false;
+  if (dom.deleteMessage) {
+    dom.deleteMessage.hidden = true;
+    dom.deleteMessage.textContent = "";
+  }
+  if (dom.confirmDeleteBtn) {
+    dom.confirmDeleteBtn.disabled = false;
+    dom.confirmDeleteBtn.textContent = "Sí, eliminar mi cuenta";
+  }
+  if (dom.cancelDeleteBtn) {
+    dom.cancelDeleteBtn.disabled = false;
+  }
+
   // Push state en el historial si no está ya
   if (typeof window !== "undefined" && !window.history.state?.profileModalOpen) {
     window.history.pushState({ ...window.history.state, profileModalOpen: true }, "", window.location.href);
@@ -295,13 +325,13 @@ export async function openProfileModal(): Promise<void> {
 /**
  * Cierra la modal de perfil.
  */
-export function closeProfileModal(isPopstate = false): void {
+export function closeProfileModal(isPopstate = false, options: { suppressHistoryBack?: boolean } = {}): void {
   const dom = getProfileDom();
   if (!dom.modal || !dom.overlay) return;
 
   closeAccessibleModal(dom.modal, dom.overlay);
 
-  if (!isPopstate && typeof window !== "undefined" && window.history.state?.profileModalOpen) {
+  if (!isPopstate && !options.suppressHistoryBack && typeof window !== "undefined" && window.history.state?.profileModalOpen) {
     window.history.back();
   }
 
@@ -389,50 +419,160 @@ function evaluatePasswordScore(pwd: string): { score: number; label: string } {
 }
 
 /**
- * Exporta la colección del usuario en formato JSON para máxima portabilidad de datos.
+ * Exporta la colección del usuario en formato CSV (Comma-Separated Values).
+ * Incluye cabeceras legibles, enriquecimiento con títulos desde la base de datos
+ * y codificación UTF-8 con BOM para compatibilidad total con Excel/Numbers/Sheets.
  */
-export function exportUserDataJson(): void {
+export async function exportUserDataCsv(): Promise<void> {
   const allEntries: Record<string, UserMovieEntry> = getAllUserMovieData();
   const validEntries = Object.entries(allEntries).filter(
     ([_, item]) => item && (item.rating !== null || item.onWatchlist)
   );
 
-  const stats = computeUserMovieStats(allEntries);
+  if (validEntries.length === 0) {
+    showToast("No tienes ninguna obra en tu colección para exportar.", "info");
+    return;
+  }
 
-  const exportData = {
-    app: "videoclub.digital",
-    version: "1.0",
-    exported_at: new Date().toISOString(),
-    stats: {
-      total_watchlist: stats.watchlistCount,
-      total_rated: stats.ratedCount,
-      average_rating: stats.averageRating,
-      average_stars: stats.averageStars,
-      breakdown: {
-        stars_3: stats.breakdown.level3.count,
-        stars_2: stats.breakdown.level2.count,
-        stars_1: stats.breakdown.level1.count,
-        stars_0: stats.breakdown.level0.count
+  const dom = getProfileDom();
+  if (dom.exportCsvBtn) {
+    dom.exportCsvBtn.disabled = true;
+    dom.exportCsvBtn.textContent = "Exportando...";
+  }
+
+  try {
+    const movieIds = validEntries.map(([id]) => Number(id)).filter(id => !isNaN(id));
+
+    // Consultar metadatos de las películas (título, año, tipo, etc.) desde Supabase
+    const movieMetaMap = new Map<number, {
+      title: string;
+      original_title: string | null;
+      year: number | null;
+      type: string | null;
+      directors: string | null;
+      genres: string | null;
+    }>();
+
+    try {
+      const supabase = await getSupabase();
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < movieIds.length; i += CHUNK_SIZE) {
+        const chunk = movieIds.slice(i, i + CHUNK_SIZE);
+        const { data, error } = await supabase
+          .from("movies")
+          .select("id, title, original_title, year, type, directors_list, genres_list")
+          .in("id", chunk);
+
+        if (!error && data) {
+          for (const m of (data as any[])) {
+            movieMetaMap.set(m.id, {
+              title: m.title || "",
+              original_title: m.original_title || null,
+              year: m.year ?? null,
+              type: m.type && String(m.type).toLowerCase().startsWith("s") ? "Serie" : "Película",
+              directors: m.directors_list || "",
+              genres: m.genres_list || ""
+            });
+          }
+        }
       }
-    },
-    entries: validEntries.map(([movieId, item]) => ({
-      movie_id: Number(movieId),
-      rating: item?.rating ?? null,
-      on_watchlist: Boolean(item?.onWatchlist)
-    }))
-  };
+    } catch {
+      // Si la red falla o estamos offline, continuamos con los datos locales disponibles
+    }
 
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const dateStr = new Date().toISOString().split("T")[0];
-  a.href = url;
-  a.download = `videoclub-coleccion-${dateStr}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast("Colección exportada con éxito en formato JSON.", "success");
+    const escapeCsv = (val: unknown): string => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r") || str.includes(";")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const headers = [
+      "ID",
+      "Título",
+      "Título Original",
+      "Año",
+      "Tipo",
+      "Dirección",
+      "Géneros",
+      "Mi Valoración (1-10)",
+      "Mis Estrellas (1-3)",
+      "En Pendientes"
+    ];
+
+    const rows = validEntries.map(([idStr, entry]) => {
+      const id = Number(idStr);
+      const meta = movieMetaMap.get(id);
+      const userStars = typeof entry.rating === "number" ? calculateUserStars(entry.rating) : "";
+      const inWatchlist = entry.onWatchlist ? "Sí" : "No";
+
+      return [
+        escapeCsv(id),
+        escapeCsv(meta?.title || ""),
+        escapeCsv(meta?.original_title || ""),
+        escapeCsv(meta?.year ?? ""),
+        escapeCsv(meta?.type || ""),
+        escapeCsv(meta?.directors || ""),
+        escapeCsv(meta?.genres || ""),
+        escapeCsv(entry.rating ?? ""),
+        escapeCsv(userStars),
+        escapeCsv(inWatchlist)
+      ].join(",");
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dateStr = new Date().toISOString().split("T")[0];
+    a.href = url;
+    a.download = `videoclub-coleccion-${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Colección exportada con éxito en formato CSV.", "success");
+  } finally {
+    if (dom.exportCsvBtn) {
+      dom.exportCsvBtn.disabled = false;
+      dom.exportCsvBtn.textContent = "Exportar mi colección (CSV)";
+    }
+  }
+}
+
+/**
+ * Alias retrocompatible para exportUserDataCsv.
+ */
+export const exportUserDataJson = exportUserDataCsv;
+
+/**
+ * Ejecuta la baja definitiva del usuario en el backend (RPC delete_user_account),
+ * purga todos los almacenes locales (IndexedDB y memoria) y cierra la sesión.
+ */
+export async function deleteUserAccount(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await getSupabase();
+    const { error } = await supabase.rpc("delete_user_account");
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    try {
+      await clearLocalStore();
+    } catch (localErr) {
+      if (import.meta.env.DEV) console.error("Error limpiando localStore:", localErr);
+    }
+    clearUserMovieData();
+
+    await supabase.auth.signOut();
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = (err as Error)?.message || "Error al eliminar la cuenta.";
+    return { success: false, error: msg };
+  }
 }
 
 /**
@@ -459,10 +599,12 @@ export function setupProfileModal(): () => void {
   // 3. Accesos directos a catálogo desde las estadísticas
   if (dom.exploreWatchlistBtn) {
     const onWatchlistClick = () => {
-      closeProfileModal();
+      closeProfileModal(false, { suppressHistoryBack: true });
+      syncWithServer().catch(() => {});
       appEvents.emit("filtersReset", {
         keepSort: true,
-        newFilter: { type: "myList", value: "watchlist" }
+        newFilter: { type: "myList", value: "watchlist" },
+        replaceHistory: true
       });
     };
     dom.exploreWatchlistBtn.addEventListener("click", onWatchlistClick);
@@ -471,10 +613,12 @@ export function setupProfileModal(): () => void {
 
   if (dom.exploreRatedBtn) {
     const onRatedClick = () => {
-      closeProfileModal();
+      closeProfileModal(false, { suppressHistoryBack: true });
+      syncWithServer().catch(() => {});
       appEvents.emit("filtersReset", {
         keepSort: true,
-        newFilter: { type: "myList", value: "rated" }
+        newFilter: { type: "myList", value: "rated" },
+        replaceHistory: true
       });
     };
     dom.exploreRatedBtn.addEventListener("click", onRatedClick);
@@ -599,11 +743,15 @@ export function setupProfileModal(): () => void {
     unsubscribers.push(() => dom.forceSyncBtn?.removeEventListener("click", onForceSync));
   }
 
-  // 8. Exportar JSON
-  if (dom.exportJsonBtn) {
-    const onExport = () => exportUserDataJson();
-    dom.exportJsonBtn.addEventListener("click", onExport);
-    unsubscribers.push(() => dom.exportJsonBtn?.removeEventListener("click", onExport));
+  // 8. Exportar CSV
+  if (dom.exportCsvBtn) {
+    const onExport = () => {
+      exportUserDataCsv().catch(err => {
+        if (import.meta.env.DEV) console.error("Error al exportar CSV:", err);
+      });
+    };
+    dom.exportCsvBtn.addEventListener("click", onExport);
+    unsubscribers.push(() => dom.exportCsvBtn?.removeEventListener("click", onExport));
   }
 
   // 9. Cerrar Sesión desde el modal
@@ -620,6 +768,71 @@ export function setupProfileModal(): () => void {
     };
     dom.logoutBtn.addEventListener("click", onLogout);
     unsubscribers.push(() => dom.logoutBtn?.removeEventListener("click", onLogout));
+  }
+
+  // 10. Gestión de baja / eliminación definitiva de cuenta de usuario
+  if (dom.deleteAccountBtn && dom.dangerZone) {
+    const onOpenDangerZone = () => {
+      if (!dom.dangerZone) return;
+      dom.dangerZone.hidden = false;
+      if (dom.deleteAccountBtn) dom.deleteAccountBtn.hidden = true;
+      if (dom.deleteMessage) {
+        dom.deleteMessage.hidden = true;
+        dom.deleteMessage.textContent = "";
+      }
+      dom.dangerZone.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    };
+    dom.deleteAccountBtn.addEventListener("click", onOpenDangerZone);
+    unsubscribers.push(() => dom.deleteAccountBtn?.removeEventListener("click", onOpenDangerZone));
+  }
+
+  if (dom.cancelDeleteBtn && dom.dangerZone) {
+    const onCancelDelete = () => {
+      if (!dom.dangerZone) return;
+      dom.dangerZone.hidden = true;
+      if (dom.deleteAccountBtn) dom.deleteAccountBtn.hidden = false;
+      if (dom.deleteMessage) {
+        dom.deleteMessage.hidden = true;
+        dom.deleteMessage.textContent = "";
+      }
+    };
+    dom.cancelDeleteBtn.addEventListener("click", onCancelDelete);
+    unsubscribers.push(() => dom.cancelDeleteBtn?.removeEventListener("click", onCancelDelete));
+  }
+
+  if (dom.confirmDeleteBtn) {
+    const onConfirmDelete = async () => {
+      if (dom.confirmDeleteBtn) {
+        dom.confirmDeleteBtn.disabled = true;
+        dom.confirmDeleteBtn.textContent = "Eliminando cuenta...";
+      }
+      if (dom.cancelDeleteBtn) {
+        dom.cancelDeleteBtn.disabled = true;
+      }
+
+      const res = await deleteUserAccount();
+
+      if (!res.success) {
+        if (dom.deleteMessage) {
+          dom.deleteMessage.hidden = false;
+          dom.deleteMessage.textContent = res.error || "No se pudo eliminar la cuenta. Inténtalo más tarde.";
+        }
+        showToast("Error al eliminar la cuenta.", "error");
+        if (dom.confirmDeleteBtn) {
+          dom.confirmDeleteBtn.disabled = false;
+          dom.confirmDeleteBtn.textContent = "Sí, eliminar mi cuenta";
+        }
+        if (dom.cancelDeleteBtn) {
+          dom.cancelDeleteBtn.disabled = false;
+        }
+        return;
+      }
+
+      closeProfileModal(false, { suppressHistoryBack: true });
+      showToast("Tu cuenta ha sido eliminada permanentemente.", "info");
+    };
+    dom.confirmDeleteBtn.addEventListener("click", onConfirmDelete);
+    unsubscribers.push(() => dom.confirmDeleteBtn?.removeEventListener("click", onConfirmDelete));
   }
 
   // 10. Actualizar estadísticas cuando cambien los datos de usuario en memoria

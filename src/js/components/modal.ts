@@ -165,7 +165,7 @@ function handleMetadataClick(event: MouseEvent): void {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
 
     event.preventDefault();
-    closeModal();
+    closeModal({ suppressHistoryBack: true });
 
     if (genreLink && genreLink.dataset.genreName) {
       appEvents.emit("filter:apply", { type: "genre", value: genreLink.dataset.genreName });
@@ -1009,11 +1009,11 @@ export function initQuickView(): void {
     }),
 
     appEvents.on("filtersReset", () => {
-      closeModal();
+      closeModal({ suppressHistoryBack: true });
     }),
 
     appEvents.on("filter:apply", () => {
-      closeModal();
+      closeModal({ suppressHistoryBack: true });
     })
   );
 

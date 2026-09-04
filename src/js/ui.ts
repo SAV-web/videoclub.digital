@@ -927,7 +927,7 @@ export function updateMobileStatusBar(
     // 6. Mi lista
     if (filters.myList) {
       const listLabels: Record<string, string> = {
-        rated: "mis valoraciones",
+        rated: "votadas",
         watchlist: "pendientes",
         mixed: "mi lista"
       };

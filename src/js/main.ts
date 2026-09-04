@@ -576,9 +576,9 @@ function handleGlobalScroll(): void {
 }
 
 // Limpia todo (Botón Play o Atrás completo)
-function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: unknown } }): void {
+function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: string; value: unknown }; replaceHistory?: boolean }): void {
   clearToast();
-  const { keepSort, newFilter } = data || {};
+  const { keepSort, newFilter, replaceHistory = false } = data || {};
   const currentFilters = getActiveFilters();
   if (newFilter && (newFilter.type === 'director' || newFilter.type === 'actor')) {
     notifyRemovedPersonIncompatibleFilters(currentFilters);
@@ -596,7 +596,7 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");
 
-  loadAndRenderMovies(1, { forceSkeleton: true });
+  loadAndRenderMovies(1, { forceSkeleton: true, replaceHistory });
 }
 
 // Aplica un filtro específico preservando las categorías activas (Años, Selección, Estudio, País)
@@ -1137,11 +1137,19 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
     saveCurrentScrollPosition();
     if (typeof window !== "undefined" && window.history) {
       if (replace) {
-        window.history.replaceState({ ...window.history.state, path: newUrl }, "", newUrl);
+        const nextState = { ...window.history.state, path: newUrl };
+        delete nextState.profileModalOpen;
+        delete nextState.quickViewOpen;
+        window.history.replaceState(nextState, "", newUrl);
       } else {
         window.history.pushState({ path: newUrl, scrollY: 0 }, "", newUrl);
       }
     }
+  } else if (replace && typeof window !== "undefined" && window.history) {
+    const nextState = { ...window.history.state, path: newUrl };
+    delete nextState.profileModalOpen;
+    delete nextState.quickViewOpen;
+    window.history.replaceState(nextState, "", newUrl);
   }
 }
 
@@ -1234,7 +1242,7 @@ export function init(): void {
     let modalWasOpen = false;
 
     if (isModalOpen()) {
-      closeModal({ fromPopstate: true });
+      closeModal({ fromPopstate: true, suppressHistoryBack: true });
       modalWasOpen = true;
     }
 
@@ -1254,26 +1262,31 @@ export function init(): void {
       modalWasOpen = true;
     }
 
-    // Si había una modal abierta o el popstate fue originado por un cierre de modal previo
-    if (modalWasOpen || consumeIsClosingModalViaHistory()) {
-      return;
-    }
+    // Consumir la bandera de cierre de modal si fue activada
+    consumeIsClosingModalViaHistory();
 
-    // Comprobar si la URL canónica actual difiere de la URL a la que navegó el usuario
+    // Normalizar URLs canónicas y entrantes para una comparación fidedigna
     const basePrefix = getAppBasePath();
     const { pathname: canonPath, search: canonSearch } = stateToPrettyUrl(getActiveFilters(), getCurrentPage());
-    const canonFull = `${basePrefix}${canonPath}${canonSearch ? `?${canonSearch}` : ""}`;
 
-    const incomingPath = window.location.pathname;
-    const incomingParams = new URLSearchParams(window.location.search);
-    const normalizedIncomingQuery = incomingParams.toString();
-    const incomingFull = `${incomingPath}${normalizedIncomingQuery ? `?${normalizedIncomingQuery}` : ""}`;
+    const normalizeUrl = (path: string, query: string) => {
+      const cleanPath = path.endsWith("/") ? path : `${path}/`;
+      const params = new URLSearchParams(query);
+      params.sort();
+      const sortedQuery = params.toString();
+      return `${cleanPath}${sortedQuery ? `?${sortedQuery}` : ""}`;
+    };
 
-    // Si los filtros, ruta y página son exactamente los mismos, no recargar el grid
-    if (canonFull === incomingFull) {
+    const canonFullNormalized = normalizeUrl(`${basePrefix}${canonPath}`, canonSearch);
+    const incomingFullNormalized = normalizeUrl(window.location.pathname, window.location.search);
+
+    // Si los filtros, ruta y página son exactamente los mismos que ya están en pantalla, no recargar el catálogo
+    if (canonFullNormalized === incomingFullNormalized) {
       return;
     }
 
+    // Si la URL difiere, el usuario retrocedió o avanzó a otra vista: sincronizar estado y cargar películas
+    const incomingFull = `${window.location.pathname}${window.location.search ? window.location.search : ""}`;
     const historyState = window.history.state as { scrollY?: number } | null;
     const targetScrollY = (typeof historyState?.scrollY === "number")
       ? historyState.scrollY

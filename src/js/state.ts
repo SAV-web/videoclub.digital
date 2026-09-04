@@ -58,7 +58,7 @@ const initialState: AppState = {
 };
 
 export interface AppEventPayloads {
-  'filtersReset': { keepSort?: boolean; newFilter?: { type: string; value: unknown } };
+  'filtersReset': { keepSort?: boolean; newFilter?: { type: string; value: unknown }; replaceHistory?: boolean } | undefined;
   'filter:apply': { type: string; value: unknown; force?: boolean };
   'uiActionTriggered': undefined;
   'updateSidebarUI': undefined;

@@ -32,7 +32,11 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
   const isCustomYear = !!(year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`);
   const yearSuffix = isCustomYear ? ` (${formatYearPeriod(year)})` : "";
 
-  if (myList) {
+  if (myList === "watchlist") {
+    title = `Pendientes`;
+  } else if (myList === "rated") {
+    title = `Votadas`;
+  } else if (myList) {
     title = `Mi Lista`;
   } else if (searchTerm) {
     title = `Resultados para "${searchTerm}"`;
@@ -172,7 +176,11 @@ export function buildBreadcrumbSchema(filters: ActiveFilters = {} as ActiveFilte
   // Nivel 3: Filtro Específico (Prioridad jerárquica)
   let filterName: string | null = null;
 
-  if (filters.myList) {
+  if (filters.myList === "watchlist") {
+    filterName = "Pendientes";
+  } else if (filters.myList === "rated") {
+    filterName = "Votadas";
+  } else if (filters.myList) {
     filterName = "Mi Lista";
   } else if (filters.searchTerm) {
     filterName = `"${filters.searchTerm}"`;

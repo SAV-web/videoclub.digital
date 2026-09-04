@@ -347,7 +347,7 @@ function toggleRotationMode(forceState: boolean | null = null): void {
 
   triggerHapticFeedback('medium');
   unflipAllCards();
-  closeModal();
+  closeModal({ suppressHistoryBack: true });
 
   const updateState = (): void => {
     const currentPage = getCurrentPage();

@@ -327,8 +327,8 @@ BEGIN
 
     -- FASE 4: CONSTRUCCIÓN DINÁMICA DE LA CONSULTA SQL
     v_query := '
-        WITH filtered_movies AS (
-            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance' || v_rank_column || '
+        WITH base_movies AS (
+            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance, m.type' || v_rank_column || '
             FROM public.movies m
             WHERE
                 ($1 IS NULL OR $1 = '''' OR m.title_norm LIKE ''%'' || public.unaccent_immutable(lower($1)) || ''%'')
@@ -340,21 +340,26 @@ BEGIN
                     m.directors_tsv @@ $6
                     AND (
                         $13 IS NULL OR EXISTS (
-                            SELECT 1 FROM unnest(string_to_array(m.directors_list, ',')) d_elem
+                            SELECT 1 FROM unnest(string_to_array(m.directors_list, '','')) d_elem
                             WHERE lower(public.unaccent_immutable(trim(d_elem))) = ANY($13)
                         )
                     )
                 ))
                 AND ($7 IS NULL OR m.actors_tsv @@ $7)
-                AND ($8 IS NULL OR $8 = ''all''
-                     OR ($8 = ''movies'' AND (m.type IS NULL OR m.type NOT ILIKE ''S%''))
-                     OR ($8 = ''series'' AND m.type ILIKE ''S%''))
                 AND ($9 IS NULL OR m.selections_tsv @@ plainto_tsquery(''simple'', $9))
                 AND ($10 IS NULL OR m.studios_tsv @@ plainto_tsquery(''simple'', $10))
                 AND ($11 IS NULL OR NOT m.genres_tsv @@ (
                     SELECT string_agg(plainto_tsquery(''spanish'', public.unaccent_immutable(g))::text, '' | '')::tsquery FROM unnest($11) g
                 ))
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
+        ),
+        filtered_movies AS (
+            SELECT bm.id, bm.year, bm.fa_rating, bm.imdb_rating, bm.fa_votes, bm.imdb_votes, bm.avg_rating, bm.relevance' || CASE WHEN v_enable_daily_showcase THEN ', bm.natural_rank' ELSE '' END || '
+            FROM base_movies bm
+            WHERE
+                ($8 IS NULL OR $8 = ''all''
+                 OR ($8 = ''movies'' AND (bm.type IS NULL OR bm.type NOT ILIKE ''S%''))
+                 OR ($8 = ''series'' AND bm.type ILIKE ''S%''))
         )' || v_count_cte || ',
         paged_ids AS (
             SELECT m.id' || CASE WHEN v_enable_daily_showcase THEN ', m.natural_rank' ELSE '' END || ' 
@@ -843,6 +848,33 @@ CREATE POLICY "Los usuarios pueden gestionar sus propias entradas"
 ON public.user_movie_entries FOR ALL
 USING ( (select auth.uid()) = user_id )
 WITH CHECK ( (select auth.uid()) = user_id );
+
+-- 6.4. Función RPC para Baja y Supresión Definitiva de Cuenta (RGPD Art. 17)
+-- Permite al usuario autenticado eliminar su propia cuenta de forma segura y atómica.
+-- La eliminación en auth.users propaga automáticamente ON DELETE CASCADE a public.user_movie_entries.
+CREATE OR REPLACE FUNCTION public.delete_user_account()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth, pg_temp
+AS $$
+DECLARE
+    v_user_id uuid;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Usuario no autenticado';
+    END IF;
+
+    -- Eliminar registro en auth.users (cascada automática a user_movie_entries)
+    DELETE FROM auth.users WHERE id = v_user_id;
+END;
+$$;
+
+-- Restricción de privilegios: Revocado de anon/public, exclusivo para usuarios autenticados
+REVOKE EXECUTE ON FUNCTION public.delete_user_account() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.delete_user_account() TO authenticated;
 
 -- =================================================================
 -- PASO 7: INGESTA TRANSACCIONAL DIFERENCIAL ETL (PROCESS_STAGING_DATA)

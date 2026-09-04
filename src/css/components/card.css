@@ -660,7 +660,6 @@ html.dark-mode .bbc-icon {
   transition: color var(--duration-fast, 0.15s) ease;
   cursor: pointer;
   display: inline;
-  white-space: nowrap;
 
   &:hover {
     color: var(--color-text-primary);

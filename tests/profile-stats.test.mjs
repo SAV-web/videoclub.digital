@@ -118,4 +118,18 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
       "La suma de los desgloses por estrella debe ser exactamente igual al total de votadas"
     );
   });
+
+  test("exportUserDataCsv y exportUserDataJson están disponibles como funciones de exportación", () => {
+    assert.equal(typeof profileModule.exportUserDataCsv, "function");
+    assert.equal(typeof profileModule.exportUserDataJson, "function");
+  });
+
+  test("deleteUserAccount está disponible y gestiona la baja del usuario capturando respuestas RPC", async () => {
+    assert.equal(typeof profileModule.deleteUserAccount, "function");
+    const result = await profileModule.deleteUserAccount();
+    // En entorno mock de pruebas sin credenciales de BD, devuelve success: false con el error tipado
+    assert.equal(result.success, false);
+    assert.ok(typeof result.error === "string" && result.error.length > 0);
+  });
 });
+

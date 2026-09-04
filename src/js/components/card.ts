@@ -479,7 +479,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     const personName = roleToggleBtn.dataset.personName;
     if (targetRole && personName) {
       if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
-        import("./modal.js").then(({ closeModal }) => closeModal());
+        import("./modal.js").then(({ closeModal }) => closeModal({ suppressHistoryBack: true }));
       }
       appEvents.emit("filter:apply", { type: targetRole, value: personName });
     }
@@ -1318,14 +1318,23 @@ export function renderNoResults(
   div.appendChild(createElement("h3", { textContent: "No se encontraron resultados" }));
 
   const hasFilters = hasActiveMeaningfulFilters();
-  const msg = filters.searchTerm
-    ? `Prueba a simplificar tu búsqueda para "${filters.searchTerm}".`
-    : hasFilters ? "Intenta eliminar algunos filtros." : "";
+  let msg = "";
+  if (filters.myList === "watchlist") {
+    msg = "Aún no tienes obras en tu lista de pendientes. Pulsa en el marcador de cualquier ficha para guardarla aquí.";
+  } else if (filters.myList === "rated") {
+    msg = "Aún no has votado ninguna obra. Haz clic en las estrellas de cualquier ficha para valorarla.";
+  } else if (filters.searchTerm) {
+    msg = `Prueba a simplificar tu búsqueda para "${filters.searchTerm}".`;
+  } else if (hasFilters) {
+    msg = "Intenta eliminar algunos filtros.";
+  }
 
   if (msg) div.appendChild(createElement("p", { textContent: msg }));
 
   div.appendChild(createElement("button", {
-    id: "clear-filters-from-empty", className: "btn btn--outline", textContent: "Limpiar filtros"
+    id: "clear-filters-from-empty",
+    className: "btn btn--outline",
+    textContent: filters.myList ? "Ver catálogo completo" : "Limpiar filtros"
   }));
 
   container.appendChild(div);

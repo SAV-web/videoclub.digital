@@ -433,7 +433,6 @@
   transition: color var(--duration-fast, 0.15s) ease;
   cursor: pointer;
   display: inline;
-  white-space: nowrap;
   border-radius: var(--radius-sm, 3px);
 
   &:hover {
@@ -451,7 +450,6 @@
 
 .is-quick-view .front-director-info a {
   display: inline;
-  white-space: nowrap;
   border-radius: var(--radius-sm, 3px);
 
   &:focus-visible {
