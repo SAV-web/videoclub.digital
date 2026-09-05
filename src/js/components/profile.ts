@@ -277,15 +277,13 @@ export async function openProfileModal(): Promise<void> {
   // Render inicial inmediato desde memoria (0 ms)
   renderProfileStats();
 
-  // Si hay sesión activa, verificar si los datos locales están vacíos o incompletos y refrescar
+  // Si hay sesión activa, sincronizar en segundo plano con la nube mediante LWW (Last-Write-Wins).
+  // Elimina cualquier condición de carrera por caché local desactualizada entre múltiples dispositivos.
   if (session?.user) {
-    const currentEntries = getAllUserMovieData();
-    if (Object.keys(currentEntries).length === 0) {
-      mergeOnLogin(session.user.id).then(() => {
-        renderProfileStats();
-        updateSyncStatusUI().catch(() => {});
-      }).catch(() => {});
-    }
+    mergeOnLogin(session.user.id).then(() => {
+      renderProfileStats();
+      updateSyncStatusUI().catch(() => {});
+    }).catch(() => {});
   }
 
   // Actualizar estado de sincronización Local-First

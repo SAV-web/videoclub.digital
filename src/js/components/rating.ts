@@ -26,7 +26,7 @@ import {
   calculateUserStars,
   calculateAverageStars,
 } from "../../shared/formatters.js";
-export { LEVEL_TO_RATING_MAP, MIN_STAR_THRESHOLD, calculateUserStars, calculateAverageStars };
+export { LEVEL_TO_RATING_MAP, MIN_STAR_THRESHOLD, calculateUserStars };
 
 
 /**

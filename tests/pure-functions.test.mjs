@@ -203,11 +203,6 @@ describe("rating.ts (Cálculo Visual y Estados de Valoración)", () => {
     assert.strictEqual(ratingModule.calculateUserStars(null), 0);
   });
 
-  test("calculateAverageStars calcula promedio ponderado de 3 estrellas", () => {
-    assert.strictEqual(ratingModule.calculateAverageStars(9.0), 3);
-    assert.strictEqual(ratingModule.calculateAverageStars(null), 0);
-  });
-
   test("getRatingPresentationState calcula el estado visual para tarjeta según sesión y promedio", () => {
     const loggedOutState = ratingModule.getRatingPresentationState(
       { id: 1, title: "Test", avg_rating: 8.5 },

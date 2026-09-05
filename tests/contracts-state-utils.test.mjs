@@ -428,6 +428,42 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(state.getActiveFilters().year, null);
     assert.equal(state.getActiveFilters().actor, "Leonardo DiCaprio");
 
+    // Exclusividad Estricta Directa: genre <-> excludedGenres
+    state.resetFiltersState();
+    state.setFilter("genre", "Terror", true);
+    assert.equal(state.getActiveFilters().genre, "Terror");
+    // Toggle de exclusión del MISMO género: anula el positivo homónimo y activa exclusión
+    state.toggleExcludedFilter("genre", "Terror");
+    assert.equal(state.getActiveFilters().genre, null);
+    assert.deepEqual(state.getActiveFilters().excludedGenres, ["Terror"]);
+    // Toggle de exclusión de OTRO género sobre positivo: anula el positivo y reemplaza exclusión
+    state.setFilter("genre", "Drama", true);
+    assert.equal(state.getActiveFilters().genre, "Drama");
+    assert.deepEqual(state.getActiveFilters().excludedGenres, []); // Fijar positivo limpia exclusiones
+    state.toggleExcludedFilter("genre", "Animación");
+    assert.equal(state.getActiveFilters().genre, null);
+    assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
+    // setFilter directo con array excludedGenres anula positivo
+    state.setFilter("genre", "Comedia", true);
+    assert.equal(state.getActiveFilters().genre, "Comedia");
+    state.setFilter("excludedGenres", ["Terror"], true);
+    assert.equal(state.getActiveFilters().genre, null);
+    assert.deepEqual(state.getActiveFilters().excludedGenres, ["Terror"]);
+
+    // Exclusividad Estricta Directa: country <-> excludedCountries
+    state.resetFiltersState();
+    state.setFilter("country", "España", true);
+    assert.equal(state.getActiveFilters().country, "España");
+    state.toggleExcludedFilter("country", "España");
+    assert.equal(state.getActiveFilters().country, null);
+    assert.deepEqual(state.getActiveFilters().excludedCountries, ["España"]);
+    state.setFilter("country", "Francia", true);
+    assert.equal(state.getActiveFilters().country, "Francia");
+    assert.deepEqual(state.getActiveFilters().excludedCountries, []);
+    state.setFilter("excludedCountries", ["EEUU"], true);
+    assert.equal(state.getActiveFilters().country, null);
+    assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
+
     // Sin retrocompatibilidad: códigos de 1 letra desconocidos no se aplican
     assert.equal(contracts.normalizeStudioCode("W"), null);
     assert.equal(contracts.normalizeSelectionCode("C"), null);

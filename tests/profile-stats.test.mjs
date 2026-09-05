@@ -2,13 +2,85 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
+import { createMockIndexedDB } from "./helpers/mock-indexeddb.mjs";
+
+function setupMockProfileDom() {
+  const domMap = {};
+  const makeEl = (id) => ({
+    id,
+    hidden: true,
+    textContent: "",
+    innerHTML: "",
+    disabled: false,
+    style: {},
+    children: [
+      { style: {}, lastElementChild: { style: {} } },
+      { style: {}, lastElementChild: { style: {} } },
+      { style: {}, lastElementChild: { style: {} } },
+    ],
+    classList: { add: () => {}, remove: () => {}, contains: () => false, toggle: () => {} },
+    setAttribute: () => {}, getAttribute: () => null, hasAttribute: () => false, removeAttribute: () => {},
+    focus: () => {}, addEventListener: () => {}, removeEventListener: () => {},
+    querySelector: () => null, querySelectorAll: () => [], reset: () => {},
+  });
+
+  const ids = [
+    "profile-overlay", "profile-modal", "profile-modal-close", "profile-avatar-large", "profile-modal-title",
+    "profile-stat-watchlist-count", "profile-stat-rated-count", "profile-stat-average-stars", "profile-stat-stars-text",
+    "profile-breakdown-container", "profile-btn-explore-watchlist", "profile-btn-explore-rated", "profile-password-form",
+    "profile-new-password", "profile-password-toggle", "profile-password-strength", "profile-security-message",
+    "profile-password-submit-btn", "profile-sync-dot", "profile-sync-text", "profile-btn-force-sync",
+    "profile-btn-export-csv", "profile-btn-logout", "profile-btn-delete-account", "profile-danger-zone",
+    "profile-btn-cancel-delete", "profile-btn-confirm-delete", "profile-delete-message",
+  ];
+  ids.forEach((id) => { domMap[id] = makeEl(id); });
+
+  const originalDocument = globalThis.document;
+  const originalWindow = globalThis.window;
+  const originalIndexedDB = globalThis.indexedDB;
+
+  globalThis.document = {
+    getElementById: (id) => domMap[id] || null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: (tag) => makeEl(`tag-${tag}`),
+    activeElement: null,
+    documentElement: makeEl("html"),
+  };
+
+  globalThis.window = {
+    history: { state: {}, pushState: (s) => { globalThis.window.history.state = s; }, back: () => {} },
+    location: { href: "https://videoclub.digital/" },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+
+  globalThis.indexedDB = createMockIndexedDB();
+
+  const teardown = () => {
+    globalThis.document = originalDocument;
+    globalThis.window = originalWindow;
+    globalThis.indexedDB = originalIndexedDB;
+  };
+
+  return { domMap, teardown };
+}
+
 describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)", () => {
   let viteEnv;
   let profileModule;
+  let stateModule;
+  let apiModule;
+  let localStoreModule;
 
   before(async () => {
-    viteEnv = await startViteSsrServer(["/src/js/components/profile.ts"]);
-    [profileModule] = viteEnv.modules;
+    viteEnv = await startViteSsrServer([
+      "/src/js/components/profile.ts",
+      "/src/js/state.ts",
+      "/src/js/api.ts",
+      "/src/js/localStore.ts"
+    ]);
+    [profileModule, stateModule, apiModule, localStoreModule] = viteEnv.modules;
   });
 
   after(async () => {
@@ -130,6 +202,126 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
     // En entorno mock de pruebas sin credenciales de BD, devuelve success: false con el error tipado
     assert.equal(result.success, false);
     assert.ok(typeof result.error === "string" && result.error.length > 0);
+  });
+
+  test("openProfileModal reconcilia incondicionalmente con mergeOnLogin cuando hay sesión activa aunque la caché local no esté vacía", async () => {
+    const { domMap, teardown } = setupMockProfileDom();
+    await localStoreModule.clearLocalStore().catch(() => {});
+
+    // 1. Caché local previa NO vacía (ejemplo: 1 película de sesión anterior en portátil)
+    stateModule.clearUserMovieData();
+    stateModule.setUserMovieData({ "99": { rating: 6, onWatchlist: false } });
+    assert.equal(Object.keys(stateModule.getAllUserMovieData()).length, 1);
+
+    const supabase = await apiModule.getSupabase();
+    const originalGetSession = supabase.auth.getSession;
+    const originalFrom = supabase.from;
+    let mergeOnLoginCalled = false;
+
+    supabase.auth.getSession = async () => ({
+      data: { session: { user: { id: "user_test_sync_profile", email: "tester@videoclub.digital" } } },
+      error: null
+    });
+
+    supabase.from = (table) => {
+      if (table === "user_movie_entries") {
+        mergeOnLoginCalled = true;
+        const q = {
+          select: () => q, eq: () => q, order: () => q,
+          range: async () => ({
+            data: [
+              { movie_id: 99, rating: 6, on_watchlist: false, updated_at: new Date().toISOString() },
+              { movie_id: 101, rating: 10, on_watchlist: false, updated_at: new Date().toISOString() },
+              { movie_id: 102, rating: null, on_watchlist: true, updated_at: new Date().toISOString() }
+            ],
+            error: null
+          })
+        };
+        return q;
+      }
+      return originalFrom ? originalFrom(table) : null;
+    };
+
+    try {
+      const cleanup = profileModule.setupProfileModal();
+      await profileModule.openProfileModal();
+
+      assert.equal(domMap["profile-modal"].hidden, false);
+      assert.equal(domMap["profile-overlay"].hidden, false);
+      assert.equal(domMap["profile-modal-title"].textContent, "tester@videoclub.digital");
+      assert.equal(mergeOnLoginCalled, true, "openProfileModal debe invocar mergeOnLogin aunque getAllUserMovieData() no esté vacío");
+
+      await new Promise((r) => setTimeout(r, 60));
+
+      const entriesAfter = stateModule.getAllUserMovieData();
+      assert.equal(Object.keys(entriesAfter).length, 3);
+      assert.equal(entriesAfter["101"].rating, 10);
+      assert.equal(entriesAfter["102"].onWatchlist, true);
+      assert.equal(domMap["profile-stat-watchlist-count"].textContent, "1");
+      assert.equal(domMap["profile-stat-rated-count"].textContent, "2");
+
+      cleanup();
+    } finally {
+      await localStoreModule.clearLocalStore().catch(() => {});
+      supabase.auth.getSession = originalGetSession;
+      supabase.from = originalFrom;
+      stateModule.clearUserMovieData();
+      teardown();
+    }
+  });
+
+  test("openProfileModal dispara mergeOnLogin y puebla estadísticas en arranque en frío (caché local vacía)", async () => {
+    const { domMap, teardown } = setupMockProfileDom();
+    await localStoreModule.clearLocalStore().catch(() => {});
+
+    stateModule.clearUserMovieData();
+    assert.equal(Object.keys(stateModule.getAllUserMovieData()).length, 0);
+
+    const supabase = await apiModule.getSupabase();
+    const originalGetSession = supabase.auth.getSession;
+    const originalFrom = supabase.from;
+    let mergeCalled = false;
+
+    supabase.auth.getSession = async () => ({
+      data: { session: { user: { id: "user_test_cold_start", email: "coldstart@videoclub.digital" } } },
+      error: null
+    });
+
+    supabase.from = (table) => {
+      if (table === "user_movie_entries") {
+        mergeCalled = true;
+        const q = {
+          select: () => q, eq: () => q, order: () => q,
+          range: async () => ({
+            data: [{ movie_id: 301, rating: 8, on_watchlist: false, updated_at: new Date().toISOString() }],
+            error: null
+          })
+        };
+        return q;
+      }
+      return originalFrom ? originalFrom(table) : null;
+    };
+
+    try {
+      const cleanup = profileModule.setupProfileModal();
+      await profileModule.openProfileModal();
+
+      assert.equal(mergeCalled, true);
+      await new Promise((r) => setTimeout(r, 60));
+
+      const entries = stateModule.getAllUserMovieData();
+      assert.equal(Object.keys(entries).length, 1);
+      assert.equal(entries["301"].rating, 8);
+      assert.equal(domMap["profile-stat-rated-count"].textContent, "1");
+
+      cleanup();
+    } finally {
+      await localStoreModule.clearLocalStore().catch(() => {});
+      supabase.auth.getSession = originalGetSession;
+      supabase.from = originalFrom;
+      stateModule.clearUserMovieData();
+      teardown();
+    }
   });
 });
 

@@ -1,0 +1,35 @@
+name: DataOps Catalog Audit
+
+on:
+  schedule:
+    # Ejecución programada diaria a las 03:00 UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    # Permite disparar la auditoría manualmente desde la pestaña Actions de GitHub
+
+concurrency:
+  group: "data-audit"
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Run PostgreSQL Data Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 ⚙️
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies 📦
+        run: npm ci
+
+      - name: Execute Data Quality Assertions (run_data_tests) 🛡️
+        run: node scripts/run-data-tests.mjs --strict
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

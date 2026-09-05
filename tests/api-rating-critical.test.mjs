@@ -147,7 +147,9 @@ describe("Badging API y Contador de Watchlist", () => {
       delete globalThis.navigator.clearAppBadge;
     }
   });
+});
 
+describe("ui.ts (Notificaciones Toast y Utilidades de UI)", () => {
   test("showToast se ejecuta de forma segura con degradación en SSR/Node", () => {
     assert.equal(typeof uiModule.showToast, "function");
     assert.doesNotThrow(() => {
