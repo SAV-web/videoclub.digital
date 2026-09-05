@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
+import { createMockDomElement, createMockWindow, setupGlobalDom } from "./helpers/mock-dom.mjs";
 
 let viteEnv;
 let constants;
@@ -672,28 +673,11 @@ describe("state.js y Pretty Paths", () => {
 
   // ── canonicalizeCurrentUrl ──────────────────────────────────────────────────
   test("canonicalizeCurrentUrl normaliza la URL activa sin añadir historial", () => {
-    // Utilidades de mock de window para entorno Node.js
-    const makeWindowMock = (pathname, search = "") => {
-      let _href = pathname + search;
-      let _pathname = pathname;
-      let _search = search;
-      let lastReplaced = null;
-      const win = {
-        location: { get pathname() { return _pathname; }, get search() { return _search; }, hash: "" },
-        history: {
-          state: null,
-          replaceState(_st, _title, url) { lastReplaced = url; _href = url; const [p, q] = url.split("?"); _pathname = p; _search = q ? `?${q}` : ""; }
-        },
-        getLastReplaced: () => lastReplaced,
-      };
-      return win;
-    };
-
     const origWindow = global.window;
     try {
       // Caso 1: Segmentos invertidos /uk/drama/ -> /drama/uk/
       {
-        const mock = makeWindowMock("/uk/drama/");
+        const mock = createMockWindow("/uk/drama/");
         global.window = mock;
         state.syncStateWithUrl("/uk/drama/", "");
         // Corregir window.location.pathname para que refleje la entrada original
@@ -704,7 +688,7 @@ describe("state.js y Pretty Paths", () => {
 
       // Caso 2: Alias ?page=2 -> ?p=2
       {
-        const mock = makeWindowMock("/", "?page=2");
+        const mock = createMockWindow("/", "?page=2");
         global.window = mock;
         state.syncStateWithUrl("/", "?page=2");
         state.canonicalizeCurrentUrl();
@@ -713,7 +697,7 @@ describe("state.js y Pretty Paths", () => {
 
       // Caso 3: Sort interno ?sort=fa_rating,desc -> ?sort=nota-fa
       {
-        const mock = makeWindowMock("/", "?sort=fa_rating%2Cdesc");
+        const mock = createMockWindow("/", "?sort=fa_rating%2Cdesc");
         global.window = mock;
         state.syncStateWithUrl("/", "?sort=fa_rating,desc");
         state.canonicalizeCurrentUrl();
@@ -722,13 +706,13 @@ describe("state.js y Pretty Paths", () => {
 
       // Caso 4: ?q=bestas o ?buscar=bestas -> ?search=bestas
       {
-        const mock = makeWindowMock("/", "?q=bestas");
+        const mock = createMockWindow("/", "?q=bestas");
         global.window = mock;
         state.syncStateWithUrl("/", "?q=bestas");
         state.canonicalizeCurrentUrl();
         assert.equal(mock.getLastReplaced(), "/?search=bestas", "Caso 4: ?q= -> ?search=");
 
-        const mock2 = makeWindowMock("/", "?buscar=bestas");
+        const mock2 = createMockWindow("/", "?buscar=bestas");
         global.window = mock2;
         state.syncStateWithUrl("/", "?buscar=bestas");
         state.canonicalizeCurrentUrl();
@@ -737,7 +721,7 @@ describe("state.js y Pretty Paths", () => {
 
       // Caso 5: Exclusión en QS ?exg=Animación -> /no-animacion/
       {
-        const mock = makeWindowMock("/", "?exg=Animaci%C3%B3n");
+        const mock = createMockWindow("/", "?exg=Animaci%C3%B3n");
         global.window = mock;
         state.syncStateWithUrl("/", "?exg=Animación");
         state.canonicalizeCurrentUrl();
@@ -746,7 +730,7 @@ describe("state.js y Pretty Paths", () => {
 
       // Caso 6: Trailing slash ausente /drama/uk -> /drama/uk/
       {
-        const mock = makeWindowMock("/drama/uk");
+        const mock = createMockWindow("/drama/uk");
         global.window = mock;
         state.syncStateWithUrl("/drama/uk", "");
         state.canonicalizeCurrentUrl();
@@ -755,7 +739,7 @@ describe("state.js y Pretty Paths", () => {
 
       // Caso 7: URL ya canónica -> no se llama replaceState
       {
-        const mock = makeWindowMock("/drama/uk/");
+        const mock = createMockWindow("/drama/uk/");
         global.window = mock;
         state.syncStateWithUrl("/drama/uk/", "");
         const result = state.canonicalizeCurrentUrl();
@@ -770,82 +754,52 @@ describe("state.js y Pretty Paths", () => {
 
 describe("yearSlider.ts (DualRangeSlider)", () => {
   test("instancia el slider y gestiona valores min/max/pivot sin errores", () => {
-    // Basic DOM mock for Node.js test environment
-    const elementsCreated = [];
-    const mockElement = (tag) => {
-      const children = [];
-      const listeners = {};
-      const attrs = {};
-      const style = {};
-      const el = {
-        tagName: tag.toUpperCase(),
-        classList: { add: () => {}, remove: () => {}, contains: () => false },
-        style,
-        innerHTML: "",
-        appendChild: (child) => children.push(child),
-        setAttribute: (k, v) => { attrs[k] = v; },
-        removeAttribute: (k) => { delete attrs[k]; },
-        getAttribute: (k) => attrs[k],
-        addEventListener: (event, handler) => {
-          listeners[event] = listeners[event] || [];
-          listeners[event].push(handler);
-        },
-        getBoundingClientRect: () => ({ left: 0, width: 200, top: 0, height: 24 }),
-        setPointerCapture: () => {},
-        releasePointerCapture: () => {},
-      };
-      elementsCreated.push(el);
-      return el;
-    };
+    const { teardown } = setupGlobalDom({ fallbackCreate: true });
 
-    globalThis.document = globalThis.document || {
-      createElement: mockElement,
-    };
-    globalThis.window = globalThis.window || {
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    };
+    try {
+      const container = createMockDomElement("div");
+      const slider = new yearSliderModule.DualRangeSlider(container, {
+        min: 1900,
+        max: 2026,
+        pivotYear: 2000,
+        start: [1970, 2020],
+      });
 
-    const container = mockElement("div");
-    const slider = new yearSliderModule.DualRangeSlider(container, {
-      min: 1900,
-      max: 2026,
-      pivotYear: 2000,
-      start: [1970, 2020],
-    });
+      assert.deepEqual(slider.get(), [1970, 2020]);
 
-    assert.deepEqual(slider.get(), [1970, 2020]);
+      slider.set([1980, 2010], false);
+      assert.deepEqual(slider.get(), [1980, 2010]);
 
-    slider.set([1980, 2010], false);
-    assert.deepEqual(slider.get(), [1980, 2010]);
+      // Test snap calculation: raw values before 2000 snap to decade
+      assert.equal(slider["snapYear"](1934), 1930);
+      assert.equal(slider["snapYear"](1936), 1940);
+      assert.equal(slider["snapYear"](1998), 2000);
+      // Values after 2000 snap to exact year
+      assert.equal(slider["snapYear"](2003), 2003);
+      assert.equal(slider["snapYear"](2021), 2021);
 
-    // Test snap calculation: raw values before 2000 snap to decade
-    assert.equal(slider["snapYear"](1934), 1930);
-    assert.equal(slider["snapYear"](1936), 1940);
-    assert.equal(slider["snapYear"](1998), 2000);
-    // Values after 2000 snap to exact year
-    assert.equal(slider["snapYear"](2003), 2003);
-    assert.equal(slider["snapYear"](2021), 2021);
+      // Test push & separation logic during slider interaction:
+      // Arrastrar selector izquierdo a 1950 (estando el derecho en 1950) empuja el derecho a 1960
+      slider.set([1930, 1950], false);
+      slider["updateValuesForHandle"](0, 1950);
+      assert.deepEqual(slider.get(), [1950, 1960]);
 
-    // Test push & separation logic during slider interaction:
-    // Arrastrar selector izquierdo a 1950 (estando el derecho en 1950) empuja el derecho a 1960
-    slider.set([1930, 1950], false);
-    slider["updateValuesForHandle"](0, 1950);
-    assert.deepEqual(slider.get(), [1950, 1960]);
+      // Arrastrar selector derecho a 1980 (estando el izquierdo en 1980) empuja el izquierdo a 1970
+      slider.set([1980, 2000], false);
+      slider["updateValuesForHandle"](1, 1980);
+      assert.deepEqual(slider.get(), [1970, 1980]);
 
-    // Arrastrar selector derecho a 1980 (estando el izquierdo en 1980) empuja el izquierdo a 1970
-    slider.set([1980, 2000], false);
-    slider["updateValuesForHandle"](1, 1980);
-    assert.deepEqual(slider.get(), [1970, 1980]);
+      // La entrada manual mediante campos de texto sigue permitiendo intervalos del mismo año (ej. 1950-1950)
+      slider.set([1950, 1950], false);
+      assert.deepEqual(slider.get(), [1950, 1950]);
 
-    // La entrada manual mediante campos de texto sigue permitiendo intervalos del mismo año (ej. 1950-1950)
-    slider.set([1950, 1950], false);
-    assert.deepEqual(slider.get(), [1950, 1950]);
-
-    // Teardown / destroy limpia callbacks, DOM y clases
-    slider.destroy();
-    assert.equal(container.innerHTML, "");
-    assert.equal(container.classList.contains("custom-year-slider"), false);
+      // Teardown / destroy limpia callbacks, DOM y clases
+      slider.destroy();
+      assert.equal(container.innerHTML, "");
+      assert.equal(container.classList.contains("custom-year-slider"), false);
+    } finally {
+      teardown();
+    }
   });
 });
 

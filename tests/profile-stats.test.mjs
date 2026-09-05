@@ -2,28 +2,11 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
+import { createMockDomElement, setupGlobalDom } from "./helpers/mock-dom.mjs";
 import { createMockIndexedDB } from "./helpers/mock-indexeddb.mjs";
 
 function setupMockProfileDom() {
   const domMap = {};
-  const makeEl = (id) => ({
-    id,
-    hidden: true,
-    textContent: "",
-    innerHTML: "",
-    disabled: false,
-    style: {},
-    children: [
-      { style: {}, lastElementChild: { style: {} } },
-      { style: {}, lastElementChild: { style: {} } },
-      { style: {}, lastElementChild: { style: {} } },
-    ],
-    classList: { add: () => {}, remove: () => {}, contains: () => false, toggle: () => {} },
-    setAttribute: () => {}, getAttribute: () => null, hasAttribute: () => false, removeAttribute: () => {},
-    focus: () => {}, addEventListener: () => {}, removeEventListener: () => {},
-    querySelector: () => null, querySelectorAll: () => [], reset: () => {},
-  });
-
   const ids = [
     "profile-overlay", "profile-modal", "profile-modal-close", "profile-avatar-large", "profile-modal-title",
     "profile-stat-watchlist-count", "profile-stat-rated-count", "profile-stat-average-stars", "profile-stat-stars-text",
@@ -33,37 +16,30 @@ function setupMockProfileDom() {
     "profile-btn-export-csv", "profile-btn-logout", "profile-btn-delete-account", "profile-danger-zone",
     "profile-btn-cancel-delete", "profile-btn-confirm-delete", "profile-delete-message",
   ];
-  ids.forEach((id) => { domMap[id] = makeEl(id); });
+  ids.forEach((id) => {
+    domMap[id] = createMockDomElement("div", {
+      id,
+      hidden: true,
+      children: [
+        { style: {}, lastElementChild: { style: {} } },
+        { style: {}, lastElementChild: { style: {} } },
+        { style: {}, lastElementChild: { style: {} } },
+      ],
+    });
+  });
 
-  const originalDocument = globalThis.document;
-  const originalWindow = globalThis.window;
-  const originalIndexedDB = globalThis.indexedDB;
-
-  globalThis.document = {
-    getElementById: (id) => domMap[id] || null,
-    querySelector: () => null,
-    querySelectorAll: () => [],
-    createElement: (tag) => makeEl(`tag-${tag}`),
-    activeElement: null,
-    documentElement: makeEl("html"),
-  };
-
-  globalThis.window = {
-    history: { state: {}, pushState: (s) => { globalThis.window.history.state = s; }, back: () => {} },
-    location: { href: "https://videoclub.digital/" },
-    addEventListener: () => {},
-    removeEventListener: () => {},
-  };
-
+  const prevIDB = globalThis.indexedDB;
   globalThis.indexedDB = createMockIndexedDB();
 
-  const teardown = () => {
-    globalThis.document = originalDocument;
-    globalThis.window = originalWindow;
-    globalThis.indexedDB = originalIndexedDB;
-  };
+  const { teardown: domTeardown } = setupGlobalDom({ elementMap: domMap });
 
-  return { domMap, teardown };
+  return {
+    domMap,
+    teardown: () => {
+      globalThis.indexedDB = prevIDB;
+      domTeardown();
+    },
+  };
 }
 
 describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)", () => {

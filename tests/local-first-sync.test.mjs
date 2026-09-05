@@ -14,8 +14,7 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
     globalThis.indexedDB = mockIDB;
 
     viteEnv = await startViteSsrServer([
-      "/src/js/localStore.ts",
-      "/src/js/syncManager.ts"
+      "/src/js/localStore.ts"
     ]);
     [localStore] = viteEnv.modules;
   });
