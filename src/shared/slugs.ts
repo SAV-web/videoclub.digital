@@ -138,15 +138,27 @@ export const SELECTION_SLUGS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Convierte un slug de director/actor a texto legible para consultas SQL.
+ * Convierte un slug de director/actor a texto de búsqueda para el contrato RPC de backend.
  * Ej: "christopher-nolan" → "christopher nolan", "hermanos-russo" → "hermanos russo"
  *
- * NOTA DE ARQUITECTURA (Dependencia con Base de Datos):
- * El frontend envía este texto sin resolver colectivos ni variantes alfanuméricas.
- * La resolución exhaustiva se delega a PostgreSQL en `search_movies_offset`:
- *   - FASE 3.6 (Directores): Coincidencia insensible a acentos, fallback alfanumérico
- *     y expansión automática de colectivos/dúos vía `directors.components`.
- *   - FASE 3.7 (Actores): Coincidencia canónica insensible a acentos y fallback alfanumérico.
+ * NOTA DE ARQUITECTURA Y CONTRATO CRÍTICO (Transformación con pérdida / Lossy):
+ * 1. Pérdida de Guiones Léxicos:
+ *    Tanto "Daniel Day-Lewis" como "Daniel Day Lewis" generan el slug canónico "daniel-day-lewis".
+ *    Esta función convierte TODOS los guiones en espacios ("daniel day lewis"), perdiendo
+ *    en el frontend la distinción entre guiones originales del nombre y guiones de la URL.
+ * 2. Por qué se normaliza a espacios:
+ *    En Full Text Search de PostgreSQL (`websearch_to_tsquery`), los guiones pueden actuar como
+ *    operadores de negación o generar tokenización rígida. Separar por espacios permite evaluar
+ *    las palabras de forma neutra y segura.
+ * 3. Blindaje y Compensación en Backend (`search_movies_offset` en docs/script.sql):
+ *    Para que nombres compuestos como "Daniel Day-Lewis" o "Jean-Luc Godard" nunca fallen,
+ *    el backend (Fases 3.6 y 3.7) implementa una triple red de seguridad:
+ *    - Reconstrucción de slug: reconvierte espacios a guiones (`regexp_replace(..., '[^a-zA-Z0-9]+', '-', 'g')`)
+ *      para casar contra el índice `slug` ("daniel-day-lewis").
+ *    - Fallback alfanumérico estricto: `regexp_replace(name_norm, '[^a-z0-9]', '', 'g')`
+ *      (empareja "danieldaylewis" == "danieldaylewis", eliminando toda discrepancia de guiones).
+ *    - Expansión de colectivos/dúos vía `directors.components` (Fase 3.6).
+ *    Cualquier modificación en esta función debe estar estrictamente alineada con Fases 3.6 y 3.7 del SQL.
  */
 export function slugToPersonQuery(slug: string): string {
   if (!slug) return "";

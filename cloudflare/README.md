@@ -75,3 +75,23 @@ curl -I https://videoclub.digital/posters/el-padrino.webp
 # Primera petición: cf-cache-status: MISS (descarga de Supabase)
 # Segunda petición: cf-cache-status: HIT (servido gratis desde la red perimetral de Cloudflare)
 ```
+
+---
+
+## 4. Pruebas de Humo Automatizadas (*Smoke Tests* en CI)
+
+La lógica del worker cuenta con una batería de pruebas de regresión en [`tests/worker.test.mjs`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/tests/worker.test.mjs) que se ejecutan localmente y en GitHub Actions sin necesidad de desplegar:
+
+```bash
+# Ejecutar smoke tests del worker:
+node --test tests/worker.test.mjs
+
+# O dentro de la suite global del proyecto:
+npm test
+```
+
+Esta suite valida de forma determinista:
+1. Reescritura correcta de `/posters/*` y `/vips/*` hacia Supabase Storage e inyección de `Cache-Control: public, max-age=31536000, immutable`.
+2. Supresión de cabeceras inmutables si Supabase devuelve `404 Not Found`.
+3. Negociación de `text/markdown` en la raíz entregando `/llms.txt`.
+4. Garantía de no interferencia con rutas internas ni recursos SPA.

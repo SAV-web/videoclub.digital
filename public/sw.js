@@ -65,7 +65,7 @@ async function staleWhileRevalidate(request, cacheName = CACHE_DYNAMIC) {
   const networkFetch = fetch(request).then(response => {
     if (response.ok) {
       cache.put(request, response.clone()).then(() => {
-        if (request.destination === 'image' || request.url.includes('/storage/v1/object/public/')) {
+        if (request.destination === 'image' || request.url.includes('/posters/') || request.url.includes('/vips/')) {
           limitCacheSize(cacheName, 200);
         }
       });
@@ -130,14 +130,13 @@ self.addEventListener("fetch", (event) => {
   // 1. Ignorar métodos no-GET y esquemas no-http
   if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
 
-  // 2. EXCEPCIONES: Datos dinámicos de Supabase (Auth y API REST/RPC)
+  // 2. EXCEPCIONES: Datos dinámicos y assets remotos de Supabase (Auth, REST, Storage)
   // NOTA DE ARQUITECTURA:
   // - Supabase Auth (/auth/v1/) y tablas REST (/rest/v1/) manejan datos vivos de sesión y usuario.
-  // - Las consultas RPC (/rest/v1/rpc/) viajan en HTTP POST (estándar de PostgREST para filtros complejos).
-  // - La API CacheStorage del navegador prohíbe métodos no-GET (W3C spec).
-  // - Por tanto, la caché de búsquedas y filtros se gestiona en memoria LRU en el cliente (src/js/api.ts),
-  //   mientras el Service Worker se enfoca en hacer offline el App Shell y los pósters.
-  if (url.pathname.includes("/auth/v1/") || url.pathname.includes("/rest/v1/")) {
+  // - Las fuentes y assets remotos alojados en Supabase Storage deben ser gestionados nativamente
+  //   por el navegador para no colisionar con <link rel="preload"> (evita 'cross-world mismatch').
+  // - Por tanto, cualquier petición cross-origin hacia el dominio de Supabase hace bypass inmediato.
+  if (url.hostname.includes("supabase.co")) {
     return;
   }
 
@@ -147,8 +146,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 4. ESTRATEGIA: Imágenes de Supabase Storage (Posters)
-  if (url.pathname.includes("/storage/v1/object/public/")) {
+  // 4. ESTRATEGIA: Imágenes de Catálogo (Posters y VIPs)
+  if (url.pathname.startsWith("/posters/") || url.pathname.startsWith("/vips/")) {
     event.respondWith(cacheFirst(request, CACHE_DYNAMIC));
     return;
   }

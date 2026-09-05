@@ -45,12 +45,13 @@
 | **Frontend Core (SPA)** | TypeScript (ES2022+), HTML5 Semántico |
 | **Estilos (CSS)** | Vanilla CSS3 (Variables, Grid, Flexbox, Container Queries, `contain: layout paint`) |
 | **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
+| **Edge & CDN** | Cloudflare Worker (`cloudflare/worker.js`) para `immutable` cache, proxy de pósters y negociación IA |
 | **Fuente Única de Verdad (SSOT)** | Módulos compartidos en `src/shared/` para reglas de negocio y formateadores |
 | **Subsistema SEO (SSG)** | Astro 5+ en [`seo-site/`](seo-site/) (Generación estática de fichas públicas, sitemaps y JSON-LD) |
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing** | Node.js Test Runner nativo (`node --test`) + Vite SSR Server para aislamiento |
+| **Testing & Calidad** | Node.js Test Runner nativo (128 tests en 10 archivos) + DataOps nativo en PostgreSQL (`run_data_tests`) |
 
 ---
 
@@ -61,6 +62,11 @@ VIDEOCLUB.DIGITAL/
 ├── index.html                   # Shell HTML principal, CSS crítico y plantillas <template>
 ├── vite.config.js               # Configuración de Vite y plugin inyector de Service Worker
 ├── package.json                 # Dependencias y scripts de desarrollo/test
+├── cloudflare/                  # Capa perimetral en el Edge (Cloudflare Worker)
+│   ├── worker.js                # Reverse proxy de imágenes, cache immutable y negociación Markdown
+│   └── README.md                # Guía de configuración y verificación de Cloudflare Edge
+├── scripts/                     # Scripts auxiliares de automatización y CI
+│   └── run-data-tests.mjs       # DataOps Runner: evalúa contratos de calidad en PostgreSQL
 ├── public/
 │   ├── 404.html                 # Fallback SPA para GitHub Pages (?_p y ?_q)
 │   ├── sw.js                    # Service Worker interceptor (CACHE_STATIC y CACHE_DYNAMIC)
@@ -88,12 +94,17 @@ VIDEOCLUB.DIGITAL/
 │   ├── astro.config.mjs         # Configuración del generador estático
 │   ├── src/pages/               # Páginas públicas indexables (/titulo/[slugId], /director/[slug], etc.)
 │   └── public/                  # Sitemaps XML y recursos estáticos de indexación
-├── tests/                       # Suite de pruebas unitarias
+├── tests/                       # Suite de 128 pruebas unitarias y de integración
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
-│   └── *.test.mjs               # Archivos de test unitarios (api, state, rating, seo, utils)
+│   ├── url-contract.test.mjs    # Test del contrato canónico de URLs y Tabla de Prohibidos
+│   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (proxy y headers)
+│   ├── profile-stats.test.mjs   # Estadísticas de usuario y reconciliación de login
+│   └── *.test.mjs               # Pruebas de api, state, rating, seo, utils, formatters
 └── docs/                        # Documentación técnica y de arquitectura
     ├── project_context.md       # Contexto global y mapa del proyecto
     ├── contracts.md             # Especificación de contratos de datos y fronteras
+    ├── data_contracts.md        # Disciplina DataOps y catálogo de aserciones PostgreSQL
+    ├── data_tests.sql           # Suite nativa de pruebas de base de datos (run_data_tests)
     ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
     ├── script.sql               # Esquema SQL completo, funciones RPC e índices
     ├── schema.sql               # Esquema DDL de tablas y restricciones relacionales
@@ -105,7 +116,7 @@ VIDEOCLUB.DIGITAL/
 ## 💻 Comandos de Desarrollo
 
 ### Requisitos previos
-- Node.js (versión 18+ recomendada)
+- Node.js (versión 20+ o 22 recomendada)
 - npm
 
 ### 1. Instalación de dependencias
@@ -124,12 +135,17 @@ Abre `http://localhost:5173` en tu navegador.
 npm run check
 ```
 
-### 4. Ejecución de la suite de pruebas unitarias
+### 4. Ejecución de la suite completa de tests (128 pruebas)
 ```bash
 npm run test
 ```
 
-### 5. Compilación para producción
+### 5. Auditoría de calidad de datos en base de datos (DataOps)
+```bash
+node scripts/run-data-tests.mjs --strict
+```
+
+### 6. Compilación para producción
 ```bash
 npm run build
 ```
@@ -142,7 +158,9 @@ Genera la carpeta `dist/` optimizada e inyecta la versión del Service Worker.
 Para más detalles sobre la arquitectura interna y decisiones de diseño técnico, consulta la carpeta [`docs/`](docs/):
 
 - 📘 [**Project Context & Architecture**](docs/project_context.md): Explicación exhaustiva del stack, estructura y patrones de rendimiento.
-- 📐 [**Contratos de Datos**](docs/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, `UserMovieEntry`, `VipData` y gestión de errores.
-- 🔄 [**Estrategia de Invalidación del Service Worker**](docs/service_worker_invalidation.md): Explicación de políticas de caché y despliegue.
+- 📐 [**Contratos de Datos y URLs**](docs/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, contrato de URLs y tabla de valores prohibidos.
+- 🛡️ [**Contratos de Calidad de Datos (DataOps)**](docs/data_contracts.md): Framework declarativo de pruebas nativas en PostgreSQL y automatización en CI.
+- 🔄 [**Estrategia de Invalidación del Service Worker**](docs/service_worker_invalidation.md): Explicación de políticas de caché, aislamiento de origen y despliegue.
+- ☁️ [**Configuración de Cloudflare Edge**](cloudflare/README.md): Guía de configuración perimetral de proxy de imágenes y negociación Markdown.
 - 🗄️ [**Script SQL & Backend Schema**](docs/script.sql): Código de la función RPC `search_movies_offset`, ETL diferencial e índices trigrama.
 - 🗃️ [**Contexto SQL & DDL Schema**](docs/schema.sql): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.

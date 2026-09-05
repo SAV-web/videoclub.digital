@@ -355,6 +355,14 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(p6.actor, "clint eastwood");
     assert.equal(p6.director, null);
 
+    // Parsing de personas con guiones léxicos originales (Daniel Day-Lewis, Jean-Luc Godard)
+    // Demuestra el contrato: el slug convierte guiones en espacios ("daniel day lewis"); PostgreSQL Fases 3.6/3.7 resuelve
+    const p7 = contracts.parsePrettyPath("/actor/daniel-day-lewis/");
+    assert.equal(p7.actor, "daniel day lewis");
+
+    const p8 = contracts.parsePrettyPath("/director/jean-luc-godard/");
+    assert.equal(p8.director, "jean luc godard");
+
     // Parsing de los 21 slugs canónicos oficiales hacia su nombre oficial
     assert.equal(contracts.parsePrettyPath("/deporte/").genre, "Deporte");
     assert.equal(contracts.parsePrettyPath("/accion/").genre, "Acción");

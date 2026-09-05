@@ -345,9 +345,12 @@ export function parsePrettyPath(pathname: string): {
   if (rawSegments.length === 0) return result;
 
   // 1. Detección de prefijo de persona /director/{slug}/ o /actor/{slug}/
-  // NOTA: El texto extraído (ej. "hermanos russo", "jean luc godard") se envía directamente al RPC.
-  // La resolución alfanumérica y la expansión de colectivos/dúos se ejecuta en backend
-  // mediante search_movies_offset (Fases 3.6 y 3.7 en script.sql).
+  // NOTA DE CONTRATO CRÍTICO:
+  // `slugToPersonQuery` convierte todos los guiones en espacios (ej. "daniel-day-lewis" -> "daniel day lewis").
+  // Esta transformación con pérdida (lossy) delega obligatoriamente al backend en PostgreSQL:
+  //   1. Reconstrucción de slug (d.slug) y matching exacto por alias.
+  //   2. Fallback alfanumérico estricto (`regexp_replace(..., '[^a-z0-9]', '', 'g')`) para casar
+  //      nombres con guiones reales ("Daniel Day-Lewis", "Jean-Luc Godard") en Fases 3.6 y 3.7 de `search_movies_offset`.
   if (rawSegments[0] === "director" && rawSegments.length >= 2) {
     result.director = slugToPersonQuery(rawSegments.slice(1).join("-"));
     return result;

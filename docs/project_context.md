@@ -16,15 +16,19 @@
 
 ### 1. Archivos Raíz y Configuración
 
-- `index.html`: Punto de entrada. Contiene el CSS crítico (_Above the Fold_), preloads, meta tags SEO, y los `<template>` de los componentes para instanciación rápida.
+- `index.html`: Punto de entrada. Contiene el CSS crítico (_Above the Fold_), preloads, meta tags SEO, política CSP ajustada (sin directivas exclusivas de cabecera como `frame-ancestors`) y los `<template>` de los componentes para instanciación rápida.
 - `vite.config.js`: Configurado para generar código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase) e inyección automática de versión de Service Worker (`injectSwVersion`).
 - `public/404.html`: Fallback SPA para GitHub Pages. Intercepta rutas directas y recargas (`F5`) no coincidentes y redirige a la raíz preservando la ruta y query string mediante `?_p=` y `?_q=`.
-- `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`) y estrategias:
+- `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`), aislamiento estricto por origen (`url.origin === self.location.origin`) y estrategias:
   - _Network First_ (`CACHE_STATIC` para navegación HTML y App Shell).
   - _Stale-While-Revalidate_ (`CACHE_DYNAMIC` para assets estáticos JS/CSS con precacheo de `./index.html` y `./manifest.webmanifest` en `CRITICAL_ASSETS`; los iconos SVG viajan inlined en el DOM).
-  - _Cache First_ (`CACHE_DYNAMIC` para pósters de Supabase Storage con límite FIFO).
-  - _Exclusiones de API_: Las llamadas RPC y Auth viajan vía POST o manejan datos vivos; se gestionan mediante `lru-cache` en el cliente (`src/js/api.ts`).
+  - _Cache First_ (`CACHE_DYNAMIC` para pósters y fotos VIP proxyeadas con límite FIFO).
+  - _Aislamiento de Origen Cruzado_: Los recursos alojados en `*.supabase.co` (fuentes Inter, Auth, RPC) fluyen directamente por red nativa sin ser interceptados por el SW, previniendo advertencias de colisión con `<link rel="preload">`.
   - Estrategia de invalidación documentada en `docs/service_worker_invalidation.md`.
+- `cloudflare/worker.js`: Capa perimetral (*Edge Optimizer & Reverse Proxy*) desplegada delante de GitHub Pages:
+  - Inyección de `Cache-Control: public, max-age=31536000, immutable` en bundles de Vite (`/assets/*`).
+  - Proxy perimetral de imágenes (`/posters/*` y `/vips/*`) con reescritura hacia Supabase Storage para evitar consumo de egress.
+  - Negociación de contenido Markdown (`Accept: text/markdown` $\to$ `/llms.txt`) y cabeceras de descubrimiento para agentes de IA (`Link: </llms.txt>; rel="alternate"`). Documentado en `cloudflare/README.md`.
 
 ### 2. Módulos Compartidos SSOT (`src/shared/`)
 
@@ -71,8 +75,19 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 
 ### 6. Suite de Tests (`tests/`)
 
-- Tests unitarios ejecutados con el rodador nativo de Node.js (`node --test`).
-- **`tests/helpers/vite-ssr.mjs`**: Helper unificado `startViteSsrServer()` que arranca el entorno Vite en modo SSR de forma aislada para cargar módulos TypeScript directamente sin duplicidad de configuración.
+- Ejecución centralizada mediante el test runner nativo de Node.js (`node --test`), totalizando **128 tests automatizados en 28 suites** sin dependencias externas pesadas.
+- **`tests/helpers/vite-ssr.mjs`**: Helper unificado `startViteSsrServer()` que arranca el entorno Vite en modo SSR de forma aislada para evaluar módulos TypeScript directamente.
+- **Batería de Pruebas**:
+  - `url-contract.test.mjs`: Test formal del contrato de URLs (jerarquía canónica, lectura agnóstica al orden, reglas de exclusividad semántica y las 10 filas de la Tabla 4 de URLs prohibidas/normalizadas).
+  - `worker.test.mjs`: Smoke test del Cloudflare Worker (proxy perimetral de pósters/vips con `immutable`, inyección de cabecera `Link rel="alternate"` y negociación Markdown para agentes).
+  - `profile-stats.test.mjs`: Estadísticas de usuario, cálculo de estrellas, exportación JSON y reconciliación de sesión (`openProfileModal` con `mergeOnLogin`).
+  - `contracts-state-utils.test.mjs`: Contratos de datos, tipos de error y normalizadores puros.
+  - `api.test.mjs`: Normalización de parámetros RPC, claves de caché canónicas y discriminación de directores.
+  - `seo.test.mjs`: Títulos dinámicos, descripciones y microdatos JSON-LD (`ItemList`, `BreadcrumbList`).
+  - `rating.test.mjs`: Conversión de notas a estrellas y estados de presentación de tarjetas.
+  - `shared-formatters.test.mjs`: Formateadores puros compartidos y equivalencia SPA vs. Astro SSG.
+  - `state-events.test.mjs`: Ciclo de vida del bus de eventos y prevención de fugas de memoria.
+  - `shared-constants.test.mjs`: Integridad del SSOT de constantes y taxonomías.
 
 ## 💾 Backend y Base de Datos (PostgreSQL / Supabase)
 
@@ -84,15 +99,18 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 - `user_movie_entries`: Almacena las valoraciones (1-10) y la Watchlist (boolean) por usuario con exclusividad mutua.
 - Tablas `_staging`: Usadas para el proceso ETL (ingesta masiva desde CSV con datos consolidados completos) mediante la función diferencial `process_staging_data()`. La columna `show IS TRUE` actúa como filtro de admisión (gatekeeper) para la carga al catálogo consolidado cruzando por clave primaria inmutable `id`.
 
-### Lógica Avanzada SQL (`docs/script.sql` y `docs/schema.sql`)
+### Lógica Avanzada SQL (`docs/script.sql`, `docs/schema.sql` y `docs/data_tests.sql`)
 
 - **Columnas Generadas (`GENERATED ALWAYS AS ... STORED`)**: Usadas para calcular campos `tsvector` de búsqueda en tiempo de inserción, descargando al procesador durante las consultas `SELECT`. También se usa para normalizar textos (`unaccent`).
 - **Índices y Operadores Cualificados**:
   - Índices GIN con Trigramas cualificados (`extensions.gin_trgm_ops`) para autocompletado ultra-rápido en nombres de actores, directores y componentes de colectivos.
   - Índices compuestos para consultas habituales (Ej: `country_id, type, year DESC`).
 - **Vistas Materializadas (`mv_*`)**: Caché pre-calculada de las sugerencias del buscador para no saturar la CPU de la base de datos contando películas. Auto-convergencia segura con `RESTRICT` e índices dedicados.
-- **RPC Principal (`search_movies_offset`)**: Función PL/pgSQL responsable de toda la lógica de filtrado del backend. Implementa patrón **"Late Row Lookup"**: ordena solo IDs y métricas ligeras con **desempate determinista (`m.id ASC`)** para evitar saltos entre páginas, y _luego_ hace JOIN con textos pesados (sinopsis, arrays) y empaqueta en JSON puro (`json_build_object`).
+- **RPC Principal (`search_movies_offset`)**: Función PL/pgSQL responsable de toda la lógica de filtrado del backend.
+  - **Late Row Lookup**: Ordena solo IDs y métricas ligeras con **desempate determinista (`m.id ASC`)** para evitar saltos entre páginas, y _luego_ hace JOIN con textos pesados (sinopsis, arrays) y empaqueta en JSON puro (`json_build_object`).
+  - **Compensación de Personas con Guiones (Fases 3.6 y 3.7)**: Al recibir nombres transformados a espacios desde el frontend (`slugToPersonQuery`), el SQL compensa mediante reconstrucción contra el índice `slug` y un fallback alfanumérico estricto (`regexp_replace(name_norm, '[^a-z0-9]', '', 'g')`), garantizando que nombres como "Daniel Day-Lewis" o "Jean-Luc Godard" casen siempre sin importar la pérdida del guion en URL.
 - **ETL Diferencial de Alto Rendimiento (`process_staging_data`)**: Pipeline transaccional con tabla temporal en memoria (`tmp_affected_staging`), cruce por clave primaria inmutable `id` (`ON CONFLICT (id) DO UPDATE`), admisión por `show IS TRUE` y **pre-agregación lineal $O(N_1 + N_2 + ...)$** que elimina la multiplicación por producto cartesiano en relaciones N:M.
+- **DataOps Quality Gate (`run_data_tests`)**: Suite declarativa inspirada en dbt ejecutada nativamente en PostgreSQL, integrada en GitHub Actions ([`.github/workflows/deploy.yml`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/.github/workflows/deploy.yml)) mediante [`scripts/run-data-tests.mjs`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/scripts/run-data-tests.mjs).
 - **Seguridad (RLS & DCL)**: Row Level Security habilitado en todas las tablas. Lectura pública general; `user_movie_entries` protegida con política unificada `FOR ALL` al `auth.uid()`; tablas de staging restringidas exclusivamente a `service_role` mediante DCL (`REVOKE ALL`).
 - **`search_path` Seguro**: Fijado estrictamente en todas las funciones `SECURITY DEFINER` (`SET search_path = pg_catalog, public, extensions, pg_temp;`).
 

@@ -60,15 +60,66 @@ Reglas:
 - **Exclusividad Estricta de Géneros y Países con sus Exclusiones**:
   - `genre` y `excludedGenres` son **mutuamente excluyentes** y NUNCA pueden coexistir interactuando con la UI ni en las URLs (no debe poder elegirse `/drama/no-animacion/`). Al activar un género positivo se eliminan todas las exclusiones de género, y al activar una exclusión de género se anula cualquier género positivo activo.
   - `country` y `excludedCountries` son **mutuamente excluyentes** y NUNCA pueden coexistir interactuando con la UI ni en las URLs (no debe poder elegirse `/uk/no-espana/`). Al activar un país positivo se eliminan todas las exclusiones de país, y al activar una exclusión de país se anula cualquier país positivo activo.
-- **Estructura Canónica de URLs (*Pretty Paths*)**:
-  - Los filtros de catálogo principales (`genre` o `excludedGenres`, `country` o `excludedCountries`, `selection`/`studio`) se serializan en los segmentos del `pathname`: `/{genre_o_no_exg}/{country_o_no_exc}/{studio_or_selection}/`. Si una URL externa incluye ambos simultáneamente, la exclusión tiene precedencia y el positivo es anulado de forma canónica.
-  - Las entidades de personas se serializan con prefijo canónico dedicado: `/director/{slug}/` o `/actor/{slug}/` (ej. `/director/brian-de-palma/`, `/actor/clint-eastwood/`).
-  - Los parámetros técnicos, temporales y de paginación se serializan en el `query string` usando slugs amigables para el orden: `?year=2011-&sort=votos-fa&p=3`.
-  - Parámetro canónico de búsqueda: `?search={termino}` (con compatibilidad de lectura para `?buscar=` y `?q=`).
-  - Slugs de ordenación: `recientes` (`year,desc`), `antiguas` (`year,asc`), `nota-fa` (`fa_rating,desc`), `nota-imdb` (`imdb_rating,desc`), `votos-fa` (`fa_votes,desc`), `votos-imdb` (`imdb_votes,desc`).
-  - **Catálogo Canónico de 21 Géneros**: Definido de forma compartida en `src/shared/slugs.ts` (`GENRE_SLUG_MAP`) con relación estricta 1:1 para URLs públicas (`/accion/`, `/belico/`, `/sci-fi/`, etc.). La resolución de sinónimos temáticos y multilingües para búsqueda se delega dinámicamente a la base de datos (`genres.synonyms`).
-  - **Resolución de Base Path**: La función `getAppBasePath()` centraliza la detección del prefijo de entorno (ej: `/videoclub.digital` en GitHub Pages o `""` en dominio raíz).
-  - **Fallback SPA**: `public/404.html` intercepta peticiones directas y recargas (`F5`) en GitHub Pages y las reconduce a la SPA mediante `?_p=` y `?_q=`.
+
+---
+
+## 2.1. Contrato Canónico de URLs (*URL Contract Specification*)
+
+El sistema de enrutamiento y serialización de filtros (blindado de forma automatizada en [`tests/url-contract.test.mjs`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/tests/url-contract.test.mjs)) sigue una estricta separación entre segmentos de ruta semánticos (*pathname*) y parámetros de consulta técnicos (*query string*).
+
+### A. Segmentos de Ruta (*Pathname*) — Jerarquía Posicional y Lectura Agnóstica
+
+1. **Jerarquía Canónica de Escritura (`buildPrettyPath`)**:
+   La generación de URLs siempre escribe los segmentos en este orden determinista:
+   $$\text{URL} = \text{/}\{\text{género}\}\text{/}\{\text{país}\}\text{/}\{\text{estudio-o-selección}\}\text{/}\{\text{no-género}\}\text{/}\{\text{no-país}\}\text{/}$$
+2. **Lectura Agnóstica al Orden (`parsePrettyPath`)**:
+   Al leer una URL entrante, la función no asume posiciones fijas. Clasifica cada segmento analizando a qué diccionario cerrado pertenece. De este modo, `/eeuu/drama/` y `/drama/eeuu/` son semánticamente equivalentes y producen el mismo estado de filtros.
+3. **Vocabularios Cerrados vs. Texto Libre**:
+   - **Persona**: `/director/{slug}/` o `/actor/{slug}/`. Prioridad absoluta. Texto libre (sin lista blanca), se envía tal cual al backend tras decodificar.
+   - **Género**: 1 segmento de una lista cerrada de **21 géneros canónicos** (`GENRE_SLUG_MAP`).
+   - **País**: 1 segmento de lista cerrada (`COUNTRY_SLUG_MAP`), que incluye ~120 países y 2 grupos regionales agregados (`/latam/`, `/nordic/`).
+   - **Estudio o Selección**: 1 segmento. Mutuamente excluyentes entre sí (`STUDIO_SLUGS`: 15 estudios mnemónicos; `SELECTION_SLUGS`: 10 selecciones).
+   - **Exclusiones**: Prefijo `no-` antepuesto al slug de género o país (`/no-animacion/`, `/no-eeuu/`).
+
+### B. Parámetros de Query String y Alias Soportados
+
+| Parámetro Canónico | Alias Aceptados | Formato / Valores Permitidos | Comportamiento |
+| :--- | :--- | :--- | :--- |
+| `year` | — | `"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"` | Recortado a límites `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]`. |
+| `sort` | `orden` | Slugs amigables (`recientes`, `antiguas`, `nota-fa`, `nota-imdb`, `votos-fa`, `votos-imdb`) o valores crudos (`year,desc`, `fa_rating,desc`...) | Si el valor es desconocido, cae a `DEFAULTS.SORT`. |
+| `search` | `buscar`, `q` | Texto libre | Se normaliza con `.trim()`. |
+| `type` | — | `all`, `movies`, `series` | Si es ajeno a este conjunto, cae a `DEFAULTS.MEDIA_TYPE`. |
+| `p` | `page` | Entero finito $\ge 1$ | Valores $\le 0$ o no numéricos caen a página `1`. |
+| `exg` | — | Slugs de géneros separados por comas | Parseado a `excludedGenres: string[]`. |
+| `exc` | — | Slugs de países separados por comas | Parseado a `excludedCountries: string[]`. |
+| `list` | — | `rated`, `watchlist`, `mixed` (o `true` $\to$ `mixed`) | Normalizado mediante `normalizeMyList`. |
+
+### C. Contrato de Personas y Compensación Backend (Lossy Slugs)
+
+`slugToPersonQuery` convierte todos los guiones en espacios (`"daniel-day-lewis"` $\to$ `"daniel day lewis"`). Esta transformación delega contractualmente en el backend de PostgreSQL:
+1. **Reconstrucción de slug**: Reconvierte espacios a guiones contra el índice `slug` (`directors.slug`, `actors.slug`).
+2. **Fallback Alfanumérico Estricto (Fases 3.6 y 3.7 de `search_movies_offset`)**:
+   Empareja `regexp_replace(name_norm, '[^a-z0-9]', '', 'g')`, de modo que `"danieldaylewis"` casa con `"Daniel Day-Lewis"` sin importar discrepancias de guiones en el cliente.
+3. **Expansión de colectivos/dúos**: Expansión vía `directors.components` (ej. Hermanos Russo $\leftrightarrow$ Joe y Anthony Russo).
+
+### D. Tabla de URLs Prohibidas, Rechazadas o Normalizadas
+
+Esta matriz está verificada por pruebas automatizadas de regresión en CI:
+
+| URL o Entrada | Causa de Rechazo / Análisis | Comportamiento del Contrato |
+| :--- | :--- | :--- |
+| `/ciencia-ficcion/` | No es un slug de `GENRE_SLUG_MAP` (el canónico oficial es `sci-fi`). | `slugToGenre` devuelve `null`; el segmento se ignora en silencio. |
+| `/w/` (letra única) | Código legado de 1 letra. `STUDIO_SLUGS` exige pertenencia a los 15 mnemónicos oficiales. | Se descarta; `studio: null`. |
+| `?sort=nota-negativa` | Valor inventado no presente en `SORT_SLUG_MAP` ni `SORT_VALUES`. | `normalizeSort` cae a `DEFAULTS.SORT` (`"relevance,desc"`). |
+| `?type=documentales` | No contemplado en `MEDIA_TYPES` (`all`, `movies`, `series`). | `normalizeMediaType` cae a `DEFAULTS.MEDIA_TYPE` (`"all"`). |
+| `?p=-3` o `?p=abc` | No cumple la exigencia de entero finito > 0. | `normalizePageNumber` cae a página `1`. |
+| `?year=3000` / `?year=1800` | Años fuera del intervalo real histórico y de producción. | Recortado con `Math.min`/`Math.max` a `CONFIG.YEAR_MIN` (1900) y `YEAR_MAX`. |
+| `/drama/no-drama/` | Coexistencia de género positivo con su propia exclusión. | La regla de exclusividad anula el positivo: queda `excludedGenres: ["Drama"]` y `genre: null`. |
+| `?list=true` | Booleano legado, no es valor de `MY_LIST_MODES`. | Se traduce especialmente a `"mixed"` antes de validar. |
+| `/Drama/`, `/EEUU/`, `/ drama /` | Mayúsculas, espacios accidentales o falta de trim. | `parsePrettyPath` aplica `.trim().toLowerCase()` a cada segmento; se resuelve idéntico a la versión canónica. |
+| Segmento desconocido (`/estrenos/`, typos) | No pertenece a ningún diccionario ni tiene prefijo reconocido. | Se ignora silenciosamente; no se interpreta como comodín. |
+
+---
 
 ## 3. Respuestas de API
 

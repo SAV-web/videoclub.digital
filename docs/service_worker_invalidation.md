@@ -20,9 +20,10 @@ Cada cambio de `VERSION` crea cachés nuevas y elimina todas las cachés cuyo no
 | --- | --- | --- | --- |
 | Navegación HTML | `Network First` | `CACHE_STATIC` | Se actualiza desde red siempre que haya conexión. Fallback a caché offline. |
 | `index.html` y manifiesto | Precarga en `install` (`CRITICAL_ASSETS`) | `CACHE_STATIC` | Requiere subida de `VERSION` (automatizado en el build). Los sprites e iconos SVG viajan inlined en el DOM de `index.html`. |
-| JS/CSS/fuentes/iconos | `Stale While Revalidate` | `CACHE_DYNAMIC` | Vite genera filenames con hash; el HTML nuevo referencia assets nuevos. |
-| Pósters Supabase Storage | `Cache First` | `CACHE_DYNAMIC` | Persisten hasta cambio de `VERSION` o expulsión FIFO por límite (200 items). |
+| JS/CSS/fuentes locales/iconos | `Stale While Revalidate` | `CACHE_DYNAMIC` | Vite genera filenames con hash; el HTML nuevo referencia assets nuevos. |
+| Pósters y fotos VIP (`/posters/*`, `/vips/*`) | `Cache First` | `CACHE_DYNAMIC` | Proxyeados en edge por Cloudflare Worker con `immutable` (1 año). En cliente persisten hasta cambio de `VERSION` o expulsión FIFO (200 items). |
 | Supabase RPC / Búsquedas | Memoria LRU Cliente | `src/js/api.ts` (`lru-cache`) | Excluidas de SW (viajan en POST, prohibido por W3C CacheStorage). Caché en memoria cliente multiescala (`queryCache` 30 min / 300 páginas, `suggestionsCache` 5 min / 100 items, `personCache` 1 h / 150 items) con deduplicación de peticiones en vuelo (`inFlightRequests`). |
+| Supabase Fonts & Assets Externos | Red Directa (Navegador nativo) | Bypass de SW | Aislamiento por origen estricto (`url.origin === self.location.origin`). Las fuentes en `*.supabase.co` se cargan de forma nativa sin interceptación cruzada (*cross-world mismatch*). |
 | Auth / REST directo | Sin caché | Directo a red | Nunca se interceptan para evitar fugas o datos privados obsoletos. |
 | Service Worker Script (`sw.js`) | Automática vía Vite | `public/sw.js` -> `dist/sw.js` | `vite.config.js` incluye un plugin (`injectSwVersion`) que reemplaza la constante `VERSION` con una marca temporal (`vYYYYMMDDHHMM`) en cada compilación. |
 
@@ -65,11 +66,12 @@ Antes de desplegar:
 4. Comprueba en DevTools > Application > Cache Storage que solo quedan caches `videoclub-*-vYYYYMMDDHHMM` actuales tras `activate`.
 5. Haz una prueba offline de navegación básica.
 
-## 7. Riesgos Conocidos
-
-- Los pósters usan `Cache First`; si se reemplaza una imagen manteniendo la misma ruta, el usuario puede conservar la versión antigua hasta limpieza por versión o FIFO.
-- `Auth` y `REST/RPC` directo quedan fuera de la caché del Service Worker; mantener esta excepción es obligatorio para evitar fugas, estados privados obsoletos y respetar la especificación W3C (métodos no-GET).
-
+## 7. Riesgos Conocidos y Mitigaciones
+ 
+ - **Pósters y Fotos VIP**: Usan `Cache First`; si se reemplaza una imagen manteniendo la misma ruta, el cliente conservará la versión antigua hasta limpieza por versión o FIFO.
+ - **Aislamiento de Origen Cruzado (*Cross-World Mismatch*)**: El Service Worker restringe sus reglas de almacenamiento dinámico estrictamente a `url.origin === self.location.origin`. Esto previene que recursos externos (como la fuente Inter alojada en Supabase Storage o scripts de terceros) sean interceptados indebidamente, eliminando advertencias de discrepancia con `<link rel="preload">`.
+ - **Exclusión de Peticiones no Idempotentes / Seguras**: `Auth` y `REST/RPC` directo quedan fuera de la caché del Service Worker; mantener esta excepción es obligatorio para evitar fugas, estados privados obsoletos y respetar la especificación W3C (métodos no-GET).
+ 
 ## 8. Relación con Otras Cachés
 
 `CONFIG.STORAGE_VERSION` en `src/js/constants.ts` afecta a `localStorage` gestionado por `LocalStore`, no a Cache Storage del Service Worker. Si cambia el formato de datos locales y también la respuesta cacheada por SW, deben incrementarse ambos mecanismos cuando corresponda.
