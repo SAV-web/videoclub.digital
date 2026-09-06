@@ -18,6 +18,15 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+// Cargar automáticamente .env si existe en ejecución local
+try {
+  if (typeof process.loadEnvFile === "function") {
+    process.loadEnvFile();
+  }
+} catch {
+  // Ignorar si no existe el archivo .env (ej. en CI donde se inyectan variables directamente)
+}
+
 const isStrict = process.argv.includes("--strict");
 
 const supabaseUrl =
@@ -27,6 +36,7 @@ const supabaseUrl =
 
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
   process.env.SUPABASE_KEY;
 
 console.log("\n🛡️  --- DataOps: Verificación de Contratos de Calidad de Datos ---");

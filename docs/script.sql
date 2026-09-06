@@ -742,7 +742,7 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     SELECT suggestion
     FROM all_matches
     GROUP BY suggestion
-    ORDER BY min(prefix_rank) ASC, max(movie_count) DESC, suggestion ASC
+    ORDER BY max(movie_count) DESC, min(prefix_rank) ASC, suggestion ASC
     LIMIT 10;
 $$;
 
