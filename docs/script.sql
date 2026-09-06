@@ -144,8 +144,10 @@ DECLARE
     v_director_names text[];
     v_actor_tsquery tsquery;
     v_enable_daily_showcase BOOLEAN := FALSE;
+    v_has_filters BOOLEAN := FALSE;
     v_showcase_limit INT := 378;
-    v_rank_column TEXT := '';
+    v_threshold_expr TEXT := '';
+    v_outer_threshold_expr TEXT := '';
 BEGIN
     -- FASE 1: VALIDACIÓN Y ORDENACIÓN
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
@@ -169,7 +171,7 @@ BEGIN
         ELSE 'ORDER BY m.relevance ASC, m.id ASC'
     END;
 
-    -- FASE 1.2: EVALUACIÓN DE DAILY SHOWCASE (Escaparate Diario Dinámico)
+    -- FASE 1.2: EVALUACIÓN DE DAILY SHOWCASE (Escaparate Diario Dinámico Adaptativo - Alternativa 2)
     -- Aplica en relevancia por defecto si no hay búsqueda por texto ni filtro de personas VIP (director/actor)
     IF v_safe_sort_field = 'relevance' 
        AND (search_term IS NULL OR TRIM(search_term) = '')
@@ -177,9 +179,21 @@ BEGIN
        AND (actor_name IS NULL OR TRIM(actor_name) = '') THEN
         
         v_enable_daily_showcase := TRUE;
-        
-        -- Si hay selección o estudio activo, la primera ficha de la UI la ocupa la tarjeta VIP (377 películas + 1 VIP = 378 slots)
-        -- En portada general o filtros de género/país, la ventana completa es de 378 películas (mcm de 42 y 54)
+
+        -- Detección de filtros temáticos activos
+        v_has_filters := (genre_name IS NOT NULL AND TRIM(genre_name) <> '')
+                      OR (country_name IS NOT NULL AND TRIM(country_name) <> '')
+                      OR (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0)
+                      OR (p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '')
+                      OR (p_studio_code IS NOT NULL AND TRIM(p_studio_code) <> '')
+                      OR (p_year_start IS NOT NULL)
+                      OR (p_year_end IS NOT NULL)
+                      OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 0)
+                      OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 0)
+                      OR (media_type IS NOT NULL AND lower(media_type) IN ('movies', 'series'));
+
+        -- Si hay selección o estudio activo en portada, la primera ficha de la UI la ocupa la tarjeta VIP (377 películas + 1 VIP = 378 slots)
+        -- En portada general limpia, la ventana completa es de 378 películas (mcm de 42 y 54)
         IF (p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '') 
            OR (p_studio_code IS NOT NULL AND TRIM(p_studio_code) <> '') THEN
             v_showcase_limit := 377;
@@ -187,25 +201,37 @@ BEGIN
             v_showcase_limit := 378;
         END IF;
 
-        v_rank_column := ', ROW_NUMBER() OVER (ORDER BY m.relevance ASC, m.id ASC) AS natural_rank';
+        -- ALTERNATIVA 2: Ventana Proporcional Adaptativa para filtros
+        -- Si hay filtros activos:
+        --   - < 50 películas: baraja solo el Top 12
+        --   - 50..200 películas: baraja solo el Top 24
+        --   - > 200 películas: baraja solo el Top 42
+        -- En portada general limpia (sin filtros): mantiene el escaparate amplio de 378 películas
+        IF v_has_filters THEN
+            v_threshold_expr := 'CASE WHEN m.total_matches < 50 THEN 12 WHEN m.total_matches <= 200 THEN 24 ELSE 42 END';
+            v_outer_threshold_expr := 'CASE WHEN fm.total_matches < 50 THEN 12 WHEN fm.total_matches <= 200 THEN 24 ELSE 42 END';
+        ELSE
+            v_threshold_expr := v_showcase_limit::text;
+            v_outer_threshold_expr := v_showcase_limit::text;
+        END IF;
 
         v_order_clause := format('
             ORDER BY 
-                CASE WHEN m.natural_rank <= %s THEN 0 ELSE 1 END ASC,
-                CASE WHEN m.natural_rank <= %s 
+                CASE WHEN m.natural_rank <= (%s) THEN 0 ELSE 1 END ASC,
+                CASE WHEN m.natural_rank <= (%s) 
                      THEN hashtext(m.id::text || (CURRENT_TIMESTAMP AT TIME ZONE ''Europe/Madrid'')::date::text) 
                 END ASC,
                 m.natural_rank ASC
-        ', v_showcase_limit, v_showcase_limit);
+        ', v_threshold_expr, v_threshold_expr);
 
         v_outer_order_clause := format('
             ORDER BY 
-                CASE WHEN fm.natural_rank <= %s THEN 0 ELSE 1 END ASC,
-                CASE WHEN fm.natural_rank <= %s 
+                CASE WHEN fm.natural_rank <= (%s) THEN 0 ELSE 1 END ASC,
+                CASE WHEN fm.natural_rank <= (%s) 
                      THEN hashtext(fm.id::text || (CURRENT_TIMESTAMP AT TIME ZONE ''Europe/Madrid'')::date::text) 
                 END ASC,
                 fm.natural_rank ASC
-        ', v_showcase_limit, v_showcase_limit);
+        ', v_outer_threshold_expr, v_outer_threshold_expr);
     ELSE
         v_outer_order_clause := v_order_clause;
     END IF;
@@ -328,7 +354,7 @@ BEGIN
     -- FASE 4: CONSTRUCCIÓN DINÁMICA DE LA CONSULTA SQL
     v_query := '
         WITH base_movies AS (
-            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance, m.type' || v_rank_column || '
+            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance, m.type
             FROM public.movies m
             WHERE
                 ($1 IS NULL OR $1 = '''' OR m.title_norm LIKE ''%'' || public.unaccent_immutable(lower($1)) || ''%'')
@@ -354,7 +380,8 @@ BEGIN
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         ),
         filtered_movies AS (
-            SELECT bm.id, bm.year, bm.fa_rating, bm.imdb_rating, bm.fa_votes, bm.imdb_votes, bm.avg_rating, bm.relevance' || CASE WHEN v_enable_daily_showcase THEN ', bm.natural_rank' ELSE '' END || '
+            SELECT bm.id, bm.year, bm.fa_rating, bm.imdb_rating, bm.fa_votes, bm.imdb_votes, bm.avg_rating, bm.relevance' || 
+            CASE WHEN v_enable_daily_showcase THEN ', ROW_NUMBER() OVER (ORDER BY bm.relevance ASC, bm.id ASC) AS natural_rank, COUNT(*) OVER () AS total_matches' ELSE '' END || '
             FROM base_movies bm
             WHERE
                 ($8 IS NULL OR $8 = ''all''
@@ -362,7 +389,7 @@ BEGIN
                  OR ($8 = ''series'' AND bm.type ILIKE ''S%''))
         )' || v_count_cte || ',
         paged_ids AS (
-            SELECT m.id' || CASE WHEN v_enable_daily_showcase THEN ', m.natural_rank' ELSE '' END || ' 
+            SELECT m.id' || CASE WHEN v_enable_daily_showcase THEN ', m.natural_rank, m.total_matches' ELSE '' END || ' 
             FROM filtered_movies m
             ' || v_order_clause || '
             LIMIT ' || v_limit || ' OFFSET ' || v_offset || '

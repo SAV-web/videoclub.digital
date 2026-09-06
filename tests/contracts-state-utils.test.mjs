@@ -811,4 +811,26 @@ describe("yearSlider.ts (DualRangeSlider)", () => {
   });
 });
 
+describe("contracts.ts - isAbortError", () => {
+  test("detecta AbortSignal abortado", () => {
+    const ac = new AbortController();
+    ac.abort();
+    assert.equal(contracts.isAbortError(new Error("cualquier error"), ac.signal), true);
+  });
+
+  test("NO cataloga como abort si se proveyó un AbortSignal explícito y este NO está abortado", () => {
+    const ac = new AbortController();
+    const networkError = new Error("AbortError: The user aborted a request.");
+    // A pesar de que el mensaje contenga 'Abort', el llamador no abortó el controller
+    assert.equal(contracts.isAbortError(networkError, ac.signal), false);
+  });
+
+  test("detecta errores estándar de abort si no se pasó signal", () => {
+    assert.equal(contracts.isAbortError({ name: "AbortError" }), true);
+    assert.equal(contracts.isAbortError({ message: "The request was aborted" }), true);
+    assert.equal(contracts.isAbortError({ message: "Network error" }), false);
+  });
+});
+
+
 

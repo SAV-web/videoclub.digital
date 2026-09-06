@@ -29,7 +29,7 @@ import {
   fetchMovieById
 } from "./api.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
-import { isAbortError, getAppBasePath, toSlug } from "./contracts.js";
+import { isAbortError, getAppBasePath, toSlug, createAppError, ERROR_CODES } from "./contracts.js";
 import { getAllLocalEntries, clearLocalStore } from "./localStore.js";
 import { mergeOnLogin, initSyncListeners, scheduleSync } from "./syncManager.js";
 import {
@@ -283,7 +283,10 @@ export async function loadAndRenderMovies(
 
     if (skeletonTimeout) clearTimeout(skeletonTimeout);
 
-    if (result.aborted) return;
+    if (result.aborted) {
+      if (signal.aborted) return;
+      throw createAppError(ERROR_CODES.NETWORK, "La conexión fue interrumpida. Inténtalo de nuevo.");
+    }
 
     const { items: movies, total: returnedTotal } = result;
 
@@ -1187,53 +1190,71 @@ export function init(): void {
   mainUnsubscribers.push(cleanupSync);
 
   if ("serviceWorker" in navigator) {
-    const notifySwUpdate = (worker: ServiceWorker) => {
-      showToast(
-        "Nueva versión disponible",
-        "info",
-        {
-          label: "Actualizar",
-          onClick: () => {
-            worker.postMessage({ type: "SKIP_WAITING" });
-          }
+    if (import.meta.env.DEV) {
+      // En desarrollo local (Vite HMR), desregistrar cualquier Service Worker residual para evitar conflictos de caché
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const reg of registrations) {
+          reg.unregister();
         }
-      );
-    };
-
-    const onSwLoad = () => {
-      const basePrefix = getAppBasePath();
-      const swPath = basePrefix ? `${basePrefix}/sw.js` : "/sw.js";
-      navigator.serviceWorker.register(swPath).then((registration) => {
-        // 1. Si ya hay un worker en espera (ej. otra pestaña instaló la actualización)
-        if (registration.waiting && navigator.serviceWorker.controller) {
-          notifySwUpdate(registration.waiting);
-        }
-
-        // 2. Escuchar cuando un nuevo worker termina de instalarse
-        registration.addEventListener("updatefound", () => {
-          const installingWorker = registration.installing;
-          if (!installingWorker) return;
-
-          installingWorker.addEventListener("statechange", () => {
-            if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
-              notifySwUpdate(installingWorker);
+      }).catch(() => {});
+    } else {
+      const notifySwUpdate = (worker: ServiceWorker) => {
+        showToast(
+          "Nueva versión disponible",
+          "info",
+          {
+            label: "Actualizar",
+            onClick: () => {
+              worker.postMessage({ type: "SKIP_WAITING" });
             }
+          }
+        );
+      };
+
+      const onSwLoad = () => {
+        const basePrefix = getAppBasePath();
+        const swPath = basePrefix ? `${basePrefix}/sw.js` : "/sw.js";
+        let hadController = Boolean(navigator.serviceWorker.controller);
+
+        navigator.serviceWorker.register(swPath).then((registration) => {
+          // 1. Si ya hay un worker en espera (ej. otra pestaña instaló la actualización)
+          if (registration.waiting && navigator.serviceWorker.controller) {
+            notifySwUpdate(registration.waiting);
+          }
+
+          // 2. Escuchar cuando un nuevo worker termina de instalarse
+          registration.addEventListener("updatefound", () => {
+            const installingWorker = registration.installing;
+            if (!installingWorker) return;
+
+            installingWorker.addEventListener("statechange", () => {
+              if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                notifySwUpdate(installingWorker);
+              }
+            });
           });
+        }).catch(err => {
+          if (import.meta.env.DEV) console.error("Fallo SW:", err);
         });
-      }).catch(err => {
-        if (import.meta.env.DEV) console.error("Fallo SW:", err);
-      });
 
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (refreshing) return;
-        refreshing = true;
-        window.location.reload();
-      });
-    };
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          // Si no había controller previo (primera visita / arranque en frío),
+          // el Service Worker simplemente ha tomado el control. NO recargar la página
+          // para no abortar peticiones en curso.
+          if (!hadController) {
+            hadController = true;
+            return;
+          }
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+      };
 
-    window.addEventListener("load", onSwLoad);
-    mainUnsubscribers.push(() => window.removeEventListener("load", onSwLoad));
+      window.addEventListener("load", onSwLoad);
+      mainUnsubscribers.push(() => window.removeEventListener("load", onSwLoad));
+    }
   }
 
   const handlePopState = async () => {

@@ -119,6 +119,21 @@ Esta matriz está verificada por pruebas automatizadas de regresión en CI:
 | `/Drama/`, `/EEUU/`, `/ drama /` | Mayúsculas, espacios accidentales o falta de trim. | `parsePrettyPath` aplica `.trim().toLowerCase()` a cada segmento; se resuelve idéntico a la versión canónica. |
 | Segmento desconocido (`/estrenos/`, typos) | No pertenece a ningún diccionario ni tiene prefijo reconocido. | Se ignora silenciosamente; no se interpreta como comodín. |
 
+### E. Contrato del Criterio por Defecto 'ORDEN' (Daily Showcase Adaptativo - Alternativa 2)
+
+Cuando el usuario navega con el orden por defecto (`sort: "relevance,asc"`, visualizado como **"Orden"** en la interfaz), el backend aplica un algoritmo híbrido de serendipia y relevancia estricta mediante `hashtext(id || fecha_madrid)`:
+
+1. **Sin Búsqueda de Texto ni Personas VIP**:
+   - Las búsquedas libres (`search_term`) y las filmografías de directores/actores **nunca se barajan**: siempre se ordenan 100% por relevancia pura para no desvirtuar los resultados de búsqueda ni las carreras cinematográficas.
+2. **Portada General (Home limpia sin filtros)**:
+   - Se barajan las **378 mejores películas** del catálogo (o **377** si hay una tarjeta VIP en cabecera), garantizando 9 páginas completas y variadas cada mañana sin perder el canon cualitativo.
+3. **Filtros Específicos (País, Género, Estudio, Selección, Años, Tipo)**:
+   La ventana de barajado se adapta automáticamente al volumen total de títulos que superan el filtro (`total_matches`):
+   - **Subcatálogos pequeños (`< 50` títulos)**: Se barajan únicamente las **Top 12** mejores películas.
+   - **Subcatálogos medianos (`50..200` títulos)**: Se barajan únicamente las **Top 24** mejores películas.
+   - **Subcatálogos grandes (`> 200` títulos)**: Se barajan únicamente las **Top 42** mejores películas (exactamente la primera página).
+   - **A partir del corte adaptativo**: A partir de la película 13, 25 o 43 en adelante, el catálogo continúa ordenado de forma **100% estricta por mérito y relevancia natural** (`relevance ASC, id ASC`).
+
 ---
 
 ## 3. Respuestas de API

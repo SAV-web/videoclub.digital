@@ -123,6 +123,12 @@ export const createAppError = (code: ErrorCode, message: string, cause: unknown 
 
 export function isAbortError(error: unknown, signal?: AbortSignal | null): boolean {
   if (signal?.aborted) return true;
+  if (signal && !signal.aborted) {
+    // Si el llamador proveyó un AbortSignal explícito y este NO está abortado,
+    // la aplicación no canceló la operación. Cualquier error de red o socket
+    // no debe ser interpretado como una cancelación voluntaria.
+    return false;
+  }
   const err = error as Record<string, unknown> | null | undefined;
   if (!err) return false;
   return err.name === "AbortError" ||
