@@ -286,7 +286,16 @@ export function fetchMovies(
   }
 
   const inFlightPromise = inFlightRequests.get(queryKey);
-  if (inFlightPromise) return inFlightPromise;
+  if (inFlightPromise) {
+    return inFlightPromise.then(res => {
+      // Si la petición previa en vuelo fue cancelada por otro contexto pero el llamador actual
+      // sigue activo (su signal NO está abortado), lanzamos una petición limpia e independiente.
+      if (res.aborted && signal && !signal.aborted) {
+        return fetchMovies(activeFilters, currentPage, pageSize, signal, requestCount, explicitOffset);
+      }
+      return res;
+    });
+  }
 
   let promise!: Promise<ApiResponse>;
   promise = (async () => {

@@ -394,9 +394,6 @@ export function setFilter(type: string, value: unknown, force: boolean = false):
   const currentVal = state.activeFilters[type as keyof ActiveFilters];
   if (areContractValuesEqual(currentVal, normalizedValue)) return true; // Nada cambia
 
-  const isNew = normalizedValue && !currentVal;
-  if (!force && isNew && getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS) return false;
-
   Reflect.set(state.activeFilters, type, normalizedValue);
 
   // Reglas de Exclusividad de Negocio

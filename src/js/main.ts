@@ -272,7 +272,7 @@ export async function loadAndRenderMovies(
 
     const shouldRequestCount = isYearFilter || (page === 1) || (currentKnownTotal === 0);
 
-    const result = await fetchMovies(
+    let result = await fetchMovies(
       activeFilters,
       page,
       fetchLimit,
@@ -285,7 +285,18 @@ export async function loadAndRenderMovies(
 
     if (result.aborted) {
       if (signal.aborted) return;
-      throw createAppError(ERROR_CODES.NETWORK, "La conexión fue interrumpida. Inténtalo de nuevo.");
+      // Si la petición fue abortada externamente pero este signal sigue activo,
+      // reintentamos de forma transparente una vez antes de desistir
+      const retryResult = await fetchMovies(
+        activeFilters,
+        page,
+        fetchLimit,
+        signal,
+        shouldRequestCount,
+        fetchOffset
+      );
+      if (retryResult.aborted || signal.aborted) return;
+      result = retryResult;
     }
 
     const { items: movies, total: returnedTotal } = result;
@@ -633,10 +644,7 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
     updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   }
 
-  if (!setFilter(type, value, force)) {
-    showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, "error");
-    return;
-  }
+  setFilter(type, value, force);
 
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");
@@ -1353,13 +1361,10 @@ export function init(): void {
     mainUnsubscribers.push(() => loginBtn.removeEventListener("click", onLoginClick));
   }
 
-  // Recuperar peticiones de red atascadas y sincronizar datos de usuario al recuperar el foco de la pestaña
+  // Sincronizar datos de usuario al recuperar el foco de la pestaña
   const handleMainVisibilityChange = () => {
     if (document.visibilityState === "visible") {
       scheduleSync(300);
-      if (document.body.classList.contains(CSS_CLASSES.IS_FETCHING)) {
-        loadAndRenderMovies(getCurrentPage());
-      }
     }
   };
 

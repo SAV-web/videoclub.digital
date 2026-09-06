@@ -495,10 +495,9 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
   }
 }
 
-// Enciende o apaga botones si llegas al límite de filtros
+// Actualiza el estado visual de los controles de filtro (activo / excluido)
 function updateAllFilterControls(): void {
   const activeFilters = getActiveFilters();
-  const limitReached = getActiveFilterCount() >= CONFIG.MAX_ACTIVE_FILTERS;
 
   const excludedGenresSet = new Set(activeFilters.excludedGenres || []);
   const excludedCountriesSet = new Set(activeFilters.excludedCountries || []);
@@ -547,26 +546,6 @@ function updateAllFilterControls(): void {
     }
 
     if (link.hidden !== shouldHide) link.hidden = shouldHide;
-
-    if (!shouldHide) {
-      const shouldDisable = limitReached;
-      if (link.hasAttribute("disabled") !== shouldDisable) {
-        link.toggleAttribute("disabled", shouldDisable);
-        link.setAttribute("aria-disabled", String(shouldDisable));
-        link.style.pointerEvents = shouldDisable ? "none" : "auto";
-        link.style.opacity = shouldDisable ? "0.5" : "1";
-      }
-    }
-  }
-
-  const filterInputs = document.getElementsByClassName("sidebar-filter-input") as HTMLCollectionOf<HTMLInputElement>;
-  for (let i = 0; i < filterInputs.length; i++) {
-    const input = filterInputs[i];
-    if (input.disabled !== limitReached) {
-      input.disabled = limitReached;
-      const form = input.closest("form");
-      input.placeholder = limitReached ? "Límite de filtros" : `Otro ${form?.dataset.filterType}...`;
-    }
   }
 
   if (dom.myListButton) {
@@ -800,12 +779,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
     if (mainSearchInput) mainSearchInput.value = "";
   }
 
-  if (!setFilter(type, newValue)) {
-    showToast(`Límite de ${CONFIG.MAX_ACTIVE_FILTERS} filtros alcanzado.`, "error");
-    if (type === 'selection' && previousFilters.studio) setFilter('studio', previousFilters.studio);
-    if (type === 'studio' && previousFilters.selection) setFilter('selection', previousFilters.selection);
-    return;
-  }
+  setFilter(type, newValue);
 
   renderFilterPills();
   const isYearFilter = type === 'year';
@@ -838,10 +812,7 @@ async function handleToggleExcludedFilterOptimistic(type: string, value: string)
     if (mainSearchInput) mainSearchInput.value = "";
   }
 
-  if (!toggleExcludedFilter(type, value)) {
-    showToast(`Límite de filtros alcanzado.`, "error");
-    return;
-  }
+  if (!toggleExcludedFilter(type, value)) return;
 
   const newState = getActiveFilters();
   const isNowExcluded = (type === 'genre' && newState.excludedGenres.includes(value)) ||

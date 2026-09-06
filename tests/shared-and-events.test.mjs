@@ -420,7 +420,6 @@ describe("src/js/state.ts (appEvents Lifecycle y Prevención de Fugas de Memoria
 
 describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
   test("SHARED_CONFIG mantiene los contratos reales del negocio", () => {
-    assert.equal(sharedConstants.SHARED_CONFIG.MAX_ACTIVE_FILTERS, 20);
     assert.equal(
       sharedConstants.SHARED_CONFIG.YEAR_MAX,
       new Date().getFullYear(),
@@ -432,10 +431,6 @@ describe("src/shared/constants.ts (Fuente Única de Verdad - SSOT)", () => {
   });
 
   test("spaConstants re-exporta exactamente las mismas referencias del SSOT", () => {
-    assert.strictEqual(
-      spaConstants.CONFIG.MAX_ACTIVE_FILTERS,
-      sharedConstants.SHARED_CONFIG.MAX_ACTIVE_FILTERS,
-    );
     assert.strictEqual(
       spaConstants.CONFIG.YEAR_MAX,
       sharedConstants.SHARED_CONFIG.YEAR_MAX,
