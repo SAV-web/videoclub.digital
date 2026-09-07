@@ -193,8 +193,8 @@ export function renderMovieHtml(movie, options = {}) {
   <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
   <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
-  <!-- Hoja de Estilos Externa Cacheable (SSOT) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card.css" />
+  <!-- Hoja de Estilos Externa Cacheable (SSOT con cache busting) -->
+  <link rel="stylesheet" href="${baseUrl}seo-card.css?v=2" />
 
   <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
   <script type="application/ld+json">${safeJsonLd(breadcrumbLd)}</script>
