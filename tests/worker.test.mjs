@@ -91,6 +91,46 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
         });
       }
 
+      // 1.B Simulación de Supabase RPC: search_movies_offset para taxonomías
+      if (urlStr.includes("/rest/v1/rpc/search_movies_offset")) {
+        let params = {};
+        try { params = typeof init.body === "string" ? JSON.parse(init.body) : (init.body || {}); } catch (_) {}
+        if (params.country_name === "EmptyCountry" || params.genre_name === "EmptyGenre") {
+          return new Response(JSON.stringify({ total: 0, items: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        const sampleTaxonomyMovies = [
+          {
+            id: 1,
+            title: "Matrix",
+            original_title: "The Matrix",
+            slug: "matrix-1999",
+            year: 1999,
+            type: null,
+            fa_rating: 7.9,
+            fa_votes: 199000,
+            directors: "Hermanas Wachowski"
+          },
+          {
+            id: 2,
+            title: "Origen",
+            original_title: "Inception",
+            slug: "origen-2010",
+            year: 2010,
+            type: null,
+            fa_rating: 8.0,
+            fa_votes: 160000,
+            directors: "Christopher Nolan"
+          }
+        ];
+        return new Response(JSON.stringify({ total: 2, items: sampleTaxonomyMovies }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
       // 2. Simulación de Supabase Storage: Pósters
       if (urlStr.startsWith(`${SUPABASE_STORAGE_URL}/posters/`)) {
         if (urlStr.includes("not-found")) {
@@ -322,5 +362,62 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     const text = await res.text();
     assert.ok(text.includes("<sitemapindex"));
     assert.ok(text.includes("https://videoclub.digital/sitemap.xml"));
+  });
+
+  test("Taxonomías: /sci-fi redirige con 301 a /sci-fi/", async () => {
+    const req = new Request("https://videoclub.digital/sci-fi");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 301);
+    assert.equal(res.headers.get("Location"), "https://videoclub.digital/sci-fi/");
+  });
+
+  test("Taxonomías: /sci-fi/ entrega 200 OK con CollectionPage, ItemList y Cache-Control", async () => {
+    const req = new Request("https://videoclub.digital/sci-fi/");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    assert.ok(res.headers.get("Content-Type").includes("text/html"));
+    assert.ok(res.headers.get("Cache-Control").includes("s-maxage=604800"));
+    const html = await res.text();
+    assert.ok(html.includes("Películas y Series de Ciencia Ficción"));
+    assert.ok(html.includes('"@type":"CollectionPage"'));
+    assert.ok(html.includes('"@type":"ItemList"'));
+    assert.ok(html.includes("Matrix"));
+  });
+
+  test("Taxonomías: Países, Estudios y Selecciones (/espana/, /latam/, /criterion/, /a24/) responden 200 OK", async () => {
+    const routes = ["/espana/", "/latam/", "/criterion/", "/a24/"];
+    for (const r of routes) {
+      const req = new Request(`https://videoclub.digital${r}`);
+      const res = await worker.fetch(req, {}, defaultCtx);
+      assert.equal(res.status, 200, `Ruta ${r} debe responder 200`);
+      const html = await res.text();
+      assert.ok(html.includes('"@type":"CollectionPage"'));
+    }
+  });
+
+  test("Taxonomías: Purga de /sci-fi/ invalida la caché", async () => {
+    const purgeReq = new Request("https://videoclub.digital/internal/purge", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer videoclub-purge-secret",
+      },
+      body: JSON.stringify({ slugs: ["sci-fi"] }),
+    });
+    const purgeRes = await worker.fetch(purgeReq, {}, defaultCtx);
+    assert.equal(purgeRes.status, 200);
+    const body = await purgeRes.json();
+    assert.equal(body.success, true);
+  });
+
+  test("Estilos: /seo-card-v3.css se sirve desde Edge Memory con reglas de colección", async () => {
+    const req = new Request("https://videoclub.digital/seo-card-v3.css");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("Content-Type"), "text/css; charset=utf-8");
+    assert.ok(res.headers.get("Cache-Control").includes("immutable"));
+    const css = await res.text();
+    assert.ok(css.includes(".collection-main"), "Debe contener estilos de colección");
+    assert.ok(css.includes(".collection-card"), "Debe contener estilos de tarjeta de colección");
   });
 });

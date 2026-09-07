@@ -14,6 +14,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import {
+  GENRE_MAP,
+  STUDIO_MAP,
+  SELECTION_MAP,
+  REGIONAL_GROUPS_MAP,
+  ACTIVE_COUNTRIES_MAP
+} from "../cloudflare/seo/taxonomy-types.js";
 
 // Cargar .env si existe en entorno local
 try {
@@ -96,6 +103,23 @@ async function generateSitemap() {
     <priority>0.9</priority>
   </url>`
   ];
+
+  // 126 Landings Canónicas de Taxonomías Cerradas (Géneros, Estudios, Selecciones y Países activos)
+  const taxonomySlugs = [
+    ...Object.keys(GENRE_MAP),
+    ...Object.keys(STUDIO_MAP),
+    ...Object.keys(SELECTION_MAP),
+    ...Object.keys(REGIONAL_GROUPS_MAP),
+    ...Object.keys(ACTIVE_COUNTRIES_MAP)
+  ];
+
+  for (const taxSlug of taxonomySlugs) {
+    urlEntries.push(`  <url>
+    <loc>${SITE_ORIGIN}/${taxSlug}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+  }
 
   for (const slug of slugs) {
     urlEntries.push(`  <url>

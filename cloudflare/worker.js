@@ -17,6 +17,8 @@
 import { renderMovieHtml } from "./seo/render-movie.js";
 import { MOVIE_PROJECTION } from "./seo/seo-types.js";
 import { SEO_CARD_CSS } from "./seo/seo-card-css.js";
+import { resolveTaxonomy } from "./seo/taxonomy-types.js";
+import { renderTaxonomyHtml } from "./seo/render-taxonomy.js";
 
 const DEFAULT_SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 const DEFAULT_SUPABASE_URL = "https://wibygecgfczcvaqewleq.supabase.co";
@@ -45,11 +47,15 @@ export default {
       const cache = caches.default;
       let purgedCount = 0;
       for (const slug of slugs) {
-        const canonicalTarget = new URL(`/titulo/${slug}/`, url.origin).toString();
-        const nonSlashTarget = new URL(`/titulo/${slug}`, url.origin).toString();
-        const p1 = await cache.delete(canonicalTarget);
-        const p2 = await cache.delete(nonSlashTarget);
-        if (p1 || p2) purgedCount++;
+        const canonicalMovie = new URL(`/titulo/${slug}/`, url.origin).toString();
+        const nonSlashMovie = new URL(`/titulo/${slug}`, url.origin).toString();
+        const canonicalTax = new URL(`/${slug}/`, url.origin).toString();
+        const nonSlashTax = new URL(`/${slug}`, url.origin).toString();
+        const p1 = await cache.delete(canonicalMovie);
+        const p2 = await cache.delete(nonSlashMovie);
+        const p3 = await cache.delete(canonicalTax);
+        const p4 = await cache.delete(nonSlashTax);
+        if (p1 || p2 || p3 || p4) purgedCount++;
       }
       return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
         status: 200,
@@ -58,7 +64,7 @@ export default {
     }
 
     // 1.B SERVIR HOJA DE ESTILOS SEO DIRECTAMENTE DESDE EDGE MEMORY (0ms Origin roundtrip)
-    if (url.pathname === "/seo-card.css" || url.pathname === "/seo-card-v2.css") {
+    if (url.pathname === "/seo-card.css" || url.pathname === "/seo-card-v2.css" || url.pathname === "/seo-card-v3.css") {
       return new Response(SEO_CARD_CSS, {
         status: 200,
         headers: {
@@ -143,6 +149,66 @@ export default {
       }
     }
 
+    // 3.C RENDERER SEO EN EDGE PARA TAXONOMÍAS CERRADAS (Géneros, Países, Estudios, Selecciones)
+    const rawPath = url.pathname.replace(/^\/+|\/+$/g, "").trim();
+    if (rawPath && !rawPath.includes("/")) {
+      const taxInfo = resolveTaxonomy(rawPath);
+      if (taxInfo) {
+        // Redirección canónica 301 si no tiene trailing slash
+        if (!url.pathname.endsWith("/")) {
+          const canonicalRedirectUrl = new URL(`/${taxInfo.canonicalSlug}/${url.search}`, url.origin);
+          return Response.redirect(canonicalRedirectUrl.toString(), 301);
+        }
+
+        const cache = caches.default;
+        const canonicalKey = new Request(new URL(`/${taxInfo.canonicalSlug}/`, url.origin).toString(), request);
+
+        // Intento en Edge Cache (Cache HIT en ~15-25ms)
+        const cached = await cache.match(canonicalKey);
+        if (cached) {
+          return cached;
+        }
+
+        // Cache MISS: Consulta RPC search_movies_offset a Supabase
+        const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+        try {
+          const apiResponse = await fetch(rpcUrl, {
+            method: "POST",
+            headers: {
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${supabaseAnonKey}`,
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            body: JSON.stringify(taxInfo.rpcParams)
+          });
+
+          if (apiResponse.ok) {
+            const data = await apiResponse.json();
+            const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+            
+            // Regla Anti-Thin Content: Si no hay películas para este país/taxonomía, delegar al origen
+            if (items.length > 0) {
+              const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
+              const responseHeaders = new Headers({
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+              });
+              const response = new Response(html, {
+                status: 200,
+                headers: responseHeaders
+              });
+              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+              return response;
+            }
+          }
+        } catch (err) {
+          // En caso de fallo transitorio, delegar al origen
+        }
+      }
+    }
+
     // 4. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs)
     const isRootPath = url.pathname === "/" || url.pathname === "";
     if (acceptHeader.includes("text/markdown") && isRootPath) {
@@ -175,8 +241,8 @@ export default {
     const response = await fetch(request);
     const headers = new Headers(response.headers);
 
-    // 7.A Assets versionados con hash (/assets/*) y /seo-card.css -> Caché inmutable (1 año)
-    if (url.pathname.startsWith("/assets/") || url.pathname === "/seo-card.css") {
+    // 7.A Assets versionados con hash (/assets/*) y /seo-card*.css -> Caché inmutable (1 año)
+    if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/seo-card")) {
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
     }
     // 7.B Respuestas HTML / Rutas SPA -> Revalidación y cabecera Link para Agentes
