@@ -1,27 +1,118 @@
 /**
  * =================================================================
- *   CLOUDFLARE WORKER: VIDEOCLUB.DIGITAL EDGE OPTIMIZER
+ *   CLOUDFLARE WORKER: VIDEOCLUB.DIGITAL EDGE OPTIMIZER & SEO SSR
  * =================================================================
  * 
  * Responsabilidades Clave:
- * 1. Cache-Control inmutable (1 año) para assets con hash (/assets/*).
- * 2. Proxy y Edge Cache perpetuo para pósters (/posters/*) y fotos VIP (/vips/*)
- *    de Supabase Storage, reduciendo el consumo de egress a prácticamente cero.
- * 3. Negociación de contenido Markdown (Accept: text/markdown) para Agentes de IA.
- * 4. Inyección de cabeceras HTTP Link (Link: </llms.txt>; rel="alternate"; type="text/markdown").
- * 5. Control de revalidación para HTML y rutas SPA (must-revalidate).
+ * 1. Renderer SEO en Edge bajo demanda (/titulo/:slug/) con Edge Cache explícito (TTL 7 días).
+ * 2. Normalización canónica (301 de /titulo/:slug a /titulo/:slug/) para evitar duplicación.
+ * 3. Endpoint de invalidación selectiva perimetral (POST /internal/purge).
+ * 4. Cache-Control inmutable (1 año) para assets con hash (/assets/*) y /seo-card.css.
+ * 5. Proxy y Edge Cache perpetuo para pósters (/posters/*) y fotos VIP (/vips/*).
+ * 6. Negociación de contenido Markdown (Accept: text/markdown) para Agentes de IA en la raíz.
+ * 7. Inyección de cabeceras HTTP Link rel="alternate" para agentes.
+ * 8. Delegación transparente al origen (GitHub Pages) con revalidación segura.
  */
 
-const SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
+import { renderMovieHtml } from "./seo/render-movie.js";
+import { MOVIE_PROJECTION } from "./seo/seo-types.js";
+
+const DEFAULT_SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
+const DEFAULT_SUPABASE_URL = "https://wibygecgfczcvaqewleq.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const acceptHeader = request.headers.get("Accept") || "";
+    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+    const supabaseAnonKey = env?.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+    const storageUrl = env?.SUPABASE_STORAGE_URL || DEFAULT_SUPABASE_STORAGE_URL;
 
-    // 1. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs)
-    // Se acota estrictamente a la raíz del sitio ("/" o "") para no secuestrar
-    // fichas de películas (/titulo/...), páginas de filtro ni entidades VIP.
+    // 1. ENDPOINT DE INVALIDACIÓN SELECTIVA DE CACHÉ (POST /internal/purge)
+    if (url.pathname === "/internal/purge" && request.method === "POST") {
+      const purgeSecret = env?.PURGE_SECRET || "videoclub-purge-secret";
+      const authHeader = request.headers.get("Authorization");
+      if (authHeader !== `Bearer ${purgeSecret}`) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      const body = await request.json().catch(() => ({}));
+      const slugs = Array.isArray(body.slugs) ? body.slugs : [];
+      const cache = caches.default;
+      let purgedCount = 0;
+      for (const slug of slugs) {
+        const canonicalTarget = new URL(`/titulo/${slug}/`, url.origin).toString();
+        const nonSlashTarget = new URL(`/titulo/${slug}`, url.origin).toString();
+        const p1 = await cache.delete(canonicalTarget);
+        const p2 = await cache.delete(nonSlashTarget);
+        if (p1 || p2) purgedCount++;
+      }
+      return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 2. NORMALIZACIÓN CANÓNICA 301 DE TRAILING SLASH PARA /titulo/:slug
+    if (url.pathname.startsWith("/titulo/") && !url.pathname.endsWith("/")) {
+      const canonicalRedirectUrl = new URL(`${url.pathname}/${url.search}`, url.origin);
+      return Response.redirect(canonicalRedirectUrl.toString(), 301);
+    }
+
+    // 3. RENDERER SEO EN EDGE BAJO DEMANDA (/titulo/:slug/)
+    if (url.pathname.startsWith("/titulo/")) {
+      const slug = url.pathname.replace(/^\/titulo\//, "").replace(/\/$/, "").trim();
+      if (slug) {
+        const cache = caches.default;
+        const canonicalKey = new Request(new URL(`/titulo/${slug}/`, url.origin).toString(), request);
+        
+        // 3.A Intento en Edge Cache (Cache HIT en ~10-15ms)
+        const cached = await cache.match(canonicalKey);
+        if (cached) {
+          return cached;
+        }
+
+        // 3.B Cache MISS: Consulta puntual a Supabase REST con proyección mínima
+        const queryUrl = `${supabaseUrl}/rest/v1/movies?slug=eq.${encodeURIComponent(slug)}&select=${MOVIE_PROJECTION}&limit=1`;
+        
+        try {
+          const apiResponse = await fetch(queryUrl, {
+            headers: {
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${supabaseAnonKey}`,
+              Accept: "application/json"
+            }
+          });
+
+          if (apiResponse.ok) {
+            const rows = await apiResponse.json();
+            if (Array.isArray(rows) && rows.length > 0) {
+              const movie = rows[0];
+              const html = renderMovieHtml(movie, { siteOrigin: url.origin, baseUrl: "/" });
+              const responseHeaders = new Headers({
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+              });
+              const response = new Response(html, {
+                status: 200,
+                headers: responseHeaders
+              });
+              // Almacenar en Edge Cache de forma asíncrona
+              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+              return response;
+            }
+          }
+        } catch (err) {
+          // En caso de fallo transitorio en Supabase, delegar en el origin
+        }
+      }
+    }
+
+    // 4. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs)
     const isRootPath = url.pathname === "/" || url.pathname === "";
     if (acceptHeader.includes("text/markdown") && isRootPath) {
       const llmsUrl = new URL("/llms.txt", url.origin);
@@ -35,29 +126,29 @@ export default {
       });
     }
 
-    // 2. PROXY & EDGE CACHE PARA PÓSTERS DE SUPABASE (/posters/*)
+    // 5. PROXY & EDGE CACHE PARA PÓSTERS DE SUPABASE (/posters/*)
     if (url.pathname.startsWith("/posters/")) {
       const imagePath = url.pathname.replace(/^\/posters\//, "");
-      const originImageUrl = `${SUPABASE_STORAGE_URL}/posters/${imagePath}`;
+      const originImageUrl = `${storageUrl}/posters/${imagePath}`;
       return fetchAndCacheImage(originImageUrl, request, ctx);
     }
 
-    // 3. PROXY & EDGE CACHE PARA PERFILES VIP DE SUPABASE (/vips/*)
+    // 6. PROXY & EDGE CACHE PARA PERFILES VIP DE SUPABASE (/vips/*)
     if (url.pathname.startsWith("/vips/")) {
       const imagePath = url.pathname.replace(/^\/vips\//, "");
-      const originImageUrl = `${SUPABASE_STORAGE_URL}/vips/${imagePath}`;
+      const originImageUrl = `${storageUrl}/vips/${imagePath}`;
       return fetchAndCacheImage(originImageUrl, request, ctx);
     }
 
-    // 4. PETICIÓN POR DEFECTO AL ORIGEN (GitHub Pages)
+    // 7. PETICIÓN POR DEFECTO AL ORIGEN (GitHub Pages)
     const response = await fetch(request);
     const headers = new Headers(response.headers);
 
-    // 4.A Assets versionados con hash (/assets/*) -> Caché inmutable (1 año)
-    if (url.pathname.startsWith("/assets/")) {
+    // 7.A Assets versionados con hash (/assets/*) y /seo-card.css -> Caché inmutable (1 año)
+    if (url.pathname.startsWith("/assets/") || url.pathname === "/seo-card.css") {
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
     }
-    // 4.B Respuestas HTML / Rutas SPA -> Revalidación y cabecera Link para Agentes
+    // 7.B Respuestas HTML / Rutas SPA -> Revalidación y cabecera Link para Agentes
     else if (headers.get("Content-Type")?.includes("text/html") || !url.pathname.includes(".")) {
       headers.set("Cache-Control", "public, max-age=0, must-revalidate");
       headers.set("Link", '</llms.txt>; rel="alternate"; type="text/markdown"');
@@ -78,13 +169,11 @@ async function fetchAndCacheImage(originUrl, request, ctx) {
   const cache = caches.default;
   const cacheKey = new Request(request.url, request);
 
-  // Intentar responder directamente desde la caché perimetral de Cloudflare
   let response = await cache.match(cacheKey);
   if (response) {
     return response;
   }
 
-  // Si no está en caché, solicitar al bucket de Supabase con caché perimetral
   const originResponse = await fetch(originUrl, {
     cf: {
       cacheTtl: 31536000,
@@ -106,7 +195,6 @@ async function fetchAndCacheImage(originUrl, request, ctx) {
     headers,
   });
 
-  // Guardar en la caché de Cloudflare de forma asíncrona sin bloquear la respuesta
-  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  ctx?.waitUntil?.(cache.put(cacheKey, response.clone()));
   return response;
 }

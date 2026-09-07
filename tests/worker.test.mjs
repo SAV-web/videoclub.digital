@@ -37,6 +37,10 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
           const url = typeof request === "string" ? request : request.url;
           cacheStore.set(url, response.clone());
         },
+        delete: async (request) => {
+          const url = typeof request === "string" ? request : request.url;
+          return cacheStore.delete(url);
+        },
       },
     };
 
@@ -51,7 +55,43 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       const urlStr = typeof input === "string" ? input : input.url;
       fetchCalls.push({ url: urlStr, init });
 
-      // 1. Simulación de Supabase Storage: Pósters
+      // 1. Simulación de Supabase REST API: Consulta de películas por slug
+      if (urlStr.includes("/rest/v1/movies")) {
+        if (urlStr.includes("slug=eq.not-found")) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        const sampleMovie = {
+          id: 10,
+          title: "Cadena perpetua & Andy",
+          original_title: "The Shawshank Redemption",
+          slug: "cadena-perpetua-1994",
+          year: 1994,
+          type: "movie",
+          genres_list: "Drama, Crimen",
+          directors_list: "Frank Darabont",
+          actors_list: "Tim Robbins, Morgan Freeman",
+          studios_list: "warner",
+          synopsis: "Andy Dufresne en la prisión de Shawshank <script>alert(1)</script>.",
+          minutes: 142,
+          fa_id: "https://www.filmaffinity.com/es/film161026.html",
+          fa_rating: 8.6,
+          fa_votes: 168000,
+          imdb_id: "https://www.imdb.com/title/tt0111161/",
+          imdb_rating: 9.3,
+          imdb_votes: 2800000,
+          avg_rating: 9.0,
+          countries: { name: "Estados Unidos", code: "US" },
+        };
+        return new Response(JSON.stringify([sampleMovie]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // 2. Simulación de Supabase Storage: Pósters
       if (urlStr.startsWith(`${SUPABASE_STORAGE_URL}/posters/`)) {
         if (urlStr.includes("not-found")) {
           return new Response("Not Found", { status: 404, statusText: "Not Found" });
@@ -62,7 +102,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
         });
       }
 
-      // 2. Simulación de Supabase Storage: Fotos VIP
+      // 3. Simulación de Supabase Storage: Fotos VIP
       if (urlStr.startsWith(`${SUPABASE_STORAGE_URL}/vips/`)) {
         return new Response("fake-image-binary-vip", {
           status: 200,
@@ -70,7 +110,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
         });
       }
 
-      // 3. Simulación de Origin: llms.txt
+      // 4. Simulación de Origin: llms.txt
       if (urlStr.endsWith("/llms.txt")) {
         return new Response("# videoclub.digital LLMS Guide", {
           status: 200,
@@ -78,15 +118,15 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
         });
       }
 
-      // 4. Simulación de Origin: Assets versionados con hash
-      if (urlStr.includes("/assets/")) {
-        return new Response("/* compiled bundle */", {
+      // 5. Simulación de Origin: Assets versionados con hash y seo-card.css
+      if (urlStr.includes("/assets/") || urlStr.endsWith("/seo-card.css")) {
+        return new Response("/* compiled css or bundle */", {
           status: 200,
-          headers: { "Content-Type": "text/javascript" },
+          headers: { "Content-Type": "text/css" },
         });
       }
 
-      // 5. Simulación de Origin: HTML de SPA / Fichas
+      // 6. Simulación de Origin: HTML de SPA / Fallback
       return new Response("<!DOCTYPE html><html><head><title>Videoclub</title></head><body></body></html>", {
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -102,7 +142,6 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
     assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
 
-    // Verificar que invocó exactamente la URL de Supabase con opciones cf de caché
     assert.equal(fetchCalls.length, 1);
     assert.equal(
       fetchCalls[0].url,
@@ -111,7 +150,6 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(fetchCalls[0].init?.cf?.cacheTtl, 31536000);
     assert.equal(fetchCalls[0].init?.cf?.cacheEverything, true);
 
-    // Segunda petición: debe servirse de la caché perimetral sin volver a invocar fetch
     const cachedResponse = await worker.fetch(request, {}, defaultCtx);
     assert.equal(cachedResponse.status, 200);
     assert.equal(fetchCalls.length, 1, "La segunda petición debe resolverse desde caches.default");
@@ -152,7 +190,6 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
   });
 
   test("Negociación Markdown NO secuestra rutas SPA ni páginas internas", async () => {
-    // Si la petición a una ficha o filtro solicita markdown, NO debe entregar el llms.txt genérico
     const request = new Request("https://videoclub.digital/drama/", {
       headers: { Accept: "text/markdown, text/html" },
     });
@@ -163,12 +200,16 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(response.headers.get("Content-Type")?.includes("text/html"));
   });
 
-  test("Assets con hash (/assets/*) reciben directiva Cache-Control inmutable (1 año)", async () => {
-    const request = new Request("https://videoclub.digital/assets/index-BwCqPT0a.css");
-    const response = await worker.fetch(request, {}, defaultCtx);
+  test("Assets con hash (/assets/*) y /seo-card.css reciben directiva Cache-Control inmutable (1 año)", async () => {
+    const reqAsset = new Request("https://videoclub.digital/assets/index-BwCqPT0a.css");
+    const resAsset = await worker.fetch(reqAsset, {}, defaultCtx);
+    assert.equal(resAsset.status, 200);
+    assert.equal(resAsset.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
 
-    assert.equal(response.status, 200);
-    assert.equal(response.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
+    const reqCss = new Request("https://videoclub.digital/seo-card.css");
+    const resCss = await worker.fetch(reqCss, {}, defaultCtx);
+    assert.equal(resCss.status, 200);
+    assert.equal(resCss.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
   });
 
   test("Páginas HTML inyectan cabecera Link rel='alternate' y must-revalidate", async () => {
@@ -178,5 +219,98 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("Cache-Control"), "public, max-age=0, must-revalidate");
     assert.equal(response.headers.get("Link"), '</llms.txt>; rel="alternate"; type="text/markdown"');
+  });
+
+  // =================================================================
+  //              PRUEBAS DE LA FASE 1B (EDGE SSR & CACHÉ)
+  // =================================================================
+
+  test("Normalización de Trailing Slash: /titulo/:slug redirige con 301 a /titulo/:slug/", async () => {
+    const request = new Request("https://videoclub.digital/titulo/cadena-perpetua-1994");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 301);
+    assert.equal(
+      response.headers.get("Location"),
+      "https://videoclub.digital/titulo/cadena-perpetua-1994/"
+    );
+  });
+
+  test("Edge SSR: Cache MISS genera HTML seguro con Schema.org, metadatos y guarda en Edge Cache", async () => {
+    const request = new Request("https://videoclub.digital/titulo/cadena-perpetua-1994/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Content-Type"), "text/html; charset=utf-8");
+    assert.equal(
+      response.headers.get("Cache-Control"),
+      "public, s-maxage=604800, stale-while-revalidate=86400"
+    );
+
+    const html = await response.text();
+
+    // Verificación de seguridad (escapado contra inyecciones)
+    assert.ok(html.includes("Cadena perpetua &amp; Andy"));
+    assert.ok(html.includes("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    assert.ok(!html.includes("<script>alert(1)</script>"));
+
+    // Verificación de Schema.org JSON-LD
+    assert.match(html, /"@type":"Movie"/);
+    assert.match(html, /"@type":"BreadcrumbList"/);
+    assert.match(html, /Frank Darabont/);
+
+    // Verificación de Speculation Rules y CSS
+    assert.ok(html.includes("<script type=\"speculationrules\">"));
+    assert.ok(html.includes("href=\"/seo-card.css\""));
+
+    // Segunda petición (Cache HIT): debe responder desde caches.default sin invocar a Supabase
+    const initialFetchCalls = fetchCalls.length;
+    const cachedResponse = await worker.fetch(request, {}, defaultCtx);
+    assert.equal(cachedResponse.status, 200);
+    assert.equal(fetchCalls.length, initialFetchCalls, "No debe invocar fetch en Cache HIT");
+  });
+
+  test("Edge SSR: Título inexistente en Supabase delega al origen", async () => {
+    const request = new Request("https://videoclub.digital/titulo/not-found/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 200);
+    // Debe haber llamado a Supabase y luego al origen HTML de fallback
+    assert.ok(fetchCalls.some(c => c.url.includes("slug=eq.not-found")));
+  });
+
+  test("Purga Selectiva: POST /internal/purge valida autorización e invalida claves en caché", async () => {
+    const edgeUrl = "https://videoclub.digital/titulo/cadena-perpetua-1994/";
+    const getReq = new Request(edgeUrl);
+    await worker.fetch(getReq, {}, defaultCtx);
+
+    // Intento no autorizado: 401
+    const unauthReq = new Request("https://videoclub.digital/internal/purge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slugs: ["cadena-perpetua-1994"] }),
+    });
+    const unauthRes = await worker.fetch(unauthReq, {}, defaultCtx);
+    assert.equal(unauthRes.status, 401);
+
+    // Intento autorizado: 200 y purga
+    const authReq = new Request("https://videoclub.digital/internal/purge", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer videoclub-purge-secret",
+      },
+      body: JSON.stringify({ slugs: ["cadena-perpetua-1994"] }),
+    });
+    const authRes = await worker.fetch(authReq, {}, defaultCtx);
+    assert.equal(authRes.status, 200);
+    const result = await authRes.json();
+    assert.equal(result.success, true);
+    assert.equal(result.purged, 1);
+
+    // Tras la purga, la siguiente llamada debe ser un nuevo MISS que consulte Supabase
+    const beforeCount = fetchCalls.length;
+    await worker.fetch(getReq, {}, defaultCtx);
+    assert.ok(fetchCalls.length > beforeCount, "Debe consultar de nuevo a Supabase tras la purga");
   });
 });
