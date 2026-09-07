@@ -381,10 +381,15 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("Películas y Series de Ciencia Ficción"));
     assert.ok(html.includes('"@type":"CollectionPage"'));
     assert.ok(html.includes('"@type":"ItemList"'));
-    assert.ok(html.includes("Matrix"));
     assert.ok(html.includes("movie-card"), "Debe usar la clase oficial .movie-card");
     assert.ok(html.includes("grid-container"), "Debe usar el grid oficial .grid-container");
     assert.ok(html.includes("filter-pill"), "Debe incluir el filtro activo .filter-pill");
+    assert.ok(html.includes('href="/?_p=/sci-fi/"'), "El nombre de la sección debe enlazar a la SPA");
+    assert.ok(!html.includes("Total:"), "NO debe contener el contador Total:");
+    assert.ok(!html.includes("btn-open-spa"), "NO debe contener el botón Explorar");
+    assert.ok(html.includes("Aviso legal"), "El footer debe contener los avisos legales");
+    assert.ok(html.includes("actors-expand-btn"), "Debe incluir el botón + de reparto");
+    assert.ok(html.includes("actors-scrollable-content"), "Debe incluir el overlay deslizable de reparto");
     assert.ok(html.includes("seo-card-v4.css"), "Debe enlazar con seo-card-v4.css");
     assert.ok(!html.includes("collection-hero"), "NO debe contener el bloque hero invasivo");
   });

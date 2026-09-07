@@ -39,7 +39,7 @@ function safeJsonLd(obj) {
 /**
  * Renderiza una tarjeta de película idéntica al componente oficial de la SPA (.movie-card)
  * con soporte para giro 3D (flip card), estrellas doradas dinámicas, banderas SVG,
- * notas de FilmAffinity / IMDb y sinopsis.
+ * notas de FilmAffinity / IMDb, sinopsis y expansión interactiva de reparto.
  */
 function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
   const isSeries = isSeriesType(movie.type);
@@ -77,23 +77,28 @@ function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
   const titleLengthClass = getTitleLengthClass(title);
   const origTitleLengthClass = getTitleLengthClass(displayOriginalTitle);
 
-  // Directores front
+  // Directores frontal (enlace directo a la SPA con filtro activo)
   const directorsHtml = directors.map((name, i) => `
-    <a href="${baseUrl}director/${toSlug(name)}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < directors.length - 1 ? ', ' : ''}
+    <a href="${baseUrl}?_p=/director/${toSlug(name)}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < directors.length - 1 ? ', ' : ''}
   `).join('');
 
-  // Iconos estudios
+  // Iconos estudios (enlace directo a la SPA con filtro de estudio)
   const validStudios = studios.filter(code => STUDIO_DATA[code]);
   const studiosHtml = validStudios.map(code => {
     const conf = STUDIO_DATA[code];
     return `
-      <span class="platform-icon ${conf.class}" title="${escapeAttr(conf.title)}">
+      <a href="${baseUrl}?_p=/${code}/" class="platform-icon ${conf.class}" title="${escapeAttr(conf.title)}" style="display:inline-flex; align-items:center; color:inherit; text-decoration:none;">
         <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="0 0 24 24">
           <use href="${baseUrl}sprite.svg#${conf.id}"></use>
         </svg>
-      </span>
+      </a>
     `;
   }).join('');
+
+  // Reparto frontal resumido (solo texto plano hasta pulsar el botón +)
+  const shortActorsText = actors.length > 0 
+    ? actors.slice(0, 4).join(', ') + (actors.length > 4 ? '...' : '') 
+    : 'Reparto no disponible';
 
   return `
     <article class="movie-card" data-movie-id="${movie.id}" style="--card-index: ${index};">
@@ -128,7 +133,7 @@ function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
                 </svg>
               </div>
               <span class="wall-rating-number" data-template="wall-rating">${movie.avg_rating ? movie.avg_rating.toFixed(1) : ''}</span>
-              <a href="${escapeAttr(movieUrl)}" class="card-action-btn" aria-label="Ver ficha de ${escapeAttr(title)}" title="Ver ficha">
+              <a href="${baseUrl}?movie=${movie.id}" class="card-action-btn" aria-label="Añadir a mi lista en el videoclub" title="Añadir a mi lista">
                 <svg class="icon-watchlist"><use href="${baseUrl}sprite.svg#icon-bookmark-plus"></use></svg>
               </a>
             </div>
@@ -151,7 +156,7 @@ function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
                     ${movie.year ? `<a href="${baseUrl}?year=${movie.year}" class="year-link">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length))}` : ''}
                   </span>
                   ${countryCode ? `
-                    <a class="country-info" href="${countrySlug ? `${baseUrl}${countrySlug}/` : '#'}" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
+                    <a class="country-info" href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
                       <span class="country-flag-icon">
                         <svg width="14" height="14" aria-hidden="true">
                           <use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use>
@@ -222,7 +227,7 @@ function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
                 <strong class="detail-label-title">Género.</strong>
                 <span class="detail-data" data-template="genre">${rawGenres.map((g, i) => {
                   const s = genreToSlug(g);
-                  return s ? `<a href="${baseUrl}${s}/">${escapeHtml(preserveHyphenatedWords(g))}</a>${i < rawGenres.length - 1 ? ', ' : ''}` : `<span>${escapeHtml(preserveHyphenatedWords(g))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
+                  return s ? `<a href="${baseUrl}?_p=/${s}/">${escapeHtml(preserveHyphenatedWords(g))}</a>${i < rawGenres.length - 1 ? ', ' : ''}` : `<span>${escapeHtml(preserveHyphenatedWords(g))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
                 }).join('')}</span>
               </div>
             ` : ''}
@@ -230,7 +235,8 @@ function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
               <div class="detail-item" data-template="actors-container">
                 <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-cast"></use></svg></span>
                 <strong class="detail-label-title">Reparto.</strong>
-                <span class="detail-data" data-template="actors">${actors.slice(0, 4).map((a, i) => `<a href="${baseUrl}actor/${toSlug(a)}/">${escapeHtml(preserveHyphenatedWords(a))}</a>${i < Math.min(actors.length, 4) - 1 ? ', ' : ''}`).join('')}${actors.length > 4 ? '...' : ''}</span>
+                <span class="detail-data" data-template="actors">${escapeHtml(preserveHyphenatedWords(shortActorsText))}</span>
+                <button type="button" class="actors-expand-btn" aria-label="Ver detalles de géneros y reparto">+</button>
               </div>
             ` : ''}
           </div>
@@ -241,6 +247,25 @@ function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
               <strong class="detail-label-title">Sinopsis.</strong>
               <span data-template="synopsis">${escapeHtml(preserveHyphenatedWords(movie.synopsis || 'Sinopsis no disponible.'))}</span>
             </div>
+          </div>
+
+          <!-- Overlay deslizante completo de reparto y géneros detallados (se activa al pulsar + en reparto) -->
+          <div class="actors-scrollable-content">
+            ${rawGenres.length > 0 ? `
+              <h4>Géneros</h4>
+              <div class="actors-list-text genres-list-text">
+                ${rawGenres.map(g => {
+                  const s = genreToSlug(g) || toSlug(g);
+                  return `<a class="actor-list-item genre-list-item" href="${baseUrl}?_p=/${s}/">${escapeHtml(preserveHyphenatedWords(g))}</a>`;
+                }).join('')}
+              </div>
+            ` : ''}
+            ${actors.length > 0 ? `
+              <h4>Reparto</h4>
+              <div class="actors-list-text">
+                ${actors.map(a => `<a class="actor-list-item" href="${baseUrl}?_p=/actor/${toSlug(a)}/">${escapeHtml(preserveHyphenatedWords(a))}</a>`).join('')}
+              </div>
+            ` : ''}
           </div>
 
           <button type="button" class="expand-content-btn" aria-label="Expandir sinopsis">+</button>
@@ -266,7 +291,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   const baseUrl = options.baseUrl || '/';
   const storageUrl = options.storageUrl || 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public';
   const canonicalUrl = `${siteOrigin}/${taxInfo.canonicalSlug}/`;
-  const spaRedirectUrl = `${siteOrigin}/?_p=/${taxInfo.canonicalSlug}/`;
+  const spaRedirectUrl = `${baseUrl}?_p=/${taxInfo.canonicalSlug}/`;
 
   const topMovie = items && items.length > 0 ? items[0] : null;
   const ogImageUrl = topMovie && topMovie.slug 
@@ -410,31 +435,16 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
             <span class="logo-line-2">.DIGITAL</span>
           </a>
           
-          <div class="main-header-primary-controls">
-            <!-- Píldora de Filtro Activo Idéntica a la SPA -->
-            <div class="active-filters-list" style="display:flex; align-items:center; gap:8px;">
-              <span class="filter-pill is-active">
-                <span>${escapeHtml(taxInfo.name)}</span>
-              </span>
-            </div>
-            
-            <!-- Contador Total de Resultados -->
-            <div class="total-results-container">
-              <span>Total:</span> <span class="total-results-count">${items.length}</span>
-            </div>
-            
-            <!-- Acceso sutil al videoclub interactivo completo -->
-            <a href="${escapeAttr(spaRedirectUrl)}" class="btn-open-spa-subtle" title="Abrir en el Videoclub interactivo">
-              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true">
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-              </svg>
-              <span>Explorar</span>
+          <!-- Nombre de la sección alineado a la derecha como enlace a la SPA -->
+          <div class="active-filters-list" style="display:flex; align-items:center; margin:0; padding:0;">
+            <a href="${escapeAttr(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeAttr(taxInfo.name)} en el videoclub interactivo" style="text-decoration:none;">
+              <span>${escapeHtml(taxInfo.name)}</span>
             </a>
           </div>
         </div>
       </header>
 
-      <!-- Muro Principal de Películas -->
+      <!-- Muro Principal de Películas (42 fichas oficiales) -->
       <main class="content">
         <h1 class="sr-only">${escapeHtml(taxInfo.title)}</h1>
         <section id="grid-container" class="grid-container" aria-label="Películas de ${escapeAttr(taxInfo.name)}">
@@ -442,56 +452,96 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
         </section>
       </main>
 
-      <!-- Pie de página -->
+      <!-- Pie de página oficial con avisos legales de la SPA -->
       <footer class="site-footer">
-        <div class="footer-content" style="max-width: 1440px; margin: 0 auto; padding: var(--space-md) var(--space-xs);">
-          <ul class="footer-links">
-            <li><a href="${baseUrl}">Inicio</a></li>
-            <li><a href="${baseUrl}sci-fi/">Ciencia Ficción</a></li>
-            <li><a href="${baseUrl}drama/">Drama</a></li>
-            <li><a href="${baseUrl}espana/">España</a></li>
-            <li><a href="${baseUrl}criterion/">Criterion</a></li>
-            <li><a href="${escapeAttr(spaRedirectUrl)}">Videoclub Interactivo</a></li>
-          </ul>
-          <p style="margin-top: 12px; font-size: 0.8rem; color: var(--color-text-tertiary);">
-            © Videoclub Digital — Catálogo cinematográfico de libre acceso
-          </p>
-        </div>
+        <ul class="footer-links">
+          <li class="footer-brand">videoclub.digital</li>
+          <li><a href="${baseUrl}?legal=about" class="footer-legal-link">Quiénes somos</a></li>
+          <li><a href="${baseUrl}?legal=contact" class="footer-legal-link">Contacto</a></li>
+          <li><a href="${baseUrl}?legal=legal" class="footer-legal-link">Aviso legal</a></li>
+          <li><a href="${baseUrl}?legal=privacy" class="footer-legal-link">Privacidad</a></li>
+          <li><a href="${baseUrl}?legal=cookies" class="footer-legal-link">Cookies</a></li>
+          <li class="footer-copy">2025-2026 © Copyright.</li>
+        </ul>
       </footer>
     </div>
   </div>
 
-  <!-- Handler de giro 3D en Vanilla JS para interacción táctil y de escritorio -->
+  <!-- Handler de giro 3D y expansión de reparto en Vanilla JS -->
   <script>
     (function () {
       var activeCard = null;
+
       document.addEventListener("click", function (e) {
-        var expandBtn = e.target.closest(".expand-content-btn");
-        if (expandBtn) {
-          var back = expandBtn.closest(".flip-card-back");
+        // 1. Botón + de actores: despliega la lista completa de actores y géneros en overlay
+        var actorsExpandBtn = e.target.closest(".actors-expand-btn");
+        if (actorsExpandBtn) {
+          var back = actorsExpandBtn.closest(".flip-card-back");
           if (back) {
-            var isExp = back.classList.toggle("is-expanded");
-            expandBtn.textContent = isExp ? "−" : "+";
-            expandBtn.setAttribute("aria-label", isExp ? "Contraer sinopsis" : "Expandir sinopsis");
+            back.classList.add("is-expanded", "show-actors");
+            var bottomBtn = back.querySelector(".expand-content-btn");
+            if (bottomBtn) {
+              bottomBtn.textContent = "−";
+              bottomBtn.setAttribute("aria-label", "Cerrar detalles");
+            }
           }
           return;
         }
 
+        // 2. Botón inferior de expansión / contracción
+        var expandBtn = e.target.closest(".expand-content-btn");
+        if (expandBtn) {
+          var back = expandBtn.closest(".flip-card-back");
+          if (back) {
+            if (back.classList.contains("show-actors")) {
+              back.classList.remove("is-expanded", "show-actors");
+              expandBtn.textContent = "+";
+              expandBtn.setAttribute("aria-label", "Expandir sinopsis");
+            } else {
+              var isExp = back.classList.toggle("is-expanded");
+              expandBtn.textContent = isExp ? "−" : "+";
+              expandBtn.setAttribute("aria-label", isExp ? "Contraer sinopsis" : "Expandir sinopsis");
+            }
+          }
+          return;
+        }
+
+        // 3. Volteo 3D de la tarjeta
         var card = e.target.closest(".movie-card");
         if (card) {
-          if (e.target.closest("a, button, [role='button'], .card-rating-block")) return;
+          if (e.target.closest("a, button, [role='button'], .card-rating-block, .actors-scrollable-content")) return;
           var inner = card.querySelector(".flip-card-inner");
           if (inner) {
             var isFlipped = inner.classList.toggle("is-flipped");
             if (isFlipped) {
-              if (activeCard && activeCard !== inner) activeCard.classList.remove("is-flipped");
+              if (activeCard && activeCard !== inner) {
+                activeCard.classList.remove("is-flipped");
+                var prevBack = activeCard.querySelector(".flip-card-back");
+                if (prevBack) {
+                  prevBack.classList.remove("is-expanded", "show-actors");
+                  var prevBtn = prevBack.querySelector(".expand-content-btn");
+                  if (prevBtn) prevBtn.textContent = "+";
+                }
+              }
               activeCard = inner;
             } else if (activeCard === inner) {
+              var back = inner.querySelector(".flip-card-back");
+              if (back) {
+                back.classList.remove("is-expanded", "show-actors");
+                var btn = back.querySelector(".expand-content-btn");
+                if (btn) btn.textContent = "+";
+              }
               activeCard = null;
             }
           }
         } else if (activeCard) {
           activeCard.classList.remove("is-flipped");
+          var back = activeCard.querySelector(".flip-card-back");
+          if (back) {
+            back.classList.remove("is-expanded", "show-actors");
+            var btn = back.querySelector(".expand-content-btn");
+            if (btn) btn.textContent = "+";
+          }
           activeCard = null;
         }
       });

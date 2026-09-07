@@ -412,7 +412,7 @@ export function resolveTaxonomy(rawSlug) {
         genre_name: item.name,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 24,
+        page_limit: 42,
         page_offset: 0,
         get_count: false
       }
@@ -435,7 +435,7 @@ export function resolveTaxonomy(rawSlug) {
         p_studio_code: item.code,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 24,
+        page_limit: 42,
         page_offset: 0,
         get_count: false
       }
@@ -458,7 +458,7 @@ export function resolveTaxonomy(rawSlug) {
         p_selection_code: item.code,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 24,
+        page_limit: 42,
         page_offset: 0,
         get_count: false
       }
@@ -481,7 +481,7 @@ export function resolveTaxonomy(rawSlug) {
         country_name: item.code,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 24,
+        page_limit: 42,
         page_offset: 0,
         get_count: false
       }
@@ -507,7 +507,7 @@ export function resolveTaxonomy(rawSlug) {
         country_name: item.name,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 24,
+        page_limit: 42,
         page_offset: 0,
         get_count: false
       }
