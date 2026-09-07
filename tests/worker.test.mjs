@@ -313,4 +313,14 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     await worker.fetch(getReq, {}, defaultCtx);
     assert.ok(fetchCalls.length > beforeCount, "Debe consultar de nuevo a Supabase tras la purga");
   });
+
+  test("Sitemap Index: /sitemap-index.xml entrega XML estructurado apuntando a /sitemap.xml", async () => {
+    const req = new Request("https://videoclub.digital/sitemap-index.xml");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    assert.ok(res.headers.get("Content-Type").includes("application/xml"));
+    const text = await res.text();
+    assert.ok(text.includes("<sitemapindex"));
+    assert.ok(text.includes("https://videoclub.digital/sitemap.xml"));
+  });
 });

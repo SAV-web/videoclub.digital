@@ -111,18 +111,31 @@ ${urlEntries.join("\n")}
 </urlset>
 `;
 
+  const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>${SITE_ORIGIN}/sitemap.xml</loc>
+  </sitemap>
+</sitemapindex>
+`;
+
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
   }
 
   const publicSitemapPath = path.join(publicDir, "sitemap.xml");
   fs.writeFileSync(publicSitemapPath, sitemapXml, "utf8");
+  const publicSitemapIndexPath = path.join(publicDir, "sitemap-index.xml");
+  fs.writeFileSync(publicSitemapIndexPath, sitemapIndexXml, "utf8");
   console.log(`✓ Sitemap generado con éxito en: ${publicSitemapPath} (${slugs.length + 3} URLs totales)`);
+  console.log(`✓ Sitemap Index generado con éxito en: ${publicSitemapIndexPath}`);
 
   if (fs.existsSync(distDir)) {
     const distSitemapPath = path.join(distDir, "sitemap.xml");
     fs.writeFileSync(distSitemapPath, sitemapXml, "utf8");
-    console.log(`✓ Sitemap sincronizado en: ${distSitemapPath}`);
+    const distSitemapIndexPath = path.join(distDir, "sitemap-index.xml");
+    fs.writeFileSync(distSitemapIndexPath, sitemapIndexXml, "utf8");
+    console.log(`✓ Sitemap sincronizado en dist/`);
   }
 }
 

@@ -69,6 +69,24 @@ export default {
       });
     }
 
+    // 1.C SERVIR SITEMAP INDEX A MOTORES DE BÚSQUEDA
+    if (url.pathname === "/sitemap-index.xml") {
+      const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>${url.origin}/sitemap.xml</loc>
+  </sitemap>
+</sitemapindex>
+`;
+      return new Response(sitemapIndexXml, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "Cache-Control": "public, max-age=86400, s-maxage=604800"
+        }
+      });
+    }
+
     // 2. NORMALIZACIÓN CANÓNICA 301 DE TRAILING SLASH PARA /titulo/:slug
     if (url.pathname.startsWith("/titulo/") && !url.pathname.endsWith("/")) {
       const canonicalRedirectUrl = new URL(`${url.pathname}/${url.search}`, url.origin);
