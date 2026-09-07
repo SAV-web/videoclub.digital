@@ -843,7 +843,7 @@ html, body {
   color: var(--color-text-primary);
   text-decoration: none;
   display: inline;
-  white-space: nowrap;
+  white-space: normal;
 
   &:hover {
     color: var(--color-text-primary);
