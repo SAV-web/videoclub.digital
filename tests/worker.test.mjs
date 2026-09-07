@@ -382,6 +382,11 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes('"@type":"CollectionPage"'));
     assert.ok(html.includes('"@type":"ItemList"'));
     assert.ok(html.includes("Matrix"));
+    assert.ok(html.includes("movie-card"), "Debe usar la clase oficial .movie-card");
+    assert.ok(html.includes("grid-container"), "Debe usar el grid oficial .grid-container");
+    assert.ok(html.includes("filter-pill"), "Debe incluir el filtro activo .filter-pill");
+    assert.ok(html.includes("seo-card-v4.css"), "Debe enlazar con seo-card-v4.css");
+    assert.ok(!html.includes("collection-hero"), "NO debe contener el bloque hero invasivo");
   });
 
   test("Taxonomías: Países, Estudios y Selecciones (/espana/, /latam/, /criterion/, /a24/) responden 200 OK", async () => {
@@ -392,6 +397,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       assert.equal(res.status, 200, `Ruta ${r} debe responder 200`);
       const html = await res.text();
       assert.ok(html.includes('"@type":"CollectionPage"'));
+      assert.ok(html.includes("movie-card"));
     }
   });
 
@@ -410,14 +416,15 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(body.success, true);
   });
 
-  test("Estilos: /seo-card-v3.css se sirve desde Edge Memory con reglas de colección", async () => {
-    const req = new Request("https://videoclub.digital/seo-card-v3.css");
+  test("Estilos: /seo-card-v4.css se sirve desde Edge Memory con componentes oficiales de la SPA", async () => {
+    const req = new Request("https://videoclub.digital/seo-card-v4.css");
     const res = await worker.fetch(req, {}, defaultCtx);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("Content-Type"), "text/css; charset=utf-8");
     assert.ok(res.headers.get("Cache-Control").includes("immutable"));
     const css = await res.text();
-    assert.ok(css.includes(".collection-main"), "Debe contener estilos de colección");
-    assert.ok(css.includes(".collection-card"), "Debe contener estilos de tarjeta de colección");
+    assert.ok(css.includes(".movie-card"), "Debe contener estilos de tarjeta oficial .movie-card");
+    assert.ok(css.includes(".grid-container"), "Debe contener estilos de rejilla .grid-container");
+    assert.ok(css.includes(".filter-pill"), "Debe contener estilos de píldora de filtro .filter-pill");
   });
 });

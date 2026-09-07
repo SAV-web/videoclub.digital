@@ -2,25 +2,32 @@
 //      RENDERIZADOR HTML DE LANDINGS DE TAXONOMÍAS EN EL EDGE
 //             (cloudflare/seo/render-taxonomy.js)
 // =================================================================
-// Renderiza páginas HTML5 completas, semánticas, accesibles (WCAG)
-// y optimizadas para SEO (Schema.org CollectionPage, ItemList,
-// Open Graph, Speculation Rules API) para géneros, países,
-// estudios cinematográficos y selecciones editoriales.
+// Renderiza el muro oficial de tarjetas 3D idéntico a la SPA
+// para géneros, países, estudios cinematográficos y selecciones.
+// Mantiene Schema.org CollectionPage, ItemList, BreadcrumbList,
+// Open Graph, Speculation Rules API y accesibilidad WCAG.
 // =================================================================
 
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+import {
+  escapeHtml,
+  escapeAttr,
+  parseList,
+  isSeriesType,
+  formatRuntime,
+  formatYear,
+  getTitleLengthClass,
+  calculateAverageStars,
+  formatVotesUnified,
+  preserveHyphenatedWords,
+  toSlug,
+  genreToSlug,
+  STUDIO_DATA
+} from './seo-types.js';
 
-function escapeAttr(str) {
-  return escapeHtml(str);
-}
+const SQRT_MAX_VOTES = {
+  FA: Math.sqrt(220000),
+  IMDB: Math.sqrt(3200000)
+};
 
 function safeJsonLd(obj) {
   return JSON.stringify(obj)
@@ -30,42 +37,216 @@ function safeJsonLd(obj) {
 }
 
 /**
- * Renderiza una tarjeta individual dentro del grid de la colección.
+ * Renderiza una tarjeta de película idéntica al componente oficial de la SPA (.movie-card)
+ * con soporte para giro 3D (flip card), estrellas doradas dinámicas, banderas SVG,
+ * notas de FilmAffinity / IMDb y sinopsis.
  */
-function renderCollectionItem(movie, siteOrigin, storageUrl) {
+function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
+  const isSeries = isSeriesType(movie.type);
   const title = movie.title || movie.original_title || 'Sin título';
-  const year = movie.year || '';
+  const displayOriginalTitle = movie.original_title?.trim() || title;
   const slug = movie.slug || '';
   const movieUrl = `${siteOrigin}/titulo/${slug}/`;
   const posterUrl = `${siteOrigin}/posters/${slug}.webp`;
-  const rating = (movie.fa_rating && movie.fa_rating > 0)
-    ? movie.fa_rating.toFixed(1)
-    : (movie.avg_rating ? movie.avg_rating.toFixed(1) : null);
-  const directors = movie.directors || '';
+
+  // Estrellas continuas (0-3) y cálculo de clip-path
+  const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= 5.5;
+  const avgStars = calculateAverageStars(movie.avg_rating);
+  const clip1 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
+  const clip2 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;
+  const clip3 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 2))) * 100;
+
+  // Barras de votos
+  const faBarWidth = movie.fa_votes ? Math.min(100, (Math.sqrt(movie.fa_votes) / SQRT_MAX_VOTES.FA) * 100) : 0;
+  const imdbBarWidth = movie.imdb_votes ? Math.min(100, (Math.sqrt(movie.imdb_votes) / SQRT_MAX_VOTES.IMDB) * 100) : 0;
+  const formattedFaVotes = formatVotesUnified(movie.fa_votes);
+  const formattedImdbVotes = formatVotesUnified(movie.imdb_votes);
+
+  const rawGenres = parseList(movie.genres || movie.genres_list);
+  const directors = parseList(movie.directors || movie.directors_list);
+  const actors = parseList(movie.actors || movie.actors_list);
+  const studios = parseList(movie.studios_list);
+
+  const countryCode = movie.country_code || movie.countries?.code || null;
+  const countryName = movie.country || movie.countries?.name || '';
+  const countrySlug = countryCode ? toSlug(countryName) : null;
+
+  const durationText = formatRuntime(movie.minutes, isSeries);
+  const episodesText = isSeries && movie.episodes ? `${movie.episodes} x` : null;
+
+  const titleLengthClass = getTitleLengthClass(title);
+  const origTitleLengthClass = getTitleLengthClass(displayOriginalTitle);
+
+  // Directores front
+  const directorsHtml = directors.map((name, i) => `
+    <a href="${baseUrl}director/${toSlug(name)}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < directors.length - 1 ? ', ' : ''}
+  `).join('');
+
+  // Iconos estudios
+  const validStudios = studios.filter(code => STUDIO_DATA[code]);
+  const studiosHtml = validStudios.map(code => {
+    const conf = STUDIO_DATA[code];
+    return `
+      <span class="platform-icon ${conf.class}" title="${escapeAttr(conf.title)}">
+        <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="0 0 24 24">
+          <use href="${baseUrl}sprite.svg#${conf.id}"></use>
+        </svg>
+      </span>
+    `;
+  }).join('');
 
   return `
-    <article class="collection-card">
-      <a href="${escapeAttr(movieUrl)}" class="collection-card-poster-link" aria-label="${escapeAttr(title)} (${escapeAttr(year)})">
-        <div class="collection-poster-wrap">
-          <img
-            src="${escapeAttr(posterUrl)}"
-            alt="${escapeAttr(title)}"
-            loading="lazy"
-            decoding="async"
-            width="300"
-            height="450"
-            onerror="this.style.opacity='0.2'"
-          />
-          ${rating ? `<span class="collection-card-rating" aria-label="Valoración ${rating} sobre 10">★ ${escapeHtml(rating)}</span>` : ''}
+    <article class="movie-card" data-movie-id="${movie.id}" style="--card-index: ${index};">
+      <div class="flip-card-inner">
+        <!-- Cara frontal -->
+        <div class="flip-card-front">
+          <div class="poster-container">
+            <img
+              src="${escapeAttr(posterUrl)}"
+              alt="Póster de ${escapeAttr(title)}"
+              width="400"
+              height="496"
+              loading="${index < 6 ? 'eager' : 'lazy'}"
+              ${index === 0 ? 'fetchpriority="high"' : ''}
+              class="loaded"
+              onerror="this.style.opacity='0.2'"
+            />
+            <div class="poster-overlay-guard"></div>
+            <div class="card-rating-block">
+              <div class="star-rating-container has-average-rating is-interactive" role="group" aria-label="Valoración con estrellas">
+                <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
+                  <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
+                  <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip1}% 0 0);"></use>
+                </svg>
+                <svg class="star-icon" data-rating-level="2" style="${!isSuspenso && avgStars > 1 ? 'opacity: 1;' : 'opacity: 0;'}">
+                  <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
+                  <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip2}% 0 0);"></use>
+                </svg>
+                <svg class="star-icon" data-rating-level="3" style="${!isSuspenso && avgStars > 2 ? 'opacity: 1;' : 'opacity: 0;'}">
+                  <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
+                  <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip3}% 0 0);"></use>
+                </svg>
+              </div>
+              <span class="wall-rating-number" data-template="wall-rating">${movie.avg_rating ? movie.avg_rating.toFixed(1) : ''}</span>
+              <a href="${escapeAttr(movieUrl)}" class="card-action-btn" aria-label="Ver ficha de ${escapeAttr(title)}" title="Ver ficha">
+                <svg class="icon-watchlist"><use href="${baseUrl}sprite.svg#icon-bookmark-plus"></use></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="movie-info movie-summary">
+            <div class="title-director-block">
+              <h3 data-template="title" class="${titleLengthClass}">
+                <a href="${escapeAttr(movieUrl)}" class="movie-card-title-link" style="color:inherit; text-decoration:none;">${escapeHtml(title)}</a>
+              </h3>
+              <div class="front-director-info" data-template="director">
+                ${directorsHtml}
+              </div>
+            </div>
+            <div class="movie-meta">
+              ${studiosHtml ? `<div class="card-icons-line ${validStudios.length >= 3 ? 'compact' : ''}">${studiosHtml}</div>` : ''}
+              <div class="year-country-line">
+                <div class="year-flag-group">
+                  <span data-template="year">
+                    ${movie.year ? `<a href="${baseUrl}?year=${movie.year}" class="year-link">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length))}` : ''}
+                  </span>
+                  ${countryCode ? `
+                    <a class="country-info" href="${countrySlug ? `${baseUrl}${countrySlug}/` : '#'}" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
+                      <span class="country-flag-icon">
+                        <svg width="14" height="14" aria-hidden="true">
+                          <use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use>
+                        </svg>
+                      </span>
+                    </a>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </a>
-      <div class="collection-card-info">
-        <h2 class="collection-card-title">
-          <a href="${escapeAttr(movieUrl)}">${escapeHtml(title)}</a>
-        </h2>
-        <div class="collection-card-meta">
-          ${year ? `<span class="collection-card-year">${escapeHtml(year)}</span>` : ''}
-          ${directors ? `<span class="collection-card-director" title="${escapeAttr(directors)}">${escapeHtml(directors)}</span>` : ''}
+
+        <!-- Cara trasera -->
+        <div class="flip-card-back">
+          <div class="back-meta-header">
+            <div class="episode-duration-group">
+              ${episodesText ? `<span data-template="episodes">${escapeHtml(episodesText)}</span>` : ''}
+              ${durationText ? `<span data-template="duration">${escapeHtml(durationText)}</span>` : ''}
+              ${movie.justwatch ? `
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(movie.justwatch)}" title="Ver en JustWatch" data-template="justwatch-link">
+                  <svg class="rating-icon" fill="#9A1485"><use href="${baseUrl}sprite.svg#icon-justwatch"></use></svg>
+                </a>
+              ` : ''}
+              ${movie.wikipedia ? `
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(movie.wikipedia)}" title="Ver en Wikipedia" data-template="wikipedia-link">
+                  <svg class="rating-icon" fill="#B3404A"><use href="${baseUrl}sprite.svg#icon-wikipedia"></use></svg>
+                </a>
+              ` : ''}
+            </div>
+          </div>
+
+          <div class="ratings-container">
+            ${movie.fa_rating ? `
+              <div class="rating-line">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left" href="${escapeAttr(movie.fa_id || '#')}" data-template="fa-link">
+                  <svg class="rating-icon"><use href="${baseUrl}sprite.svg#icon-filmaffinity"></use></svg>
+                  <span data-template="fa-rating">${movie.fa_rating.toFixed(1)}</span>
+                </a>
+                <span class="rating-votes-count">${escapeHtml(formattedFaVotes)}</span>
+                <div class="rating-bar-container" data-votes="${escapeAttr(formattedFaVotes)}">
+                  <div class="rating-bar" style="width: ${faBarWidth}%;"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${movie.imdb_rating ? `
+              <div class="rating-line">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left" href="${escapeAttr(movie.imdb_id || '#')}" data-template="imdb-link">
+                  <svg class="rating-icon" fill="#F5C618"><use href="${baseUrl}sprite.svg#icon-imdb"></use></svg>
+                  <span data-template="imdb-rating">${movie.imdb_rating.toFixed(1)}</span>
+                </a>
+                <span class="rating-votes-count">${escapeHtml(formattedImdbVotes)}</span>
+                <div class="rating-bar-container" data-votes="${escapeAttr(formattedImdbVotes)}">
+                  <div class="rating-bar" style="width: ${imdbBarWidth}%;"></div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="back-original-title-wrapper">
+            <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
+          </div>
+
+          <div class="details-list">
+            ${rawGenres.length > 0 ? `
+              <div class="detail-item" data-template="genre-container">
+                <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-clapperboard"></use></svg></span>
+                <strong class="detail-label-title">Género.</strong>
+                <span class="detail-data" data-template="genre">${rawGenres.map((g, i) => {
+                  const s = genreToSlug(g);
+                  return s ? `<a href="${baseUrl}${s}/">${escapeHtml(preserveHyphenatedWords(g))}</a>${i < rawGenres.length - 1 ? ', ' : ''}` : `<span>${escapeHtml(preserveHyphenatedWords(g))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
+                }).join('')}</span>
+              </div>
+            ` : ''}
+            ${actors.length > 0 ? `
+              <div class="detail-item" data-template="actors-container">
+                <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-cast"></use></svg></span>
+                <strong class="detail-label-title">Reparto.</strong>
+                <span class="detail-data" data-template="actors">${actors.slice(0, 4).map((a, i) => `<a href="${baseUrl}actor/${toSlug(a)}/">${escapeHtml(preserveHyphenatedWords(a))}</a>${i < Math.min(actors.length, 4) - 1 ? ', ' : ''}`).join('')}${actors.length > 4 ? '...' : ''}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="scrollable-content">
+            <div class="plot-summary-final" title="Sinopsis">
+              <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-synopsis"></use></svg></span>
+              <strong class="detail-label-title">Sinopsis.</strong>
+              <span data-template="synopsis">${escapeHtml(preserveHyphenatedWords(movie.synopsis || 'Sinopsis no disponible.'))}</span>
+            </div>
+          </div>
+
+          <button type="button" class="expand-content-btn" aria-label="Expandir sinopsis">+</button>
+          <a href="${escapeAttr(movieUrl)}" class="card-ficha-btn" aria-label="Ver ficha completa de ${escapeAttr(title)}">
+            <span>Ficha completa →</span>
+          </a>
         </div>
       </div>
     </article>
@@ -73,15 +254,16 @@ function renderCollectionItem(movie, siteOrigin, storageUrl) {
 }
 
 /**
- * Renderiza la página HTML completa para la taxonomía.
+ * Renderiza la página HTML completa para la taxonomía en el Edge.
  * 
  * @param {object} taxInfo Información de la taxonomía resuelta
  * @param {Array} items Lista de películas/series destacadas
- * @param {object} options Opciones de contexto ({ siteOrigin, storageUrl })
- * @returns {string} HTML5 válido
+ * @param {object} options Opciones de contexto ({ siteOrigin, storageUrl, baseUrl })
+ * @returns {string} HTML5 válido y semántico
  */
 export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   const siteOrigin = options.siteOrigin || 'https://videoclub.digital';
+  const baseUrl = options.baseUrl || '/';
   const storageUrl = options.storageUrl || 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public';
   const canonicalUrl = `${siteOrigin}/${taxInfo.canonicalSlug}/`;
   const spaRedirectUrl = `${siteOrigin}/?_p=/${taxInfo.canonicalSlug}/`;
@@ -204,80 +386,117 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   <meta name="twitter:description" content="${escapeAttr(taxInfo.description)}" />
   <meta name="twitter:image" content="${escapeAttr(ogImageUrl)}" />
 
+  <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
+  <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
+  <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
+
   <!-- Structured Data: CollectionPage & Breadcrumbs -->
   <script type="application/ld+json">${safeJsonLd(collectionSchema)}</script>
   <script type="application/ld+json">${safeJsonLd(breadcrumbSchema)}</script>
   <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
 
-  <!-- CSS Unificado (Servido en Edge Memory con design tokens) -->
-  <link rel="stylesheet" href="/seo-card-v3.css" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
+  <link rel="stylesheet" href="${baseUrl}seo-card-v4.css" />
+  <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
 </head>
-<body class="collection-theme">
-  <!-- Cabecera de Marca -->
-  <header class="site-header">
-    <div class="header-content">
-      <a href="/" class="brand-logo" aria-label="Ir a la videoteca completa">
-        <span class="logo-line-1">VIDEOCLUB</span>
-        <span class="logo-line-2">DIGITAL</span>
-      </a>
-      <div class="header-controls">
-        <a href="${escapeAttr(spaRedirectUrl)}" class="btn-header-cta" title="Abrir en el Videoclub interactivo" aria-label="Abrir en el Videoclub interactivo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-        </a>
-      </div>
-    </div>
-  </header>
-
-  <main class="collection-main">
-    <div class="collection-wrapper">
-      <!-- Migas de Pan -->
-      <nav class="collection-breadcrumbs" aria-label="Migas de pan">
-        <a href="/">Inicio</a>
-        <span class="breadcrumb-sep">/</span>
-        <span>${escapeHtml(taxInfo.categoryBreadcrumb)}</span>
-        <span class="breadcrumb-sep">/</span>
-        <span class="breadcrumb-current" aria-current="page">${escapeHtml(taxInfo.name)}</span>
-      </nav>
-
-      <!-- Hero de Colección -->
-      <section class="collection-hero">
-        <div class="collection-badge-tag">${escapeHtml(taxInfo.badgeLabel.toUpperCase())}</div>
-        <h1 class="collection-title">${escapeHtml(taxInfo.title)}</h1>
-        <p class="collection-description">${escapeHtml(taxInfo.description)}</p>
-        
-        <div class="collection-hero-actions">
-          <a href="${escapeAttr(spaRedirectUrl)}" class="btn-open-spa">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-            <span>Explorar en Videoclub Interactivo</span>
+<body class="collection-wall">
+  <div class="main-layout">
+    <div class="main-content-wrapper">
+      <!-- Cabecera Minimalista Estilo SPA -->
+      <header class="main-header">
+        <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto;">
+          <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
+            <span class="logo-line-1">VIDEOCLUB</span>
+            <span class="logo-line-2">.DIGITAL</span>
           </a>
-          <span class="collection-stats-pill">${items.length} títulos destacados</span>
+          
+          <div class="main-header-primary-controls">
+            <!-- Píldora de Filtro Activo Idéntica a la SPA -->
+            <div class="active-filters-list" style="display:flex; align-items:center; gap:8px;">
+              <span class="filter-pill is-active">
+                <span>${escapeHtml(taxInfo.name)}</span>
+              </span>
+            </div>
+            
+            <!-- Contador Total de Resultados -->
+            <div class="total-results-container">
+              <span>Total:</span> <span class="total-results-count">${items.length}</span>
+            </div>
+            
+            <!-- Acceso sutil al videoclub interactivo completo -->
+            <a href="${escapeAttr(spaRedirectUrl)}" class="btn-open-spa-subtle" title="Abrir en el Videoclub interactivo">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Explorar</span>
+            </a>
+          </div>
         </div>
-      </section>
+      </header>
 
-      <!-- Grid de Títulos -->
-      <section class="collection-grid-container" aria-label="Títulos destacados de ${escapeAttr(taxInfo.name)}">
-        <div class="collection-grid">
-          ${items.map(m => renderCollectionItem(m, siteOrigin, storageUrl)).join('')}
+      <!-- Muro Principal de Películas -->
+      <main class="content">
+        <h1 class="sr-only">${escapeHtml(taxInfo.title)}</h1>
+        <section id="grid-container" class="grid-container" aria-label="Películas de ${escapeAttr(taxInfo.name)}">
+          ${items.map((m, index) => renderSpaMovieCard(m, index, siteOrigin, baseUrl)).join('')}
+        </section>
+      </main>
+
+      <!-- Pie de página -->
+      <footer class="site-footer">
+        <div class="footer-content" style="max-width: 1440px; margin: 0 auto; padding: var(--space-md) var(--space-xs);">
+          <ul class="footer-links">
+            <li><a href="${baseUrl}">Inicio</a></li>
+            <li><a href="${baseUrl}sci-fi/">Ciencia Ficción</a></li>
+            <li><a href="${baseUrl}drama/">Drama</a></li>
+            <li><a href="${baseUrl}espana/">España</a></li>
+            <li><a href="${baseUrl}criterion/">Criterion</a></li>
+            <li><a href="${escapeAttr(spaRedirectUrl)}">Videoclub Interactivo</a></li>
+          </ul>
+          <p style="margin-top: 12px; font-size: 0.8rem; color: var(--color-text-tertiary);">
+            © Videoclub Digital — Catálogo cinematográfico de libre acceso
+          </p>
         </div>
-      </section>
-
-      <!-- CTA Inferior -->
-      <div class="collection-bottom-cta">
-        <a href="${escapeAttr(spaRedirectUrl)}" class="btn-bottom-spa">
-          <span>Abrir catálogo completo con filtros y buscador</span>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-        </a>
-      </div>
+      </footer>
     </div>
-  </main>
+  </div>
+
+  <!-- Handler de giro 3D en Vanilla JS para interacción táctil y de escritorio -->
+  <script>
+    (function () {
+      var activeCard = null;
+      document.addEventListener("click", function (e) {
+        var expandBtn = e.target.closest(".expand-content-btn");
+        if (expandBtn) {
+          var back = expandBtn.closest(".flip-card-back");
+          if (back) {
+            var isExp = back.classList.toggle("is-expanded");
+            expandBtn.textContent = isExp ? "−" : "+";
+            expandBtn.setAttribute("aria-label", isExp ? "Contraer sinopsis" : "Expandir sinopsis");
+          }
+          return;
+        }
+
+        var card = e.target.closest(".movie-card");
+        if (card) {
+          if (e.target.closest("a, button, [role='button'], .card-rating-block")) return;
+          var inner = card.querySelector(".flip-card-inner");
+          if (inner) {
+            var isFlipped = inner.classList.toggle("is-flipped");
+            if (isFlipped) {
+              if (activeCard && activeCard !== inner) activeCard.classList.remove("is-flipped");
+              activeCard = inner;
+            } else if (activeCard === inner) {
+              activeCard = null;
+            }
+          }
+        } else if (activeCard) {
+          activeCard.classList.remove("is-flipped");
+          activeCard = null;
+        }
+      });
+    })();
+  </script>
 </body>
 </html>`;
 }
