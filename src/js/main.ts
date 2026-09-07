@@ -1332,6 +1332,11 @@ export function init(): void {
 
   setupAuthSystem(); // Iniciar sesión de inmediato para resolver la carga limpia de la landing page
 
+  // Si la URL contiene parámetro de modal legal, inicializarlo de inmediato sin esperar al idle timer
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("legal")) {
+    setupLegalModal();
+  }
+
   const idleGen = mainLifecycleGen;
   mainUnsubscribers.push(
     runWhenIdle(() => {

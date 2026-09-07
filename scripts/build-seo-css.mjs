@@ -84,21 +84,36 @@ combined += `
 }
 
 .card-ficha-btn {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  right: 32px;
+  height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 12px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #fff;
-  background: var(--color-accent);
-  border-radius: var(--radius-md);
+  padding: 0 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
   text-decoration: none;
-  transition: background 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 10;
+  transition: all var(--duration-quick) ease;
 }
 .card-ficha-btn:hover {
-  background: var(--color-accent-darker);
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+.flip-card-back:not(.is-expanded) .scrollable-content {
+  margin-bottom: 24px;
 }
 
 /* Estrellas doradas en SSR para paridad exacta con la SPA */
@@ -118,12 +133,16 @@ combined += `
 }
 `;
 
+fs.writeFileSync("public/seo-card-v5.css", combined);
+execSync("npx esbuild public/seo-card-v5.css --minify --outfile=public/seo-card-v5.min.css");
+const minified = fs.readFileSync("public/seo-card-v5.min.css", "utf8");
+
+// Mantener compatibilidad con v4
 fs.writeFileSync("public/seo-card-v4.css", combined);
-execSync("npx esbuild public/seo-card-v4.css --minify --outfile=public/seo-card-v4.min.css");
-const minified = fs.readFileSync("public/seo-card-v4.min.css", "utf8");
+fs.writeFileSync("public/seo-card-v4.min.css", minified);
 
 // Also update cloudflare/seo/seo-card-css.js to export the minified string
-const jsContent = `// Generado automáticamente a partir de public/seo-card-v4.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
+const jsContent = `// Generado automáticamente a partir de public/seo-card-v5.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
 fs.writeFileSync("cloudflare/seo/seo-card-css.js", jsContent);
 
 console.log("Successfully generated public/seo-card-v4.css and cloudflare/seo/seo-card-css.js");

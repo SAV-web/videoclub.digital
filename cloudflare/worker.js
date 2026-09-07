@@ -64,7 +64,7 @@ export default {
     }
 
     // 1.B SERVIR HOJA DE ESTILOS SEO DIRECTAMENTE DESDE EDGE MEMORY (0ms Origin roundtrip)
-    if (url.pathname === "/seo-card.css" || url.pathname === "/seo-card-v2.css" || url.pathname === "/seo-card-v3.css" || url.pathname === "/seo-card-v4.css") {
+    if (url.pathname.startsWith("/seo-card") && url.pathname.endsWith(".css")) {
       return new Response(SEO_CARD_CSS, {
         status: 200,
         headers: {

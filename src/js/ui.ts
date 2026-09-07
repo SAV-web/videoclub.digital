@@ -665,6 +665,21 @@ export const closeLegalModal = (options?: { fromPopstate?: boolean } | Event): v
     }
   }
   closeAccessibleModal(dom.legalModal, dom.legalOverlay);
+
+  // Limpiar parámetro ?legal= de la URL si veníamos de un enlace directo
+  if (typeof window !== "undefined") {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("legal")) {
+        url.searchParams.delete("legal");
+        const cleanSearch = url.searchParams.toString();
+        const cleanUrl = url.pathname + (cleanSearch ? `?${cleanSearch}` : "") + url.hash;
+        window.history.replaceState(window.history.state, "", cleanUrl);
+      }
+    } catch {
+      // no-op
+    }
+  }
 };
 
 export const openLegalModal = (tabName = "about"): void => {
@@ -721,6 +736,19 @@ export function setupLegalModal(): void {
   });
 
   legalModalInitialized = true;
+
+  // 6. Apertura directa si la URL contiene parámetro legal (ej. /?legal=about, /?legal=cookies)
+  if (typeof window !== "undefined") {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const legalTab = urlParams.get("legal");
+      if (legalTab && ["about", "contact", "legal", "privacy", "cookies"].includes(legalTab.toLowerCase())) {
+        openLegalModal(legalTab.toLowerCase());
+      }
+    } catch {
+      // no-op
+    }
+  }
 }
 
 // =================================================================

@@ -390,7 +390,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("Aviso legal"), "El footer debe contener los avisos legales");
     assert.ok(html.includes("actors-expand-btn"), "Debe incluir el botón + de reparto");
     assert.ok(html.includes("actors-scrollable-content"), "Debe incluir el overlay deslizable de reparto");
-    assert.ok(html.includes("seo-card-v4.css"), "Debe enlazar con seo-card-v4.css");
+    assert.ok(html.includes("seo-card-v5.css"), "Debe enlazar con seo-card-v5.css");
     assert.ok(!html.includes("collection-hero"), "NO debe contener el bloque hero invasivo");
   });
 
@@ -403,6 +403,13 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       const html = await res.text();
       assert.ok(html.includes('"@type":"CollectionPage"'));
       assert.ok(html.includes("movie-card"));
+
+      if (r === "/criterion/") {
+        assert.ok(html.includes("filter-pill is-active is-static"), "Selecciones deben tener píldora no clickable");
+        assert.ok(!html.includes('href="/?_p=/criterion/"'), "Selecciones NO deben tener enlace a la SPA");
+      } else if (r === "/espana/") {
+        assert.ok(html.includes('href="/?_p=/espana/"'), "Países deben tener enlace a la SPA");
+      }
     }
   });
 
@@ -421,8 +428,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(body.success, true);
   });
 
-  test("Estilos: /seo-card-v4.css se sirve desde Edge Memory con componentes oficiales de la SPA", async () => {
-    const req = new Request("https://videoclub.digital/seo-card-v4.css");
+  test("Estilos: /seo-card-v5.css se sirve desde Edge Memory con componentes oficiales de la SPA", async () => {
+    const req = new Request("https://videoclub.digital/seo-card-v5.css");
     const res = await worker.fetch(req, {}, defaultCtx);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("Content-Type"), "text/css; charset=utf-8");

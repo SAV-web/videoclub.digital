@@ -1241,3 +1241,174 @@ html, body {
   background: var(--color-surface-2);
   border-color: var(--color-text-secondary);
 }
+
+/* ========================================================== */
+/*  ESTILOS PARA PERFILES VIP DE DIRECTORES Y ACTORES         */
+/* ========================================================== */
+
+.person-hero {
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 36px 32px;
+  margin-bottom: 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.person-hero-layout {
+  display: flex;
+  gap: 36px;
+  align-items: flex-start;
+}
+
+.person-avatar-wrap {
+  flex-shrink: 0;
+  width: 180px;
+  height: 180px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--color-surface-2);
+  border: 2px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.person-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.person-hero-body {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.person-badge-tag {
+  display: inline-block;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+.person-name {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.person-tagline {
+  font-size: 1.1rem;
+  line-height: 1.45;
+  color: #f59e0b;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.person-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.person-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.person-bio-container {
+  margin-bottom: 24px;
+  max-width: 900px;
+}
+
+.person-bio-text {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  text-align: justify;
+}
+
+.person-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.person-filmography-section {
+  margin-top: 20px;
+}
+
+.person-filmography-header {
+  margin-bottom: 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.person-filmography-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.person-filmography-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-tertiary);
+}
+
+@media (max-width: 768px) {
+  .person-hero {
+    padding: 24px 20px;
+  }
+
+  .person-hero-layout {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 20px;
+  }
+
+  .person-avatar-wrap {
+    width: 140px;
+    height: 140px;
+  }
+
+  .person-meta-row {
+    justify-content: center;
+  }
+
+  .person-bio-text {
+    text-align: left;
+  }
+
+  .person-actions {
+    justify-content: center;
+  }
+
+  .person-filmography-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

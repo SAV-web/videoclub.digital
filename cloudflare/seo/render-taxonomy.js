@@ -421,7 +421,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
 
   <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v4.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v5.css" />
   <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
 </head>
 <body class="collection-wall">
@@ -435,11 +435,17 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
             <span class="logo-line-2">.DIGITAL</span>
           </a>
           
-          <!-- Nombre de la sección alineado a la derecha como enlace a la SPA -->
+          <!-- Nombre de la sección alineado a la derecha (las selecciones son fijas no clickables, géneros/países/estudios enlazan a la SPA) -->
           <div class="active-filters-list" style="display:flex; align-items:center; margin:0; padding:0;">
-            <a href="${escapeAttr(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeAttr(taxInfo.name)} en el videoclub interactivo" style="text-decoration:none;">
-              <span>${escapeHtml(taxInfo.name)}</span>
-            </a>
+            ${taxInfo.type === 'selection' ? `
+              <span class="filter-pill is-active is-static" style="cursor:default; pointer-events:none;">
+                <span>${escapeHtml(taxInfo.name)}</span>
+              </span>
+            ` : `
+              <a href="${escapeAttr(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeAttr(taxInfo.name)} en el videoclub interactivo" style="text-decoration:none;">
+                <span>${escapeHtml(taxInfo.name)}</span>
+              </a>
+            `}
           </div>
         </div>
       </header>
