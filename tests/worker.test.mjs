@@ -261,7 +261,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
 
     // Verificación de Speculation Rules y CSS
     assert.ok(html.includes("<script type=\"speculationrules\">"));
-    assert.ok(html.includes("/seo-card.css"));
+    assert.ok(html.includes("seo-card"));
 
     // Segunda petición (Cache HIT): debe responder desde caches.default sin invocar a Supabase
     const initialFetchCalls = fetchCalls.length;

@@ -16,6 +16,7 @@
 
 import { renderMovieHtml } from "./seo/render-movie.js";
 import { MOVIE_PROJECTION } from "./seo/seo-types.js";
+import { SEO_CARD_CSS } from "./seo/seo-card-css.js";
 
 const DEFAULT_SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 const DEFAULT_SUPABASE_URL = "https://wibygecgfczcvaqewleq.supabase.co";
@@ -53,6 +54,18 @@ export default {
       return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 1.B SERVIR HOJA DE ESTILOS SEO DIRECTAMENTE DESDE EDGE MEMORY (0ms Origin roundtrip)
+    if (url.pathname === "/seo-card.css" || url.pathname === "/seo-card-v2.css") {
+      return new Response(SEO_CARD_CSS, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/css; charset=utf-8",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Access-Control-Allow-Origin": "*"
+        }
       });
     }
 
