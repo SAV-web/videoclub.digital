@@ -8,7 +8,7 @@ let spaConstants;
 let sharedFormatters;
 let utilsModule;
 let stateModule;
-let astroFormatModule;
+let edgeSeoModule;
 
 before(async () => {
   viteEnv = await startViteSsrServer([
@@ -17,7 +17,7 @@ before(async () => {
     "/src/shared/formatters.ts",
     "/src/js/utils.ts",
     "/src/js/state.ts",
-    "/seo-site/src/lib/format.ts",
+    "/cloudflare/seo/seo-types.js",
   ]);
   [
     sharedConstants,
@@ -25,7 +25,7 @@ before(async () => {
     sharedFormatters,
     utilsModule,
     stateModule,
-    astroFormatModule,
+    edgeSeoModule,
   ] = viteEnv.modules;
 });
 
@@ -315,18 +315,24 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     );
   });
 
-  test("Compatibilidad directa entre SPA y Astro (seo-site/src/lib/format.ts)", () => {
-    // 1. getPosterUrl en Astro Pick<MovieRow, 'slug'> vs SPA getPosterUrl(slug)
+  test("Compatibilidad directa entre SPA y Edge SEO (cloudflare/seo/seo-types.js)", () => {
+    // 1. getPosterUrl en Edge SEO vs SPA getPosterUrl(slug)
     assert.equal(
-      astroFormatModule.getPosterUrl({ slug: "matrix-1999" }),
+      edgeSeoModule.getPosterUrl({ slug: "matrix-1999" }),
       sharedFormatters.getPosterUrl("matrix-1999"),
     );
-    assert.equal(astroFormatModule.getPosterUrl({ slug: "" }), "");
+    assert.equal(edgeSeoModule.getPosterUrl({ slug: "" }), "");
 
-    // 2. parseList re-exportado en Astro
+    // 2. parseList re-exportado en Edge SEO
     assert.deepEqual(
-      astroFormatModule.parseList("Drama, Thriller"),
+      edgeSeoModule.parseList("Drama, Thriller"),
       sharedFormatters.parseList("Drama, Thriller"),
+    );
+
+    // 3. formatVotesUnified
+    assert.equal(
+      edgeSeoModule.formatVotesUnified(12500),
+      sharedFormatters.formatVotesUnified(12500),
     );
   });
 });
