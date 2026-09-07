@@ -1,0 +1,7 @@
+name = "videoclub-edge-optimizer"
+main = "cloudflare/worker.js"
+compatibility_date = "2026-09-01"
+
+routes = [
+  { pattern = "videoclub.digital/*", zone_name = "videoclub.digital" }
+]

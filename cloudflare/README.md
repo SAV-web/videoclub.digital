@@ -26,19 +26,24 @@ Esta guía documenta la puesta en marcha de **Cloudflare (Plan Gratuito)** como 
 
 El script [cloudflare/worker.js](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/cloudflare/worker.js) unifica toda la lógica de edge en un único punto.
 
-### Opción A: Desde el Panel Web de Cloudflare (Sin instalar nada)
-1. Ve a **Workers & Pages** $\rightarrow$ **Create Application** $\rightarrow$ **Create Worker**.
-2. Asigna un nombre al Worker (ej. `videoclub-edge-optimizer`).
-3. Pega el contenido de [`cloudflare/worker.js`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/cloudflare/worker.js).
-4. Guarda y despliega (**Save and Deploy**).
-5. Ve a **Settings** $\rightarrow$ **Domains & Routes** $\rightarrow$ **Add Route**:
-   - **Route**: `videoclub.digital/*`
-   - **Zone**: `videoclub.digital`
-
-### Opción B: Mediante Wrangler CLI
+### Opción A: Mediante Wrangler CLI (Recomendado)
+El proyecto incluye [wrangler.toml](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/wrangler.toml) preconfigurado. Para desplegar directamente:
 ```bash
-npx wrangler deploy cloudflare/worker.js --name videoclub-edge-optimizer --route "videoclub.digital/*"
+npx wrangler login   # Solo la primera vez si no has iniciado sesión
+npx wrangler deploy  # Empaqueta y despliega el Worker automáticamente
 ```
+
+### Opción B: Desde el Panel Web de Cloudflare (Sin CLI)
+Dado que el worker modular utiliza submódulos (`./seo/render-movie.js`), hemos preparado un comando para generar un archivo único consolidado:
+1. Ejecuta:
+   ```bash
+   npm run build:worker
+   ```
+2. Abre el archivo generado: [`cloudflare/dist/worker.bundle.js`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/cloudflare/dist/worker.bundle.js).
+3. En el panel de Cloudflare, ve a **Workers & Pages** $\rightarrow$ tu Worker (`videoclub-edge-optimizer`) $\rightarrow$ **Edit code / Quick Edit**.
+4. Pega todo el contenido de `worker.bundle.js` reemplazando lo anterior.
+5. Haz clic en **Save and Deploy**.
+6. Asegúrate de que la ruta en **Settings $\rightarrow$ Domains & Routes** siga asignada a `videoclub.digital/*`.
 
 ---
 
