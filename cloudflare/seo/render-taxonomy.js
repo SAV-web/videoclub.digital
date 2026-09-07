@@ -41,7 +41,7 @@ function safeJsonLd(obj) {
  * con soporte para giro 3D (flip card), estrellas doradas dinámicas, banderas SVG,
  * notas de FilmAffinity / IMDb, sinopsis y expansión interactiva de reparto.
  */
-function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
+export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
   const isSeries = isSeriesType(movie.type);
   const title = movie.title || movie.original_title || 'Sin título';
   const displayOriginalTitle = movie.original_title?.trim() || title;

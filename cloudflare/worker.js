@@ -19,6 +19,7 @@ import { MOVIE_PROJECTION } from "./seo/seo-types.js";
 import { SEO_CARD_CSS } from "./seo/seo-card-css.js";
 import { resolveTaxonomy } from "./seo/taxonomy-types.js";
 import { renderTaxonomyHtml } from "./seo/render-taxonomy.js";
+import { renderPersonHtml } from "./seo/render-person.js";
 
 const DEFAULT_SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 const DEFAULT_SUPABASE_URL = "https://wibygecgfczcvaqewleq.supabase.co";
@@ -51,11 +52,19 @@ export default {
         const nonSlashMovie = new URL(`/titulo/${slug}`, url.origin).toString();
         const canonicalTax = new URL(`/${slug}/`, url.origin).toString();
         const nonSlashTax = new URL(`/${slug}`, url.origin).toString();
+        const canonicalDir = new URL(`/director/${slug}/`, url.origin).toString();
+        const nonSlashDir = new URL(`/director/${slug}`, url.origin).toString();
+        const canonicalAct = new URL(`/actor/${slug}/`, url.origin).toString();
+        const nonSlashAct = new URL(`/actor/${slug}`, url.origin).toString();
         const p1 = await cache.delete(canonicalMovie);
         const p2 = await cache.delete(nonSlashMovie);
         const p3 = await cache.delete(canonicalTax);
         const p4 = await cache.delete(nonSlashTax);
-        if (p1 || p2 || p3 || p4) purgedCount++;
+        const p5 = await cache.delete(canonicalDir);
+        const p6 = await cache.delete(nonSlashDir);
+        const p7 = await cache.delete(canonicalAct);
+        const p8 = await cache.delete(nonSlashAct);
+        if (p1 || p2 || p3 || p4 || p5 || p6 || p7 || p8) purgedCount++;
       }
       return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
         status: 200,
@@ -93,8 +102,8 @@ export default {
       });
     }
 
-    // 2. NORMALIZACIÓN CANÓNICA 301 DE TRAILING SLASH PARA /titulo/:slug
-    if (url.pathname.startsWith("/titulo/") && !url.pathname.endsWith("/")) {
+    // 2. NORMALIZACIÓN CANÓNICA 301 DE TRAILING SLASH PARA /titulo/:slug, /director/:slug y /actor/:slug
+    if ((url.pathname.startsWith("/titulo/") || url.pathname.startsWith("/director/") || url.pathname.startsWith("/actor/")) && !url.pathname.endsWith("/")) {
       const canonicalRedirectUrl = new URL(`${url.pathname}/${url.search}`, url.origin);
       return Response.redirect(canonicalRedirectUrl.toString(), 301);
     }
@@ -145,6 +154,108 @@ export default {
           }
         } catch (err) {
           // En caso de fallo transitorio en Supabase, delegar en el origin
+        }
+      }
+    }
+
+    // 3.B RENDERER SEO EN EDGE BAJO DEMANDA PARA ENTIDADES VIP (/director/:slug/ y /actor/:slug/)
+    const isDirectorRoute = url.pathname.startsWith("/director/");
+    const isActorRoute = url.pathname.startsWith("/actor/");
+    if (isDirectorRoute || isActorRoute) {
+      const role = isDirectorRoute ? "director" : "actor";
+      const table = isDirectorRoute ? "directors" : "actors";
+      const otherTable = isDirectorRoute ? "actors" : "directors";
+      const prefix = isDirectorRoute ? "/director/" : "/actor/";
+      const slug = url.pathname.replace(prefix, "").replace(/\/$/, "").trim();
+
+      if (slug) {
+        const cache = caches.default;
+        const canonicalKey = new Request(new URL(`${prefix}${slug}/`, url.origin).toString(), request);
+
+        // 3.B.1 Intento en Edge Cache (Cache HIT en ~10-15ms)
+        const cached = await cache.match(canonicalKey);
+        if (cached) {
+          return cached;
+        }
+
+        // 3.B.2 Cache MISS: Consulta a Supabase REST de la persona
+        const selectFields = "id,name,slug,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
+        const personQueryUrl = `${supabaseUrl}/rest/v1/${table}?slug=eq.${encodeURIComponent(slug)}&select=${selectFields}&limit=1`;
+
+        try {
+          const personRes = await fetch(personQueryUrl, {
+            headers: {
+              apikey: supabaseAnonKey,
+              Authorization: `Bearer ${supabaseAnonKey}`,
+              Accept: "application/json"
+            }
+          });
+
+          if (personRes.ok) {
+            const persons = await personRes.json();
+            const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
+
+            // Regla Anti-Thin Content (Google Quality Guidelines): Solo VIPs con biografía redactada
+            if (person && person.biography && person.biography.trim()) {
+              // Comprobar si tiene el otro rol en paralelo con la filmografía
+              const otherRoleQueryUrl = `${supabaseUrl}/rest/v1/${otherTable}?slug=eq.${encodeURIComponent(slug)}&select=id&biography=not.is.null&limit=1`;
+              const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+              const rpcParams = {
+                [isDirectorRoute ? "director_name" : "actor_name"]: person.name,
+                sort_field: "fa_votes",
+                sort_direction: "desc",
+                page_limit: 42,
+                get_count: true
+              };
+
+              const [otherRoleRes, moviesRes] = await Promise.all([
+                fetch(otherRoleQueryUrl, {
+                  headers: {
+                    apikey: supabaseAnonKey,
+                    Authorization: `Bearer ${supabaseAnonKey}`,
+                    Accept: "application/json"
+                  }
+                }).catch(() => null),
+                fetch(rpcUrl, {
+                  method: "POST",
+                  headers: {
+                    apikey: supabaseAnonKey,
+                    Authorization: `Bearer ${supabaseAnonKey}`,
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                  },
+                  body: JSON.stringify(rpcParams)
+                }).catch(() => null)
+              ]);
+
+              let hasOtherRole = false;
+              if (otherRoleRes && otherRoleRes.ok) {
+                const otherRows = await otherRoleRes.json().catch(() => []);
+                hasOtherRole = Array.isArray(otherRows) && otherRows.length > 0;
+              }
+
+              let movies = [];
+              if (moviesRes && moviesRes.ok) {
+                const moviesData = await moviesRes.json().catch(() => ({}));
+                movies = Array.isArray(moviesData?.items) ? moviesData.items : (Array.isArray(moviesData) ? moviesData : []);
+              }
+
+              const html = renderPersonHtml(person, role, hasOtherRole, movies, { siteOrigin: url.origin, storageUrl });
+              const responseHeaders = new Headers({
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+              });
+              const response = new Response(html, {
+                status: 200,
+                headers: responseHeaders
+              });
+              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+              return response;
+            }
+          }
+        } catch (err) {
+          // En caso de fallo transitorio, delegar en el origin
         }
       }
     }

@@ -298,6 +298,13 @@ Cada ficha cinematográfica expone el siguiente contrato de datos normalizado:
   fs.writeFileSync(path.join(publicDir, "llms.txt"), llmsTxtContent, "utf-8");
   fs.writeFileSync(path.join(publicDir, "llms-full.txt"), llmsFullTxtContent, "utf-8");
 
+  const distDir = path.resolve(projectRoot, "dist");
+  if (fs.existsSync(distDir)) {
+    fs.writeFileSync(path.join(distDir, "llms.txt"), llmsTxtContent, "utf-8");
+    fs.writeFileSync(path.join(distDir, "llms-full.txt"), llmsFullTxtContent, "utf-8");
+    console.log("- Archivos sincronizados en dist/");
+  }
+
   console.log("¡Archivos public/llms.txt y public/llms-full.txt generados con éxito!");
   console.log(`- Géneros oficiales incluidos: ${OFFICIAL_GENRES.length}/21`);
   console.log(`- Estudios incluidos: ${STUDIO_SLUGS.size}/15`);

@@ -131,6 +131,69 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
         });
       }
 
+      // 1.C Simulación de Supabase REST API: Directores VIP
+      if (urlStr.includes("/rest/v1/directors")) {
+        if (urlStr.includes("slug=eq.not-found") || urlStr.includes("slug=eq.harrison-ford")) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        if (urlStr.includes("slug=eq.thin-director")) {
+          return new Response(JSON.stringify([{
+            id: 9999,
+            name: "Thin Director",
+            slug: "thin-director",
+            biography: null
+          }]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        const sampleDirector = {
+          id: 4134,
+          name: "Christopher Nolan",
+          slug: "christopher-nolan",
+          birthday: "1970-07-30",
+          deathday: null,
+          place_of_birth: "Londres, UK",
+          biography: "Apasionado del medio audiovisual desde la infancia a través del formato súper-8.",
+          titulo_bio: "Cineasta británico maestro de puestas en escena conceptuales",
+          thumbhash_st: "data:image/webp;base64,sample",
+          countries: { id: 826, code: "GB", name: "UK" }
+        };
+        return new Response(JSON.stringify([sampleDirector]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // 1.D Simulación de Supabase REST API: Actores VIP
+      if (urlStr.includes("/rest/v1/actors")) {
+        if (urlStr.includes("slug=eq.not-found") || urlStr.includes("slug=eq.christopher-nolan")) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        const sampleActor = {
+          id: 506,
+          name: "Harrison Ford",
+          slug: "harrison-ford",
+          birthday: "1942-07-13",
+          deathday: null,
+          place_of_birth: "Chicago, EEUU",
+          biography: "Cursó estudios de filosofía y letras antes de trasladarse a California.",
+          titulo_bio: "Héroe arquetípico del cine de aventuras",
+          thumbhash_st: "data:image/webp;base64,sample",
+          countries: { id: 840, code: "US", name: "EEUU" }
+        };
+        return new Response(JSON.stringify([sampleActor]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
       // 2. Simulación de Supabase Storage: Pósters
       if (urlStr.startsWith(`${SUPABASE_STORAGE_URL}/posters/`)) {
         if (urlStr.includes("not-found")) {
@@ -438,5 +501,83 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(css.includes(".movie-card"), "Debe contener estilos de tarjeta oficial .movie-card");
     assert.ok(css.includes(".grid-container"), "Debe contener estilos de rejilla .grid-container");
     assert.ok(css.includes(".filter-pill"), "Debe contener estilos de píldora de filtro .filter-pill");
+    assert.ok(css.includes(".person-card"), "Debe contener estilos de ficha VIP .person-card");
+    assert.ok(css.includes(".bio-headline"), "Debe contener estilos de titular biográfico .bio-headline");
+  });
+
+  test("Directores VIP: /director/christopher-nolan/ responde 200 OK con Schema Person y filmografía", async () => {
+    const req = new Request("https://videoclub.digital/director/christopher-nolan/");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("Content-Type"), "text/html; charset=utf-8");
+    assert.ok(res.headers.get("Cache-Control").includes("s-maxage=604800"));
+    assert.equal(res.headers.get("Link"), '</llms.txt>; rel="alternate"; type="text/markdown"');
+
+    const html = await res.text();
+    assert.ok(html.includes("Christopher Nolan"));
+    assert.ok(html.includes('"@type":"Person"'));
+    assert.ok(html.includes('"@type":"CollectionPage"'));
+    assert.ok(html.includes('"@type":"ItemList"'));
+    assert.ok(html.includes("person-card"), "Debe incluir la ficha VIP .person-card");
+    assert.ok(html.includes("/vips/christopher-nolan.webp"), "Debe enlazar a la foto VIP del director");
+    assert.ok(html.includes("Londres, UK"), "Debe mostrar el lugar de nacimiento");
+    assert.ok(html.includes("Cineasta británico maestro de puestas en escena conceptuales"), "Debe mostrar el titular biográfico");
+    assert.ok(html.includes("Apasionado del medio audiovisual"), "Debe mostrar la biografía");
+    assert.ok(html.includes("filter-pill is-active"), "Debe incluir la píldora de filtro con el nombre");
+    assert.ok(html.includes('href="/?_p=/director/christopher-nolan/"'), "La píldora debe enlazar a la SPA");
+  });
+
+  test("Actores VIP: /actor/harrison-ford/ responde 200 OK con Schema Person y filmografía", async () => {
+    const req = new Request("https://videoclub.digital/actor/harrison-ford/");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("Content-Type"), "text/html; charset=utf-8");
+
+    const html = await res.text();
+    assert.ok(html.includes("Harrison Ford"));
+    assert.ok(html.includes('"@type":"Person"'));
+    assert.ok(html.includes('"@type":"CollectionPage"'));
+    assert.ok(html.includes("person-card"));
+    assert.ok(html.includes("/vips/harrison-ford.webp"));
+    assert.ok(html.includes("Chicago, EEUU"));
+    assert.ok(html.includes("Héroe arquetípico del cine de aventuras"));
+    assert.ok(html.includes('href="/?_p=/actor/harrison-ford/"'));
+  });
+
+  test("Normalización 301: /director/:slug y /actor/:slug sin barra final redirigen con 301", async () => {
+    const dirReq = new Request("https://videoclub.digital/director/christopher-nolan");
+    const dirRes = await worker.fetch(dirReq, {}, defaultCtx);
+    assert.equal(dirRes.status, 301);
+    assert.equal(dirRes.headers.get("Location"), "https://videoclub.digital/director/christopher-nolan/");
+
+    const actReq = new Request("https://videoclub.digital/actor/harrison-ford");
+    const actRes = await worker.fetch(actReq, {}, defaultCtx);
+    assert.equal(actRes.status, 301);
+    assert.equal(actRes.headers.get("Location"), "https://videoclub.digital/actor/harrison-ford/");
+  });
+
+  test("Anti-Thin Content: Personalidad sin biografía delega limpiamente al origen", async () => {
+    const req = new Request("https://videoclub.digital/director/thin-director/");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    assert.ok(fetchCalls.some(c => c.url.includes("slug=eq.thin-director")));
+    const html = await res.text();
+    assert.ok(html.includes("<title>Videoclub</title>"), "Debe delegar al origen si no tiene biografía");
+  });
+
+  test("Purga selectiva: /internal/purge invalida claves de directores y actores", async () => {
+    const purgeReq = new Request("https://videoclub.digital/internal/purge", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer videoclub-purge-secret",
+      },
+      body: JSON.stringify({ slugs: ["christopher-nolan", "harrison-ford"] }),
+    });
+    const purgeRes = await worker.fetch(purgeReq, {}, defaultCtx);
+    assert.equal(purgeRes.status, 200);
+    const body = await purgeRes.json();
+    assert.equal(body.success, true);
+    assert.equal(body.totalRequested, 2);
   });
 });

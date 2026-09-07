@@ -85,6 +85,34 @@ async function generateSitemap() {
 
   console.log(`[sitemap] Se recuperaron ${slugs.length} títulos indexables válidos.`);
 
+  // 2. Directores VIP con biografía redactada (654 verificados)
+  const { data: vipDirectors, error: dirError } = await supabase
+    .from("directors")
+    .select("slug")
+    .not("biography", "is", null)
+    .neq("biography", "")
+    .order("name", { ascending: true });
+
+  if (dirError) {
+    console.warn(`[sitemap] Error consultando directores VIP: ${dirError.message}`);
+  }
+  const directorSlugs = (vipDirectors || []).map(d => d.slug).filter(Boolean);
+  console.log(`[sitemap] Se recuperaron ${directorSlugs.length} directores VIP con biografía.`);
+
+  // 3. Actores VIP con biografía redactada (362 verificados)
+  const { data: vipActors, error: actError } = await supabase
+    .from("actors")
+    .select("slug")
+    .not("biography", "is", null)
+    .neq("biography", "")
+    .order("name", { ascending: true });
+
+  if (actError) {
+    console.warn(`[sitemap] Error consultando actores VIP: ${actError.message}`);
+  }
+  const actorSlugs = (vipActors || []).map(a => a.slug).filter(Boolean);
+  console.log(`[sitemap] Se recuperaron ${actorSlugs.length} actores VIP con biografía.`);
+
   // Ensamblar XML estándar
   const urlEntries = [
     `  <url>
@@ -121,6 +149,24 @@ async function generateSitemap() {
   </url>`);
   }
 
+  // Fichas VIP de Directores
+  for (const dirSlug of directorSlugs) {
+    urlEntries.push(`  <url>
+    <loc>${SITE_ORIGIN}/director/${dirSlug}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+  }
+
+  // Fichas VIP de Actores
+  for (const actSlug of actorSlugs) {
+    urlEntries.push(`  <url>
+    <loc>${SITE_ORIGIN}/actor/${actSlug}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+  }
+
   for (const slug of slugs) {
     urlEntries.push(`  <url>
     <loc>${SITE_ORIGIN}/titulo/${slug}/</loc>
@@ -151,7 +197,7 @@ ${urlEntries.join("\n")}
   fs.writeFileSync(publicSitemapPath, sitemapXml, "utf8");
   const publicSitemapIndexPath = path.join(publicDir, "sitemap-index.xml");
   fs.writeFileSync(publicSitemapIndexPath, sitemapIndexXml, "utf8");
-  console.log(`✓ Sitemap generado con éxito en: ${publicSitemapPath} (${slugs.length + 3} URLs totales)`);
+  console.log(`✓ Sitemap generado con éxito en: ${publicSitemapPath} (${urlEntries.length} URLs totales)`);
   console.log(`✓ Sitemap Index generado con éxito en: ${publicSitemapIndexPath}`);
 
   if (fs.existsSync(distDir)) {
