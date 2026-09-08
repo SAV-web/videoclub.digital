@@ -267,18 +267,20 @@ export function renderMovieHtml(movie, options = {}) {
 
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
-                <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
-                  <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
+              <!-- Estrellas grises (estado no-votado): se muestran como en la SPA
+                   para un usuario que aún no ha votado esta película -->
+                <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container is-seo-display is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
+                  <svg class="star-icon" data-rating-level="1" style="opacity: 1;">
                     <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip1}% 0 0);"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 100% 0 0);"></use>
                   </svg>
-                  <svg class="star-icon" data-rating-level="2" style="${!isSuspenso && avgStars > 1 ? 'opacity: 1;' : 'opacity: 0;'}">
+                  <svg class="star-icon" data-rating-level="2" style="opacity: 1;">
                     <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip2}% 0 0);"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 100% 0 0);"></use>
                   </svg>
-                  <svg class="star-icon" data-rating-level="3" style="${!isSuspenso && avgStars > 2 ? 'opacity: 1;' : 'opacity: 0;'}">
+                  <svg class="star-icon" data-rating-level="3" style="opacity: 1;">
                     <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip3}% 0 0);"></use>
+                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 100% 0 0);"></use>
                   </svg>
                 </a>
 
