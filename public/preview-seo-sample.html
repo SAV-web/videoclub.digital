@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
+  <!-- Anti-flicker para sincronización de modo claro/oscuro con el grid -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("theme");
+        var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var isDark = stored === "dark" || (!stored && systemDark) || (!stored && stored === null);
+        if (isDark) {
+          document.documentElement.classList.add("dark-mode");
+          document.documentElement.classList.remove("light-mode");
+        } else if (stored === "light") {
+          document.documentElement.classList.add("light-mode");
+          document.documentElement.classList.remove("dark-mode");
+        }
+        var metas = document.querySelectorAll('meta[name="theme-color"]');
+        metas.forEach(function(m) { m.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5"); });
+      } catch (e) {}
+    })();
+  </script>
+  <title>Películas y Series de Ciencia Ficción — Videoclub Digital</title>
+  <meta name="description" content="Viajes espaciales, futuros distópicos, inteligencia artificial y paradojas temporales en la mejor selección de ciencia ficción en streaming." />
+  <link rel="canonical" href="http://localhost:5173/sci-fi/" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Películas y Series de Ciencia Ficción — Videoclub Digital" />
+  <meta property="og:description" content="Viajes espaciales, futuros distópicos, inteligencia artificial y paradojas temporales en la mejor selección de ciencia ficción en streaming." />
+  <meta property="og:url" content="http://localhost:5173/sci-fi/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="http://localhost:5173/posters/matrix-1999.webp" />
+  <meta property="og:site_name" content="Videoclub Digital" />
+  <meta property="og:locale" content="es_ES" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Películas y Series de Ciencia Ficción — Videoclub Digital" />
+  <meta name="twitter:description" content="Viajes espaciales, futuros distópicos, inteligencia artificial y paradojas temporales en la mejor selección de ciencia ficción en streaming." />
+  <meta name="twitter:image" content="http://localhost:5173/posters/matrix-1999.webp" />
+
+  <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
+  <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
+  <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
+
+  <!-- Structured Data: CollectionPage & Breadcrumbs -->
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Películas y Series de Ciencia Ficción","description":"Viajes espaciales, futuros distópicos, inteligencia artificial y paradojas temporales en la mejor selección de ciencia ficción en streaming.","url":"http://localhost:5173/sci-fi/","inLanguage":"es","mainEntity":{"@type":"ItemList","numberOfItems":1,"itemListElement":[{"@type":"ListItem","position":1,"item":{"@type":"Movie","name":"Matrix","url":"http://localhost:5173/titulo/matrix-1999/","image":"http://localhost:5173/posters/matrix-1999.webp","datePublished":"1999","aggregateRating":{"@type":"AggregateRating","ratingValue":"7.9","bestRating":"10","worstRating":"1","ratingCount":168430}}}]}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Videoclub","item":"http://localhost:5173/"},{"@type":"ListItem","position":2,"name":"Géneros","item":"http://localhost:5173/"},{"@type":"ListItem","position":3,"name":"Sci-Fi","item":"http://localhost:5173/sci-fi/"}]}</script>
+  <script type="speculationrules">{"prerender":[{"source":"list","urls":["/"]}],"prefetch":[{"source":"list","urls":["http://localhost:5173/titulo/matrix-1999/"]}]}</script>
+
+  <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
+  <link rel="stylesheet" href="/seo-card-v6.css" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body class="collection-wall">
+  <div class="main-layout">
+    <div class="main-content-wrapper">
+      <!-- Cabecera Minimalista Estilo SPA -->
+      <header class="main-header">
+        <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto;">
+          <a href="/" class="brand-logo-text" aria-label="Videoclub Digital">
+            <span class="logo-line-1">VIDEOCLUB</span>
+            <span class="logo-line-2">.DIGITAL</span>
+          </a>
+          
+          <!-- Nombre de la sección alineado a la derecha (las selecciones son fijas no clickables, géneros/países/estudios enlazan a la SPA) -->
+          <div class="active-filters-list" style="display:flex; align-items:center; margin:0; padding:0;">
+            
+              <a href="/?_p=/sci-fi/" class="filter-pill is-active" title="Abrir Sci-Fi en el videoclub interactivo" style="text-decoration:none;">
+                <span>Sci-Fi</span>
+              </a>
+            
+          </div>
+        </div>
+      </header>
+
+      <!-- Muro Principal de Películas (42 fichas oficiales) -->
+      <main class="content">
+        <h1 class="sr-only">Películas y Series de Ciencia Ficción</h1>
+        <section id="grid-container" class="grid-container" aria-label="Películas de Sci-Fi">
+          
+    <article class="movie-card" data-movie-id="603" style="--card-index: 0;">
+      <div class="flip-card-inner">
+        <!-- Cara frontal -->
+        <div class="flip-card-front">
+          <div class="poster-container">
+            <img
+              src="http://localhost:5173/posters/matrix-1999.webp"
+              alt="Póster de Matrix"
+              width="400"
+              height="496"
+              loading="eager"
+              fetchpriority="high"
+              class="loaded"
+              onerror="this.style.opacity='0.2'"
+            />
+            <div class="poster-overlay-guard"></div>
+            <div class="card-rating-block">
+              <a href="/?movie=603" class="star-rating-container has-average-rating is-interactive" aria-label="Ver valoración y ficha de Matrix" style="text-decoration: none; color: inherit; cursor: pointer;">
+                <svg class="star-icon" data-rating-level="1" style="opacity: 1;">
+                  <use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use>
+                  <use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star" style="clip-path: inset(0 0% 0 0);"></use>
+                </svg>
+                <svg class="star-icon" data-rating-level="2" style="opacity: 1;">
+                  <use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use>
+                  <use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star" style="clip-path: inset(0 0% 0 0);"></use>
+                </svg>
+                <svg class="star-icon" data-rating-level="3" style="opacity: 1;">
+                  <use class="star-icon-path star-icon-path--empty" href="/sprite.svg#icon-star"></use>
+                  <use class="star-icon-path star-icon-path--filled" href="/sprite.svg#icon-star" style="clip-path: inset(0 59.999999999999964% 0 0);"></use>
+                </svg>
+              </a>
+              <span class="wall-rating-number" data-template="wall-rating">8.3</span>
+              <a href="/?movie=603" class="card-action-btn" aria-label="Añadir a mi lista en el videoclub" title="Añadir a mi lista">
+                <svg class="icon-watchlist"><use href="/sprite.svg#icon-bookmark-plus"></use></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="movie-info movie-summary">
+            <div class="title-director-block">
+              <h3 data-template="title" class="">
+                <a href="http://localhost:5173/titulo/matrix-1999/" class="movie-card-title-link" style="color:inherit; text-decoration:none;">Matrix</a>
+              </h3>
+              <div class="front-director-info" data-template="director">
+                
+    <a href="/?_p=/director/lana-wachowski/">Lana Wachowski</a>, 
+  
+    <a href="/?_p=/director/lilly-wachowski/">Lilly Wachowski</a>
+  
+              </div>
+            </div>
+            <div class="movie-meta">
+              
+              <div class="year-country-line">
+                <div class="year-flag-group">
+                  <span data-template="year">
+                    <a href="/?_p=/&_q=year%3D1999" class="year-link" data-year-value="1999">1999</a>
+                  </span>
+                  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cara trasera -->
+        <div class="flip-card-back">
+          <div class="back-meta-header">
+            <div class="episode-duration-group">
+              
+              <span data-template="duration">Película</span>
+              
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="https://www.justwatch.com/es/pelicula/matrix" title="Ver en JustWatch" data-template="justwatch-link">
+                  <svg class="rating-icon" fill="#9A1485"><use href="/sprite.svg#icon-justwatch"></use></svg>
+                </a>
+              
+              
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="https://es.wikipedia.org/wiki/The_Matrix" title="Ver en Wikipedia" data-template="wikipedia-link">
+                  <svg class="rating-icon" fill="#B3404A"><use href="/sprite.svg#icon-wikipedia"></use></svg>
+                </a>
+              
+            </div>
+          </div>
+
+          <div class="ratings-container">
+            
+              <div class="rating-line">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left" href="#" data-template="fa-link">
+                  <svg class="rating-icon"><use href="/sprite.svg#icon-filmaffinity"></use></svg>
+                  <span data-template="fa-rating">7.9</span>
+                </a>
+                <span class="rating-votes-count">168 k</span>
+                <div class="rating-bar-container" data-votes="168 k">
+                  <div class="rating-bar" style="width: 87.49805192636629%;"></div>
+                </div>
+              </div>
+            
+            
+              <div class="rating-line">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left" href="#" data-template="imdb-link">
+                  <svg class="rating-icon" fill="#F5C618"><use href="/sprite.svg#icon-imdb"></use></svg>
+                  <span data-template="imdb-rating">8.7</span>
+                </a>
+                <span class="rating-votes-count">1,95 M</span>
+                <div class="rating-bar-container" data-votes="1,95 M">
+                  <div class="rating-bar" style="width: 78.06247497997998%;"></div>
+                </div>
+              </div>
+            
+          </div>
+
+          <div class="back-original-title-wrapper">
+            <span data-template="original-title" class="">The Matrix</span>
+          </div>
+
+          <div class="details-list">
+            
+              <div class="detail-item" data-template="genre-container">
+                <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-clapperboard"></use></svg></span>
+                <strong class="detail-label-title">Género.</strong>
+                <span class="detail-data" data-template="genre"><span>Ciencia Ficción</span>, <a href="/?_p=/accion/">Acción</a></span>
+              </div>
+            
+            
+              <div class="detail-item" data-template="actors-container">
+                <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-cast"></use></svg></span>
+                <strong class="detail-label-title">Reparto.</strong>
+                <span class="detail-data" data-template="actors">Keanu Reeves, Laurence Fishburne, Carrie‑Anne Moss, Hugo Weaving...</span>
+                <button type="button" class="actors-expand-btn" aria-label="Ver detalles de géneros y reparto">+</button>
+              </div>
+            
+          </div>
+
+          <div class="scrollable-content">
+            <div class="plot-summary-final" title="Sinopsis">
+              <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="/sprite.svg#icon-synopsis"></use></svg></span>
+              <strong class="detail-label-title">Sinopsis.</strong>
+              <span data-template="synopsis">Thomas Anderson es un programador informático de día y un hacker llamado Neo de noche. Su vida cambia por completo cuando conoce a Morfeo y Trinity, dos legendarios líderes de la resistencia que le revelarán la verdad sobre la realidad en la que vive.</span>
+            </div>
+          </div>
+
+          <!-- Overlay deslizante completo de reparto y géneros detallados (se activa al pulsar + en reparto) -->
+          <div class="actors-scrollable-content">
+            
+              <h4>Géneros</h4>
+              <div class="actors-list-text genres-list-text">
+                <a class="actor-list-item genre-list-item" href="/?_p=/ciencia-ficcion/">Ciencia Ficción</a><a class="actor-list-item genre-list-item" href="/?_p=/accion/">Acción</a>
+              </div>
+            
+            
+              <h4>Reparto</h4>
+              <div class="actors-list-text">
+                <a class="actor-list-item" href="/?_p=/actor/keanu-reeves/">Keanu Reeves</a><a class="actor-list-item" href="/?_p=/actor/laurence-fishburne/">Laurence Fishburne</a><a class="actor-list-item" href="/?_p=/actor/carrie-anne-moss/">Carrie‑Anne Moss</a><a class="actor-list-item" href="/?_p=/actor/hugo-weaving/">Hugo Weaving</a><a class="actor-list-item" href="/?_p=/actor/joe-pantoliano/">Joe Pantoliano</a>
+              </div>
+            
+          </div>
+
+          <button type="button" class="expand-content-btn" aria-label="Expandir sinopsis">+</button>
+          <a href="http://localhost:5173/titulo/matrix-1999/" class="card-ficha-btn" aria-label="Ver ficha completa de Matrix">
+            <span>Ficha completa →</span>
+          </a>
+        </div>
+      </div>
+    </article>
+  
+        </section>
+      </main>
+
+      <!-- Pie de página oficial con avisos legales de la SPA -->
+      <footer class="site-footer">
+        <ul class="footer-links">
+          <li class="footer-brand">videoclub.digital</li>
+          <li><a href="/?legal=about" class="footer-legal-link">Quiénes somos</a></li>
+          <li><a href="/?legal=contact" class="footer-legal-link">Contacto</a></li>
+          <li><a href="/?legal=legal" class="footer-legal-link">Aviso legal</a></li>
+          <li><a href="/?legal=privacy" class="footer-legal-link">Privacidad</a></li>
+          <li><a href="/?legal=cookies" class="footer-legal-link">Cookies</a></li>
+          <li class="footer-copy">2025-2026 © Copyright.</li>
+        </ul>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Handler de giro 3D y expansión de reparto en Vanilla JS -->
+  <script>
+    (function () {
+      var activeCard = null;
+
+      // Preservar orden del catálogo seleccionado en la SPA (localStorage preferred_sort)
+      try {
+        var prefSort = localStorage.getItem("preferred_sort");
+        if (prefSort) {
+          document.querySelectorAll("a[href*='_p=']").forEach(function (a) {
+            if (!a.href.includes("_q=")) {
+              a.href += (a.href.includes("?") ? "&" : "?") + "_q=sort%3D" + encodeURIComponent(prefSort);
+            } else if (!a.href.includes("sort%3D") && !a.href.includes("sort=")) {
+              a.href += "%26sort%3D" + encodeURIComponent(prefSort);
+            }
+          });
+        }
+      } catch (e) {}
+
+      document.addEventListener("click", function (e) {
+        // 1. Botón + de actores: despliega la lista completa de actores y géneros en overlay
+        var actorsExpandBtn = e.target.closest(".actors-expand-btn");
+        if (actorsExpandBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var back = actorsExpandBtn.closest(".flip-card-back");
+          if (back) {
+            back.classList.add("is-expanded", "show-actors");
+            var bottomBtn = back.querySelector(".expand-content-btn");
+            if (bottomBtn) {
+              bottomBtn.textContent = "−";
+              bottomBtn.setAttribute("aria-label", "Cerrar detalles");
+            }
+          }
+          return;
+        }
+
+        // 2. Botón inferior de expansión / contracción
+        var expandBtn = e.target.closest(".expand-content-btn");
+        if (expandBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var back = expandBtn.closest(".flip-card-back");
+          if (back) {
+            if (back.classList.contains("show-actors")) {
+              back.classList.remove("is-expanded", "show-actors");
+              expandBtn.textContent = "+";
+              expandBtn.setAttribute("aria-label", "Expandir sinopsis");
+            } else {
+              var isExp = back.classList.toggle("is-expanded");
+              expandBtn.textContent = isExp ? "−" : "+";
+              expandBtn.setAttribute("aria-label", isExp ? "Contraer sinopsis" : "Expandir sinopsis");
+            }
+          }
+          return;
+        }
+
+        // 3. Volteo 3D de la tarjeta
+        var card = e.target.closest(".movie-card");
+        if (card) {
+          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content")) return;
+          var inner = card.querySelector(".flip-card-inner");
+          if (inner) {
+            var isFlipped = inner.classList.toggle("is-flipped");
+            if (isFlipped) {
+              if (activeCard && activeCard !== inner) {
+                activeCard.classList.remove("is-flipped");
+                var prevBack = activeCard.querySelector(".flip-card-back");
+                if (prevBack) {
+                  prevBack.classList.remove("is-expanded", "show-actors");
+                  var prevBtn = prevBack.querySelector(".expand-content-btn");
+                  if (prevBtn) prevBtn.textContent = "+";
+                }
+              }
+              activeCard = inner;
+            } else if (activeCard === inner) {
+              var back = inner.querySelector(".flip-card-back");
+              if (back) {
+                back.classList.remove("is-expanded", "show-actors");
+                var btn = back.querySelector(".expand-content-btn");
+                if (btn) btn.textContent = "+";
+              }
+              activeCard = null;
+            }
+          }
+        } else if (activeCard) {
+          activeCard.classList.remove("is-flipped");
+          var back = activeCard.querySelector(".flip-card-back");
+          if (back) {
+            back.classList.remove("is-expanded", "show-actors");
+            var btn = back.querySelector(".expand-content-btn");
+            if (btn) btn.textContent = "+";
+          }
+          activeCard = null;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

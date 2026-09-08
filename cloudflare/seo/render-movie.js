@@ -417,16 +417,15 @@ export function renderMovieHtml(movie, options = {}) {
               ` : ''}
 
               ${actors.length > 0 ? `
-                <div class="detail-item" data-template="actors-container">
+                <div class="detail-item" data-template="actors-container" style="position:relative; padding-right:24px;">
                   <span class="detail-label">
                     <svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-cast"></use></svg>
                   </span>
                   <strong class="detail-label-title">Reparto.</strong>
                   <span class="detail-data" data-template="actors">
-                    ${actors.map((name, i) => `
-                      <a href="${baseUrl}actor/${toSlug(name)}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < actors.length - 1 ? ', ' : ''}
-                    `).join('')}
+                    ${actors.slice(0, 4).map((name, i) => `<a href="${baseUrl}actor/${toSlug(name)}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < Math.min(actors.length, 4) - 1 ? ', ' : ''}`).join('')}${actors.length > 4 ? '…' : ''}
                   </span>
+                  <button class="actors-expand-btn" type="button" aria-label="Ver géneros y reparto completo" data-genres="${escapeAttr(rawGenres.join('|'))}" data-actors="${escapeAttr(actors.join('|'))}">+</button>
                 </div>
               ` : ''}
             </div>
@@ -442,7 +441,11 @@ export function renderMovieHtml(movie, options = {}) {
                   <span data-template="synopsis">${escapeHtml(preserveHyphenatedWords(movie.synopsis))}</span>
                 </div>
               </div>
+              <button class="expand-content-btn" type="button" aria-label="Expandir sinopsis">+</button>
             ` : ''}
+
+            <!-- Enlace Ficha Completa en SPA -->
+            <a href="${baseUrl}?movie=${movie.id}" class="card-ficha-btn" title="Ver ficha completa en el videoclub">Ficha completa →</a>
 
           </div>
 
@@ -451,6 +454,126 @@ export function renderMovieHtml(movie, options = {}) {
 
     </div>
   </div>
+
+  <script>
+  (function () {
+    /* =================================================================
+     * SEO Card Interactions – Script inline minimalista
+     * Gestiona los botones + de Reparto/Géneros y Sinopsis
+     * sin depender del bundle compilado de la SPA.
+     * ================================================================= */
+
+    var card = document.querySelector('.movie-card.is-quick-view');
+    if (!card) return;
+
+    var flipBack = card.querySelector('.flip-card-back');
+    if (!flipBack) return;
+
+    /* ---------- Helpers ---------- */
+    function resetExpanded() {
+      flipBack.classList.remove('is-expanded', 'show-actors');
+      var expBtn = flipBack.querySelector('.expand-content-btn');
+      if (expBtn) { expBtn.textContent = '+'; expBtn.setAttribute('aria-label', 'Expandir sinopsis'); }
+      var overlay = flipBack.querySelector('.actors-scrollable-content');
+      if (overlay) overlay.remove();
+    }
+
+    /* ---------- Botón Actores/Géneros ---------- */
+    var actorsExpandBtn = flipBack.querySelector('.actors-expand-btn');
+    if (actorsExpandBtn) {
+      actorsExpandBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+
+        /* Si ya hay un overlay abierto, cerrarlo */
+        var existing = flipBack.querySelector('.actors-scrollable-content');
+        if (existing) {
+          resetExpanded();
+          return;
+        }
+
+        var rawGenres = (actorsExpandBtn.dataset.genres || '').split('|').filter(Boolean);
+        var rawActors = (actorsExpandBtn.dataset.actors || '').split('|').filter(Boolean);
+
+        var overlay = document.createElement('div');
+        overlay.className = 'actors-scrollable-content';
+
+        if (rawGenres.length > 0) {
+          var h4g = document.createElement('h4');
+          h4g.textContent = 'Géneros';
+          var gList = document.createElement('div');
+          gList.className = 'actors-list-text genres-list-text';
+          rawGenres.forEach(function (name) {
+            var btn = document.createElement('button');
+            btn.className = 'actor-list-item genre-list-item';
+            btn.textContent = name;
+            btn.type = 'button';
+            gList.appendChild(btn);
+          });
+          overlay.appendChild(h4g);
+          overlay.appendChild(gList);
+        }
+
+        if (rawActors.length > 0) {
+          var h4a = document.createElement('h4');
+          h4a.textContent = 'Reparto';
+          var aList = document.createElement('div');
+          aList.className = 'actors-list-text';
+          rawActors.forEach(function (name) {
+            var btn = document.createElement('button');
+            btn.className = 'actor-list-item';
+            btn.textContent = name;
+            btn.type = 'button';
+            aList.appendChild(btn);
+          });
+          overlay.appendChild(h4a);
+          overlay.appendChild(aList);
+        }
+
+        var expandContentBtn = flipBack.querySelector('.expand-content-btn');
+        flipBack.insertBefore(overlay, expandContentBtn || null);
+        flipBack.classList.add('is-expanded', 'show-actors');
+        if (expandContentBtn) {
+          expandContentBtn.textContent = '\u2212';
+          expandContentBtn.setAttribute('aria-label', 'Cerrar detalles');
+        }
+      });
+    }
+
+    /* ---------- Botón Sinopsis ---------- */
+    var expandContentBtn = flipBack.querySelector('.expand-content-btn');
+    if (expandContentBtn) {
+      expandContentBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (flipBack.classList.contains('is-expanded')) {
+          resetExpanded();
+        } else {
+          var existing = flipBack.querySelector('.actors-scrollable-content');
+          if (existing) existing.remove();
+          flipBack.classList.add('is-expanded');
+          flipBack.classList.remove('show-actors');
+          expandContentBtn.textContent = '\u2212';
+          expandContentBtn.setAttribute('aria-label', 'Contraer sinopsis');
+        }
+      });
+    }
+
+    /* ---------- Volteo de la ficha ---------- */
+    var flipInner = card.querySelector('.flip-card-inner');
+    card.addEventListener('click', function (e) {
+      var t = e.target;
+      /* No voltear si el click fue en un botón o enlace interactivo */
+      if (t.closest('a, button, .card-rating-block')) return;
+      if (!flipInner) return;
+      var isFlipped = flipInner.classList.contains('is-flipped');
+      if (isFlipped) {
+        flipInner.classList.remove('is-flipped');
+        resetExpanded();
+      } else {
+        flipInner.classList.add('is-flipped');
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
 `;

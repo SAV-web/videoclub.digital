@@ -9,6 +9,7 @@
     "build:worker": "npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
     "check": "tsc --noEmit",
     "preview": "vite preview",
+    "preview:seo": "node scripts/preview-seo.mjs",
     "generate:llms": "node scripts/generate-llms.mjs",
     "test": "node --test --test-concurrency=1 --test-reporter=spec tests/*.test.mjs"
   },

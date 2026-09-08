@@ -112,12 +112,13 @@ combined += `
   border-color: var(--color-accent);
 }
 
-/* Botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' y overlay */
+/* Botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' */
 .flip-card-back:not(.is-expanded) .expand-content-btn {
   bottom: 34px !important;
   right: 8px !important;
   z-index: 25 !important;
   pointer-events: auto !important;
+  visibility: visible !important;
 }
 
 .flip-card-back.is-expanded .expand-content-btn {
@@ -125,6 +126,7 @@ combined += `
   right: 8px !important;
   z-index: 25 !important;
   pointer-events: auto !important;
+  visibility: visible !important;
 }
 
 .actors-expand-btn {
@@ -170,6 +172,7 @@ combined += `
 }
 
 /* Aislamiento estricto de capas 3D y eventos de puntero para evitar clics fantasma */
+/* Solo aplica a fichas en el GRID (no en el modal is-quick-view) */
 .flip-card-inner {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
@@ -180,22 +183,22 @@ combined += `
   backface-visibility: hidden;
 }
 
-/* Cara trasera inactiva e invisible cuando no está volteada */
-.flip-card-inner:not(.is-flipped) .flip-card-back,
-.flip-card-inner:not(.is-flipped) .flip-card-back * {
+/* Cara trasera inactiva e invisible cuando no está volteada (solo en grid) */
+:not(.is-quick-view) > .flip-card-inner:not(.is-flipped) .flip-card-back,
+:not(.is-quick-view) > .flip-card-inner:not(.is-flipped) .flip-card-back * {
   pointer-events: none !important;
   visibility: hidden !important;
 }
 
-/* Cara frontal inactiva e invisible para el puntero cuando está volteada */
-.flip-card-inner.is-flipped .flip-card-front,
-.flip-card-inner.is-flipped .flip-card-front * {
+/* Cara frontal inactiva e invisible para el puntero cuando está volteada (solo en grid) */
+:not(.is-quick-view) > .flip-card-inner.is-flipped .flip-card-front,
+:not(.is-quick-view) > .flip-card-inner.is-flipped .flip-card-front * {
   pointer-events: none !important;
   visibility: hidden !important;
 }
 
-/* Cara trasera activa cuando está volteada */
-.flip-card-inner.is-flipped .flip-card-back {
+/* Cara trasera activa cuando está volteada (solo en grid) */
+:not(.is-quick-view) > .flip-card-inner.is-flipped .flip-card-back {
   pointer-events: auto !important;
   visibility: visible !important;
   z-index: 10 !important;
