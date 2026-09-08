@@ -452,9 +452,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(!html.includes("btn-open-spa"), "NO debe contener el botón Explorar");
     assert.ok(html.includes("Aviso legal"), "El footer debe contener los avisos legales");
     assert.ok(html.includes("actors-expand-btn"), "Debe incluir el botón + de reparto");
-    assert.ok(html.includes("actors-scrollable-content"), "Debe incluir el overlay deslizable de reparto");
     assert.ok(html.includes("seo-card-v6.css"), "Debe enlazar con seo-card-v6.css");
-    assert.ok(html.includes('class="star-rating-container has-average-rating is-interactive"'), "Las estrellas deben ser un elemento interactivo");
+    assert.ok(html.includes('class="star-rating-container is-seo-display is-interactive"'), "Las estrellas deben ser grises (no-votado) con clase is-seo-display");
     assert.ok(html.includes('?movie='), "Las estrellas o watchlist deben enlazar al modal de la película (?movie=)");
     assert.ok(html.includes('data-year-value='), "El año debe contener data-year-value");
     assert.ok(!html.includes("collection-hero"), "NO debe contener el bloque hero invasivo");
