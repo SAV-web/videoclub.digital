@@ -454,6 +454,9 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("actors-expand-btn"), "Debe incluir el botón + de reparto");
     assert.ok(html.includes("actors-scrollable-content"), "Debe incluir el overlay deslizable de reparto");
     assert.ok(html.includes("seo-card-v6.css"), "Debe enlazar con seo-card-v6.css");
+    assert.ok(html.includes('class="star-rating-container has-average-rating is-interactive"'), "Las estrellas deben ser un elemento interactivo");
+    assert.ok(html.includes('?movie='), "Las estrellas o watchlist deben enlazar al modal de la película (?movie=)");
+    assert.ok(html.includes('data-year-value='), "El año debe contener data-year-value");
     assert.ok(!html.includes("collection-hero"), "NO debe contener el bloque hero invasivo");
   });
 
@@ -503,6 +506,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(css.includes(".filter-pill"), "Debe contener estilos de píldora de filtro .filter-pill");
     assert.ok(css.includes(".person-card"), "Debe contener estilos de ficha VIP .person-card");
     assert.ok(css.includes(".bio-headline"), "Debe contener estilos de titular biográfico .bio-headline");
+    assert.ok(css.includes("25!important"), "Debe contener z-index elevado para botones expand");
+    assert.ok(css.includes("margin-left:auto"), "Debe contener alineación derecha para año y bandera");
   });
 
   test("Directores VIP: /director/christopher-nolan/ responde 200 OK con Schema Person y filmografía", async () => {

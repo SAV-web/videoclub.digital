@@ -118,7 +118,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             />
             <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
-              <div class="star-rating-container has-average-rating is-interactive" role="group" aria-label="Valoración con estrellas">
+              <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" aria-label="Ver valoración y ficha de ${escapeAttr(title)}" style="text-decoration: none; color: inherit; cursor: pointer;">
                 <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
                   <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
                   <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip1}% 0 0);"></use>
@@ -131,7 +131,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
                   <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
                   <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip3}% 0 0);"></use>
                 </svg>
-              </div>
+              </a>
               <span class="wall-rating-number" data-template="wall-rating">${movie.avg_rating ? movie.avg_rating.toFixed(1) : ''}</span>
               <a href="${baseUrl}?movie=${movie.id}" class="card-action-btn" aria-label="Añadir a mi lista en el videoclub" title="Añadir a mi lista">
                 <svg class="icon-watchlist"><use href="${baseUrl}sprite.svg#icon-bookmark-plus"></use></svg>
@@ -153,7 +153,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
               <div class="year-country-line">
                 <div class="year-flag-group">
                   <span data-template="year">
-                    ${movie.year ? `<a href="${baseUrl}?year=${movie.year}" class="year-link">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length))}` : ''}
+                    ${movie.year ? `<a href="${baseUrl}?_p=/&_q=year%3D${movie.year}" class="year-link" data-year-value="${movie.year}">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length))}` : ''}
                   </span>
                   ${countryCode ? `
                     <a class="country-info" href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
@@ -478,10 +478,26 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
     (function () {
       var activeCard = null;
 
+      // Preservar orden del catálogo seleccionado en la SPA (localStorage preferred_sort)
+      try {
+        var prefSort = localStorage.getItem("preferred_sort");
+        if (prefSort) {
+          document.querySelectorAll("a[href*='_p=']").forEach(function (a) {
+            if (!a.href.includes("_q=")) {
+              a.href += (a.href.includes("?") ? "&" : "?") + "_q=sort%3D" + encodeURIComponent(prefSort);
+            } else if (!a.href.includes("sort%3D") && !a.href.includes("sort=")) {
+              a.href += "%26sort%3D" + encodeURIComponent(prefSort);
+            }
+          });
+        }
+      } catch (e) {}
+
       document.addEventListener("click", function (e) {
         // 1. Botón + de actores: despliega la lista completa de actores y géneros en overlay
         var actorsExpandBtn = e.target.closest(".actors-expand-btn");
         if (actorsExpandBtn) {
+          e.preventDefault();
+          e.stopPropagation();
           var back = actorsExpandBtn.closest(".flip-card-back");
           if (back) {
             back.classList.add("is-expanded", "show-actors");
@@ -497,6 +513,8 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
         // 2. Botón inferior de expansión / contracción
         var expandBtn = e.target.closest(".expand-content-btn");
         if (expandBtn) {
+          e.preventDefault();
+          e.stopPropagation();
           var back = expandBtn.closest(".flip-card-back");
           if (back) {
             if (back.classList.contains("show-actors")) {

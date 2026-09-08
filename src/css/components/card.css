@@ -360,9 +360,14 @@
   vertical-align: middle;
 }
 
+.year-country-line {
+  margin-left: auto;
+}
+
 .year-flag-group {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-xxs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);

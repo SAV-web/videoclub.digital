@@ -473,6 +473,11 @@ async function handleSortChange(event: Event): Promise<void> {
   const select = event.target as HTMLSelectElement;
   triggerPopAnimation(select);
   setSort(select.value);
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("preferred_sort", select.value);
+    }
+  } catch (e) {}
   updateMobileStatusBar();
   await loadAndRenderMovies(1);
 }
@@ -597,7 +602,8 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
   if (newFilter && (newFilter.type === 'director' || newFilter.type === 'actor')) {
     notifyRemovedPersonIncompatibleFilters(currentFilters);
   }
-  const currentSort = keepSort ? currentFilters.sort : DEFAULTS.SORT;
+  const storedSort = typeof localStorage !== "undefined" ? localStorage.getItem("preferred_sort") : null;
+  const currentSort = keepSort ? currentFilters.sort : (storedSort || DEFAULTS.SORT);
 
   resetFiltersState();
   setSort(currentSort);
@@ -855,7 +861,7 @@ function setupGlobalListeners(): void {
       const cardElement = target.closest(".movie-card") as HTMLElement | null;
       if (cardElement) {
         // Prevenir navegación nativa antes de cargar el módulo
-        const filterLink = target.closest("[data-director-name], [data-actor-name]");
+        const filterLink = target.closest("[data-director-name], [data-actor-name], [data-year-value]");
         if (filterLink && !(e as MouseEvent).ctrlKey && !(e as MouseEvent).metaKey && !(e as MouseEvent).shiftKey && (e as MouseEvent).button !== 1) {
           e.preventDefault();
         }

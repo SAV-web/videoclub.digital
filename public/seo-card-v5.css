@@ -1099,9 +1099,14 @@ body.sidebar-is-open .sidebar {
   vertical-align: middle;
 }
 
+.year-country-line {
+  margin-left: auto;
+}
+
 .year-flag-group {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-xxs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
@@ -4829,15 +4834,32 @@ body.sidebar-collapsed .sidebar {
   border-color: var(--color-accent);
 }
 
-/* El botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' */
+/* Botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' y overlay */
 .flip-card-back:not(.is-expanded) .expand-content-btn {
   bottom: 34px !important;
   right: 8px !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
 }
 
 .flip-card-back.is-expanded .expand-content-btn {
   bottom: 6px !important;
   right: 8px !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+
+.actors-expand-btn {
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+
+/* Alineación de año y bandera a la derecha si no hay iconos de plataformas */
+.year-country-line {
+  margin-left: auto !important;
+}
+.year-flag-group {
+  justify-content: flex-end !important;
 }
 
 .flip-card-back:not(.is-expanded) .scrollable-content {

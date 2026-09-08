@@ -112,15 +112,32 @@ combined += `
   border-color: var(--color-accent);
 }
 
-/* El botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' */
+/* Botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' y overlay */
 .flip-card-back:not(.is-expanded) .expand-content-btn {
   bottom: 34px !important;
   right: 8px !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
 }
 
 .flip-card-back.is-expanded .expand-content-btn {
   bottom: 6px !important;
   right: 8px !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+
+.actors-expand-btn {
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+
+/* Alineación de año y bandera a la derecha si no hay iconos de plataformas */
+.year-country-line {
+  margin-left: auto !important;
+}
+.year-flag-group {
+  justify-content: flex-end !important;
 }
 
 .flip-card-back:not(.is-expanded) .scrollable-content {
@@ -198,5 +215,7 @@ fs.writeFileSync("public/seo-card-v4.min.css", minified);
 const jsContent = `// Generado automáticamente a partir de public/seo-card-v6.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
 fs.writeFileSync("cloudflare/seo/seo-card-css.js", jsContent);
 
-console.log("Successfully generated public/seo-card-v4.css and cloudflare/seo/seo-card-css.js");
+console.log("Successfully generated public/seo-card-v6.css and cloudflare/seo/seo-card-css.js");
 console.log("Unminified size:", combined.length, "Minified size:", minified.length);
+
+

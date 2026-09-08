@@ -421,10 +421,26 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
     (function () {
       var activeCard = null;
 
+      // Preservar orden del catálogo seleccionado en la SPA (localStorage preferred_sort)
+      try {
+        var prefSort = localStorage.getItem("preferred_sort");
+        if (prefSort) {
+          document.querySelectorAll("a[href*='_p=']").forEach(function (a) {
+            if (!a.href.includes("_q=")) {
+              a.href += (a.href.includes("?") ? "&" : "?") + "_q=sort%3D" + encodeURIComponent(prefSort);
+            } else if (!a.href.includes("sort%3D") && !a.href.includes("sort=")) {
+              a.href += "%26sort%3D" + encodeURIComponent(prefSort);
+            }
+          });
+        }
+      } catch (e) {}
+
       document.addEventListener("click", function (e) {
         // 1. Botón + de actores: despliega la lista completa de actores y géneros en overlay
         var actorsExpandBtn = e.target.closest(".actors-expand-btn");
         if (actorsExpandBtn) {
+          e.preventDefault();
+          e.stopPropagation();
           var back = actorsExpandBtn.closest(".flip-card-back");
           if (back) {
             back.classList.add("is-expanded", "show-actors");
@@ -440,6 +456,8 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
         // 2. Botón inferior de expansión / contracción (+ / −) de sinopsis o biografía
         var expandBtn = e.target.closest(".expand-content-btn");
         if (expandBtn) {
+          e.preventDefault();
+          e.stopPropagation();
           var back = expandBtn.closest(".flip-card-back");
           if (back) {
             if (back.classList.contains("show-actors")) {

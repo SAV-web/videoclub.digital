@@ -251,6 +251,13 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
     }
   });
   
+  const urlHasSort = effectiveParams.has("sort") || effectiveParams.has("orden");
+  if (!urlHasSort) {
+    const storedSort = typeof localStorage !== "undefined" ? localStorage.getItem("preferred_sort") : null;
+    if (storedSort) {
+      setSort(storedSort);
+    }
+  }
   if (!state.activeFilters.sort) setSort(DEFAULTS.SORT);
   if (!state.activeFilters.mediaType) setMediaType(DEFAULTS.MEDIA_TYPE);
 
