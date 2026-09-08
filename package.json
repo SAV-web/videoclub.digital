@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "node scripts/generate-llms.mjs && node scripts/generate-sitemap.mjs && vite build",
     "build:worker": "npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
+    "build:seo-css": "node scripts/build-seo-css.mjs",
+    "build:edge": "node scripts/build-seo-css.mjs && npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
     "check": "tsc --noEmit",
     "preview": "vite preview",
     "preview:seo": "node scripts/preview-seo.mjs",
