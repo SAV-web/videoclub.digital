@@ -82,16 +82,16 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
     <a href="${baseUrl}?_p=/director/${toSlug(name)}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < directors.length - 1 ? ', ' : ''}
   `).join('');
 
-  // Iconos estudios (enlace directo a la SPA con filtro de estudio)
+  // Iconos estudios (no clickables, idénticos a la SPA)
   const validStudios = studios.filter(code => STUDIO_DATA[code]);
   const studiosHtml = validStudios.map(code => {
     const conf = STUDIO_DATA[code];
     return `
-      <a href="${baseUrl}?_p=/${code}/" class="platform-icon ${conf.class}" title="${escapeAttr(conf.title)}" style="display:inline-flex; align-items:center; color:inherit; text-decoration:none;">
+      <span class="platform-icon ${conf.class}" title="${escapeAttr(conf.title)}">
         <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="0 0 24 24">
           <use href="${baseUrl}sprite.svg#${conf.id}"></use>
         </svg>
-      </a>
+      </span>
     `;
   }).join('');
 
@@ -421,7 +421,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
 
   <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v5.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
   <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
 </head>
 <body class="collection-wall">
@@ -515,7 +515,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
         // 3. Volteo 3D de la tarjeta
         var card = e.target.closest(".movie-card");
         if (card) {
-          if (e.target.closest("a, button, [role='button'], .card-rating-block, .actors-scrollable-content")) return;
+          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content")) return;
           var inner = card.querySelector(".flip-card-inner");
           if (inner) {
             var isFlipped = inner.classList.toggle("is-flipped");

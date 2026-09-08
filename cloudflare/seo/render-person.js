@@ -369,7 +369,7 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
   <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
 
   <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v5.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
   <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
 </head>
 <body class="collection-wall">
@@ -416,61 +416,82 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
     </div>
   </div>
 
-  <!-- Script Ligero e Inmune para Giro 3D y Expansión de Reparto/Sinopsis -->
+  <!-- Handler de giro 3D y expansión de reparto/biografía en Vanilla JS -->
   <script>
     (function () {
-      // 1. Giro 3D interactivo en hover / tap
-      var cards = document.querySelectorAll(".movie-card");
-      var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      var activeCard = null;
 
-      cards.forEach(function (card) {
-        if (!isTouch) {
-          card.addEventListener("mouseenter", function () {
-            card.classList.add("is-flipped");
-          });
-          card.addEventListener("mouseleave", function () {
-            card.classList.remove("is-flipped");
-            card.classList.remove("actors-expanded");
-          });
-        } else {
-          card.addEventListener("click", function (e) {
-            if (e.target.closest("a, button, .star-rating-container, .actors-expand-btn, .expand-content-btn, .card-action-btn")) {
-              return;
-            }
-            if (card.classList.contains("is-flipped")) {
-              card.classList.remove("is-flipped");
-              card.classList.remove("actors-expanded");
-            } else {
-              cards.forEach(function (c) { 
-                c.classList.remove("is-flipped"); 
-                c.classList.remove("actors-expanded"); 
-              });
-              card.classList.add("is-flipped");
-            }
-          });
-        }
-
-        // 2. Botón expandir reparto y géneros detallados (+)
-        var actorsExpandBtn = card.querySelector(".actors-expand-btn");
+      document.addEventListener("click", function (e) {
+        // 1. Botón + de actores: despliega la lista completa de actores y géneros en overlay
+        var actorsExpandBtn = e.target.closest(".actors-expand-btn");
         if (actorsExpandBtn) {
-          actorsExpandBtn.addEventListener("click", function (e) {
-            e.stopPropagation();
-            e.preventDefault();
-            card.classList.toggle("actors-expanded");
-          });
+          var back = actorsExpandBtn.closest(".flip-card-back");
+          if (back) {
+            back.classList.add("is-expanded", "show-actors");
+            var bottomBtn = back.querySelector(".expand-content-btn");
+            if (bottomBtn) {
+              bottomBtn.textContent = "−";
+              bottomBtn.setAttribute("aria-label", "Cerrar detalles");
+            }
+          }
+          return;
         }
 
-        // 3. Botón expandir sinopsis / biografía (+)
-        var expandBtn = card.querySelector(".expand-content-btn");
+        // 2. Botón inferior de expansión / contracción (+ / −) de sinopsis o biografía
+        var expandBtn = e.target.closest(".expand-content-btn");
         if (expandBtn) {
-          expandBtn.addEventListener("click", function (e) {
-            e.stopPropagation();
-            e.preventDefault();
-            var scrollable = card.querySelector(".scrollable-content");
-            if (scrollable) {
-              scrollable.scrollTop = scrollable.scrollTop === 0 ? 80 : 0;
+          var back = expandBtn.closest(".flip-card-back");
+          if (back) {
+            if (back.classList.contains("show-actors")) {
+              back.classList.remove("is-expanded", "show-actors");
+              expandBtn.textContent = "+";
+              expandBtn.setAttribute("aria-label", "Expandir sinopsis");
+            } else {
+              var isExp = back.classList.toggle("is-expanded");
+              expandBtn.textContent = isExp ? "−" : "+";
+              expandBtn.setAttribute("aria-label", isExp ? "Contraer detalles" : "Expandir detalles");
             }
-          });
+          }
+          return;
+        }
+
+        // 3. Volteo 3D de la tarjeta (solo películas; la ficha VIP de actor/director no voltea)
+        var card = e.target.closest(".movie-card:not(.person-card)");
+        if (card) {
+          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content")) return;
+          var inner = card.querySelector(".flip-card-inner");
+          if (inner) {
+            var isFlipped = inner.classList.toggle("is-flipped");
+            if (isFlipped) {
+              if (activeCard && activeCard !== inner) {
+                activeCard.classList.remove("is-flipped");
+                var prevBack = activeCard.querySelector(".flip-card-back");
+                if (prevBack) {
+                  prevBack.classList.remove("is-expanded", "show-actors");
+                  var prevBtn = prevBack.querySelector(".expand-content-btn");
+                  if (prevBtn) prevBtn.textContent = "+";
+                }
+              }
+              activeCard = inner;
+            } else if (activeCard === inner) {
+              var back = inner.querySelector(".flip-card-back");
+              if (back) {
+                back.classList.remove("is-expanded", "show-actors");
+                var btn = back.querySelector(".expand-content-btn");
+                if (btn) btn.textContent = "+";
+              }
+              activeCard = null;
+            }
+          }
+        } else if (activeCard) {
+          activeCard.classList.remove("is-flipped");
+          var back = activeCard.querySelector(".flip-card-back");
+          if (back) {
+            back.classList.remove("is-expanded", "show-actors");
+            var btn = back.querySelector(".expand-content-btn");
+            if (btn) btn.textContent = "+";
+          }
+          activeCard = null;
         }
       });
     })();

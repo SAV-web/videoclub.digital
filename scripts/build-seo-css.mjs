@@ -87,13 +87,13 @@ combined += `
   position: absolute;
   bottom: 6px;
   left: 8px;
-  right: 32px;
-  height: 22px;
+  right: 8px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 8px;
-  font-size: 0.72rem;
+  padding: 0 10px;
+  font-size: 0.74rem;
   font-weight: 600;
   color: var(--color-text-secondary);
   background: var(--color-surface-2);
@@ -112,8 +112,36 @@ combined += `
   border-color: var(--color-accent);
 }
 
+/* El botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' */
+.flip-card-back:not(.is-expanded) .expand-content-btn {
+  bottom: 34px !important;
+  right: 8px !important;
+}
+
+.flip-card-back.is-expanded .expand-content-btn {
+  bottom: 6px !important;
+  right: 8px !important;
+}
+
 .flip-card-back:not(.is-expanded) .scrollable-content {
-  margin-bottom: 24px;
+  margin-bottom: 38px;
+}
+
+/* Las fichas de persona (director / actor) no voltean */
+.person-card {
+  cursor: default !important;
+}
+.person-card .flip-card-inner {
+  transform: none !important;
+}
+.person-card a, .person-card button {
+  cursor: pointer !important;
+}
+
+/* Iconos de plataformas/estudios no clickables en fichas de película */
+.platform-icon {
+  cursor: default !important;
+  pointer-events: none;
 }
 
 /* Estrellas doradas en SSR para paridad exacta con la SPA */
@@ -124,25 +152,50 @@ combined += `
   fill: var(--color-star-gold) !important;
 }
 
-/* Interacción de volteo en SSR */
-.movie-card {
+/* Interacción de volteo en SSR (solo películas normales) */
+.movie-card:not(.person-card) {
   cursor: pointer;
 }
 .movie-card a, .movie-card button {
   cursor: pointer;
 }
+
+/* Aislamiento estricto de capas 3D y eventos de puntero para evitar clics fantasma */
+.flip-card-inner {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.flip-card-front,
+.flip-card-back {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.flip-card-inner:not(.is-flipped) .flip-card-back,
+.flip-card-inner:not(.is-flipped) .flip-card-back * {
+  pointer-events: none !important;
+}
+.flip-card-inner.is-flipped .flip-card-front,
+.flip-card-inner.is-flipped .flip-card-front * {
+  pointer-events: none !important;
+}
+.flip-card-inner.is-flipped .flip-card-back {
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
 `;
 
-fs.writeFileSync("public/seo-card-v5.css", combined);
-execSync("npx esbuild public/seo-card-v5.css --minify --outfile=public/seo-card-v5.min.css");
-const minified = fs.readFileSync("public/seo-card-v5.min.css", "utf8");
+fs.writeFileSync("public/seo-card-v6.css", combined);
+execSync("npx esbuild public/seo-card-v6.css --minify --outfile=public/seo-card-v6.min.css");
+const minified = fs.readFileSync("public/seo-card-v6.min.css", "utf8");
 
-// Mantener compatibilidad con v4
+// Mantener compatibilidad con v5 y v4
+fs.writeFileSync("public/seo-card-v5.css", combined);
+fs.writeFileSync("public/seo-card-v5.min.css", minified);
 fs.writeFileSync("public/seo-card-v4.css", combined);
 fs.writeFileSync("public/seo-card-v4.min.css", minified);
 
 // Also update cloudflare/seo/seo-card-css.js to export the minified string
-const jsContent = `// Generado automáticamente a partir de public/seo-card-v5.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
+const jsContent = `// Generado automáticamente a partir de public/seo-card-v6.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
 fs.writeFileSync("cloudflare/seo/seo-card-css.js", jsContent);
 
 console.log("Successfully generated public/seo-card-v4.css and cloudflare/seo/seo-card-css.js");
