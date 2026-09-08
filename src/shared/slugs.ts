@@ -1,10 +1,20 @@
 // =================================================================
-//          SLUGS COMPARTIDOS (src/shared/slugs.ts)
+//          FUENTE ÚNICA DE VERDAD: IDENTIDAD Y CANONICIDAD
+//                     (src/shared/slugs.ts)
 // =================================================================
-// Funciones de generación y resolución de slugs canónicos compartidas
-// entre la SPA y el subsistema Astro SEO.
-// La SPA las usa para construir y parsear pretty paths de forma estricta (1:1).
-// El sitio Astro las usa para generar enlaces internos canónicos.
+// Este módulo es la Fuente Única de Verdad (SSOT) para la IDENTIDAD
+// y CANONICIDAD de todas las entidades del catálogo (SPA y Edge SSR).
+//
+// REGLA ARQUITECTÓNICA ESTRICTA:
+// - slugs.ts = IDENTIDAD / CANONICIDAD:
+//   Define los identificadores URL-safe autorizados (whitelists),
+//   la relación canónica 1:1, los alias, códigos y los algoritmos
+//   deterministas de normalización bidireccional. No contiene
+//   títulos SEO, descripciones de marketing ni HTML.
+// - cloudflare/seo/taxonomy-types.js = REPRESENTACIÓN SEO:
+//   Define la capa de metadatos de presentación en el Edge SSR
+//   (títulos SEO, Schema.org, descripciones editoriales y queries
+//   RPC) consumiendo exclusivamente la identidad canónica de aquí.
 // =================================================================
 
 /**

@@ -4,6 +4,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, before, describe, test } from "node:test";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
+import {
+  GENRE_MAP,
+  STUDIO_MAP,
+  SELECTION_MAP,
+  REGIONAL_GROUPS_MAP
+} from "../cloudflare/seo/taxonomy-types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -122,5 +128,56 @@ describe("Especificación Canónica llms.txt y llms-full.txt", () => {
     assert.ok(llmsTxt.includes("/actor/{slug}/"));
     assert.ok(llmsFullTxt.includes("/director/{slug}/"));
     assert.ok(llmsFullTxt.includes("/actor/{slug}/"));
+  });
+
+  test("Contrato Arquitectónico: llms.txt y llms-full.txt declaran que las rutas combinadas son funcionales de la SPA y no SEO SSR", () => {
+    const requiredClause = "Las rutas combinadas son rutas funcionales de la SPA, pero no forman parte del conjunto de landing pages SEO SSR.";
+    assert.ok(
+      llmsTxt.includes(requiredClause),
+      `llms.txt debe contener explícitamente la cláusula: "${requiredClause}"`
+    );
+    assert.ok(
+      llmsFullTxt.includes(requiredClause),
+      `llms-full.txt debe contener explícitamente la cláusula: "${requiredClause}"`
+    );
+  });
+
+  test("Paridad Canónica Estricta: slugs.ts (Identidad) vs taxonomy-types.js (Representación SEO)", () => {
+    const { GENRE_SLUG_MAP, STUDIO_SLUGS, SELECTION_SLUGS, COUNTRY_SLUG_MAP } = slugsModule;
+
+    // 1. Géneros
+    const slugsGenres = Object.keys(GENRE_SLUG_MAP).sort();
+    const taxonomyGenres = Object.keys(GENRE_MAP).sort();
+    assert.deepEqual(
+      slugsGenres,
+      taxonomyGenres,
+      "Discrepancia entre slugs.ts (GENRE_SLUG_MAP) y taxonomy-types.js (GENRE_MAP)"
+    );
+
+    // 2. Estudios
+    const slugsStudios = Array.from(STUDIO_SLUGS).sort();
+    const taxonomyStudios = Object.keys(STUDIO_MAP).sort();
+    assert.deepEqual(
+      slugsStudios,
+      taxonomyStudios,
+      "Discrepancia entre slugs.ts (STUDIO_SLUGS) y taxonomy-types.js (STUDIO_MAP)"
+    );
+
+    // 3. Selecciones
+    const slugsSelections = Array.from(SELECTION_SLUGS).sort();
+    const taxonomySelections = Object.keys(SELECTION_MAP).sort();
+    assert.deepEqual(
+      slugsSelections,
+      taxonomySelections,
+      "Discrepancia entre slugs.ts (SELECTION_SLUGS) y taxonomy-types.js (SELECTION_MAP)"
+    );
+
+    // 4. Grupos Regionales
+    for (const region of Object.keys(REGIONAL_GROUPS_MAP)) {
+      assert.ok(
+        COUNTRY_SLUG_MAP[region],
+        `El grupo regional '${region}' debe existir como identificador canónico en slugs.ts`
+      );
+    }
   });
 });

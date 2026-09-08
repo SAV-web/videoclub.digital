@@ -8,23 +8,28 @@
 - [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice de sitemaps estructurados para películas, directores, actores, géneros y países.
 - [Especificación Completa para Agentes (llms-full.txt)](https://videoclub.digital/llms-full.txt): Referencia exhaustiva con la totalidad de taxonomías, operadores y metadatos.
 
-## Estructura de URLs Canónicas
+## Estructura de URLs Canónicas y Contrato de Enrutamiento
 
-La plataforma opera con un sistema de rutas canónicas limpias (Pretty Paths) deterministas y jerárquicas:
+La plataforma opera con una separación contractual estricta entre las páginas estáticas indexables (SEO SSR en Edge) y las rutas de navegación interactiva en el cliente (SPA):
 
-### 1. Entidades VIP (Personas)
-Las páginas de directores y actores utilizan siempre un segmento de ruta dedicado:
-- **Directores**: `/director/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`, `https://videoclub.digital/director/martin-scorsese/`)
-- **Actores**: `/actor/{slug}/` (ej: `https://videoclub.digital/actor/al-pacino/`, `https://videoclub.digital/actor/eduard-fernandez/`)
-*Nota: No se admiten parámetros tipo `?director=` ni `?actor=` en URLs canónicas.*
+### 1. Conjunto de Landing Pages SEO SSR (Indexables en el Edge)
+El contrato SEO del Edge Worker genera páginas HTML estáticas optimizadas para motores de búsqueda exclusivamente para rutas de **un solo segmento** y entidades principales:
+- **Fichas de Título**: `/titulo/{slug}/` (ej: `https://videoclub.digital/titulo/el-padrino-1972/`)
+- **Entidades VIP (Personas)**: `/director/{slug}/` y `/actor/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`, `https://videoclub.digital/actor/al-pacino/`). *Nota: No se admiten parámetros tipo `?director=` ni `?actor=` en URLs canónicas.*
+- **Taxonomías Simples (1 segmento de ruta)**:
+  - **21 Géneros Canónicos**: `/accion/` (Acción), `/animacion/` (Animación), `/aventuras/` (Aventuras), `/belico/` (Bélico), `/biografia/` (Biografía), `/noir/` (Noir), `/comedia/` (Comedia), `/crimen/` (Crimen), `/deporte/` (Deporte), `/documental/` (Documental), `/drama/` (Drama), `/familiar/` (Familiar), `/fantasia/` (Fantasía), `/historico/` (Histórico), `/intriga/` (Intriga), `/musica/` (Música), `/romance/` (Romance), `/sci-fi/` (Sci-Fi), `/terror/` (Terror), `/thriller/` (Thriller), `/western/` (Western).
+  - **Países y Regiones Principales**: `/eeuu/` (EEUU), `/espana/` (España), `/uk/` (Reino Unido), `/francia/` (Francia), `/japon/` (Japón), `/italia/` (Italia), `/alemania/` (Alemania), `/latam/` (Latinoamérica), `/nordic/` (Países Nórdicos).
+  - **15 Estudios Cinematográficos**: `/warner/`, `/universal/`, `/sony/`, `/paramount/`, `/disney/`, `/netflix/`, `/amazon/`, `/fox/`, `/lionsgate/`, `/canalplus/`, `/bbc/`, `/miramax/`, `/a24/`, `/movistar/`, `/apple/`.
+  - **10 Selecciones Críticas**: `/1001movies/`, `/tspdt/`, `/criterion/`, `/kinolorber/`, `/toptv/`, `/hbo/`, `/acontra/`, `/arrow/`, `/eureka/`, `/imprint/`.
 
-### 2. Taxonomías de Catálogo (Rutas Canónicas)
-Jerarquía canónica en ruta: `/{genero}/{pais}/{estudio O seleccion}/`
-- **21 Géneros Canónicos**: `/accion/` (Acción), `/animacion/` (Animación), `/aventuras/` (Aventuras), `/belico/` (Bélico), `/biografia/` (Biografía), `/noir/` (Noir), `/comedia/` (Comedia), `/crimen/` (Crimen), `/deporte/` (Deporte), `/documental/` (Documental), `/drama/` (Drama), `/familiar/` (Familiar), `/fantasia/` (Fantasía), `/historico/` (Histórico), `/intriga/` (Intriga), `/musica/` (Música), `/romance/` (Romance), `/sci-fi/` (Sci-Fi), `/terror/` (Terror), `/thriller/` (Thriller), `/western/` (Western).
-- **Países y Regiones Principales**: `/eeuu/` (EEUU), `/espana/` (España), `/uk/` (Reino Unido), `/francia/` (Francia), `/japon/` (Japón), `/italia/` (Italia), `/alemania/` (Alemania), `/latam/` (Latinoamérica), `/nordic/` (Países Nórdicos).
-- **15 Estudios Cinematográficos**: `/warner/`, `/universal/`, `/sony/`, `/paramount/`, `/disney/`, `/netflix/`, `/amazon/`, `/fox/`, `/lionsgate/`, `/canalplus/`, `/bbc/`, `/miramax/`, `/a24/`, `/movistar/`, `/apple/`.
-- **10 Selecciones Críticas**: `/1001movies/`, `/tspdt/`, `/criterion/`, `/kinolorber/`, `/toptv/`, `/hbo/`, `/acontra/`, `/arrow/`, `/eureka/`, `/imprint/`.
-- **Exclusiones**: Se prefijan con `no-` dentro de la ruta (ej: `/comedia/no-eeuu/`, `/drama/no-terror/`).
+*Garantía Contractual SEO:* Solo las URLs simples de 1 segmento anteriores forman parte del sitemap oficial y disponen de Server-Side Rendering (SSR) en el Edge con marcado Schema.org completo.
+
+### 2. Rutas Combinadas y Exclusiones (Navegación Interactiva de la SPA)
+Las rutas combinadas son rutas funcionales de la SPA, pero no forman parte del conjunto de landing pages SEO SSR.
+El analizador de la SPA (`parsePrettyPath`) procesa dinámicamente en el navegador múltiples segmentos y operadores de exclusión:
+- **Jerarquía combinada**: `/{genero}/{pais}/{estudio O seleccion}/` (ej: `/drama/francia/`, `/sci-fi/eeuu/warner/`, `/drama/criterion/`, `/japon/sony/`).
+- **Exclusiones**: Se prefijan con `no-` (ej: `/comedia/no-eeuu/`, `/drama/no-terror/`).
+Estas rutas permiten deep-linking y una experiencia de usuario instantánea y reactiva en la aplicación, pero no son páginas SEO SSR pre-renderizadas por el Edge Worker.
 
 ### 3. Parámetros de Consulta (Query Parameters)
 Los filtros no posicionales utilizan exclusivamente parámetros URL:

@@ -4883,14 +4883,6 @@ body.sidebar-collapsed .sidebar {
   pointer-events: none;
 }
 
-/* Estrellas doradas en SSR para paridad exacta con la SPA */
-.star-rating-container.has-average-rating .star-icon-path {
-  stroke: var(--color-star-gold) !important;
-}
-.star-rating-container.has-average-rating .star-icon-path--filled {
-  fill: var(--color-star-gold) !important;
-}
-
 /* Interacción de volteo en SSR (solo películas normales) */
 .movie-card:not(.person-card) {
   cursor: pointer;
@@ -4909,15 +4901,45 @@ body.sidebar-collapsed .sidebar {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+/* Cara trasera inactiva e invisible cuando no está volteada */
 .flip-card-inner:not(.is-flipped) .flip-card-back,
 .flip-card-inner:not(.is-flipped) .flip-card-back * {
   pointer-events: none !important;
+  visibility: hidden !important;
 }
+
+/* Cara frontal inactiva e invisible para el puntero cuando está volteada */
 .flip-card-inner.is-flipped .flip-card-front,
 .flip-card-inner.is-flipped .flip-card-front * {
   pointer-events: none !important;
+  visibility: hidden !important;
 }
+
+/* Cara trasera activa cuando está volteada */
 .flip-card-inner.is-flipped .flip-card-back {
   pointer-events: auto !important;
+  visibility: visible !important;
   z-index: 10 !important;
+}
+
+/* Asegurar accesibilidad y clic en botón + de reparto */
+.detail-item[data-template="actors-container"] {
+  position: relative !important;
+  overflow: visible !important;
+  padding-right: 24px !important;
+}
+
+.actors-expand-btn {
+  position: absolute !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+
+/* Overlay de actores y géneros */
+.flip-card-back.is-expanded.show-actors .actors-scrollable-content {
+  z-index: 20 !important;
+  pointer-events: auto !important;
 }

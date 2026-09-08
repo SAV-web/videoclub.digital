@@ -141,11 +141,28 @@ No se utilizan consultas por parámetro (`?director=` o `?actor=`) para enlaces 
 
 ---
 
-## 4. Gramática y Combinatoria de Rutas (Pretty Paths)
+## 4. Gramática y Enrutamiento: Páginas SEO SSR vs Navegación SPA
 
-El enrutador canónico admite la combinación de taxonomías en un orden jerárquico estricto:
+La arquitectura de VIDEOCLUB.DIGITAL establece una clara frontera contractual entre las páginas SEO SSR pre-renderizadas en el Edge y las rutas multi-segmento procesadas por la SPA:
 
-1. **Jerarquía**: `/{genero}/{pais}/{estudio O seleccion}/`
+### A. Conjunto Canónico de Landing Pages SEO SSR (Indexables en el Edge)
+El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos OpenGraph y Schema.org exclusivamente para URLs de **un único segmento** (más fichas de título y entidades VIP):
+1. **Fichas de Título**: `/titulo/{slug}/` (ej: `https://videoclub.digital/titulo/el-padrino-1972/`)
+2. **Entidades VIP**: `/director/{slug}/` y `/actor/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`, `https://videoclub.digital/actor/al-pacino/`)
+3. **Taxonomías Simples (1 segmento de ruta)**:
+   - Género simple: `https://videoclub.digital/drama/`
+   - País simple: `https://videoclub.digital/francia/`
+   - Estudio simple: `https://videoclub.digital/warner/`
+   - Selección simple: `https://videoclub.digital/criterion/`
+
+*Garantía Contractual:* Solo estas páginas forman parte de `sitemap.xml` y entregan HTML SSR bajo demanda desde el Edge Worker para motores de búsqueda y agentes.
+
+### B. Rutas Combinadas y Exclusiones (Navegación Interactiva en la SPA)
+> **Contrato Arquitectónico:** Las rutas combinadas son rutas funcionales de la SPA, pero no forman parte del conjunto de landing pages SEO SSR.
+
+El enrutador del cliente de la Single Page Application (`parsePrettyPath()`) admite la combinación de taxonomías en un orden jerárquico estricto para proporcionar deep-linking interactivo y filtrado instantáneo en el navegador:
+
+1. **Jerarquía Combinada**: `/{genero}/{pais}/{estudio O seleccion}/`
    - Ejemplo (Género + País): `https://videoclub.digital/drama/francia/`
    - Ejemplo (Género + País + Estudio): `https://videoclub.digital/sci-fi/eeuu/warner/`
    - Ejemplo (Género + Selección): `https://videoclub.digital/drama/criterion/`
@@ -154,6 +171,8 @@ El enrutador canónico admite la combinación de taxonomías en un orden jerárq
 2. **Exclusiones de Catálogo**:
    - Prefijadas con `no-`: `https://videoclub.digital/comedia/no-eeuu/`
    - Exclusión de género: `https://videoclub.digital/drama/no-terror/`
+
+Estas combinaciones enriquecen la interactividad del usuario final sin fragmentar el presupuesto de rastreo (crawl budget) de los motores de búsqueda en el Edge.
 
 3. **Filtrado Temporal (Años y Décadas)**:
    - **NO** forma parte de la ruta. Los años o décadas nunca tienen segmentos propios en la URL.

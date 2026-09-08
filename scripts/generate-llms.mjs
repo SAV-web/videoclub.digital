@@ -64,23 +64,28 @@ async function main() {
 - [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice de sitemaps estructurados para películas, directores, actores, géneros y países.
 - [Especificación Completa para Agentes (llms-full.txt)](https://videoclub.digital/llms-full.txt): Referencia exhaustiva con la totalidad de taxonomías, operadores y metadatos.
 
-## Estructura de URLs Canónicas
+## Estructura de URLs Canónicas y Contrato de Enrutamiento
 
-La plataforma opera con un sistema de rutas canónicas limpias (Pretty Paths) deterministas y jerárquicas:
+La plataforma opera con una separación contractual estricta entre las páginas estáticas indexables (SEO SSR en Edge) y las rutas de navegación interactiva en el cliente (SPA):
 
-### 1. Entidades VIP (Personas)
-Las páginas de directores y actores utilizan siempre un segmento de ruta dedicado:
-- **Directores**: \`/director/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`, \`https://videoclub.digital/director/martin-scorsese/\`)
-- **Actores**: \`/actor/{slug}/\` (ej: \`https://videoclub.digital/actor/al-pacino/\`, \`https://videoclub.digital/actor/eduard-fernandez/\`)
-*Nota: No se admiten parámetros tipo \`?director=\` ni \`?actor=\` en URLs canónicas.*
+### 1. Conjunto de Landing Pages SEO SSR (Indexables en el Edge)
+El contrato SEO del Edge Worker genera páginas HTML estáticas optimizadas para motores de búsqueda exclusivamente para rutas de **un solo segmento** y entidades principales:
+- **Fichas de Título**: \`/titulo/{slug}/\` (ej: \`https://videoclub.digital/titulo/el-padrino-1972/\`)
+- **Entidades VIP (Personas)**: \`/director/{slug}/\` y \`/actor/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`, \`https://videoclub.digital/actor/al-pacino/\`). *Nota: No se admiten parámetros tipo \`?director=\` ni \`?actor=\` en URLs canónicas.*
+- **Taxonomías Simples (1 segmento de ruta)**:
+  - **21 Géneros Canónicos**: ${OFFICIAL_GENRES.map(g => `\`/${toSlug(g)}/\` (${g})`).join(", ")}.
+  - **Países y Regiones Principales**: \`/eeuu/\` (EEUU), \`/espana/\` (España), \`/uk/\` (Reino Unido), \`/francia/\` (Francia), \`/japon/\` (Japón), \`/italia/\` (Italia), \`/alemania/\` (Alemania), \`/latam/\` (Latinoamérica), \`/nordic/\` (Países Nórdicos).
+  - **15 Estudios Cinematográficos**: ${Array.from(STUDIO_SLUGS).map(s => `\`/${s}/\``).join(", ")}.
+  - **10 Selecciones Críticas**: ${Array.from(SELECTION_SLUGS).map(s => `\`/${s}/\``).join(", ")}.
 
-### 2. Taxonomías de Catálogo (Rutas Canónicas)
-Jerarquía canónica en ruta: \`/{genero}/{pais}/{estudio O seleccion}/\`
-- **21 Géneros Canónicos**: ${OFFICIAL_GENRES.map(g => `\`/${toSlug(g)}/\` (${g})`).join(", ")}.
-- **Países y Regiones Principales**: \`/eeuu/\` (EEUU), \`/espana/\` (España), \`/uk/\` (Reino Unido), \`/francia/\` (Francia), \`/japon/\` (Japón), \`/italia/\` (Italia), \`/alemania/\` (Alemania), \`/latam/\` (Latinoamérica), \`/nordic/\` (Países Nórdicos).
-- **15 Estudios Cinematográficos**: ${Array.from(STUDIO_SLUGS).map(s => `\`/${s}/\``).join(", ")}.
-- **10 Selecciones Críticas**: ${Array.from(SELECTION_SLUGS).map(s => `\`/${s}/\``).join(", ")}.
-- **Exclusiones**: Se prefijan con \`no-\` dentro de la ruta (ej: \`/comedia/no-eeuu/\`, \`/drama/no-terror/\`).
+*Garantía Contractual SEO:* Solo las URLs simples de 1 segmento anteriores forman parte del sitemap oficial y disponen de Server-Side Rendering (SSR) en el Edge con marcado Schema.org completo.
+
+### 2. Rutas Combinadas y Exclusiones (Navegación Interactiva de la SPA)
+Las rutas combinadas son rutas funcionales de la SPA, pero no forman parte del conjunto de landing pages SEO SSR.
+El analizador de la SPA (\`parsePrettyPath\`) procesa dinámicamente en el navegador múltiples segmentos y operadores de exclusión:
+- **Jerarquía combinada**: \`/{genero}/{pais}/{estudio O seleccion}/\` (ej: \`/drama/francia/\`, \`/sci-fi/eeuu/warner/\`, \`/drama/criterion/\`, \`/japon/sony/\`).
+- **Exclusiones**: Se prefijan con \`no-\` (ej: \`/comedia/no-eeuu/\`, \`/drama/no-terror/\`).
+Estas rutas permiten deep-linking y una experiencia de usuario instantánea y reactiva en la aplicación, pero no son páginas SEO SSR pre-renderizadas por el Edge Worker.
 
 ### 3. Parámetros de Consulta (Query Parameters)
 Los filtros no posicionales utilizan exclusivamente parámetros URL:
@@ -224,11 +229,28 @@ No se utilizan consultas por parámetro (\`?director=\` o \`?actor=\`) para enla
 
 ---
 
-## 4. Gramática y Combinatoria de Rutas (Pretty Paths)
+## 4. Gramática y Enrutamiento: Páginas SEO SSR vs Navegación SPA
 
-El enrutador canónico admite la combinación de taxonomías en un orden jerárquico estricto:
+La arquitectura de VIDEOCLUB.DIGITAL establece una clara frontera contractual entre las páginas SEO SSR pre-renderizadas en el Edge y las rutas multi-segmento procesadas por la SPA:
 
-1. **Jerarquía**: \`/{genero}/{pais}/{estudio O seleccion}/\`
+### A. Conjunto Canónico de Landing Pages SEO SSR (Indexables en el Edge)
+El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos OpenGraph y Schema.org exclusivamente para URLs de **un único segmento** (más fichas de título y entidades VIP):
+1. **Fichas de Título**: \`/titulo/{slug}/\` (ej: \`https://videoclub.digital/titulo/el-padrino-1972/\`)
+2. **Entidades VIP**: \`/director/{slug}/\` y \`/actor/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`, \`https://videoclub.digital/actor/al-pacino/\`)
+3. **Taxonomías Simples (1 segmento de ruta)**:
+   - Género simple: \`https://videoclub.digital/drama/\`
+   - País simple: \`https://videoclub.digital/francia/\`
+   - Estudio simple: \`https://videoclub.digital/warner/\`
+   - Selección simple: \`https://videoclub.digital/criterion/\`
+
+*Garantía Contractual:* Solo estas páginas forman parte de \`sitemap.xml\` y entregan HTML SSR bajo demanda desde el Edge Worker para motores de búsqueda y agentes.
+
+### B. Rutas Combinadas y Exclusiones (Navegación Interactiva en la SPA)
+> **Contrato Arquitectónico:** Las rutas combinadas son rutas funcionales de la SPA, pero no forman parte del conjunto de landing pages SEO SSR.
+
+El enrutador del cliente de la Single Page Application (\`parsePrettyPath()\`) admite la combinación de taxonomías en un orden jerárquico estricto para proporcionar deep-linking interactivo y filtrado instantáneo en el navegador:
+
+1. **Jerarquía Combinada**: \`/{genero}/{pais}/{estudio O seleccion}/\`
    - Ejemplo (Género + País): \`https://videoclub.digital/drama/francia/\`
    - Ejemplo (Género + País + Estudio): \`https://videoclub.digital/sci-fi/eeuu/warner/\`
    - Ejemplo (Género + Selección): \`https://videoclub.digital/drama/criterion/\`
@@ -237,6 +259,8 @@ El enrutador canónico admite la combinación de taxonomías en un orden jerárq
 2. **Exclusiones de Catálogo**:
    - Prefijadas con \`no-\`: \`https://videoclub.digital/comedia/no-eeuu/\`
    - Exclusión de género: \`https://videoclub.digital/drama/no-terror/\`
+
+Estas combinaciones enriquecen la interactividad del usuario final sin fragmentar el presupuesto de rastreo (crawl budget) de los motores de búsqueda en el Edge.
 
 3. **Filtrado Temporal (Años y Décadas)**:
    - **NO** forma parte de la ruta. Los años o décadas nunca tienen segmentos propios en la URL.

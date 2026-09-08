@@ -1,12 +1,19 @@
 // =================================================================
-//        DICCIONARIOS Y RESOLUCIÓN DE TAXONOMÍAS EN EL EDGE
+//        REPRESENTACIÓN SEO Y METADATOS DE EDGE SSR
 //             (cloudflare/seo/taxonomy-types.js)
 // =================================================================
-// Define las taxonomías cerradas oficiales del catálogo:
-// - 21 Géneros canónicos
-// - 78 Países con catálogo activo + 2 Grupos Regionales (latam, nordic)
-// - 15 Estudios cinematográficos oficiales
-// - 10 Selecciones editoriales oficiales
+// Este módulo define la REPRESENTACIÓN SEO y METADATOS DE PRESENTACIÓN
+// para el Edge Worker (Cloudflare Workers).
+//
+// REGLA ARQUITECTÓNICA ESTRICTA:
+// - slugs.ts = IDENTIDAD / CANONICIDAD (SSOT):
+//   Define la existencia de entidades, slugs canónicos, alias y normalización.
+// - taxonomy-types.js = REPRESENTACIÓN SEO:
+//   Enriquece la identidad canónica con metadatos descriptivos (títulos SEO,
+//   descripciones editoriales, Schema.org y parámetros RPC para Supabase).
+//
+// Cualquier entidad añadida o modificada aquí debe mantener paridad
+// estricta con los conjuntos canónicos registrados en `src/shared/slugs.ts`.
 // =================================================================
 
 /**
