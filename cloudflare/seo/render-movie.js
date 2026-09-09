@@ -194,7 +194,7 @@ export function renderMovieHtml(movie, options = {}) {
   <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
   <!-- Hoja de Estilos Externa Cacheable (SSOT con versionado perimetral) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v3.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
 
   <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
   <script type="application/ld+json">${safeJsonLd(breadcrumbLd)}</script>
@@ -218,13 +218,13 @@ export function renderMovieHtml(movie, options = {}) {
 </head>
 <body>
   <!-- Header Superior de Marca -->
-  <header class="site-header">
-    <div class="header-content">
-      <a href="${baseUrl}" class="brand-logo" aria-label="Videoclub Digital">
-        <span class="logo-line-1">videoclub</span>
-        <span class="logo-line-2">.digital</span>
+  <header class="main-header">
+    <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto; padding: 0 var(--space-lg);">
+      <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
+        <span class="logo-line-1">VIDEOCLUB</span>
+        <span class="logo-line-2">.DIGITAL</span>
       </a>
-      <div class="header-controls">
+      <div class="header-controls" style="display:flex; align-items:center;">
         <a href="${baseUrl}?movie=${movie.id}" class="btn-header-cta" title="Abrir ficha en el videoclub" aria-label="Abrir ficha en el videoclub">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>

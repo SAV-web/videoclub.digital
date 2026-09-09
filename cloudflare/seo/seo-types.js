@@ -96,7 +96,8 @@ export function escapeAttr(str) {
 
 export function parseList(value) {
   if (!value) return [];
-  return value
+  if (Array.isArray(value)) return value.map(s => String(s).trim()).filter(Boolean);
+  return String(value)
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);

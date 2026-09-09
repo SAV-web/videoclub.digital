@@ -3649,7 +3649,7 @@ body.sidebar-collapsed .sidebar {
   margin-bottom: 0;
 }
 
-.is-quick-view .movie-summary h3[data-template="title"] {
+.is-quick-view .movie-summary :is(h1, h3)[data-template="title"] {
   font-size: 2.05rem;
   font-weight: var(--font-weight-extrabold);
   color: var(--color-text-primary);
@@ -4883,41 +4883,65 @@ body.sidebar-collapsed .sidebar {
   pointer-events: none;
 }
 
-/* Interacción de volteo en SSR (solo películas normales) */
-.movie-card:not(.person-card) {
+.btn-header-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.btn-header-cta:hover {
+  background: #f59e0b;
+  color: #0d0d0d;
+  transform: scale(1.08);
+}
+.btn-header-cta svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Interacción de volteo en SSR (solo películas normales en cuadrícula) */
+.movie-card:not(.person-card):not(.is-quick-view) {
   cursor: pointer;
 }
-.movie-card a, .movie-card button {
+.movie-card:not(.person-card):not(.is-quick-view) a,
+.movie-card:not(.person-card):not(.is-quick-view) button {
   cursor: pointer;
 }
 
-/* Aislamiento estricto de capas 3D y eventos de puntero para evitar clics fantasma */
-.flip-card-inner {
+/* Aislamiento estricto de capas 3D y eventos de puntero para evitar clics fantasma (solo cuadrícula) */
+.movie-card:not(.is-quick-view) .flip-card-inner {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
-.flip-card-front,
-.flip-card-back {
+.movie-card:not(.is-quick-view) .flip-card-front,
+.movie-card:not(.is-quick-view) .flip-card-back {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
 
-/* Cara trasera inactiva e invisible cuando no está volteada */
-.flip-card-inner:not(.is-flipped) .flip-card-back,
-.flip-card-inner:not(.is-flipped) .flip-card-back * {
+/* Cara trasera inactiva e invisible cuando no está volteada (solo cuadrícula) */
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back,
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back * {
   pointer-events: none !important;
   visibility: hidden !important;
 }
 
-/* Cara frontal inactiva e invisible para el puntero cuando está volteada */
-.flip-card-inner.is-flipped .flip-card-front,
-.flip-card-inner.is-flipped .flip-card-front * {
+/* Cara frontal inactiva e invisible para el puntero cuando está volteada (solo cuadrícula) */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front * {
   pointer-events: none !important;
   visibility: hidden !important;
 }
 
-/* Cara trasera activa cuando está volteada */
-.flip-card-inner.is-flipped .flip-card-back {
+/* Cara trasera activa cuando está volteada (solo cuadrícula) */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back {
   pointer-events: auto !important;
   visibility: visible !important;
   z-index: 10 !important;
