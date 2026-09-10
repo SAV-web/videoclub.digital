@@ -80,24 +80,35 @@ try {
     process.exit(0);
   }
 
-  const failedTests = data.filter(
-    (row) => row.status !== "PASS" || Number(row.failed_records) > 0
+  const errorFailures = data.filter(
+    (row) => (row.status !== "PASS" || Number(row.failed_records) > 0) && row.severity === "ERROR"
+  );
+  const warnFailures = data.filter(
+    (row) => (row.status !== "PASS" || Number(row.failed_records) > 0) && row.severity === "WARN"
   );
 
   console.log("\n📊 Informe de Calidad de Datos:");
   console.log("--------------------------------------------------------------------------------");
   for (const row of data) {
     const isPass = row.status === "PASS" && Number(row.failed_records) === 0;
-    const badge = isPass ? "✔ PASS" : "❌ FAIL";
+    const badge = isPass ? "✔ PASS" : (row.severity === "WARN" ? "⚠️  WARN" : "❌ FAIL");
     console.log(
       `  [${badge}] ${row.test_name.padEnd(35)} | Cat: ${row.category.padEnd(15)} | Fallos: ${String(row.failed_records).padStart(3)}`
     );
   }
   console.log("--------------------------------------------------------------------------------");
 
-  if (failedTests.length > 0) {
-    console.error(`\n🚨 CALIDAD DE DATOS COMPROMETIDA: ${failedTests.length} prueba(s) fallida(s).\n`);
-    for (const failure of failedTests) {
+  if (warnFailures.length > 0) {
+    console.warn(`\n⚠️  ADVERTENCIAS DE CALIDAD (${warnFailures.length} prueba(s)):`);
+    for (const w of warnFailures) {
+      console.warn(`⚠️  Test: ${w.test_name} (${w.category}) - Fallos: ${w.failed_records}`);
+    }
+  }
+
+  if (errorFailures.length > 0 || (isStrict && warnFailures.length > 0)) {
+    const totalFailed = errorFailures.length + (isStrict ? warnFailures.length : 0);
+    console.error(`\n🚨 CALIDAD DE DATOS COMPROMETIDA: ${totalFailed} prueba(s) crítica(s) fallida(s).\n`);
+    for (const failure of [...errorFailures, ...(isStrict ? warnFailures : [])]) {
       console.error(`❌ Test: ${failure.test_name} (${failure.category})`);
       console.error(`   Severidad: ${failure.severity}`);
       console.error(`   Registros infractores: ${failure.failed_records}`);

@@ -119,9 +119,9 @@ BEGIN
         RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % fa_id duplicados.', test_name, v_count; 
     END IF;
 
-    -- 2.3. Unicidad de Slugs de Personas
+    -- 2.3. Unicidad de Slugs de Personas por Rol (evita colisiones en /director/ o /actor/)
     SELECT count(*) INTO v_count FROM (
-        SELECT slug FROM public.people GROUP BY slug HAVING count(*) > 1
+        SELECT slug, type FROM public.people GROUP BY slug, type HAVING count(*) > 1
     ) dup;
     
     test_name := 'people_slug_unique'; 
@@ -129,11 +129,11 @@ BEGIN
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT slug, count(*) FROM public.people GROUP BY slug HAVING count(*) > 1;';
+    sample_query := 'SELECT slug, type, count(*) FROM public.people GROUP BY slug, type HAVING count(*) > 1;';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
-        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % slugs de personas duplicados.', test_name, v_count; 
+        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % slugs de personas duplicados para un mismo rol.', test_name, v_count; 
     END IF;
 
     -- =================================================================
