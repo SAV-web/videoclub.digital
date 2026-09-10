@@ -305,7 +305,7 @@ BEGIN
     -- Esta fase resuelve:
     --   1. Coincidencia directa por slug indexado (d.slug) o nombre normalizado (d.name_norm).
     --   2. Fallback alfanumérico estricto (regexp_replace) para emparejar guiones y apóstrofes.
-    --   3. Expansión bidireccional de colectivos y dúos vía `directors.components` (ej. "Hermanos Russo"
+    --   3. Expansión bidireccional de colectivos y dúos vía `people.components` (ej. "Hermanos Russo"
     --      expande a "Anthony Russo" y "Joe Russo", devolviendo películas de ambos).
     -- Combina todos los alias en un tsquery con operador OR (' | ') usando websearch_to_tsquery.
     IF director_name IS NOT NULL AND TRIM(director_name) != '' THEN
@@ -314,18 +314,21 @@ BEGIN
         INTO v_director_tsquery, v_director_names
         FROM (
             SELECT d.name AS d_name
-            FROM public.directors d
-            WHERE d.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(director_name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
-               OR d.name_norm = public.unaccent_immutable(lower(director_name))
-               OR regexp_replace(d.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
-               OR (
-                   d.components IS NOT NULL AND EXISTS (
-                       SELECT 1 
-                       FROM unnest(string_to_array(d.components, ',')) comp(name)
-                       WHERE public.unaccent_immutable(lower(trim(comp.name))) = public.unaccent_immutable(lower(director_name))
-                          OR regexp_replace(public.unaccent_immutable(lower(trim(comp.name))), '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
-                   )
-               )
+            FROM public.people d
+            WHERE d.type IN ('D', 'DA', 'AD')
+              AND (
+                   d.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(director_name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+                OR d.name_norm = public.unaccent_immutable(lower(director_name))
+                OR regexp_replace(d.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
+                OR (
+                    d.components IS NOT NULL AND EXISTS (
+                        SELECT 1 
+                        FROM unnest(string_to_array(d.components, ',')) comp(name)
+                        WHERE public.unaccent_immutable(lower(trim(comp.name))) = public.unaccent_immutable(lower(director_name))
+                           OR regexp_replace(public.unaccent_immutable(lower(trim(comp.name))), '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
+                    )
+                )
+              )
             UNION
             SELECT director_name
         ) alias_dirs;
@@ -342,10 +345,13 @@ BEGIN
         INTO v_actor_tsquery
         FROM (
             SELECT a.name AS a_name
-            FROM public.actors a
-            WHERE a.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(actor_name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
-               OR a.name_norm = public.unaccent_immutable(lower(actor_name))
-               OR regexp_replace(a.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(actor_name)), '[^a-z0-9]', '', 'g')
+            FROM public.people a
+            WHERE a.type IN ('A', 'AD', 'DA')
+              AND (
+                   a.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(actor_name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+                OR a.name_norm = public.unaccent_immutable(lower(actor_name))
+                OR regexp_replace(a.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(actor_name)), '[^a-z0-9]', '', 'g')
+              )
             UNION
             SELECT actor_name
         ) alias_acts;
@@ -507,29 +513,12 @@ CREATE INDEX IF NOT EXISTS movie_actors_actor_id_idx ON public.movie_actors(acto
 CREATE INDEX IF NOT EXISTS movie_selections_selection_id_idx ON public.movie_selections(selection_id);
 CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(studio_id);
 
--- 5.0. Columnas Generadas de Slug Canónico e Índices para Directores y Actores
--- IMPORTANTE: public.unaccent_immutable() debe aplicarse ANTES de regexp_replace,
--- para que las vocales acentuadas (á, é, í, ó, ú, etc.) se conviertan en (a, e, i, o, u)
--- y no sean sustituidas erróneamente por guiones '-'.
-ALTER TABLE public.directors DROP COLUMN IF EXISTS slug CASCADE;
-ALTER TABLE public.directors 
-ADD COLUMN slug TEXT GENERATED ALWAYS AS (
-    TRIM(BOTH '-' FROM regexp_replace(lower(public.unaccent_immutable(name)), '[^a-z0-9]+', '-', 'g'))
-) STORED;
-
-CREATE INDEX IF NOT EXISTS idx_directors_slug ON public.directors(slug);
-
-ALTER TABLE public.actors DROP COLUMN IF EXISTS slug CASCADE;
-ALTER TABLE public.actors 
-ADD COLUMN slug TEXT GENERATED ALWAYS AS (
-    TRIM(BOTH '-' FROM regexp_replace(lower(public.unaccent_immutable(name)), '[^a-z0-9]+', '-', 'g'))
-) STORED;
-
-CREATE INDEX IF NOT EXISTS idx_actors_slug ON public.actors(slug);
-
-CREATE INDEX IF NOT EXISTS directors_name_norm_trgm_idx ON public.directors USING gin (name_norm extensions.gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS directors_components_trgm_idx ON public.directors USING gin (public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
-CREATE INDEX IF NOT EXISTS actors_name_norm_trgm_idx ON public.actors USING gin (name_norm extensions.gin_trgm_ops);
+-- 5.0. Índices para la tabla canónica 'public.people'
+CREATE INDEX IF NOT EXISTS idx_people_slug ON public.people(slug);
+CREATE INDEX IF NOT EXISTS idx_people_type ON public.people(type);
+CREATE INDEX IF NOT EXISTS idx_people_vip ON public.people(vip);
+CREATE INDEX IF NOT EXISTS idx_people_name_norm_trgm ON public.people USING gin(name_norm extensions.gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_people_components_trgm ON public.people USING gin(public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
 CREATE INDEX IF NOT EXISTS movies_directors_tsv_idx ON public.movies USING GIN(directors_tsv);
@@ -557,7 +546,7 @@ ANALYZE public.movies;
 
 -- 5.2. Vistas Materializadas para Sugerencias y Autocompletado (Auto-Convergencia Segura)
 
--- 1. Sugerencias de Actores
+-- 1. Sugerencias de Actores sobre 'public.people'
 DO $$
 BEGIN
     IF EXISTS (
@@ -574,9 +563,11 @@ BEGIN
         SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_actor_suggestions'
     ) THEN
         CREATE MATERIALIZED VIEW public.mv_actor_suggestions AS
-        SELECT a.id, a.name, a.name_norm, COUNT(ma.movie_id) AS movie_count
-        FROM public.actors a LEFT JOIN public.movie_actors ma ON a.id = ma.actor_id
-        GROUP BY a.id, a.name, a.name_norm;
+        SELECT p.id, p.name, p.name_norm, COUNT(ma.movie_id) AS movie_count
+        FROM public.people p 
+        LEFT JOIN public.movie_actors ma ON p.id = ma.actor_id
+        WHERE p.type IN ('A', 'AD', 'DA')
+        GROUP BY p.id, p.name, p.name_norm;
 
         CREATE UNIQUE INDEX mv_actor_suggestions_id_idx ON public.mv_actor_suggestions(id);
         CREATE INDEX mv_actor_suggestions_name_norm_trgm_idx ON public.mv_actor_suggestions USING gin(name_norm extensions.gin_trgm_ops);
@@ -584,7 +575,7 @@ BEGIN
     END IF;
 END $$;
 
--- 2. Sugerencias de Directores (Verifica components y components_norm)
+-- 2. Sugerencias de Directores sobre 'public.people'
 DO $$
 BEGIN
     IF EXISTS (
@@ -607,15 +598,16 @@ BEGIN
     ) THEN
         CREATE MATERIALIZED VIEW public.mv_director_suggestions AS
         SELECT 
-            d.id, 
-            d.name, 
-            d.name_norm, 
-            d.components,
-            public.unaccent_immutable(lower(COALESCE(d.components, ''))) AS components_norm,
+            p.id, 
+            p.name, 
+            p.name_norm, 
+            p.components,
+            public.unaccent_immutable(lower(COALESCE(p.components, ''))) AS components_norm,
             COUNT(md.movie_id) AS movie_count
-        FROM public.directors d 
-        LEFT JOIN public.movie_directors md ON d.id = md.director_id
-        GROUP BY d.id, d.name, d.name_norm, d.components;
+        FROM public.people p 
+        LEFT JOIN public.movie_directors md ON p.id = md.director_id
+        WHERE p.type IN ('D', 'DA', 'AD')
+        GROUP BY p.id, p.name, p.name_norm, p.components;
 
         CREATE UNIQUE INDEX mv_director_suggestions_id_idx ON public.mv_director_suggestions(id);
         CREATE INDEX mv_director_suggestions_name_norm_trgm_idx ON public.mv_director_suggestions USING gin(name_norm extensions.gin_trgm_ops);
@@ -835,7 +827,7 @@ DO $$
 DECLARE 
     t_name TEXT; 
     public_tables TEXT[] := ARRAY[
-        'movies', 'actors', 'directors', 'genres', 'countries', 'selections', 'studios',
+        'movies', 'people', 'genres', 'countries', 'selections', 'studios',
         'movie_actors', 'movie_directors', 'movie_genres', 'movie_selections', 'movie_studios'
     ];
 BEGIN
@@ -938,108 +930,94 @@ BEGIN
     SELECT DISTINCT TRIM(g.name) FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.genre, ',')) AS g(name)
     WHERE s.show IS TRUE AND s.genre IS NOT NULL AND TRIM(g.name) <> '' ON CONFLICT (name) DO NOTHING;
 
-    INSERT INTO public.directors (name)
-    SELECT DISTINCT TRIM(d.name) FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.directors, ',')) AS d(name)
-    WHERE s.show IS TRUE AND s.directors IS NOT NULL AND TRIM(d.name) <> '' ON CONFLICT (name) DO NOTHING;
+    -- Directores y actores desde movies_staging
+    INSERT INTO public.people (name, type)
+    SELECT DISTINCT TRIM(d.name), 'D' FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.directors, ',')) AS d(name)
+    WHERE s.show IS TRUE AND s.directors IS NOT NULL AND TRIM(d.name) <> ''
+    ON CONFLICT (name) DO UPDATE SET type = CASE WHEN public.people.type = 'A' THEN 'AD' ELSE public.people.type END;
     GET DIAGNOSTICS v_rows_count = ROW_COUNT;
     directors_created_count := directors_created_count + v_rows_count;
 
-    INSERT INTO public.directors (name)
-    SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
-    WHERE p.type = 'D' AND TRIM(p.name) <> '' ON CONFLICT (name) DO NOTHING;
-    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
-    directors_created_count := directors_created_count + v_rows_count;
-
-    INSERT INTO public.actors (name)
-    SELECT DISTINCT TRIM(a.name) FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.actors, ',')) AS a(name)
-    WHERE s.show IS TRUE AND s.actors IS NOT NULL AND TRIM(a.name) <> '' AND s.actors <> '(A)' ON CONFLICT (name) DO NOTHING;
+    INSERT INTO public.people (name, type)
+    SELECT DISTINCT TRIM(a.name), 'A' FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.actors, ',')) AS a(name)
+    WHERE s.show IS TRUE AND s.actors IS NOT NULL AND TRIM(a.name) <> '' AND s.actors <> '(A)'
+    ON CONFLICT (name) DO UPDATE SET type = CASE WHEN public.people.type = 'D' THEN 'DA' ELSE public.people.type END;
     GET DIAGNOSTICS v_rows_count = ROW_COUNT;
     actors_created_count := actors_created_count + v_rows_count;
 
-    INSERT INTO public.actors (name)
-    SELECT DISTINCT TRIM(p.name) FROM public.people_staging p
-    WHERE p.type = 'A' AND TRIM(p.name) <> '' ON CONFLICT (name) DO NOTHING;
-    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
-    actors_created_count := actors_created_count + v_rows_count;
+    -- Inserción / Upsert de personas desde people_staging (soporta tipos A, D, AD, DA y preserva VIP)
+    INSERT INTO public.people (name, type, vip)
+    SELECT DISTINCT
+        TRIM(p.name),
+        COALESCE(NULLIF(UPPER(TRIM(p.type)), ''), 'A'),
+        CASE WHEN p.biography IS NOT NULL AND TRIM(p.biography) <> '' THEN 1 ELSE 0 END
+    FROM public.people_staging p
+    WHERE p.name IS NOT NULL AND TRIM(p.name) <> ''
+    ON CONFLICT (name) DO UPDATE SET 
+        type = CASE
+            WHEN EXCLUDED.type = 'D' AND public.people.type = 'A' THEN 'AD'
+            WHEN EXCLUDED.type = 'A' AND public.people.type = 'D' THEN 'DA'
+            WHEN EXCLUDED.type IN ('A', 'D', 'AD', 'DA') THEN EXCLUDED.type
+            ELSE public.people.type
+        END,
+        vip = CASE 
+            WHEN EXCLUDED.vip = 1 OR (public.people.biography IS NOT NULL AND TRIM(public.people.biography) <> '') THEN 1 
+            ELSE public.people.vip 
+        END;
 
-    -- 3. ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPS, BIOGRAFÍAS, COMPONENTES)
-    -- 3.1. Actualizar directores desde people_staging (deduplicado y normalizado)
-    WITH dedup_directors AS (
+    -- 3. ACTUALIZACIÓN DIFERENCIAL DE PERSONAS (VIPS, BIOGRAFÍAS, COMPONENTES Y METADATOS)
+    WITH dedup_people AS (
         SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
-            p.name,
+            TRIM(p.name) AS name,
             public.unaccent_immutable(lower(trim(p.name))) AS p_name_norm,
             public.to_date_safe(p.birthday) AS birthday_date,
             public.to_date_safe(p.deathday) AS deathday_date,
-            p.place_of_birth,
+            NULLIF(TRIM(p.place_of_birth), '') AS place_of_birth,
             c.id AS resolved_country_id,
-            p.titulo_bio,
-            p.biography,
-            p.components
+            NULLIF(TRIM(p.titulo_bio), '') AS titulo_bio,
+            NULLIF(TRIM(p.biography), '') AS biography,
+            NULLIF(TRIM(p.components), '') AS components,
+            UPPER(TRIM(p.type)) AS staging_type
         FROM public.people_staging p
         LEFT JOIN public.countries c 
-            ON c.code = UPPER(TRIM(p.country_id)) 
+            ON (p.country_id ~ '^[0-9]+$' AND c.id = p.country_id::int)
+            OR c.code = UPPER(TRIM(p.country_id)) 
             OR c.name_norm = public.unaccent_immutable(LOWER(TRIM(p.country_id)))
-        WHERE p.type = 'D' AND p.name IS NOT NULL AND TRIM(p.name) <> ''
+        WHERE p.name IS NOT NULL AND TRIM(p.name) <> ''
         ORDER BY public.unaccent_immutable(lower(trim(p.name))), p.id DESC
     )
-    UPDATE public.directors d
+    UPDATE public.people p
     SET
-        birthday = src.birthday_date,
-        deathday = src.deathday_date,
-        place_of_birth = src.place_of_birth,
-        country_id = src.resolved_country_id,
-        titulo_bio = src.titulo_bio,
-        biography = src.biography,
-        components = src.components
-    FROM dedup_directors src
-    WHERE d.name_norm = src.p_name_norm AND (
-        d.birthday IS DISTINCT FROM src.birthday_date OR
-        d.deathday IS DISTINCT FROM src.deathday_date OR
-        d.place_of_birth IS DISTINCT FROM src.place_of_birth OR
-        d.country_id IS DISTINCT FROM src.resolved_country_id OR
-        d.titulo_bio IS DISTINCT FROM src.titulo_bio OR
-        d.biography IS DISTINCT FROM src.biography OR
-        d.components IS DISTINCT FROM src.components
+        birthday = COALESCE(src.birthday_date, p.birthday),
+        deathday = COALESCE(src.deathday_date, p.deathday),
+        place_of_birth = COALESCE(src.place_of_birth, p.place_of_birth),
+        country_id = COALESCE(src.resolved_country_id, p.country_id),
+        titulo_bio = COALESCE(src.titulo_bio, p.titulo_bio),
+        biography = COALESCE(src.biography, p.biography),
+        components = COALESCE(src.components, p.components),
+        vip = CASE 
+            WHEN (src.biography IS NOT NULL AND TRIM(src.biography) <> '') 
+              OR (p.biography IS NOT NULL AND TRIM(p.biography) <> '') THEN 1 
+            ELSE p.vip 
+        END,
+        type = CASE
+            WHEN src.staging_type = 'D' AND p.type = 'A' THEN 'AD'
+            WHEN src.staging_type = 'A' AND p.type = 'D' THEN 'DA'
+            WHEN src.staging_type IN ('A', 'D', 'AD', 'DA') THEN src.staging_type
+            ELSE p.type
+        END
+    FROM dedup_people src
+    WHERE p.name_norm = src.p_name_norm AND (
+        (src.birthday_date IS NOT NULL AND p.birthday IS DISTINCT FROM src.birthday_date) OR
+        (src.deathday_date IS NOT NULL AND p.deathday IS DISTINCT FROM src.deathday_date) OR
+        (src.place_of_birth IS NOT NULL AND p.place_of_birth IS DISTINCT FROM src.place_of_birth) OR
+        (src.resolved_country_id IS NOT NULL AND p.country_id IS DISTINCT FROM src.resolved_country_id) OR
+        (src.titulo_bio IS NOT NULL AND p.titulo_bio IS DISTINCT FROM src.titulo_bio) OR
+        (src.biography IS NOT NULL AND p.biography IS DISTINCT FROM src.biography) OR
+        (src.components IS NOT NULL AND p.components IS DISTINCT FROM src.components) OR
+        (p.vip = 0 AND (src.biography IS NOT NULL OR p.biography IS NOT NULL))
     );
-    GET DIAGNOSTICS directors_modified_count = ROW_COUNT;
-
-    -- 3.2. Actualizar actores desde people_staging (deduplicado y normalizado)
-    WITH dedup_actors AS (
-        SELECT DISTINCT ON (public.unaccent_immutable(lower(trim(p.name))))
-            p.name,
-            public.unaccent_immutable(lower(trim(p.name))) AS p_name_norm,
-            public.to_date_safe(p.birthday) AS birthday_date,
-            public.to_date_safe(p.deathday) AS deathday_date,
-            p.place_of_birth,
-            c.id AS resolved_country_id,
-            p.titulo_bio,
-            p.biography
-        FROM public.people_staging p
-        LEFT JOIN public.countries c 
-            ON c.code = UPPER(TRIM(p.country_id)) 
-            OR c.name_norm = public.unaccent_immutable(LOWER(TRIM(p.country_id)))
-        WHERE p.type = 'A' AND p.name IS NOT NULL AND TRIM(p.name) <> ''
-        ORDER BY public.unaccent_immutable(lower(trim(p.name))), p.id DESC
-    )
-    UPDATE public.actors a
-    SET
-        birthday = src.birthday_date,
-        deathday = src.deathday_date,
-        place_of_birth = src.place_of_birth,
-        country_id = src.resolved_country_id,
-        titulo_bio = src.titulo_bio,
-        biography = src.biography
-    FROM dedup_actors src
-    WHERE a.name_norm = src.p_name_norm AND (
-        a.birthday IS DISTINCT FROM src.birthday_date OR
-        a.deathday IS DISTINCT FROM src.deathday_date OR
-        a.place_of_birth IS DISTINCT FROM src.place_of_birth OR
-        a.country_id IS DISTINCT FROM src.resolved_country_id OR
-        a.titulo_bio IS DISTINCT FROM src.titulo_bio OR
-        a.biography IS DISTINCT FROM src.biography
-    );
-    GET DIAGNOSTICS actors_modified_count = ROW_COUNT;
-    people_modified_count := directors_created_count + actors_created_count + directors_modified_count + actors_modified_count;
+    GET DIAGNOSTICS people_modified_count = ROW_COUNT;
 
     -- 4: UPSERT DIFERENCIAL DE PELÍCULAS (PUBLIC.MOVIES)
     WITH upserted_movies AS (
@@ -1122,7 +1100,7 @@ BEGIN
         SELECT DISTINCT ON (t.movie_id, d.id) t.movie_id, d.id, director_name.ordinality
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.directors, ', ', ','), ',')) WITH ORDINALITY AS director_name(name, ordinality)
-        JOIN public.directors d ON d.name = TRIM(director_name.name)
+        JOIN public.people d ON d.name = TRIM(director_name.name)
         ORDER BY t.movie_id, d.id, director_name.ordinality ASC
         ON CONFLICT (movie_id, director_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
 
@@ -1130,7 +1108,7 @@ BEGIN
         SELECT DISTINCT ON (t.movie_id, a.id) t.movie_id, a.id, actor_name.ordinality
         FROM tmp_affected_staging t
         CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.actors, ', ', ','), ',')) WITH ORDINALITY AS actor_name(name, ordinality)
-        JOIN public.actors a ON a.name = TRIM(actor_name.name)
+        JOIN public.people a ON a.name = TRIM(actor_name.name)
         WHERE t.actors <> '(A)'
         ORDER BY t.movie_id, a.id, actor_name.ordinality ASC
         ON CONFLICT (movie_id, actor_id) DO UPDATE SET ordinality = EXCLUDED.ordinality;
@@ -1164,7 +1142,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.directors, ', ', ','), ',')) AS d_name(name)
-            JOIN public.directors d ON d.name = TRIM(d_name.name)
+            JOIN public.people d ON d.name = TRIM(d_name.name)
             WHERE t.movie_id = md.movie_id AND d.id = md.director_id
           );
 
@@ -1173,7 +1151,7 @@ BEGIN
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
             CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(REPLACE(t.actors, ', ', ','), ',')) AS a_name(name)
-            JOIN public.actors a ON a.name = TRIM(a_name.name)
+            JOIN public.people a ON a.name = TRIM(a_name.name)
             WHERE t.movie_id = ma.movie_id AND a.id = ma.actor_id
           );
 
@@ -1208,7 +1186,7 @@ BEGIN
             FROM (
                 SELECT md.movie_id, d.name AS director_name, MIN(md.ordinality) AS min_ordinality
                 FROM public.movie_directors md
-                JOIN public.directors d ON md.director_id = d.id
+                JOIN public.people d ON md.director_id = d.id
                 WHERE md.movie_id = ANY(affected_movie_ids)
                 GROUP BY md.movie_id, d.name
             ) unique_dirs
@@ -1219,7 +1197,7 @@ BEGIN
             FROM (
                 SELECT ma.movie_id, a.name AS actor_name, MIN(ma.ordinality) AS min_ordinality
                 FROM public.movie_actors ma
-                JOIN public.actors a ON ma.actor_id = a.id
+                JOIN public.people a ON ma.actor_id = a.id
                 WHERE ma.movie_id = ANY(affected_movie_ids)
                 GROUP BY ma.movie_id, a.name
             ) unique_acts

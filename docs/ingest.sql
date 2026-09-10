@@ -18,8 +18,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_title_suggestions;
 -- 3. Mantenimiento de Estadísticas del Optimizador (Query Planner)
 -- Garantiza que PostgreSQL escoja los índices GIN/B-Tree más eficientes
 ANALYZE public.movies;
-ANALYZE public.actors;
-ANALYZE public.directors;
+ANALYZE public.people;
 ANALYZE public.movie_genres;
 ANALYZE public.movie_directors;
 ANALYZE public.movie_actors;

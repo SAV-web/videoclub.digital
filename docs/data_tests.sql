@@ -64,38 +64,21 @@ BEGIN
         RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % películas sin relevancia.', test_name, v_count; 
     END IF;
 
-    -- 1.3. Directores deben tener nombre y slug generados
+    -- 1.3. Personas deben tener nombre y slug generados
     SELECT count(*) INTO v_count 
-    FROM public.directors 
+    FROM public.people 
     WHERE name IS NULL OR TRIM(name) = '' OR slug IS NULL OR TRIM(slug) = '';
     
-    test_name := 'directors_name_slug_not_null'; 
+    test_name := 'people_name_slug_not_null'; 
     category := 'not_null'; 
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT id, name, slug FROM public.directors WHERE name IS NULL OR slug IS NULL;';
+    sample_query := 'SELECT id, name, slug FROM public.people WHERE name IS NULL OR slug IS NULL;';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
-        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % directores sin nombre o slug.', test_name, v_count; 
-    END IF;
-
-    -- 1.4. Actores deben tener nombre y slug generados
-    SELECT count(*) INTO v_count 
-    FROM public.actors 
-    WHERE name IS NULL OR TRIM(name) = '' OR slug IS NULL OR TRIM(slug) = '';
-    
-    test_name := 'actors_name_slug_not_null'; 
-    category := 'not_null'; 
-    severity := 'ERROR';
-    failed_records := v_count;
-    status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT id, name, slug FROM public.actors WHERE name IS NULL OR slug IS NULL;';
-    IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
-    RETURN NEXT;
-    IF p_fail_fast AND v_count > 0 THEN 
-        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % actores sin nombre o slug.', test_name, v_count; 
+        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % personas sin nombre o slug.', test_name, v_count; 
     END IF;
 
     -- =================================================================
@@ -136,38 +119,21 @@ BEGIN
         RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % fa_id duplicados.', test_name, v_count; 
     END IF;
 
-    -- 2.3. Unicidad de Slugs de Directores
+    -- 2.3. Unicidad de Slugs de Personas
     SELECT count(*) INTO v_count FROM (
-        SELECT slug FROM public.directors GROUP BY slug HAVING count(*) > 1
+        SELECT slug FROM public.people GROUP BY slug HAVING count(*) > 1
     ) dup;
     
-    test_name := 'directors_slug_unique'; 
+    test_name := 'people_slug_unique'; 
     category := 'unique'; 
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT slug, count(*) FROM public.directors GROUP BY slug HAVING count(*) > 1;';
+    sample_query := 'SELECT slug, count(*) FROM public.people GROUP BY slug HAVING count(*) > 1;';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
-        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % slugs de directores duplicados.', test_name, v_count; 
-    END IF;
-
-    -- 2.4. Unicidad de Slugs de Actores
-    SELECT count(*) INTO v_count FROM (
-        SELECT slug FROM public.actors GROUP BY slug HAVING count(*) > 1
-    ) dup;
-    
-    test_name := 'actors_slug_unique'; 
-    category := 'unique'; 
-    severity := 'ERROR';
-    failed_records := v_count;
-    status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT slug, count(*) FROM public.actors GROUP BY slug HAVING count(*) > 1;';
-    IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
-    RETURN NEXT;
-    IF p_fail_fast AND v_count > 0 THEN 
-        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % slugs de actores duplicados.', test_name, v_count; 
+        RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % slugs de personas duplicados.', test_name, v_count; 
     END IF;
 
     -- =================================================================
@@ -192,11 +158,11 @@ BEGIN
         RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % películas con país huérfano.', test_name, v_count; 
     END IF;
 
-    -- 3.2. Tabla de unión movie_directors sin película o sin director
+    -- 3.2. Tabla de unión movie_directors sin película o sin persona en people
     SELECT count(*) INTO v_count 
     FROM public.movie_directors md
     LEFT JOIN public.movies m ON md.movie_id = m.id
-    LEFT JOIN public.directors d ON md.director_id = d.id
+    LEFT JOIN public.people d ON md.director_id = d.id
     WHERE m.id IS NULL OR d.id IS NULL;
     
     test_name := 'movie_directors_orphans'; 
@@ -204,18 +170,18 @@ BEGIN
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT md.* FROM public.movie_directors md LEFT JOIN public.movies m ON md.movie_id = m.id LEFT JOIN public.directors d ON md.director_id = d.id WHERE m.id IS NULL OR d.id IS NULL;';
+    sample_query := 'SELECT md.* FROM public.movie_directors md LEFT JOIN public.movies m ON md.movie_id = m.id LEFT JOIN public.people d ON md.director_id = d.id WHERE m.id IS NULL OR d.id IS NULL;';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
         RAISE EXCEPTION 'DATA TEST FAILED: [%] detectó % relaciones N:M huérfanas en directores.', test_name, v_count; 
     END IF;
 
-    -- 3.3. Tabla de unión movie_actors sin película o sin actor
+    -- 3.3. Tabla de unión movie_actors sin película o sin persona en people
     SELECT count(*) INTO v_count 
     FROM public.movie_actors ma
     LEFT JOIN public.movies m ON ma.movie_id = m.id
-    LEFT JOIN public.actors a ON ma.actor_id = a.id
+    LEFT JOIN public.people a ON ma.actor_id = a.id
     WHERE m.id IS NULL OR a.id IS NULL;
     
     test_name := 'movie_actors_orphans'; 
@@ -223,7 +189,7 @@ BEGIN
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT ma.* FROM public.movie_actors ma LEFT JOIN public.movies m ON ma.movie_id = m.id LEFT JOIN public.actors a ON ma.actor_id = a.id WHERE m.id IS NULL OR a.id IS NULL;';
+    sample_query := 'SELECT ma.* FROM public.movie_actors ma LEFT JOIN public.movies m ON ma.movie_id = m.id LEFT JOIN public.people a ON ma.actor_id = a.id WHERE m.id IS NULL OR a.id IS NULL;';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
@@ -321,18 +287,15 @@ BEGIN
 
     -- 4.5. Integridad de Fechas de Personas (nacimiento <= fallecimiento)
     SELECT count(*) INTO v_count 
-    FROM (
-        SELECT id, birthday, deathday FROM public.directors WHERE birthday IS NOT NULL AND deathday IS NOT NULL AND deathday < birthday
-        UNION ALL
-        SELECT id, birthday, deathday FROM public.actors WHERE birthday IS NOT NULL AND deathday IS NOT NULL AND deathday < birthday
-    ) p;
+    FROM public.people
+    WHERE birthday IS NOT NULL AND deathday IS NOT NULL AND deathday < birthday;
     
     test_name := 'people_dates_order_valid'; 
     category := 'business_rules'; 
     severity := 'WARN';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT id, birthday, deathday FROM public.directors WHERE birthday IS NOT NULL AND deathday IS NOT NULL AND deathday < birthday;';
+    sample_query := 'SELECT id, birthday, deathday FROM public.people WHERE birthday IS NOT NULL AND deathday IS NOT NULL AND deathday < birthday;';
     RETURN NEXT;
 
     -- 4.6. Integridad de Grupos Regionales en Países (accepted_values)

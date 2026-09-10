@@ -1026,6 +1026,16 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/bill-murray/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/bill-paxton/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/bille-august/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1062,6 +1072,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/brad-bird/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/bradley-cooper/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1151,6 +1166,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/cate-blanchett/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/cesc-gay/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1166,7 +1186,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/chiwetel-ejiofor/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/chris-columbus/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/chris-evans/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1282,6 +1312,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/danny-boyle/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/danny-devito/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1421,6 +1456,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/denzel-washington/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/derek-cianfrance/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1431,7 +1471,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/don-cheadle/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/don-siegel/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/donald-crisp/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1451,7 +1501,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/dustin-hoffman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/ed-harris/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/edgar-wright/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/edward-norton/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1467,6 +1532,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/elia-kazan/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/elizabeth-banks/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1506,12 +1576,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/ethan-hawke/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/ettore-scola/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/director/evan-goldberg/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/ewan-mcgregor/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1906,6 +1986,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/jack-nicholson/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/jack-thorne/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1956,6 +2041,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/james-franco/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/james-gray/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1986,7 +2076,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/jason-bateman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/jason-momoa/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/jason-reitman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/jason-sudeikis/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1997,6 +2102,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/jaume-collet-serra/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/javier-camara/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2226,6 +2336,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/john-malkovich/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/john-mctiernan/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2251,6 +2366,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/john-turturro/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/john-waters/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2262,6 +2382,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/johnnie-to/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/johnny-depp/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2312,6 +2437,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/josef-von-sternberg/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/joseph-gordon-levitt/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2396,6 +2526,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/keanu-reeves/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/ken-loach/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2412,6 +2547,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/kenneth-branagh/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/kevin-costner/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2487,6 +2627,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/lewis-gilbert/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/liev-schreiber/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2601,6 +2746,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/mark-duplass/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/mark-mylod/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2637,6 +2787,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/mateo-gil/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/mathieu-amalric/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3031,6 +3186,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/paul-rudd/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/paul-schrader/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3166,12 +3326,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/ralph-fiennes/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/ramon-campos/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/director/raoul-walsh/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/raul-arevalo/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3202,6 +3372,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/ric-roman-waugh/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/ricardo-darin/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3287,6 +3462,16 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/robert-bresson/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/robert-de-niro/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/robert-duvall/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3401,6 +3586,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/russell-crowe/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/ryan-murphy/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3436,6 +3626,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/scarlett-johansson/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/scott-cooper/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3452,6 +3647,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/sean-anders/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/sean-penn/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3546,6 +3746,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/stanley-tucci/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/stefano-sollima/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3577,6 +3782,16 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/stephen-sommers/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/steve-buscemi/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/steve-carell/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3691,6 +3906,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/tim-robbins/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/tim-story/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3712,6 +3932,16 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/todd-solondz/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/tom-hanks/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/tom-holland/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3746,6 +3976,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/tommy-lee-jones/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/tommy-wirkola/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3771,6 +4006,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/valeria-golino/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/vicente-aranda/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3782,6 +4022,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/vince-gilligan/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/vincent-d-onofrio/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3831,6 +4076,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/will-smith/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/william-a-wellman/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3842,6 +4092,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/william-friedkin/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/william-h-macy/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3916,7 +4171,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/abel-ferrara/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/adam-driver/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/adam-mckay/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3926,7 +4191,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/adam-wingard/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/adrien-brody/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/agnes-varda/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3961,7 +4236,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/alejandro-jodorowsky/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/alex-angulo/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/alfred-hitchcock/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4076,7 +4361,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/baltasar-kormakur/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/barbara-stanwyck/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/barbet-schroeder/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4092,6 +4387,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/ben-mendelsohn/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/ben-safdie/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4151,6 +4451,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/bong-joon-ho/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/borja-cobeaga/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/brad-bird/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/brad-dourif/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4196,6 +4511,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/burr-steers/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/burt-lancaster/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4227,6 +4547,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/candice-bergen/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/carlos-reygadas/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4266,6 +4591,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/charles-chaplin/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/charles-dance/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4282,6 +4612,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/charlotte-rampling/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/chen-kaige/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4312,6 +4647,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/chris-pratt/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/chris-weitz/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4376,12 +4716,42 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/daniel-monzon/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/danny-devito/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/actor/danny-huston/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/dario-argento/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/david-cronenberg/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/david-gordon-green/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/david-lowery/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/david-lynch/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4401,7 +4771,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/david-zucker/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/deborah-kerr/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/dennis-dugan/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4417,6 +4797,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/dennis-quaid/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/denys-arcand/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4437,6 +4822,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/don-cheadle/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/don-siegel/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4481,6 +4871,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/edgar-wright/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/eduard-fernandez/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4492,6 +4887,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/edward-norton/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/eli-roth/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4521,6 +4921,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/emir-kusturica/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/emma-thompson/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4546,12 +4951,27 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/federico-fellini/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/felicity-jones/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/fernando-colomo/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/fernando-rey/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/fernando-trueba/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4571,7 +4991,32 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/francois-truffaut/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/frank-oz/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/fredric-march/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/fritz-lang/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/garry-marshall/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/gary-david-goldberg/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4581,7 +5026,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/gaspar-noe/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/gene-hackman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/george-a-romero/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4611,12 +5066,32 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/greg-mottola/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/guillaume-canet/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/gus-van-sant/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/guy-pearce/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/actor/hanna-schygulla/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/harold-ramis/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4651,6 +5126,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/hou-hsiao-hsien/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/hugh-grant/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4661,7 +5141,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/iciar-bollain/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/idris-elba/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/ingmar-bergman/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4696,7 +5186,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/jackie-chan/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/jacqueline-bisset/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jacques-demy/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jacques-tati/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4771,7 +5276,27 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/jay-duplass/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jean-renoir/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/jean-louis-trintignant/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jean-luc-godard/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jean-pierre-melville/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4811,6 +5336,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/jia-zhangke/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/jim-broadbent/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4822,6 +5352,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/jim-carter/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jim-jarmusch/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4846,6 +5381,16 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/john-carpenter/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/john-cassavetes/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/john-cusack/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4857,6 +5402,21 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/john-hurt/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/john-huston/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/john-krasinski/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/john-landis/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4886,12 +5446,32 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/john-waters/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/john-woo/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/johnny-depp/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/actor/jon-bernthal/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jon-favreau/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jose-luis-cuerda/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4912,6 +5492,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/josh-brolin/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/juan-cavestany/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4951,6 +5536,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/kasi-lemmons/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/kate-winslet/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4986,6 +5576,16 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/ken-russell/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/kenneth-branagh/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/kevin-bacon/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5001,6 +5601,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/kevin-smith/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/kristen-stewart/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5011,12 +5616,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/lars-von-trier/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/lauren-bacall/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/actor/laurence-fishburne/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/lawrence-kasdan/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5046,7 +5661,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/louis-malle/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/lucio-fulci/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/luis-ciges/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/luis-garcia-berlanga/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5061,12 +5691,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/m-night-shyamalan/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/mads-mikkelsen/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/actor/manolo-solo/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/marc-lawrence/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5111,6 +5751,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/martin-scorsese/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/mathieu-amalric/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5146,6 +5791,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/mel-brooks/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/mel-gibson/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5157,6 +5807,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/michael-caine/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/michael-cimino/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5177,6 +5832,16 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/michael-j-fox/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/michael-mann/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/michael-moore/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5206,7 +5871,27 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/mike-judge/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/milos-forman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/morgan-freeman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/nacho-vigalondo/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/nanni-moretti/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5217,6 +5902,16 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/natalie-portman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/nicholas-ray/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/nick-cassavetes/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5236,12 +5931,42 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/nikita-mikhalkov/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/noah-baumbach/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/oliver-platt/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/oliver-stone/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/olivia-de-havilland/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/orson-welles/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/osgood-perkins/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/otto-preminger/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5271,6 +5996,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/pedro-almodovar/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/pedro-casablanc/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5286,7 +6016,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/peter-berg/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/peter-bogdanovich/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/peter-falk/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/peter-jackson/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5306,6 +6051,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/pier-paolo-pasolini/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/pierce-brosnan/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5316,7 +6066,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/pietro-germi/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/quentin-tarantino/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/rachel-weisz/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/rainer-werner-fassbinder/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5356,6 +6121,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/richard-attenborough/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/richard-benjamin/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/richard-brooks/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/richard-gere/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5366,12 +6146,27 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/richard-linklater/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/richard-widmark/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/ricky-gervais/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/rip-torn/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/rob-reiner/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5421,6 +6216,26 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/rodrigo-cortes/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/roger-vadim/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/roman-polanski/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/ron-howard/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/ron-livingston/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5456,7 +6271,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/sam-peckinpah/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/sam-raimi/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/sam-rockwell/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/sammo-hung/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5481,6 +6311,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/scott-cooper/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/scott-wilson/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5501,7 +6336,22 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/sergio-leone/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/seth-macfarlane/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/seth-rogen/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/shane-black/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5526,12 +6376,27 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/sofia-coppola/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/sophia-loren/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/actor/spencer-tracy/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/spike-jonze/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/spike-lee/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5556,6 +6421,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/stephen-merchant/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/steve-buscemi/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5576,6 +6446,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/sydney-pollack/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/sylvester-stallone/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5586,7 +6461,37 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/taika-waititi/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/takashi-miike/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/takeshi-kitano/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/tatsuya-nakadai/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/terry-gilliam/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/terry-jones/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/ti-west/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5601,7 +6506,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/tobe-hooper/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/toby-jones/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/todd-phillips/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5621,6 +6536,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/tom-mccarthy/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/tom-wilkinson/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5636,7 +6556,17 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/tsui-hark/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/udo-kier/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/uwe-boll/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5671,12 +6601,27 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/vittorio-de-sica/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/vittorio-gassman/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://videoclub.digital/actor/ward-bond/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/werner-herzog/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/wes-craven/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5697,6 +6642,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/willem-dafoe/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/william-dieterle/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5722,6 +6672,16 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/woody-harrelson/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/xavier-dolan/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/zhang-yimou/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

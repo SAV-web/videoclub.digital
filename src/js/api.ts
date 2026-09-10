@@ -563,8 +563,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     return cached === NOT_FOUND ? null : (cached ?? null);
   }
 
-  const table = type === 'director' ? 'directors' : 'actors';
-  const otherTable = type === 'director' ? 'actors' : 'directors';
+  const roleTypes = type === 'director' ? ['D', 'DA', 'AD'] : ['A', 'AD', 'DA'];
   const nameNorm = normalizeText(name);
   const words = nameNorm.split(/[\s-]+/).filter(w => w.length > 0);
   const wildcardPattern = words.length > 0 ? `%${words.join('%')}%` : `%${nameNorm}%`;
@@ -574,24 +573,22 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     const safeNameNorm = `"${nameNorm.replace(/"/g, '""')}"`;
     const safeNameLike = `"%${name.replace(/"/g, '""')}%"`;
 
-    const selectFieldsPrimary = type === 'director'
-      ? 'id, name, slug, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components'
-      : 'id, name, slug, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
+    const selectFields = 'id, name, slug, type, vip, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components';
 
-    const selectFieldsOther = 'id, slug, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code)';
-
-    // 1. Intento de coincidencia exacta prioritario (name_norm o components para colectivos)
+    // 1. Intento de coincidencia exacta prioritario (name_norm o components para colectivos) filtrado por tipo de rol
     let primaryRes = await supabase
-      .from(table)
-      .select(selectFieldsPrimary)
+      .from('people')
+      .select(selectFields)
+      .in('type', roleTypes)
       .or(type === 'director' ? `name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}` : `name_norm.eq.${safeNameNorm}`)
       .limit(1);
 
     // 2. Si no hay coincidencia exacta (ej. slug parcial o variantes), fallback con todas las palabras
     if (!primaryRes.data || (Array.isArray(primaryRes.data) && primaryRes.data.length === 0)) {
       primaryRes = await supabase
-        .from(table)
-        .select(selectFieldsPrimary)
+        .from('people')
+        .select(selectFields)
+        .in('type', roleTypes)
         .ilike('name_norm', wildcardPattern)
         .limit(1);
     }
@@ -607,29 +604,17 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       return null;
     }
 
-    const resolvedName = (rowData.name as string) || name;
-    const resolvedNameNorm = normalizeText(resolvedName);
-
-    const otherRes = await supabase
-      .from(otherTable)
-      .select(selectFieldsOther)
-      .eq('name_norm', resolvedNameNorm)
-      .limit(1);
-
-    const rawOtherData = otherRes.data as unknown;
-    const otherRow = (Array.isArray(rawOtherData) && rawOtherData.length > 0 ? rawOtherData[0] : null) as Record<string, any> | null;
-    const hasBothRoles = Boolean(otherRow && otherRow.id);
-
-    const rawCountries = rowData.countries || otherRow?.countries || null;
+    const hasBothRoles = rowData.type === 'AD' || rowData.type === 'DA';
+    const rawCountries = rowData.countries || null;
     const countries = (Array.isArray(rawCountries) ? rawCountries[0] || null : rawCountries) as { name: string; code: string } | null;
 
     const personData: PersonDetails = {
       ...(rowData as unknown as PersonDetails),
-      slug: (rowData.slug || otherRow?.slug || null) as string | null,
-      thumbhash_st: (rowData.thumbhash_st || otherRow?.thumbhash_st || null) as string | null,
-      birthday: (rowData.birthday || otherRow?.birthday || null) as string | null,
-      deathday: (rowData.deathday || otherRow?.deathday || null) as string | null,
-      place_of_birth: (rowData.place_of_birth || otherRow?.place_of_birth || null) as string | null,
+      slug: (rowData.slug || null) as string | null,
+      thumbhash_st: (rowData.thumbhash_st || null) as string | null,
+      birthday: (rowData.birthday || null) as string | null,
+      deathday: (rowData.deathday || null) as string | null,
+      place_of_birth: (rowData.place_of_birth || null) as string | null,
       biography: (rowData.biography || null) as string | null,
       titulo_bio: (rowData.titulo_bio || null) as string | null,
       countries,

@@ -163,8 +163,6 @@ export default {
     const isActorRoute = url.pathname.startsWith("/actor/");
     if (isDirectorRoute || isActorRoute) {
       const role = isDirectorRoute ? "director" : "actor";
-      const table = isDirectorRoute ? "directors" : "actors";
-      const otherTable = isDirectorRoute ? "actors" : "directors";
       const prefix = isDirectorRoute ? "/director/" : "/actor/";
       const slug = url.pathname.replace(prefix, "").replace(/\/$/, "").trim();
 
@@ -178,9 +176,10 @@ export default {
           return cached;
         }
 
-        // 3.B.2 Cache MISS: Consulta a Supabase REST de la persona
-        const selectFields = "id,name,slug,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
-        const personQueryUrl = `${supabaseUrl}/rest/v1/${table}?slug=eq.${encodeURIComponent(slug)}&select=${selectFields}&limit=1`;
+        // 3.B.2 Cache MISS: Consulta a Supabase REST de la tabla canónica 'people'
+        const roleTypeFilter = isDirectorRoute ? "in.(D,DA,AD)" : "in.(A,AD,DA)";
+        const selectFields = "id,name,slug,type,vip,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
+        const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&type=${roleTypeFilter}&select=${selectFields}&limit=1`;
 
         try {
           const personRes = await fetch(personQueryUrl, {
@@ -197,8 +196,8 @@ export default {
 
             // Regla Anti-Thin Content (Google Quality Guidelines): Solo VIPs con biografía redactada
             if (person && person.biography && person.biography.trim()) {
-              // Comprobar si tiene el otro rol en paralelo con la filmografía
-              const otherRoleQueryUrl = `${supabaseUrl}/rest/v1/${otherTable}?slug=eq.${encodeURIComponent(slug)}&select=id&biography=not.is.null&limit=1`;
+              // Comprobación de doble rol instantánea mediante el campo canónico 'type' ('AD' o 'DA')
+              const hasOtherRole = person.type === "AD" || person.type === "DA";
               const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
               const rpcParams = {
                 [isDirectorRoute ? "director_name" : "actor_name"]: person.name,
@@ -208,31 +207,16 @@ export default {
                 get_count: true
               };
 
-              const [otherRoleRes, moviesRes] = await Promise.all([
-                fetch(otherRoleQueryUrl, {
-                  headers: {
-                    apikey: supabaseAnonKey,
-                    Authorization: `Bearer ${supabaseAnonKey}`,
-                    Accept: "application/json"
-                  }
-                }).catch(() => null),
-                fetch(rpcUrl, {
-                  method: "POST",
-                  headers: {
-                    apikey: supabaseAnonKey,
-                    Authorization: `Bearer ${supabaseAnonKey}`,
-                    "Content-Type": "application/json",
-                    Accept: "application/json"
-                  },
-                  body: JSON.stringify(rpcParams)
-                }).catch(() => null)
-              ]);
-
-              let hasOtherRole = false;
-              if (otherRoleRes && otherRoleRes.ok) {
-                const otherRows = await otherRoleRes.json().catch(() => []);
-                hasOtherRole = Array.isArray(otherRows) && otherRows.length > 0;
-              }
+              const moviesRes = await fetch(rpcUrl, {
+                method: "POST",
+                headers: {
+                  apikey: supabaseAnonKey,
+                  Authorization: `Bearer ${supabaseAnonKey}`,
+                  "Content-Type": "application/json",
+                  Accept: "application/json"
+                },
+                body: JSON.stringify(rpcParams)
+              }).catch(() => null);
 
               let movies = [];
               if (moviesRes && moviesRes.ok) {

@@ -85,10 +85,11 @@ async function generateSitemap() {
 
   console.log(`[sitemap] Se recuperaron ${slugs.length} títulos indexables válidos.`);
 
-  // 2. Directores VIP con biografía redactada (654 verificados)
+  // 2. Directores VIP con biografía redactada
   const { data: vipDirectors, error: dirError } = await supabase
-    .from("directors")
+    .from("people")
     .select("slug")
+    .in("type", ["D", "DA", "AD"])
     .not("biography", "is", null)
     .neq("biography", "")
     .order("name", { ascending: true });
@@ -99,10 +100,11 @@ async function generateSitemap() {
   const directorSlugs = (vipDirectors || []).map(d => d.slug).filter(Boolean);
   console.log(`[sitemap] Se recuperaron ${directorSlugs.length} directores VIP con biografía.`);
 
-  // 3. Actores VIP con biografía redactada (362 verificados)
+  // 3. Actores VIP con biografía redactada
   const { data: vipActors, error: actError } = await supabase
-    .from("actors")
+    .from("people")
     .select("slug")
+    .in("type", ["A", "AD", "DA"])
     .not("biography", "is", null)
     .neq("biography", "")
     .order("name", { ascending: true });

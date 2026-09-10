@@ -131,7 +131,82 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
         });
       }
 
-      // 1.C Simulación de Supabase REST API: Directores VIP
+      // 1.C Simulación de Supabase REST API: Personas VIP ('people')
+      if (urlStr.includes("/rest/v1/people")) {
+        if (urlStr.includes("slug=eq.not-found")) {
+          return new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        if (urlStr.includes("slug=eq.thin-director")) {
+          return new Response(JSON.stringify([{
+            id: 9999,
+            name: "Thin Director",
+            slug: "thin-director",
+            type: "D",
+            vip: 0,
+            biography: null
+          }]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        if (urlStr.includes("slug=eq.christopher-nolan")) {
+          if (urlStr.includes("type=in.(A,AD,DA)")) {
+            return new Response(JSON.stringify([]), {
+              status: 200,
+              headers: { "Content-Type": "application/json" }
+            });
+          }
+          const sampleDirector = {
+            id: 4134,
+            name: "Christopher Nolan",
+            slug: "christopher-nolan",
+            type: "D",
+            vip: 1,
+            birthday: "1970-07-30",
+            deathday: null,
+            place_of_birth: "Londres, UK",
+            biography: "Apasionado del medio audiovisual desde la infancia a través del formato súper-8.",
+            titulo_bio: "Cineasta británico maestro de puestas en escena conceptuales",
+            thumbhash_st: "data:image/webp;base64,sample",
+            countries: { id: 826, code: "GB", name: "UK" }
+          };
+          return new Response(JSON.stringify([sampleDirector]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        if (urlStr.includes("slug=eq.harrison-ford")) {
+          if (urlStr.includes("type=in.(D,DA,AD)")) {
+            return new Response(JSON.stringify([]), {
+              status: 200,
+              headers: { "Content-Type": "application/json" }
+            });
+          }
+          const sampleActor = {
+            id: 506,
+            name: "Harrison Ford",
+            slug: "harrison-ford",
+            type: "A",
+            vip: 1,
+            birthday: "1942-07-13",
+            deathday: null,
+            place_of_birth: "Chicago, EEUU",
+            biography: "Cursó estudios de filosofía y letras antes de trasladarse a California.",
+            titulo_bio: "Héroe arquetípico del cine de aventuras",
+            thumbhash_st: "data:image/webp;base64,sample",
+            countries: { id: 840, code: "US", name: "EEUU" }
+          };
+          return new Response(JSON.stringify([sampleActor]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+      }
+
+      // 1.D Simulación de Supabase REST API: Directores VIP (retrocompatibilidad)
       if (urlStr.includes("/rest/v1/directors")) {
         if (urlStr.includes("slug=eq.not-found") || urlStr.includes("slug=eq.harrison-ford")) {
           return new Response(JSON.stringify([]), {
@@ -168,7 +243,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
         });
       }
 
-      // 1.D Simulación de Supabase REST API: Actores VIP
+      // 1.E Simulación de Supabase REST API: Actores VIP (retrocompatibilidad)
       if (urlStr.includes("/rest/v1/actors")) {
         if (urlStr.includes("slug=eq.not-found") || urlStr.includes("slug=eq.christopher-nolan")) {
           return new Response(JSON.stringify([]), {

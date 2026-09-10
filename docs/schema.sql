@@ -18,21 +18,23 @@ CREATE TABLE public.genres (
   CONSTRAINT genres_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE public.directors (
+CREATE TABLE public.people (
   id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL UNIQUE,
-  name_norm text DEFAULT unaccent_immutable(lower(name)),
+  name_norm text GENERATED ALWAYS AS (unaccent_immutable(lower(name))) STORED,
   slug text GENERATED ALWAYS AS (TRIM(BOTH '-' FROM regexp_replace(lower(unaccent_immutable(name)), '[^a-z0-9]+', '-', 'g'))) STORED,
-  profile_path text,
+  type text NOT NULL CHECK (type IN ('A', 'D', 'AD', 'DA')),
+  vip smallint NOT NULL DEFAULT 0 CHECK (vip IN (0, 1)),
   birthday date,
   deathday date,
   place_of_birth text,
   country_id smallint,
   titulo_bio text,
   biography text,
+  thumbhash_st text,
   components text,
-  CONSTRAINT directors_pkey PRIMARY KEY (id),
-  CONSTRAINT directors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
+  CONSTRAINT people_pkey PRIMARY KEY (id),
+  CONSTRAINT people_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
 );
 
 CREATE TABLE public.movies (
@@ -93,7 +95,7 @@ CREATE TABLE public.movie_directors (
   director_id integer NOT NULL,
   ordinality smallint,
   CONSTRAINT movie_directors_pkey PRIMARY KEY (movie_id, director_id),
-  CONSTRAINT movie_directors_director_id_fkey FOREIGN KEY (director_id) REFERENCES public.directors(id),
+  CONSTRAINT movie_directors_director_id_fkey FOREIGN KEY (director_id) REFERENCES public.people(id),
   CONSTRAINT movie_directors_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id)
 );
 
@@ -127,28 +129,12 @@ CREATE TABLE public.movies_staging (
   CONSTRAINT movies_staging_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE public.actors (
-  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
-  name text NOT NULL UNIQUE,
-  name_norm text DEFAULT unaccent_immutable(lower(name)),
-  slug text GENERATED ALWAYS AS (TRIM(BOTH '-' FROM regexp_replace(lower(unaccent_immutable(name)), '[^a-z0-9]+', '-', 'g'))) STORED,
-  profile_path text,
-  birthday date,
-  deathday date,
-  place_of_birth text,
-  country_id smallint,
-  titulo_bio text,
-  biography text,
-  CONSTRAINT actors_pkey PRIMARY KEY (id),
-  CONSTRAINT actors_country_id_fkey FOREIGN KEY (country_id) REFERENCES public.countries(id)
-);
-
 CREATE TABLE public.movie_actors (
   movie_id integer NOT NULL,
   actor_id integer NOT NULL,
   ordinality smallint,
   CONSTRAINT movie_actors_pkey PRIMARY KEY (movie_id, actor_id),
-  CONSTRAINT movie_actors_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.actors(id),
+  CONSTRAINT movie_actors_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.people(id),
   CONSTRAINT movie_actors_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id)
 );
 
@@ -226,5 +212,4 @@ CREATE TABLE public.people_staging (
   components text
 );
 
-CREATE INDEX IF NOT EXISTS idx_actors_country_id ON public.actors(country_id);
-CREATE INDEX IF NOT EXISTS idx_directors_country_id ON public.directors(country_id);
+CREATE INDEX IF NOT EXISTS idx_people_country_id ON public.people(country_id);

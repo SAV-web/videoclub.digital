@@ -160,6 +160,8 @@ export interface PersonDetails {
   id: number;
   name: string;
   slug?: string | null;
+  type?: 'A' | 'D' | 'AD' | 'DA' | null;
+  vip?: number | null;
   thumbhash_st?: string | null;
   birthday: string | null;
   deathday: string | null;
