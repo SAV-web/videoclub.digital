@@ -251,11 +251,7 @@ fs.writeFileSync("public/seo-card-v6.css", combined);
 execSync("npx esbuild public/seo-card-v6.css --minify --outfile=public/seo-card-v6.min.css");
 const minified = fs.readFileSync("public/seo-card-v6.min.css", "utf8");
 
-// Mantener compatibilidad con v5 y v4
-fs.writeFileSync("public/seo-card-v5.css", combined);
-fs.writeFileSync("public/seo-card-v5.min.css", minified);
-fs.writeFileSync("public/seo-card-v4.css", combined);
-fs.writeFileSync("public/seo-card-v4.min.css", minified);
+
 
 // Also update cloudflare/seo/seo-card-css.js to export the minified string
 const jsContent = `// Generado automáticamente a partir de public/seo-card-v6.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;

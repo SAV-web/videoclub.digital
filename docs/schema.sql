@@ -197,8 +197,8 @@ CREATE TABLE public.movie_studios (
 
 
 CREATE TABLE public.people_staging (
-  id text NOT NULL,
-  name text NOT NULL,
+  id text,
+  name text,
   name_norm text,
   type text,
   profile_path text,

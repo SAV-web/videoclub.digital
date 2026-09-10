@@ -846,6 +846,11 @@ END; $$;
 ALTER TABLE public.movies_staging ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.people_staging ENABLE ROW LEVEL SECURITY;
 
+-- Asegurar que las tablas de staging admitan ingesta masiva sin restricciones rígidas de clave
+ALTER TABLE public.people_staging DROP CONSTRAINT IF EXISTS people_staging_pkey;
+ALTER TABLE public.people_staging ALTER COLUMN id DROP NOT NULL;
+ALTER TABLE public.people_staging ALTER COLUMN name DROP NOT NULL;
+
 REVOKE ALL ON TABLE public.movies_staging, public.people_staging FROM anon, authenticated, PUBLIC;
 GRANT ALL ON TABLE public.movies_staging, public.people_staging TO service_role;
 
