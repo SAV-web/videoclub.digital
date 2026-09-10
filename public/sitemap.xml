@@ -916,6 +916,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/ariel-schulman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/ariel-winograd/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1167,6 +1172,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/cate-blanchett/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/cecil-b-demille/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1521,6 +1531,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/edward-yang/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/edward-zwick/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1691,6 +1706,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/frank-marshall/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/frank-oz/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1807,6 +1827,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/gore-verbinski/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/gracia-querejeta/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2132,6 +2157,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/jean-becker/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/jean-cocteau/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2481,6 +2511,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/director/julian-fellowes/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/director/julian-jarrold/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2722,6 +2757,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/marco-bellocchio/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/marco-ferreri/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -3097,6 +3137,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/director/oliver-hirschbiegel/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/director/oliver-parker/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4341,6 +4386,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/ariel-schulman/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/arnold-schwarzenegger/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4577,6 +4627,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/catherine-keener/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/cecil-b-demille/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -4891,6 +4946,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/edward-yang/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/eli-roth/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -4996,6 +5056,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/frank-marshall/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/frank-oz/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5062,6 +5127,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/glenn-close/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/gracia-querejeta/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5277,6 +5347,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/jay-duplass/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/jean-cocteau/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5521,6 +5596,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://videoclub.digital/actor/julian-fellowes/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://videoclub.digital/actor/julian-lopez/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -5707,6 +5787,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/marc-lawrence/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/marco-ferreri/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -5937,6 +6022,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/actor/noah-baumbach/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/actor/oliver-parker/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
