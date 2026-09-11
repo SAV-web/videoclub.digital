@@ -170,8 +170,14 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
           </div>
         </div>
 
-        <!-- Cara trasera -->
+        <!-- Cara trasera (Estructura y diseño idénticos a la SPA) -->
         <div class="flip-card-back">
+          ${displayOriginalTitle ? `
+            <div class="back-original-title-wrapper">
+              <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
+            </div>
+          ` : ''}
+
           <div class="back-meta-header">
             <div class="episode-duration-group">
               ${episodesText ? `<span data-template="episodes">${escapeHtml(episodesText)}</span>` : ''}
@@ -216,15 +222,10 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             ` : ''}
           </div>
 
-          <div class="back-original-title-wrapper">
-            <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
-          </div>
-
           <div class="details-list">
             ${rawGenres.length > 0 ? `
               <div class="detail-item" data-template="genre-container">
-                <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-clapperboard"></use></svg></span>
-                <strong class="detail-label-title">Género.</strong>
+                <span class="detail-label" title="Género"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-clapperboard"></use></svg></span>
                 <span class="detail-data" data-template="genre">${rawGenres.map((g, i) => {
                   const s = genreToSlug(g);
                   return s ? `<a href="${baseUrl}?_p=/${s}/">${escapeHtml(preserveHyphenatedWords(g))}</a>${i < rawGenres.length - 1 ? ', ' : ''}` : `<span>${escapeHtml(preserveHyphenatedWords(g))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
@@ -233,8 +234,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             ` : ''}
             ${actors.length > 0 ? `
               <div class="detail-item" data-template="actors-container">
-                <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-cast"></use></svg></span>
-                <strong class="detail-label-title">Reparto.</strong>
+                <span class="detail-label" title="Reparto"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-cast"></use></svg></span>
                 <span class="detail-data" data-template="actors">${escapeHtml(preserveHyphenatedWords(shortActorsText))}</span>
                 <button type="button" class="actors-expand-btn" aria-label="Ver detalles de géneros y reparto">+</button>
               </div>
@@ -243,8 +243,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
 
           <div class="scrollable-content">
             <div class="plot-summary-final" title="Sinopsis">
-              <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-synopsis"></use></svg></span>
-              <strong class="detail-label-title">Sinopsis.</strong>
+              <span class="detail-label" title="Sinopsis"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-synopsis"></use></svg></span>
               <span data-template="synopsis">${escapeHtml(preserveHyphenatedWords(movie.synopsis || 'Sinopsis no disponible.'))}</span>
             </div>
           </div>
@@ -268,10 +267,10 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             ` : ''}
           </div>
 
-          <button type="button" class="expand-content-btn" aria-label="Expandir sinopsis">+</button>
           <a href="${escapeAttr(movieUrl)}" class="card-ficha-btn" aria-label="Ver ficha completa de ${escapeAttr(title)}">
             <span>Ficha completa →</span>
           </a>
+          <button type="button" class="expand-content-btn" aria-label="Expandir sinopsis">+</button>
         </div>
       </div>
     </article>

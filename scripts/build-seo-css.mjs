@@ -84,52 +84,86 @@ combined += `
 }
 
 .card-ficha-btn {
-  position: absolute;
-  bottom: 6px;
-  left: 8px;
-  right: 8px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 10px;
-  font-size: 0.74rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  z-index: 10;
-  transition: all var(--duration-quick) ease;
+  position: absolute !important;
+  bottom: 6px !important;
+  left: 8px !important;
+  right: 28px !important;
+  height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 8px !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  color: var(--color-text-secondary) !important;
+  background: var(--color-surface-2) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-pill) !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
+  transition: all var(--duration-quick) ease !important;
 }
 .card-ficha-btn:hover {
-  background: var(--color-accent);
-  color: #fff;
-  border-color: var(--color-accent);
+  background: var(--color-accent) !important;
+  color: #fff !important;
+  border-color: var(--color-accent) !important;
 }
 
-/* Botón '+' de sinopsis posicionado POR ENCIMA de 'Ficha completa' y overlay */
-.flip-card-back:not(.is-expanded) .expand-content-btn {
-  bottom: 34px !important;
-  right: 8px !important;
+/* Ocultar 'Ficha completa' cuando el reverso está expandido */
+.flip-card-back.is-expanded .card-ficha-btn {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Botón '+' de sinopsis en la esquina inferior derecha */
+.flip-card-back .expand-content-btn {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 6px !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
   z-index: 25 !important;
   pointer-events: auto !important;
 }
 
-.flip-card-back.is-expanded .expand-content-btn {
-  bottom: 6px !important;
-  right: 8px !important;
-  z-index: 25 !important;
-  pointer-events: auto !important;
+/* Botón '+' de reparto en la esquina derecha del bloque de actores sin romper line-clamp */
+.detail-item[data-template="actors-container"] {
+  position: relative !important;
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+  padding-right: 20px !important;
+  line-height: 1.4 !important;
 }
 
 .actors-expand-btn {
+  position: absolute !important;
+  bottom: 1px !important;
+  right: 0 !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
   z-index: 25 !important;
   pointer-events: auto !important;
+}
+
+/* Título original en el reverso compacto y limpio en la cabecera */
+.movie-card:not(.is-quick-view) .back-original-title-wrapper {
+  margin-top: 2px !important;
+  margin-bottom: 4px !important;
+  min-height: 0 !important;
+}
+
+/* Margen inferior del scrollable-content para despejar la barra de botones */
+.flip-card-back:not(.is-expanded) .scrollable-content {
+  margin-bottom: 30px !important;
 }
 
 /* Alineación de año y bandera a la derecha si no hay iconos de plataformas */
@@ -138,10 +172,6 @@ combined += `
 }
 .year-flag-group {
   justify-content: flex-end !important;
-}
-
-.flip-card-back:not(.is-expanded) .scrollable-content {
-  margin-bottom: 38px;
 }
 
 /* Las fichas de persona (director / actor) no voltean */
@@ -261,44 +291,30 @@ combined += `
   visibility: visible !important;
 }
 
-/* Asegurar interactividad y clics en TODOS los enlaces y botones traseros */
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back a,
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back button,
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [role="button"],
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .card-ficha-btn,
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .expand-content-btn,
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .actors-expand-btn,
+/* Asegurar interactividad y clics en enlaces y botones traseros cuando está volteada */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back a {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [role="button"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Enlaces externos específicos */
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="wikipedia-link"],
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="justwatch-link"],
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="imdb-link"],
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="fa-link"] {
   pointer-events: auto !important;
   cursor: pointer !important;
-  z-index: 30 !important;
-  position: relative;
-}
-
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .card-ficha-btn {
-  position: absolute !important;
-  bottom: 6px !important;
-  left: 8px !important;
-  right: 8px !important;
-  z-index: 35 !important;
-}
-
-/* Asegurar accesibilidad y clic en botón + de reparto */
-.detail-item[data-template="actors-container"] {
-  position: relative !important;
-  overflow: visible !important;
-  padding-right: 24px !important;
-}
-
-.actors-expand-btn {
-  position: absolute !important;
-  bottom: 0 !important;
-  right: 0 !important;
-  z-index: 35 !important;
-  pointer-events: auto !important;
+  z-index: 10 !important;
 }
 
 /* Overlay de actores y géneros */
