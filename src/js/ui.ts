@@ -847,7 +847,16 @@ export function initThemeToggle(): void {
     appEvents.emit("uiActionTriggered");
 
     const isNowDark = document.documentElement.classList.toggle(CSS_CLASSES.DARK_MODE);
-    localStorage.setItem("theme", isNowDark ? "dark" : "light");
+    if (isNowDark) {
+      document.documentElement.classList.remove("light-mode");
+    } else {
+      document.documentElement.classList.add("light-mode");
+    }
+    const themeStr = isNowDark ? "dark" : "light";
+    try {
+      localStorage.setItem("theme", themeStr);
+      document.cookie = `theme=${themeStr}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch (err) {}
     updateState(isNowDark);
   });
 }

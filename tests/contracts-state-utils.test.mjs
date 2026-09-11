@@ -87,7 +87,7 @@ describe("utils.js", () => {
     assert.equal(deceased.bYear, "1920");
     assert.equal(deceased.dYear, "1990");
     assert.equal(deceased.datesStr, "1920-1990");
-    assert.equal(deceased.ageStr, "(70 ✝)");
+    assert.equal(deceased.ageStr, "✝ (70)");
   });
 
   test("formatYearRangeLabel formatea rangos abiertos para UI móvil", () => {

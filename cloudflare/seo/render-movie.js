@@ -160,17 +160,18 @@ export function renderMovieHtml(movie, options = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
-  <!-- Anti-flicker para sincronización de modo claro/oscuro con el grid -->
+  <!-- Anti-flicker para sincronización exacta de modo claro/oscuro entre SPA y SEO -->
   <script>
     (function () {
       try {
-        var stored = localStorage.getItem("theme");
+        var cookieMatch = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+        var stored = localStorage.getItem("theme") || (cookieMatch ? cookieMatch[1] : null);
         var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var isDark = stored === "dark" || (!stored && systemDark);
+        var isDark = stored ? stored === "dark" : systemDark;
         if (isDark) {
           document.documentElement.classList.add("dark-mode");
           document.documentElement.classList.remove("light-mode");
-        } else if (stored === "light" || (!stored && !systemDark)) {
+        } else {
           document.documentElement.classList.add("light-mode");
           document.documentElement.classList.remove("dark-mode");
         }
@@ -231,7 +232,11 @@ export function renderMovieHtml(movie, options = {}) {
         <span class="logo-line-1">VIDEOCLUB</span>
         <span class="logo-line-2">.DIGITAL</span>
       </a>
-      <div class="header-controls" style="display:flex; align-items:center;">
+      <div class="header-controls" style="display:flex; align-items:center; gap: 10px;">
+        <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Cambiar tema" aria-label="Cambiar tema" aria-pressed="false" style="width:36px; height:36px; position:relative; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-text-primary); cursor:pointer; padding:0; flex-shrink:0;">
+          <svg class="theme-icon moon-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-moon"></use></svg>
+          <svg class="theme-icon sun-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-sun"></use></svg>
+        </button>
         <a href="${baseUrl}?movie=${movie.id}" class="btn-header-cta" title="Abrir ficha en el videoclub" aria-label="Abrir ficha en el videoclub">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
@@ -458,6 +463,42 @@ export function renderMovieHtml(movie, options = {}) {
 
     </div>
   </div>
+
+  <script>
+    (function () {
+      var themeBtn = document.getElementById("theme-toggle");
+      if (themeBtn) {
+        var updateThemeBtn = function (isDark) {
+          themeBtn.setAttribute("aria-pressed", String(isDark));
+          var label = isDark ? "Modo claro" : "Modo oscuro";
+          themeBtn.setAttribute("aria-label", label);
+          themeBtn.title = label;
+        };
+        updateThemeBtn(document.documentElement.classList.contains("dark-mode"));
+
+        themeBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var isNowDark = document.documentElement.classList.toggle("dark-mode");
+          if (isNowDark) {
+            document.documentElement.classList.remove("light-mode");
+          } else {
+            document.documentElement.classList.add("light-mode");
+          }
+          var themeStr = isNowDark ? "dark" : "light";
+          try {
+            localStorage.setItem("theme", themeStr);
+            document.cookie = "theme=" + themeStr + "; path=/; max-age=31536000; SameSite=Lax";
+          } catch (err) {}
+          updateThemeBtn(isNowDark);
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          metas.forEach(function (m) {
+            m.setAttribute("content", isNowDark ? "#0d0d0d" : "#f5f5f5");
+          });
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
 `;

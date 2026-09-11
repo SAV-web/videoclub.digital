@@ -312,7 +312,7 @@ export function computePersonAgeInfo(
   }
 
   const datesStr = isDeceased ? `${bYear}-${dYear}` : `${bYear}-`;
-  const ageStr = isDeceased ? `(${age} ✝)` : `(${age})`;
+  const ageStr = isDeceased ? `✝ (${age})` : `(${age})`;
 
   return { bYear, dYear, datesStr, ageStr };
 }

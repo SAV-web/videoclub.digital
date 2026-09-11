@@ -83,46 +83,22 @@ combined += `
   border-color: var(--color-accent);
 }
 
-.card-ficha-btn {
-  position: absolute !important;
-  bottom: 6px !important;
-  left: 8px !important;
-  right: 28px !important;
-  height: 22px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0 8px !important;
-  font-size: 0.72rem !important;
-  font-weight: 600 !important;
-  color: var(--color-text-secondary) !important;
-  background: var(--color-surface-2) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: var(--radius-pill) !important;
+/* Título original en el reverso como enlace interactivo a la ficha completa */
+.back-original-title-link {
+  color: inherit !important;
   text-decoration: none !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  z-index: 25 !important;
-  pointer-events: auto !important;
-  transition: all var(--duration-quick) ease !important;
+  display: inline-block !important;
+  cursor: pointer !important;
+  transition: color var(--duration-quick, 0.15s) ease !important;
 }
-.card-ficha-btn:hover {
-  background: var(--color-accent) !important;
-  color: #fff !important;
-  border-color: var(--color-accent) !important;
+.back-original-title-link:hover span {
+  color: var(--color-accent) !important;
 }
 
-/* Ocultar 'Ficha completa' cuando el reverso está expandido */
-.flip-card-back.is-expanded .card-ficha-btn {
-  display: none !important;
-  pointer-events: none !important;
-}
-
-/* Botón '+' de sinopsis en la esquina inferior derecha */
+/* Botón '+' de sinopsis en la esquina inferior derecha idéntico a la SPA */
 .flip-card-back .expand-content-btn {
   position: absolute !important;
-  bottom: 8px !important;
+  bottom: 6px !important;
   right: 6px !important;
   width: 18px !important;
   height: 18px !important;
@@ -161,9 +137,10 @@ combined += `
   min-height: 0 !important;
 }
 
-/* Margen inferior del scrollable-content para despejar la barra de botones */
+/* Sinopsis en el reverso: fluye ocupando el espacio disponible con su degradado natural de la SPA */
 .flip-card-back:not(.is-expanded) .scrollable-content {
-  margin-bottom: 30px !important;
+  flex-grow: 1 !important;
+  margin-bottom: 0 !important;
 }
 
 /* Alineación de año y bandera a la derecha si no hay iconos de plataformas */
@@ -307,7 +284,8 @@ combined += `
   cursor: pointer !important;
 }
 
-/* Enlaces externos específicos */
+/* Enlaces traseros específicos */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .back-original-title-link,
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="wikipedia-link"],
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="justwatch-link"],
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="imdb-link"],

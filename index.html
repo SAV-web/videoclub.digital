@@ -397,13 +397,18 @@
     <script>
       (function () {
         try {
-          var stored = localStorage.getItem("theme");
-          var system = window.matchMedia(
+          var cookieMatch = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+          var stored = localStorage.getItem("theme") || (cookieMatch ? cookieMatch[1] : null);
+          var systemDark = window.matchMedia(
             "(prefers-color-scheme: dark)",
           ).matches;
-          var isDark = stored === "dark" || (!stored && system);
+          var isDark = stored ? stored === "dark" : systemDark;
           if (isDark) {
             document.documentElement.classList.add("dark-mode");
+            document.documentElement.classList.remove("light-mode");
+          } else {
+            document.documentElement.classList.add("light-mode");
+            document.documentElement.classList.remove("dark-mode");
           }
           var metas = document.querySelectorAll('meta[name="theme-color"]');
           metas.forEach(function (m) {

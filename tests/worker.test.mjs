@@ -638,6 +638,11 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes('?movie='), "Las estrellas o watchlist deben enlazar al modal de la película (?movie=)");
     assert.ok(html.includes('data-year-value='), "El año debe contener data-year-value");
     assert.ok(!html.includes("collection-hero"), "NO debe contener el bloque hero invasivo");
+    assert.ok(html.includes("back-original-title-link"), "Debe tener enlace en el título original del reverso");
+    assert.ok(!html.includes("card-ficha-btn"), "NO debe contener el botón Ficha completa");
+    assert.ok(!html.includes("Ficha completa →"), "NO debe contener el texto Ficha completa");
+    assert.ok(html.includes('id="theme-toggle"'), "Debe incluir el botón selector de tema");
+    assert.ok(html.includes('theme=([^;]*)'), "Debe incluir la lectura de cookie en el script anti-flicker");
   });
 
   test("Taxonomías: Países, Estudios y Selecciones (/pais/espana/, /pais/latam/, /seleccion/criterion/, /estudio/a24/) responden 200 OK", async () => {

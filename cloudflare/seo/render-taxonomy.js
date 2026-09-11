@@ -174,7 +174,9 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
         <div class="flip-card-back">
           ${displayOriginalTitle ? `
             <div class="back-original-title-wrapper">
-              <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
+              <a href="${escapeAttr(movieUrl)}" class="back-original-title-link" aria-label="Ver ficha completa de ${escapeAttr(title)}" title="Ver ficha completa de ${escapeAttr(title)}">
+                <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
+              </a>
             </div>
           ` : ''}
 
@@ -267,9 +269,6 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             ` : ''}
           </div>
 
-          <a href="${escapeAttr(movieUrl)}" class="card-ficha-btn" aria-label="Ver ficha completa de ${escapeAttr(title)}">
-            <span>Ficha completa →</span>
-          </a>
           <button type="button" class="expand-content-btn" aria-label="Expandir sinopsis">+</button>
         </div>
       </div>
@@ -373,17 +372,18 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
-  <!-- Anti-flicker para sincronización de modo claro/oscuro con el grid -->
+  <!-- Anti-flicker para sincronización exacta de modo claro/oscuro entre SPA y SEO -->
   <script>
     (function () {
       try {
-        var stored = localStorage.getItem("theme");
+        var cookieMatch = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
+        var stored = localStorage.getItem("theme") || (cookieMatch ? cookieMatch[1] : null);
         var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var isDark = stored === "dark" || (!stored && systemDark) || (!stored && stored === null);
+        var isDark = stored ? stored === "dark" : systemDark;
         if (isDark) {
           document.documentElement.classList.add("dark-mode");
           document.documentElement.classList.remove("light-mode");
-        } else if (stored === "light") {
+        } else {
           document.documentElement.classList.add("light-mode");
           document.documentElement.classList.remove("dark-mode");
         }
@@ -436,8 +436,8 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
             <span class="logo-line-2">.DIGITAL</span>
           </a>
           
-          <!-- Nombre de la sección alineado a la derecha (las selecciones son fijas no clickables, géneros/países/estudios enlazan a la SPA) -->
-          <div class="active-filters-list" style="display:flex; align-items:center; margin:0; padding:0;">
+          <!-- Controles de cabecera: filtro activo y selector de tema coherente -->
+          <div class="active-filters-list" style="display:flex; align-items:center; gap:8px; margin:0; padding:0;">
             ${taxInfo.type === 'selection' ? `
               <span class="filter-pill is-active is-static" style="cursor:default; pointer-events:none;">
                 <span>${escapeHtml(taxInfo.name)}</span>
@@ -447,6 +447,10 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
                 <span>${escapeHtml(taxInfo.name)}</span>
               </a>
             `}
+            <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Cambiar tema" aria-label="Cambiar tema" aria-pressed="false" style="width:36px; height:36px; position:relative; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-text-primary); cursor:pointer; padding:0; flex-shrink:0;">
+              <svg class="theme-icon moon-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-moon"></use></svg>
+              <svg class="theme-icon sun-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-sun"></use></svg>
+            </button>
           </div>
         </div>
       </header>
@@ -492,6 +496,39 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
           });
         }
       } catch (e) {}
+
+      // Sincronización e interactividad del botón de tema claro/oscuro
+      var themeBtn = document.getElementById("theme-toggle");
+      if (themeBtn) {
+        var updateThemeBtn = function (isDark) {
+          themeBtn.setAttribute("aria-pressed", String(isDark));
+          var label = isDark ? "Modo claro" : "Modo oscuro";
+          themeBtn.setAttribute("aria-label", label);
+          themeBtn.title = label;
+        };
+        updateThemeBtn(document.documentElement.classList.contains("dark-mode"));
+
+        themeBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var isNowDark = document.documentElement.classList.toggle("dark-mode");
+          if (isNowDark) {
+            document.documentElement.classList.remove("light-mode");
+          } else {
+            document.documentElement.classList.add("light-mode");
+          }
+          var themeStr = isNowDark ? "dark" : "light";
+          try {
+            localStorage.setItem("theme", themeStr);
+            document.cookie = "theme=" + themeStr + "; path=/; max-age=31536000; SameSite=Lax";
+          } catch (err) {}
+          updateThemeBtn(isNowDark);
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          metas.forEach(function (m) {
+            m.setAttribute("content", isNowDark ? "#0d0d0d" : "#f5f5f5");
+          });
+        });
+      }
 
       document.addEventListener("click", function (e) {
         // 1. Botón + de actores: despliega la lista completa de actores y géneros en overlay
