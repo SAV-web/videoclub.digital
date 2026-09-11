@@ -627,7 +627,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("Aviso legal"), "El footer debe contener los avisos legales");
     assert.ok(html.includes("actors-expand-btn"), "Debe incluir el botón + de reparto");
     assert.ok(html.includes("actors-scrollable-content"), "Debe incluir el overlay deslizable de reparto");
-    assert.ok(html.includes("seo-card-v6.css"), "Debe enlazar con seo-card-v6.css");
+    assert.ok(html.includes("seo-card-v7.css"), "Debe enlazar con seo-card-v7.css");
     assert.ok(html.includes('class="star-rating-container has-average-rating is-interactive"'), "Las estrellas deben ser un elemento interactivo");
     assert.ok(html.includes('?movie='), "Las estrellas o watchlist deben enlazar al modal de la película (?movie=)");
     assert.ok(html.includes('data-year-value='), "El año debe contener data-year-value");
@@ -668,8 +668,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(body.success, true);
   });
 
-  test("Estilos: /seo-card-v6.css se sirve desde Edge Memory con componentes oficiales de la SPA", async () => {
-    const req = new Request("https://videoclub.digital/seo-card-v6.css");
+  test("Estilos: /seo-card-v7.css se sirve desde Edge Memory con componentes oficiales de la SPA", async () => {
+    const req = new Request("https://videoclub.digital/seo-card-v7.css");
     const res = await worker.fetch(req, {}, defaultCtx);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("Content-Type"), "text/css; charset=utf-8");

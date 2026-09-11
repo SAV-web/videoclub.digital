@@ -367,7 +367,7 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
   <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
 
   <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
   <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
 </head>
 <body class="collection-wall">

@@ -328,7 +328,7 @@ function renderMovieHtml(movie, options = {}) {
   <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
   <!-- Hoja de Estilos Externa Cacheable (SSOT con versionado perimetral) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
 
   <script type="application/ld+json">${safeJsonLd(jsonLd)}<\/script>
   <script type="application/ld+json">${safeJsonLd(breadcrumbLd)}<\/script>
@@ -1425,7 +1425,7 @@ function renderTaxonomyHtml(taxInfo, items, options = {}) {
   <script type="speculationrules">${safeJsonLd2(speculationRules)}<\/script>
 
   <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
   <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
 </head>
 <body class="collection-wall">
@@ -1879,7 +1879,7 @@ function renderPersonHtml(person, role, hasOtherRole, movies = [], options = {})
   <script type="speculationrules">${safeJsonLd3(speculationRules)}<\/script>
 
   <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
   <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
 </head>
 <body class="collection-wall">

@@ -201,7 +201,7 @@ export function renderMovieHtml(movie, options = {}) {
   <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
   <!-- Hoja de Estilos Externa Cacheable (SSOT con versionado perimetral) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v6.css" />
+  <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
 
   <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
   <script type="application/ld+json">${safeJsonLd(breadcrumbLd)}</script>

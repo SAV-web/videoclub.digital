@@ -308,17 +308,17 @@ combined += `
 }
 `;
 
-fs.writeFileSync("public/seo-card-v6.css", combined);
-execSync("npx esbuild public/seo-card-v6.css --minify --outfile=public/seo-card-v6.min.css");
-const minified = fs.readFileSync("public/seo-card-v6.min.css", "utf8");
+fs.writeFileSync("public/seo-card-v7.css", combined);
+execSync("npx esbuild public/seo-card-v7.css --minify --outfile=public/seo-card-v7.min.css");
+const minified = fs.readFileSync("public/seo-card-v7.min.css", "utf8");
 
 
 
 // Also update cloudflare/seo/seo-card-css.js to export the minified string
-const jsContent = `// Generado automáticamente a partir de public/seo-card-v6.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
+const jsContent = `// Generado automáticamente a partir de public/seo-card-v7.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
 fs.writeFileSync("cloudflare/seo/seo-card-css.js", jsContent);
 
-console.log("Successfully generated public/seo-card-v6.css and cloudflare/seo/seo-card-css.js");
+console.log("Successfully generated public/seo-card-v7.css and cloudflare/seo/seo-card-css.js");
 console.log("Unminified size:", combined.length, "Minified size:", minified.length);
 
 
