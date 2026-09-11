@@ -943,20 +943,23 @@ var ACTIVE_COUNTRIES_MAP = {
   venezuela: { name: "Venezuela", code: "VE" },
   vietnam: { name: "Vietnam", code: "VN" }
 };
-function resolveTaxonomy(rawSlug) {
+function resolveTaxonomy(rawSlug, expectedPrefix = null) {
   if (!rawSlug) return null;
   const slug = String(rawSlug).trim().toLowerCase().replace(/^\/+|\/+$/g, "");
   if (!slug) return null;
-  if (GENRE_MAP[slug]) {
+  const prefix = expectedPrefix ? String(expectedPrefix).trim().toLowerCase() : null;
+  if ((!prefix || prefix === "genero") && GENRE_MAP[slug]) {
     const item = GENRE_MAP[slug];
     return {
       type: "genre",
+      prefix: "genero",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} \u2014 Videoclub Digital`,
       description: item.description,
       badgeLabel: "G\xE9nero",
       canonicalSlug: slug,
+      canonicalPath: `/genero/${slug}/`,
       categoryBreadcrumb: "G\xE9neros",
       rpcParams: {
         genre_name: item.name,
@@ -968,16 +971,18 @@ function resolveTaxonomy(rawSlug) {
       }
     };
   }
-  if (STUDIO_MAP[slug]) {
+  if ((!prefix || prefix === "estudio") && STUDIO_MAP[slug]) {
     const item = STUDIO_MAP[slug];
     return {
       type: "studio",
+      prefix: "estudio",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} \u2014 Videoclub Digital`,
       description: item.description,
       badgeLabel: "Estudio",
       canonicalSlug: slug,
+      canonicalPath: `/estudio/${slug}/`,
       categoryBreadcrumb: "Estudios",
       rpcParams: {
         p_studio_code: item.code,
@@ -989,16 +994,18 @@ function resolveTaxonomy(rawSlug) {
       }
     };
   }
-  if (SELECTION_MAP[slug]) {
+  if ((!prefix || prefix === "seleccion") && SELECTION_MAP[slug]) {
     const item = SELECTION_MAP[slug];
     return {
       type: "selection",
+      prefix: "seleccion",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} \u2014 Videoclub Digital`,
       description: item.description,
       badgeLabel: "Colecci\xF3n",
       canonicalSlug: slug,
+      canonicalPath: `/seleccion/${slug}/`,
       categoryBreadcrumb: "Selecciones",
       rpcParams: {
         p_selection_code: item.code,
@@ -1010,16 +1017,18 @@ function resolveTaxonomy(rawSlug) {
       }
     };
   }
-  if (REGIONAL_GROUPS_MAP[slug]) {
+  if ((!prefix || prefix === "pais") && REGIONAL_GROUPS_MAP[slug]) {
     const item = REGIONAL_GROUPS_MAP[slug];
     return {
       type: "country",
+      prefix: "pais",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} \u2014 Videoclub Digital`,
       description: item.description,
       badgeLabel: "Regi\xF3n",
       canonicalSlug: slug,
+      canonicalPath: `/pais/${slug}/`,
       categoryBreadcrumb: "Pa\xEDses",
       rpcParams: {
         country_name: item.code,
@@ -1031,12 +1040,13 @@ function resolveTaxonomy(rawSlug) {
       }
     };
   }
-  if (ACTIVE_COUNTRIES_MAP[slug]) {
+  if ((!prefix || prefix === "pais") && ACTIVE_COUNTRIES_MAP[slug]) {
     const item = ACTIVE_COUNTRIES_MAP[slug];
     const countryTitle = `Cine de ${item.name}`;
     const countryDesc = `Descubre las mejores pel\xEDculas y series de ${item.name} disponibles en streaming en Espa\xF1a, ordenadas por valoraci\xF3n y votos.`;
     return {
       type: "country",
+      prefix: "pais",
       name: item.name,
       code: item.code,
       title: countryTitle,
@@ -1044,6 +1054,7 @@ function resolveTaxonomy(rawSlug) {
       description: countryDesc,
       badgeLabel: "Pa\xEDs",
       canonicalSlug: slug,
+      canonicalPath: `/pais/${slug}/`,
       categoryBreadcrumb: "Pa\xEDses",
       rpcParams: {
         country_name: item.name,
@@ -1289,7 +1300,7 @@ function renderTaxonomyHtml(taxInfo, items, options = {}) {
   const siteOrigin = options.siteOrigin || "https://videoclub.digital";
   const baseUrl = options.baseUrl || "/";
   const storageUrl = options.storageUrl || "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
-  const canonicalUrl = `${siteOrigin}/${taxInfo.canonicalSlug}/`;
+  const canonicalUrl = taxInfo.canonicalPath ? `${siteOrigin}${taxInfo.canonicalPath}` : `${siteOrigin}/${taxInfo.canonicalSlug}/`;
   const spaRedirectUrl = `${baseUrl}?_p=/${taxInfo.canonicalSlug}/`;
   const topMovie = items && items.length > 0 ? items[0] : null;
   const ogImageUrl = topMovie && topMovie.slug ? `${siteOrigin}/posters/${topMovie.slug}.webp` : `${storageUrl}/assets/og-default.jpg`;
@@ -1618,7 +1629,7 @@ function renderSpaPersonCard(person, role, hasOtherRole, siteOrigin, baseUrl = "
   const targetRole = isDirector ? "actor" : "director";
   const currentLetter = isDirector ? "D" : "A";
   const tooltipText = isDirector ? `Ver filmograf\xEDa de ${person.name} como Actor` : `Ver pel\xEDculas de ${person.name} como Director`;
-  const targetUrl = `${siteOrigin}/${targetRole}/${slug}/`;
+  const targetUrl = `${siteOrigin}/${slug}/`;
   const titleLengthClass = getTitleLengthClass(person.name);
   return `
     <article class="movie-card person-card" data-person-id="${person.id}" style="--card-index: 0;">
@@ -1704,13 +1715,13 @@ function renderPersonHtml(person, role, hasOtherRole, movies = [], options = {})
   const baseUrl = options.baseUrl || "/";
   const storageUrl = options.storageUrl || "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
   const slug = person.slug || toSlug(person.name);
-  const canonicalUrl = `${siteOrigin}/${role}/${slug}/`;
-  const spaRedirectUrl = `${baseUrl}?_p=/${role}/${slug}/`;
-  const isDirector = role === "director";
-  const roleLabel = isDirector ? "Director" : "Actor";
+  const canonicalUrl = `${siteOrigin}/${slug}/`;
+  const isDirector = role === "director" || person.type === "D" || person.type === "DA";
+  const spaRedirectUrl = `${baseUrl}?_p=/${isDirector ? "director" : "actor"}/${slug}/`;
+  const roleLabel = person.type === "D" ? "Director" : person.type === "A" ? "Actor" : "Cineasta";
   const roleTitle = isDirector ? "Director de cine" : "Actor cinematogr\xE1fico";
-  const seoTitle = `${person.name} \u2014 Pel\xEDculas y Biograf\xEDa del ${roleLabel} | Videoclub Digital`;
-  const bioExcerpt = person.titulo_bio ? `${person.name}: ${person.titulo_bio}. Filmograf\xEDa completa ordenada por valoraci\xF3n y biograf\xEDa en Videoclub Digital.` : `Filmograf\xEDa completa, biograf\xEDa y t\xEDtulos destacados de ${person.name} en Videoclub Digital.`;
+  const seoTitle = `${person.name} \u2014 Pel\xEDculas y Biograf\xEDa | Videoclub Digital`;
+  const bioExcerpt = person.titulo_bio ? `${person.name}: ${person.titulo_bio}. Filmograf\xEDa completa y biograf\xEDa en Videoclub Digital.` : `Filmograf\xEDa completa, biograf\xEDa y t\xEDtulos destacados de ${person.name} en Videoclub Digital.`;
   const description = bioExcerpt.length > 160 ? bioExcerpt.substring(0, 157) + "..." : bioExcerpt;
   const photoUrl = `${siteOrigin}/vips/${slug}.webp`;
   const personSchema = {
@@ -1718,13 +1729,18 @@ function renderPersonHtml(person, role, hasOtherRole, movies = [], options = {})
     "@type": "Person",
     "name": person.name,
     "url": canonicalUrl,
-    "image": photoUrl,
-    "description": person.titulo_bio || person.biography?.substring(0, 300) || void 0,
-    "jobTitle": roleTitle,
-    "hasOccupation": {
-      "@type": "Occupation",
-      "name": roleTitle
-    },
+    "mainEntityOfPage": canonicalUrl,
+    ...photoUrl ? { "image": photoUrl } : {},
+    ...person.titulo_bio || person.biography ? {
+      "description": person.titulo_bio || person.biography?.substring(0, 300)
+    } : {},
+    ...roleTitle ? {
+      "jobTitle": roleTitle,
+      "hasOccupation": {
+        "@type": "Occupation",
+        "name": roleTitle
+      }
+    } : {},
     ...person.birthday ? { "birthDate": person.birthday } : {},
     ...person.deathday ? { "deathDate": person.deathday } : {},
     ...person.place_of_birth ? {
@@ -1739,7 +1755,6 @@ function renderPersonHtml(person, role, hasOtherRole, movies = [], options = {})
         "name": person.countries.name
       }
     } : {},
-    "mainEntityOfPage": canonicalUrl,
     ...movies.length > 0 ? {
       "knowsAbout": movies.slice(0, 6).map((m) => m.title || m.original_title)
     } : {}
@@ -1789,12 +1804,6 @@ function renderPersonHtml(person, role, hasOtherRole, movies = [], options = {})
       {
         "@type": "ListItem",
         "position": 2,
-        "name": isDirector ? "Directores" : "Actores",
-        "item": `${siteOrigin}/`
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
         "name": person.name,
         "item": canonicalUrl
       }
@@ -2015,10 +2024,1201 @@ function renderPersonHtml(person, role, hasOtherRole, movies = [], options = {})
 </html>`;
 }
 
+// cloudflare/seo/vip-manifest.js
+var VIP_SLUGS = /* @__PURE__ */ new Set([
+  "aaron-sorkin",
+  "abbas-kiarostami",
+  "abel-ferrara",
+  "adam-driver",
+  "adam-mckay",
+  "adam-sandler",
+  "adam-shankman",
+  "adam-wingard",
+  "adolfo-aristarain",
+  "adrian-lyne",
+  "adrien-brody",
+  "agnes-varda",
+  "agustin-diaz-yanes",
+  "agustin-gonzalez",
+  "aitor-gabilondo",
+  "aki-kaurismaki",
+  "akira-kurosawa",
+  "al-pacino",
+  "alain-resnais",
+  "alan-alda",
+  "alan-arkin",
+  "alan-j-pakula",
+  "alan-parker",
+  "alan-rickman",
+  "alba-rohrwacher",
+  "albert-hughes",
+  "albert-serra",
+  "alberto-caballero",
+  "alberto-rodriguez",
+  "alec-baldwin",
+  "alejandro-amenabar",
+  "alejandro-gonzalez-inarritu",
+  "alejandro-jodorowsky",
+  "aleksandr-sokurov",
+  "alex-angulo",
+  "alex-de-la-iglesia",
+  "alex-garland",
+  "alex-gibney",
+  "alex-kurtzman",
+  "alex-pina",
+  "alex-proyas",
+  "alexander-payne",
+  "alexandre-aja",
+  "alexandre-bustillo",
+  "alfonso-cuaron",
+  "alfred-hitchcock",
+  "alfred-molina",
+  "alice-braga",
+  "allison-janney",
+  "alvaro-fernandez-armero",
+  "amy-adams",
+  "amy-heckerling",
+  "ana-torrent",
+  "ana-wagener",
+  "andre-dussollier",
+  "andre-ovredal",
+  "andre-techine",
+  "andrei-tarkovsky",
+  "andrew-davis",
+  "andrew-haigh",
+  "andrew-niccol",
+  "andrew-stanton",
+  "andrzej-wajda",
+  "andrzej-zulawski",
+  "andy-garcia",
+  "andy-muschietti",
+  "andy-serkis",
+  "andy-tennant",
+  "ang-lee",
+  "angelina-jolie",
+  "anjelica-huston",
+  "anna-kendrick",
+  "anne-bancroft",
+  "anne-hathaway",
+  "annette-bening",
+  "anthony-hopkins",
+  "anthony-lapaglia",
+  "anthony-mackie",
+  "anthony-mann",
+  "antoine-fuqua",
+  "anton-yelchin",
+  "antonio-banderas",
+  "antonio-de-la-torre",
+  "antonio-dechent",
+  "antonio-mercero",
+  "antonio-resines",
+  "apichatpong-weerasethakul",
+  "ari-aster",
+  "ariadna-gil",
+  "ariel-schulman",
+  "ariel-winograd",
+  "armando-iannucci",
+  "arnold-schwarzenegger",
+  "arthur-hiller",
+  "arthur-kennedy",
+  "arthur-penn",
+  "asghar-farhadi",
+  "asia-argento",
+  "atom-egoyan",
+  "ava-gardner",
+  "baltasar-kormakur",
+  "barbara-stanwyck",
+  "barbet-schroeder",
+  "barry-jenkins",
+  "barry-levinson",
+  "barry-sonnenfeld",
+  "baz-luhrmann",
+  "bela-tarr",
+  "ben-affleck",
+  "ben-foster",
+  "ben-kingsley",
+  "ben-mendelsohn",
+  "ben-safdie",
+  "ben-stiller",
+  "ben-wheatley",
+  "benedict-cumberbatch",
+  "benicio-del-toro",
+  "bernardo-bertolucci",
+  "bertrand-tavernier",
+  "beth-grant",
+  "bette-davis",
+  "bigas-luna",
+  "bill-camp",
+  "bill-condon",
+  "bill-lawrence",
+  "bill-murray",
+  "bill-nighy",
+  "bill-nunn",
+  "bill-paxton",
+  "bill-pullman",
+  "bille-august",
+  "billy-bob-thornton",
+  "billy-wilder",
+  "blake-edwards",
+  "bobby-cannavale",
+  "bobby-farrelly",
+  "bong-joon-ho",
+  "borja-cobeaga",
+  "brad-anderson",
+  "brad-bird",
+  "brad-dourif",
+  "brad-pitt",
+  "bradley-cooper",
+  "brendan-gleeson",
+  "brett-ratner",
+  "brian-cox",
+  "brian-de-palma",
+  "brian-taylor",
+  "bruce-beresford",
+  "bruce-dern",
+  "bruce-greenwood",
+  "bruce-mcgill",
+  "bruce-willis",
+  "bryan-cranston",
+  "bryan-fuller",
+  "bryan-singer",
+  "burgess-meredith",
+  "burr-steers",
+  "burt-lancaster",
+  "burt-reynolds",
+  "burt-young",
+  "buster-keaton",
+  "caleb-landry-jones",
+  "cameron-crowe",
+  "cameron-diaz",
+  "candice-bergen",
+  "carl-theodor-dreyer",
+  "carla-gugino",
+  "carlos-areces",
+  "carlos-montero",
+  "carlos-reygadas",
+  "carlos-saldanha",
+  "carlos-saura",
+  "carlos-theron",
+  "carmen-machi",
+  "carol-reed",
+  "carrie-fisher",
+  "cary-grant",
+  "cary-joji-fukunaga",
+  "cate-blanchett",
+  "catherine-deneuve",
+  "catherine-keener",
+  "cecil-b-demille",
+  "cesc-gay",
+  "channing-tatum",
+  "charles-bronson",
+  "charles-chaplin",
+  "charles-dance",
+  "charles-mcgraw",
+  "charlize-theron",
+  "charlotte-rampling",
+  "charlton-heston",
+  "chen-kaige",
+  "chiwetel-ejiofor",
+  "chow-yun-fat",
+  "chris-columbus",
+  "chris-cooper",
+  "chris-evans",
+  "chris-hemsworth",
+  "chris-messina",
+  "chris-pratt",
+  "chris-renaud",
+  "chris-weitz",
+  "christian-bale",
+  "christian-slater",
+  "christina-hendricks",
+  "christopher-lee",
+  "christopher-lloyd",
+  "christopher-mcquarrie",
+  "christopher-miller",
+  "christopher-nolan",
+  "christopher-plummer",
+  "christopher-walken",
+  "chuck-lorre",
+  "ciaran-hinds",
+  "cillian-murphy",
+  "claire-denis",
+  "claude-chabrol",
+  "claude-rains",
+  "claudia-cardinale",
+  "cliff-curtis",
+  "clint-eastwood",
+  "clyde-geronimi",
+  "colin-farrell",
+  "colin-firth",
+  "colm-meaney",
+  "costa-gavras",
+  "craig-brewer",
+  "craig-gillespie",
+  "curtis-hanson",
+  "d-j-caruso",
+  "d-w-griffith",
+  "damien-chazelle",
+  "damon-herriman",
+  "dan-aykroyd",
+  "dani-de-la-orden",
+  "daniel-calparsoro",
+  "daniel-ecija",
+  "daniel-monzon",
+  "daniel-sanchez-arevalo",
+  "danny-boyle",
+  "danny-devito",
+  "danny-glover",
+  "danny-huston",
+  "dario-argento",
+  "darren-aronofsky",
+  "dave-filoni",
+  "david-ayer",
+  "david-cronenberg",
+  "david-e-kelley",
+  "david-fincher",
+  "david-frankel",
+  "david-gordon-green",
+  "david-koepp",
+  "david-lean",
+  "david-leitch",
+  "david-lowery",
+  "david-lynch",
+  "david-mackenzie",
+  "david-mamet",
+  "david-michod",
+  "david-miller",
+  "david-morse",
+  "david-o-russell",
+  "david-simon",
+  "david-strathairn",
+  "david-thewlis",
+  "david-trueba",
+  "david-yates",
+  "david-zucker",
+  "dean-deblois",
+  "deborah-kerr",
+  "denis-villeneuve",
+  "dennis-dugan",
+  "dennis-haysbert",
+  "dennis-hopper",
+  "dennis-o-keefe",
+  "dennis-quaid",
+  "denys-arcand",
+  "denzel-washington",
+  "derek-cianfrance",
+  "diane-lane",
+  "dianne-wiest",
+  "dino-risi",
+  "djimon-hounsou",
+  "dominic-west",
+  "don-cheadle",
+  "don-siegel",
+  "donald-crisp",
+  "donald-sutherland",
+  "donnie-yen",
+  "doug-liman",
+  "douglas-sirk",
+  "drake-doremus",
+  "drew-barrymore",
+  "dustin-hoffman",
+  "dwayne-johnson",
+  "dylan-baker",
+  "ed-begley-jr",
+  "ed-harris",
+  "eddie-marsan",
+  "edgar-wright",
+  "eduard-fernandez",
+  "edward-g-robinson",
+  "edward-norton",
+  "edward-yang",
+  "edward-zwick",
+  "eli-roth",
+  "elia-kazan",
+  "elias-koteas",
+  "elijah-wood",
+  "elisha-cook-jr",
+  "elizabeth-banks",
+  "elizabeth-mcgovern",
+  "elizabeth-taylor",
+  "elle-fanning",
+  "emeric-pressburger",
+  "emilio-martinez-lazaro",
+  "emily-blunt",
+  "emily-mortimer",
+  "emily-watson",
+  "emir-kusturica",
+  "emma-stone",
+  "emma-thompson",
+  "enzo-barboni",
+  "eric-rohmer",
+  "ernesto-alterio",
+  "ernst-lubitsch",
+  "ethan-coen",
+  "ethan-hawke",
+  "ettore-scola",
+  "eusebio-poncela",
+  "evan-goldberg",
+  "ewan-mcgregor",
+  "f-gary-gray",
+  "f-w-murnau",
+  "faye-dunaway",
+  "federico-fellini",
+  "felicity-jones",
+  "fernando-colomo",
+  "fernando-gonzalez-molina",
+  "fernando-leon-de-aranoa",
+  "fernando-meirelles",
+  "fernando-rey",
+  "fernando-trueba",
+  "ferzan-ozpetek",
+  "forest-whitaker",
+  "frances-mcdormand",
+  "francesco-rosi",
+  "francis-ford-coppola",
+  "francis-lawrence",
+  "francis-veber",
+  "francisco-rabal",
+  "franco-zeffirelli",
+  "francois-ozon",
+  "francois-truffaut",
+  "frank-capra",
+  "frank-coraci",
+  "frank-darabont",
+  "frank-marshall",
+  "frank-oz",
+  "fred-schepisi",
+  "fred-zinnemann",
+  "fredric-march",
+  "fritz-lang",
+  "gabriel-byrne",
+  "gael-garcia-bernal",
+  "gareth-evans",
+  "garry-marshall",
+  "gary-cooper",
+  "gary-david-goldberg",
+  "gary-fleder",
+  "gary-oldman",
+  "gaspar-noe",
+  "gaston-duprat",
+  "gavin-hood",
+  "gavin-o-connor",
+  "gema-r-neira",
+  "gene-hackman",
+  "genndy-tartakovsky",
+  "george-a-romero",
+  "george-c-scott",
+  "george-clooney",
+  "george-cukor",
+  "george-lucas",
+  "george-miller",
+  "george-pan-cosmatos",
+  "george-stevens",
+  "geraldine-chaplin",
+  "gerard-butler",
+  "gerard-depardieu",
+  "giancarlo-esposito",
+  "gillo-pontecorvo",
+  "giovanni-ribisi",
+  "giuseppe-tornatore",
+  "glenn-close",
+  "gore-verbinski",
+  "gracia-querejeta",
+  "greg-berlanti",
+  "greg-daniels",
+  "greg-kinnear",
+  "greg-mottola",
+  "guillaume-canet",
+  "guillermo-del-toro",
+  "gus-van-sant",
+  "guy-hamilton",
+  "guy-pearce",
+  "guy-ritchie",
+  "hamilton-luske",
+  "hank-azaria",
+  "hanna-barbera",
+  "hanna-schygulla",
+  "hans-petter-moland",
+  "harold-ramis",
+  "harrison-ford",
+  "harry-dean-stanton",
+  "harvey-keitel",
+  "hayao-miyazaki",
+  "heather-graham",
+  "helen-mirren",
+  "helena-bonham-carter",
+  "henry-fonda",
+  "henry-hathaway",
+  "herbert-ross",
+  "hermanos-dardenne",
+  "hermanos-duffer",
+  "hermanos-pastor",
+  "hermanos-russo",
+  "hermanos-spierig",
+  "hermanos-taviani",
+  "hideaki-anno",
+  "hirokazu-koreeda",
+  "holt-mccallany",
+  "hou-hsiao-hsien",
+  "howard-hawks",
+  "hugh-grant",
+  "hugh-jackman",
+  "hume-cronyn",
+  "humphrey-bogart",
+  "ian-holm",
+  "ian-mcshane",
+  "iciar-bollain",
+  "idris-elba",
+  "ingmar-bergman",
+  "irwin-winkler",
+  "isabel-coixet",
+  "isabelle-huppert",
+  "isao-takahata",
+  "ishiro-honda",
+  "ivan-reitman",
+  "j-a-bayona",
+  "j-c-chandor",
+  "j-j-abrams",
+  "j-k-simmons",
+  "jack-black",
+  "jack-elam",
+  "jack-huston",
+  "jack-nicholson",
+  "jack-palance",
+  "jack-thorne",
+  "jackie-chan",
+  "jacqueline-bisset",
+  "jacques-audiard",
+  "jacques-demy",
+  "jacques-rivette",
+  "jacques-tati",
+  "jacques-tourneur",
+  "jake-gyllenhaal",
+  "jake-kasdan",
+  "james-cameron",
+  "james-cromwell",
+  "james-foley",
+  "james-franco",
+  "james-gray",
+  "james-gunn",
+  "james-l-brooks",
+  "james-mangold",
+  "james-marsden",
+  "james-mason",
+  "james-purefoy",
+  "james-remar",
+  "james-stewart",
+  "james-wan",
+  "james-woods",
+  "jamie-foxx",
+  "jamie-lee-curtis",
+  "jane-campion",
+  "janet-mcteer",
+  "jared-harris",
+  "jason-bateman",
+  "jason-clarke",
+  "jason-flemyng",
+  "jason-isaacs",
+  "jason-momoa",
+  "jason-reitman",
+  "jason-statham",
+  "jason-sudeikis",
+  "jaume-balaguero",
+  "jaume-collet-serra",
+  "javier-bardem",
+  "javier-botet",
+  "javier-camara",
+  "javier-fesser",
+  "javier-gutierrez",
+  "javier-ruiz-caldera",
+  "jay-duplass",
+  "jay-roach",
+  "jean-becker",
+  "jean-cocteau",
+  "jean-jacques-annaud",
+  "jean-louis-trintignant",
+  "jean-luc-godard",
+  "jean-marc-vallee",
+  "jean-pierre-jeunet",
+  "jean-pierre-melville",
+  "jean-reno",
+  "jean-renoir",
+  "jeanne-moreau",
+  "jeff-bridges",
+  "jeff-daniels",
+  "jeff-goldblum",
+  "jeffrey-wright",
+  "jennifer-connelly",
+  "jennifer-ehle",
+  "jennifer-jason-leigh",
+  "jeremy-irons",
+  "jeremy-northam",
+  "jerry-zucker",
+  "jesse-plemons",
+  "jet-li",
+  "jia-zhangke",
+  "jim-abrahams",
+  "jim-broadbent",
+  "jim-carrey",
+  "jim-carter",
+  "jim-henson",
+  "jim-jarmusch",
+  "jim-sheridan",
+  "joachim-ronning",
+  "joachim-trier",
+  "joaquim-de-almeida",
+  "joaquin-phoenix",
+  "jodie-foster",
+  "joe-berlinger",
+  "joe-carnahan",
+  "joe-dante",
+  "joe-johnston",
+  "joe-morton",
+  "joe-pesci",
+  "joe-wright",
+  "joel-coen",
+  "joel-edgerton",
+  "joel-schumacher",
+  "john-badham",
+  "john-boorman",
+  "john-c-reilly",
+  "john-carney",
+  "john-carpenter",
+  "john-carradine",
+  "john-cassavetes",
+  "john-crowley",
+  "john-cusack",
+  "john-dahl",
+  "john-ford",
+  "john-frankenheimer",
+  "john-g-avildsen",
+  "john-goodman",
+  "john-hillcoat",
+  "john-hughes",
+  "john-hurt",
+  "john-huston",
+  "john-irvin",
+  "john-krasinski",
+  "john-landis",
+  "john-lasseter",
+  "john-lee-hancock",
+  "john-leguizamo",
+  "john-lithgow",
+  "john-madden",
+  "john-malkovich",
+  "john-mctiernan",
+  "john-musker",
+  "john-schlesinger",
+  "john-singleton",
+  "john-sturges",
+  "john-travolta",
+  "john-turturro",
+  "john-waters",
+  "john-wayne",
+  "john-woo",
+  "johnnie-to",
+  "johnny-depp",
+  "jon-amiel",
+  "jon-bernthal",
+  "jon-favreau",
+  "jon-m-chu",
+  "jon-turteltaub",
+  "jon-voight",
+  "jonah-hill",
+  "jonathan-demme",
+  "jonathan-pryce",
+  "jorge-coira",
+  "jorge-dorado",
+  "jorge-sanz",
+  "jose-coronado",
+  "jose-luis-cuerda",
+  "jose-luis-lopez-vazquez",
+  "jose-padilha",
+  "josef-von-sternberg",
+  "joseph-fiennes",
+  "joseph-gordon-levitt",
+  "joseph-kosinski",
+  "joseph-l-mankiewicz",
+  "joseph-ruben",
+  "josh-brolin",
+  "joss-whedon",
+  "juan-cavestany",
+  "juan-diego-botto",
+  "juan-jose-campanella",
+  "judd-apatow",
+  "jude-law",
+  "judi-dench",
+  "judy-greer",
+  "julia-roberts",
+  "julian-fellowes",
+  "julian-jarrold",
+  "julian-lopez",
+  "julianne-moore",
+  "julien-maury",
+  "juliette-binoche",
+  "juliette-lewis",
+  "julio-medem",
+  "justin-kurzel",
+  "justin-lin",
+  "justin-long",
+  "karl-malden",
+  "karra-elejalde",
+  "karyn-kusama",
+  "kasi-lemmons",
+  "kate-winslet",
+  "katharine-hepburn",
+  "kathryn-bigelow",
+  "kathryn-hahn",
+  "kathy-bates",
+  "kazuya-tsurumaki",
+  "keanu-reeves",
+  "keenan-wynn",
+  "keira-knightley",
+  "keith-david",
+  "kelly-preston",
+  "kelly-reilly",
+  "ken-loach",
+  "ken-russell",
+  "kenji-mizoguchi",
+  "kenneth-branagh",
+  "kevin-bacon",
+  "kevin-costner",
+  "kevin-dunn",
+  "kevin-kline",
+  "kevin-macdonald",
+  "kevin-reynolds",
+  "kevin-smith",
+  "kevin-spacey",
+  "kiefer-sutherland",
+  "kike-maillo",
+  "kim-jee-woon",
+  "king-vidor",
+  "kirk-douglas",
+  "kirsten-dunst",
+  "kiyoshi-kurosawa",
+  "kristen-stewart",
+  "kristin-scott-thomas",
+  "krzysztof-kieslowski",
+  "kurt-russell",
+  "lars-von-trier",
+  "lasse-hallstrom",
+  "laura-dern",
+  "laura-linney",
+  "lauren-bacall",
+  "laurence-fishburne",
+  "laurence-olivier",
+  "laurent-cantet",
+  "lawrence-kasdan",
+  "lee-tamahori",
+  "lee-van-cleef",
+  "len-wiseman",
+  "leonardo-dicaprio",
+  "leonardo-sbaraglia",
+  "lewis-gilbert",
+  "liam-neeson",
+  "liev-schreiber",
+  "louis-leterrier",
+  "louis-malle",
+  "luc-besson",
+  "luca-guadagnino",
+  "luchino-visconti",
+  "lucio-fulci",
+  "luis-bunuel",
+  "luis-callejo",
+  "luis-ciges",
+  "luis-garcia-berlanga",
+  "luis-guzman",
+  "luis-tosar",
+  "luis-zahera",
+  "lukas-moodysson",
+  "m-night-shyamalan",
+  "mads-mikkelsen",
+  "maggie-smith",
+  "makoto-shinkai",
+  "mamoru-hosoda",
+  "mamoru-oshii",
+  "manolo-solo",
+  "manuel-gomez-pereira",
+  "marc-forster",
+  "marc-lawrence",
+  "marcello-mastroianni",
+  "marcelo-pineyro",
+  "marco-bellocchio",
+  "marco-ferreri",
+  "marco-tullio-giordana",
+  "margo-martindale",
+  "mariano-cohn",
+  "maribel-verdu",
+  "mario-bava",
+  "mario-casas",
+  "mario-monicelli",
+  "marion-cotillard",
+  "marisa-tomei",
+  "mark-duplass",
+  "mark-mylod",
+  "mark-robson",
+  "mark-ruffalo",
+  "mark-strong",
+  "mark-wahlberg",
+  "mark-waters",
+  "marlene-dietrich",
+  "marley-shelton",
+  "marlon-brando",
+  "martin-campbell",
+  "martin-freeman",
+  "martin-landau",
+  "martin-ritt",
+  "martin-scorsese",
+  "masaki-kobayashi",
+  "mateo-gil",
+  "mathieu-amalric",
+  "matt-damon",
+  "matt-dillon",
+  "matt-reeves",
+  "matt-walsh",
+  "matteo-garrone",
+  "matthew-mcconaughey",
+  "matthew-vaughn",
+  "maury-chaykin",
+  "max-ophuls",
+  "max-von-sydow",
+  "mcg",
+  "meg-ryan",
+  "mel-brooks",
+  "mel-gibson",
+  "melissa-leo",
+  "mervyn-leroy",
+  "meryl-streep",
+  "michael-apted",
+  "michael-bay",
+  "michael-caine",
+  "michael-caton-jones",
+  "michael-cimino",
+  "michael-curtiz",
+  "michael-douglas",
+  "michael-fassbender",
+  "michael-gambon",
+  "michael-haneke",
+  "michael-hoffman",
+  "michael-j-fox",
+  "michael-keaton",
+  "michael-mann",
+  "michael-moore",
+  "michael-murphy",
+  "michael-pena",
+  "michael-powell",
+  "michael-radford",
+  "michael-shannon",
+  "michael-sheen",
+  "michael-stuhlbarg",
+  "michael-winterbottom",
+  "michel-franco",
+  "michel-gondry",
+  "michel-hazanavicius",
+  "michel-ocelot",
+  "michel-piccoli",
+  "michelangelo-antonioni",
+  "michelle-monaghan",
+  "michelle-pfeiffer",
+  "michelle-williams",
+  "mickey-rourke",
+  "miguel-rellan",
+  "mikael-hafstrom",
+  "mike-figgis",
+  "mike-flanagan",
+  "mike-judge",
+  "mike-leigh",
+  "mike-mitchell",
+  "mike-newell",
+  "mike-nichols",
+  "mikio-naruse",
+  "milos-forman",
+  "mimi-leder",
+  "montxo-armendariz",
+  "morgan-freeman",
+  "moriarti",
+  "morten-tyldum",
+  "nacho-g-velilla",
+  "nacho-vigalondo",
+  "nagisa-oshima",
+  "nancy-meyers",
+  "nanni-moretti",
+  "naomi-watts",
+  "natalie-portman",
+  "neil-jordan",
+  "neil-labute",
+  "neil-marshall",
+  "nicholas-hoult",
+  "nicholas-ray",
+  "nicholas-stoller",
+  "nick-antosca",
+  "nick-cassavetes",
+  "nick-nolte",
+  "nicolas-cage",
+  "nicolas-roeg",
+  "nicolas-winding-refn",
+  "nicole-kidman",
+  "niels-arden-oplev",
+  "nigel-cole",
+  "nikita-mikhalkov",
+  "noah-baumbach",
+  "nora-ephron",
+  "norman-jewison",
+  "ole-bornedal",
+  "oliver-hirschbiegel",
+  "oliver-parker",
+  "oliver-platt",
+  "oliver-stone",
+  "olivia-de-havilland",
+  "olivia-wilde",
+  "olivier-assayas",
+  "oriol-paulo",
+  "orson-welles",
+  "oscar-isaac",
+  "osgood-perkins",
+  "otto-preminger",
+  "owen-wilson",
+  "pablo-larrain",
+  "pablo-trapero",
+  "paco-plaza",
+  "paddy-considine",
+  "paolo-sorrentino",
+  "paolo-virzi",
+  "park-chan-wook",
+  "patrice-leconte",
+  "patricia-clarkson",
+  "patrick-wilson",
+  "pau-freixas",
+  "paul-bettany",
+  "paul-dano",
+  "paul-feig",
+  "paul-giamatti",
+  "paul-greengrass",
+  "paul-haggis",
+  "paul-rudd",
+  "paul-schrader",
+  "paul-sorvino",
+  "paul-thomas-anderson",
+  "paul-verhoeven",
+  "paul-w-s-anderson",
+  "paul-weitz",
+  "pawel-pawlikowski",
+  "pedro-almodovar",
+  "pedro-casablanc",
+  "penelope-cruz",
+  "penelope-wilton",
+  "peter-berg",
+  "peter-bogdanovich",
+  "peter-falk",
+  "peter-farrelly",
+  "peter-greenaway",
+  "peter-hyams",
+  "peter-jackson",
+  "peter-sarsgaard",
+  "peter-segal",
+  "peter-stormare",
+  "peter-weir",
+  "peter-yates",
+  "peyton-reed",
+  "phil-lord",
+  "philip-kaufman",
+  "philip-seymour-hoffman",
+  "phillip-noyce",
+  "pier-paolo-pasolini",
+  "pierce-brosnan",
+  "pierfrancesco-favino",
+  "pierre-coffin",
+  "pietro-germi",
+  "quentin-dupieux",
+  "quentin-tarantino",
+  "rachel-mcadams",
+  "rachel-weisz",
+  "rainer-werner-fassbinder",
+  "raja-gosnell",
+  "ralph-fiennes",
+  "ralph-richardson",
+  "ramon-barea",
+  "ramon-campos",
+  "raoul-walsh",
+  "raul-arevalo",
+  "ray-liotta",
+  "rene-clair",
+  "rene-clement",
+  "renny-harlin",
+  "requa-ficarra",
+  "rian-johnson",
+  "ric-roman-waugh",
+  "ricardo-darin",
+  "riccardo-scamarcio",
+  "richard-attenborough",
+  "richard-benjamin",
+  "richard-brooks",
+  "richard-donner",
+  "richard-fleischer",
+  "richard-gere",
+  "richard-jenkins",
+  "richard-lester",
+  "richard-linklater",
+  "richard-widmark",
+  "ricky-gervais",
+  "ridley-scott",
+  "rip-torn",
+  "rob-cohen",
+  "rob-marshall",
+  "rob-minkoff",
+  "rob-reiner",
+  "robert-aldrich",
+  "robert-altman",
+  "robert-benton",
+  "robert-bresson",
+  "robert-de-niro",
+  "robert-downey-jr",
+  "robert-duvall",
+  "robert-loggia",
+  "robert-luketic",
+  "robert-mitchum",
+  "robert-patrick",
+  "robert-redford",
+  "robert-rodriguez",
+  "robert-ryan",
+  "robert-schwentke",
+  "robert-siodmak",
+  "robert-wise",
+  "robert-zemeckis",
+  "roberto-rossellini",
+  "robin-williams",
+  "robin-wright",
+  "rock-hudson",
+  "roddy-mcdowall",
+  "rodrigo-cortes",
+  "rodrigo-garcia",
+  "rodrigo-sorogoyen",
+  "roger-donaldson",
+  "roger-spottiswoode",
+  "roger-vadim",
+  "roland-emmerich",
+  "roman-polanski",
+  "ron-clements",
+  "ron-howard",
+  "ron-livingston",
+  "ron-perlman",
+  "ron-rifkin",
+  "ron-shelton",
+  "ronald-neame",
+  "rosamund-pike",
+  "rosario-dawson",
+  "rosemarie-dewitt",
+  "rouben-mamoulian",
+  "ruben-fleischer",
+  "russell-crowe",
+  "ryan-murphy",
+  "ryan-reynolds",
+  "sally-hawkins",
+  "salma-hayek",
+  "sam-mendes",
+  "sam-neill",
+  "sam-peckinpah",
+  "sam-raimi",
+  "sam-rockwell",
+  "sam-shepard",
+  "sam-wood",
+  "sammo-hung",
+  "samuel-l-jackson",
+  "santiago-segura",
+  "sarah-jessica-parker",
+  "scarlett-johansson",
+  "scott-cooper",
+  "scott-derrickson",
+  "scott-glenn",
+  "scott-hicks",
+  "scott-wilson",
+  "sean-anders",
+  "sean-bean",
+  "sean-connery",
+  "sean-penn",
+  "sebastian-stan",
+  "seijun-suzuki",
+  "sergei-m-eisenstein",
+  "sergio-corbucci",
+  "sergio-leone",
+  "seth-macfarlane",
+  "seth-rogen",
+  "shane-black",
+  "shawn-levy",
+  "shea-whigham",
+  "shelley-winters",
+  "shirley-henderson",
+  "shohei-imamura",
+  "shonda-rhimes",
+  "sidney-lumet",
+  "sig-ruman",
+  "sigourney-weaver",
+  "simon-pegg",
+  "simon-west",
+  "sofia-coppola",
+  "sophia-loren",
+  "spencer-tracy",
+  "spike-jonze",
+  "spike-lee",
+  "stanley-donen",
+  "stanley-kramer",
+  "stanley-kubrick",
+  "stanley-tucci",
+  "stefania-sandrelli",
+  "stefano-sollima",
+  "stellan-skarsgard",
+  "stephane-brize",
+  "stephen-daldry",
+  "stephen-frears",
+  "stephen-graham",
+  "stephen-hopkins",
+  "stephen-merchant",
+  "stephen-sommers",
+  "steve-buscemi",
+  "steve-carell",
+  "steve-martin",
+  "steve-rodney-mcqueen",
+  "steve-zahn",
+  "steven-knight",
+  "steven-soderbergh",
+  "steven-spielberg",
+  "susan-sarandon",
+  "susanna-white",
+  "susanne-bier",
+  "sydney-pollack",
+  "sylvester-stallone",
+  "tadanobu-asano",
+  "taika-waititi",
+  "takashi-miike",
+  "takashi-shimizu",
+  "takashi-shimura",
+  "takeshi-kitano",
+  "tatsuya-nakadai",
+  "taylor-hackford",
+  "taylor-sheridan",
+  "terence-stamp",
+  "teresa-fernandez-valdes",
+  "terrence-malick",
+  "terry-gilliam",
+  "terry-jones",
+  "the-wachowskis",
+  "thomas-vinterberg",
+  "ti-west",
+  "tilda-swinton",
+  "tim-blake-nelson",
+  "tim-burton",
+  "tim-robbins",
+  "tim-roth",
+  "tim-story",
+  "timothy-spall",
+  "tobe-hooper",
+  "toby-jones",
+  "todd-haynes",
+  "todd-phillips",
+  "todd-solondz",
+  "tom-cruise",
+  "tom-hanks",
+  "tom-hardy",
+  "tom-holland",
+  "tom-hooper",
+  "tom-mccarthy",
+  "tom-mcgrath",
+  "tom-shadyac",
+  "tom-shankland",
+  "tom-tykwer",
+  "tom-wilkinson",
+  "tommy-lee-jones",
+  "tommy-wirkola",
+  "toni-collette",
+  "tony-curran",
+  "tony-scott",
+  "toshiro-mifune",
+  "tsai-ming-liang",
+  "tsui-hark",
+  "udo-kier",
+  "uma-thurman",
+  "uwe-boll",
+  "val-kilmer",
+  "valeria-golino",
+  "vera-farmiga",
+  "vicente-aranda",
+  "victor-fleming",
+  "viggo-mortensen",
+  "vince-gilligan",
+  "vince-vaughn",
+  "vincent-cassel",
+  "vincent-d-onofrio",
+  "vincent-price",
+  "vincente-minnelli",
+  "vincenzo-natali",
+  "ving-rhames",
+  "vinnie-jones",
+  "viola-davis",
+  "vittorio-de-sica",
+  "vittorio-gassman",
+  "walter-hill",
+  "walter-salles",
+  "ward-bond",
+  "wayne-wang",
+  "werner-herzog",
+  "wes-anderson",
+  "wes-craven",
+  "whoopi-goldberg",
+  "will-ferrell",
+  "will-patton",
+  "will-smith",
+  "willem-dafoe",
+  "william-a-wellman",
+  "william-dieterle",
+  "william-friedkin",
+  "william-h-macy",
+  "william-hurt",
+  "william-wyler",
+  "wilson-yip",
+  "wim-wenders",
+  "winona-ryder",
+  "wolfgang-petersen",
+  "wolfgang-reitherman",
+  "wong-kar-wai",
+  "woody-allen",
+  "woody-harrelson",
+  "xavier-dolan",
+  "yasujiro-ozu",
+  "yasuzo-masumura",
+  "yoji-yamada",
+  "yorgos-lanthimos",
+  "zack-snyder",
+  "zhang-yimou"
+]);
+
 // cloudflare/worker.js
 var DEFAULT_SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 var DEFAULT_SUPABASE_URL = "https://wibygecgfczcvaqewleq.supabase.co";
 var DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
+var RESERVED_PREFIXES = [
+  "/api/",
+  "/assets/",
+  "/posters/",
+  "/vips/",
+  "/internal/",
+  "/genero/",
+  "/pais/",
+  "/estudio/",
+  "/seleccion/",
+  "/titulo/",
+  "/actor/",
+  "/director/"
+];
+var RESERVED_EXACT = /* @__PURE__ */ new Set([
+  "/",
+  "",
+  "/sitemap.xml",
+  "/sitemap-index.xml",
+  "/llms.txt",
+  "/favicon.ico",
+  "/favicon.svg",
+  "/robots.txt"
+]);
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -2042,20 +3242,20 @@ var worker_default = {
       for (const slug of slugs) {
         const canonicalMovie = new URL(`/titulo/${slug}/`, url.origin).toString();
         const nonSlashMovie = new URL(`/titulo/${slug}`, url.origin).toString();
-        const canonicalTax = new URL(`/${slug}/`, url.origin).toString();
-        const nonSlashTax = new URL(`/${slug}`, url.origin).toString();
-        const canonicalDir = new URL(`/director/${slug}/`, url.origin).toString();
-        const nonSlashDir = new URL(`/director/${slug}`, url.origin).toString();
-        const canonicalAct = new URL(`/actor/${slug}/`, url.origin).toString();
-        const nonSlashAct = new URL(`/actor/${slug}`, url.origin).toString();
+        const canonicalPerson = new URL(`/${slug}/`, url.origin).toString();
+        const nonSlashPerson = new URL(`/${slug}`, url.origin).toString();
+        const canonicalGenre = new URL(`/genero/${slug}/`, url.origin).toString();
+        const canonicalCountry = new URL(`/pais/${slug}/`, url.origin).toString();
+        const canonicalStudio = new URL(`/estudio/${slug}/`, url.origin).toString();
+        const canonicalSel = new URL(`/seleccion/${slug}/`, url.origin).toString();
         const p1 = await cache.delete(canonicalMovie);
         const p2 = await cache.delete(nonSlashMovie);
-        const p3 = await cache.delete(canonicalTax);
-        const p4 = await cache.delete(nonSlashTax);
-        const p5 = await cache.delete(canonicalDir);
-        const p6 = await cache.delete(nonSlashDir);
-        const p7 = await cache.delete(canonicalAct);
-        const p8 = await cache.delete(nonSlashAct);
+        const p3 = await cache.delete(canonicalPerson);
+        const p4 = await cache.delete(nonSlashPerson);
+        const p5 = await cache.delete(canonicalGenre);
+        const p6 = await cache.delete(canonicalCountry);
+        const p7 = await cache.delete(canonicalStudio);
+        const p8 = await cache.delete(canonicalSel);
         if (p1 || p2 || p3 || p4 || p5 || p6 || p7 || p8) purgedCount++;
       }
       return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
@@ -2089,7 +3289,8 @@ var worker_default = {
         }
       });
     }
-    if ((url.pathname.startsWith("/titulo/") || url.pathname.startsWith("/director/") || url.pathname.startsWith("/actor/")) && !url.pathname.endsWith("/")) {
+    const isPrefixedSeoRoute = url.pathname.startsWith("/titulo/") || url.pathname.startsWith("/genero/") || url.pathname.startsWith("/pais/") || url.pathname.startsWith("/estudio/") || url.pathname.startsWith("/seleccion/");
+    if (isPrefixedSeoRoute && !url.pathname.endsWith("/")) {
       const canonicalRedirectUrl = new URL(`${url.pathname}/${url.search}`, url.origin);
       return Response.redirect(canonicalRedirectUrl.toString(), 301);
     }
@@ -2129,125 +3330,132 @@ var worker_default = {
               return response2;
             }
           }
-        } catch (err) {
+        } catch (_) {
         }
       }
     }
-    const isDirectorRoute = url.pathname.startsWith("/director/");
-    const isActorRoute = url.pathname.startsWith("/actor/");
-    if (isDirectorRoute || isActorRoute) {
-      const role = isDirectorRoute ? "director" : "actor";
-      const prefix = isDirectorRoute ? "/director/" : "/actor/";
-      const slug = url.pathname.replace(prefix, "").replace(/\/$/, "").trim();
-      if (slug) {
-        const cache = caches.default;
-        const canonicalKey = new Request(new URL(`${prefix}${slug}/`, url.origin).toString(), request);
-        const cached = await cache.match(canonicalKey);
-        if (cached) {
-          return cached;
-        }
-        const roleTypeFilter = isDirectorRoute ? "in.(D,DA,AD)" : "in.(A,AD,DA)";
-        const selectFields = "id,name,slug,type,vip,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
-        const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&type=${roleTypeFilter}&select=${selectFields}&limit=1`;
-        try {
-          const personRes = await fetch(personQueryUrl, {
-            headers: {
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${supabaseAnonKey}`,
-              Accept: "application/json"
-            }
-          });
-          if (personRes.ok) {
-            const persons = await personRes.json();
-            const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
-            if (person && person.biography && person.biography.trim()) {
-              const hasOtherRole = person.type === "AD" || person.type === "DA";
-              const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
-              const rpcParams = {
-                [isDirectorRoute ? "director_name" : "actor_name"]: person.name,
-                sort_field: "fa_votes",
-                sort_direction: "desc",
-                page_limit: 42,
-                get_count: true
-              };
-              const moviesRes = await fetch(rpcUrl, {
-                method: "POST",
-                headers: {
-                  apikey: supabaseAnonKey,
-                  Authorization: `Bearer ${supabaseAnonKey}`,
-                  "Content-Type": "application/json",
-                  Accept: "application/json"
-                },
-                body: JSON.stringify(rpcParams)
-              }).catch(() => null);
-              let movies = [];
-              if (moviesRes && moviesRes.ok) {
-                const moviesData = await moviesRes.json().catch(() => ({}));
-                movies = Array.isArray(moviesData?.items) ? moviesData.items : Array.isArray(moviesData) ? moviesData : [];
+    const isTaxonomyRoute = url.pathname.startsWith("/genero/") || url.pathname.startsWith("/pais/") || url.pathname.startsWith("/estudio/") || url.pathname.startsWith("/seleccion/");
+    if (isTaxonomyRoute) {
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (parts.length === 2) {
+        const [prefix, slug] = parts;
+        const taxInfo = resolveTaxonomy(slug, prefix);
+        if (taxInfo) {
+          if (!url.pathname.endsWith("/")) {
+            return Response.redirect(new URL(`${taxInfo.canonicalPath}${url.search}`, url.origin).toString(), 301);
+          }
+          const cache = caches.default;
+          const canonicalKey = new Request(new URL(taxInfo.canonicalPath, url.origin).toString(), request);
+          const cached = await cache.match(canonicalKey);
+          if (cached) {
+            return cached;
+          }
+          const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+          try {
+            const apiResponse = await fetch(rpcUrl, {
+              method: "POST",
+              headers: {
+                apikey: supabaseAnonKey,
+                Authorization: `Bearer ${supabaseAnonKey}`,
+                "Content-Type": "application/json",
+                Accept: "application/json"
+              },
+              body: JSON.stringify(taxInfo.rpcParams)
+            });
+            if (apiResponse.ok) {
+              const data = await apiResponse.json();
+              const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+              if (items.length > 0) {
+                const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
+                const response2 = new Response(html, {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                    "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+                  }
+                });
+                ctx?.waitUntil?.(cache.put(canonicalKey, response2.clone()));
+                return response2;
               }
-              const html = renderPersonHtml(person, role, hasOtherRole, movies, { siteOrigin: url.origin, storageUrl });
-              const responseHeaders = new Headers({
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-              });
-              const response2 = new Response(html, {
-                status: 200,
-                headers: responseHeaders
-              });
-              ctx?.waitUntil?.(cache.put(canonicalKey, response2.clone()));
-              return response2;
             }
+          } catch (_) {
           }
-        } catch (err) {
         }
       }
     }
-    const rawPath = url.pathname.replace(/^\/+|\/+$/g, "").trim();
-    if (rawPath && !rawPath.includes("/")) {
-      const taxInfo = resolveTaxonomy(rawPath);
-      if (taxInfo) {
-        if (!url.pathname.endsWith("/")) {
-          const canonicalRedirectUrl = new URL(`/${taxInfo.canonicalSlug}/${url.search}`, url.origin);
-          return Response.redirect(canonicalRedirectUrl.toString(), 301);
-        }
-        const cache = caches.default;
-        const canonicalKey = new Request(new URL(`/${taxInfo.canonicalSlug}/`, url.origin).toString(), request);
-        const cached = await cache.match(canonicalKey);
-        if (cached) {
-          return cached;
-        }
-        const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
-        try {
-          const apiResponse = await fetch(rpcUrl, {
-            method: "POST",
-            headers: {
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${supabaseAnonKey}`,
-              "Content-Type": "application/json",
-              Accept: "application/json"
-            },
-            body: JSON.stringify(taxInfo.rpcParams)
-          });
-          if (apiResponse.ok) {
-            const data = await apiResponse.json();
-            const items = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
-            if (items.length > 0) {
-              const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
-              const responseHeaders = new Headers({
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-              });
-              const response2 = new Response(html, {
-                status: 200,
-                headers: responseHeaders
-              });
-              ctx?.waitUntil?.(cache.put(canonicalKey, response2.clone()));
-              return response2;
-            }
+    const isReservedPrefix = RESERVED_PREFIXES.some((p) => url.pathname.startsWith(p));
+    const isReservedExact = RESERVED_EXACT.has(url.pathname);
+    const hasFileExtension = url.pathname.includes(".") && !url.pathname.endsWith("/");
+    if (!isReservedPrefix && !isReservedExact && !hasFileExtension) {
+      const segments = url.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+      if (segments.length === 1) {
+        const slug = segments[0];
+        if (VIP_SLUGS.has(slug)) {
+          if (!url.pathname.endsWith("/")) {
+            return Response.redirect(new URL(`/${slug}/${url.search}`, url.origin).toString(), 301);
           }
-        } catch (err) {
+          const cache = caches.default;
+          const canonicalKey = new Request(new URL(`/${slug}/`, url.origin).toString(), request);
+          const cached = await cache.match(canonicalKey);
+          if (cached) {
+            return cached;
+          }
+          const selectFields = "id,name,slug,type,vip,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
+          const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&vip=eq.1&select=${selectFields}&limit=1`;
+          try {
+            const personRes = await fetch(personQueryUrl, {
+              headers: {
+                apikey: supabaseAnonKey,
+                Authorization: `Bearer ${supabaseAnonKey}`,
+                Accept: "application/json"
+              }
+            });
+            if (personRes.ok) {
+              const persons = await personRes.json();
+              const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
+              if (person) {
+                const isDirector = person.type === "D" || person.type === "DA";
+                const role = isDirector ? "director" : "actor";
+                const hasOtherRole = person.type === "AD" || person.type === "DA";
+                const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+                const rpcParams = {
+                  [isDirector ? "director_name" : "actor_name"]: person.name,
+                  sort_field: "fa_votes",
+                  sort_direction: "desc",
+                  page_limit: 42,
+                  get_count: true
+                };
+                const moviesRes = await fetch(rpcUrl, {
+                  method: "POST",
+                  headers: {
+                    apikey: supabaseAnonKey,
+                    Authorization: `Bearer ${supabaseAnonKey}`,
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                  },
+                  body: JSON.stringify(rpcParams)
+                }).catch(() => null);
+                let movies = [];
+                if (moviesRes && moviesRes.ok) {
+                  const moviesData = await moviesRes.json().catch(() => ({}));
+                  movies = Array.isArray(moviesData?.items) ? moviesData.items : Array.isArray(moviesData) ? moviesData : [];
+                }
+                const html = renderPersonHtml(person, role, hasOtherRole, movies, { siteOrigin: url.origin, storageUrl });
+                const response2 = new Response(html, {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                    "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+                  }
+                });
+                ctx?.waitUntil?.(cache.put(canonicalKey, response2.clone()));
+                return response2;
+              }
+            }
+          } catch (_) {
+          }
         }
       }
     }

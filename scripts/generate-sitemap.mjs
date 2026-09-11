@@ -85,35 +85,38 @@ async function generateSitemap() {
 
   console.log(`[sitemap] Se recuperaron ${slugs.length} títulos indexables válidos.`);
 
-  // 2. Directores VIP con biografía redactada
-  const { data: vipDirectors, error: dirError } = await supabase
-    .from("people")
-    .select("slug")
-    .in("type", ["D", "DA", "AD"])
-    .not("biography", "is", null)
-    .neq("biography", "")
-    .order("name", { ascending: true });
+  // 2. Personas VIP (vip = 1 como única condición, sin condición de biografía)
+  const vipSlugs = [];
+  let pFrom = 0;
 
-  if (dirError) {
-    console.warn(`[sitemap] Error consultando directores VIP: ${dirError.message}`);
+  while (true) {
+    const { data: pData, error: pErr } = await supabase
+      .from("people")
+      .select("slug")
+      .eq("vip", 1)
+      .not("slug", "is", null)
+      .neq("slug", "")
+      .range(pFrom, pFrom + PAGE_SIZE - 1)
+      .order("slug", { ascending: true });
+
+    if (pErr) {
+      console.warn(`[sitemap] Error consultando personas VIP (offset ${pFrom}): ${pErr.message}`);
+      break;
+    }
+
+    if (!pData || pData.length === 0) break;
+
+    for (const row of pData) {
+      if (row.slug && !vipSlugs.includes(row.slug)) {
+        vipSlugs.push(row.slug);
+      }
+    }
+
+    if (pData.length < PAGE_SIZE) break;
+    pFrom += PAGE_SIZE;
   }
-  const directorSlugs = (vipDirectors || []).map(d => d.slug).filter(Boolean);
-  console.log(`[sitemap] Se recuperaron ${directorSlugs.length} directores VIP con biografía.`);
 
-  // 3. Actores VIP con biografía redactada
-  const { data: vipActors, error: actError } = await supabase
-    .from("people")
-    .select("slug")
-    .in("type", ["A", "AD", "DA"])
-    .not("biography", "is", null)
-    .neq("biography", "")
-    .order("name", { ascending: true });
-
-  if (actError) {
-    console.warn(`[sitemap] Error consultando actores VIP: ${actError.message}`);
-  }
-  const actorSlugs = (vipActors || []).map(a => a.slug).filter(Boolean);
-  console.log(`[sitemap] Se recuperaron ${actorSlugs.length} actores VIP con biografía.`);
+  console.log(`[sitemap] Se recuperaron ${vipSlugs.length} personas VIP indexables.`);
 
   // Ensamblar XML estándar
   const urlEntries = [
@@ -121,54 +124,56 @@ async function generateSitemap() {
     <loc>${SITE_ORIGIN}/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-  </url>`,
-    `  <url>
-    <loc>${SITE_ORIGIN}/peliculas/</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>`,
-    `  <url>
-    <loc>${SITE_ORIGIN}/series/</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
   </url>`
   ];
 
-  // 126 Landings Canónicas de Taxonomías Cerradas (Géneros, Estudios, Selecciones y Países activos)
-  const taxonomySlugs = [
-    ...Object.keys(GENRE_MAP),
-    ...Object.keys(STUDIO_MAP),
-    ...Object.keys(SELECTION_MAP),
+  // Landings Canónicas de Taxonomías Cerradas prefijadas (/genero/, /estudio/, /seleccion/, /pais/)
+  for (const slug of Object.keys(GENRE_MAP)) {
+    urlEntries.push(`  <url>
+    <loc>${SITE_ORIGIN}/genero/${slug}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+  }
+
+  for (const slug of Object.keys(STUDIO_MAP)) {
+    urlEntries.push(`  <url>
+    <loc>${SITE_ORIGIN}/estudio/${slug}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+  }
+
+  for (const slug of Object.keys(SELECTION_MAP)) {
+    urlEntries.push(`  <url>
+    <loc>${SITE_ORIGIN}/seleccion/${slug}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+  }
+
+  const countrySlugs = new Set([
     ...Object.keys(REGIONAL_GROUPS_MAP),
     ...Object.keys(ACTIVE_COUNTRIES_MAP)
-  ];
-
-  for (const taxSlug of taxonomySlugs) {
+  ]);
+  for (const slug of countrySlugs) {
     urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/${taxSlug}/</loc>
+    <loc>${SITE_ORIGIN}/pais/${slug}/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`);
   }
 
-  // Fichas VIP de Directores
-  for (const dirSlug of directorSlugs) {
+  // Fichas de Personas VIP en la raíz canónica (/:slug/)
+  for (const slug of vipSlugs) {
     urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/director/${dirSlug}/</loc>
+    <loc>${SITE_ORIGIN}/${slug}/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`);
   }
 
-  // Fichas VIP de Actores
-  for (const actSlug of actorSlugs) {
-    urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/actor/${actSlug}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`);
-  }
-
+  // Fichas de Películas en el espacio exclusivo /titulo/
   for (const slug of slugs) {
     urlEntries.push(`  <url>
     <loc>${SITE_ORIGIN}/titulo/${slug}/</loc>

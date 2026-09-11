@@ -92,7 +92,7 @@ export function renderSpaPersonCard(person, role, hasOtherRole, siteOrigin, base
   const tooltipText = isDirector
     ? `Ver filmografía de ${person.name} como Actor`
     : `Ver películas de ${person.name} como Director`;
-  const targetUrl = `${siteOrigin}/${targetRole}/${slug}/`;
+  const targetUrl = `${siteOrigin}/${slug}/`;
 
   const titleLengthClass = getTitleLengthClass(person.name);
 
@@ -191,34 +191,39 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
   const baseUrl = options.baseUrl || '/';
   const storageUrl = options.storageUrl || 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public';
   const slug = person.slug || toSlug(person.name);
-  const canonicalUrl = `${siteOrigin}/${role}/${slug}/`;
-  const spaRedirectUrl = `${baseUrl}?_p=/${role}/${slug}/`;
+  const canonicalUrl = `${siteOrigin}/${slug}/`;
+  const isDirector = role === 'director' || person.type === 'D' || person.type === 'DA';
+  const spaRedirectUrl = `${baseUrl}?_p=/${isDirector ? 'director' : 'actor'}/${slug}/`;
 
-  const isDirector = role === 'director';
-  const roleLabel = isDirector ? 'Director' : 'Actor';
+  const roleLabel = person.type === 'D' ? 'Director' : (person.type === 'A' ? 'Actor' : 'Cineasta');
   const roleTitle = isDirector ? 'Director de cine' : 'Actor cinematográfico';
 
-  const seoTitle = `${person.name} — Películas y Biografía del ${roleLabel} | Videoclub Digital`;
+  const seoTitle = `${person.name} — Películas y Biografía | Videoclub Digital`;
   const bioExcerpt = person.titulo_bio 
-    ? `${person.name}: ${person.titulo_bio}. Filmografía completa ordenada por valoración y biografía en Videoclub Digital.`
+    ? `${person.name}: ${person.titulo_bio}. Filmografía completa y biografía en Videoclub Digital.`
     : `Filmografía completa, biografía y títulos destacados de ${person.name} en Videoclub Digital.`;
   const description = bioExcerpt.length > 160 ? bioExcerpt.substring(0, 157) + '...' : bioExcerpt;
 
   const photoUrl = `${siteOrigin}/vips/${slug}.webp`;
 
-  // 1. Schema.org Person
+  // 1. Schema.org Person con propiedades condicionales
   const personSchema = {
     "@context": "https://schema.org",
     "@type": "Person",
     "name": person.name,
     "url": canonicalUrl,
-    "image": photoUrl,
-    "description": person.titulo_bio || person.biography?.substring(0, 300) || undefined,
-    "jobTitle": roleTitle,
-    "hasOccupation": {
-      "@type": "Occupation",
-      "name": roleTitle
-    },
+    "mainEntityOfPage": canonicalUrl,
+    ...(photoUrl ? { "image": photoUrl } : {}),
+    ...(person.titulo_bio || person.biography ? {
+      "description": person.titulo_bio || person.biography?.substring(0, 300)
+    } : {}),
+    ...(roleTitle ? {
+      "jobTitle": roleTitle,
+      "hasOccupation": {
+        "@type": "Occupation",
+        "name": roleTitle
+      }
+    } : {}),
     ...(person.birthday ? { "birthDate": person.birthday } : {}),
     ...(person.deathday ? { "deathDate": person.deathday } : {}),
     ...(person.place_of_birth ? {
@@ -233,7 +238,6 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
         "name": person.countries.name
       }
     } : {}),
-    "mainEntityOfPage": canonicalUrl,
     ...(movies.length > 0 ? {
       "knowsAbout": movies.slice(0, 6).map(m => m.title || m.original_title)
     } : {})
@@ -287,12 +291,6 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
       {
         "@type": "ListItem",
         "position": 2,
-        "name": isDirector ? "Directores" : "Actores",
-        "item": `${siteOrigin}/`
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
         "name": person.name,
         "item": canonicalUrl
       }

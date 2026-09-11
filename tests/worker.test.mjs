@@ -139,26 +139,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             headers: { "Content-Type": "application/json" }
           });
         }
-        if (urlStr.includes("slug=eq.thin-director")) {
-          return new Response(JSON.stringify([{
-            id: 9999,
-            name: "Thin Director",
-            slug: "thin-director",
-            type: "D",
-            vip: 0,
-            biography: null
-          }]), {
-            status: 200,
-            headers: { "Content-Type": "application/json" }
-          });
-        }
         if (urlStr.includes("slug=eq.christopher-nolan")) {
-          if (urlStr.includes("type=in.(A,AD,DA)")) {
-            return new Response(JSON.stringify([]), {
-              status: 200,
-              headers: { "Content-Type": "application/json" }
-            });
-          }
           const sampleDirector = {
             id: 4134,
             name: "Christopher Nolan",
@@ -179,12 +160,6 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
           });
         }
         if (urlStr.includes("slug=eq.harrison-ford")) {
-          if (urlStr.includes("type=in.(D,DA,AD)")) {
-            return new Response(JSON.stringify([]), {
-              status: 200,
-              headers: { "Content-Type": "application/json" }
-            });
-          }
           const sampleActor = {
             id: 506,
             name: "Harrison Ford",
@@ -502,15 +477,15 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(text.includes("https://videoclub.digital/sitemap.xml"));
   });
 
-  test("Taxonomías: /sci-fi redirige con 301 a /sci-fi/", async () => {
-    const req = new Request("https://videoclub.digital/sci-fi");
+  test("Taxonomías: /genero/sci-fi redirige con 301 a /genero/sci-fi/", async () => {
+    const req = new Request("https://videoclub.digital/genero/sci-fi");
     const res = await worker.fetch(req, {}, defaultCtx);
     assert.equal(res.status, 301);
-    assert.equal(res.headers.get("Location"), "https://videoclub.digital/sci-fi/");
+    assert.equal(res.headers.get("Location"), "https://videoclub.digital/genero/sci-fi/");
   });
 
-  test("Taxonomías: /sci-fi/ entrega 200 OK con CollectionPage, ItemList y Cache-Control", async () => {
-    const req = new Request("https://videoclub.digital/sci-fi/");
+  test("Taxonomías: /genero/sci-fi/ entrega 200 OK con CollectionPage, ItemList y Cache-Control", async () => {
+    const req = new Request("https://videoclub.digital/genero/sci-fi/");
     const res = await worker.fetch(req, {}, defaultCtx);
     assert.equal(res.status, 200);
     assert.ok(res.headers.get("Content-Type").includes("text/html"));
@@ -535,8 +510,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(!html.includes("collection-hero"), "NO debe contener el bloque hero invasivo");
   });
 
-  test("Taxonomías: Países, Estudios y Selecciones (/espana/, /latam/, /criterion/, /a24/) responden 200 OK", async () => {
-    const routes = ["/espana/", "/latam/", "/criterion/", "/a24/"];
+  test("Taxonomías: Países, Estudios y Selecciones (/pais/espana/, /pais/latam/, /seleccion/criterion/, /estudio/a24/) responden 200 OK", async () => {
+    const routes = ["/pais/espana/", "/pais/latam/", "/seleccion/criterion/", "/estudio/a24/"];
     for (const r of routes) {
       const req = new Request(`https://videoclub.digital${r}`);
       const res = await worker.fetch(req, {}, defaultCtx);
@@ -545,16 +520,16 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       assert.ok(html.includes('"@type":"CollectionPage"'));
       assert.ok(html.includes("movie-card"));
 
-      if (r === "/criterion/") {
+      if (r === "/seleccion/criterion/") {
         assert.ok(html.includes("filter-pill is-active is-static"), "Selecciones deben tener píldora no clickable");
         assert.ok(!html.includes('href="/?_p=/criterion/"'), "Selecciones NO deben tener enlace a la SPA");
-      } else if (r === "/espana/") {
+      } else if (r === "/pais/espana/") {
         assert.ok(html.includes('href="/?_p=/espana/"'), "Países deben tener enlace a la SPA");
       }
     }
   });
 
-  test("Taxonomías: Purga de /sci-fi/ invalida la caché", async () => {
+  test("Taxonomías: Purga de /genero/sci-fi/ invalida la caché", async () => {
     const purgeReq = new Request("https://videoclub.digital/internal/purge", {
       method: "POST",
       headers: {
@@ -585,8 +560,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(css.includes("margin-left:auto"), "Debe contener alineación derecha para año y bandera");
   });
 
-  test("Directores VIP: /director/christopher-nolan/ responde 200 OK con Schema Person y filmografía", async () => {
-    const req = new Request("https://videoclub.digital/director/christopher-nolan/");
+  test("Personas VIP en Raíz: /christopher-nolan/ responde 200 OK con Schema Person, foto y filmografía", async () => {
+    const req = new Request("https://videoclub.digital/christopher-nolan/");
     const res = await worker.fetch(req, {}, defaultCtx);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("Content-Type"), "text/html; charset=utf-8");
@@ -599,16 +574,17 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes('"@type":"CollectionPage"'));
     assert.ok(html.includes('"@type":"ItemList"'));
     assert.ok(html.includes("person-card"), "Debe incluir la ficha VIP .person-card");
-    assert.ok(html.includes("/vips/christopher-nolan.webp"), "Debe enlazar a la foto VIP del director");
+    assert.ok(html.includes("/vips/christopher-nolan.webp"), "Debe enlazar a la foto VIP de la persona");
     assert.ok(html.includes("Londres, UK"), "Debe mostrar el lugar de nacimiento");
     assert.ok(html.includes("Cineasta británico maestro de puestas en escena conceptuales"), "Debe mostrar el titular biográfico");
     assert.ok(html.includes("Apasionado del medio audiovisual"), "Debe mostrar la biografía");
     assert.ok(html.includes("filter-pill is-active"), "Debe incluir la píldora de filtro con el nombre");
-    assert.ok(html.includes('href="/?_p=/director/christopher-nolan/"'), "La píldora debe enlazar a la SPA");
+    assert.ok(html.includes('href="/?_p=/director/christopher-nolan/"'), "La píldora debe enlazar al filtro en la SPA");
+    assert.ok(html.includes('<link rel="canonical" href="https://videoclub.digital/christopher-nolan/" />'));
   });
 
-  test("Actores VIP: /actor/harrison-ford/ responde 200 OK con Schema Person y filmografía", async () => {
-    const req = new Request("https://videoclub.digital/actor/harrison-ford/");
+  test("Personas VIP en Raíz: /harrison-ford/ responde 200 OK con Schema Person y filmografía", async () => {
+    const req = new Request("https://videoclub.digital/harrison-ford/");
     const res = await worker.fetch(req, {}, defaultCtx);
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("Content-Type"), "text/html; charset=utf-8");
@@ -621,38 +597,61 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("/vips/harrison-ford.webp"));
     assert.ok(html.includes("Chicago, EEUU"));
     assert.ok(html.includes("Héroe arquetípico del cine de aventuras"));
-    assert.ok(html.includes('href="/?_p=/actor/harrison-ford/"'));
+    assert.ok(html.includes('href="/?_p=/actor/harrison-ford/"'), "La píldora debe enlazar al filtro en la SPA");
+    assert.ok(html.includes('<link rel="canonical" href="https://videoclub.digital/harrison-ford/" />'));
   });
 
-  test("Normalización 301: /director/:slug y /actor/:slug sin barra final redirigen con 301", async () => {
-    const dirReq = new Request("https://videoclub.digital/director/christopher-nolan");
+  test("Normalización 301 en Raíz: /:vip-slug sin barra final redirige con 301 a /:vip-slug/", async () => {
+    const dirReq = new Request("https://videoclub.digital/christopher-nolan");
     const dirRes = await worker.fetch(dirReq, {}, defaultCtx);
     assert.equal(dirRes.status, 301);
-    assert.equal(dirRes.headers.get("Location"), "https://videoclub.digital/director/christopher-nolan/");
+    assert.equal(dirRes.headers.get("Location"), "https://videoclub.digital/christopher-nolan/");
 
-    const actReq = new Request("https://videoclub.digital/actor/harrison-ford");
+    const actReq = new Request("https://videoclub.digital/harrison-ford");
     const actRes = await worker.fetch(actReq, {}, defaultCtx);
     assert.equal(actRes.status, 301);
-    assert.equal(actRes.headers.get("Location"), "https://videoclub.digital/actor/harrison-ford/");
+    assert.equal(actRes.headers.get("Location"), "https://videoclub.digital/harrison-ford/");
   });
 
-  test("Anti-Thin Content: Personalidad sin biografía delega limpiamente al origen", async () => {
-    const req = new Request("https://videoclub.digital/director/thin-director/");
+  test("Aislamiento SPA: /actor/* y /director/* son rutas reservadas que entregan la SPA sin redirigir al SEO", async () => {
+    const actReq = new Request("https://videoclub.digital/actor/harrison-ford/");
+    const actRes = await worker.fetch(actReq, {}, defaultCtx);
+    assert.equal(actRes.status, 200);
+    const actHtml = await actRes.text();
+    assert.ok(actHtml.includes("<title>Videoclub</title>"), "Debe entregar la SPA para /actor/*");
+
+    const dirReq = new Request("https://videoclub.digital/director/christopher-nolan/");
+    const dirRes = await worker.fetch(dirReq, {}, defaultCtx);
+    assert.equal(dirRes.status, 200);
+    const dirHtml = await dirRes.text();
+    assert.ok(dirHtml.includes("<title>Videoclub</title>"), "Debe entregar la SPA para /director/*");
+  });
+
+  test("Descarte Instantáneo O(1): Slug no VIP delega al origen SPA sin consultar a Supabase", async () => {
+    const nonVipSlug = "slug-no-vip-inventado";
+    const initialCallsCount = fetchCalls.length;
+
+    const req = new Request(`https://videoclub.digital/${nonVipSlug}/`);
     const res = await worker.fetch(req, {}, defaultCtx);
+
     assert.equal(res.status, 200);
-    assert.ok(fetchCalls.some(c => c.url.includes("slug=eq.thin-director")));
     const html = await res.text();
-    assert.ok(html.includes("<title>Videoclub</title>"), "Debe delegar al origen si no tiene biografía");
+    assert.ok(html.includes("<title>Videoclub</title>"), "Debe delegar al origen SPA");
+
+    // Verificar que NINGUNA llamada a fetch haya ido a Supabase (/rest/v1/people)
+    const newCalls = fetchCalls.slice(initialCallsCount);
+    const calledSupabasePeople = newCalls.some(c => c.url.includes("/rest/v1/people"));
+    assert.equal(calledSupabasePeople, false, "El descarte O(1) no debe contactar la base de datos para slugs no VIP");
   });
 
-  test("Purga selectiva: /internal/purge invalida claves de directores y actores", async () => {
+  test("Purga selectiva: /internal/purge invalida claves de personas y taxonomías", async () => {
     const purgeReq = new Request("https://videoclub.digital/internal/purge", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer videoclub-purge-secret",
       },
-      body: JSON.stringify({ slugs: ["christopher-nolan", "harrison-ford"] }),
+      body: JSON.stringify({ slugs: ["christopher-nolan", "sci-fi"] }),
     });
     const purgeRes = await worker.fetch(purgeReq, {}, defaultCtx);
     assert.equal(purgeRes.status, 200);

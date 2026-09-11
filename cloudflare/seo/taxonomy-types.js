@@ -393,27 +393,32 @@ export const ACTIVE_COUNTRIES_MAP = {
 
 /**
  * Resuelve un slug de URL a su entidad de taxonomía correspondiente.
- * Devuelve null si el slug no pertenece a ninguna de las taxonomías activas.
+ * Admite opcionalmente el prefijo de dimensión ('genero', 'pais', 'estudio', 'seleccion').
  * 
  * @param {string} rawSlug
+ * @param {string|null} expectedPrefix Prefijo dimensional opcional ('genero', 'pais', 'estudio', 'seleccion')
  * @returns {object|null}
  */
-export function resolveTaxonomy(rawSlug) {
+export function resolveTaxonomy(rawSlug, expectedPrefix = null) {
   if (!rawSlug) return null;
   const slug = String(rawSlug).trim().toLowerCase().replace(/^\/+|\/+$/g, "");
   if (!slug) return null;
 
-  // 1. Género
-  if (GENRE_MAP[slug]) {
+  const prefix = expectedPrefix ? String(expectedPrefix).trim().toLowerCase() : null;
+
+  // 1. Género (/genero/:slug/)
+  if ((!prefix || prefix === "genero") && GENRE_MAP[slug]) {
     const item = GENRE_MAP[slug];
     return {
       type: "genre",
+      prefix: "genero",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} — Videoclub Digital`,
       description: item.description,
       badgeLabel: "Género",
       canonicalSlug: slug,
+      canonicalPath: `/genero/${slug}/`,
       categoryBreadcrumb: "Géneros",
       rpcParams: {
         genre_name: item.name,
@@ -426,17 +431,19 @@ export function resolveTaxonomy(rawSlug) {
     };
   }
 
-  // 2. Estudio
-  if (STUDIO_MAP[slug]) {
+  // 2. Estudio (/estudio/:slug/)
+  if ((!prefix || prefix === "estudio") && STUDIO_MAP[slug]) {
     const item = STUDIO_MAP[slug];
     return {
       type: "studio",
+      prefix: "estudio",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} — Videoclub Digital`,
       description: item.description,
       badgeLabel: "Estudio",
       canonicalSlug: slug,
+      canonicalPath: `/estudio/${slug}/`,
       categoryBreadcrumb: "Estudios",
       rpcParams: {
         p_studio_code: item.code,
@@ -449,17 +456,19 @@ export function resolveTaxonomy(rawSlug) {
     };
   }
 
-  // 3. Selección Editorial
-  if (SELECTION_MAP[slug]) {
+  // 3. Selección Editorial (/seleccion/:slug/)
+  if ((!prefix || prefix === "seleccion") && SELECTION_MAP[slug]) {
     const item = SELECTION_MAP[slug];
     return {
       type: "selection",
+      prefix: "seleccion",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} — Videoclub Digital`,
       description: item.description,
       badgeLabel: "Colección",
       canonicalSlug: slug,
+      canonicalPath: `/seleccion/${slug}/`,
       categoryBreadcrumb: "Selecciones",
       rpcParams: {
         p_selection_code: item.code,
@@ -472,17 +481,19 @@ export function resolveTaxonomy(rawSlug) {
     };
   }
 
-  // 4. Grupo Regional
-  if (REGIONAL_GROUPS_MAP[slug]) {
+  // 4. Grupo Regional (/pais/:slug/)
+  if ((!prefix || prefix === "pais") && REGIONAL_GROUPS_MAP[slug]) {
     const item = REGIONAL_GROUPS_MAP[slug];
     return {
       type: "country",
+      prefix: "pais",
       name: item.name,
       title: item.title,
       seoTitle: `${item.title} — Videoclub Digital`,
       description: item.description,
       badgeLabel: "Región",
       canonicalSlug: slug,
+      canonicalPath: `/pais/${slug}/`,
       categoryBreadcrumb: "Países",
       rpcParams: {
         country_name: item.code,
@@ -495,13 +506,14 @@ export function resolveTaxonomy(rawSlug) {
     };
   }
 
-  // 5. País Activo Individual
-  if (ACTIVE_COUNTRIES_MAP[slug]) {
+  // 5. País Activo Individual (/pais/:slug/)
+  if ((!prefix || prefix === "pais") && ACTIVE_COUNTRIES_MAP[slug]) {
     const item = ACTIVE_COUNTRIES_MAP[slug];
     const countryTitle = `Cine de ${item.name}`;
     const countryDesc = `Descubre las mejores películas y series de ${item.name} disponibles en streaming en España, ordenadas por valoración y votos.`;
     return {
       type: "country",
+      prefix: "pais",
       name: item.name,
       code: item.code,
       title: countryTitle,
@@ -509,6 +521,7 @@ export function resolveTaxonomy(rawSlug) {
       description: countryDesc,
       badgeLabel: "País",
       canonicalSlug: slug,
+      canonicalPath: `/pais/${slug}/`,
       categoryBreadcrumb: "Países",
       rpcParams: {
         country_name: item.name,

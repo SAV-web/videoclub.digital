@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-llms.mjs && node scripts/generate-sitemap.mjs && vite build",
+    "build": "node scripts/generate-llms.mjs && node scripts/generate-vip-manifest.mjs && node scripts/generate-sitemap.mjs && vite build",
     "build:worker": "npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
     "check": "tsc --noEmit",
     "preview": "vite preview",
     "generate:llms": "node scripts/generate-llms.mjs",
+    "generate:vip-manifest": "node scripts/generate-vip-manifest.mjs",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
+    "deploy:worker": "npx wrangler deploy",
     "test": "node --test --test-concurrency=1 --test-reporter=spec tests/*.test.mjs"
   },
   "devDependencies": {

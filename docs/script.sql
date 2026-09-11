@@ -850,6 +850,7 @@ ALTER TABLE public.people_staging ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.people_staging DROP CONSTRAINT IF EXISTS people_staging_pkey;
 ALTER TABLE public.people_staging ALTER COLUMN id DROP NOT NULL;
 ALTER TABLE public.people_staging ALTER COLUMN name DROP NOT NULL;
+ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS vip text;
 
 REVOKE ALL ON TABLE public.movies_staging, public.people_staging FROM anon, authenticated, PUBLIC;
 GRANT ALL ON TABLE public.movies_staging, public.people_staging TO service_role;
@@ -955,7 +956,12 @@ BEGIN
     SELECT DISTINCT
         TRIM(p.name),
         COALESCE(NULLIF(UPPER(TRIM(p.type)), ''), 'A'),
-        CASE WHEN p.biography IS NOT NULL AND TRIM(p.biography) <> '' THEN 1 ELSE 0 END
+        CASE 
+            WHEN TRIM(COALESCE(p.vip::text, '')) IN ('1', 'true', 't', 'TRUE') THEN 1
+            WHEN TRIM(COALESCE(p.vip::text, '')) IN ('0', 'false', 'f', 'FALSE') THEN 0
+            WHEN p.biography IS NOT NULL AND TRIM(p.biography) <> '' THEN 1 
+            ELSE 0 
+        END
     FROM public.people_staging p
     WHERE p.name IS NOT NULL AND TRIM(p.name) <> ''
     ON CONFLICT (name) DO UPDATE SET 
@@ -982,7 +988,8 @@ BEGIN
             NULLIF(TRIM(p.titulo_bio), '') AS titulo_bio,
             NULLIF(TRIM(p.biography), '') AS biography,
             NULLIF(TRIM(p.components), '') AS components,
-            UPPER(TRIM(p.type)) AS staging_type
+            UPPER(TRIM(p.type)) AS staging_type,
+            TRIM(p.vip::text) AS vip_raw
         FROM public.people_staging p
         LEFT JOIN public.countries c 
             ON (p.country_id ~ '^[0-9]+$' AND c.id = p.country_id::int)
@@ -1001,6 +1008,8 @@ BEGIN
         biography = COALESCE(src.biography, p.biography),
         components = COALESCE(src.components, p.components),
         vip = CASE 
+            WHEN src.vip_raw IN ('1', 'true', 't', 'TRUE') THEN 1
+            WHEN src.vip_raw IN ('0', 'false', 'f', 'FALSE') THEN 0
             WHEN (src.biography IS NOT NULL AND TRIM(src.biography) <> '') 
               OR (p.biography IS NOT NULL AND TRIM(p.biography) <> '') THEN 1 
             ELSE p.vip 
@@ -1020,6 +1029,10 @@ BEGIN
         (src.titulo_bio IS NOT NULL AND p.titulo_bio IS DISTINCT FROM src.titulo_bio) OR
         (src.biography IS NOT NULL AND p.biography IS DISTINCT FROM src.biography) OR
         (src.components IS NOT NULL AND p.components IS DISTINCT FROM src.components) OR
+        (src.vip_raw IS NOT NULL AND (
+            (src.vip_raw IN ('1', 'true', 't', 'TRUE') AND p.vip <> 1) OR
+            (src.vip_raw IN ('0', 'false', 'f', 'FALSE') AND p.vip <> 0)
+        )) OR
         (p.vip = 0 AND (src.biography IS NOT NULL OR p.biography IS NOT NULL))
     );
     GET DIAGNOSTICS people_modified_count = ROW_COUNT;

@@ -20,10 +20,37 @@ import { SEO_CARD_CSS } from "./seo/seo-card-css.js";
 import { resolveTaxonomy } from "./seo/taxonomy-types.js";
 import { renderTaxonomyHtml } from "./seo/render-taxonomy.js";
 import { renderPersonHtml } from "./seo/render-person.js";
+import { VIP_SLUGS } from "./seo/vip-manifest.js";
 
 const DEFAULT_SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 const DEFAULT_SUPABASE_URL = "https://wibygecgfczcvaqewleq.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
+
+const RESERVED_PREFIXES = [
+  "/api/",
+  "/assets/",
+  "/posters/",
+  "/vips/",
+  "/internal/",
+  "/genero/",
+  "/pais/",
+  "/estudio/",
+  "/seleccion/",
+  "/titulo/",
+  "/actor/",
+  "/director/"
+];
+
+const RESERVED_EXACT = new Set([
+  "/",
+  "",
+  "/sitemap.xml",
+  "/sitemap-index.xml",
+  "/llms.txt",
+  "/favicon.ico",
+  "/favicon.svg",
+  "/robots.txt"
+]);
 
 export default {
   async fetch(request, env, ctx) {
@@ -50,20 +77,21 @@ export default {
       for (const slug of slugs) {
         const canonicalMovie = new URL(`/titulo/${slug}/`, url.origin).toString();
         const nonSlashMovie = new URL(`/titulo/${slug}`, url.origin).toString();
-        const canonicalTax = new URL(`/${slug}/`, url.origin).toString();
-        const nonSlashTax = new URL(`/${slug}`, url.origin).toString();
-        const canonicalDir = new URL(`/director/${slug}/`, url.origin).toString();
-        const nonSlashDir = new URL(`/director/${slug}`, url.origin).toString();
-        const canonicalAct = new URL(`/actor/${slug}/`, url.origin).toString();
-        const nonSlashAct = new URL(`/actor/${slug}`, url.origin).toString();
+        const canonicalPerson = new URL(`/${slug}/`, url.origin).toString();
+        const nonSlashPerson = new URL(`/${slug}`, url.origin).toString();
+        const canonicalGenre = new URL(`/genero/${slug}/`, url.origin).toString();
+        const canonicalCountry = new URL(`/pais/${slug}/`, url.origin).toString();
+        const canonicalStudio = new URL(`/estudio/${slug}/`, url.origin).toString();
+        const canonicalSel = new URL(`/seleccion/${slug}/`, url.origin).toString();
+
         const p1 = await cache.delete(canonicalMovie);
         const p2 = await cache.delete(nonSlashMovie);
-        const p3 = await cache.delete(canonicalTax);
-        const p4 = await cache.delete(nonSlashTax);
-        const p5 = await cache.delete(canonicalDir);
-        const p6 = await cache.delete(nonSlashDir);
-        const p7 = await cache.delete(canonicalAct);
-        const p8 = await cache.delete(nonSlashAct);
+        const p3 = await cache.delete(canonicalPerson);
+        const p4 = await cache.delete(nonSlashPerson);
+        const p5 = await cache.delete(canonicalGenre);
+        const p6 = await cache.delete(canonicalCountry);
+        const p7 = await cache.delete(canonicalStudio);
+        const p8 = await cache.delete(canonicalSel);
         if (p1 || p2 || p3 || p4 || p5 || p6 || p7 || p8) purgedCount++;
       }
       return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
@@ -102,8 +130,15 @@ export default {
       });
     }
 
-    // 2. NORMALIZACIÓN CANÓNICA 301 DE TRAILING SLASH PARA /titulo/:slug, /director/:slug y /actor/:slug
-    if ((url.pathname.startsWith("/titulo/") || url.pathname.startsWith("/director/") || url.pathname.startsWith("/actor/")) && !url.pathname.endsWith("/")) {
+    // 2. NORMALIZACIÓN CANÓNICA 301 DE TRAILING SLASH PARA /titulo/:slug Y PREFIJOS DE TAXONOMÍA
+    const isPrefixedSeoRoute = 
+      url.pathname.startsWith("/titulo/") ||
+      url.pathname.startsWith("/genero/") ||
+      url.pathname.startsWith("/pais/") ||
+      url.pathname.startsWith("/estudio/") ||
+      url.pathname.startsWith("/seleccion/");
+
+    if (isPrefixedSeoRoute && !url.pathname.endsWith("/")) {
       const canonicalRedirectUrl = new URL(`${url.pathname}/${url.search}`, url.origin);
       return Response.redirect(canonicalRedirectUrl.toString(), 301);
     }
@@ -115,13 +150,13 @@ export default {
         const cache = caches.default;
         const canonicalKey = new Request(new URL(`/titulo/${slug}/`, url.origin).toString(), request);
         
-        // 3.A Intento en Edge Cache (Cache HIT en ~10-15ms)
+        // Intento en Edge Cache
         const cached = await cache.match(canonicalKey);
         if (cached) {
           return cached;
         }
 
-        // 3.B Cache MISS: Consulta puntual a Supabase REST con proyección mínima
+        // Cache MISS: Consulta puntual a Supabase REST con proyección mínima
         const queryUrl = `${supabaseUrl}/rest/v1/movies?slug=eq.${encodeURIComponent(slug)}&select=${MOVIE_PROJECTION}&limit=1`;
         
         try {
@@ -147,164 +182,171 @@ export default {
                 status: 200,
                 headers: responseHeaders
               });
-              // Almacenar en Edge Cache de forma asíncrona
               ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
               return response;
             }
           }
-        } catch (err) {
-          // En caso de fallo transitorio en Supabase, delegar en el origin
-        }
+        } catch (_) {}
       }
     }
 
-    // 3.B RENDERER SEO EN EDGE BAJO DEMANDA PARA ENTIDADES VIP (/director/:slug/ y /actor/:slug/)
-    const isDirectorRoute = url.pathname.startsWith("/director/");
-    const isActorRoute = url.pathname.startsWith("/actor/");
-    if (isDirectorRoute || isActorRoute) {
-      const role = isDirectorRoute ? "director" : "actor";
-      const prefix = isDirectorRoute ? "/director/" : "/actor/";
-      const slug = url.pathname.replace(prefix, "").replace(/\/$/, "").trim();
+    // 4. RENDERER SEO EN EDGE PARA TAXONOMÍAS PREFIJADAS (/genero/, /pais/, /estudio/, /seleccion/)
+    const isTaxonomyRoute = 
+      url.pathname.startsWith("/genero/") ||
+      url.pathname.startsWith("/pais/") ||
+      url.pathname.startsWith("/estudio/") ||
+      url.pathname.startsWith("/seleccion/");
 
-      if (slug) {
-        const cache = caches.default;
-        const canonicalKey = new Request(new URL(`${prefix}${slug}/`, url.origin).toString(), request);
+    if (isTaxonomyRoute) {
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (parts.length === 2) {
+        const [prefix, slug] = parts;
+        const taxInfo = resolveTaxonomy(slug, prefix);
+        if (taxInfo) {
+          if (!url.pathname.endsWith("/")) {
+            return Response.redirect(new URL(`${taxInfo.canonicalPath}${url.search}`, url.origin).toString(), 301);
+          }
 
-        // 3.B.1 Intento en Edge Cache (Cache HIT en ~10-15ms)
-        const cached = await cache.match(canonicalKey);
-        if (cached) {
-          return cached;
-        }
+          const cache = caches.default;
+          const canonicalKey = new Request(new URL(taxInfo.canonicalPath, url.origin).toString(), request);
 
-        // 3.B.2 Cache MISS: Consulta a Supabase REST de la tabla canónica 'people'
-        const roleTypeFilter = isDirectorRoute ? "in.(D,DA,AD)" : "in.(A,AD,DA)";
-        const selectFields = "id,name,slug,type,vip,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
-        const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&type=${roleTypeFilter}&select=${selectFields}&limit=1`;
+          const cached = await cache.match(canonicalKey);
+          if (cached) {
+            return cached;
+          }
 
-        try {
-          const personRes = await fetch(personQueryUrl, {
-            headers: {
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${supabaseAnonKey}`,
-              Accept: "application/json"
-            }
-          });
+          const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+          try {
+            const apiResponse = await fetch(rpcUrl, {
+              method: "POST",
+              headers: {
+                apikey: supabaseAnonKey,
+                Authorization: `Bearer ${supabaseAnonKey}`,
+                "Content-Type": "application/json",
+                Accept: "application/json"
+              },
+              body: JSON.stringify(taxInfo.rpcParams)
+            });
 
-          if (personRes.ok) {
-            const persons = await personRes.json();
-            const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
-
-            // Regla Anti-Thin Content (Google Quality Guidelines): Solo VIPs con biografía redactada
-            if (person && person.biography && person.biography.trim()) {
-              // Comprobación de doble rol instantánea mediante el campo canónico 'type' ('AD' o 'DA')
-              const hasOtherRole = person.type === "AD" || person.type === "DA";
-              const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
-              const rpcParams = {
-                [isDirectorRoute ? "director_name" : "actor_name"]: person.name,
-                sort_field: "fa_votes",
-                sort_direction: "desc",
-                page_limit: 42,
-                get_count: true
-              };
-
-              const moviesRes = await fetch(rpcUrl, {
-                method: "POST",
-                headers: {
-                  apikey: supabaseAnonKey,
-                  Authorization: `Bearer ${supabaseAnonKey}`,
-                  "Content-Type": "application/json",
-                  Accept: "application/json"
-                },
-                body: JSON.stringify(rpcParams)
-              }).catch(() => null);
-
-              let movies = [];
-              if (moviesRes && moviesRes.ok) {
-                const moviesData = await moviesRes.json().catch(() => ({}));
-                movies = Array.isArray(moviesData?.items) ? moviesData.items : (Array.isArray(moviesData) ? moviesData : []);
+            if (apiResponse.ok) {
+              const data = await apiResponse.json();
+              const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+              
+              if (items.length > 0) {
+                const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
+                const response = new Response(html, {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                    "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+                  }
+                });
+                ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+                return response;
               }
-
-              const html = renderPersonHtml(person, role, hasOtherRole, movies, { siteOrigin: url.origin, storageUrl });
-              const responseHeaders = new Headers({
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-              });
-              const response = new Response(html, {
-                status: 200,
-                headers: responseHeaders
-              });
-              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-              return response;
             }
-          }
-        } catch (err) {
-          // En caso de fallo transitorio, delegar en el origin
+          } catch (_) {}
         }
       }
     }
 
-    // 3.C RENDERER SEO EN EDGE PARA TAXONOMÍAS CERRADAS (Géneros, Países, Estudios, Selecciones)
-    const rawPath = url.pathname.replace(/^\/+|\/+$/g, "").trim();
-    if (rawPath && !rawPath.includes("/")) {
-      const taxInfo = resolveTaxonomy(rawPath);
-      if (taxInfo) {
-        // Redirección canónica 301 si no tiene trailing slash
-        if (!url.pathname.endsWith("/")) {
-          const canonicalRedirectUrl = new URL(`/${taxInfo.canonicalSlug}/${url.search}`, url.origin);
-          return Response.redirect(canonicalRedirectUrl.toString(), 301);
-        }
+    // 5. RENDERER SEO EN EDGE PARA PERSONAS VIP EN LA RAÍZ (/:person-slug/)
+    const isReservedPrefix = RESERVED_PREFIXES.some(p => url.pathname.startsWith(p));
+    const isReservedExact = RESERVED_EXACT.has(url.pathname);
+    const hasFileExtension = url.pathname.includes(".") && !url.pathname.endsWith("/");
 
-        const cache = caches.default;
-        const canonicalKey = new Request(new URL(`/${taxInfo.canonicalSlug}/`, url.origin).toString(), request);
+    if (!isReservedPrefix && !isReservedExact && !hasFileExtension) {
+      const segments = url.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+      // Evaluamos únicamente rutas de 1er nivel en la raíz (ej. /tom-cruise/ o /tom-cruise)
+      if (segments.length === 1) {
+        const slug = segments[0];
 
-        // Intento en Edge Cache (Cache HIT en ~15-25ms)
-        const cached = await cache.match(canonicalKey);
-        if (cached) {
-          return cached;
-        }
-
-        // Cache MISS: Consulta RPC search_movies_offset a Supabase
-        const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
-        try {
-          const apiResponse = await fetch(rpcUrl, {
-            method: "POST",
-            headers: {
-              apikey: supabaseAnonKey,
-              Authorization: `Bearer ${supabaseAnonKey}`,
-              "Content-Type": "application/json",
-              Accept: "application/json"
-            },
-            body: JSON.stringify(taxInfo.rpcParams)
-          });
-
-          if (apiResponse.ok) {
-            const data = await apiResponse.json();
-            const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-            
-            // Regla Anti-Thin Content: Si no hay películas para este país/taxonomía, delegar al origen
-            if (items.length > 0) {
-              const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
-              const responseHeaders = new Headers({
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-              });
-              const response = new Response(html, {
-                status: 200,
-                headers: responseHeaders
-              });
-              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-              return response;
-            }
+        // 5.A EVALUACIÓN O(1) EN MEMORIA DEL ISOLATE
+        // Si no está en el manifiesto VIP_SLUGS, JAMÁS consulta a Supabase.
+        // Se delega de inmediato al origen SPA.
+        if (VIP_SLUGS.has(slug)) {
+          // Normalización estricta de trailing slash canónico 301
+          if (!url.pathname.endsWith("/")) {
+            return Response.redirect(new URL(`/${slug}/${url.search}`, url.origin).toString(), 301);
           }
-        } catch (err) {
-          // En caso de fallo transitorio, delegar al origen
+
+          const cache = caches.default;
+          const canonicalKey = new Request(new URL(`/${slug}/`, url.origin).toString(), request);
+
+          const cached = await cache.match(canonicalKey);
+          if (cached) {
+            return cached;
+          }
+
+          // Cache MISS: Consulta a Supabase exclusivamente filtrada por vip = 1
+          const selectFields = "id,name,slug,type,vip,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
+          const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&vip=eq.1&select=${selectFields}&limit=1`;
+
+          try {
+            const personRes = await fetch(personQueryUrl, {
+              headers: {
+                apikey: supabaseAnonKey,
+                Authorization: `Bearer ${supabaseAnonKey}`,
+                Accept: "application/json"
+              }
+            });
+
+            if (personRes.ok) {
+              const persons = await personRes.json();
+              const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
+
+              if (person) {
+                const isDirector = person.type === "D" || person.type === "DA";
+                const role = isDirector ? "director" : "actor";
+                const hasOtherRole = person.type === "AD" || person.type === "DA";
+
+                const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+                const rpcParams = {
+                  [isDirector ? "director_name" : "actor_name"]: person.name,
+                  sort_field: "fa_votes",
+                  sort_direction: "desc",
+                  page_limit: 42,
+                  get_count: true
+                };
+
+                const moviesRes = await fetch(rpcUrl, {
+                  method: "POST",
+                  headers: {
+                    apikey: supabaseAnonKey,
+                    Authorization: `Bearer ${supabaseAnonKey}`,
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                  },
+                  body: JSON.stringify(rpcParams)
+                }).catch(() => null);
+
+                let movies = [];
+                if (moviesRes && moviesRes.ok) {
+                  const moviesData = await moviesRes.json().catch(() => ({}));
+                  movies = Array.isArray(moviesData?.items) ? moviesData.items : (Array.isArray(moviesData) ? moviesData : []);
+                }
+
+                const html = renderPersonHtml(person, role, hasOtherRole, movies, { siteOrigin: url.origin, storageUrl });
+                const response = new Response(html, {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "text/html; charset=utf-8",
+                    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                    "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+                  }
+                });
+
+                ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+                return response;
+              }
+            }
+          } catch (_) {}
         }
       }
     }
 
-    // 4. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs)
+    // 6. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs)
     const isRootPath = url.pathname === "/" || url.pathname === "";
     if (acceptHeader.includes("text/markdown") && isRootPath) {
       const llmsUrl = new URL("/llms.txt", url.origin);

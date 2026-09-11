@@ -290,7 +290,9 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   const siteOrigin = options.siteOrigin || 'https://videoclub.digital';
   const baseUrl = options.baseUrl || '/';
   const storageUrl = options.storageUrl || 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public';
-  const canonicalUrl = `${siteOrigin}/${taxInfo.canonicalSlug}/`;
+  const canonicalUrl = taxInfo.canonicalPath 
+    ? `${siteOrigin}${taxInfo.canonicalPath}`
+    : `${siteOrigin}/${taxInfo.canonicalSlug}/`;
   const spaRedirectUrl = `${baseUrl}?_p=/${taxInfo.canonicalSlug}/`;
 
   const topMovie = items && items.length > 0 ? items[0] : null;

@@ -203,6 +203,7 @@ CREATE TABLE public.people_staging (
   type text,
   profile_path text,
   slug text,
+  vip text,
   birthday text,
   deathday text,
   place_of_birth text,
