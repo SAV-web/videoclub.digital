@@ -306,6 +306,11 @@ combined += `
   z-index: 40 !important;
   pointer-events: auto !important;
 }
+
+/* Ventana modal de vista rápida siempre por encima del header al hacer zoom */
+.quick-view-modal {
+  z-index: calc(var(--z-index-overlay, 1999) + 10) !important;
+}
 `;
 
 fs.writeFileSync("public/seo-card-v7.css", combined);

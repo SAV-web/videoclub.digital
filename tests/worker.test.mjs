@@ -518,10 +518,16 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     const html = await response.text();
 
-    // 1. Enlace al país de la bandera
+    // 1. Enlace al país de la bandera conduce a la SPA
     assert.ok(
-      html.includes('href="/pais/estados-unidos/" class="country-info"'),
-      "La bandera debe ser un enlace funcional a la taxonomía canónica del país /pais/estados-unidos/"
+      html.includes('href="/?_p=/estados-unidos/" class="country-info"'),
+      "La bandera debe conducir al SPA con /?_p=/estados-unidos/"
+    );
+
+    // 1b. Enlace a géneros conduce a la SPA
+    assert.ok(
+      html.includes('href="/?_p=/drama/"'),
+      "Los géneros deben conducir al SPA con /?_p=/drama/"
     );
 
     // 2. Estrellas enlazan a la modal con filtro del primer director en el grid

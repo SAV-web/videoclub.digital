@@ -244,8 +244,8 @@ export function renderMovieHtml(movie, options = {}) {
   <!-- Cortina Oscura (Overlay sin desenfoque/blur en vista SEO para preservar nitidez del fondo y clics en header) -->
   <a href="${baseUrl}" class="quick-view-overlay is-visible" style="backdrop-filter: none; -webkit-backdrop-filter: none; background-color: rgba(0, 0, 0, 0.05); text-decoration: none;" aria-label="Volver al videoclub"></a>
 
-  <!-- Contenedor Ventana Modal (Quick View) -->
-  <div id="quick-view-modal" class="quick-view-modal is-visible" role="dialog" aria-modal="true">
+  <!-- Contenedor Ventana Modal (Quick View con z-index superior al header para evitar solapamientos con zoom) -->
+  <div id="quick-view-modal" class="quick-view-modal is-visible" role="dialog" aria-modal="true" style="z-index: calc(var(--z-index-overlay, 1999) + 10);">
     <div id="quick-view-content" class="quick-view-content">
       
       <!-- Ficha de Película con contrato de clases de la SPA -->
@@ -327,7 +327,7 @@ export function renderMovieHtml(movie, options = {}) {
                       </span>
                     ` : ''}
                     ${countryCode ? `
-                      <a href="${countrySlug ? `${baseUrl}pais/${countrySlug}/` : '#'}" class="country-info" data-template="country-container" style="display:flex; text-decoration:none;" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
+                      <a href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" class="country-info" data-template="country-container" style="display:flex; text-decoration:none;" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)} en el videoclub">
                         <span class="country-flag-icon" title="${escapeAttr(countryName)}">
                           <svg width="28" height="28"><use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use></svg>
                         </span>
@@ -416,7 +416,7 @@ export function renderMovieHtml(movie, options = {}) {
                     ${rawGenres.map((name, i) => {
                       const slug = genreToSlug(name);
                       return slug 
-                        ? `<a href="${baseUrl}genero/${slug}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < rawGenres.length - 1 ? ', ' : ''}`
+                        ? `<a href="${baseUrl}?_p=/${slug}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < rawGenres.length - 1 ? ', ' : ''}`
                         : `<span>${escapeHtml(preserveHyphenatedWords(name))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
                     }).join('')}
                   </span>
