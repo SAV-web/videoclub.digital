@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-llms.mjs && node scripts/generate-vip-manifest.mjs && node scripts/generate-sitemap.mjs && vite build",
-    "build:worker": "npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
+    "build": "node scripts/generate-llms.mjs && node scripts/generate-vip-manifest.mjs && node scripts/generate-sitemap.mjs && node scripts/build-seo-css.mjs && vite build",
+    "build:worker": "node scripts/build-seo-css.mjs && npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
     "check": "tsc --noEmit",
     "preview": "vite preview",
     "generate:llms": "node scripts/generate-llms.mjs",

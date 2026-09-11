@@ -63,6 +63,33 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             headers: { "Content-Type": "application/json" },
           });
         }
+        if (urlStr.includes("slug=eq.chernobyl-2019")) {
+          const sampleSeries = {
+            id: 200,
+            title: "Chernobyl",
+            original_title: "Chernobyl",
+            slug: "chernobyl-2019",
+            year: 2019,
+            type: "series",
+            episodes: 5,
+            minutes: 330,
+            genres_list: "Drama, Historia",
+            directors_list: "Johan Renck",
+            actors_list: "Jared Harris, Stellan Skarsgård",
+            studios_list: "hbo",
+            synopsis: "En abril de 1986, la Central Nuclear de Chernóbil sufrió una gran explosión.",
+            fa_rating: 8.4,
+            fa_votes: 95000,
+            imdb_rating: 9.3,
+            imdb_votes: 850000,
+            avg_rating: 8.9,
+            countries: { name: "Estados Unidos", code: "US" }
+          };
+          return new Response(JSON.stringify([sampleSeries]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
         const sampleMovie = {
           id: 10,
           title: "Cadena perpetua & Andy",
@@ -430,6 +457,103 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     // Debe haber llamado a Supabase y luego al origen HTML de fallback
     assert.ok(fetchCalls.some(c => c.url.includes("slug=eq.not-found")));
+  });
+
+  test("Case-Insensitive SEO: /titulo/Chernobyl-2019 redirige con 301 a /titulo/chernobyl-2019/", async () => {
+    const request = new Request("https://videoclub.digital/titulo/Chernobyl-2019");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 301);
+    assert.equal(
+      response.headers.get("Location"),
+      "https://videoclub.digital/titulo/chernobyl-2019/"
+    );
+  });
+
+  test("Case-Insensitive SEO: /titulo/Chernobyl-2019/ con barra final pero mayúsculas redirige con 301 a minúsculas", async () => {
+    const request = new Request("https://videoclub.digital/titulo/Chernobyl-2019/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 301);
+    assert.equal(
+      response.headers.get("Location"),
+      "https://videoclub.digital/titulo/chernobyl-2019/"
+    );
+  });
+
+  test("Series SEO: los episodios se representan con 'x' en lugar de con 'ep' en /titulo/chernobyl-2019/", async () => {
+    const request = new Request("https://videoclub.digital/titulo/chernobyl-2019/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 200);
+    const html = await response.text();
+
+    assert.ok(html.includes("5 x"), "Los episodios deben contener el formato '5 x'");
+    assert.ok(!html.includes("5 ep"), "NO debe contener el formato '5 ep'");
+  });
+
+  test("Ficha SEO de título: fondo sin desenfoque (backdrop-filter: none) y enlaces del header accesibles por encima del overlay", async () => {
+    const request = new Request("https://videoclub.digital/titulo/chernobyl-2019/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 200);
+    const html = await response.text();
+
+    // Verificación de los dos enlaces habituales en el header
+    assert.ok(html.includes('class="brand-logo-text"'), "Debe incluir el enlace de marca a la home");
+    assert.ok(html.includes('class="btn-header-cta"'), "Debe incluir el botón CTA para abrir en videoclub interactivo");
+    assert.ok(html.includes('href="/?movie=200"'), "El botón CTA debe enlazar con ?movie=200");
+
+    // Header con z-index superior al overlay
+    assert.ok(html.includes('z-index: calc(var(--z-index-overlay, 1999) + 2)'), "El header debe tener z-index superior al overlay");
+
+    // Overlay sin desenfoque
+    assert.ok(html.includes('backdrop-filter: none'), "El overlay no debe aplicar desenfoque al fondo");
+  });
+
+  test("Ficha SEO de título: bandera enlaza a /pais/:slug/ y estrellas/watchlist enlazan a la modal con filtro de director", async () => {
+    const request = new Request("https://videoclub.digital/titulo/chernobyl-2019/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 200);
+    const html = await response.text();
+
+    // 1. Enlace al país de la bandera
+    assert.ok(
+      html.includes('href="/pais/estados-unidos/" class="country-info"'),
+      "La bandera debe ser un enlace funcional a la taxonomía canónica del país /pais/estados-unidos/"
+    );
+
+    // 2. Estrellas enlazan a la modal con filtro del primer director en el grid
+    assert.ok(
+      html.includes('href="/?_p=/director/johan-renck/&amp;movie=200" class="star-rating-container') ||
+      html.includes('href="/?_p=/director/johan-renck/&movie=200" class="star-rating-container'),
+      "Las estrellas deben enlazar a la modal con el catálogo filtrado por el primer director"
+    );
+
+    // 3. Watchlist enlaza a la modal con filtro del primer director en el grid
+    assert.ok(
+      html.includes('href="/?_p=/director/johan-renck/&amp;movie=200" class="card-action-btn') ||
+      html.includes('href="/?_p=/director/johan-renck/&movie=200" class="card-action-btn'),
+      "El botón de watchlist debe enlazar a la modal con el catálogo filtrado por el primer director"
+    );
+  });
+
+  test("Case-Insensitive SEO en personas VIP y taxonomías: /Christopher-Nolan y /genero/Sci-Fi redirigen con 301", async () => {
+    const personReq = new Request("https://videoclub.digital/Christopher-Nolan");
+    const personRes = await worker.fetch(personReq, {}, defaultCtx);
+    assert.equal(personRes.status, 301);
+    assert.equal(personRes.headers.get("Location"), "https://videoclub.digital/christopher-nolan/");
+
+    const personSlashReq = new Request("https://videoclub.digital/Christopher-Nolan/");
+    const personSlashRes = await worker.fetch(personSlashReq, {}, defaultCtx);
+    assert.equal(personSlashRes.status, 301);
+    assert.equal(personSlashRes.headers.get("Location"), "https://videoclub.digital/christopher-nolan/");
+
+    const taxReq = new Request("https://videoclub.digital/genero/Sci-Fi");
+    const taxRes = await worker.fetch(taxReq, {}, defaultCtx);
+    assert.equal(taxRes.status, 301);
+    assert.equal(taxRes.headers.get("Location"), "https://videoclub.digital/genero/sci-fi/");
   });
 
   test("Purga Selectiva: POST /internal/purge valida autorización e invalida claves en caché", async () => {

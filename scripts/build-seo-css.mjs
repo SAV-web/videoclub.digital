@@ -193,10 +193,32 @@ combined += `
   cursor: pointer;
 }
 
-/* Aislamiento estricto de capas 3D y eventos de puntero para evitar clics fantasma (solo cuadrícula) */
+/* Margen lateral en páginas SEO del tamaño del sidebar replegado (65px a ambos lados) */
+@media (min-width: 769px) {
+  :is(.collection-wall, .person-wall) .main-layout {
+    padding-inline: 65px;
+    box-sizing: border-box;
+  }
+}
+@media (max-width: 768px) {
+  :is(.collection-wall, .person-wall) .main-layout {
+    padding-inline: var(--space-xs, 8px);
+    box-sizing: border-box;
+  }
+}
+
+/* Interacción de volteo en SSR (solo películas normales en cuadrícula) */
+.movie-card:not(.person-card):not(.is-quick-view) {
+  cursor: pointer;
+}
+.movie-card:not(.person-card):not(.is-quick-view) a,
+.movie-card:not(.person-card):not(.is-quick-view) button {
+  cursor: pointer;
+}
+
+/* Aislamiento estricto de capas 3D y eventos de puntero (solo cuadrícula) */
 .movie-card:not(.is-quick-view) .flip-card-inner {
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 .movie-card:not(.is-quick-view) .flip-card-front,
 .movie-card:not(.is-quick-view) .flip-card-back {
@@ -204,25 +226,64 @@ combined += `
   backface-visibility: hidden;
 }
 
-/* Cara trasera inactiva e invisible cuando no está volteada (solo cuadrícula) */
+/* Cara trasera inactiva e invisible cuando no está volteada */
 .movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back,
 .movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back * {
   pointer-events: none !important;
   visibility: hidden !important;
 }
 
-/* Cara frontal inactiva e invisible para el puntero cuando está volteada (solo cuadrícula) */
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-front {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 2 !important;
+  transform: rotateY(0deg) translateZ(1px);
+}
+
+/* Cara frontal inactiva e invisible para el puntero cuando está volteada */
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front,
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front * {
   pointer-events: none !important;
   visibility: hidden !important;
+  z-index: 1 !important;
+  transform: rotateY(0deg) translateZ(-1px);
 }
 
-/* Cara trasera activa cuando está volteada (solo cuadrícula) */
+/* Cara trasera activa cuando está volteada (avanza en el plano Z para ganar el hit-testing) */
 .movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back {
   pointer-events: auto !important;
   visibility: visible !important;
   z-index: 10 !important;
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back * {
+  visibility: visible !important;
+}
+
+/* Asegurar interactividad y clics en TODOS los enlaces y botones traseros */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back a,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back button,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [role="button"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .card-ficha-btn,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .expand-content-btn,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .actors-expand-btn,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="wikipedia-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="justwatch-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="imdb-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="fa-link"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 30 !important;
+  position: relative;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .card-ficha-btn {
+  position: absolute !important;
+  bottom: 6px !important;
+  left: 8px !important;
+  right: 8px !important;
+  z-index: 35 !important;
 }
 
 /* Asegurar accesibilidad y clic en botón + de reparto */
@@ -236,13 +297,13 @@ combined += `
   position: absolute !important;
   bottom: 0 !important;
   right: 0 !important;
-  z-index: 25 !important;
+  z-index: 35 !important;
   pointer-events: auto !important;
 }
 
 /* Overlay de actores y géneros */
 .flip-card-back.is-expanded.show-actors .actors-scrollable-content {
-  z-index: 20 !important;
+  z-index: 40 !important;
   pointer-events: auto !important;
 }
 `;

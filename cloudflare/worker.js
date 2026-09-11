@@ -130,22 +130,28 @@ export default {
       });
     }
 
-    // 2. NORMALIZACIÓN CANÓNICA 301 DE TRAILING SLASH PARA /titulo/:slug Y PREFIJOS DE TAXONOMÍA
+    // 2. NORMALIZACIÓN CANÓNICA 301 (CASE-INSENSITIVITY Y TRAILING SLASH) PARA /titulo/:slug Y PREFIJOS DE TAXONOMÍA
+    const lowerPath = url.pathname.toLowerCase();
     const isPrefixedSeoRoute = 
-      url.pathname.startsWith("/titulo/") ||
-      url.pathname.startsWith("/genero/") ||
-      url.pathname.startsWith("/pais/") ||
-      url.pathname.startsWith("/estudio/") ||
-      url.pathname.startsWith("/seleccion/");
+      lowerPath.startsWith("/titulo/") ||
+      lowerPath.startsWith("/genero/") ||
+      lowerPath.startsWith("/pais/") ||
+      lowerPath.startsWith("/estudio/") ||
+      lowerPath.startsWith("/seleccion/");
 
-    if (isPrefixedSeoRoute && !url.pathname.endsWith("/")) {
-      const canonicalRedirectUrl = new URL(`${url.pathname}/${url.search}`, url.origin);
-      return Response.redirect(canonicalRedirectUrl.toString(), 301);
+    if (isPrefixedSeoRoute) {
+      const hasUppercase = /[A-Z]/.test(url.pathname);
+      const missingSlash = !url.pathname.endsWith("/");
+      if (hasUppercase || missingSlash) {
+        const canonicalPath = lowerPath.replace(/\/+$/, "") + "/";
+        const canonicalRedirectUrl = new URL(`${canonicalPath}${url.search}`, url.origin);
+        return Response.redirect(canonicalRedirectUrl.toString(), 301);
+      }
     }
 
     // 3. RENDERER SEO EN EDGE BAJO DEMANDA (/titulo/:slug/)
-    if (url.pathname.startsWith("/titulo/")) {
-      const slug = url.pathname.replace(/^\/titulo\//, "").replace(/\/$/, "").trim();
+    if (lowerPath.startsWith("/titulo/")) {
+      const slug = url.pathname.replace(/^\/titulo\//i, "").replace(/\/$/, "").trim().toLowerCase();
       if (slug) {
         const cache = caches.default;
         const canonicalKey = new Request(new URL(`/titulo/${slug}/`, url.origin).toString(), request);
@@ -192,18 +198,19 @@ export default {
 
     // 4. RENDERER SEO EN EDGE PARA TAXONOMÍAS PREFIJADAS (/genero/, /pais/, /estudio/, /seleccion/)
     const isTaxonomyRoute = 
-      url.pathname.startsWith("/genero/") ||
-      url.pathname.startsWith("/pais/") ||
-      url.pathname.startsWith("/estudio/") ||
-      url.pathname.startsWith("/seleccion/");
+      lowerPath.startsWith("/genero/") ||
+      lowerPath.startsWith("/pais/") ||
+      lowerPath.startsWith("/estudio/") ||
+      lowerPath.startsWith("/seleccion/");
 
     if (isTaxonomyRoute) {
-      const parts = url.pathname.split("/").filter(Boolean);
+      const parts = url.pathname.toLowerCase().split("/").filter(Boolean);
       if (parts.length === 2) {
         const [prefix, slug] = parts;
         const taxInfo = resolveTaxonomy(slug, prefix);
         if (taxInfo) {
-          if (!url.pathname.endsWith("/")) {
+          const hasUppercase = /[A-Z]/.test(url.pathname);
+          if (hasUppercase || !url.pathname.endsWith("/")) {
             return Response.redirect(new URL(`${taxInfo.canonicalPath}${url.search}`, url.origin).toString(), 301);
           }
 
@@ -252,22 +259,25 @@ export default {
     }
 
     // 5. RENDERER SEO EN EDGE PARA PERSONAS VIP EN LA RAÍZ (/:person-slug/)
-    const isReservedPrefix = RESERVED_PREFIXES.some(p => url.pathname.startsWith(p));
-    const isReservedExact = RESERVED_EXACT.has(url.pathname);
+    const isReservedPrefix = RESERVED_PREFIXES.some(p => lowerPath.startsWith(p));
+    const isReservedExact = RESERVED_EXACT.has(lowerPath);
     const hasFileExtension = url.pathname.includes(".") && !url.pathname.endsWith("/");
 
     if (!isReservedPrefix && !isReservedExact && !hasFileExtension) {
       const segments = url.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
-      // Evaluamos únicamente rutas de 1er nivel en la raíz (ej. /tom-cruise/ o /tom-cruise)
+      // Evaluamos únicamente rutas de 1er nivel en la raíz (ej. /tom-cruise/ o /Tom-Cruise)
       if (segments.length === 1) {
-        const slug = segments[0];
+        const rawSlug = segments[0];
+        const slug = rawSlug.toLowerCase();
 
         // 5.A EVALUACIÓN O(1) EN MEMORIA DEL ISOLATE
         // Si no está en el manifiesto VIP_SLUGS, JAMÁS consulta a Supabase.
         // Se delega de inmediato al origen SPA.
         if (VIP_SLUGS.has(slug)) {
-          // Normalización estricta de trailing slash canónico 301
-          if (!url.pathname.endsWith("/")) {
+          // Normalización estricta de trailing slash y case-insensitivity canónico 301
+          const hasUppercase = /[A-Z]/.test(url.pathname);
+          const missingSlash = !url.pathname.endsWith("/");
+          if (hasUppercase || missingSlash) {
             return Response.redirect(new URL(`/${slug}/${url.search}`, url.origin).toString(), 301);
           }
 

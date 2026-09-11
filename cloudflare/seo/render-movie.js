@@ -58,9 +58,16 @@ export function renderMovieHtml(movie, options = {}) {
 
   const countryCode = movie.countries?.code || null;
   const countryName = movie.countries?.name || '';
+  const countrySlug = countryName ? toSlug(countryName) : null;
+
+  const firstDirector = directors.length > 0 ? directors[0] : null;
+  const firstDirectorSlug = firstDirector ? toSlug(firstDirector) : null;
+  const spaTargetUrl = firstDirectorSlug
+    ? `${baseUrl}?_p=/director/${firstDirectorSlug}/&movie=${movie.id}`
+    : `${baseUrl}?movie=${movie.id}`;
 
   const durationText = formatRuntime(movie.minutes, isSeries);
-  const episodesText = movie.episodes ? `${movie.episodes} ep` : null;
+  const episodesText = isSeries && movie.episodes ? `${movie.episodes} x` : null;
 
   const titleLengthClass = getTitleLengthClass(movie.title);
   const displayOriginalTitle = movie.original_title?.trim() || movie.title;
@@ -217,8 +224,8 @@ export function renderMovieHtml(movie, options = {}) {
   </script>
 </head>
 <body>
-  <!-- Header Superior de Marca -->
-  <header class="main-header">
+  <!-- Header Superior de Marca (z-index elevado para mantener accesibles los enlaces habituales) -->
+  <header class="main-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
     <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto; padding: 0 var(--space-lg);">
       <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
         <span class="logo-line-1">VIDEOCLUB</span>
@@ -234,8 +241,8 @@ export function renderMovieHtml(movie, options = {}) {
     </div>
   </header>
 
-  <!-- Cortina Oscura (Overlay) -->
-  <div class="quick-view-overlay is-visible"></div>
+  <!-- Cortina Oscura (Overlay sin desenfoque/blur en vista SEO para preservar nitidez del fondo y clics en header) -->
+  <a href="${baseUrl}" class="quick-view-overlay is-visible" style="backdrop-filter: none; -webkit-backdrop-filter: none; background-color: rgba(0, 0, 0, 0.05); text-decoration: none;" aria-label="Volver al videoclub"></a>
 
   <!-- Contenedor Ventana Modal (Quick View) -->
   <div id="quick-view-modal" class="quick-view-modal is-visible" role="dialog" aria-modal="true">
@@ -267,7 +274,7 @@ export function renderMovieHtml(movie, options = {}) {
 
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
-                <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
+                <a href="${escapeAttr(spaTargetUrl)}" class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
                   <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
                     <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip1}% 0 0);"></use>
@@ -283,7 +290,7 @@ export function renderMovieHtml(movie, options = {}) {
                 </a>
 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->
-                <a href="${baseUrl}?movie=${movie.id}" class="card-action-btn" title="Añadir a mi lista en el videoclub" aria-label="Añadir a mi lista en el videoclub">
+                <a href="${escapeAttr(spaTargetUrl)}" class="card-action-btn" title="Añadir a mi lista en el videoclub" aria-label="Añadir a mi lista en el videoclub">
                   <svg class="icon-watchlist"><use href="${baseUrl}sprite.svg#icon-bookmark-plus"></use></svg>
                 </a>
               </div>
@@ -320,11 +327,11 @@ export function renderMovieHtml(movie, options = {}) {
                       </span>
                     ` : ''}
                     ${countryCode ? `
-                      <span class="country-info" data-template="country-container" style="display:flex;">
+                      <a href="${countrySlug ? `${baseUrl}pais/${countrySlug}/` : '#'}" class="country-info" data-template="country-container" style="display:flex; text-decoration:none;" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
                         <span class="country-flag-icon" title="${escapeAttr(countryName)}">
                           <svg width="28" height="28"><use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use></svg>
                         </span>
-                      </span>
+                      </a>
                     ` : ''}
                   </div>
                 </div>
@@ -409,7 +416,7 @@ export function renderMovieHtml(movie, options = {}) {
                     ${rawGenres.map((name, i) => {
                       const slug = genreToSlug(name);
                       return slug 
-                        ? `<a href="${baseUrl}${slug}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < rawGenres.length - 1 ? ', ' : ''}`
+                        ? `<a href="${baseUrl}genero/${slug}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < rawGenres.length - 1 ? ', ' : ''}`
                         : `<span>${escapeHtml(preserveHyphenatedWords(name))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
                     }).join('')}
                   </span>
