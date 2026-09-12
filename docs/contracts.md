@@ -203,6 +203,12 @@ Reglas:
 - **Formato Canónico de Edad (`computePersonAgeInfo`)**:
   - Personas vivas: `(edad)` (ej. `(54)`).
   - Personas fallecidas: `✝ (edad)` (ej. `✝ (74)`), con fechas cronológicas `YYYY-YYYY` (o `YYYY-` si vive).
+- **Normalización y Formato Canónico de Slugs VIP**:
+  Los slugs del manifiesto perimetral (`cloudflare/seo/vip-manifest.js`) derivan de `people.slug` (`vip = 1`) y deben cumplir estrictamente el formato URL-safe canónico: minúsculas alfanuméricas ASCII separadas exclusivamente por guiones simples (`/^[a-z0-9]+(?:-[a-z0-9]+)*$/`), sin espacios ni guiones terminales. El generador `generate-vip-manifest.mjs` aplica `.trim().toLowerCase()` y valida el patrón, descartando anomalías y garantizando paridad determinista con `rawSlug.toLowerCase()` en la evaluación $O(1)$ de `VIP_SLUGS.has(slug)` del Cloudflare Worker.
+- **Principio Arquitectónico: VIP = Fuente Editorial (SSOT en Supabase)**:
+  `VIP_SLUGS` actúa exclusivamente como filtro de enrutamiento perimetral para decidir en tiempo constante $O(1)$ si una ruta raíz debe intentar resolverse como ficha SEO VIP. Toda la información editorial (nombre, biografía, foto, fechas cronológicas, rol cruzado y filmografía) reside y procede **siempre de Supabase** (`public.people`). El manifiesto no sustituye a la base de datos ni almacena fichas, preservando la ligereza del bundle perimetral y la frescura editorial de los contenidos.
+- **SEO VIP Dual (Actor y Director) — URL Inmutable e Intercambio D/A**:
+  Para personas VIP que son simultáneamente actor y director (`people.type` `'DA'` o `'AD'`), existe **una única URL SEO canónica** (`https://videoclub.digital/:slug/`). La alternancia entre la filmografía como Director (**D**) y como Actor (**A**) es una interacción de interfaz en cliente, controlada mediante los botones `[ D ] [ A ]`. Dicha alternancia conmuta la visibilidad en el grid (`display: contents` / `display: none`) sin modificar la URL, sin parámetros query (`?rol=...`), sin redirecciones y sin alterar el historial (`pushState`/`replaceState`). Ambas filmografías se resuelven en paralelo (`Promise.all`) durante el SSR en el Edge para garantizar 0 ms de latencia al alternar. El sitemap y las etiquetas canónicas registran exclusivamente la URL raíz única del VIP.
 
 ## 6. Errores
 

@@ -74,9 +74,25 @@ export function computePersonAgeInfo(birthday, deathday) {
 }
 
 /**
- * Renderiza la tarjeta VIP oficial (.person-card) con giro 3D y diseño de la SPA
+ * Renderiza la tarjeta VIP oficial (.person-card) con giro 3D y diseño de la SPA.
+ * Para personas con rol dual (actor y director), incluye los controles [ D ] [ A ].
  */
-export function renderSpaPersonCard(person, role, hasOtherRole, siteOrigin, baseUrl = '/') {
+export function renderSpaPersonCard(person, activeRole = 'director', hasOtherRoleOrOptions = false, siteOriginArg = 'https://videoclub.digital', baseUrlArg = '/') {
+  let siteOrigin = siteOriginArg;
+  let baseUrl = baseUrlArg;
+  let hasBothRoles = person.type === 'DA' || person.type === 'AD';
+
+  // Retrocompatibilidad con firma clásica (person, role, hasOtherRole, siteOrigin, baseUrl)
+  if (typeof hasOtherRoleOrOptions === 'boolean') {
+    hasBothRoles = hasOtherRoleOrOptions || hasBothRoles;
+  } else if (hasOtherRoleOrOptions && typeof hasOtherRoleOrOptions === 'object') {
+    siteOrigin = hasOtherRoleOrOptions.siteOrigin || siteOrigin;
+    baseUrl = hasOtherRoleOrOptions.baseUrl || baseUrl;
+    if (typeof hasOtherRoleOrOptions.hasBothRoles === 'boolean') {
+      hasBothRoles = hasOtherRoleOrOptions.hasBothRoles;
+    }
+  }
+
   const slug = person.slug || toSlug(person.name);
   const photoUrl = `${siteOrigin}/vips/${slug}.webp`;
   const defaultFallbackUrl = `${baseUrl}collection_default.webp`;
@@ -86,14 +102,7 @@ export function renderSpaPersonCard(person, role, hasOtherRole, siteOrigin, base
   const countryName = person.countries?.name || '';
   const countrySlug = countryCode ? toSlug(countryName) : null;
 
-  const isDirector = role === 'director';
-  const targetRole = isDirector ? 'actor' : 'director';
-  const currentLetter = isDirector ? 'D' : 'A';
-  const tooltipText = isDirector
-    ? `Ver filmografía de ${person.name} como Actor`
-    : `Ver películas de ${person.name} como Director`;
-  const targetUrl = `${siteOrigin}/${slug}/`;
-
+  const currentRole = activeRole === 'actor' ? 'actor' : 'director';
   const titleLengthClass = getTitleLengthClass(person.name);
 
   return `
@@ -114,16 +123,29 @@ export function renderSpaPersonCard(person, role, hasOtherRole, siteOrigin, base
             />
             <div class="poster-overlay-guard"></div>
 
-            ${hasOtherRole ? `
-              <a
-                href="${escapeAttr(targetUrl)}"
-                class="person-role-toggle-btn"
-                title="${escapeAttr(tooltipText)}"
-                aria-label="${escapeAttr(tooltipText)}"
-                style="display: flex; text-decoration: none;"
-              >
-                <span class="role-badge-letter">${currentLetter}</span>
-              </a>
+            ${hasBothRoles ? `
+              <div class="person-role-controls" role="group" aria-label="Cambiar filmografía">
+                <button
+                  type="button"
+                  class="person-role-btn ${currentRole === 'director' ? 'is-active' : ''}"
+                  data-role="director"
+                  title="Ver películas de ${escapeAttr(person.name)} como Director"
+                  aria-label="Ver películas de ${escapeAttr(person.name)} como Director"
+                  aria-pressed="${currentRole === 'director'}"
+                >
+                  <span class="role-badge-letter">D</span>
+                </button>
+                <button
+                  type="button"
+                  class="person-role-btn ${currentRole === 'actor' ? 'is-active' : ''}"
+                  data-role="actor"
+                  title="Ver películas de ${escapeAttr(person.name)} como Actor"
+                  aria-label="Ver películas de ${escapeAttr(person.name)} como Actor"
+                  aria-pressed="${currentRole === 'actor'}"
+                >
+                  <span class="role-badge-letter">A</span>
+                </button>
+              </div>
             ` : ''}
 
             <div class="card-rating-block">
@@ -177,26 +199,65 @@ export function renderSpaPersonCard(person, role, hasOtherRole, siteOrigin, base
 }
 
 /**
- * Renderiza la página HTML completa para una entidad VIP (Director o Actor) en el Edge.
+ * Renderiza la página HTML completa para una entidad VIP en el Edge.
  * 
- * @param {object} person Datos del registro de director o actor
- * @param {string} role 'director' | 'actor'
- * @param {boolean} hasOtherRole true si la persona tiene ficha en el otro rol
- * @param {Array} movies Lista de películas destacadas de su filmografía
- * @param {object} options Opciones de contexto ({ siteOrigin, storageUrl, baseUrl })
- * @returns {string} HTML5 válido y semántico
+ * Modelo conceptual unificado:
+ * - person: entidad editorial única (identidad, biografía, foto, datos).
+ * - activeRole: rol activo en la interfaz ('director' | 'actor').
+ * - filmographies: { director: Movie[], actor: Movie[] } separadas pero presentes en la misma página.
+ * 
+ * URL inmutable y canónica única: https://videoclub.digital/slug/
  */
-export function renderPersonHtml(person, role, hasOtherRole, movies = [], options = {}) {
+export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, moviesLegacy = [], optionsLegacy = {}) {
+  const defaultRole = (person.type === 'D' || person.type === 'DA') ? 'director' : 'actor';
+  const hasBothRoles = person.type === 'DA' || person.type === 'AD';
+
+  let activeRole = defaultRole;
+  let filmographies = { director: [], actor: [] };
+  let options = {};
+
+  if (typeof roleOrConfig === 'string') {
+    // Firma clásica: renderPersonHtml(person, role, hasOtherRole, movies, options)
+    activeRole = roleOrConfig;
+    const movies = Array.isArray(hasOtherRoleLegacy) ? hasOtherRoleLegacy : (Array.isArray(moviesLegacy) ? moviesLegacy : []);
+    options = optionsLegacy || {};
+    filmographies = {
+      [activeRole]: movies,
+      [activeRole === 'director' ? 'actor' : 'director']: []
+    };
+  } else if (roleOrConfig && typeof roleOrConfig === 'object') {
+    options = (hasOtherRoleLegacy && typeof hasOtherRoleLegacy === 'object') ? hasOtherRoleLegacy : (optionsLegacy || {});
+    if (roleOrConfig.filmographies) {
+      filmographies = {
+        director: roleOrConfig.filmographies.director || [],
+        actor: roleOrConfig.filmographies.actor || []
+      };
+      activeRole = roleOrConfig.activeRole || defaultRole;
+    } else if (roleOrConfig.director || roleOrConfig.actor) {
+      filmographies = {
+        director: roleOrConfig.director || [],
+        actor: roleOrConfig.actor || []
+      };
+      activeRole = roleOrConfig.activeRole || defaultRole;
+    } else if (Array.isArray(roleOrConfig)) {
+      filmographies = {
+        [defaultRole]: roleOrConfig,
+        [defaultRole === 'director' ? 'actor' : 'director']: []
+      };
+      activeRole = defaultRole;
+    }
+  }
+
   const siteOrigin = options.siteOrigin || 'https://videoclub.digital';
   const baseUrl = options.baseUrl || '/';
   const storageUrl = options.storageUrl || 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public';
   const slug = person.slug || toSlug(person.name);
   const canonicalUrl = `${siteOrigin}/${slug}/`;
-  const isDirector = role === 'director' || person.type === 'D' || person.type === 'DA';
+
+  const isDirector = activeRole === 'director';
   const spaRedirectUrl = `${baseUrl}?_p=/${isDirector ? 'director' : 'actor'}/${slug}/`;
 
-  const roleLabel = person.type === 'D' ? 'Director' : (person.type === 'A' ? 'Actor' : 'Cineasta');
-  const roleTitle = isDirector ? 'Director de cine' : 'Actor cinematográfico';
+  const roleTitle = hasBothRoles ? 'Director y actor de cine' : (isDirector ? 'Director de cine' : 'Actor cinematográfico');
 
   const seoTitle = `${person.name} — Películas y Biografía | Videoclub Digital`;
   const bioExcerpt = person.titulo_bio 
@@ -205,6 +266,11 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
   const description = bioExcerpt.length > 160 ? bioExcerpt.substring(0, 157) + '...' : bioExcerpt;
 
   const photoUrl = `${siteOrigin}/vips/${slug}.webp`;
+
+  const directorMovies = filmographies.director || [];
+  const actorMovies = filmographies.actor || [];
+  const activeMovies = activeRole === 'director' ? directorMovies : actorMovies;
+  const primaryMovies = activeMovies.length > 0 ? activeMovies : (directorMovies.length > 0 ? directorMovies : actorMovies);
 
   // 1. Schema.org Person con propiedades condicionales
   const personSchema = {
@@ -238,8 +304,8 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
         "name": person.countries.name
       }
     } : {}),
-    ...(movies.length > 0 ? {
-      "knowsAbout": movies.slice(0, 6).map(m => m.title || m.original_title)
+    ...(primaryMovies.length > 0 ? {
+      "knowsAbout": primaryMovies.slice(0, 6).map(m => m.title || m.original_title)
     } : {})
   };
 
@@ -253,8 +319,8 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
     "inLanguage": "es",
     "mainEntity": {
       "@type": "ItemList",
-      "numberOfItems": movies.length,
-      "itemListElement": movies.map((m, index) => ({
+      "numberOfItems": primaryMovies.length,
+      "itemListElement": primaryMovies.map((m, index) => ({
         "@type": "ListItem",
         "position": index + 1,
         "item": {
@@ -298,15 +364,24 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
   };
 
   // 4. Speculation Rules API
-  const topSlugsUrls = movies.slice(0, 5).map(m => `${siteOrigin}/titulo/${m.slug}/`);
+  const topSlugsUrls = primaryMovies.slice(0, 5).map(m => `${siteOrigin}/titulo/${m.slug}/`);
   const speculationRules = {
     prerender: [{ source: "list", urls: ["/"] }],
     prefetch: [{ source: "list", urls: topSlugsUrls }]
   };
 
   // Renderizar la tarjeta VIP de la persona (#0) y las tarjetas de su filmografía (#1..#42)
-  const personCardHtml = renderSpaPersonCard(person, role, hasOtherRole, siteOrigin, baseUrl);
-  const movieCardsHtml = movies.map((movie, index) => {
+  const personCardHtml = renderSpaPersonCard(person, activeRole, { hasBothRoles, siteOrigin, baseUrl });
+
+  const directorCardsHtml = directorMovies.map((movie, index) => {
+    return renderSpaMovieCard(movie, index + 1, siteOrigin, baseUrl);
+  }).join('\n');
+
+  const actorCardsHtml = actorMovies.map((movie, index) => {
+    return renderSpaMovieCard(movie, index + 1, siteOrigin, baseUrl);
+  }).join('\n');
+
+  const singleMovieCardsHtml = activeMovies.map((movie, index) => {
     return renderSpaMovieCard(movie, index + 1, siteOrigin, baseUrl);
   }).join('\n');
 
@@ -400,7 +475,16 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
         <h1 class="sr-only">${escapeHtml(seoTitle)}</h1>
         <section id="grid-container" class="grid-container" aria-label="Ficha de ${escapeAttr(person.name)} y filmografía destacada">
           ${personCardHtml}
-          ${movieCardsHtml}
+          ${hasBothRoles ? `
+            <div id="filmography-director" class="filmography-role-group" style="${activeRole === 'director' ? 'display: contents;' : 'display: none;'}">
+              ${directorCardsHtml}
+            </div>
+            <div id="filmography-actor" class="filmography-role-group" style="${activeRole === 'actor' ? 'display: contents;' : 'display: none;'}">
+              ${actorCardsHtml}
+            </div>
+          ` : `
+            ${singleMovieCardsHtml}
+          `}
         </section>
       </main>
 
@@ -419,7 +503,7 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
     </div>
   </div>
 
-  <!-- Handler de giro 3D y expansión de reparto/biografía en Vanilla JS -->
+  <!-- Handler de giro 3D, alternancia D/A y expansión de reparto/biografía en Vanilla JS -->
   <script>
     (function () {
       var activeCard = null;
@@ -468,6 +552,59 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
           metas.forEach(function (m) {
             m.setAttribute("content", isNowDark ? "#0d0d0d" : "#f5f5f5");
           });
+        });
+      }
+
+      // Alternancia interactiva D/A para VIPs con ambos roles (URL inmutable, sin recarga ni pushState)
+      var roleControls = document.querySelector(".person-role-controls");
+      if (roleControls) {
+        var currentRole = ${JSON.stringify(activeRole)};
+        var dirGroup = document.getElementById("filmography-director");
+        var actGroup = document.getElementById("filmography-actor");
+        var filterPill = document.querySelector(".active-filters-list .filter-pill");
+        var pSlug = ${JSON.stringify(slug)};
+        var bUrl = ${JSON.stringify(baseUrl)};
+
+        roleControls.addEventListener("click", function (e) {
+          var btn = e.target.closest(".person-role-btn");
+          if (!btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          var targetRole = btn.getAttribute("data-role");
+          if (!targetRole || targetRole === currentRole) return;
+
+          currentRole = targetRole;
+
+          // 1. Actualizar visualmente los botones [ D ] [ A ]
+          roleControls.querySelectorAll(".person-role-btn").forEach(function (b) {
+            var isActive = b.getAttribute("data-role") === currentRole;
+            b.classList.toggle("is-active", isActive);
+            b.setAttribute("aria-pressed", String(isActive));
+          });
+
+          // 2. Conmutar el grid de películas visible sin mutar URL
+          if (dirGroup && actGroup) {
+            dirGroup.style.display = (currentRole === "director") ? "contents" : "none";
+            actGroup.style.display = (currentRole === "actor") ? "contents" : "none";
+          }
+
+          // 3. Sincronizar enlace del filter-pill a la SPA
+          if (filterPill) {
+            filterPill.href = bUrl + "?_p=/" + currentRole + "/" + pSlug + "/";
+          }
+
+          // 4. Resetear tarjeta volteada si hubiera alguna activa
+          if (activeCard) {
+            activeCard.classList.remove("is-flipped");
+            var prevBack = activeCard.querySelector(".flip-card-back");
+            if (prevBack) {
+              prevBack.classList.remove("is-expanded", "show-actors");
+              var prevBtn = prevBack.querySelector(".expand-content-btn");
+              if (prevBtn) prevBtn.textContent = "+";
+            }
+            activeCard = null;
+          }
         });
       }
 

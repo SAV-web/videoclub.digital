@@ -55,6 +55,19 @@ Dado que el worker modular utiliza submódulos (`./seo/render-movie.js`), hemos 
 5. Haz clic en **Save and Deploy**.
 6. Asegúrate de que la ruta en **Settings $\rightarrow$ Domains & Routes** siga asignada a `videoclub.digital/*`.
 
+### 2.1 Configuración del Secreto de Purga (`PURGE_SECRET`)
+
+El endpoint perimetral de invalidación selectiva (`POST /internal/purge`) requiere la variable de entorno secreta `PURGE_SECRET`.
+Por diseño de seguridad estricto, **no existe ningún valor por defecto en el código**. Si `PURGE_SECRET` no está configurado en el entorno de Cloudflare, el endpoint devuelve inmediatamente `500 Server misconfigured` y bloquea cualquier intento de purga.
+
+- **Configuración mediante Wrangler CLI**:
+  ```bash
+  npx wrangler secret put PURGE_SECRET
+  # Introduce tu clave secreta cuando lo solicite el terminal
+  ```
+- **Configuración mediante Dashboard de Cloudflare**:
+  En **Workers & Pages** $\rightarrow$ tu Worker $\rightarrow$ **Settings** $\rightarrow$ **Variables and Secrets**, añade un secreto cifrado con nombre `PURGE_SECRET` y el valor privado elegido.
+
 ---
 
 ## 3. Verificación de Beneficios Técnicos
@@ -115,3 +128,12 @@ Esta suite valida de forma determinista:
 7. Representación canónica de episodios de series con `"x"` (ej. `"5 x"`).
 8. Descarte en tiempo constante $O(1)$ de rutas directas a la SPA sin penalización de consulta a base de datos.
 9. Purga perimetral selectiva (`POST /internal/purge`) para invalidación granular de caché.
+10. Cumplimiento estricto del formato canónico de slugs VIP en minúsculas.
+
+---
+
+## 5. Filosofía Arquitectónica: Manifiesto VIP vs Fuente Editorial (SSOT)
+
+- **Propósito Exclusivo de `VIP_SLUGS`**: El manifiesto (`cloudflare/seo/vip-manifest.js`) es un índice en memoria (`Set<string>`) concebido únicamente como filtro de enrutamiento para descarte perimetral en tiempo constante $O(1)$. Decide exclusivamente si el Worker debe intentar resolver una ruta raíz (`/:slug/`) como ficha SEO VIP o si debe delegar de inmediato a la SPA sin penalizar con consultas a la base de datos.
+- **Fuente de Verdad Editorial (Supabase)**: Los datos editoriales de la persona (nombre, biografía, foto oficial, fechas de nacimiento/defunción, rol principal y cruzado, lugar de nacimiento y filmografía en cuadrícula) **siempre proceden de Supabase** (`public.people` donde `vip = 1`). El manifiesto no sustituye ni almacena datos de la base de datos.
+- **Restricción de Diseño**: Queda expresamente prohibido incorporar fichas o datos editoriales dentro del manifiesto. Esto garantiza un bundle perimetral ultraligero (< 250 KB) y asegura la frescura inmediata de los contenidos editoriales ante cualquier actualización en la base de datos.

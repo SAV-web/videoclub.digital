@@ -67,8 +67,7 @@ async function generateSitemap() {
       .order("id", { ascending: true });
 
     if (error) {
-      console.warn(`[sitemap] Error consultando slugs (offset ${from}): ${error.message}`);
-      break;
+      throw new Error(`[sitemap] Error consultando slugs de películas (offset ${from}): ${error.message}`);
     }
 
     if (!data || data.length === 0) break;
@@ -81,6 +80,10 @@ async function generateSitemap() {
 
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
+  }
+
+  if (slugs.length === 0) {
+    throw new Error("[sitemap] No se recuperó ninguna película indexable de Supabase. Abortando generación de sitemap.");
   }
 
   console.log(`[sitemap] Se recuperaron ${slugs.length} títulos indexables válidos.`);
@@ -100,8 +103,7 @@ async function generateSitemap() {
       .order("slug", { ascending: true });
 
     if (pErr) {
-      console.warn(`[sitemap] Error consultando personas VIP (offset ${pFrom}): ${pErr.message}`);
-      break;
+      throw new Error(`[sitemap] Error consultando personas VIP (offset ${pFrom}): ${pErr.message}`);
     }
 
     if (!pData || pData.length === 0) break;
@@ -114,6 +116,10 @@ async function generateSitemap() {
 
     if (pData.length < PAGE_SIZE) break;
     pFrom += PAGE_SIZE;
+  }
+
+  if (vipSlugs.length === 0) {
+    throw new Error("[sitemap] No se recuperó ninguna persona VIP indexable de Supabase. Abortando generación de sitemap.");
   }
 
   console.log(`[sitemap] Se recuperaron ${vipSlugs.length} personas VIP indexables.`);

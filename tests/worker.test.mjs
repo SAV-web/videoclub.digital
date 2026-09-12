@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
 import worker from "../cloudflare/worker.js";
+import { VIP_SLUGS } from "../cloudflare/seo/vip-manifest.js";
 
 const SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 
@@ -128,6 +129,44 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             headers: { "Content-Type": "application/json" }
           });
         }
+        if (params.director_name === "Clint Eastwood") {
+          return new Response(JSON.stringify({
+            total: 1,
+            items: [{
+              id: 991,
+              title: "Sin perdón",
+              original_title: "Unforgiven",
+              slug: "sin-perdon-1992",
+              year: 1992,
+              type: null,
+              fa_rating: 8.2,
+              fa_votes: 120000,
+              directors: "Clint Eastwood"
+            }]
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        if (params.actor_name === "Clint Eastwood") {
+          return new Response(JSON.stringify({
+            total: 1,
+            items: [{
+              id: 992,
+              title: "El bueno, el feo y el malo",
+              original_title: "Il buono, il brutto, il cattivo",
+              slug: "el-bueno-el-feo-y-el-malo-1966",
+              year: 1966,
+              type: null,
+              fa_rating: 8.3,
+              fa_votes: 140000,
+              directors: "Sergio Leone"
+            }]
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
         const sampleTaxonomyMovies = [
           {
             id: 1,
@@ -202,6 +241,26 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             countries: { id: 840, code: "US", name: "EEUU" }
           };
           return new Response(JSON.stringify([sampleActor]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+        if (urlStr.includes("slug=eq.clint-eastwood")) {
+          const sampleClint = {
+            id: 142,
+            name: "Clint Eastwood",
+            slug: "clint-eastwood",
+            type: "DA",
+            vip: 1,
+            birthday: "1930-05-31",
+            deathday: null,
+            place_of_birth: "San Francisco, California, EEUU",
+            biography: "Icono indiscutible del cine estadounidense, legendario como actor y aclamado como director.",
+            titulo_bio: "Cineasta clásico moderno y leyenda de Hollywood",
+            thumbhash_st: "data:image/webp;base64,sample",
+            countries: { id: 840, code: "US", name: "EEUU" }
+          };
+          return new Response(JSON.stringify([sampleClint]), {
             status: 200,
             headers: { "Content-Type": "application/json" }
           });
@@ -567,25 +626,53 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     const getReq = new Request(edgeUrl);
     await worker.fetch(getReq, {}, defaultCtx);
 
-    // Intento no autorizado: 401
+    // Intento con secreto no configurado en env: 500 Server misconfigured
+    const misconfiguredReq = new Request("https://videoclub.digital/internal/purge", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer any-secret",
+      },
+      body: JSON.stringify({ slugs: ["cadena-perpetua-1994"] }),
+    });
+    const misconfiguredRes = await worker.fetch(misconfiguredReq, {}, defaultCtx);
+    assert.equal(misconfiguredRes.status, 500);
+    const misconfiguredBody = await misconfiguredRes.json();
+    assert.equal(misconfiguredBody.error, "Server misconfigured: PURGE_SECRET not configured");
+
+    const validEnv = { PURGE_SECRET: "my-custom-test-secret" };
+
+    // Intento no autorizado (sin cabecera): 401
     const unauthReq = new Request("https://videoclub.digital/internal/purge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slugs: ["cadena-perpetua-1994"] }),
     });
-    const unauthRes = await worker.fetch(unauthReq, {}, defaultCtx);
+    const unauthRes = await worker.fetch(unauthReq, validEnv, defaultCtx);
     assert.equal(unauthRes.status, 401);
+
+    // Intento con secreto erróneo: 401
+    const wrongAuthReq = new Request("https://videoclub.digital/internal/purge", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer wrong-secret",
+      },
+      body: JSON.stringify({ slugs: ["cadena-perpetua-1994"] }),
+    });
+    const wrongAuthRes = await worker.fetch(wrongAuthReq, validEnv, defaultCtx);
+    assert.equal(wrongAuthRes.status, 401);
 
     // Intento autorizado: 200 y purga
     const authReq = new Request("https://videoclub.digital/internal/purge", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer videoclub-purge-secret",
+        Authorization: "Bearer my-custom-test-secret",
       },
       body: JSON.stringify({ slugs: ["cadena-perpetua-1994"] }),
     });
-    const authRes = await worker.fetch(authReq, {}, defaultCtx);
+    const authRes = await worker.fetch(authReq, validEnv, defaultCtx);
     assert.equal(authRes.status, 200);
     const result = await authRes.json();
     assert.equal(result.success, true);
@@ -669,11 +756,11 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer videoclub-purge-secret",
+        Authorization: "Bearer test-purge-secret",
       },
       body: JSON.stringify({ slugs: ["sci-fi"] }),
     });
-    const purgeRes = await worker.fetch(purgeReq, {}, defaultCtx);
+    const purgeRes = await worker.fetch(purgeReq, { PURGE_SECRET: "test-purge-secret" }, defaultCtx);
     assert.equal(purgeRes.status, 200);
     const body = await purgeRes.json();
     assert.equal(body.success, true);
@@ -734,6 +821,41 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("Héroe arquetípico del cine de aventuras"));
     assert.ok(html.includes('href="/?_p=/actor/harrison-ford/"'), "La píldora debe enlazar al filtro en la SPA");
     assert.ok(html.includes('<link rel="canonical" href="https://videoclub.digital/harrison-ford/" />'));
+    assert.ok(!html.includes('<div class="person-role-controls"'), "Personas con un único rol no deben mostrar controles de alternancia D/A");
+  });
+
+  test("Personas VIP con rol dual (Actor y Director): /clint-eastwood/ URL inmutable, controles [ D ] [ A ] y ambas filmografías", async () => {
+    VIP_SLUGS.add("clint-eastwood");
+    const req = new Request("https://videoclub.digital/clint-eastwood/");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("Content-Type"), "text/html; charset=utf-8");
+
+    const html = await res.text();
+    // 1. Entidad y SEO Canónico Único
+    assert.ok(html.includes("Clint Eastwood"));
+    assert.ok(html.includes('"@type":"Person"'));
+    assert.ok(html.includes('<link rel="canonical" href="https://videoclub.digital/clint-eastwood/" />'));
+    assert.ok(!html.includes("?rol=actor"), "Nunca debe generar URLs con ?rol=actor");
+    assert.ok(!html.includes("?rol=director"), "Nunca debe generar URLs con ?rol=director");
+
+    // 2. Controles de alternancia [ D ] [ A ]
+    assert.ok(html.includes('<div class="person-role-controls"'), "Debe contener el contenedor de controles [ D ] [ A ]");
+    assert.ok(html.includes('data-role="director"'), "Debe contener el botón D");
+    assert.ok(html.includes('data-role="actor"'), "Debe contener el botón A");
+    assert.ok(html.includes('title="Ver películas de Clint Eastwood como Director"'));
+    assert.ok(html.includes('title="Ver películas de Clint Eastwood como Actor"'));
+    assert.ok(html.includes('class="person-role-btn is-active"'), "El botón del rol predominante (director) debe tener la clase is-active");
+
+    // 3. Filmografías separadas coexistiendo en la misma página
+    assert.ok(html.includes('id="filmography-director"'), "Debe incluir el contenedor de filmografía como director");
+    assert.ok(html.includes('id="filmography-actor"'), "Debe incluir el contenedor de filmografía como actor");
+    assert.ok(html.includes("Sin perdón"), "Debe contener la película como director");
+    assert.ok(html.includes("El bueno, el feo y el malo"), "Debe contener la película como actor");
+
+    // 4. Estados de visibilidad iniciales
+    assert.ok(html.includes('id="filmography-director" class="filmography-role-group" style="display: contents;"'), "Director visible inicialmente con display: contents");
+    assert.ok(html.includes('id="filmography-actor" class="filmography-role-group" style="display: none;"'), "Actor oculto inicialmente con display: none");
   });
 
   test("Normalización 301 en Raíz: /:vip-slug sin barra final redirige con 301 a /:vip-slug/", async () => {
@@ -784,14 +906,25 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer videoclub-purge-secret",
+        Authorization: "Bearer test-purge-secret",
       },
       body: JSON.stringify({ slugs: ["christopher-nolan", "sci-fi"] }),
     });
-    const purgeRes = await worker.fetch(purgeReq, {}, defaultCtx);
+    const purgeRes = await worker.fetch(purgeReq, { PURGE_SECRET: "test-purge-secret" }, defaultCtx);
     assert.equal(purgeRes.status, 200);
     const body = await purgeRes.json();
     assert.equal(body.success, true);
     assert.equal(body.totalRequested, 2);
+  });
+
+  test("Manifiesto VIP: todos los slugs cumplen el formato canónico en minúsculas y regex URL-safe", () => {
+    assert.ok(VIP_SLUGS.size > 0, "El manifiesto VIP no debe estar vacío");
+    const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    for (const slug of VIP_SLUGS) {
+      assert.equal(typeof slug, "string", "Cada elemento debe ser string");
+      assert.equal(slug, slug.toLowerCase(), `El slug '${slug}' debe estar estrictamente en minúsculas`);
+      assert.equal(slug, slug.trim(), `El slug '${slug}' no debe tener espacios en extremos`);
+      assert.ok(SLUG_REGEX.test(slug), `El slug '${slug}' debe cumplir el patrón canónico alfanumérico con guiones`);
+    }
   });
 });

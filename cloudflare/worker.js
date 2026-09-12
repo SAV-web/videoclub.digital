@@ -62,7 +62,13 @@ export default {
 
     // 1. ENDPOINT DE INVALIDACIÓN SELECTIVA DE CACHÉ (POST /internal/purge)
     if (url.pathname === "/internal/purge" && request.method === "POST") {
-      const purgeSecret = env?.PURGE_SECRET || "videoclub-purge-secret";
+      const purgeSecret = env?.PURGE_SECRET;
+      if (!purgeSecret) {
+        return new Response(JSON.stringify({ error: "Server misconfigured: PURGE_SECRET not configured" }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
       const authHeader = request.headers.get("Authorization");
       if (authHeader !== `Bearer ${purgeSecret}`) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -271,8 +277,11 @@ export default {
         const slug = rawSlug.toLowerCase();
 
         // 5.A EVALUACIÓN O(1) EN MEMORIA DEL ISOLATE
-        // Si no está en el manifiesto VIP_SLUGS, JAMÁS consulta a Supabase.
-        // Se delega de inmediato al origen SPA.
+        // Principio Arquitectónico: VIP_SLUGS decide ÚNICAMENTE si el Worker debe
+        // intentar resolver una ruta raíz como SEO VIP (filtro de enrutamiento O(1)).
+        // Los datos editoriales de la página (biografía, fechas, filmografía) siempre proceden
+        // de Supabase (SSOT). El manifiesto no sustituye a la base de datos.
+        // Si no está en VIP_SLUGS, JAMÁS consulta a la BD y delega de inmediato al origen SPA.
         if (VIP_SLUGS.has(slug)) {
           // Normalización estricta de trailing slash y case-insensitivity canónico 301
           const hasUppercase = /[A-Z]/.test(url.pathname);
@@ -307,37 +316,59 @@ export default {
               const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
 
               if (person) {
-                const isDirector = person.type === "D" || person.type === "DA";
-                const role = isDirector ? "director" : "actor";
-                const hasOtherRole = person.type === "AD" || person.type === "DA";
+                const isDirectorPredominant = person.type === "D" || person.type === "DA";
+                const hasBothRoles = person.type === "AD" || person.type === "DA";
+                const activeRole = isDirectorPredominant ? "director" : "actor";
 
                 const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
-                const rpcParams = {
-                  [isDirector ? "director_name" : "actor_name"]: person.name,
-                  sort_field: "fa_votes",
-                  sort_direction: "desc",
-                  page_limit: 42,
-                  get_count: true
+                const fetchFilmography = async (roleName) => {
+                  const rpcParams = {
+                    [roleName === "director" ? "director_name" : "actor_name"]: person.name,
+                    sort_field: "fa_votes",
+                    sort_direction: "desc",
+                    page_limit: 42,
+                    get_count: true
+                  };
+                  try {
+                    const res = await fetch(rpcUrl, {
+                      method: "POST",
+                      headers: {
+                        apikey: supabaseAnonKey,
+                        Authorization: `Bearer ${supabaseAnonKey}`,
+                        "Content-Type": "application/json",
+                        Accept: "application/json"
+                      },
+                      body: JSON.stringify(rpcParams)
+                    });
+                    if (res && res.ok) {
+                      const data = await res.json().catch(() => ({}));
+                      return Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+                    }
+                  } catch (_) {}
+                  return [];
                 };
 
-                const moviesRes = await fetch(rpcUrl, {
-                  method: "POST",
-                  headers: {
-                    apikey: supabaseAnonKey,
-                    Authorization: `Bearer ${supabaseAnonKey}`,
-                    "Content-Type": "application/json",
-                    Accept: "application/json"
-                  },
-                  body: JSON.stringify(rpcParams)
-                }).catch(() => null);
+                let directorMovies = [];
+                let actorMovies = [];
 
-                let movies = [];
-                if (moviesRes && moviesRes.ok) {
-                  const moviesData = await moviesRes.json().catch(() => ({}));
-                  movies = Array.isArray(moviesData?.items) ? moviesData.items : (Array.isArray(moviesData) ? moviesData : []);
+                if (hasBothRoles) {
+                  [directorMovies, actorMovies] = await Promise.all([
+                    fetchFilmography("director"),
+                    fetchFilmography("actor")
+                  ]);
+                } else if (isDirectorPredominant) {
+                  directorMovies = await fetchFilmography("director");
+                } else {
+                  actorMovies = await fetchFilmography("actor");
                 }
 
-                const html = renderPersonHtml(person, role, hasOtherRole, movies, { siteOrigin: url.origin, storageUrl });
+                const html = renderPersonHtml(person, {
+                  activeRole,
+                  filmographies: {
+                    director: directorMovies,
+                    actor: actorMovies
+                  }
+                }, { siteOrigin: url.origin, storageUrl });
                 const response = new Response(html, {
                   status: 200,
                   headers: {

@@ -29,6 +29,7 @@
   - Inyección de `Cache-Control: public, max-age=31536000, immutable` en bundles de Vite (`/assets/*`).
   - Proxy perimetral de imágenes (`/posters/*` y `/vips/*`) con reescritura hacia Supabase Storage para evitar consumo de egress.
   - Negociación de contenido Markdown (`Accept: text/markdown` $\to$ `/llms.txt`) y cabeceras de descubrimiento para agentes de IA (`Link: </llms.txt>; rel="alternate"`). Documentado en `cloudflare/README.md`.
+  - Endpoint de purga selectiva perimetral (`POST /internal/purge`) protegido estrictamente mediante variable de entorno secreta `PURGE_SECRET` (sin fallbacks hardcodeados en código; devuelve `500 Server misconfigured` si el secreto no está configurado).
 
 ### 2. Módulos Compartidos SSOT (`src/shared/`)
 
@@ -69,6 +70,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
   - `/genero/:slug/`, `/pais/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/`: Muros de taxonomía cerrada con 42 tarjetas oficiales.
   - Reverso de tarjeta en Edge SSR: idéntico visualmente a la SPA; el título original se ubica bajo las puntuaciones y actúa como enlace a la ficha (`.back-original-title-link`), la sinopsis fluye con degradado hasta la base, los botones `+` se alinean milimétricamente a 8px del margen derecho y el botón `−` permite cerrar tanto el panel de reparto como la sinopsis expandida elevándose a `z-index: 60`.
 - **Coherencia de Tema Claro / Oscuro**: Script anti-flicker síncrono en `<head>` (0 ms) que sincroniza `localStorage` y cookie `theme=...`, junto al botón interactivo `#theme-toggle` en todas las cabeceras perimetrales.
+- **Filosofía VIP = Fuente Editorial**: `VIP_SLUGS` actúa estrictamente como filtro de enrutamiento perimetral en tiempo constante $O(1)$ para decidir si una ruta raíz intenta resolverse como ficha SEO VIP; los datos editoriales siempre proceden de Supabase (SSOT), quedando terminantemente prohibido almacenar fichas dentro del manifiesto.
 
 ### 5. Estilos (`src/css/`)
 

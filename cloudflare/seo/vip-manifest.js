@@ -3,10 +3,18 @@
 //                (cloudflare/seo/vip-manifest.js)
 // =================================================================
 // Generado automáticamente mediante: node scripts/generate-vip-manifest.mjs
-// Fecha de generación: 2026-09-11T15:05:38.841Z
+// Fecha de generación: 2026-09-12T17:55:39.321Z
 // Total entidades VIP: 1163
-// Fuente de Verdad Única (SSOT): public.people (vip = 1) en Supabase.
-// Permite descarte en O(1) en memoria local del Worker sin consultar BD.
+//
+// PRINCIPIO ARQUITECTÓNICO (FILOSOFÍA "VIP = FUENTE EDITORIAL"):
+// 1. VIP_SLUGS es exclusivamente un índice de pertenencia en memoria para
+//    descarte en O(1). Su único propósito es decidir si el Cloudflare Worker
+//    debe intentar resolver una ruta raíz como ficha SEO VIP.
+// 2. NUNCA incrustar datos editoriales (biografías, filmografía, metadatos)
+//    en este manifiesto para evitar inflar el bundle y desincronizar la BD.
+// 3. Supabase (public.people con vip = 1) es la Fuente Única de Verdad (SSOT)
+//    editorial: cuando VIP_SLUGS.has(slug) es true, el Worker consulta a Supabase
+//    para obtener los datos editoriales frescos y renderizar el Edge SSR.
 // =================================================================
 
 export const VIP_SLUGS = new Set([

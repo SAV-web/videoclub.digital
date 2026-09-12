@@ -39,6 +39,10 @@ const supabaseAnonKey =
   process.env.VITE_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
 
+// Patrón canónico estricto de slug URL-safe:
+// Alfanumérico minúscula ASCII separado por guiones simples, sin guiones en extremos ni duplicados
+const VALID_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 const PAGE_SIZE = 1000;
 
 async function generateVipManifest() {
@@ -67,8 +71,13 @@ async function generateVipManifest() {
     }
 
     for (const row of data) {
-      if (row.slug && typeof row.slug === "string" && row.slug.trim()) {
-        slugs.add(row.slug.trim());
+      if (row.slug && typeof row.slug === "string") {
+        const normalized = row.slug.trim().toLowerCase();
+        if (VALID_SLUG_REGEX.test(normalized)) {
+          slugs.add(normalized);
+        } else {
+          console.warn(`[WARN] Slug VIP descartado por formato no canónico: "${row.slug}" (normalizado: "${normalized}")`);
+        }
       }
     }
 
@@ -86,8 +95,16 @@ async function generateVipManifest() {
 // Generado automáticamente mediante: node scripts/generate-vip-manifest.mjs
 // Fecha de generación: ${new Date().toISOString()}
 // Total entidades VIP: ${sortedSlugs.length}
-// Fuente de Verdad Única (SSOT): public.people (vip = 1) en Supabase.
-// Permite descarte en O(1) en memoria local del Worker sin consultar BD.
+//
+// PRINCIPIO ARQUITECTÓNICO (FILOSOFÍA "VIP = FUENTE EDITORIAL"):
+// 1. VIP_SLUGS es exclusivamente un índice de pertenencia en memoria para
+//    descarte en O(1). Su único propósito es decidir si el Cloudflare Worker
+//    debe intentar resolver una ruta raíz como ficha SEO VIP.
+// 2. NUNCA incrustar datos editoriales (biografías, filmografía, metadatos)
+//    en este manifiesto para evitar inflar el bundle y desincronizar la BD.
+// 3. Supabase (public.people con vip = 1) es la Fuente Única de Verdad (SSOT)
+//    editorial: cuando VIP_SLUGS.has(slug) es true, el Worker consulta a Supabase
+//    para obtener los datos editoriales frescos y renderizar el Edge SSR.
 // =================================================================
 
 export const VIP_SLUGS = new Set([
