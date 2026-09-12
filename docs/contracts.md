@@ -262,6 +262,7 @@ Para garantizar cero parpadeos (*zero-flicker*) e idéntica experiencia visual a
    - Se elimina por completo el botón `"Ficha completa →"`.
    - **Jerarquía Secuencial del Reverso**: Siguiendo el criterio unificado de la modal, el orden de elementos es:
      $$\text{1. Meta Header (duración, Wikipedia, JustWatch)} \to \text{2. Puntuaciones (FA / IMDb)} \to \text{3. Título Original} \to \text{4. Géneros y Reparto} \to \text{5. Sinopsis}$$
+   - **Presencia Incondicional del Título Original**: El título original se renderiza **siempre** en la cara trasera (tanto en la SPA como en Edge SSR), incluso si coincide exactamente con el título en castellano/traducido, garantizando que el usuario disponga en todo momento de la referencia original y el enlace interactivo hacia la ficha completa.
    - El acceso a la ficha completa se realiza pulsando sobre el título original (`.back-original-title-link`), ubicado inmediatamente debajo de las puntuaciones con `pointer-events: auto !important`, `z-index: 20` y cursor interactivo.
    - **Alineación Milimétrica de Iconos `+`**:
      - El contenedor `.flip-card-back` posee un padding perimetral de `var(--space-xs, 8px)`.
@@ -271,8 +272,8 @@ Para garantizar cero parpadeos (*zero-flicker*) e idéntica experiencia visual a
    - **Ritmo Vertical e Interlineado Armónico (Separación de Líneas)**:
      - Para prevenir aglomeración visual (*amontonamiento*) y asegurar una lectura limpia en la cara trasera:
        - `.back-meta-header`: `margin-bottom: 6px` para separar la duración y enlaces externos de los ratings.
-       - `.ratings-container`: `gap: 5px` entre barras de FA e IMDb.
-       - `.back-original-title-wrapper`: márgenes equilibrados `margin-top: 7px; margin-bottom: 7px;` e interlineado de título `line-height: 1.25` (evitando colisión entre líneas).
+       - `.flip-card-back .ratings-container`: `gap: 5px` entre barras de FA e IMDb, con `margin-bottom: 4px` para crear una separación neta respecto al título original.
+       - `.back-original-title-wrapper`: márgenes equilibrados `margin-top: 9px; margin-bottom: 7px;` (~13px de distancia efectiva respecto al icono y barra de IMDb) e interlineado de título `line-height: 1.25` (evitando colisión entre líneas).
        - `.details-list`: `margin: 7px 0; padding-top: 7px; border-top: 1px solid var(--color-border);` con `gap: 6px` entre géneros y reparto, y `line-height: 1.35`.
        - `.plot-summary-final`: `padding-top: 7px; border-top: 1px solid var(--color-border);` con `line-height: 1.38` y `opacity: 0.85`, proporcionando aire visual antes y después de cada línea divisoria y un interlineado descansado en la sinopsis.
    - **Botón `−` de Cierre de Detalle en SEO Edge**:

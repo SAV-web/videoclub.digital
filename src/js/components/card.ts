@@ -854,12 +854,13 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   // --- BACK ---
   const origWrap = back.querySelector<HTMLElement>('.back-original-title-wrapper');
   if (origWrap) {
-    if (movie.original_title && movie.original_title.trim()) {
+    const origTitle = (movie.original_title && movie.original_title.trim()) || (movie.title && movie.title.trim()) || "";
+    if (origTitle) {
       const origEl = origWrap.querySelector<HTMLElement>('[data-template="original-title"]');
       if (origEl) {
-        origEl.textContent = movie.original_title;
+        origEl.textContent = origTitle;
         origEl.className = "";
-        const oLen = movie.original_title.length;
+        const oLen = origTitle.length;
         if (oLen > 40) origEl.classList.add("title-xl-long");
         else if (oLen > 30) origEl.classList.add("title-long");
         else if (oLen > 20) origEl.classList.add("title-medium");

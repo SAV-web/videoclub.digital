@@ -242,7 +242,7 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
     genres_list: (m.genres_list || m.genres || null),
     directors_list: (m.directors_list || m.directors || null),
     actors_list: (m.actors_list || m.actors || null),
-    original_title: (m.original_title && m.title && m.original_title.toLowerCase() === m.title.toLowerCase()) ? null : m.original_title,
+    original_title: m.original_title || m.title || null,
     year_end: isSeries ? m.year_end : null,
     episodes: isSeries ? m.episodes : null,
     country: m.countries?.name || m.country || null,

@@ -540,11 +540,15 @@ html.dark-mode .bbc-icon {
    5. CONTENIDO TRASERO (Detalles y Links)
    ================================================================= */
 
+.flip-card-back .ratings-container {
+  margin-bottom: 4px;
+}
+
 .back-original-title-wrapper {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  margin-top: 7px;
+  margin-top: 9px;
   margin-bottom: 7px;
   padding-inline: 0;
   width: 100%;

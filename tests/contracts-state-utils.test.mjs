@@ -58,7 +58,7 @@ describe("utils.js", () => {
     assert.equal(movie.isSeries, true);
     assert.equal(movie.displayYear, "2017-20");
     assert.equal(movie.displayOriginalTitle, "Dark");
-    assert.equal(movie.hasOriginalTitle, false);
+    assert.equal(movie.hasOriginalTitle, true);
     assert.equal(movie.displayEpisodes, "26 x");
     assert.deepEqual(movie.parsedActors, ["Lisa Vicari", "Louis Hofmann"]);
     assert.deepEqual(movie.parsedDirectors, ["Baran bo Odar"]);

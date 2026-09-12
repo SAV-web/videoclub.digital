@@ -42,7 +42,7 @@ describe("api.ts (Normalización de Caché y Parámetros RPC)", () => {
     const shaped = apiModule.shapeRawMovieRow(rawRow);
 
     assert.strictEqual(shaped.id, 99);
-    assert.strictEqual(shaped.original_title, null);
+    assert.strictEqual(shaped.original_title, "pulp fiction");
     assert.strictEqual(shaped.year_end, null);
     assert.strictEqual(shaped.episodes, null);
     assert.strictEqual(shaped.country, "Estados Unidos");

@@ -1279,11 +1279,15 @@ html.dark-mode .bbc-icon {
    5. CONTENIDO TRASERO (Detalles y Links)
    ================================================================= */
 
+.flip-card-back .ratings-container {
+  margin-bottom: 4px;
+}
+
 .back-original-title-wrapper {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  margin-top: 7px;
+  margin-top: 9px;
   margin-bottom: 7px;
   padding-inline: 0;
   width: 100%;
@@ -4903,9 +4907,13 @@ body.sidebar-collapsed .sidebar {
   pointer-events: auto !important;
 }
 
+.flip-card-back .ratings-container {
+  margin-bottom: 4px !important;
+}
+
 /* Título original en el reverso con separación armónica respecto a ratings y línea divisoria */
 .movie-card:not(.is-quick-view) .back-original-title-wrapper {
-  margin-top: 7px !important;
+  margin-top: 9px !important;
   margin-bottom: 7px !important;
   min-height: 0 !important;
 }

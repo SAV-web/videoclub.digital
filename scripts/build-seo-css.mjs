@@ -142,9 +142,13 @@ combined += `
   pointer-events: auto !important;
 }
 
+.flip-card-back .ratings-container {
+  margin-bottom: 4px !important;
+}
+
 /* Título original en el reverso con separación armónica respecto a ratings y línea divisoria */
 .movie-card:not(.is-quick-view) .back-original-title-wrapper {
-  margin-top: 7px !important;
+  margin-top: 9px !important;
   margin-bottom: 7px !important;
   min-height: 0 !important;
 }
