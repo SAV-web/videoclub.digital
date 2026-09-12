@@ -12,7 +12,7 @@ import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../state
 import { saveLocalEntry } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
 import { CSS_CLASSES } from "../constants.js";
-import { showToast } from "../ui.js";
+import { showToast, openAuthModal } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
 import { normalizeMovieId } from "../contracts.js";
 import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.js";
@@ -188,6 +188,7 @@ export function renderUserStars(container: HTMLElement, value: number, hideHollo
  * Maneja el hover sobre las estrellas (Feedback visual inmediato).
  */
 function handleRatingMouseMove(event: MouseEvent): void {
+  if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
   const target = event.target as HTMLElement;
   const starIcon = target.closest<HTMLElement>(".star-icon");
   if (!starIcon) return;
@@ -222,6 +223,12 @@ function handleRatingKeyDown(event: KeyboardEvent): void {
   event.preventDefault();
   event.stopPropagation();
 
+  if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+    showToast("Identifícate para votar o guardar en tu lista", "info");
+    openAuthModal();
+    return;
+  }
+
   const card = starIcon.closest<MovieCardElement>(".movie-card");
   if (!card) return;
 
@@ -240,6 +247,7 @@ function handleRatingKeyDown(event: KeyboardEvent): void {
  * Feedback visual para navegación por teclado (FocusIn / FocusOut).
  */
 function handleRatingFocusIn(event: FocusEvent): void {
+  if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
   const target = event.target as HTMLElement;
   const starIcon = target.closest<HTMLElement>(".star-icon");
   if (!starIcon) return;
@@ -260,7 +268,8 @@ function handleRatingFocusOut(event: FocusEvent): void {
 export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean): void {
   if (!isInteractive) return;
 
-  starContainer.classList.add(CSS_CLASSES.IS_INTERACTIVE);
+  const isLoggedIn = typeof document !== "undefined" && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
+  starContainer.classList.toggle(CSS_CLASSES.IS_INTERACTIVE, isLoggedIn);
 
   starContainer.addEventListener("mouseover", handleRatingMouseMove as EventListener, { passive: true });
   starContainer.addEventListener("mouseleave", handleRatingMouseLeave as EventListener, { passive: true });
@@ -274,6 +283,12 @@ export function setupRatingListeners(starContainer: HTMLElement, isInteractive: 
 // =================================================================
 
 async function setRating(movieId: number, value: number | null, card: MovieCardElement): Promise<void> {
+  if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+    showToast("Identifícate para votar o guardar en tu lista", "info");
+    openAuthModal();
+    return;
+  }
+
   const previousRating = getUserDataForMovie(movieId)?.rating ?? null;
   
   if (previousRating === value) return;
@@ -321,26 +336,37 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
   const target = event.target as HTMLElement;
   const starEl = target.closest<HTMLElement>(".star-icon[data-rating-level]");
   const wallRatingEl = target.closest<HTMLElement>(".wall-rating-number");
+  const isRotationDisabledBlock = target.closest<HTMLElement>(".card-rating-block") && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) && !starEl;
   
+  if (!starEl && !wallRatingEl && !isRotationDisabledBlock) return false;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+    showToast("Identifícate para votar o guardar en tu lista", "info");
+    openAuthModal();
+    starEl?.blur();
+    target.blur();
+    return true;
+  }
+
   const movieId = normalizeMovieId(card.dataset.movieId);
   if (!movieId) return false;
 
   const currentRating = getUserDataForMovie(movieId)?.rating;
 
   if (starEl) {
-    event.preventDefault(); event.stopPropagation();
     const level = parseInt(starEl.dataset.ratingLevel || "0", 10);
     const newRating = resolveNextRating(currentRating, level);
 
     setRating(movieId, newRating, card);
     triggerRatingAnimation(card, newRating, starEl);
     starEl.blur();
-    
     return true;
   }
 
-  if (wallRatingEl || (target.closest<HTMLElement>(".card-rating-block") && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) && !starEl)) {
-    event.preventDefault(); event.stopPropagation();
+  if (wallRatingEl || isRotationDisabledBlock) {
     const newRating = resolveNextRating(currentRating, 1);
     setRating(movieId, newRating, card);
     triggerRatingAnimation(card, newRating, undefined);
@@ -348,7 +374,7 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
     return true;
   }
 
-  return false; // Not handled
+  return false;
 }
 
 // =================================================================
@@ -366,6 +392,8 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
 
   const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
   if (!starCont) return;
+
+  starCont.classList.toggle(CSS_CLASSES.IS_INTERACTIVE, isLoggedIn);
 
   const state = getRatingPresentationState(mappedMovie, userData, isLoggedIn);
 

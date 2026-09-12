@@ -45,7 +45,7 @@
 
 /* --- Interacciones (Hover) --- */
 @media (hover: hover) and (pointer: fine) {
-  :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:hover {
+  body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:hover {
     transform: scale(1.35); 
     z-index: 20;
     filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
@@ -54,7 +54,7 @@
 }
 
 /* Feedback Táctil (:active) */
-:is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:active {
+body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:active {
   transform: scale(0.92);
   filter: brightness(0.95);
   transition: transform 50ms var(--ease-bounce-sharp);

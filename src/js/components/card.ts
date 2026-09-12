@@ -12,7 +12,7 @@ import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag,
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { saveLocalEntry } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
-import { showToast, areInteractionsLocked } from "../ui.js";
+import { showToast, areInteractionsLocked, openAuthModal } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import { normalizeMovieId } from "../contracts.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
@@ -441,6 +441,12 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 // =================================================================
 
 export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
+  if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+    showToast("Identifícate para votar o guardar en tu lista", "info");
+    openAuthModal();
+    return;
+  }
+
   const wasActive = btn.classList.contains("is-active");
   const newState: Partial<UserMovieEntry> = { onWatchlist: !wasActive };
 
@@ -491,6 +497,12 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   if (watchlistBtn) {
     event.preventDefault(); event.stopPropagation();
     if (isPerson) return;
+    if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+      showToast("Identifícate para votar o guardar en tu lista", "info");
+      openAuthModal();
+      watchlistBtn.blur();
+      return;
+    }
     const movieId = normalizeMovieId(card.dataset.movieId);
     if (movieId) toggleWatchlist(movieId, watchlistBtn, card);
     watchlistBtn.blur();
