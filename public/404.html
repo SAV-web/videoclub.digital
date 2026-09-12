@@ -10,8 +10,15 @@
     var search = window.location.search ? window.location.search.slice(1) : '';
     var hash = window.location.hash || '';
     var base = pathSegmentsToKeep > 0 ? '/videoclub.digital/' : '/';
-    var redirectUrl = base + '?_p=/' + path + (search ? '&_q=' + encodeURIComponent(search) : '') + hash;
-    window.location.replace(redirectUrl);
+    var lowerPath = path.toLowerCase();
+    var isSeoRoute = lowerPath.startsWith('titulo/') || lowerPath.startsWith('genero/') || lowerPath.startsWith('pais/') || lowerPath.startsWith('estudio/') || lowerPath.startsWith('seleccion/');
+    if (isSeoRoute) {
+      var cleanSeoPath = base + lowerPath.replace(/\/+$/, '') + '/';
+      window.location.replace(cleanSeoPath);
+    } else {
+      var redirectUrl = base + '?_p=/' + path + (search ? '&_q=' + encodeURIComponent(search) : '') + hash;
+      window.location.replace(redirectUrl);
+    }
   </script>
 </head>
 <body></body>

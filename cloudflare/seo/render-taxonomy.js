@@ -106,17 +106,19 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
         <!-- Cara frontal -->
         <div class="flip-card-front">
           <div class="poster-container">
-            <img
-              src="${escapeAttr(posterUrl)}"
-              alt="Póster de ${escapeAttr(title)}"
-              width="400"
-              height="496"
-              loading="${index < 6 ? 'eager' : 'lazy'}"
-              ${index === 0 ? 'fetchpriority="high"' : ''}
-              class="loaded"
-              onerror="this.style.opacity='0.2'"
-            />
-            <div class="poster-overlay-guard"></div>
+            <a href="${baseUrl}?movie=${movie.id}" class="poster-media-link" aria-label="Abrir ${escapeAttr(title)} en el videoclub" style="display:block; width:100%; height:100%; position:relative; text-decoration:none; color:inherit;">
+              <img
+                src="${escapeAttr(posterUrl)}"
+                alt="Póster de ${escapeAttr(title)}"
+                width="400"
+                height="496"
+                loading="${index < 6 ? 'eager' : 'lazy'}"
+                ${index === 0 ? 'fetchpriority="high"' : ''}
+                class="loaded"
+                onerror="this.style.opacity='0.2'"
+              />
+              <div class="poster-overlay-guard"></div>
+            </a>
             <div class="card-rating-block">
               <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" aria-label="Ver valoración y ficha de ${escapeAttr(title)}" style="text-decoration: none; color: inherit; cursor: pointer;">
                 <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
@@ -142,7 +144,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
           <div class="movie-info movie-summary">
             <div class="title-director-block">
               <h3 data-template="title" class="${titleLengthClass}">
-                <a href="${escapeAttr(movieUrl)}" class="movie-card-title-link" style="color:inherit; text-decoration:none;">${escapeHtml(title)}</a>
+                <a href="${baseUrl}?movie=${movie.id}" class="movie-card-title-link" style="color:inherit; text-decoration:none;">${escapeHtml(title)}</a>
               </h3>
               <div class="front-director-info" data-template="director">
                 ${directorsHtml}
@@ -218,7 +220,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
 
           ${displayOriginalTitle ? `
             <div class="back-original-title-wrapper">
-              <a href="${escapeAttr(movieUrl)}" class="back-original-title-link" aria-label="Ver ficha completa de ${escapeAttr(title)}" title="Ver ficha completa de ${escapeAttr(title)}">
+              <a href="${baseUrl}?movie=${movie.id}" class="back-original-title-link" aria-label="Abrir ${escapeAttr(title)} en el videoclub" title="Abrir en el videoclub">
                 <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
               </a>
             </div>
@@ -228,10 +230,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             ${rawGenres.length > 0 ? `
               <div class="detail-item" data-template="genre-container">
                 <span class="detail-label" title="Género"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-clapperboard"></use></svg></span>
-                <span class="detail-data" data-template="genre">${rawGenres.map((g, i) => {
-                  const s = genreToSlug(g);
-                  return s ? `<a href="${baseUrl}?_p=/${s}/">${escapeHtml(preserveHyphenatedWords(g))}</a>${i < rawGenres.length - 1 ? ', ' : ''}` : `<span>${escapeHtml(preserveHyphenatedWords(g))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
-                }).join('')}</span>
+                <span class="detail-data" data-template="genre"><span>${escapeHtml(preserveHyphenatedWords(rawGenres.join(', ')))}</span></span>
               </div>
             ` : ''}
             ${actors.length > 0 ? `
@@ -432,11 +431,11 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
       <header class="main-header">
         <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto;">
           <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
-            <span class="logo-line-1">VIDEOCLUB</span>
-            <span class="logo-line-2">.DIGITAL</span>
+            <span class="logo-line-1">videoclub</span>
+            <span class="logo-line-2">.digital</span>
           </a>
           
-          <!-- Controles de cabecera: filtro activo y selector de tema coherente -->
+          <!-- Controles de cabecera: filtro activo -->
           <div class="active-filters-list" style="display:flex; align-items:center; gap:8px; margin:0; padding:0;">
             ${taxInfo.type === 'selection' ? `
               <span class="filter-pill is-active is-static" style="cursor:default; pointer-events:none;">
@@ -447,10 +446,6 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
                 <span>${escapeHtml(taxInfo.name)}</span>
               </a>
             `}
-            <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Cambiar tema" aria-label="Cambiar tema" aria-pressed="false" style="width:36px; height:36px; position:relative; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-text-primary); cursor:pointer; padding:0; flex-shrink:0;">
-              <svg class="theme-icon moon-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-moon"></use></svg>
-              <svg class="theme-icon sun-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-sun"></use></svg>
-            </button>
           </div>
         </div>
       </header>
@@ -559,6 +554,8 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
               back.classList.remove("is-expanded", "show-actors");
               expandBtn.textContent = "+";
               expandBtn.setAttribute("aria-label", "Expandir sinopsis");
+              var scrolls = back.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+              scrolls.forEach(function (s) { s.scrollTop = 0; });
             } else {
               back.classList.add("is-expanded");
               expandBtn.textContent = "−";
@@ -568,7 +565,31 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
           return;
         }
 
-        // 3. Volteo 3D de la tarjeta
+        // 3. Trasera ampliada: retroceder a la trasera normal al pulsar fuera del área de enlaces
+        var expandedBack = e.target.closest(".flip-card-back.is-expanded");
+        if (expandedBack) {
+          var isInteractive = e.target.closest("a[href], button, [role='button'], [data-action]");
+          if (!isInteractive) {
+            var sel = window.getSelection ? window.getSelection() : null;
+            if (sel && sel.toString().trim().length > 0) {
+              e.stopPropagation();
+              return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            expandedBack.classList.remove("is-expanded", "show-actors");
+            var btn = expandedBack.querySelector(".expand-content-btn");
+            if (btn) {
+              btn.textContent = "+";
+              btn.setAttribute("aria-label", "Expandir sinopsis");
+            }
+            var scrolls = expandedBack.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+            scrolls.forEach(function (s) { s.scrollTop = 0; });
+            return;
+          }
+        }
+
+        // 4. Volteo 3D de la tarjeta
         var card = e.target.closest(".movie-card");
         if (card) {
           if (e.target.closest("a, button, [role='button'], .actors-scrollable-content, .scrollable-content")) return;

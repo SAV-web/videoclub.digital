@@ -68,6 +68,58 @@ describe("rating.ts (Lógica de Valoración y Exclusividad Watchlist)", () => {
     // Al desmarcar de pendientes (false), no muta la nota (retorna undefined)
     assert.equal(ratingModule.resolveRatingMutationOnWatchlist(false), undefined);
   });
+
+  test("handleRatingClick sin usuario logueado emite toast 'Identifícate para votar' y no abre modal de autenticación", async () => {
+    const { setupGlobalDom, createMockDomElement } = await import("./helpers/mock-dom.mjs");
+    const toastContainer = createMockDomElement("div", { id: "toast-container" });
+    const authModal = createMockDomElement("div", { id: "auth-modal" });
+    authModal.hidden = true;
+
+    const { teardown } = setupGlobalDom({
+      elementMap: {
+        "toast-container": toastContainer,
+        "auth-modal": authModal,
+      },
+      fallbackCreate: true,
+    });
+
+    try {
+      globalThis.document.body.classList.remove("is-logged-in");
+
+      const mockStar = createMockDomElement("svg");
+      mockStar.classList.add("star-icon");
+      mockStar.dataset.ratingLevel = "1";
+      mockStar.closest = (sel) => {
+        if (sel.includes("star-icon")) return mockStar;
+        return null;
+      };
+
+      const mockEvent = {
+        target: mockStar,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      };
+
+      const mockCard = createMockDomElement("article");
+      mockCard.classList.add("movie-card");
+      mockCard.dataset.movieId = "101";
+
+      const handled = ratingModule.handleRatingClick(mockEvent, mockCard);
+      assert.equal(handled, true, "El evento de clic debe ser interceptado y manejado");
+
+      // Comprobar que se ha insertado el mensaje emergente en el toastContainer
+      assert.ok(toastContainer.children.length > 0, "Debe crearse un elemento toast en el contenedor");
+      const toastEl = toastContainer.children[0];
+      assert.ok(toastEl.classList.contains("toast--info"), "El toast debe ser de tipo info");
+      const textSpan = toastEl.children[0];
+      assert.equal(textSpan.textContent, "Identifícate para votar", "El texto debe ser exactamente 'Identifícate para votar'");
+
+      // Comprobar que la modal de autenticación permanece cerrada
+      assert.equal(uiModule.isAuthModalOpen(), false, "La modal de autenticación NO debe abrirse");
+    } finally {
+      teardown();
+    }
+  });
 });
 
 describe("offlineQueue.ts (Background Sync y Cola Offline)", () => {

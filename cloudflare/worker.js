@@ -136,7 +136,7 @@ export default {
       });
     }
 
-    // 2. NORMALIZACIÓN CANÓNICA 301 (CASE-INSENSITIVITY Y TRAILING SLASH) PARA /titulo/:slug Y PREFIJOS DE TAXONOMÍA
+    // 2. NORMALIZACIÓN CANÓNICA 301 (CASE-INSENSITIVITY, TRAILING SLASH Y ELIMINACIÓN DE QUERY STRING) PARA RUTAS SEO PREFIJADAS
     const lowerPath = url.pathname.toLowerCase();
     const isPrefixedSeoRoute = 
       lowerPath.startsWith("/titulo/") ||
@@ -146,12 +146,13 @@ export default {
       lowerPath.startsWith("/seleccion/");
 
     if (isPrefixedSeoRoute) {
+      const canonicalPath = lowerPath.replace(/\/+$/, "") + "/";
       const hasUppercase = /[A-Z]/.test(url.pathname);
       const missingSlash = !url.pathname.endsWith("/");
-      if (hasUppercase || missingSlash) {
-        const canonicalPath = lowerPath.replace(/\/+$/, "") + "/";
-        const canonicalRedirectUrl = new URL(`${canonicalPath}${url.search}`, url.origin);
-        return Response.redirect(canonicalRedirectUrl.toString(), 301);
+      const hasQuery = Boolean(url.search);
+
+      if (hasUppercase || missingSlash || hasQuery) {
+        return Response.redirect(new URL(canonicalPath, url.origin).toString(), 301);
       }
     }
 
@@ -216,8 +217,10 @@ export default {
         const taxInfo = resolveTaxonomy(slug, prefix);
         if (taxInfo) {
           const hasUppercase = /[A-Z]/.test(url.pathname);
-          if (hasUppercase || !url.pathname.endsWith("/")) {
-            return Response.redirect(new URL(`${taxInfo.canonicalPath}${url.search}`, url.origin).toString(), 301);
+          const missingSlash = !url.pathname.endsWith("/");
+          const hasQuery = Boolean(url.search);
+          if (hasUppercase || missingSlash || hasQuery) {
+            return Response.redirect(new URL(taxInfo.canonicalPath, url.origin).toString(), 301);
           }
 
           const cache = caches.default;
@@ -283,11 +286,12 @@ export default {
         // de Supabase (SSOT). El manifiesto no sustituye a la base de datos.
         // Si no está en VIP_SLUGS, JAMÁS consulta a la BD y delega de inmediato al origen SPA.
         if (VIP_SLUGS.has(slug)) {
-          // Normalización estricta de trailing slash y case-insensitivity canónico 301
+          // Normalización estricta de trailing slash, case-insensitivity canónico 301 y eliminación de query string
           const hasUppercase = /[A-Z]/.test(url.pathname);
           const missingSlash = !url.pathname.endsWith("/");
-          if (hasUppercase || missingSlash) {
-            return Response.redirect(new URL(`/${slug}/${url.search}`, url.origin).toString(), 301);
+          const hasQuery = Boolean(url.search);
+          if (hasUppercase || missingSlash || hasQuery) {
+            return Response.redirect(new URL(`/${slug}/`, url.origin).toString(), 301);
           }
 
           const cache = caches.default;

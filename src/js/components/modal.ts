@@ -96,7 +96,7 @@ const touchState: TouchState = {
 let activeHeroCard: HTMLElement | null = null;
 
 const SWIPE_X_THRESHOLD = 80;
-const SWIPE_Y_CLOSE_THRESHOLD = 120;
+const SWIPE_Y_CLOSE_THRESHOLD = 90;
 const MODAL_TRANSITION_MS = 400;
 
 // Contador para evitar race conditions al modificar el view-transition del header
@@ -212,6 +212,7 @@ function handleTouchStart(e: TouchEvent): void {
 
   touchState.startY = e.touches[0].clientY;
   touchState.startX = e.touches[0].clientX;
+  touchState.currentY = 0;
   touchState.isDragging = false;
   touchState.isHorizontalSwipe = false;
   touchState.startTime = Date.now();
@@ -242,7 +243,8 @@ function handleTouchMove(e: TouchEvent): void {
 
     // Gesto Vertical (Cierre): Solo si estamos arriba del todo y arrastramos hacia abajo
     if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= SCROLL_TOLERANCE) {
-      if (window.innerWidth <= 700) { // Solo móvil
+      const isMobile = window.innerWidth <= 700 || (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 700px)").matches);
+      if (isMobile) {
         touchState.isDragging = true;
         modal.classList.add(CSS_CLASSES.IS_DRAGGING); // Desactivar transición para seguir el dedo
       }
@@ -848,7 +850,8 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
 
 
   // View Transition (Hero Reverso: Modal -> Card). El helper maneja el fallback y el a11y.
-  if (activeHeroCard) {
+  const hasHeroCard = Boolean(activeHeroCard && typeof document !== "undefined" && typeof document.body?.contains === "function" && document.body.contains(activeHeroCard));
+  if (hasHeroCard && activeHeroCard) {
     modal.style.viewTransitionName = "hero-expansion";
     activeHeroCard.style.viewTransitionName = "hero-expansion";
 
@@ -867,6 +870,7 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
       }
     });
   } else {
+    activeHeroCard = null;
     executeViewTransition(performClose).finished.finally(() => {
       modalTransitionCount--;
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
@@ -891,8 +895,6 @@ export function openModalForMovie(movie: MappedMovie | Movie): void {
   dummyCard.className = "movie-card";
   dummyCard.movieData = "posterUrl" in movie ? movie : mapMoviePayload(movie);
   openModal(dummyCard);
-  const { modal } = getDom();
-  if (modal) modal.classList.add("hide-arrows");
 }
 
 /**
@@ -900,6 +902,10 @@ export function openModalForMovie(movie: MappedMovie | Movie): void {
  */
 export function openModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   if (!cardElement) return;
+
+  if (!isQuickViewInitialized) {
+    initQuickView();
+  }
 
   const isPerson = cardElement.classList.contains('person-card') || Boolean((cardElement.movieData as { isPerson?: boolean } | undefined)?.isPerson);
   if (isPerson) {
@@ -922,8 +928,8 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   modalTransitionCount++;
   if (header) header.style.viewTransitionName = "none";
 
-  // Guardar referencia para el cierre
-  activeHeroCard = cardElement;
+  const hasHeroCard = Boolean(cardElement && typeof document !== "undefined" && typeof document.body?.contains === "function" && document.body.contains(cardElement));
+  activeHeroCard = hasHeroCard ? cardElement : null;
 
   unflipAllCards();
   populateModal(cardElement, contextCards);
@@ -939,20 +945,29 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
     });
   };
 
-  cardElement.style.viewTransitionName = "hero-expansion";
+  if (hasHeroCard) {
+    cardElement.style.viewTransitionName = "hero-expansion";
 
-  const transition = executeViewTransition(() => {
-    performOpen();
-    modal.style.viewTransitionName = "hero-expansion";
-    cardElement.style.viewTransitionName = "";
-  });
+    const transition = executeViewTransition(() => {
+      performOpen();
+      modal.style.viewTransitionName = "hero-expansion";
+      cardElement.style.viewTransitionName = "";
+    });
 
-  transition.finished.finally(() => {
-    modalTransitionCount--;
-    if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
-      header.style.viewTransitionName = "";
-    }
-  });
+    transition.finished.finally(() => {
+      modalTransitionCount--;
+      if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+        header.style.viewTransitionName = "";
+      }
+    });
+  } else {
+    executeViewTransition(performOpen).finished.finally(() => {
+      modalTransitionCount--;
+      if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+        header.style.viewTransitionName = "";
+      }
+    });
+  }
 }
 
 let isQuickViewInitialized = false;
@@ -1107,7 +1122,7 @@ export function initQuickView(): void {
   }
 
   // Gestos
-  if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) {
+  if (typeof window !== "undefined") {
     const tStart = handleTouchStart as EventListener;
     const tMove = handleTouchMove as EventListener;
     const tEnd = handleTouchEnd as EventListener;

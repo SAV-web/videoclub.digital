@@ -382,9 +382,20 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     const card = target.closest<MovieCardElement>('.movie-card');
     if (!card) return;
 
-    const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item';
+    const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item, .genre-list-item';
 
     if (card.classList.contains('collection-card') || target.closest(criticalElements)) return;
+
+    // Si la trasera de la tarjeta está ampliada (sinopsis o reparto), un tap fuera de los enlaces
+    // contrae la vista y devuelve la tarjeta a su trasera normal sin voltearla al frente
+    const flipBack = card.querySelector<HTMLElement>(".flip-card-back");
+    if (flipBack?.classList.contains("is-expanded")) {
+      if (Math.abs(e.clientX - startX) <= MOVE_THRESHOLD && Math.abs(e.clientY - startY) <= MOVE_THRESHOLD) {
+        if (e.cancelable) e.preventDefault();
+        resetCardBackState(card);
+      }
+      return;
+    }
 
     if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
       if (Math.abs(e.clientX - startX) <= MOVE_THRESHOLD && Math.abs(e.clientY - startY) <= MOVE_THRESHOLD) {
@@ -442,7 +453,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 
 export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
   if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-    showToast("Identifícate para votar o guardar en tu lista", "info");
+    showToast("Identifícate para guardar en tu lista", "info");
     openAuthModal();
     return;
   }
@@ -498,7 +509,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     event.preventDefault(); event.stopPropagation();
     if (isPerson) return;
     if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-      showToast("Identifícate para votar o guardar en tu lista", "info");
+      showToast("Identifícate para guardar en tu lista", "info");
       openAuthModal();
       watchlistBtn.blur();
       return;
@@ -600,11 +611,21 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     return;
   }
 
-  // 4. Bloqueo de Flip en Scroll
-  if (flipBack && ((target.closest('.scrollable-content') && flipBack.classList.contains('is-expanded')) ||
-    target.closest('.actors-scrollable-content'))) {
-    if (!target.closest('.actor-list-item') && !target.closest('.genre-list-item')) {
+  // 4. Trasera ampliada: retroceder a la trasera normal al pulsar fuera del área de enlaces
+  if (flipBack && flipBack.classList.contains("is-expanded")) {
+    const isInteractive = target.closest<HTMLElement>(
+      ".actor-list-item, .genre-list-item, [data-director-name], [data-actor-name], [data-year-value], [data-genre-name], [data-country-name], a[href], button, input, [data-action]"
+    );
+    if (!isInteractive) {
+      const selection = typeof window !== "undefined" ? window.getSelection() : null;
+      if (selection && selection.toString().trim().length > 0) {
+        event.stopPropagation();
+        return;
+      }
+
+      event.preventDefault();
       event.stopPropagation();
+      resetCardBackState(card);
       return;
     }
   }
@@ -616,6 +637,11 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
 
     event.preventDefault();
     event.stopPropagation();
+
+    if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN) || card.classList.contains('is-quick-view')) {
+      import("./modal.js").then(({ closeModal }) => closeModal({ suppressHistoryBack: true }));
+    }
+
     if (filterLink.dataset.genreName) {
       appEvents.emit("filter:apply", { type: "genre", value: filterLink.dataset.genreName });
       return;

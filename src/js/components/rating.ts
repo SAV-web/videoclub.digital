@@ -12,7 +12,7 @@ import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../state
 import { saveLocalEntry } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
 import { CSS_CLASSES } from "../constants.js";
-import { showToast, openAuthModal } from "../ui.js";
+import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
 import { normalizeMovieId } from "../contracts.js";
 import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.js";
@@ -224,8 +224,7 @@ function handleRatingKeyDown(event: KeyboardEvent): void {
   event.stopPropagation();
 
   if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-    showToast("Identifícate para votar o guardar en tu lista", "info");
-    openAuthModal();
+    showToast("Identifícate para votar", "info");
     return;
   }
 
@@ -284,8 +283,7 @@ export function setupRatingListeners(starContainer: HTMLElement, isInteractive: 
 
 async function setRating(movieId: number, value: number | null, card: MovieCardElement): Promise<void> {
   if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-    showToast("Identifícate para votar o guardar en tu lista", "info");
-    openAuthModal();
+    showToast("Identifícate para votar", "info");
     return;
   }
 
@@ -344,10 +342,9 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
   event.stopPropagation();
 
   if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-    showToast("Identifícate para votar o guardar en tu lista", "info");
-    openAuthModal();
-    starEl?.blur();
-    target.blur();
+    showToast("Identifícate para votar", "info");
+    if (typeof starEl?.blur === "function") starEl.blur();
+    if (typeof target?.blur === "function") target.blur();
     return true;
   }
 

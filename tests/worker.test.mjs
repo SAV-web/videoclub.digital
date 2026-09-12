@@ -177,7 +177,10 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             type: null,
             fa_rating: 7.9,
             fa_votes: 199000,
-            directors: "Hermanas Wachowski"
+            directors: "Hermanas Wachowski",
+            actors: "Keanu Reeves, Laurence Fishburne, Carrie-Anne Moss",
+            genres: "Ciencia ficción, Acción",
+            synopsis: "Un hacker informático descubre la verdadera naturaleza de su realidad y su papel en la guerra contra sus controladores."
           },
           {
             id: 2,
@@ -188,7 +191,10 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             type: null,
             fa_rating: 8.0,
             fa_votes: 160000,
-            directors: "Christopher Nolan"
+            directors: "Christopher Nolan",
+            actors: "Leonardo DiCaprio, Joseph Gordon-Levitt, Elliot Page",
+            genres: "Ciencia ficción, Thriller",
+            synopsis: "Un ladrón que roba secretos corporativos a través del uso de la tecnología de compartir sueños recibe la tarea inversa de plantar una idea en la mente de un CEO."
           }
         ];
         return new Response(JSON.stringify({ total: 2, items: sampleTaxonomyMovies }), {
@@ -558,12 +564,18 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     const html = await response.text();
 
-    // Verificación de los dos enlaces habituales en el header
+    // Verificación de marca en el header (2 líneas estilo SPA y sin botones CTA de rayo ni tema)
     assert.ok(html.includes('class="brand-logo-text"'), "Debe incluir el enlace de marca a la home");
-    assert.ok(html.includes('class="btn-header-cta"'), "Debe incluir el botón CTA para abrir en videoclub interactivo");
-    assert.ok(html.includes('href="/?movie=200"'), "El botón CTA debe enlazar con ?movie=200");
+    assert.ok(html.includes('class="logo-line-1">videoclub</span>'), "Debe incluir línea 1 videoclub");
+    assert.ok(html.includes('class="logo-line-2">.digital</span>'), "Debe incluir línea 2 .digital");
+    assert.ok(!html.includes('class="btn-header-cta"'), "NO debe incluir el botón de rayo CTA");
+    assert.ok(!html.includes('id="theme-toggle"'), "NO debe incluir el botón de modo claro/oscuro");
 
-    // Header con z-index superior al overlay
+    // El cartel, título y título original deben enlazar al modal de la SPA (?movie=200)
+    assert.ok(html.includes('class="poster-media-link"'), "El cartel debe enlazar al modal SPA");
+    assert.ok(html.includes('class="movie-title-link"'), "El título debe enlazar al modal SPA");
+    assert.ok(html.includes('class="back-original-title-link"'), "El título original debe enlazar al modal SPA");
+    assert.ok(html.includes('movie=200'), "Debe enlazar al modal interactivo con movie=200");
     assert.ok(html.includes('z-index: calc(var(--z-index-overlay, 1999) + 2)'), "El header debe tener z-index superior al overlay");
 
     // Overlay sin desenfoque
@@ -583,10 +595,14 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       "La bandera debe conducir al SPA con /?_p=/estados-unidos/"
     );
 
-    // 1b. Enlace a géneros conduce a la SPA
+    // 1b. Los géneros en la trasera estándar son texto plano (no enlazables hasta expandir)
     assert.ok(
-      html.includes('href="/?_p=/drama/"'),
-      "Los géneros deben conducir al SPA con /?_p=/drama/"
+      !html.includes('href="/?_p=/drama/"'),
+      "Los géneros en la trasera estándar NO deben ser enlazables"
+    );
+    assert.ok(
+      html.includes('data-template="genre"'),
+      "Debe contener el contenedor de géneros"
     );
 
     // 2. Estrellas enlazan a la modal con filtro del primer director en el grid
@@ -728,7 +744,9 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("back-original-title-link"), "Debe tener enlace en el título original del reverso");
     assert.ok(!html.includes("card-ficha-btn"), "NO debe contener el botón Ficha completa");
     assert.ok(!html.includes("Ficha completa →"), "NO debe contener el texto Ficha completa");
-    assert.ok(html.includes('id="theme-toggle"'), "Debe incluir el botón selector de tema");
+    assert.ok(!html.includes('id="theme-toggle"'), "NO debe incluir el botón selector de tema");
+    assert.ok(html.includes('class="logo-line-1">videoclub</span>'), "El logotipo debe tener videoclub en línea 1");
+    assert.ok(html.includes('class="logo-line-2">.digital</span>'), "El logotipo debe tener .digital en línea 2");
     assert.ok(html.includes('theme=([^;]*)'), "Debe incluir la lectura de cookie en el script anti-flicker");
   });
 
@@ -821,10 +839,10 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("Héroe arquetípico del cine de aventuras"));
     assert.ok(html.includes('href="/?_p=/actor/harrison-ford/"'), "La píldora debe enlazar al filtro en la SPA");
     assert.ok(html.includes('<link rel="canonical" href="https://videoclub.digital/harrison-ford/" />'));
-    assert.ok(!html.includes('<div class="person-role-controls"'), "Personas con un único rol no deben mostrar controles de alternancia D/A");
+    assert.ok(!html.includes('class="person-role-toggle-btn"'), "Personas con un único rol no deben mostrar botón de alternancia D/A");
   });
 
-  test("Personas VIP con rol dual (Actor y Director): /clint-eastwood/ URL inmutable, controles [ D ] [ A ] y ambas filmografías", async () => {
+  test("Personas VIP con rol dual (Actor y Director): /clint-eastwood/ URL inmutable, círculo único D/A (como SPA) y ambas filmografías", async () => {
     VIP_SLUGS.add("clint-eastwood");
     const req = new Request("https://videoclub.digital/clint-eastwood/");
     const res = await worker.fetch(req, {}, defaultCtx);
@@ -839,13 +857,13 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(!html.includes("?rol=actor"), "Nunca debe generar URLs con ?rol=actor");
     assert.ok(!html.includes("?rol=director"), "Nunca debe generar URLs con ?rol=director");
 
-    // 2. Controles de alternancia [ D ] [ A ]
-    assert.ok(html.includes('<div class="person-role-controls"'), "Debe contener el contenedor de controles [ D ] [ A ]");
-    assert.ok(html.includes('data-role="director"'), "Debe contener el botón D");
-    assert.ok(html.includes('data-role="actor"'), "Debe contener el botón A");
-    assert.ok(html.includes('title="Ver películas de Clint Eastwood como Director"'));
-    assert.ok(html.includes('title="Ver películas de Clint Eastwood como Actor"'));
-    assert.ok(html.includes('class="person-role-btn is-active"'), "El botón del rol predominante (director) debe tener la clase is-active");
+    // 2. Control de alternancia único tipo SPA (el círculo D y A no coinciden simultáneamente)
+    assert.ok(html.includes('class="person-role-toggle-btn"'), "Debe contener el botón circular único como en la SPA");
+    assert.ok(html.includes('<span class="role-badge-letter">D</span>'), "Debe mostrar la letra del rol activo inicial (D)");
+    assert.ok(!html.includes('<span class="role-badge-letter">A</span>'), "El círculo D y A no deben coincidir simultáneamente");
+    assert.ok(html.includes('title="Ver películas de Clint Eastwood como Actor"'), "El tooltip debe invitar a ver la filmografía opuesta");
+    assert.ok(html.includes('data-current-role="director"'), "Debe registrar el rol actual");
+    assert.ok(html.includes('data-target-role="actor"'), "Debe registrar el rol destino");
 
     // 3. Filmografías separadas coexistiendo en la misma página
     assert.ok(html.includes('id="filmography-director"'), "Debe incluir el contenedor de filmografía como director");
@@ -925,6 +943,86 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       assert.equal(slug, slug.toLowerCase(), `El slug '${slug}' debe estar estrictamente en minúsculas`);
       assert.equal(slug, slug.trim(), `El slug '${slug}' no debe tener espacios en extremos`);
       assert.ok(SLUG_REGEX.test(slug), `El slug '${slug}' debe cumplir el patrón canónico alfanumérico con guiones`);
+    }
+  });
+
+  test("Páginas SEO: botones circulares + / − y lógica de repliegue al pulsar fuera de enlaces en trasera ampliada", async () => {
+    const req = new Request("https://videoclub.digital/genero/sci-fi/");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+    const html = await res.text();
+
+    // 1. Botones circulares en el HTML
+    assert.ok(html.includes('class="actors-expand-btn"'), "Debe contener el botón circular + de reparto");
+    assert.ok(html.includes('class="expand-content-btn"'), "Debe contener el botón circular + de sinopsis");
+
+    // 2. Lógica de contracción con − y repliegue al pulsar fuera del área de enlaces
+    assert.ok(html.includes('expandedBack.classList.remove("is-expanded", "show-actors")'), "El script del cliente debe colapsar la trasera al pulsar fuera");
+    assert.ok(html.includes('var isInteractive = e.target.closest("a[href], button, [role=\'button\'], [data-action]")'), "Debe discriminar clics en enlaces de los clics en fondo neutro");
+
+    // 3. Estilos en la hoja CSS minificada de Edge
+    const cssReq = new Request("https://videoclub.digital/seo-card-v7.css");
+    const cssRes = await worker.fetch(cssReq, {}, defaultCtx);
+    const css = await cssRes.text();
+    assert.ok(css.includes(".expand-content-btn"), "El CSS debe estilizar el botón circular de expansión");
+    assert.ok(css.includes(".actors-expand-btn"), "El CSS debe estilizar el botón circular de reparto");
+  });
+
+  test("Rutas SEO: Si se escribe con query string, elimina el texto y redirige (301) a la ruta SEO sin query string (no a la landpage)", async () => {
+    const testCases = [
+      // Películas
+      {
+        input: "https://videoclub.digital/titulo/cadena-perpetua-1994/?sort=rating",
+        expected: "https://videoclub.digital/titulo/cadena-perpetua-1994/"
+      },
+      {
+        input: "https://videoclub.digital/titulo/Cadena-Perpetua-1994?sort=fa_votes&p=2",
+        expected: "https://videoclub.digital/titulo/cadena-perpetua-1994/"
+      },
+      // Géneros
+      {
+        input: "https://videoclub.digital/genero/sci-fi/?foo=bar&page=1",
+        expected: "https://videoclub.digital/genero/sci-fi/"
+      },
+      {
+        input: "https://videoclub.digital/genero/Sci-Fi?sort=recientes",
+        expected: "https://videoclub.digital/genero/sci-fi/"
+      },
+      // Países
+      {
+        input: "https://videoclub.digital/pais/espana/?utm_source=test",
+        expected: "https://videoclub.digital/pais/espana/"
+      },
+      // Estudios
+      {
+        input: "https://videoclub.digital/estudio/a24/?page=2",
+        expected: "https://videoclub.digital/estudio/a24/"
+      },
+      // Selecciones
+      {
+        input: "https://videoclub.digital/seleccion/criterion/?filtro=1",
+        expected: "https://videoclub.digital/seleccion/criterion/"
+      },
+      // Personas VIP en la raíz
+      {
+        input: "https://videoclub.digital/clint-eastwood/?rol=actor",
+        expected: "https://videoclub.digital/clint-eastwood/"
+      },
+      {
+        input: "https://videoclub.digital/Clint-Eastwood?rol=director&sort=year",
+        expected: "https://videoclub.digital/clint-eastwood/"
+      },
+      {
+        input: "https://videoclub.digital/christopher-nolan/?page=2",
+        expected: "https://videoclub.digital/christopher-nolan/"
+      }
+    ];
+
+    for (const tc of testCases) {
+      const req = new Request(tc.input);
+      const res = await worker.fetch(req, {}, defaultCtx);
+      assert.equal(res.status, 301, `Ruta ${tc.input} debe responder 301`);
+      assert.equal(res.headers.get("Location"), tc.expected, `Ruta ${tc.input} debe redirigir a ${tc.expected}`);
     }
   });
 });

@@ -272,6 +272,73 @@ describe("Test de Integración Completo: init → interacción → dispose → r
   });
 });
 
+describe("Modal SPA abierta directamente (SEO / ?movie={id})", () => {
+  test("openModal auto-inicializa initQuickView, abre en estado normal (sin hide-arrows) y registra gestos táctiles", async () => {
+    modalModule.disposeModalEvents();
+
+    const mockModal = createMockDomElement("div", { id: "quick-view-modal" });
+    const mockContent = createMockDomElement("div", { id: "quick-view-content" });
+    const mockOverlay = createMockDomElement("div", { id: "quick-view-overlay" });
+    const mockTemplate = createMockDomElement("template", { id: "quick-view-template" });
+
+    const origGetElementById = globalThis.document.getElementById;
+    globalThis.document.getElementById = (id) => {
+      if (id === "quick-view-modal") return mockModal;
+      if (id === "quick-view-content") return mockContent;
+      if (id === "quick-view-overlay") return mockOverlay;
+      if (id === "quick-view-template") return mockTemplate;
+      return origGetElementById ? origGetElementById(id) : createMockDomElement("div", { id });
+    };
+
+    const dummyMovie = {
+      id: 999,
+      title: "Pelicula SEO Directa",
+      posterUrl: "https://ejemplo.com/poster.jpg",
+      year: 2024,
+      genres: "Drama, Thriller",
+      parsedDirectors: ["Director SEO"],
+      parsedActors: ["Actor Uno"]
+    };
+
+    // Abrir directamente como desde ?movie=999
+    modalModule.openModalForMovie(dummyMovie);
+    await new Promise((r) => setTimeout(r, 20));
+
+    // 1. Debe estar visible y en estado normal (NO hide-arrows por defecto en móvil/escritorio)
+    assert.ok(mockModal.classList.contains("is-visible"), "La modal debe abrirse y tener is-visible");
+    assert.equal(mockModal.classList.contains("hide-arrows"), false, "La modal debe abrirse en estado normal (sin hide-arrows)");
+
+    // 2. Debe haber inicializado touch listeners para arrastrar abajo y cerrar
+    assert.ok(mockModal._getListenerCount("touchstart") >= 1, "Debe registrar touchstart en mockModal");
+    assert.ok(mockModal._getListenerCount("touchmove") >= 1, "Debe registrar touchmove en mockModal");
+    assert.ok(mockModal._getListenerCount("touchend") >= 1, "Debe registrar touchend en mockModal");
+
+    // 3. Toggle de póster: al hacer click en el poster-container, conmuta hide-arrows
+    const posterContainer = createMockDomElement("div");
+    posterContainer.className = "poster-container";
+    mockContent.appendChild(posterContainer);
+
+    mockContent.dispatchEvent({
+      type: "click",
+      target: posterContainer
+    });
+    assert.ok(mockModal.classList.contains("hide-arrows"), "Al hacer click en el póster debe conmutar a hide-arrows (ampliado)");
+
+    mockContent.dispatchEvent({
+      type: "click",
+      target: posterContainer
+    });
+    assert.equal(mockModal.classList.contains("hide-arrows"), false, "Al volver a pulsar el póster debe conmutar a estado normal (reducido)");
+
+    // 4. Limpieza
+    modalModule.closeModal({ suppressHistoryBack: true });
+    assert.equal(mockModal.classList.contains("is-visible"), false, "closeModal debe retirar is-visible");
+    modalModule.disposeModalEvents();
+    globalThis.document.getElementById = origGetElementById;
+  });
+});
+
+
 
 
 

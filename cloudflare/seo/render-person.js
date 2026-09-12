@@ -103,6 +103,12 @@ export function renderSpaPersonCard(person, activeRole = 'director', hasOtherRol
   const countrySlug = countryCode ? toSlug(countryName) : null;
 
   const currentRole = activeRole === 'actor' ? 'actor' : 'director';
+  const isDirector = currentRole === 'director';
+  const targetRole = isDirector ? 'actor' : 'director';
+  const currentLetter = isDirector ? 'D' : 'A';
+  const tooltipText = isDirector
+    ? `Ver películas de ${person.name} como Actor`
+    : `Ver películas de ${person.name} como Director`;
   const titleLengthClass = getTitleLengthClass(person.name);
 
   return `
@@ -124,28 +130,16 @@ export function renderSpaPersonCard(person, activeRole = 'director', hasOtherRol
             <div class="poster-overlay-guard"></div>
 
             ${hasBothRoles ? `
-              <div class="person-role-controls" role="group" aria-label="Cambiar filmografía">
-                <button
-                  type="button"
-                  class="person-role-btn ${currentRole === 'director' ? 'is-active' : ''}"
-                  data-role="director"
-                  title="Ver películas de ${escapeAttr(person.name)} como Director"
-                  aria-label="Ver películas de ${escapeAttr(person.name)} como Director"
-                  aria-pressed="${currentRole === 'director'}"
-                >
-                  <span class="role-badge-letter">D</span>
-                </button>
-                <button
-                  type="button"
-                  class="person-role-btn ${currentRole === 'actor' ? 'is-active' : ''}"
-                  data-role="actor"
-                  title="Ver películas de ${escapeAttr(person.name)} como Actor"
-                  aria-label="Ver películas de ${escapeAttr(person.name)} como Actor"
-                  aria-pressed="${currentRole === 'actor'}"
-                >
-                  <span class="role-badge-letter">A</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                class="person-role-toggle-btn"
+                data-current-role="${escapeAttr(currentRole)}"
+                data-target-role="${escapeAttr(targetRole)}"
+                title="${escapeAttr(tooltipText)}"
+                aria-label="${escapeAttr(tooltipText)}"
+              >
+                <span class="role-badge-letter">${currentLetter}</span>
+              </button>
             ` : ''}
 
             <div class="card-rating-block">
@@ -453,19 +447,15 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
       <header class="main-header">
         <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto;">
           <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
-            <span class="logo-line-1">VIDEOCLUB</span>
-            <span class="logo-line-2">.DIGITAL</span>
+            <span class="logo-line-1">videoclub</span>
+            <span class="logo-line-2">.digital</span>
           </a>
           
-          <!-- Nombre de la persona y selector de tema coherente -->
+          <!-- Nombre de la persona -->
           <div class="active-filters-list" style="display:flex; align-items:center; gap: 8px; margin:0; padding:0;">
             <a href="${escapeAttr(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeAttr(person.name)} en el videoclub interactivo" style="text-decoration:none;">
               <span>${escapeHtml(person.name)}</span>
             </a>
-            <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Cambiar tema" aria-label="Cambiar tema" aria-pressed="false" style="width:36px; height:36px; position:relative; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-text-primary); cursor:pointer; padding:0; flex-shrink:0;">
-              <svg class="theme-icon moon-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-moon"></use></svg>
-              <svg class="theme-icon sun-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-sun"></use></svg>
-            </button>
           </div>
         </div>
       </header>
@@ -555,38 +545,44 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
         });
       }
 
-      // Alternancia interactiva D/A para VIPs con ambos roles (URL inmutable, sin recarga ni pushState)
-      var roleControls = document.querySelector(".person-role-controls");
-      if (roleControls) {
+      // Alternancia interactiva D/A para VIPs con ambos roles (círculo único D <-> A como en la SPA, URL inmutable)
+      var roleToggleBtn = document.querySelector(".person-role-toggle-btn");
+      if (roleToggleBtn) {
         var currentRole = ${JSON.stringify(activeRole)};
         var dirGroup = document.getElementById("filmography-director");
         var actGroup = document.getElementById("filmography-actor");
         var filterPill = document.querySelector(".active-filters-list .filter-pill");
+        var personName = ${JSON.stringify(person.name)};
         var pSlug = ${JSON.stringify(slug)};
         var bUrl = ${JSON.stringify(baseUrl)};
+        var letterSpan = roleToggleBtn.querySelector(".role-badge-letter");
 
-        roleControls.addEventListener("click", function (e) {
-          var btn = e.target.closest(".person-role-btn");
-          if (!btn) return;
+        roleToggleBtn.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
 
-          var targetRole = btn.getAttribute("data-role");
-          if (!targetRole || targetRole === currentRole) return;
+          // Alternar rol activo (director <-> actor)
+          currentRole = (currentRole === "director") ? "actor" : "director";
+          var isDir = currentRole === "director";
+          var currentLetter = isDir ? "D" : "A";
+          var targetRole = isDir ? "actor" : "director";
+          var tooltip = isDir
+            ? "Ver películas de " + personName + " como Actor"
+            : "Ver películas de " + personName + " como Director";
 
-          currentRole = targetRole;
-
-          // 1. Actualizar visualmente los botones [ D ] [ A ]
-          roleControls.querySelectorAll(".person-role-btn").forEach(function (b) {
-            var isActive = b.getAttribute("data-role") === currentRole;
-            b.classList.toggle("is-active", isActive);
-            b.setAttribute("aria-pressed", String(isActive));
-          });
+          // 1. Actualizar visualmente la letra y tooltip del círculo único (como en la SPA)
+          if (letterSpan) {
+            letterSpan.textContent = currentLetter;
+          }
+          roleToggleBtn.title = tooltip;
+          roleToggleBtn.setAttribute("aria-label", tooltip);
+          roleToggleBtn.setAttribute("data-current-role", currentRole);
+          roleToggleBtn.setAttribute("data-target-role", targetRole);
 
           // 2. Conmutar el grid de películas visible sin mutar URL
           if (dirGroup && actGroup) {
-            dirGroup.style.display = (currentRole === "director") ? "contents" : "none";
-            actGroup.style.display = (currentRole === "actor") ? "contents" : "none";
+            dirGroup.style.display = isDir ? "contents" : "none";
+            actGroup.style.display = isDir ? "none" : "contents";
           }
 
           // 3. Sincronizar enlace del filter-pill a la SPA
@@ -637,6 +633,8 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
               back.classList.remove("is-expanded", "show-actors");
               expandBtn.textContent = "+";
               expandBtn.setAttribute("aria-label", "Expandir detalles");
+              var scrolls = back.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+              scrolls.forEach(function (s) { s.scrollTop = 0; });
             } else {
               back.classList.add("is-expanded");
               expandBtn.textContent = "−";
@@ -646,7 +644,31 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
           return;
         }
 
-        // 3. Volteo 3D de la tarjeta (solo películas; la ficha VIP de actor/director no voltea)
+        // 3. Trasera ampliada: retroceder a la trasera normal al pulsar fuera del área de enlaces
+        var expandedBack = e.target.closest(".flip-card-back.is-expanded");
+        if (expandedBack) {
+          var isInteractive = e.target.closest("a[href], button, [role='button'], [data-action]");
+          if (!isInteractive) {
+            var sel = window.getSelection ? window.getSelection() : null;
+            if (sel && sel.toString().trim().length > 0) {
+              e.stopPropagation();
+              return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            expandedBack.classList.remove("is-expanded", "show-actors");
+            var btn = expandedBack.querySelector(".expand-content-btn");
+            if (btn) {
+              btn.textContent = "+";
+              btn.setAttribute("aria-label", "Expandir detalles");
+            }
+            var scrolls = expandedBack.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+            scrolls.forEach(function (s) { s.scrollTop = 0; });
+            return;
+          }
+        }
+
+        // 4. Volteo 3D de la tarjeta (solo películas; la ficha VIP de actor/director no voltea)
         var card = e.target.closest(".movie-card:not(.person-card)");
         if (card) {
           if (e.target.closest("a, button, [role='button'], .actors-scrollable-content, .scrollable-content")) return;

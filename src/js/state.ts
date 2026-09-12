@@ -213,6 +213,22 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   // Si venimos de redirección SPA 404 (ej. GitHub Pages: ?_p=/director/brian-de-palma/)
   const effectivePathname = routeParam ? (routeParam.startsWith("/") ? routeParam : `/${routeParam}`) : pathname;
 
+  // Si la ruta corresponde a una landing SEO en el Edge, redirigir a la URL canónica limpia sin query string
+  if (routeParam && typeof window !== "undefined") {
+    const cleanLower = effectivePathname.toLowerCase();
+    const isSeoPrefixed = 
+      cleanLower.startsWith("/titulo/") ||
+      cleanLower.startsWith("/genero/") ||
+      cleanLower.startsWith("/pais/") ||
+      cleanLower.startsWith("/estudio/") ||
+      cleanLower.startsWith("/seleccion/");
+    if (isSeoPrefixed) {
+      const canonicalPath = cleanLower.replace(/\/+$/, "") + "/";
+      window.location.replace(canonicalPath);
+      return;
+    }
+  }
+
   // 1. Sincronizar filtros de catálogo, personas o exclusiones desde los segmentos del pathname
   const pathFilters = parsePrettyPath(effectivePathname);
   if (pathFilters.director) setFilter("director", pathFilters.director, true);

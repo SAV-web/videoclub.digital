@@ -22,6 +22,19 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     innerHTML: "",
     style: {},
     children,
+    focus: () => {},
+    blur: () => {},
+    get className() {
+      return Array.from(classListSet).join(" ");
+    },
+    set className(val) {
+      classListSet.clear();
+      if (val) {
+        String(val).trim().split(/\s+/).forEach((c) => {
+          if (c) classListSet.add(c);
+        });
+      }
+    },
     classList: {
       add: (...cls) => cls.forEach((c) => classListSet.add(c)),
       remove: (...cls) => cls.forEach((c) => classListSet.delete(c)),
@@ -56,7 +69,16 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     },
     querySelector: () => null,
     querySelectorAll: () => [],
-    closest: () => null,
+    closest: (sel) => {
+      let curr = el;
+      while (curr) {
+        if (sel.startsWith(".") && curr.classList && curr.classList.contains(sel.slice(1))) return curr;
+        if (sel.startsWith("#") && curr.id === sel.slice(1)) return curr;
+        if (curr.tagName && curr.tagName.toLowerCase() === sel.toLowerCase()) return curr;
+        curr = curr.parentElement;
+      }
+      return null;
+    },
     appendChild: (child) => {
       children.push(child);
       return child;
@@ -74,6 +96,15 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     removeAttribute: (k) => { delete attributes[k]; },
     getAttribute: (k) => (k in attributes ? attributes[k] : null),
     hasAttribute: (k) => k in attributes,
+    contains: (target) => children.includes(target) || el === target,
+    cloneNode: () => {
+      const clone = createMockDomElement(tagName);
+      const card = createMockDomElement("div");
+      card.classList.add("movie-card");
+      clone.appendChild(card);
+      clone.querySelector = (sel) => (sel && sel.includes("movie-card") ? card : null);
+      return clone;
+    },
     focus: () => {},
     reset: () => {},
     getBoundingClientRect: () => ({ left: 0, width: 200, top: 0, height: 24, bottom: 24, right: 200 }),
@@ -82,6 +113,12 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     _getListenerCount: (event) => (listeners[event] ? listeners[event].length : 0),
     ...extraProps,
   };
+
+  if (tagName.toLowerCase() === "template" || (extraProps.id && extraProps.id.includes("template"))) {
+    if (!el.content) {
+      el.content = createMockDomElement("div");
+    }
+  }
 
   return el;
 }

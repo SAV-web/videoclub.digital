@@ -27,17 +27,21 @@ combined += `
 /* ========================================================== */
 .brand-logo-text {
   font-family: var(--font-title);
-  font-weight: 800;
-  font-size: 1.25rem;
+  font-weight: 700;
+  font-size: 1.15rem;
   letter-spacing: -0.03em;
   color: var(--color-text-primary);
   text-decoration: none;
   display: flex;
-  align-items: baseline;
-  line-height: 1;
+  flex-direction: column;
+  line-height: 1.1;
+  text-align: left;
 }
-.brand-logo-text .logo-line-1 { font-weight: 800; }
-.brand-logo-text .logo-line-2 { font-weight: 400; opacity: 0.75; }
+.brand-logo-text .logo-line-1,
+.brand-logo-text .logo-line-2 {
+  display: block;
+  font-weight: 700;
+}
 
 .main-header-primary-controls {
   display: flex;
@@ -103,6 +107,7 @@ combined += `
   width: 18px !important;
   height: 18px !important;
   border-radius: 50% !important;
+  border: none !important;
   z-index: 50 !important;
   pointer-events: auto !important;
   display: flex !important;
@@ -113,10 +118,27 @@ combined += `
   line-height: 1 !important;
   background-color: var(--color-accent) !important;
   color: var(--color-surface) !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  transition: transform var(--duration-quick, 0.15s) ease-out, background-color var(--duration-quick, 0.15s) ease-out !important;
 }
 
 .flip-card-back.is-expanded .expand-content-btn {
   z-index: 60 !important;
+}
+
+.flip-card-back .expand-content-btn:hover,
+.actors-expand-btn:hover {
+  transform: scale(1.15) !important;
+  background-color: var(--color-text-primary) !important;
+}
+
+.flip-card-back .expand-content-btn::after,
+.actors-expand-btn::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: -10px !important;
 }
 
 /* Botón '+' de reparto en la esquina derecha del bloque de actores sin romper line-clamp */
@@ -138,8 +160,21 @@ combined += `
   width: 18px !important;
   height: 18px !important;
   border-radius: 50% !important;
+  border: none !important;
+  background-color: var(--color-accent) !important;
+  color: var(--color-surface) !important;
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  cursor: pointer !important;
   z-index: 25 !important;
   pointer-events: auto !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  transition: transform var(--duration-quick, 0.15s) ease-out, background-color var(--duration-quick, 0.15s) ease-out !important;
 }
 
 .flip-card-back .ratings-container {

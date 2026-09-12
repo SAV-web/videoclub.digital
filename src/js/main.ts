@@ -968,7 +968,8 @@ function setupGlobalListeners(): void {
           const cards = Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
           if (cards.length > 0) {
             const targetCard = target === "first" ? cards[0] : cards[cards.length - 1];
-            const { openModal } = await import("./components/modal.js");
+            const { openModal, initQuickView } = await import("./components/modal.js");
+            initQuickView();
             openModal(targetCard as any, cards);
           }
         }
@@ -1396,7 +1397,8 @@ export function init(): void {
         const grid = dom.gridContainer || document.getElementById("grid-container");
         const cards = grid ? Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]")) : [];
         const card = grid?.querySelector<MovieCardElement>(`.movie-card[data-movie-id="${targetMovieId}"]`);
-        const { openModal, openModalForMovie } = await import("./components/modal.js");
+        const { openModal, openModalForMovie, initQuickView } = await import("./components/modal.js");
+        initQuickView();
         if (card && card.movieData) {
           openModal(card, cards);
         } else {

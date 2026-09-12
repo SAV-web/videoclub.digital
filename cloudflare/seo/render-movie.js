@@ -229,20 +229,9 @@ export function renderMovieHtml(movie, options = {}) {
   <header class="main-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
     <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto; padding: 0 var(--space-lg);">
       <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
-        <span class="logo-line-1">VIDEOCLUB</span>
-        <span class="logo-line-2">.DIGITAL</span>
+        <span class="logo-line-1">videoclub</span>
+        <span class="logo-line-2">.digital</span>
       </a>
-      <div class="header-controls" style="display:flex; align-items:center; gap: 10px;">
-        <button id="theme-toggle" type="button" class="sidebar-control-button theme-toggle" title="Cambiar tema" aria-label="Cambiar tema" aria-pressed="false" style="width:36px; height:36px; position:relative; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-text-primary); cursor:pointer; padding:0; flex-shrink:0;">
-          <svg class="theme-icon moon-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-moon"></use></svg>
-          <svg class="theme-icon sun-icon" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-sun"></use></svg>
-        </button>
-        <a href="${baseUrl}?movie=${movie.id}" class="btn-header-cta" title="Abrir ficha en el videoclub" aria-label="Abrir ficha en el videoclub">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-          </svg>
-        </a>
-      </div>
     </div>
   </header>
 
@@ -262,20 +251,22 @@ export function renderMovieHtml(movie, options = {}) {
             
             <!-- Contenedor del Póster -->
             <div class="poster-container">
-              ${posterPath ? `
-                <img 
-                  src="${escapeAttr(posterPath)}" 
-                  alt="Póster de ${escapeAttr(movie.title)}" 
-                  width="400" 
-                  height="496" 
-                  loading="eager" 
-                  fetchpriority="high"
-                  class="loaded"
-                />
-              ` : `
-                <div class="poster-fallback" style="aspect-ratio:2/3; display:flex; align-items:center; justify-content:center; font-size:3rem; background:var(--color-surface);">🎬</div>
-              `}
-              <div class="poster-overlay-guard"></div>
+              <a href="${escapeAttr(spaTargetUrl)}" class="poster-media-link" aria-label="Abrir ${escapeAttr(movie.title)} en el videoclub" style="display:block; width:100%; height:100%; position:relative; text-decoration:none; color:inherit;">
+                ${posterPath ? `
+                  <img 
+                    src="${escapeAttr(posterPath)}" 
+                    alt="Póster de ${escapeAttr(movie.title)}" 
+                    width="400" 
+                    height="496" 
+                    loading="eager" 
+                    fetchpriority="high"
+                    class="loaded"
+                  />
+                ` : `
+                  <div class="poster-fallback" style="aspect-ratio:2/3; display:flex; align-items:center; justify-content:center; font-size:3rem; background:var(--color-surface);">🎬</div>
+                `}
+                <div class="poster-overlay-guard"></div>
+              </a>
 
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
@@ -304,7 +295,9 @@ export function renderMovieHtml(movie, options = {}) {
             <!-- Resumen: Título, Estudios y Año -->
             <div class="movie-info movie-summary">
               <div class="title-director-block">
-                <h1 data-template="title" class="movie-main-title ${titleLengthClass}">${escapeHtml(movie.title)}</h1>
+                <h1 data-template="title" class="movie-main-title ${titleLengthClass}">
+                  <a href="${escapeAttr(spaTargetUrl)}" class="movie-title-link" style="color:inherit; text-decoration:none;">${escapeHtml(movie.title)}</a>
+                </h1>
               </div>
 
               <div class="movie-meta">
@@ -397,7 +390,9 @@ export function renderMovieHtml(movie, options = {}) {
 
             <!-- Título Original tras las Puntuaciones -->
             <div class="back-original-title-wrapper">
-              <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
+              <a href="${escapeAttr(spaTargetUrl)}" class="back-original-title-link" aria-label="Abrir ${escapeAttr(movie.title)} en el videoclub" title="Abrir en el videoclub">
+                <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
+              </a>
             </div>
 
             <!-- Director tras el Título Original -->
@@ -418,12 +413,7 @@ export function renderMovieHtml(movie, options = {}) {
                   </span>
                   <strong class="detail-label-title">Género.</strong>
                   <span class="detail-data" data-template="genre">
-                    ${rawGenres.map((name, i) => {
-                      const slug = genreToSlug(name);
-                      return slug 
-                        ? `<a href="${baseUrl}?_p=/${slug}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < rawGenres.length - 1 ? ', ' : ''}`
-                        : `<span>${escapeHtml(preserveHyphenatedWords(name))}</span>${i < rawGenres.length - 1 ? ', ' : ''}`;
-                    }).join('')}
+                    <span>${escapeHtml(preserveHyphenatedWords(rawGenres.join(', ')))}</span>
                   </span>
                 </div>
               ` : ''}
@@ -464,41 +454,7 @@ export function renderMovieHtml(movie, options = {}) {
     </div>
   </div>
 
-  <script>
-    (function () {
-      var themeBtn = document.getElementById("theme-toggle");
-      if (themeBtn) {
-        var updateThemeBtn = function (isDark) {
-          themeBtn.setAttribute("aria-pressed", String(isDark));
-          var label = isDark ? "Modo claro" : "Modo oscuro";
-          themeBtn.setAttribute("aria-label", label);
-          themeBtn.title = label;
-        };
-        updateThemeBtn(document.documentElement.classList.contains("dark-mode"));
 
-        themeBtn.addEventListener("click", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var isNowDark = document.documentElement.classList.toggle("dark-mode");
-          if (isNowDark) {
-            document.documentElement.classList.remove("light-mode");
-          } else {
-            document.documentElement.classList.add("light-mode");
-          }
-          var themeStr = isNowDark ? "dark" : "light";
-          try {
-            localStorage.setItem("theme", themeStr);
-            document.cookie = "theme=" + themeStr + "; path=/; max-age=31536000; SameSite=Lax";
-          } catch (err) {}
-          updateThemeBtn(isNowDark);
-          var metas = document.querySelectorAll('meta[name="theme-color"]');
-          metas.forEach(function (m) {
-            m.setAttribute("content", isNowDark ? "#0d0d0d" : "#f5f5f5");
-          });
-        });
-      }
-    })();
-  </script>
 </body>
 </html>
 `;
