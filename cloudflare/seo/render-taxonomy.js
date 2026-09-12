@@ -172,14 +172,6 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
 
         <!-- Cara trasera (Estructura y diseño idénticos a la SPA) -->
         <div class="flip-card-back">
-          ${displayOriginalTitle ? `
-            <div class="back-original-title-wrapper">
-              <a href="${escapeAttr(movieUrl)}" class="back-original-title-link" aria-label="Ver ficha completa de ${escapeAttr(title)}" title="Ver ficha completa de ${escapeAttr(title)}">
-                <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
-              </a>
-            </div>
-          ` : ''}
-
           <div class="back-meta-header">
             <div class="episode-duration-group">
               ${episodesText ? `<span data-template="episodes">${escapeHtml(episodesText)}</span>` : ''}
@@ -223,6 +215,14 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
               </div>
             ` : ''}
           </div>
+
+          ${displayOriginalTitle ? `
+            <div class="back-original-title-wrapper">
+              <a href="${escapeAttr(movieUrl)}" class="back-original-title-link" aria-label="Ver ficha completa de ${escapeAttr(title)}" title="Ver ficha completa de ${escapeAttr(title)}">
+                <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
+              </a>
+            </div>
+          ` : ''}
 
           <div class="details-list">
             ${rawGenres.length > 0 ? `
@@ -548,21 +548,21 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
           return;
         }
 
-        // 2. Botón inferior de expansión / contracción
+        // 2. Botón inferior de expansión / contracción (+ / −)
         var expandBtn = e.target.closest(".expand-content-btn");
         if (expandBtn) {
           e.preventDefault();
           e.stopPropagation();
           var back = expandBtn.closest(".flip-card-back");
           if (back) {
-            if (back.classList.contains("show-actors")) {
+            if (back.classList.contains("show-actors") || back.classList.contains("is-expanded")) {
               back.classList.remove("is-expanded", "show-actors");
               expandBtn.textContent = "+";
               expandBtn.setAttribute("aria-label", "Expandir sinopsis");
             } else {
-              var isExp = back.classList.toggle("is-expanded");
-              expandBtn.textContent = isExp ? "−" : "+";
-              expandBtn.setAttribute("aria-label", isExp ? "Contraer sinopsis" : "Expandir sinopsis");
+              back.classList.add("is-expanded");
+              expandBtn.textContent = "−";
+              expandBtn.setAttribute("aria-label", "Contraer sinopsis");
             }
           }
           return;
@@ -571,7 +571,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
         // 3. Volteo 3D de la tarjeta
         var card = e.target.closest(".movie-card");
         if (card) {
-          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content")) return;
+          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content, .scrollable-content")) return;
           var inner = card.querySelector(".flip-card-inner");
           if (inner) {
             var isFlipped = inner.classList.toggle("is-flipped");

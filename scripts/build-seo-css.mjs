@@ -95,16 +95,28 @@ combined += `
   color: var(--color-accent) !important;
 }
 
-/* Botón '+' de sinopsis en la esquina inferior derecha idéntico a la SPA */
+/* Botón '+ / −' de sinopsis y cierre en la esquina inferior derecha idéntico a la SPA */
 .flip-card-back .expand-content-btn {
   position: absolute !important;
-  bottom: 6px !important;
-  right: 6px !important;
+  bottom: 8px !important;
+  right: var(--space-xs, 8px) !important;
   width: 18px !important;
   height: 18px !important;
   border-radius: 50% !important;
-  z-index: 25 !important;
+  z-index: 50 !important;
   pointer-events: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  background-color: var(--color-accent) !important;
+  color: var(--color-surface) !important;
+}
+
+.flip-card-back.is-expanded .expand-content-btn {
+  z-index: 60 !important;
 }
 
 /* Botón '+' de reparto en la esquina derecha del bloque de actores sin romper line-clamp */
@@ -116,7 +128,7 @@ combined += `
   line-clamp: 3 !important;
   -webkit-box-orient: vertical !important;
   padding-right: 20px !important;
-  line-height: 1.4 !important;
+  line-height: 1.35 !important;
 }
 
 .actors-expand-btn {
@@ -130,10 +142,10 @@ combined += `
   pointer-events: auto !important;
 }
 
-/* Título original en el reverso compacto y limpio en la cabecera */
+/* Título original en el reverso con separación armónica respecto a ratings y línea divisoria */
 .movie-card:not(.is-quick-view) .back-original-title-wrapper {
-  margin-top: 2px !important;
-  margin-bottom: 4px !important;
+  margin-top: 7px !important;
+  margin-bottom: 7px !important;
   min-height: 0 !important;
 }
 

@@ -527,7 +527,7 @@ function updateAllFilterControls(): void {
     const isActive = normActiveFilters[type] === normValue;
 
     let shouldHide = isActive || isExcluded;
-    if (type === 'studio' || type === 'genre' || type === 'country' || type === 'selection') {
+    if (type === 'studio' || type === 'genre' || type === 'country' || type === 'selection' || type === 'director' || type === 'actor') {
       shouldHide = false;
       link.classList.toggle('active', isActive);
       link.classList.toggle('is-excluded', isExcluded);
@@ -596,6 +596,16 @@ export function isPredefinedFilterItem(type: string, value: string): boolean {
     const isItem = Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
     const isGroup = Object.values(REGIONAL_GROUPS).some(r => r.value.toLowerCase() === normVal || r.label.toLowerCase() === normVal);
     return isItem || isGroup;
+  }
+
+  if (type === 'director') {
+    const items = FILTER_CONFIG.director?.items || {};
+    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
+  }
+
+  if (type === 'actor') {
+    const items = FILTER_CONFIG.actor?.items || {};
+    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
   }
 
   return false;

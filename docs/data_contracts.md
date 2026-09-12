@@ -63,7 +63,7 @@ Garantiza la ausencia de duplicados que provoquen ambigüedad en búsquedas o co
 
 | Test | Tabla | Columnas Evaluadas | Severidad | Razón de Negocio |
 | :--- | :--- | :--- | :--- | :--- |
-| `movies_slug_unique` | `public.movies` | `slug` | `ERROR` | Las páginas estáticas SEO de Astro y la SPA requieren relación 1:1 estricta. |
+| `movies_slug_unique` | `public.movies` | `slug` | `ERROR` | El motor de Edge SSR en Cloudflare Workers y la SPA requieren relación 1:1 estricta. |
 | `movies_fa_id_unique` | `public.movies` | `fa_id` | `ERROR` | Evita registros duplicados procedentes de sincronizaciones sucesivas. |
 | `directors_slug_unique` | `public.directors`| `slug` | `ERROR` | Garantiza unicidad en páginas canónicas de realizadores. |
 | `actors_slug_unique` | `public.actors` | `slug` | `ERROR` | Garantiza unicidad en páginas canónicas de intérpretes. |
@@ -113,7 +113,7 @@ SELECT * FROM public.run_data_tests();
 Para garantizar que ninguna mutación en la base de datos quede sin auditar y que ningún despliegue suba datos corruptos, el script [`scripts/run-data-tests.mjs`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/scripts/run-data-tests.mjs) invoca `run_data_tests()` de forma desatendida mediante Supabase RPC:
 
 1. **Puerta de Calidad en Despliegue ([`.github/workflows/deploy.yml`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/.github/workflows/deploy.yml))**:
-   Se ejecuta antes de compilar el sitio estático de SEO y desplegar a GitHub Pages. Si un test con severidad `ERROR` falla, el build se detiene.
+   Se ejecuta antes de compilar la SPA y publicar el artefacto de despliegue a GitHub Pages. Si un test con severidad `ERROR` falla, el build se detiene.
 2. **Auditoría Programada Diaria ([`.github/workflows/data-audit.yml`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/.github/workflows/data-audit.yml))**:
    Se dispara cada madrugada a las 03:00 UTC en modo `--strict`, generando alertas en el repositorio si se detecta cualquier anomalía o huérfano.
 

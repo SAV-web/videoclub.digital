@@ -199,6 +199,9 @@ Reglas:
 - Si una persona tiene títulos computados tanto como actor como director, `otherRoleCount` refleja el total de obras en el rol alternativo.
 - Si `otherRoleCount > 0`, la UI renderiza la insignia interactiva `(D)` (en fichas de actor) o `(A)` (en fichas de director), permitiendo alternar la filmografía instantáneamente.
 - Para directores colectivos o dúos (ej. Hermanos Russo), `components` almacena los nombres individuales separados por coma, activando el autocompletado y búsqueda bidireccional.
+- **Formato Canónico de Edad (`computePersonAgeInfo`)**:
+  - Personas vivas: `(edad)` (ej. `(54)`).
+  - Personas fallecidas: `✝ (edad)` (ej. `✝ (74)`), con fechas cronológicas `YYYY-YYYY` (o `YYYY-` si vive).
 
 ## 6. Errores
 
@@ -234,3 +237,65 @@ Las fronteras obligatorias son:
 5. Errores técnicos hacia usuario: `getFriendlyErrorMessage`.
 
 No se deben consumir datos externos directamente desde componentes sin pasar por estas fronteras.
+
+---
+
+## 8. Coherencia de Modo Claro / Oscuro (SPA ↔ SEO Edge)
+
+Para garantizar cero parpadeos (*zero-flicker*) e idéntica experiencia visual al navegar entre la SPA y las páginas servidas desde el Edge de Cloudflare:
+
+1. **Persistencia Dual Sincronizada**:
+   - `localStorage.setItem("theme", "dark" | "light")`.
+   - `document.cookie = "theme=" + ("dark" | "light") + "; path=/; max-age=31536000; SameSite=Lax"`.
+2. **Script Anti-Flicker Síncrono en `<head>` (0 ms)**:
+   Presente en `index.html` y en todos los renderizadores perimetrales (`render-taxonomy.js`, `render-person.js`, `render-movie.js`). Evalúa en orden:
+   $$\text{Preferencia guardada (localStorage o Cookie)} \implies \text{Preferencia del SO (prefers-color-scheme)}$$
+   Garantiza que la clase `dark-mode` o `light-mode` esté aplicada en `<html>` antes del primer fotograma del navegador.
+3. **Control Interactivo en Cabeceras SEO**:
+   Todas las vistas estáticas del Edge incluyen el botón `#theme-toggle` con animación de iconos Sol/Luna, permitiendo alternar el tema sin necesidad de regresar a la SPA.
+
+---
+
+## 9. Especificación de Fichas y Tarjetas en Edge SSR y SPA
+
+1. **Reverso de Tarjeta Canónico (Paridad Total SPA / Edge SSR)**:
+   - Se elimina por completo el botón `"Ficha completa →"`.
+   - **Jerarquía Secuencial del Reverso**: Siguiendo el criterio unificado de la modal, el orden de elementos es:
+     $$\text{1. Meta Header (duración, Wikipedia, JustWatch)} \to \text{2. Puntuaciones (FA / IMDb)} \to \text{3. Título Original} \to \text{4. Géneros y Reparto} \to \text{5. Sinopsis}$$
+   - El acceso a la ficha completa se realiza pulsando sobre el título original (`.back-original-title-link`), ubicado inmediatamente debajo de las puntuaciones con `pointer-events: auto !important`, `z-index: 20` y cursor interactivo.
+   - **Alineación Milimétrica de Iconos `+`**:
+     - El contenedor `.flip-card-back` posee un padding perimetral de `var(--space-xs, 8px)`.
+     - El botón de reparto `.actors-expand-btn` está fijado a `bottom: 0; right: 0;` dentro de su contenedor (`padding-right: 20px`), situando su borde derecho a exactamente 8px del filo de la tarjeta.
+     - El botón flotante de sinopsis `.expand-content-btn` está anclado a `bottom: 8px; right: var(--space-xs, 8px);`.
+     - Ambos botones circulares de $18 \times 18\text{ px}$ comparten idéntica coordenada vertical milimétrica a 8px del margen derecho.
+   - **Ritmo Vertical e Interlineado Armónico (Separación de Líneas)**:
+     - Para prevenir aglomeración visual (*amontonamiento*) y asegurar una lectura limpia en la cara trasera:
+       - `.back-meta-header`: `margin-bottom: 6px` para separar la duración y enlaces externos de los ratings.
+       - `.ratings-container`: `gap: 5px` entre barras de FA e IMDb.
+       - `.back-original-title-wrapper`: márgenes equilibrados `margin-top: 7px; margin-bottom: 7px;` e interlineado de título `line-height: 1.25` (evitando colisión entre líneas).
+       - `.details-list`: `margin: 7px 0; padding-top: 7px; border-top: 1px solid var(--color-border);` con `gap: 6px` entre géneros y reparto, y `line-height: 1.35`.
+       - `.plot-summary-final`: `padding-top: 7px; border-top: 1px solid var(--color-border);` con `line-height: 1.38` y `opacity: 0.85`, proporcionando aire visual antes y después de cada línea divisoria y un interlineado descansado en la sinopsis.
+   - **Botón `−` de Cierre de Detalle en SEO Edge**:
+     - Al expandir reparto (`.show-actors`) o sinopsis (`.is-expanded`), el botón flotante inferior cambia su glifo a `−` y se eleva a `z-index: 60 !important`, superando tanto la capa de sinopsis (`z-index: 15`) como la de actores/géneros (`.actors-scrollable-content`, `z-index: 40`).
+     - El manejador perimetral evalúa si la tarjeta se encuentra en cualquiera de los dos estados expandidos para cerrarla limpiamente y restaurar el icono a `+`.
+     - El contenedor `.scrollable-content` se excluye del manejador global de volteo para evitar giros involuntarios durante la lectura o scroll de la sinopsis.
+2. **Normalización Case-Insensitive de URLs SEO**:
+   - Cualquier petición con mayúsculas (ej. `/titulo/Chernobyl-2019`, `/genero/Sci-Fi`, `/Christopher-Nolan`) se redirige mediante `301 Moved Permanently` a su equivalente en minúsculas con trailing slash (`/titulo/chernobyl-2019/`).
+3. **Formato de Series en SEO**:
+   - Los episodios se representan con la convención canónica `"x"` (ej. `"5 x"`) en lugar del texto `"ep"`.
+
+---
+
+## 10. Desplegables del Sidebar y Alto Contraste
+
+En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores, Actores):
+
+1. **Ítems Seleccionados en Lista (`.filter-link.active`, `.bento-grid .filter-link.active`)**:
+   - **Modo Claro**: Fondo slate profundo `#1e293b`, borde sutil y texto `#ffffff !important` (`font-weight: 700`), con sombra de elevación `0 2px 6px rgba(0,0,0,0.25)`.
+   - **Modo Oscuro**: Fondo acentuado `#334155`, borde `#64748b` y texto `#ffffff !important` (`font-weight: 700`), preservando contraste WCAG AAA superior a 7:1 (evitando el uso de texto oscuro `var(--color-bg)`).
+   - En listas verticales (directores/actores), el indicador activo `▶` y el borde izquierdo se resaltan en `#38bdf8`.
+2. **Visibilidad Determinista**:
+   - Los directores y actores activos no se ocultan de sus listas al seleccionarse, sino que se marcan como activos con la clase `.active`, permitiendo al usuario ver el elemento seleccionado en el propio desplegable.
+3. **Autocompletado de Entrada**:
+   - Los resultados activos (`.sidebar-autocomplete-item.is-active`, `:hover`) usan fondos contrastados (`#1e293b` en claro, `#334155` en oscuro) y texto blanco con resaltado azul `#38bdf8` en coincidencias (`<strong>`).
+

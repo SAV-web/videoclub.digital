@@ -7,6 +7,16 @@ Esta guía documenta la puesta en marcha de **Cloudflare (Plan Gratuito)** como 
 3. **Compatibilidad con Agentes de IA (`IsItAgentReady`)**:
    - Inyección de cabecera HTTP `Link: </llms.txt>; rel="alternate"; type="text/markdown"`.
    - Negociación de contenido automática ante peticiones con `Accept: text/markdown`.
+4. **Edge SSR para SEO de Alto Rendimiento**:
+   - Fichas canónicas de títulos (`/titulo/:slug/`) con Schema.org Movie/TVSeries, BreadcrumbList y normalización 301 case-insensitive.
+   - Fichas VIP en la raíz (`/:vip-slug/`) para directores y actores con foto oficial, biografía y filmografía destacada (descarte $O(1)$ sin consultar Supabase para slugs ordinarios).
+   - Taxonomías cerradas (`/genero/:slug/`, `/pais/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/`) con muros de 42 tarjetas oficiales.
+   - Reverso canónico de tarjeta idéntico a la SPA (enlace a ficha en el título original, sinopsis fluida y botón `+`).
+5. **Coherencia de Modo Claro / Oscuro**:
+   - Script anti-flicker síncrono en `<head>` (0 ms) con persistencia dual (`localStorage` + cookie `theme=...`).
+   - Botón interactivo `#theme-toggle` en todas las cabeceras perimetrales.
+6. **CSS Perimetral en Memoria (`/seo-card-v7.css`)**:
+   - Servido desde la memoria perimetral del Worker sin peticiones de red adicionales ni latencia de origen.
 
 ---
 
@@ -100,3 +110,8 @@ Esta suite valida de forma determinista:
 2. Supresión de cabeceras inmutables si Supabase devuelve `404 Not Found`.
 3. Negociación de `text/markdown` en la raíz entregando `/llms.txt`.
 4. Garantía de no interferencia con rutas internas ni recursos SPA.
+5. Generación perimetral de fichas de títulos, muros de taxonomía y páginas VIP en la raíz con metadatos JSON-LD.
+6. Normalización mediante redirección `301` para URLs con mayúsculas y sin barra final.
+7. Representación canónica de episodios de series con `"x"` (ej. `"5 x"`).
+8. Descarte en tiempo constante $O(1)$ de rutas directas a la SPA sin penalización de consulta a base de datos.
+9. Purga perimetral selectiva (`POST /internal/purge`) para invalidación granular de caché.

@@ -496,14 +496,14 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
           e.stopPropagation();
           var back = expandBtn.closest(".flip-card-back");
           if (back) {
-            if (back.classList.contains("show-actors")) {
+            if (back.classList.contains("show-actors") || back.classList.contains("is-expanded")) {
               back.classList.remove("is-expanded", "show-actors");
               expandBtn.textContent = "+";
-              expandBtn.setAttribute("aria-label", "Expandir sinopsis");
+              expandBtn.setAttribute("aria-label", "Expandir detalles");
             } else {
-              var isExp = back.classList.toggle("is-expanded");
-              expandBtn.textContent = isExp ? "−" : "+";
-              expandBtn.setAttribute("aria-label", isExp ? "Contraer detalles" : "Expandir detalles");
+              back.classList.add("is-expanded");
+              expandBtn.textContent = "−";
+              expandBtn.setAttribute("aria-label", "Contraer detalles");
             }
           }
           return;
@@ -512,7 +512,7 @@ export function renderPersonHtml(person, role, hasOtherRole, movies = [], option
         // 3. Volteo 3D de la tarjeta (solo películas; la ficha VIP de actor/director no voltea)
         var card = e.target.closest(".movie-card:not(.person-card)");
         if (card) {
-          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content")) return;
+          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content, .scrollable-content")) return;
           var inner = card.querySelector(".flip-card-inner");
           if (inner) {
             var isFlipped = inner.classList.toggle("is-flipped");

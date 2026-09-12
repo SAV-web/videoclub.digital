@@ -53,18 +53,22 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 
 ### 3. Componentes TS (`src/js/components/`)
 
-- **`card.ts`**: Renderizador masivo de la cuadrícula (_Grid_). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Implementa **Getters Perezosos (*Lazy Getters*)** para resolver las plantillas `<template>` bajo demanda y prevenir condiciones de carrera en arranques limpios (*cold boot*). Controla interacciones hápticas y de _hover/flip_. En el reverso, los géneros se muestran como texto plano informativo no clickable, y al pulsar `+` en la línea de reparto se despliega el panel superpuesto (`.actors-scrollable-content`) con **Géneros interactivos arriba** y **Reparto de actores abajo**. Incorpora tarjetas especiales VIP para personas con soporte de **Insignias de Doble Rol** (`(D)` en ficha de actor, `(A)` en ficha de director) que permiten alternar su filmografía entre roles con un solo clic. En desktop, las tarjetas VIP comparten la micro-animación de elevación primaveral (`transform: translateY(-4px) scale(1.01)`) suprimiendo el recuadro perimetral (*outline*). Las banderas de país son interactivas (`<a>` con `[data-country-name]`) y aplican el filtro de país directamente.
+- **`card.ts`**: Renderizador masivo de la cuadrícula (_Grid_). Utiliza `yieldToMain` y fragmentos del DOM para instanciar el HTML por lotes y no congelar el hilo principal. Implementa **Getters Perezosos (*Lazy Getters*)** para resolver las plantillas `<template>` bajo demanda y prevenir condiciones de carrera en arranques limpios (*cold boot*). Controla interacciones hápticas y de _hover/flip_. En el reverso, la jerarquía secuencial sitúa el título original (`.back-original-title-wrapper`) bajo las puntuaciones y la cabecera meta (duración, Wikipedia, JustWatch), unificando el criterio con la modal. Cuenta con un **ritmo vertical e interlineado armónico** (`margin: 7px;`, `padding-top: 7px;` en líneas divisorias, `line-height: 1.25` en título, `1.35` en detalles y `1.38` en sinopsis) que evita cualquier aglomeración de líneas. Los botones circulares `+` de reparto (`.actors-expand-btn`) y de sinopsis (`.expand-content-btn`) están alineados milimétricamente en la vertical derecha a 8px del margen. Al pulsar `+` en reparto se despliega el panel superpuesto (`.actors-scrollable-content`) con **Géneros interactivos arriba** y **Reparto de actores abajo**. Incorpora tarjetas especiales VIP para personas con soporte de **Insignias de Doble Rol** (`(D)` en ficha de actor, `(A)` en ficha de director) que permiten alternar su filmografía entre roles con un solo clic. El formato de edad para personas fallecidas sigue estrictamente la convención `"✝ (edad)"` (ej. `"✝ (74)"`). En desktop, las tarjetas VIP comparten la micro-animación de elevación primaveral (`transform: translateY(-4px) scale(1.01)`) suprimiendo el recuadro perimetral (*outline*). Las banderas de país son interactivas (`<a>` con `[data-country-name]`) y aplican el filtro de país directamente.
 - **`modal.ts`**: Vista rápida (_Quick View_). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (_landscape_), y formato _Bottom Sheet_ en móviles verticales con física de arrastre (_swipe-to-dismiss_) y _View Transitions API_ para el efecto _Hero_ desde la tarjeta. Los enlaces dentro de la modal (géneros, países, directores, actores, año, insignias de rol cruzado) son interactivos y cierran automáticamente la modal al aplicarse.
-- **`sidebar.ts`**: Menú lateral de filtrado avanzado. Incluye autocompletado en tiempo real con guardias de longitud mínima (`>= 2`), debouncing y soporte bidireccional para **colectivos y dúos cinematográficos** (ej. buscar "Hermanos Russo" sugiere a Joe y Anthony Russo, y viceversa), control de rango con slider, acordeones CSS nativos y gestos de _swipe_ para abrir/cerrar. Implementa reconciliación de píldoras DOM y exclusiones visuales (`(NO País) x`).
+- **`sidebar.ts`**: Menú lateral de filtrado avanzado. Incluye autocompletado en tiempo real con guardias de longitud mínima (`>= 2`), debouncing y soporte bidireccional para **colectivos y dúos cinematográficos** (ej. buscar "Hermanos Russo" sugiere a Joe y Anthony Russo, y viceversa), control de rango con slider, acordeones CSS nativos y gestos de _swipe_ para abrir/cerrar. Los ítems seleccionados en los 4 desplegables (género, país, director, actor) se destacan con **alto contraste** en modo claro (`#1e293b`) y modo oscuro (`#334155`) con texto blanco `#ffffff !important` y borde acentuado. Implementa reconciliación de píldoras DOM y exclusiones visuales (`(NO País) x`).
 - **`rating.ts`**: Lógica visual del sistema de puntuación por estrellas y lógica de votación de usuario (optimista), manteniendo la exclusividad mutua con la Watchlist.
 - **`yearSlider.ts`**: Componente nativo de control de rango de años doble (_DualRangeSlider_) con soporte táctil, arrastre fluido de pivotes, cálculos precisos de porcentaje y sin dependencias externas.
 
-### 4. Subsistema SEO Astro (`seo-site/`)
+### 4. Capa Perimetral y Edge SSR (`cloudflare/`)
 
-- **Propósito**: Generador estático (_Static Site Generation - SSG_) para indexación en motores de búsqueda (Google, Bing).
-- **Tecnología**: Astro 5+ con TypeScript.
-- **Páginas Generadas**: Fichas estáticas de títulos (`/titulo/[slugId]`), directores y actores con metadatos OpenGraph, Twitter Cards y microdatos JSON-LD (`Schema.org`).
-- **Integración en Despliegue**: En el pipeline de CI/CD, los artefactos de `seo-site/dist` se fusionan con el `dist` principal de la SPA antes de publicar en GitHub Pages.
+- **Propósito**: Renderizado en el servidor perimetral (*Edge SSR*) y optimización de entrega sin latencia de origen ni consumo de egress.
+- **Tecnología**: Cloudflare Workers (ESM bundle vía esbuild).
+- **Rutas Servidas en Edge SSR**:
+  - `/titulo/:slug/`: Ficha completa accesible con modal nativo, Schema.org Movie/TVSeries, Breadcrumbs y normalización case-insensitive 301.
+  - `/:vip-slug/`: Ficha VIP oficial de director o actor con tarjeta dedicada `#0`, foto `/vips/:slug.webp`, biografía con giro 3D y filmografía destacada en cuadrícula.
+  - `/genero/:slug/`, `/pais/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/`: Muros de taxonomía cerrada con 42 tarjetas oficiales.
+  - Reverso de tarjeta en Edge SSR: idéntico visualmente a la SPA; el título original se ubica bajo las puntuaciones y actúa como enlace a la ficha (`.back-original-title-link`), la sinopsis fluye con degradado hasta la base, los botones `+` se alinean milimétricamente a 8px del margen derecho y el botón `−` permite cerrar tanto el panel de reparto como la sinopsis expandida elevándose a `z-index: 60`.
+- **Coherencia de Tema Claro / Oscuro**: Script anti-flicker síncrono en `<head>` (0 ms) que sincroniza `localStorage` y cookie `theme=...`, junto al botón interactivo `#theme-toggle` en todas las cabeceras perimetrales.
 
 ### 5. Estilos (`src/css/`)
 
@@ -75,17 +79,17 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras y delegac
 
 ### 6. Suite de Tests (`tests/`)
 
-- Ejecución centralizada mediante el test runner nativo de Node.js (`node --test`), totalizando **128 tests automatizados en 28 suites** sin dependencias externas pesadas.
+- Ejecución centralizada mediante el test runner nativo de Node.js (`node --test`), totalizando **155 tests automatizados en 29 suites** sin dependencias externas pesadas.
 - **`tests/helpers/vite-ssr.mjs`**: Helper unificado `startViteSsrServer()` que arranca el entorno Vite en modo SSR de forma aislada para evaluar módulos TypeScript directamente.
 - **Batería de Pruebas**:
   - `url-contract.test.mjs`: Test formal del contrato de URLs (jerarquía canónica, lectura agnóstica al orden, reglas de exclusividad semántica y las 10 filas de la Tabla 4 de URLs prohibidas/normalizadas).
-  - `worker.test.mjs`: Smoke test del Cloudflare Worker (proxy perimetral de pósters/vips con `immutable`, inyección de cabecera `Link rel="alternate"` y negociación Markdown para agentes).
+  - `worker.test.mjs`: Smoke test exhaustivo del Cloudflare Worker (Edge SSR de títulos, taxonomías, personas VIP en la raíz, normalización case-insensitive 301, proxy perimetral de pósters/vips con `immutable`, inyección de cabecera `Link rel="alternate"` y negociación Markdown para agentes).
   - `profile-stats.test.mjs`: Estadísticas de usuario, cálculo de estrellas, exportación JSON y reconciliación de sesión (`openProfileModal` con `mergeOnLogin`).
-  - `contracts-state-utils.test.mjs`: Contratos de datos, tipos de error y normalizadores puros.
+  - `contracts-state-utils.test.mjs`: Contratos de datos, formato canónico de edad de fallecidos `✝ (74)`, tipos de error y normalizadores puros.
   - `api.test.mjs`: Normalización de parámetros RPC, claves de caché canónicas y discriminación de directores.
   - `seo.test.mjs`: Títulos dinámicos, descripciones y microdatos JSON-LD (`ItemList`, `BreadcrumbList`).
   - `rating.test.mjs`: Conversión de notas a estrellas y estados de presentación de tarjetas.
-  - `shared-formatters.test.mjs`: Formateadores puros compartidos y equivalencia SPA vs. Astro SSG.
+  - `shared-formatters.test.mjs`: Formateadores puros compartidos y equivalencia SPA vs. SSR.
   - `state-events.test.mjs`: Ciclo de vida del bus de eventos y prevención de fugas de memoria.
   - `shared-constants.test.mjs`: Integridad del SSOT de constantes y taxonomías.
 

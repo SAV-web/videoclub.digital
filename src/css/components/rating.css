@@ -98,7 +98,7 @@
    SECCIÓN: RATINGS EXTERNOS (Barras y Puntuaciones)
    ================================================================= */
 
-.ratings-container { display: flex; flex-direction: column; gap: 4px; } /* Reducir gap (de 10px a 4px) */
+.ratings-container { display: flex; flex-direction: column; gap: 5px; } /* Gap balanceado entre líneas de notas */
 .rating-line { 
   display: flex; align-items: center; gap: 6px; /* Reducir gap interno */
   font-variant-numeric: tabular-nums; /* Alineación perfecta de cifras */

@@ -544,12 +544,12 @@ html.dark-mode .bbc-icon {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  margin-top: var(--space-xs);
-  margin-bottom: var(--space-md);
+  margin-top: 7px;
+  margin-bottom: 7px;
   padding-inline: 0;
   width: 100%;
   min-height: 0;
-  /* Eliminar altura mínima forzada para ahorrar espacio */
+  /* Espaciado armónico para no chocar con ratings ni con la línea divisoria */
   animation: fade-in-subtle 0.5s var(--ease-smooth-out) 0.2s backwards;
 
   & span {
@@ -557,7 +557,7 @@ html.dark-mode .bbc-icon {
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-bold);
     color: var(--color-text-primary);
-    line-height: var(--line-height-tight);
+    line-height: 1.25;
     letter-spacing: -0.01em;
     text-align: left;
     display: -webkit-box;
@@ -587,8 +587,7 @@ html.dark-mode .bbc-icon {
   justify-content: flex-end;
   align-items: center;
   width: 100%;
-  margin-bottom: 2px;
-  /* Pegar a la línea de ratings */
+  margin-bottom: 6px;
   font-size: var(--font-size-sm);
 }
 
@@ -649,13 +648,12 @@ html.dark-mode .bbc-icon {
 .details-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
-  margin: 6px 0 4px;
-  padding-top: 4px;
-  /* Compactar márgenes verticales */
+  gap: 6px;
+  margin: 7px 0;
+  padding-top: 7px;
   border-top: 1px solid var(--color-border);
   font-size: var(--font-size-xs);
-  line-height: 1.2;
+  line-height: 1.35;
   color: var(--color-text-secondary);
 }
 
@@ -717,6 +715,7 @@ html.dark-mode .bbc-icon {
   line-clamp: 2;
   -webkit-box-orient: vertical;
   padding-right: 10px;
+  line-height: 1.35;
 }
 
 .detail-item[data-template="actors-container"] {
@@ -727,8 +726,8 @@ html.dark-mode .bbc-icon {
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
-  padding-right: 10px;
-  line-height: 1.4;
+  padding-right: 20px;
+  line-height: 1.35;
 }
 
 /* Áreas con Scroll */
@@ -754,14 +753,14 @@ html.dark-mode .bbc-icon {
 }
 
 .plot-summary-final {
-  padding-top: 4px;
+  margin-top: 0;
+  padding-top: 7px;
   border-top: 1px solid var(--color-border);
-  opacity: 0.8;
+  opacity: 0.85;
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
   font-weight: var(--font-weight-normal);
-  line-height: 1.2;
-  /* Reducir interlineado */
+  line-height: 1.38;
   text-wrap: pretty;
   /* Evita palabras huérfanas al final */
 }
@@ -898,10 +897,14 @@ html.dark-mode .bbc-icon {
   right: 0;
 }
 
-/* Pegar al borde */
+/* Alineación milimétrica con actors-expand-btn */
 .expand-content-btn {
-  bottom: 6px;
-  right: 6px;
+  bottom: 8px;
+  right: var(--space-xs, 8px);
+}
+
+.flip-card-back.is-expanded .expand-content-btn {
+  z-index: 60;
 }
 
 /* Pegar más al borde inferior */

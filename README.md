@@ -45,13 +45,13 @@
 | **Frontend Core (SPA)** | TypeScript (ES2022+), HTML5 Semántico |
 | **Estilos (CSS)** | Vanilla CSS3 (Variables, Grid, Flexbox, Container Queries, `contain: layout paint`) |
 | **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
-| **Edge & CDN** | Cloudflare Worker (`cloudflare/worker.js`) para `immutable` cache, proxy de pósters y negociación IA |
+| **Edge & CDN** | Cloudflare Worker (`cloudflare/worker.js`) para Edge SSR (títulos, personas VIP, taxonomías), `immutable` cache, proxy de pósters y negociación IA |
 | **Fuente Única de Verdad (SSOT)** | Módulos compartidos en `src/shared/` para reglas de negocio y formateadores |
-| **Subsistema SEO (SSG)** | Astro 5+ en [`seo-site/`](seo-site/) (Generación estática de fichas públicas, sitemaps y JSON-LD) |
+| **Subsistema SEO (SSG & Edge SSR)** | Cloudflare Edge SSR + Astro 5+ en [`seo-site/`](seo-site/) (Generación de fichas públicas, sitemaps y JSON-LD) |
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing & Calidad** | Node.js Test Runner nativo (128 tests en 10 archivos) + DataOps nativo en PostgreSQL (`run_data_tests`) |
+| **Testing & Calidad** | Node.js Test Runner nativo (155 tests en 29 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
 
 ---
 
@@ -62,11 +62,17 @@ VIDEOCLUB.DIGITAL/
 ├── index.html                   # Shell HTML principal, CSS crítico y plantillas <template>
 ├── vite.config.js               # Configuración de Vite y plugin inyector de Service Worker
 ├── package.json                 # Dependencias y scripts de desarrollo/test
-├── cloudflare/                  # Capa perimetral en el Edge (Cloudflare Worker)
-│   ├── worker.js                # Reverse proxy de imágenes, cache immutable y negociación Markdown
+├── cloudflare/                  # Capa perimetral en el Edge (Cloudflare Worker & SSR)
+│   ├── worker.js                # Edge SSR de títulos, taxonomías, personas VIP, proxy de imágenes y negociación Markdown
+│   ├── seo/                     # Renderizadores perimetrales HTML/CSS (render-taxonomy, render-person, render-movie)
 │   └── README.md                # Guía de configuración y verificación de Cloudflare Edge
 ├── scripts/                     # Scripts auxiliares de automatización y CI
-│   └── run-data-tests.mjs       # DataOps Runner: evalúa contratos de calidad en PostgreSQL
+│   ├── build-seo-css.mjs        # Compilador de CSS SEO minificado (/public/seo-card-v7.css y módulo Worker)
+│   ├── generate-llms.mjs        # Generador de especificaciones llms.txt y llms-full.txt
+│   ├── generate-sitemap.mjs     # Generador de sitemaps XML unificados (/sitemap.xml y sitemap-index)
+│   ├── generate-vip-manifest.mjs# Generador de manifiesto de personas VIP para descarte O(1) en Edge
+│   ├── run-data-tests.mjs       # DataOps Runner: evalúa contratos de calidad en PostgreSQL
+│   └── sync-sprites.mjs         # Sincronizador de iconos SVG inlined en index.html
 ├── public/
 │   ├── 404.html                 # Fallback SPA para GitHub Pages (?_p y ?_q)
 │   ├── sw.js                    # Service Worker interceptor (CACHE_STATIC y CACHE_DYNAMIC)
@@ -76,7 +82,7 @@ VIDEOCLUB.DIGITAL/
 │   │   ├── variables.css        # Tokens de diseño (temas claro/oscuro, paletas, timings)
 │   │   ├── globals.css          # Estilos globales y reset
 │   │   ├── layout.css           # Estructura principal y grid adaptativo
-│   │   └── components/          # Estilos scopeados por componente (card, modal, sidebar, etc.)
+│   │   └── components/          # Estilos scopeados por componente (card, modal, sidebar con alto contraste, etc.)
 │   ├── js/                      # Lógica de la aplicación en TypeScript
 │   │   ├── main.ts              # Orquestador del DOM y flujo de renderizado
 │   │   ├── state.ts             # Estado inmutable global y sincronización con URL
@@ -84,7 +90,7 @@ VIDEOCLUB.DIGITAL/
 │   │   ├── contracts.ts         # Contratos, guardas de tipos, getAppBasePath() y normalizadores
 │   │   ├── types.ts             # Interfaces TypeScript centralizadas
 │   │   ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
-│   │   ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación)
+│   │   ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación, Theme Toggle)
 │   │   └── components/          # Módulos UI (card, modal, sidebar, rating, yearSlider)
 │   └── shared/                  # Fuente Única de Verdad (SSOT) compartida entre SPA y SEO
 │       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
@@ -94,15 +100,15 @@ VIDEOCLUB.DIGITAL/
 │   ├── astro.config.mjs         # Configuración del generador estático
 │   ├── src/pages/               # Páginas públicas indexables (/titulo/[slugId], /director/[slug], etc.)
 │   └── public/                  # Sitemaps XML y recursos estáticos de indexación
-├── tests/                       # Suite de 128 pruebas unitarias y de integración
+├── tests/                       # Suite de 155 pruebas unitarias y de integración
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   ├── url-contract.test.mjs    # Test del contrato canónico de URLs y Tabla de Prohibidos
-│   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (proxy y headers)
+│   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (Edge SSR, proxy y headers)
 │   ├── profile-stats.test.mjs   # Estadísticas de usuario y reconciliación de login
 │   └── *.test.mjs               # Pruebas de api, state, rating, seo, utils, formatters
 └── docs/                        # Documentación técnica y de arquitectura
     ├── project_context.md       # Contexto global y mapa del proyecto
-    ├── contracts.md             # Especificación de contratos de datos y fronteras
+    ├── contracts.md             # Especificación de contratos de datos, URLs y temas
     ├── data_contracts.md        # Disciplina DataOps y catálogo de aserciones PostgreSQL
     ├── data_tests.sql           # Suite nativa de pruebas de base de datos (run_data_tests)
     ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
@@ -135,7 +141,7 @@ Abre `http://localhost:5173` en tu navegador.
 npm run check
 ```
 
-### 4. Ejecución de la suite completa de tests (128 pruebas)
+### 4. Ejecución de la suite completa de tests (155 pruebas en 29 suites)
 ```bash
 npm run test
 ```
@@ -145,11 +151,20 @@ npm run test
 node scripts/run-data-tests.mjs --strict
 ```
 
-### 6. Compilación para producción
+### 6. Compilación de la SPA para producción
 ```bash
 npm run build
 ```
-Genera la carpeta `dist/` optimizada e inyecta la versión del Service Worker.
+Genera la especificación llms, manifiestos VIP, sitemaps, CSS de SEO y la carpeta `dist/` optimizada con inyección automática de versión de Service Worker.
+
+### 7. Compilación y Despliegue del Cloudflare Worker (Edge SSR)
+```bash
+# Empaqueta el worker unificado en cloudflare/dist/worker.bundle.js
+npm run build:worker
+
+# O despliega directamente a Cloudflare Workers vía Wrangler CLI
+npm run deploy:worker
+```
 
 ---
 

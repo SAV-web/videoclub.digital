@@ -161,16 +161,27 @@ body.sidebar-collapsed .sidebar {
 
   &.active {
     position: relative;
-    padding-left: var(--space-sm);
-    background-color: var(--color-accent); color: #fff;
+    padding-left: calc(var(--space-sm) + 2px);
+    background-color: #1e293b;
+    color: #ffffff !important;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid #38bdf8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
     
-    :where(html.dark-mode) & { color: var(--color-bg); }
+    :where(html.dark-mode) & {
+      background-color: #334155;
+      color: #ffffff !important;
+      border-left: 3px solid #38bdf8;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
 
     &::before {
       content: "▶";
       position: absolute; left: var(--space-xs); top: 50%;
-      font-size: 0.8em; line-height: 1;
+      font-size: 0.75em; line-height: 1;
       transform: translateY(-50%);
+      color: #38bdf8;
     }
   }
 }
@@ -224,8 +235,24 @@ body.sidebar-collapsed .sidebar {
 .sidebar-autocomplete-item {
   padding: var(--space-sm);
   cursor: pointer; font-size: var(--font-size-sm);
-  transition: background-color var(--transition-duration-fast);
-  &.is-active, &:hover { background-color: var(--color-bg); color: var(--color-text-primary); }
+  transition: background-color var(--transition-duration-fast), color var(--transition-duration-fast);
+  &.is-active, &:hover {
+    background-color: #1e293b;
+    color: #ffffff !important;
+    font-weight: 600;
+  }
+  &.is-active strong, &:hover strong {
+    color: #38bdf8 !important;
+  }
+  :where(html.dark-mode) &.is-active,
+  :where(html.dark-mode) &:hover {
+    background-color: #334155;
+    color: #ffffff !important;
+  }
+  :where(html.dark-mode) &.is-active strong,
+  :where(html.dark-mode) &:hover strong {
+    color: #38bdf8 !important;
+  }
   & strong { color: var(--color-accent); }
 }
 
@@ -539,10 +566,12 @@ body.sidebar-collapsed .sidebar {
 }
 
 .bento-grid .filter-link.active {
-  background-image: linear-gradient(45deg, var(--color-accent), var(--color-accent-darker));
-  background-color: var(--color-accent);
-  color: #fff;
-  border-color: transparent;
+  background-image: linear-gradient(135deg, #1e293b, #0f172a);
+  background-color: #1e293b;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   padding-left: var(--space-xs); 
 }
 .bento-grid .filter-link.active::before { display: none; }
@@ -560,7 +589,14 @@ body.sidebar-collapsed .sidebar {
   border-color: var(--color-border);
   color: var(--color-text-primary);
 }
-:where(html.dark-mode) .bento-grid .filter-link.active { color: var(--color-bg); }
+:where(html.dark-mode) .bento-grid .filter-link.active {
+  background-image: linear-gradient(135deg, #334155, #1e293b);
+  background-color: #334155;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-color: #64748b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
 
 /* Excepciones de ancho completo */
 .bento-grid .filter-link[data-filter-value="Animación"],
