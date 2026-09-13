@@ -747,7 +747,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(!html.includes('id="theme-toggle"'), "NO debe incluir el botón selector de tema");
     assert.ok(html.includes('class="logo-line-1">videoclub</span>'), "El logotipo debe tener videoclub en línea 1");
     assert.ok(html.includes('class="logo-line-2">.digital</span>'), "El logotipo debe tener .digital en línea 2");
-    assert.ok(html.includes('class="poster-media-link"'), "En taxonomía el cartel debe enlazar a la modal SPA");
+    assert.ok(!html.includes('class="poster-media-link"'), "En taxonomía el cartel NO debe tener enlace de modal para permitir acceder a la trasera al pulsar");
     assert.ok(html.includes('class="movie-card-title-link"'), "El título debe enlazar a la modal");
     assert.ok(html.includes('theme=([^;]*)'), "Debe incluir la lectura de cookie en el script anti-flicker");
   });

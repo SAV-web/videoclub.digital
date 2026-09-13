@@ -493,9 +493,11 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
     </div>
   </div>
 
-  <!-- Handler de alternancia D/A y expansión de biografía en Vanilla JS -->
+  <!-- Handler de alternancia D/A, acceso a la trasera y expansión de biografía en Vanilla JS -->
   <script>
     (function () {
+      var activeCard = null;
+
       // Preservar orden del catálogo seleccionado en la SPA (localStorage preferred_sort)
       try {
         var prefSort = localStorage.getItem("preferred_sort");
@@ -553,6 +555,18 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
           // 3. Sincronizar enlace del filter-pill a la SPA
           if (filterPill) {
             filterPill.href = bUrl + "?_p=/" + currentRole + "/" + pSlug + "/";
+          }
+
+          // 4. Resetear tarjeta volteada si hubiera alguna activa
+          if (activeCard) {
+            activeCard.classList.remove("is-flipped");
+            var prevBack = activeCard.querySelector(".flip-card-back");
+            if (prevBack) {
+              prevBack.classList.remove("is-expanded", "show-actors");
+              var prevBtn = prevBack.querySelector(".expand-content-btn");
+              if (prevBtn) prevBtn.textContent = "+";
+            }
+            activeCard = null;
           }
         });
       }
@@ -619,6 +633,45 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
             scrolls.forEach(function (s) { s.scrollTop = 0; });
             return;
           }
+        }
+
+        // 4. Volteo a la trasera al pulsar el cartel o cualquier lugar de la ficha (solo películas)
+        var card = e.target.closest(".movie-card:not(.person-card)");
+        if (card) {
+          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content, .scrollable-content")) return;
+          var inner = card.querySelector(".flip-card-inner");
+          if (inner) {
+            var isFlipped = inner.classList.toggle("is-flipped");
+            if (isFlipped) {
+              if (activeCard && activeCard !== inner) {
+                activeCard.classList.remove("is-flipped");
+                var prevBack = activeCard.querySelector(".flip-card-back");
+                if (prevBack) {
+                  prevBack.classList.remove("is-expanded", "show-actors");
+                  var prevBtn = prevBack.querySelector(".expand-content-btn");
+                  if (prevBtn) prevBtn.textContent = "+";
+                }
+              }
+              activeCard = inner;
+            } else if (activeCard === inner) {
+              var back = inner.querySelector(".flip-card-back");
+              if (back) {
+                back.classList.remove("is-expanded", "show-actors");
+                var btn = back.querySelector(".expand-content-btn");
+                if (btn) btn.textContent = "+";
+              }
+              activeCard = null;
+            }
+          }
+        } else if (activeCard) {
+          activeCard.classList.remove("is-flipped");
+          var back = activeCard.querySelector(".flip-card-back");
+          if (back) {
+            back.classList.remove("is-expanded", "show-actors");
+            var btn = back.querySelector(".expand-content-btn");
+            if (btn) btn.textContent = "+";
+          }
+          activeCard = null;
         }
       });
     })();

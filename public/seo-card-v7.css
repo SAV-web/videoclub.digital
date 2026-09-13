@@ -5037,33 +5037,95 @@ body.sidebar-collapsed .sidebar {
   }
 }
 
-/* En páginas SEO de taxonomía y VIP, las fichas no tienen efecto de rotación */
-.movie-card:not(.is-quick-view) {
-  cursor: default;
+/* Interacción de acceso a la trasera por pulsación/clic en SSR (sin rotación en hover) */
+.movie-card:not(.person-card):not(.is-quick-view) {
+  cursor: pointer;
 }
-.movie-card:not(.is-quick-view) a,
-.movie-card:not(.is-quick-view) button {
+.movie-card:not(.person-card):not(.is-quick-view) a,
+.movie-card:not(.person-card):not(.is-quick-view) button {
   cursor: pointer;
 }
 
+/* Capas 3D para volteo por clic en cuadrícula */
 .movie-card:not(.is-quick-view) .flip-card-inner {
-  transform: none !important;
-  transition: none !important;
+  transform-style: preserve-3d;
+  transition: transform var(--duration-leisurely, 0.45s) var(--ease-smooth-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
-
-.movie-card:not(.is-quick-view) .flip-card-front {
-  pointer-events: auto !important;
-  visibility: visible !important;
-  position: relative !important;
-  z-index: 2 !important;
-  transform: none !important;
-}
-
+.movie-card:not(.is-quick-view) .flip-card-front,
 .movie-card:not(.is-quick-view) .flip-card-back {
-  display: none !important;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Cara trasera inactiva e invisible cuando no está volteada */
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back,
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back * {
   pointer-events: none !important;
   visibility: hidden !important;
-  transform: none !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-front {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 2 !important;
+  transform: rotateY(0deg) translateZ(1px);
+}
+
+/* Cara trasera activa al pulsar el cartel o la ficha (.is-flipped) */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front * {
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: 1 !important;
+  transform: rotateY(0deg) translateZ(-1px);
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 10 !important;
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back * {
+  visibility: visible !important;
+}
+
+/* Asegurar interactividad y clics en enlaces y botones traseros cuando está volteada */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back a {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [role="button"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Enlaces traseros específicos */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .back-original-title-link,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="wikipedia-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="justwatch-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="imdb-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="fa-link"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+}
+
+/* Overlay de actores y géneros */
+.flip-card-back.is-expanded.show-actors .actors-scrollable-content {
+  z-index: 40 !important;
+  pointer-events: auto !important;
 }
 
 

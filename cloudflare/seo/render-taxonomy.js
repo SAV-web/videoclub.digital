@@ -106,19 +106,17 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
         <!-- Cara frontal -->
         <div class="flip-card-front">
           <div class="poster-container">
-            <a href="${baseUrl}?movie=${movie.id}" class="poster-media-link" aria-label="Abrir ${escapeAttr(title)} en el videoclub" style="display:block; width:100%; height:100%; position:relative; text-decoration:none; color:inherit;">
-              <img
-                src="${escapeAttr(posterUrl)}"
-                alt="Póster de ${escapeAttr(title)}"
-                width="400"
-                height="496"
-                loading="${index < 6 ? 'eager' : 'lazy'}"
-                ${index === 0 ? 'fetchpriority="high"' : ''}
-                class="loaded"
-                onerror="this.style.opacity='0.2'"
-              />
-              <div class="poster-overlay-guard"></div>
-            </a>
+            <img
+              src="${escapeAttr(posterUrl)}"
+              alt="Póster de ${escapeAttr(title)}"
+              width="400"
+              height="496"
+              loading="${index < 6 ? 'eager' : 'lazy'}"
+              ${index === 0 ? 'fetchpriority="high"' : ''}
+              class="loaded"
+              onerror="this.style.opacity='0.2'"
+            />
+            <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
               <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" aria-label="Ver valoración y ficha de ${escapeAttr(title)}" style="text-decoration: none; color: inherit; cursor: pointer;">
                 <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
@@ -473,9 +471,11 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
     </div>
   </div>
 
-  <!-- Handler de expansión de reparto y sinopsis en Vanilla JS -->
+  <!-- Handler de acceso a la trasera y expansión de reparto en Vanilla JS -->
   <script>
     (function () {
+      var activeCard = null;
+
       // Preservar orden del catálogo seleccionado en la SPA (localStorage preferred_sort)
       try {
         var prefSort = localStorage.getItem("preferred_sort");
@@ -552,6 +552,45 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
             scrolls.forEach(function (s) { s.scrollTop = 0; });
             return;
           }
+        }
+
+        // 4. Volteo a la trasera al pulsar el cartel o cualquier lugar de la ficha
+        var card = e.target.closest(".movie-card:not(.person-card)");
+        if (card) {
+          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content, .scrollable-content")) return;
+          var inner = card.querySelector(".flip-card-inner");
+          if (inner) {
+            var isFlipped = inner.classList.toggle("is-flipped");
+            if (isFlipped) {
+              if (activeCard && activeCard !== inner) {
+                activeCard.classList.remove("is-flipped");
+                var prevBack = activeCard.querySelector(".flip-card-back");
+                if (prevBack) {
+                  prevBack.classList.remove("is-expanded", "show-actors");
+                  var prevBtn = prevBack.querySelector(".expand-content-btn");
+                  if (prevBtn) prevBtn.textContent = "+";
+                }
+              }
+              activeCard = inner;
+            } else if (activeCard === inner) {
+              var back = inner.querySelector(".flip-card-back");
+              if (back) {
+                back.classList.remove("is-expanded", "show-actors");
+                var btn = back.querySelector(".expand-content-btn");
+                if (btn) btn.textContent = "+";
+              }
+              activeCard = null;
+            }
+          }
+        } else if (activeCard) {
+          activeCard.classList.remove("is-flipped");
+          var back = activeCard.querySelector(".flip-card-back");
+          if (back) {
+            back.classList.remove("is-expanded", "show-actors");
+            var btn = back.querySelector(".expand-content-btn");
+            if (btn) btn.textContent = "+";
+          }
+          activeCard = null;
         }
       });
     })();
