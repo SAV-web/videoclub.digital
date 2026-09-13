@@ -16,8 +16,9 @@
     "test": "node --test --test-concurrency=1 --test-reporter=spec tests/*.test.mjs"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "typescript": "~5.9.3",
-    "vite": "^6.0.0"
+    "vite": "^6.4.3"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",

@@ -225,9 +225,9 @@ export function renderMovieHtml(movie, options = {}) {
   </script>
 </head>
 <body>
-  <!-- Header Superior de Marca (z-index elevado para mantener accesibles los enlaces habituales) -->
-  <header class="main-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
-    <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto; padding: 0 var(--space-lg);">
+  <!-- Header Superior de Marca (Logo repartido a izquierda y derecha de la ficha) -->
+  <header class="main-header movie-seo-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
+    <div class="header-content movie-header-content">
       <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
         <span class="logo-line-1">videoclub</span>
         <span class="logo-line-2">.digital</span>

@@ -4837,6 +4837,76 @@ body.sidebar-collapsed .sidebar {
   opacity: 0.95;
 }
 
+/* Header SEO específico para fichas de título (Logo repartido a izquierda y derecha de la ficha) */
+.movie-seo-header {
+  position: relative;
+  z-index: calc(var(--z-index-overlay, 1999) + 2);
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: var(--space-md) 0 var(--space-xs);
+}
+
+.movie-header-content {
+  width: 90%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+  .movie-seo-header {
+    padding: var(--space-sm) 0 var(--space-xs);
+  }
+  .movie-header-content {
+    width: 96%;
+  }
+}
+
+.movie-seo-header .brand-logo-text {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  text-decoration: none !important;
+  pointer-events: none;
+}
+
+.movie-seo-header .brand-logo-text .logo-line-1,
+.movie-seo-header .brand-logo-text .logo-line-2 {
+  display: inline-block !important;
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: 1.55rem;
+  letter-spacing: -0.03em;
+  color: var(--color-text-primary);
+  width: auto !important;
+  pointer-events: auto;
+  transition: transform var(--duration-fast, 0.15s) ease, color var(--duration-fast, 0.15s) ease;
+}
+
+.movie-seo-header .brand-logo-text .logo-line-1 {
+  text-align: left !important;
+}
+
+.movie-seo-header .brand-logo-text .logo-line-2 {
+  text-align: right !important;
+  font-size: 1.55rem !important;
+  opacity: 1 !important;
+}
+
+.movie-seo-header .brand-logo-text .logo-line-1:hover,
+.movie-seo-header .brand-logo-text .logo-line-2:hover {
+  color: var(--color-accent);
+  transform: scale(1.04);
+}
+
+
 .main-header-primary-controls {
   display: flex;
   align-items: center;

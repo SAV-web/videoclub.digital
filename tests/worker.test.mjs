@@ -564,10 +564,12 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     const html = await response.text();
 
-    // Verificación de marca en el header (2 líneas estilo SPA y sin botones CTA de rayo ni tema)
+    // Verificación de marca en el header (repartido a izquierda y derecha de la ficha: videoclub y .digital)
+    assert.ok(html.includes('class="main-header movie-seo-header"'), "Debe incluir clase movie-seo-header");
+    assert.ok(html.includes('class="header-content movie-header-content"'), "Debe incluir contenedor acotado al ancho de la ficha");
     assert.ok(html.includes('class="brand-logo-text"'), "Debe incluir el enlace de marca a la home");
-    assert.ok(html.includes('class="logo-line-1">videoclub</span>'), "Debe incluir línea 1 videoclub");
-    assert.ok(html.includes('class="logo-line-2">.digital</span>'), "Debe incluir línea 2 .digital");
+    assert.ok(html.includes('class="logo-line-1">videoclub</span>'), "Debe incluir línea 1 videoclub a la izquierda");
+    assert.ok(html.includes('class="logo-line-2">.digital</span>'), "Debe incluir línea 2 .digital a la derecha");
     assert.ok(!html.includes('class="btn-header-cta"'), "NO debe incluir el botón de rayo CTA");
     assert.ok(!html.includes('id="theme-toggle"'), "NO debe incluir el botón de modo claro/oscuro");
 
