@@ -597,10 +597,14 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       "La bandera debe conducir al SPA con /?_p=/estados-unidos/"
     );
 
-    // 1b. Los géneros en la trasera estándar son texto plano (no enlazables hasta expandir)
+    // 1b. Los géneros en la trasera SEO de título enlazan canónicamente a /genero/:slug/
     assert.ok(
-      !html.includes('href="/?_p=/drama/"'),
-      "Los géneros en la trasera estándar NO deben ser enlazables"
+      html.includes('href="/genero/drama/"'),
+      "El género Drama debe enlazar canónicamente a /genero/drama/"
+    );
+    assert.ok(
+      html.includes('href="/genero/historico/"'),
+      "El género Historia debe enlazar canónicamente a /genero/historico/"
     );
     assert.ok(
       html.includes('data-template="genre"'),

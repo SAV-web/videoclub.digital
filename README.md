@@ -45,9 +45,8 @@
 | **Frontend Core (SPA)** | TypeScript (ES2022+), HTML5 Semántico |
 | **Estilos (CSS)** | Vanilla CSS3 (Variables, Grid, Flexbox, Container Queries, `contain: layout paint`) |
 | **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
-| **Edge & CDN** | Cloudflare Worker (`cloudflare/worker.js`) para Edge SSR (títulos, personas VIP, taxonomías), `immutable` cache, proxy de pósters y negociación IA |
+| **Edge SSR & CDN (Cloudflare)** | Cloudflare Worker (`cloudflare/worker.js`) para Edge SSR (títulos, personas VIP, taxonomías), JSON-LD, sitemaps, caché `immutable`, proxy de assets y negociación IA |
 | **Fuente Única de Verdad (SSOT)** | Módulos compartidos en `src/shared/` para reglas de negocio y formateadores |
-| **Edge SSR & SEO** | Cloudflare Worker (`cloudflare/worker.js`) para Edge SSR (títulos, personas VIP, taxonomías), JSON-LD, sitemaps y OpenGraph |
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
@@ -96,7 +95,7 @@ VIDEOCLUB.DIGITAL/
 │       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
 │       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
 │       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
-├── tests/                       # Suite de 155 pruebas unitarias y de integración
+├── tests/                       # Suite de 162 pruebas unitarias y de integración (30 suites)
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   ├── url-contract.test.mjs    # Test del contrato canónico de URLs y Tabla de Prohibidos
 │   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (Edge SSR, proxy y headers)
@@ -137,7 +136,7 @@ Abre `http://localhost:5173` en tu navegador.
 npm run check
 ```
 
-### 4. Ejecución de la suite completa de tests (155 pruebas en 29 suites)
+### 4. Ejecución de la suite completa de tests (162 pruebas en 30 suites)
 ```bash
 npm run test
 ```
@@ -153,12 +152,15 @@ npm run build
 ```
 Genera la especificación llms, manifiestos VIP, sitemaps, CSS de SEO y la carpeta `dist/` optimizada con inyección automática de versión de Service Worker.
 
-### 7. Compilación y Despliegue del Cloudflare Worker (Edge SSR)
+### 7. Preparación, Compilación y Despliegue del Cloudflare Worker (Edge SSR)
 ```bash
-# Empaqueta el worker unificado en cloudflare/dist/worker.bundle.js
+# Prepara los artefactos del Worker (manifiesto VIP desde Supabase y CSS perimetral en memoria)
+npm run prepare:worker
+
+# Empaqueta el worker unificado en cloudflare/dist/worker.bundle.js (incluye prepare:worker)
 npm run build:worker
 
-# O despliega directamente a Cloudflare Workers vía Wrangler CLI
+# Despliega directamente a Cloudflare Workers vía Wrangler CLI (ejecuta prepare:worker automáticamente)
 npm run deploy:worker
 ```
 

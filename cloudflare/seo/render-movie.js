@@ -413,7 +413,10 @@ export function renderMovieHtml(movie, options = {}) {
                   </span>
                   <strong class="detail-label-title">Género.</strong>
                   <span class="detail-data" data-template="genre">
-                    <span>${escapeHtml(preserveHyphenatedWords(rawGenres.join(', ')))}</span>
+                    ${rawGenres.map((name, i) => {
+                      const slug = genreToSlug(name) || toSlug(name);
+                      return `<a href="${baseUrl}genero/${slug}/">${escapeHtml(preserveHyphenatedWords(name))}</a>${i < rawGenres.length - 1 ? ', ' : ''}`;
+                    }).join('')}
                   </span>
                 </div>
               ` : ''}

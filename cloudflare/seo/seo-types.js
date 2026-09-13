@@ -74,10 +74,34 @@ export const GENRE_SLUG_MAP = Object.fromEntries(
   OFFICIAL_GENRES.map(g => [toSlug(g), g])
 );
 
+export const GENRE_SYNONYMS = {
+  "historia": "historico",
+  "ciencia-ficcion": "sci-fi",
+  "scifi": "sci-fi",
+  "sci-fi": "sci-fi",
+  "cine-negro": "noir",
+  "film-noir": "noir",
+  "belica": "belico",
+  "guerra": "belico",
+  "musical": "musica",
+  "infantil": "familiar",
+  "biografico": "biografia",
+  "biografica": "biografia",
+  "aventura": "aventuras",
+  "misterio": "intriga",
+  "suspense": "intriga",
+  "romantica": "romance",
+  "romantico": "romance"
+};
+
 export function genreToSlug(name) {
   if (!name) return null;
   const s = toSlug(name);
-  return GENRE_SLUG_MAP[s] ? s : null;
+  if (GENRE_SLUG_MAP[s]) return s;
+  if (GENRE_SYNONYMS[s] && GENRE_SLUG_MAP[GENRE_SYNONYMS[s]]) {
+    return GENRE_SYNONYMS[s];
+  }
+  return null;
 }
 
 export function escapeHtml(str) {

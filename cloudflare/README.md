@@ -39,15 +39,15 @@ El script [cloudflare/worker.js](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIG
 ### Opción A: Mediante Wrangler CLI (Recomendado)
 El proyecto incluye [wrangler.toml](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/wrangler.toml) preconfigurado. Para desplegar directamente:
 ```bash
-npx wrangler login   # Solo la primera vez si no has iniciado sesión
-npx wrangler deploy  # Empaqueta y despliega el Worker automáticamente
+npx wrangler login     # Solo la primera vez si no has iniciado sesión
+npm run deploy:worker  # Ejecuta prepare:worker (regenera VIP manifest y CSS) y despliega con Wrangler
 ```
 
 ### Opción B: Desde el Panel Web de Cloudflare (Sin CLI)
 Dado que el worker modular utiliza submódulos (`./seo/render-movie.js`), hemos preparado un comando para generar un archivo único consolidado:
 1. Ejecuta:
    ```bash
-   npm run build:worker
+   npm run build:worker # Ejecuta prepare:worker y empaqueta en cloudflare/dist/worker.bundle.js
    ```
 2. Abre el archivo generado: [`cloudflare/dist/worker.bundle.js`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/cloudflare/dist/worker.bundle.js).
 3. En el panel de Cloudflare, ve a **Workers & Pages** $\rightarrow$ tu Worker (`videoclub-edge-optimizer`) $\rightarrow$ **Edit code / Quick Edit**.

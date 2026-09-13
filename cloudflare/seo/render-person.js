@@ -206,8 +206,7 @@ export function renderPersonHtml(person, options = {}) {
     hasBothRoles = defaultBothRoles,
     filmographies = { director: [], actor: [] },
     siteOrigin = 'https://videoclub.digital',
-    baseUrl = '/',
-    storageUrl = 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public'
+    baseUrl = '/'
   } = options;
 
   const slug = person.slug || toSlug(person.name);
@@ -332,17 +331,18 @@ export function renderPersonHtml(person, options = {}) {
   // Renderizar la tarjeta VIP de la persona (#0) y las tarjetas de su filmografía (#1..#42)
   const personCardHtml = renderVipPersonCard(person, { activeRole, hasBothRoles, siteOrigin, baseUrl });
 
-  const directorCardsHtml = directorMovies.map((movie, index) => {
+  const renderCards = (movies) => movies.map((movie, index) => {
     return renderSpaMovieCard(movie, index + 1, siteOrigin, baseUrl);
   }).join('\n');
 
-  const actorCardsHtml = actorMovies.map((movie, index) => {
-    return renderSpaMovieCard(movie, index + 1, siteOrigin, baseUrl);
-  }).join('\n');
-
-  const singleMovieCardsHtml = activeMovies.map((movie, index) => {
-    return renderSpaMovieCard(movie, index + 1, siteOrigin, baseUrl);
-  }).join('\n');
+  const filmographyHtml = hasBothRoles ? `
+    <div id="filmography-director" class="filmography-role-group" style="${activeRole === 'director' ? 'display: contents;' : 'display: none;'}">
+      ${renderCards(directorMovies)}
+    </div>
+    <div id="filmography-actor" class="filmography-role-group" style="${activeRole === 'actor' ? 'display: contents;' : 'display: none;'}">
+      ${renderCards(actorMovies)}
+    </div>
+  ` : renderCards(activeMovies);
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -430,16 +430,7 @@ export function renderPersonHtml(person, options = {}) {
         <h1 class="sr-only">${escapeHtml(seoTitle)}</h1>
         <section id="grid-container" class="grid-container" aria-label="Ficha de ${escapeAttr(person.name)} y filmografía destacada">
           ${personCardHtml}
-          ${hasBothRoles ? `
-            <div id="filmography-director" class="filmography-role-group" style="${activeRole === 'director' ? 'display: contents;' : 'display: none;'}">
-              ${directorCardsHtml}
-            </div>
-            <div id="filmography-actor" class="filmography-role-group" style="${activeRole === 'actor' ? 'display: contents;' : 'display: none;'}">
-              ${actorCardsHtml}
-            </div>
-          ` : `
-            ${singleMovieCardsHtml}
-          `}
+          ${filmographyHtml}
         </section>
       </main>
 

@@ -5,14 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-llms.mjs && node scripts/generate-vip-manifest.mjs && node scripts/generate-sitemap.mjs && node scripts/build-seo-css.mjs && vite build",
-    "build:worker": "node scripts/build-seo-css.mjs && npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
+    "build": "node scripts/generate-llms.mjs && node scripts/generate-sitemap.mjs && npm run prepare:worker && vite build",
+    "prepare:worker": "node scripts/generate-vip-manifest.mjs && node scripts/build-seo-css.mjs",
+    "build:worker": "npm run prepare:worker && npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
     "check": "tsc --noEmit",
     "preview": "vite preview",
     "generate:llms": "node scripts/generate-llms.mjs",
     "generate:vip-manifest": "node scripts/generate-vip-manifest.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
-    "deploy:worker": "npx wrangler deploy",
+    "deploy:worker": "npm run prepare:worker && npx wrangler deploy",
     "test": "node --test --test-concurrency=1 --test-reporter=spec tests/*.test.mjs"
   },
   "devDependencies": {
