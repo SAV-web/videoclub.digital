@@ -74,24 +74,19 @@ export function computePersonAgeInfo(birthday, deathday) {
 }
 
 /**
- * Renderiza la tarjeta VIP oficial (.person-card) con giro 3D y diseño de la SPA.
+ * Renderiza la tarjeta VIP oficial (.person-card) en el Edge.
  * Para personas con rol dual (actor y director), incluye los controles [ D ] [ A ].
  */
-export function renderSpaPersonCard(person, activeRole = 'director', hasOtherRoleOrOptions = false, siteOriginArg = 'https://videoclub.digital', baseUrlArg = '/') {
-  let siteOrigin = siteOriginArg;
-  let baseUrl = baseUrlArg;
-  let hasBothRoles = person.type === 'DA' || person.type === 'AD';
+export function renderVipPersonCard(person, options = {}) {
+  const defaultRole = (person.type === 'D' || person.type === 'DA') ? 'director' : 'actor';
+  const defaultBothRoles = person.type === 'DA' || person.type === 'AD';
 
-  // Retrocompatibilidad con firma clásica (person, role, hasOtherRole, siteOrigin, baseUrl)
-  if (typeof hasOtherRoleOrOptions === 'boolean') {
-    hasBothRoles = hasOtherRoleOrOptions || hasBothRoles;
-  } else if (hasOtherRoleOrOptions && typeof hasOtherRoleOrOptions === 'object') {
-    siteOrigin = hasOtherRoleOrOptions.siteOrigin || siteOrigin;
-    baseUrl = hasOtherRoleOrOptions.baseUrl || baseUrl;
-    if (typeof hasOtherRoleOrOptions.hasBothRoles === 'boolean') {
-      hasBothRoles = hasOtherRoleOrOptions.hasBothRoles;
-    }
-  }
+  const {
+    activeRole = defaultRole,
+    hasBothRoles = defaultBothRoles,
+    siteOrigin = 'https://videoclub.digital',
+    baseUrl = '/'
+  } = options;
 
   const slug = person.slug || toSlug(person.name);
   const photoUrl = `${siteOrigin}/vips/${slug}.webp`;
@@ -202,54 +197,24 @@ export function renderSpaPersonCard(person, activeRole = 'director', hasOtherRol
  * 
  * URL inmutable y canónica única: https://videoclub.digital/slug/
  */
-export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, moviesLegacy = [], optionsLegacy = {}) {
+export function renderPersonHtml(person, options = {}) {
   const defaultRole = (person.type === 'D' || person.type === 'DA') ? 'director' : 'actor';
-  const hasBothRoles = person.type === 'DA' || person.type === 'AD';
+  const defaultBothRoles = person.type === 'DA' || person.type === 'AD';
 
-  let activeRole = defaultRole;
-  let filmographies = { director: [], actor: [] };
-  let options = {};
+  const {
+    activeRole = defaultRole,
+    hasBothRoles = defaultBothRoles,
+    filmographies = { director: [], actor: [] },
+    siteOrigin = 'https://videoclub.digital',
+    baseUrl = '/',
+    storageUrl = 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public'
+  } = options;
 
-  if (typeof roleOrConfig === 'string') {
-    // Firma clásica: renderPersonHtml(person, role, hasOtherRole, movies, options)
-    activeRole = roleOrConfig;
-    const movies = Array.isArray(hasOtherRoleLegacy) ? hasOtherRoleLegacy : (Array.isArray(moviesLegacy) ? moviesLegacy : []);
-    options = optionsLegacy || {};
-    filmographies = {
-      [activeRole]: movies,
-      [activeRole === 'director' ? 'actor' : 'director']: []
-    };
-  } else if (roleOrConfig && typeof roleOrConfig === 'object') {
-    options = (hasOtherRoleLegacy && typeof hasOtherRoleLegacy === 'object') ? hasOtherRoleLegacy : (optionsLegacy || {});
-    if (roleOrConfig.filmographies) {
-      filmographies = {
-        director: roleOrConfig.filmographies.director || [],
-        actor: roleOrConfig.filmographies.actor || []
-      };
-      activeRole = roleOrConfig.activeRole || defaultRole;
-    } else if (roleOrConfig.director || roleOrConfig.actor) {
-      filmographies = {
-        director: roleOrConfig.director || [],
-        actor: roleOrConfig.actor || []
-      };
-      activeRole = roleOrConfig.activeRole || defaultRole;
-    } else if (Array.isArray(roleOrConfig)) {
-      filmographies = {
-        [defaultRole]: roleOrConfig,
-        [defaultRole === 'director' ? 'actor' : 'director']: []
-      };
-      activeRole = defaultRole;
-    }
-  }
-
-  const siteOrigin = options.siteOrigin || 'https://videoclub.digital';
-  const baseUrl = options.baseUrl || '/';
-  const storageUrl = options.storageUrl || 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public';
   const slug = person.slug || toSlug(person.name);
   const canonicalUrl = `${siteOrigin}/${slug}/`;
 
   const isDirector = activeRole === 'director';
-  const spaRedirectUrl = `${baseUrl}?_p=/${isDirector ? 'director' : 'actor'}/${slug}/`;
+  const spaRedirectUrl = `${baseUrl}?_p=/${activeRole}/${slug}/`;
 
   const roleTitle = hasBothRoles ? 'Director y actor de cine' : (isDirector ? 'Director de cine' : 'Actor cinematográfico');
 
@@ -263,7 +228,7 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
 
   const directorMovies = filmographies.director || [];
   const actorMovies = filmographies.actor || [];
-  const activeMovies = activeRole === 'director' ? directorMovies : actorMovies;
+  const activeMovies = filmographies[activeRole] || [];
   const primaryMovies = activeMovies.length > 0 ? activeMovies : (directorMovies.length > 0 ? directorMovies : actorMovies);
 
   // 1. Schema.org Person con propiedades condicionales
@@ -365,7 +330,7 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
   };
 
   // Renderizar la tarjeta VIP de la persona (#0) y las tarjetas de su filmografía (#1..#42)
-  const personCardHtml = renderSpaPersonCard(person, activeRole, { hasBothRoles, siteOrigin, baseUrl });
+  const personCardHtml = renderVipPersonCard(person, { activeRole, hasBothRoles, siteOrigin, baseUrl });
 
   const directorCardsHtml = directorMovies.map((movie, index) => {
     return renderSpaMovieCard(movie, index + 1, siteOrigin, baseUrl);

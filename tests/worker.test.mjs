@@ -1027,4 +1027,26 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
       assert.equal(res.headers.get("Location"), tc.expected, `Ruta ${tc.input} debe redirigir a ${tc.expected}`);
     }
   });
+
+  test("Jerarquía de Configuración: ENVIRONMENT inyecta SUPABASE_URL, SUPABASE_ANON_KEY y deduce SUPABASE_STORAGE_URL", async () => {
+    const customEnv = {
+      SUPABASE_URL: "https://custom-project.supabase.co",
+      SUPABASE_ANON_KEY: "custom-anon-key-123"
+    };
+
+    const req = new Request("https://videoclub.digital/titulo/cadena-perpetua-1994/");
+    await worker.fetch(req, customEnv, defaultCtx);
+
+    const called = fetchCalls.find(c => c.url.includes("custom-project.supabase.co"));
+    assert.ok(called, "Debe haber llamado a la URL de Supabase especificada en el ENVIRONMENT");
+    assert.equal(called.init.headers.apikey, "custom-anon-key-123", "Debe usar la apikey inyectada por ENVIRONMENT");
+    assert.equal(called.init.headers.Authorization, "Bearer custom-anon-key-123", "Debe usar el Bearer inyectado por ENVIRONMENT");
+
+    // Verificar deducción de storageUrl cuando no se especifica
+    const posterReq = new Request("https://videoclub.digital/posters/sample.webp");
+    await worker.fetch(posterReq, customEnv, defaultCtx);
+    const posterCall = fetchCalls.find(c => c.url.includes("custom-project.supabase.co/storage/v1/object/public/posters/sample.webp"));
+    assert.ok(posterCall, "Debe deducir automáticamente SUPABASE_STORAGE_URL a partir de SUPABASE_URL");
+  });
 });
+

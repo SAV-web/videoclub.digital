@@ -11,6 +11,7 @@ gemini.md
 node_modules
 /dist
 dist-ssr
+cloudflare/dist
 *.local
 
 # Editor directories and files

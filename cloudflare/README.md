@@ -55,18 +55,34 @@ Dado que el worker modular utiliza submódulos (`./seo/render-movie.js`), hemos 
 5. Haz clic en **Save and Deploy**.
 6. Asegúrate de que la ruta en **Settings $\rightarrow$ Domains & Routes** siga asignada a `videoclub.digital/*`.
 
-### 2.1 Configuración del Secreto de Purga (`PURGE_SECRET`)
+### 2.1 Modelo de Configuración Perimetral (ENVIRONMENT)
 
-El endpoint perimetral de invalidación selectiva (`POST /internal/purge`) requiere la variable de entorno secreta `PURGE_SECRET`.
-Por diseño de seguridad estricto, **no existe ningún valor por defecto en el código**. Si `PURGE_SECRET` no está configurado en el entorno de Cloudflare, el endpoint devuelve inmediatamente `500 Server misconfigured` y bloquea cualquier intento de purga.
+El Worker adopta el principio de configuración desacoplada basado en el entorno de ejecución:
+```
+ENVIRONMENT (env)
+   ↓
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_STORAGE_URL (deducida automáticamente si no se provee)
+PURGE_SECRET
+```
 
-- **Configuración mediante Wrangler CLI**:
-  ```bash
-  npx wrangler secret put PURGE_SECRET
-  # Introduce tu clave secreta cuando lo solicite el terminal
-  ```
-- **Configuración mediante Dashboard de Cloudflare**:
-  En **Workers & Pages** $\rightarrow$ tu Worker $\rightarrow$ **Settings** $\rightarrow$ **Variables and Secrets**, añade un secreto cifrado con nombre `PURGE_SECRET` y el valor privado elegido.
+- **Variables de Entorno Públicas (`[vars]` en `wrangler.toml`)**:
+  - `SUPABASE_URL`: URL del proyecto Supabase (ej. `https://wibygecgfczcvaqewleq.supabase.co`).
+  - `SUPABASE_ANON_KEY`: Clave pública para consultas REST y RPC.
+  - `SUPABASE_STORAGE_URL`: Opcional; si no se especifica en el entorno, se deduce de forma determinista a partir de `${SUPABASE_URL}/storage/v1/object/public`.
+
+- **Secreto de Purga (`PURGE_SECRET`)**:
+  El endpoint perimetral de invalidación selectiva (`POST /internal/purge`) requiere la variable secreta `PURGE_SECRET`.
+  Por diseño de seguridad estricto, es **fail-closed**: no existe ningún valor por defecto (*fallback*) en el código. Si no está configurado en el entorno de Cloudflare, el endpoint devuelve inmediatamente `500 Server misconfigured`.
+
+  - **Configuración mediante Wrangler CLI**:
+    ```bash
+    npx wrangler secret put PURGE_SECRET
+    # Introduce tu clave secreta cuando lo solicite el terminal
+    ```
+  - **Configuración mediante Dashboard de Cloudflare**:
+    En **Workers & Pages** $\rightarrow$ tu Worker $\rightarrow$ **Settings** $\rightarrow$ **Variables and Secrets**, añade un secreto cifrado con nombre `PURGE_SECRET` y el valor privado elegido.
 
 ---
 

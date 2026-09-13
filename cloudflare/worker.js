@@ -22,9 +22,33 @@ import { renderTaxonomyHtml } from "./seo/render-taxonomy.js";
 import { renderPersonHtml } from "./seo/render-person.js";
 import { VIP_SLUGS } from "./seo/vip-manifest.js";
 
-const DEFAULT_SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
-const DEFAULT_SUPABASE_URL = "https://wibygecgfczcvaqewleq.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
+/**
+ * Configuración de transición para entornos de desarrollo / pruebas donde aún
+ * no se inyectan variables vía wrangler.toml o Cloudflare Dashboard.
+ * En proceso de deprecación progresiva hacia inyección exclusiva vía ENVIRONMENT (env).
+ */
+const TRANSITIONAL_CONFIG = {
+  SUPABASE_URL: "https://wibygecgfczcvaqewleq.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc"
+};
+
+/**
+ * Resuelve la configuración de ejecución con prioridad absoluta para ENVIRONMENT (env):
+ *   ENVIRONMENT
+ *      ↓
+ *   SUPABASE_URL
+ *   SUPABASE_ANON_KEY
+ *   SUPABASE_STORAGE_URL (deducida automáticamente de SUPABASE_URL si no se define)
+ *   PURGE_SECRET (estrictamente fail-closed, sin fallback por diseño de seguridad)
+ */
+function resolveEnvironment(env) {
+  const supabaseUrl = env?.SUPABASE_URL || TRANSITIONAL_CONFIG.SUPABASE_URL;
+  const supabaseAnonKey = env?.SUPABASE_ANON_KEY || TRANSITIONAL_CONFIG.SUPABASE_ANON_KEY;
+  const storageUrl = env?.SUPABASE_STORAGE_URL || (supabaseUrl ? `${supabaseUrl}/storage/v1/object/public` : "");
+  const purgeSecret = env?.PURGE_SECRET;
+
+  return { supabaseUrl, supabaseAnonKey, storageUrl, purgeSecret };
+}
 
 const RESERVED_PREFIXES = [
   "/api/",
@@ -56,13 +80,10 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const acceptHeader = request.headers.get("Accept") || "";
-    const supabaseUrl = env?.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-    const supabaseAnonKey = env?.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
-    const storageUrl = env?.SUPABASE_STORAGE_URL || DEFAULT_SUPABASE_STORAGE_URL;
+    const { supabaseUrl, supabaseAnonKey, storageUrl, purgeSecret } = resolveEnvironment(env);
 
     // 1. ENDPOINT DE INVALIDACIÓN SELECTIVA DE CACHÉ (POST /internal/purge)
     if (url.pathname === "/internal/purge" && request.method === "POST") {
-      const purgeSecret = env?.PURGE_SECRET;
       if (!purgeSecret) {
         return new Response(JSON.stringify({ error: "Server misconfigured: PURGE_SECRET not configured" }), {
           status: 500,
@@ -320,9 +341,9 @@ export default {
               const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
 
               if (person) {
-                const isDirectorPredominant = person.type === "D" || person.type === "DA";
+                const defaultRole = (person.type === "D" || person.type === "DA") ? "director" : "actor";
                 const hasBothRoles = person.type === "AD" || person.type === "DA";
-                const activeRole = isDirectorPredominant ? "director" : "actor";
+                const activeRole = defaultRole;
 
                 const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
                 const fetchFilmography = async (roleName) => {
@@ -352,27 +373,25 @@ export default {
                   return [];
                 };
 
-                let directorMovies = [];
-                let actorMovies = [];
+                const filmographies = { director: [], actor: [] };
 
                 if (hasBothRoles) {
-                  [directorMovies, actorMovies] = await Promise.all([
+                  [filmographies.director, filmographies.actor] = await Promise.all([
                     fetchFilmography("director"),
                     fetchFilmography("actor")
                   ]);
-                } else if (isDirectorPredominant) {
-                  directorMovies = await fetchFilmography("director");
                 } else {
-                  actorMovies = await fetchFilmography("actor");
+                  filmographies[activeRole] = await fetchFilmography(activeRole);
                 }
 
                 const html = renderPersonHtml(person, {
                   activeRole,
-                  filmographies: {
-                    director: directorMovies,
-                    actor: actorMovies
-                  }
-                }, { siteOrigin: url.origin, storageUrl });
+                  hasBothRoles,
+                  filmographies,
+                  siteOrigin: url.origin,
+                  baseUrl: "/",
+                  storageUrl
+                });
                 const response = new Response(html, {
                   status: 200,
                   headers: {
