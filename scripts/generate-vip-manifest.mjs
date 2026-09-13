@@ -45,6 +45,27 @@ const VALID_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const PAGE_SIZE = 1000;
 
+async function queryWithRetry(queryFn, description, maxRetries = 4, baseDelayMs = 1500) {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      const result = await queryFn();
+      if (result.error) {
+        throw result.error;
+      }
+      return result;
+    } catch (err) {
+      attempt++;
+      if (attempt >= maxRetries) {
+        throw new Error(`[vip-manifest] Falló ${description} tras ${maxRetries} intentos: ${err.message || err}`);
+      }
+      const delay = Math.round(baseDelayMs * Math.pow(2, attempt - 1) + Math.random() * 500);
+      console.warn(`[WARN] ${description} falló (${err.message || err}). Reintentando en ${delay}ms (intento ${attempt + 1}/${maxRetries})...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+
 async function generateVipManifest() {
   console.log("Iniciando generación de manifiesto de personas VIP (vip = 1)...");
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -54,17 +75,16 @@ async function generateVipManifest() {
 
   while (true) {
     const to = from + PAGE_SIZE - 1;
-    const { data, error } = await supabase
-      .from("people")
-      .select("slug")
-      .eq("vip", 1)
-      .not("slug", "is", null)
-      .range(from, to);
-
-    if (error) {
-      console.error(`Error consultando personas VIP en rango [${from}-${to}]:`, error.message);
-      process.exit(1);
-    }
+    const { data } = await queryWithRetry(
+      () =>
+        supabase
+          .from("people")
+          .select("slug")
+          .eq("vip", 1)
+          .not("slug", "is", null)
+          .range(from, to),
+      `consulta personas VIP en rango [${from}-${to}]`
+    );
 
     if (!data || data.length === 0) {
       break;
@@ -117,6 +137,12 @@ ${sortedSlugs.map(slug => `  ${JSON.stringify(slug)},`).join("\n")}
 }
 
 generateVipManifest().catch((err) => {
-  console.error("Error inesperado generando manifiesto VIP:", err);
+  console.error("Error inesperado generando manifiesto VIP:", err.message || err);
+  if (fs.existsSync(targetFile) && fs.statSync(targetFile).size > 500) {
+    console.warn(`\n⚠️  [VIP MANIFEST FALLBACK] No se pudo regenerar el manifiesto VIP desde Supabase tras reintentos.`);
+    console.warn(`⚠️  Conservando manifiesto existente en ${targetFile}.`);
+    console.warn(`⚠️  El build continuará sin abortar el despliegue de producción.\n`);
+    process.exit(0);
+  }
   process.exit(1);
 });
