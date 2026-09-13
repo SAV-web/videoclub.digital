@@ -145,32 +145,21 @@ export function createMockWindow(initialPath = "/", initialSearch = "") {
     },
     history: {
       state: null,
-      length: 1,
       replaceState(_state, _title, url) {
-        this.state = _state;
         lastReplaced = url;
-        if (url) {
-          _href = url;
-          const [p, q] = url.split("?");
-          _pathname = p;
-          _search = q ? `?${q}` : "";
-        }
+        _href = url;
+        const [p, q] = url.split("?");
+        _pathname = p;
+        _search = q ? `?${q}` : "";
       },
       pushState(_state, _title, url) {
-        this.state = _state;
-        this.length++;
         lastPushed = url;
-        if (url) {
-          _href = url;
-          const [p, q] = url.split("?");
-          _pathname = p;
-          _search = q ? `?${q}` : "";
-        }
+        _href = url;
+        const [p, q] = url.split("?");
+        _pathname = p;
+        _search = q ? `?${q}` : "";
       },
-      back() {
-        if (this.onBack) this.onBack();
-      },
-      onBack: null,
+      back: () => {},
     },
     getLastReplaced: () => lastReplaced,
     getLastPushed: () => lastPushed,

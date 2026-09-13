@@ -283,7 +283,7 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
     const cleanRoute = routeParam.startsWith("/") ? routeParam : `/${routeParam}`;
     const searchString = extraQuery ? `?${extraQuery}` : "";
     const restoredUrl = `${basePrefix}${cleanRoute}${searchString}${window.location.hash}`;
-    window.history.replaceState(window.history.state, "", restoredUrl);
+    window.history.replaceState(null, "", restoredUrl);
   }
 }
 
@@ -322,32 +322,16 @@ export function canonicalizeCurrentUrl(): boolean {
 
   const { pathname: canonPath, search: canonSearch } = stateToPrettyUrl(activeFilters, currentPage);
 
+  // Construir la URL canónica completa (con hash preservado)
+  const canonFull = canonSearch
+    ? `${canonPath}?${canonSearch}${window.location.hash}`
+    : `${canonPath}${window.location.hash}`;
+
   // URL actual sin base-prefix de GitHub Pages
   let currentPath = window.location.pathname;
   const basePrefix = getAppBasePath();
   if (basePrefix) currentPath = currentPath.slice(basePrefix.length) || "/";
   const currentSearch = window.location.search;
-
-  // Si la URL actual contiene parámetros directos de modal (movie, peli, legal), preservarlos en la URL canónica
-  let effectiveSearch = canonSearch;
-  if (currentSearch) {
-    const currentParams = new URLSearchParams(currentSearch);
-    const movieParam = currentParams.get("movie") || currentParams.get("peli");
-    const legalParam = currentParams.get("legal");
-
-    if (movieParam || legalParam) {
-      const canonParams = new URLSearchParams(canonSearch);
-      if (movieParam && !canonParams.has("movie")) canonParams.set("movie", movieParam);
-      if (legalParam && !canonParams.has("legal")) canonParams.set("legal", legalParam);
-      effectiveSearch = canonParams.toString();
-    }
-  }
-
-  // Construir la URL canónica completa (con hash preservado)
-  const canonFull = effectiveSearch
-    ? `${canonPath}?${effectiveSearch}${window.location.hash}`
-    : `${canonPath}${window.location.hash}`;
-
   const currentFull = currentSearch
     ? `${currentPath}${currentSearch}${window.location.hash}`
     : `${currentPath}${window.location.hash}`;

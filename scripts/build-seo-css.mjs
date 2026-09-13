@@ -253,15 +253,6 @@ combined += `
   height: 20px;
 }
 
-/* Interacción de volteo en SSR (solo películas normales en cuadrícula) */
-.movie-card:not(.person-card):not(.is-quick-view) {
-  cursor: pointer;
-}
-.movie-card:not(.person-card):not(.is-quick-view) a,
-.movie-card:not(.person-card):not(.is-quick-view) button {
-  cursor: pointer;
-}
-
 /* Margen lateral en páginas SEO del tamaño del sidebar replegado (65px a ambos lados) */
 @media (min-width: 769px) {
   :is(.collection-wall, .person-wall) .main-layout {
@@ -276,129 +267,35 @@ combined += `
   }
 }
 
-/* Interacción de volteo en SSR (solo películas normales en cuadrícula) */
-.movie-card:not(.person-card):not(.is-quick-view) {
-  cursor: pointer;
+/* En páginas SEO de taxonomía y VIP, las fichas no tienen efecto de rotación */
+.movie-card:not(.is-quick-view) {
+  cursor: default;
 }
-.movie-card:not(.person-card):not(.is-quick-view) a,
-.movie-card:not(.person-card):not(.is-quick-view) button {
+.movie-card:not(.is-quick-view) a,
+.movie-card:not(.is-quick-view) button {
   cursor: pointer;
 }
 
-/* Aislamiento estricto de capas 3D y eventos de puntero (solo cuadrícula) */
 .movie-card:not(.is-quick-view) .flip-card-inner {
-  transform-style: preserve-3d;
-}
-.movie-card:not(.is-quick-view) .flip-card-front,
-.movie-card:not(.is-quick-view) .flip-card-back {
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+  transform: none !important;
+  transition: none !important;
 }
 
-/* Cara trasera inactiva e invisible cuando no está volteada */
-.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back,
-.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back * {
-  pointer-events: none !important;
-  visibility: hidden !important;
-}
-
-.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-front {
+.movie-card:not(.is-quick-view) .flip-card-front {
   pointer-events: auto !important;
   visibility: visible !important;
+  position: relative !important;
   z-index: 2 !important;
-  transform: rotateY(0deg) translateZ(1px);
+  transform: none !important;
 }
 
-/* Cara frontal inactiva e invisible para el puntero cuando está volteada */
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front,
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front * {
+.movie-card:not(.is-quick-view) .flip-card-back {
+  display: none !important;
   pointer-events: none !important;
   visibility: hidden !important;
-  z-index: 1 !important;
-  transform: rotateY(0deg) translateZ(-1px);
+  transform: none !important;
 }
 
-/* Cara trasera activa cuando está volteada (avanza en el plano Z para ganar el hit-testing) */
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back {
-  pointer-events: auto !important;
-  visibility: visible !important;
-  z-index: 10 !important;
-  transform: rotateY(180deg) translateZ(1px);
-}
-
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back * {
-  visibility: visible !important;
-}
-
-/* Asegurar interactividad y clics en enlaces y botones traseros cuando está volteada */
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back a {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-}
-
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back button {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-}
-
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [role="button"] {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-}
-
-/* Enlaces traseros específicos */
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .back-original-title-link,
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="wikipedia-link"],
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="justwatch-link"],
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="imdb-link"],
-.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="fa-link"] {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  z-index: 10 !important;
-}
-
-/* Overlay de actores y géneros */
-.flip-card-back.is-expanded.show-actors .actors-scrollable-content {
-  z-index: 40 !important;
-  pointer-events: auto !important;
-}
-
-/* Rotación 3D en escritorio al situar el ratón (hover) */
-@media (hover: hover) and (pointer: fine) {
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-inner,
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-inner {
-    transform: rotateY(180deg);
-  }
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-front,
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-front *,
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-front,
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-front * {
-    pointer-events: none !important;
-    visibility: hidden !important;
-    z-index: 1 !important;
-    transform: rotateY(0deg) translateZ(-1px);
-  }
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back,
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back {
-    pointer-events: auto !important;
-    visibility: visible !important;
-    z-index: 10 !important;
-    transform: rotateY(180deg) translateZ(1px);
-  }
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back *,
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back * {
-    visibility: visible !important;
-  }
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back a,
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back button,
-  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back [role="button"],
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back a,
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back button,
-  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back [role="button"] {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-  }
-}
 
 /* Ventana modal de vista rápida siempre por encima del header al hacer zoom */
 .quick-view-modal {

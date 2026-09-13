@@ -824,26 +824,10 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
 
-  const openedFromUrl = Boolean(window.history.state?.openedFromUrl);
-
   // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
   if (!isPopstate && !suppressHistoryBack && window.history.state?.modalOpen) {
-    if (openedFromUrl && typeof window !== "undefined" && (!document.referrer || window.history.length <= 1)) {
-      // Caso enlace directo en pestaña nueva sin historial previo: limpiar query string en la misma entrada
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("movie");
-        url.searchParams.delete("peli");
-        const cleanSearch = url.searchParams.toString();
-        const cleanUrl = url.pathname + (cleanSearch ? `?${cleanSearch}` : "") + url.hash;
-        window.history.replaceState({ ...window.history.state, modalOpen: false, openedFromUrl: false }, "", cleanUrl);
-      } catch {
-        window.history.replaceState({ ...window.history.state, modalOpen: false, openedFromUrl: false }, "", window.location.pathname);
-      }
-    } else {
-      setIsClosingModalViaHistory();
-      window.history.back();
-    }
+    setIsClosingModalViaHistory();
+    window.history.back();
   }
 
 
@@ -902,10 +886,7 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
  * Abre el modal directamente a partir de un objeto de película (MappedMovie o Movie).
  * Útil para la apertura automática desde URLs ?movie={id}.
  */
-export function openModalForMovie(
-  movie: MappedMovie | Movie,
-  options?: { openedFromUrl?: boolean; skipHistoryPush?: boolean }
-): void {
+export function openModalForMovie(movie: MappedMovie | Movie): void {
   if ((movie as unknown as { isPerson?: boolean })?.isPerson) {
     const person = movie as unknown as { biography?: string | null };
     if (!person.biography || !person.biography.trim()) return;
@@ -913,17 +894,13 @@ export function openModalForMovie(
   const dummyCard = document.createElement("div") as MovieCardElement;
   dummyCard.className = "movie-card";
   dummyCard.movieData = "posterUrl" in movie ? movie : mapMoviePayload(movie);
-  openModal(dummyCard, null, options);
+  openModal(dummyCard);
 }
 
 /**
  * Abre el modal para una tarjeta específica.
  */
-export function openModal(
-  cardElement: MovieCardElement,
-  contextCards: HTMLElement[] | null = null,
-  options?: { openedFromUrl?: boolean; skipHistoryPush?: boolean }
-): void {
+export function openModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   if (!cardElement) return;
 
   if (!isQuickViewInitialized) {
@@ -939,15 +916,9 @@ export function openModal(
   const { modal, overlay, content } = getDom();
   if (!modal || !overlay) return;
 
-  const isFromUrl = Boolean(options?.openedFromUrl || options?.skipHistoryPush || window.history.state?.openedFromUrl);
-
-  // Integración con el botón "Atrás" del navegador: crear entrada en el historial SOLO si no viene de URL
-  if (isFromUrl) {
-    if (!window.history.state?.modalOpen) {
-      window.history.replaceState({ ...window.history.state, modalOpen: true, openedFromUrl: true }, "", window.location.href);
-    }
-  } else if (!window.history.state?.modalOpen) {
-    window.history.pushState({ ...window.history.state, modalOpen: true }, "", window.location.href);
+  // Integración con el botón "Atrás" del navegador: crear entrada en el historial
+  if (!window.history.state?.modalOpen) {
+    window.history.pushState({ modalOpen: true }, "", window.location.href);
   }
 
   modal.classList.remove("modal-is-loading");
