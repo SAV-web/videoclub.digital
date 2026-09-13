@@ -714,7 +714,7 @@ html.dark-mode .bbc-icon {
 
 
 
-.detail-item[data-template="genre-container"] {
+.movie-card:not(.is-quick-view) .detail-item[data-template="genre-container"] {
   position: relative;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -726,7 +726,7 @@ html.dark-mode .bbc-icon {
   line-height: 1.35;
 }
 
-.detail-item[data-template="actors-container"] {
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] {
   position: relative;
   overflow: hidden;
   text-overflow: ellipsis;

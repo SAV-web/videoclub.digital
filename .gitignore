@@ -29,11 +29,6 @@ cloudflare/dist
 .env
 .env.*
 
-# Artefactos generados de SEO Site
-seo-site/public/*.svg
-seo-site/dist
-seo-site/.astro
-
 # Agentes locales y skills
 .agents/
 skills-lock.json

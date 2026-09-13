@@ -47,11 +47,11 @@
 | **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
 | **Edge & CDN** | Cloudflare Worker (`cloudflare/worker.js`) para Edge SSR (títulos, personas VIP, taxonomías), `immutable` cache, proxy de pósters y negociación IA |
 | **Fuente Única de Verdad (SSOT)** | Módulos compartidos en `src/shared/` para reglas de negocio y formateadores |
-| **Subsistema SEO (SSG & Edge SSR)** | Cloudflare Edge SSR + Astro 5+ en [`seo-site/`](seo-site/) (Generación de fichas públicas, sitemaps y JSON-LD) |
+| **Edge SSR & SEO** | Cloudflare Worker (`cloudflare/worker.js`) para Edge SSR (títulos, personas VIP, taxonomías), JSON-LD, sitemaps y OpenGraph |
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing & Calidad** | Node.js Test Runner nativo (155 tests en 29 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
+| **Testing & Calidad** | Node.js Test Runner nativo (162 tests en 30 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
 
 ---
 
@@ -92,14 +92,10 @@ VIDEOCLUB.DIGITAL/
 │   │   ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
 │   │   ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación, Theme Toggle)
 │   │   └── components/          # Módulos UI (card, modal, sidebar, rating, yearSlider)
-│   └── shared/                  # Fuente Única de Verdad (SSOT) compartida entre SPA y SEO
+│   └── shared/                  # Fuente Única de Verdad (SSOT) compartida entre SPA y Edge SEO
 │       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
 │       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
 │       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
-├── seo-site/                    # Subsistema Astro para generación estática (SSG) de SEO
-│   ├── astro.config.mjs         # Configuración del generador estático
-│   ├── src/pages/               # Páginas públicas indexables (/titulo/[slugId], /director/[slug], etc.)
-│   └── public/                  # Sitemaps XML y recursos estáticos de indexación
 ├── tests/                       # Suite de 155 pruebas unitarias y de integración
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   ├── url-contract.test.mjs    # Test del contrato canónico de URLs y Tabla de Prohibidos

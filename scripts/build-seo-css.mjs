@@ -363,6 +363,28 @@ combined += `
 .quick-view-modal {
   z-index: calc(var(--z-index-overlay, 1999) + 10) !important;
 }
+
+/* Ficha SEO de título (/titulo/:slug/): géneros y reparto sin restricción de espacio ni truncado con '...' */
+.is-quick-view .detail-item[data-template="actors-container"],
+.is-quick-view .detail-item[data-template="genre-container"] {
+  display: block !important;
+  -webkit-line-clamp: none !important;
+  line-clamp: none !important;
+  -webkit-box-orient: unset !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  max-height: none !important;
+  padding-right: 0 !important;
+}
+
+.is-quick-view .detail-item[data-template="actors-container"] .detail-data,
+.is-quick-view .detail-item[data-template="genre-container"] .detail-data {
+  display: inline !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
 `;
 
 fs.writeFileSync("public/seo-card-v7.css", combined);

@@ -1,7 +1,7 @@
 // =================================================================
 //          CONSTANTES COMPARTIDAS (src/shared/constants.ts)
 // =================================================================
-// Fuente única de la verdad (SSOT) para SPA (Vite) y SSG (Astro seo-site).
+// Fuente única de la verdad (SSOT) para SPA (Vite) y Edge SEO (Cloudflare Worker).
 // =================================================================
 
 export interface StudioConfig {

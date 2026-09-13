@@ -612,10 +612,23 @@
 
 .is-quick-view .detail-item[data-template="actors-container"],
 .is-quick-view .detail-item[data-template="genre-container"] {
-  -webkit-line-clamp: initial;
-  line-clamp: initial;
-  white-space: normal;
   display: block;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+  -webkit-box-orient: unset;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  max-height: none;
+  padding-right: 0;
+}
+
+.is-quick-view .detail-item[data-template="actors-container"] .detail-data,
+.is-quick-view .detail-item[data-template="genre-container"] .detail-data {
+  display: inline;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .is-quick-view .ratings-container {
