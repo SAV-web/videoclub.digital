@@ -12,7 +12,7 @@ import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag,
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { saveLocalEntry } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
-import { showToast, areInteractionsLocked, openAuthModal } from "../ui.js";
+import { showToast, areInteractionsLocked } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import { normalizeMovieId } from "../contracts.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
@@ -453,8 +453,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 
 export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
   if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-    showToast("Identifícate para guardar en tu lista", "info");
-    openAuthModal();
+    showToast("Identifícate para añadir", "info");
     return;
   }
 
@@ -509,8 +508,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
     event.preventDefault(); event.stopPropagation();
     if (isPerson) return;
     if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-      showToast("Identifícate para guardar en tu lista", "info");
-      openAuthModal();
+      showToast("Identifícate para añadir", "info");
       watchlistBtn.blur();
       return;
     }

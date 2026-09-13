@@ -295,17 +295,19 @@
   overflow: hidden;
   text-overflow: ellipsis;
 
-  /* Tipografía Responsiva (3 niveles) */
+  /* Tipografía Responsiva con suelo mínimo garantizado para legibilidad */
   &.title-medium {
-    font-size: 0.95rem;
+    font-size: 0.96rem;
   }
 
   &.title-long {
-    font-size: 0.9rem;
+    font-size: 0.92rem;
   }
 
-  &.title-xl-long {
-    font-size: 0.75rem;
+  &.title-xl-long,
+  &.title-xxl-long,
+  &.title-xxxl-long {
+    font-size: 0.88rem;
   }
 }
 
@@ -571,17 +573,19 @@ html.dark-mode .bbc-icon {
     overflow: hidden;
     text-overflow: ellipsis;
 
-    /* Tipografía Responsiva (Reverso) */
+    /* Tipografía Responsiva (Reverso) con suelo mínimo garantizado */
     &.title-medium {
-      font-size: 0.8rem;
+      font-size: 0.88rem;
     }
 
     &.title-long {
-      font-size: 0.75rem;
+      font-size: 0.85rem;
     }
 
-    &.title-xl-long {
-      font-size: 0.7rem;
+    &.title-xl-long,
+    &.title-xxl-long,
+    &.title-xxxl-long {
+      font-size: 0.82rem;
     }
   }
 }

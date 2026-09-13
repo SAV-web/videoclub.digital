@@ -106,19 +106,17 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
         <!-- Cara frontal -->
         <div class="flip-card-front">
           <div class="poster-container">
-            <a href="${baseUrl}?movie=${movie.id}" class="poster-media-link" aria-label="Abrir ${escapeAttr(title)} en el videoclub" style="display:block; width:100%; height:100%; position:relative; text-decoration:none; color:inherit;">
-              <img
-                src="${escapeAttr(posterUrl)}"
-                alt="Póster de ${escapeAttr(title)}"
-                width="400"
-                height="496"
-                loading="${index < 6 ? 'eager' : 'lazy'}"
-                ${index === 0 ? 'fetchpriority="high"' : ''}
-                class="loaded"
-                onerror="this.style.opacity='0.2'"
-              />
-              <div class="poster-overlay-guard"></div>
-            </a>
+            <img
+              src="${escapeAttr(posterUrl)}"
+              alt="Póster de ${escapeAttr(title)}"
+              width="400"
+              height="496"
+              loading="${index < 6 ? 'eager' : 'lazy'}"
+              ${index === 0 ? 'fetchpriority="high"' : ''}
+              class="loaded"
+              onerror="this.style.opacity='0.2'"
+            />
+            <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
               <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" aria-label="Ver valoración y ficha de ${escapeAttr(title)}" style="text-decoration: none; color: inherit; cursor: pointer;">
                 <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
@@ -492,35 +490,18 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
         }
       } catch (e) {}
 
-      // Sincronización e interactividad del botón de tema claro/oscuro
-      var themeBtn = document.getElementById("theme-toggle");
-      if (themeBtn) {
-        var updateThemeBtn = function (isDark) {
-          themeBtn.setAttribute("aria-pressed", String(isDark));
-          var label = isDark ? "Modo claro" : "Modo oscuro";
-          themeBtn.setAttribute("aria-label", label);
-          themeBtn.title = label;
-        };
-        updateThemeBtn(document.documentElement.classList.contains("dark-mode"));
-
-        themeBtn.addEventListener("click", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var isNowDark = document.documentElement.classList.toggle("dark-mode");
-          if (isNowDark) {
-            document.documentElement.classList.remove("light-mode");
-          } else {
-            document.documentElement.classList.add("light-mode");
-          }
-          var themeStr = isNowDark ? "dark" : "light";
-          try {
-            localStorage.setItem("theme", themeStr);
-            document.cookie = "theme=" + themeStr + "; path=/; max-age=31536000; SameSite=Lax";
-          } catch (err) {}
-          updateThemeBtn(isNowDark);
-          var metas = document.querySelectorAll('meta[name="theme-color"]');
-          metas.forEach(function (m) {
-            m.setAttribute("content", isNowDark ? "#0d0d0d" : "#f5f5f5");
+      // En escritorio, al salir el ratón de la ficha se repliega cualquier expansión previa
+      if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        document.querySelectorAll(".movie-card").forEach(function (c) {
+          c.addEventListener("mouseleave", function () {
+            var back = c.querySelector(".flip-card-back");
+            if (back && back.classList.contains("is-expanded")) {
+              back.classList.remove("is-expanded", "show-actors");
+              var btn = back.querySelector(".expand-content-btn");
+              if (btn) btn.textContent = "+";
+              var scrolls = back.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+              scrolls.forEach(function (s) { s.scrollTop = 0; });
+            }
           });
         });
       }

@@ -28,19 +28,30 @@ combined += `
 .brand-logo-text {
   font-family: var(--font-title);
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.55rem;
   letter-spacing: -0.03em;
   color: var(--color-text-primary);
   text-decoration: none;
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
-  text-align: left;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.05;
 }
 .brand-logo-text .logo-line-1,
 .brand-logo-text .logo-line-2 {
   display: block;
   font-weight: 700;
+  text-align: center;
+  width: 100%;
+}
+.brand-logo-text .logo-line-1 {
+  font-size: 1.55rem;
+}
+.brand-logo-text .logo-line-2 {
+  font-size: 1.45rem;
+  opacity: 0.95;
 }
 
 .main-header-primary-controls {
@@ -350,6 +361,43 @@ combined += `
 .flip-card-back.is-expanded.show-actors .actors-scrollable-content {
   z-index: 40 !important;
   pointer-events: auto !important;
+}
+
+/* Rotación 3D en escritorio al situar el ratón (hover) */
+@media (hover: hover) and (pointer: fine) {
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-inner,
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-front,
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-front *,
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-front,
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-front * {
+    pointer-events: none !important;
+    visibility: hidden !important;
+    z-index: 1 !important;
+    transform: rotateY(0deg) translateZ(-1px);
+  }
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back,
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back {
+    pointer-events: auto !important;
+    visibility: visible !important;
+    z-index: 10 !important;
+    transform: rotateY(180deg) translateZ(1px);
+  }
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back *,
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back * {
+    visibility: visible !important;
+  }
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back a,
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back button,
+  .movie-card:not(.person-card):not(.is-quick-view):hover .flip-card-back [role="button"],
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back a,
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back button,
+  .movie-card:not(.person-card):not(.is-quick-view).is-hovered .flip-card-back [role="button"] {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
 }
 
 /* Ventana modal de vista rápida siempre por encima del header al hacer zoom */

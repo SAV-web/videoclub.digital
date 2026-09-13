@@ -1148,7 +1148,16 @@ function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
   const basePrefix = getAppBasePath();
   const { pathname, search } = stateToPrettyUrl(getActiveFilters(), getCurrentPage());
   const cleanPath = search ? `${pathname}?${search}` : pathname;
-  const newUrl = `${basePrefix}${cleanPath}`;
+  let newUrl = `${basePrefix}${cleanPath}`;
+
+  // Si la modal está abierta o se abrió desde URL con ?movie= o ?peli=, preservarlo en newUrl
+  const currentParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const movieParam = currentParams?.get("movie") || currentParams?.get("peli");
+  if (movieParam && typeof window !== "undefined" && (window.history.state?.modalOpen || window.history.state?.openedFromUrl)) {
+    const sep = newUrl.includes("?") ? "&" : "?";
+    newUrl = `${newUrl}${sep}movie=${movieParam}`;
+  }
+
   const currentFullUrl = `${window.location.pathname}${window.location.search}`;
 
   if (newUrl !== currentFullUrl) {
@@ -1387,6 +1396,10 @@ export function init(): void {
   const targetMovieId = initialUrlParams.get("movie") || initialUrlParams.get("peli");
   const initialScrollY = typeof window.history.state?.scrollY === "number" ? window.history.state.scrollY : null;
 
+  if (targetMovieId && typeof window !== "undefined") {
+    window.history.replaceState({ ...window.history.state, modalOpen: true, openedFromUrl: true }, "", window.location.href);
+  }
+
   readUrlAndSetState();
   appEvents.emit("updateSidebarUI");
 
@@ -1400,11 +1413,11 @@ export function init(): void {
         const { openModal, openModalForMovie, initQuickView } = await import("./components/modal.js");
         initQuickView();
         if (card && card.movieData) {
-          openModal(card, cards);
+          openModal(card, cards, { openedFromUrl: true });
         } else {
           const movie = await fetchMovieById(targetMovieId);
           if (movie) {
-            openModalForMovie(movie);
+            openModalForMovie(movie, { openedFromUrl: true });
           }
         }
       }

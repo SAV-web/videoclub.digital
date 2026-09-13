@@ -512,35 +512,18 @@ export function renderPersonHtml(person, roleOrConfig = {}, hasOtherRoleLegacy, 
         }
       } catch (e) {}
 
-      // Sincronización e interactividad del botón de tema claro/oscuro
-      var themeBtn = document.getElementById("theme-toggle");
-      if (themeBtn) {
-        var updateThemeBtn = function (isDark) {
-          themeBtn.setAttribute("aria-pressed", String(isDark));
-          var label = isDark ? "Modo claro" : "Modo oscuro";
-          themeBtn.setAttribute("aria-label", label);
-          themeBtn.title = label;
-        };
-        updateThemeBtn(document.documentElement.classList.contains("dark-mode"));
-
-        themeBtn.addEventListener("click", function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var isNowDark = document.documentElement.classList.toggle("dark-mode");
-          if (isNowDark) {
-            document.documentElement.classList.remove("light-mode");
-          } else {
-            document.documentElement.classList.add("light-mode");
-          }
-          var themeStr = isNowDark ? "dark" : "light";
-          try {
-            localStorage.setItem("theme", themeStr);
-            document.cookie = "theme=" + themeStr + "; path=/; max-age=31536000; SameSite=Lax";
-          } catch (err) {}
-          updateThemeBtn(isNowDark);
-          var metas = document.querySelectorAll('meta[name="theme-color"]');
-          metas.forEach(function (m) {
-            m.setAttribute("content", isNowDark ? "#0d0d0d" : "#f5f5f5");
+      // En escritorio, al salir el ratón de la ficha se repliega cualquier expansión previa
+      if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        document.querySelectorAll(".movie-card").forEach(function (c) {
+          c.addEventListener("mouseleave", function () {
+            var back = c.querySelector(".flip-card-back");
+            if (back && back.classList.contains("is-expanded")) {
+              back.classList.remove("is-expanded", "show-actors");
+              var btn = back.querySelector(".expand-content-btn");
+              if (btn) btn.textContent = "+";
+              var scrolls = back.querySelectorAll(".scrollable-content, .actors-scrollable-content");
+              scrolls.forEach(function (s) { s.scrollTop = 0; });
+            }
           });
         });
       }
