@@ -97,7 +97,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 
 ### 8. Suite de Tests (`tests/`)
 
-- Ejecución centralizada mediante el test runner nativo de Node.js (`node --test`), totalizando **162 tests automatizados en 30 suites** sin dependencias externas pesadas.
+- Ejecución centralizada mediante el test runner nativo de Node.js (`node --test`), totalizando **163 tests automatizados en 30 suites** sin dependencias externas pesadas.
 - **`tests/helpers/vite-ssr.mjs`**: Helper unificado `startViteSsrServer()` que arranca el entorno Vite en modo SSR de forma aislada para evaluar módulos TypeScript directamente.
 - **Batería de Pruebas (10 suites de test activas)**:
   - `url-contract.test.mjs`: Test formal del contrato de URLs (jerarquía canónica, lectura agnóstica al orden, reglas de exclusividad semántica y las 10 filas de la Tabla 4 de URLs prohibidas/normalizadas).

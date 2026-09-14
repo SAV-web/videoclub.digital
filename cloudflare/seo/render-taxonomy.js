@@ -105,7 +105,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
       <div class="flip-card-inner">
         <!-- Cara frontal -->
         <div class="flip-card-front">
-          <div class="poster-container">
+          <div class="poster-container"${movie.thumbhash_st ? ` style="overflow: hidden; border-radius: var(--radius-xxl); background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;"` : ''}>
             <img
               src="${escapeAttr(posterUrl)}"
               alt="Póster de ${escapeAttr(title)}"
@@ -113,7 +113,8 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
               height="496"
               loading="${index < 6 ? 'eager' : 'lazy'}"
               ${index === 0 ? 'fetchpriority="high"' : ''}
-              class="loaded"
+              class="${movie.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
+              ${movie.thumbhash_st ? `style="background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
               onerror="this.style.opacity='0.2'"
             />
             <div class="poster-overlay-guard"></div>
@@ -591,6 +592,15 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
             if (btn) btn.textContent = "+";
           }
           activeCard = null;
+        }
+      });
+
+      // Sincronización para imágenes LQIP completadas en caché
+      document.querySelectorAll(".movie-card img.lazy-lqip").forEach(function (img) {
+        if (img.complete) {
+          img.classList.add("loaded");
+        } else {
+          img.addEventListener("load", function () { img.classList.add("loaded"); });
         }
       });
     })();

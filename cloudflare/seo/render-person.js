@@ -111,7 +111,7 @@ export function renderVipPersonCard(person, options = {}) {
       <div class="flip-card-inner">
         <!-- Cara frontal -->
         <div class="flip-card-front">
-          <div class="poster-container">
+          <div class="poster-container"${person.thumbhash_st ? ` style="overflow: hidden; border-radius: var(--radius-xxl); background-image: url('${escapeAttr(person.thumbhash_st)}'); background-size: cover; background-position: center;"` : ''}>
             <img
               src="${escapeAttr(photoUrl)}"
               alt="Foto de ${escapeAttr(person.name)}"
@@ -119,7 +119,8 @@ export function renderVipPersonCard(person, options = {}) {
               height="496"
               loading="eager"
               fetchpriority="high"
-              class="loaded"
+              class="${person.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
+              ${person.thumbhash_st ? `style="background-image: url('${escapeAttr(person.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
               onerror="this.src='${escapeAttr(defaultFallbackUrl)}'"
             />
             <div class="poster-overlay-guard"></div>
@@ -628,6 +629,15 @@ export function renderPersonHtml(person, options = {}) {
             if (btn) btn.textContent = "+";
           }
           activeCard = null;
+        }
+      });
+
+      // Sincronización para imágenes LQIP completadas en caché (tarjeta VIP y filmografía)
+      document.querySelectorAll(".movie-card img.lazy-lqip").forEach(function (img) {
+        if (img.complete) {
+          img.classList.add("loaded");
+        } else {
+          img.addEventListener("load", function () { img.classList.add("loaded"); });
         }
       });
     })();

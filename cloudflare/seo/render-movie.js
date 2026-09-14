@@ -250,7 +250,7 @@ export function renderMovieHtml(movie, options = {}) {
           <div class="flip-card-front">
             
             <!-- Contenedor del Póster -->
-            <div class="poster-container">
+            <div class="poster-container"${movie.thumbhash_st ? ` style="overflow: hidden; border-radius: var(--radius-xxl); background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;"` : ''}>
               <a href="${escapeAttr(spaTargetUrl)}" class="poster-media-link" aria-label="Abrir ${escapeAttr(movie.title)} en el videoclub" style="display:block; width:100%; height:100%; position:relative; text-decoration:none; color:inherit;">
                 ${posterPath ? `
                   <img 
@@ -260,7 +260,8 @@ export function renderMovieHtml(movie, options = {}) {
                     height="496" 
                     loading="eager" 
                     fetchpriority="high"
-                    class="loaded"
+                    class="${movie.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
+                    ${movie.thumbhash_st ? `style="background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
                   />
                 ` : `
                   <div class="poster-fallback" style="aspect-ratio:2/3; display:flex; align-items:center; justify-content:center; font-size:3rem; background:var(--color-surface);">🎬</div>
@@ -458,6 +459,18 @@ export function renderMovieHtml(movie, options = {}) {
   </div>
 
 
+  <script>
+    (function () {
+      var img = document.querySelector('.poster-container img.lazy-lqip');
+      if (img) {
+        if (img.complete) {
+          img.classList.add('loaded');
+        } else {
+          img.addEventListener('load', function () { img.classList.add('loaded'); });
+        }
+      }
+    })();
+  </script>
 </body>
 </html>
 `;

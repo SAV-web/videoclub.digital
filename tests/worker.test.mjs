@@ -111,6 +111,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
           imdb_rating: 9.3,
           imdb_votes: 2800000,
           avg_rating: 9.0,
+          thumbhash_st: "data:image/webp;base64,samplethumbhashmovie",
           countries: { name: "Estados Unidos", code: "US" },
         };
         return new Response(JSON.stringify([sampleMovie]), {
@@ -180,7 +181,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             directors: "Hermanas Wachowski",
             actors: "Keanu Reeves, Laurence Fishburne, Carrie-Anne Moss",
             genres: "Ciencia ficción, Acción",
-            synopsis: "Un hacker informático descubre la verdadera naturaleza de su realidad y su papel en la guerra contra sus controladores."
+            synopsis: "Un hacker informático descubre la verdadera naturaleza de su realidad y su papel en la guerra contra sus controladores.",
+            thumbhash_st: "data:image/webp;base64,samplethumbhashtaxonomy"
           },
           {
             id: 2,
@@ -1054,5 +1056,38 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     const posterCall = fetchCalls.find(c => c.url.includes("custom-project.supabase.co/storage/v1/object/public/posters/sample.webp"));
     assert.ok(posterCall, "Debe deducir automáticamente SUPABASE_STORAGE_URL a partir de SUPABASE_URL");
   });
+
+  test("Carga de imágenes ThumbHash (LQIP) en páginas SEO: MOVIE_PROJECTION, películas, VIPs y taxonomías", async () => {
+    // 1. Verificar que MOVIE_PROJECTION incluye 'thumbhash_st'
+    const { MOVIE_PROJECTION } = await import("../cloudflare/seo/seo-types.js");
+    assert.ok(MOVIE_PROJECTION.includes("thumbhash_st"), "MOVIE_PROJECTION debe incluir 'thumbhash_st'");
+
+    // 2. Ficha de película (/titulo/:slug/)
+    const movieReq = new Request("https://videoclub.digital/titulo/cadena-perpetua-1994/");
+    const movieRes = await worker.fetch(movieReq, {}, defaultCtx);
+    assert.equal(movieRes.status, 200);
+    const movieHtml = await movieRes.text();
+    assert.ok(movieHtml.includes("lazy-lqip"), "Póster de película debe incluir clase 'lazy-lqip'");
+    assert.ok(movieHtml.includes("background-image: url('data:image/webp;base64,samplethumbhashmovie')"), "Póster de película debe portar thumbhash_st inline");
+    assert.ok(movieHtml.includes("onload=\"this.classList.add('loaded')\""), "Póster debe incluir evento onload para transición fluida");
+
+    // 3. Ficha de persona VIP (/:vip-slug/)
+    const personReq = new Request("https://videoclub.digital/christopher-nolan/");
+    const personRes = await worker.fetch(personReq, {}, defaultCtx);
+    assert.equal(personRes.status, 200);
+    const personHtml = await personRes.text();
+    assert.ok(personHtml.includes("person-card"), "Debe renderizar la tarjeta person-card");
+    assert.ok(personHtml.includes("lazy-lqip"), "Foto de persona VIP debe portar clase 'lazy-lqip'");
+    assert.ok(personHtml.includes("background-image: url('data:image/webp;base64,sample')"), "Foto VIP debe portar su thumbhash_st inline");
+
+    // 4. Muro de Taxonomía (/genero/:slug/)
+    const taxReq = new Request("https://videoclub.digital/genero/sci-fi/");
+    const taxRes = await worker.fetch(taxReq, {}, defaultCtx);
+    assert.equal(taxRes.status, 200);
+    const taxHtml = await taxRes.text();
+    assert.ok(taxHtml.includes("lazy-lqip"), "Tarjetas de película en taxonomías deben incluir clase 'lazy-lqip'");
+    assert.ok(taxHtml.includes("background-image: url('data:image/webp;base64,samplethumbhashtaxonomy')"), "Tarjetas deben portar su thumbhash_st inline");
+  });
 });
+
 

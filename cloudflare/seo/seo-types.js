@@ -28,6 +28,7 @@ export const MOVIE_PROJECTION = [
   'imdb_rating',
   'imdb_votes',
   'avg_rating',
+  'thumbhash_st',
   'wikipedia',
   'justwatch',
   'countries(name, code)',

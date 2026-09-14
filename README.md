@@ -50,7 +50,7 @@
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing & Calidad** | Node.js Test Runner nativo (162 tests en 30 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
+| **Testing & Calidad** | Node.js Test Runner nativo (163 tests en 30 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
 
 ---
 
@@ -95,7 +95,7 @@ VIDEOCLUB.DIGITAL/
 │       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
 │       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
 │       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
-├── tests/                       # Suite de 162 pruebas unitarias y de integración (30 suites)
+├── tests/                       # Suite de 163 pruebas unitarias y de integración (30 suites)
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   ├── url-contract.test.mjs    # Test del contrato canónico de URLs y Tabla de Prohibidos
 │   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (Edge SSR, proxy y headers)
@@ -136,7 +136,7 @@ Abre `http://localhost:5173` en tu navegador.
 npm run check
 ```
 
-### 4. Ejecución de la suite completa de tests (162 pruebas en 30 suites)
+### 4. Ejecución de la suite completa de tests (163 pruebas en 30 suites)
 ```bash
 npm run test
 ```
