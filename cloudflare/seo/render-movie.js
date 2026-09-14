@@ -203,6 +203,7 @@ export function renderMovieHtml(movie, options = {}) {
 
   <!-- Hoja de Estilos Externa Cacheable (SSOT con versionado perimetral) -->
   <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
+  <link rel="icon" type="image/svg+xml" href="${baseUrl}assets/brand/videoclub-mark.svg" />
 
   <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
   <script type="application/ld+json">${safeJsonLd(breadcrumbLd)}</script>
@@ -225,12 +226,14 @@ export function renderMovieHtml(movie, options = {}) {
   </script>
 </head>
 <body>
-  <!-- Header Superior de Marca (Logo repartido a izquierda y derecha de la ficha) -->
+  <!-- Header Superior de Marca (Logo V• a la izquierda de la ficha) -->
   <header class="main-header movie-seo-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
     <div class="header-content movie-header-content">
-      <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
-        <span class="logo-line-1">videoclub</span>
-        <span class="logo-line-2">.digital</span>
+      <a href="${baseUrl}" class="brand-logo-text" aria-label="videoclub.digital - Inicio">
+        <svg class="brand-logo-mark" viewBox="0 0 100 100" fill="none" role="img" aria-label="V•" width="34" height="34">
+          <path d="M 10 10 L 34 10 L 52 64 L 70 10 L 94 10 L 63 88 L 41 88 Z" fill="currentColor" />
+          <circle cx="82" cy="76" r="8" fill="#d4a347" />
+        </svg>
       </a>
     </div>
   </header>

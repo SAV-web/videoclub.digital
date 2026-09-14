@@ -421,7 +421,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
 
   <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
   <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
-  <link rel="icon" type="image/svg+xml" href="${baseUrl}favicon.svg" />
+  <link rel="icon" type="image/svg+xml" href="${baseUrl}assets/brand/videoclub-mark.svg" />
 </head>
 <body class="collection-wall">
   <div class="main-layout">
@@ -429,9 +429,14 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
       <!-- Cabecera Minimalista Estilo SPA -->
       <header class="main-header">
         <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto;">
-          <a href="${baseUrl}" class="brand-logo-text" aria-label="Videoclub Digital">
-            <span class="logo-line-1">videoclub</span>
-            <span class="logo-line-2">.digital</span>
+          <a href="${baseUrl}" class="brand-logo-text" aria-label="videoclub.digital - Inicio">
+            <svg class="brand-logo-full" viewBox="0 0 200 95" fill="none" role="img" aria-hidden="true" width="130" height="62">
+              <text x="100" y="38" text-anchor="middle" class="brand-text" font-size="34" letter-spacing="-0.03em">videoclub</text>
+              <g transform="translate(46.5, 0)">
+                <circle cx="5" cy="73" r="5" class="brand-dot" />
+                <text x="15" y="80" class="brand-text" font-size="34" letter-spacing="-0.03em">digital</text>
+              </g>
+            </svg>
           </a>
           
           <!-- Controles de cabecera: filtro activo -->

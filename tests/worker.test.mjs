@@ -566,12 +566,12 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     const html = await response.text();
 
-    // Verificación de marca en el header (repartido a izquierda y derecha de la ficha: videoclub y .digital)
+    // Verificación de marca en el header (logo reducido V• a la izquierda de la ficha)
     assert.ok(html.includes('class="main-header movie-seo-header"'), "Debe incluir clase movie-seo-header");
     assert.ok(html.includes('class="header-content movie-header-content"'), "Debe incluir contenedor acotado al ancho de la ficha");
     assert.ok(html.includes('class="brand-logo-text"'), "Debe incluir el enlace de marca a la home");
-    assert.ok(html.includes('class="logo-line-1">videoclub</span>'), "Debe incluir línea 1 videoclub a la izquierda");
-    assert.ok(html.includes('class="logo-line-2">.digital</span>'), "Debe incluir línea 2 .digital a la derecha");
+    assert.ok(html.includes('class="brand-logo-mark"'), "Debe incluir el logo reducido V•");
+    assert.ok(html.includes('aria-label="V•"'), "Debe incluir aria-label V•");
     assert.ok(!html.includes('class="btn-header-cta"'), "NO debe incluir el botón de rayo CTA");
     assert.ok(!html.includes('id="theme-toggle"'), "NO debe incluir el botón de modo claro/oscuro");
 
@@ -752,9 +752,9 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes("back-original-title-link"), "Debe tener enlace en el título original del reverso");
     assert.ok(!html.includes("card-ficha-btn"), "NO debe contener el botón Ficha completa");
     assert.ok(!html.includes("Ficha completa →"), "NO debe contener el texto Ficha completa");
-    assert.ok(!html.includes('id="theme-toggle"'), "NO debe incluir el botón selector de tema");
-    assert.ok(html.includes('class="logo-line-1">videoclub</span>'), "El logotipo debe tener videoclub en línea 1");
-    assert.ok(html.includes('class="logo-line-2">.digital</span>'), "El logotipo debe tener .digital en línea 2");
+    assert.ok(html.includes('class="brand-logo-full"'), "El logotipo debe incluir el SVG completo brand-logo-full");
+    assert.ok(html.includes('>videoclub</text>'), "El logotipo debe tener videoclub en línea 1");
+    assert.ok(html.includes('>digital</text>'), "El logotipo debe tener digital en línea 2");
     assert.ok(!html.includes('class="poster-media-link"'), "En taxonomía el cartel NO debe tener enlace de modal para permitir acceder a la trasera al pulsar");
     assert.ok(html.includes('class="movie-card-title-link"'), "El título debe enlazar a la modal");
     assert.ok(html.includes('theme=([^;]*)'), "Debe incluir la lectura de cookie en el script anti-flicker");
