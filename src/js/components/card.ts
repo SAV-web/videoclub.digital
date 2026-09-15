@@ -1403,6 +1403,8 @@ const CARD_TITLE_THRESHOLDS: Array<[number, string]> = [
   [12, "title-medium"],
 ];
 
+const ONBOARDING_FLIP_DELAY_MS = 3000;
+
 let flipOnboardingTimeout: ReturnType<typeof setTimeout> | null = null;
 let flipBackTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -1442,8 +1444,7 @@ export function runFlipOnboarding(container: HTMLElement | null): void {
         }
       }, 1400);
     }
-  }, 1000);
-
+  }, ONBOARDING_FLIP_DELAY_MS);
 }
 
 

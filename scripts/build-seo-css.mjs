@@ -26,35 +26,45 @@ combined += `
 /*  EDGE SSR ESPECÍFICOS Y COMPATIBILIDAD CON LA SPA          */
 /* ========================================================== */
 .brand-logo-text {
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.55rem;
-  letter-spacing: -0.03em;
-  color: var(--color-text-primary);
-  text-decoration: none;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  line-height: 1.05;
-}
-.brand-logo-text .logo-line-1,
-.brand-logo-text .logo-line-2 {
-  display: block;
-  font-weight: 700;
-  text-align: center;
-  width: 100%;
-}
-.brand-logo-text .logo-line-1 {
-  font-size: 1.55rem;
-}
-.brand-logo-text .logo-line-2 {
-  font-size: 1.45rem;
-  opacity: 0.95;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  line-height: 1;
+  transition: transform var(--duration-fast, 0.15s) ease, opacity var(--duration-fast, 0.15s) ease;
 }
 
-/* Header SEO específico para fichas de título (Logo repartido a izquierda y derecha de la ficha) */
+.brand-logo-text:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+
+.brand-logo-full {
+  display: block;
+  width: 130px;
+  height: auto;
+  color: var(--color-text-primary);
+}
+
+.brand-logo-mark {
+  display: block;
+  width: 34px;
+  height: 34px;
+  color: var(--color-text-primary);
+}
+
+.brand-text, .mark-v {
+  fill: currentColor;
+  font-family: var(--font-title, 'Inter', -apple-system, sans-serif);
+  font-weight: 800;
+}
+
+.brand-dot, .mark-dot {
+  fill: #d4a347;
+}
+
+/* Header SEO específico para fichas de título (Logo reducido V• a la izquierda de la ficha) */
 .movie-seo-header {
   position: relative;
   z-index: calc(var(--z-index-overlay, 1999) + 2);
@@ -70,7 +80,7 @@ combined += `
   margin-inline: auto;
   padding: 0;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   box-sizing: border-box;
 }
@@ -82,45 +92,6 @@ combined += `
   .movie-header-content {
     width: 96%;
   }
-}
-
-.movie-seo-header .brand-logo-text {
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  width: 100% !important;
-  text-decoration: none !important;
-  pointer-events: none;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-1,
-.movie-seo-header .brand-logo-text .logo-line-2 {
-  display: inline-block !important;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.55rem;
-  letter-spacing: -0.03em;
-  color: var(--color-text-primary);
-  width: auto !important;
-  pointer-events: auto;
-  transition: transform var(--duration-fast, 0.15s) ease, color var(--duration-fast, 0.15s) ease;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-1 {
-  text-align: left !important;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-2 {
-  text-align: right !important;
-  font-size: 1.55rem !important;
-  opacity: 1 !important;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-1:hover,
-.movie-seo-header .brand-logo-text .logo-line-2:hover {
-  color: var(--color-accent);
-  transform: scale(1.04);
 }
 
 

@@ -20,7 +20,7 @@ import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount
 import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo, DEFAULTS } from "../constants.js";
 import { showToast, clearToast, clearAllSidebarAutocomplete, lockGlobalInteractions, areInteractionsLocked, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI } from "../ui.js";
 import { loadAndRenderMovies } from "../main.js";
-import { ActiveFilters } from '../types.js';
+import { ActiveFilters, MovieCardElement } from '../types.js';
 
 // --- Constantes Locales ---
 const MOBILE_BREAKPOINT = 768;
@@ -849,10 +849,43 @@ async function handleToggleExcludedFilterOptimistic(type: string, value: string)
 
 function resetFilters(): void {
   clearToast();
-  if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
   appEvents.emit("filtersReset");
   tryCloseMobileDrawer();
+}
+
+async function handleRandomMovieRecommendation(): Promise<void> {
+  clearToast();
+  if (dom.playButton) triggerPopAnimation(dom.playButton);
+  triggerHapticFeedback('medium');
+
+  const grid = document.getElementById("grid-container");
+  if (!grid) return;
+
+  const cards = Array.from(
+    grid.querySelectorAll<MovieCardElement>(
+      `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card):not(.studio-card)`
+    )
+  );
+
+  if (cards.length === 0) {
+    showToast("No hay películas disponibles en la vista actual.", "info");
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * cards.length);
+  const targetCard = cards[randomIndex];
+  const movieTitle = (targetCard.movieData as { title?: string } | undefined)?.title;
+
+  if (movieTitle) {
+    showToast(`🎲 El oráculo ha elegido: ${movieTitle}`, "info");
+  }
+
+  tryCloseMobileDrawer();
+
+  const { openModal, initQuickView } = await import("./modal.js");
+  initQuickView();
+  openModal(targetCard, cards);
 }
 
 function hasCompactTriggeringFilters(): boolean {
@@ -1261,9 +1294,20 @@ function setupEventListeners(): void {
     });
   }
 
+  const brandLink = dom.sidebar?.querySelector<HTMLAnchorElement>(".brand-link");
+  if (brandLink) {
+    const handleBrandClick = (e: MouseEvent) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return;
+      e.preventDefault();
+      resetFilters();
+    };
+    brandLink.addEventListener("click", handleBrandClick);
+    sidebarUnsubscribers.push(() => brandLink.removeEventListener("click", handleBrandClick));
+  }
+
   if (dom.playButton) {
-    dom.playButton.addEventListener("click", resetFilters);
-    sidebarUnsubscribers.push(() => dom.playButton?.removeEventListener("click", resetFilters));
+    dom.playButton.addEventListener("click", handleRandomMovieRecommendation);
+    sidebarUnsubscribers.push(() => dom.playButton?.removeEventListener("click", handleRandomMovieRecommendation));
   }
 
   if (dom.myListButton) {

@@ -57,6 +57,7 @@
       content="https://videoclub.digital/og-image.png"
     />
     <link rel="canonical" href="https://videoclub.digital/" />
+    <link rel="icon" type="image/svg+xml" href="/assets/brand/videoclub-mark.svg" />
 
     <!-- === 3. MANIFEST === -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -437,18 +438,29 @@
       >
         <div class="sidebar-inner-wrapper">
           <header class="logo-area">
-            <h2 class="logo-title">
-              <span class="logo-line-1">videoclub</span
-              ><span class="logo-line-2">.digital</span>
-            </h2>
+            <a href="/" class="brand-link" aria-label="videoclub.digital - Inicio">
+              <!-- Logo Completo (2 líneas centradas) -->
+              <svg class="brand-logo brand-logo--full" viewBox="0 0 200 95" fill="none" role="img" aria-hidden="true">
+                <text x="100" y="38" text-anchor="middle" class="brand-text" font-size="34" letter-spacing="-0.03em">videoclub</text>
+                <g transform="translate(46.5, 0)">
+                  <circle cx="5" cy="73" r="5" class="brand-dot" />
+                  <text x="15" y="80" class="brand-text" font-size="34" letter-spacing="-0.03em">digital</text>
+                </g>
+              </svg>
+              <!-- Logo Reducido (V•) -->
+              <svg class="brand-logo brand-logo--mark" viewBox="0 0 100 100" fill="none" role="img" aria-hidden="true">
+                <path d="M 10 10 L 34 10 L 52 64 L 70 10 L 94 10 L 63 88 L 41 88 Z" class="mark-v" />
+                <circle cx="82" cy="76" r="8" class="mark-dot" />
+              </svg>
+            </a>
           </header>
           <nav class="play-button-container" aria-label="Controles principales">
             <button
               id="play-button"
               type="button"
               class="sidebar-control-button"
-              title="Limpiar filtros"
-              aria-label="Limpiar filtros"
+              title="Sorpréndeme"
+              aria-label="Película aleatoria / Sorpréndeme"
             >
               <svg class="sidebar-icon" aria-hidden="true">
                 <use href="#icon-play-filter"></use>

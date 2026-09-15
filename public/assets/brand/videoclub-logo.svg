@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 95" fill="none" role="img" aria-label="videoclub.digital">
+  <style>
+    .brand-text {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-weight: 800;
+      fill: currentColor;
+    }
+    .brand-dot {
+      fill: #d4a347;
+    }
+  </style>
+  <!-- Línea 1: videoclub (centrado horizontalmente) -->
+  <text x="100" y="38" text-anchor="middle" class="brand-text" font-size="34" letter-spacing="-0.03em">videoclub</text>
+  
+  <!-- Línea 2: .digital (centrado horizontalmente, punto dorado + palabra) -->
+  <g transform="translate(46.5, 0)">
+    <circle cx="5" cy="73" r="5" class="brand-dot" />
+    <text x="15" y="80" class="brand-text" font-size="34" letter-spacing="-0.03em">digital</text>
+  </g>
+</svg>

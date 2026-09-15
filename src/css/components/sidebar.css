@@ -26,17 +26,81 @@
 }
 
 /* --- 2. EL LOGOTIPO --- */
-.logo-area { margin-bottom: var(--space-xl); text-align: center; transition: margin-bottom 0.5s var(--ease-panel); }
-.logo-title {
-  margin: 0; font-family: var(--font-title); font-size: calc(var(--font-size-xl) * 1.5625); font-weight: 700; line-height: 1.2; letter-spacing: -0.03em;
-  transition: font-size 0.5s var(--ease-panel);
-  @media (min-width: 769px) and (min-height: 501px) { font-size: calc(var(--font-size-xl) * 1.25); }
+.logo-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: var(--space-xl);
+  text-align: center;
+  transition: margin-bottom 0.5s var(--ease-panel);
 }
-.sidebar-inner-wrapper.is-compact .logo-title {
-  font-size: calc(var(--font-size-lg) * 1.5625);
-  @media (min-width: 769px) and (min-height: 501px) { font-size: calc(var(--font-size-lg) * 1.25); }
+
+.brand-link {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  transition: transform var(--transition-duration-fast) ease, opacity var(--transition-duration-fast) ease;
+
+  &:hover {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+  &:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-focus);
+    border-radius: var(--radius-sm);
+  }
 }
-.logo-line-1, .logo-line-2 { display: block; }
+
+.brand-logo {
+  display: block;
+}
+
+.brand-logo--full {
+  width: 202px;
+  height: auto;
+  color: var(--color-text-primary);
+  transition: width 0.5s var(--ease-panel);
+  
+  @media (min-width: 769px) and (min-height: 501px) {
+    width: 162px;
+  }
+}
+
+.sidebar-inner-wrapper.is-compact .brand-logo--full {
+  width: 166px;
+
+  @media (min-width: 769px) and (min-height: 501px) {
+    width: 138px;
+  }
+}
+
+.brand-logo--mark {
+  display: none;
+  width: 32px;
+  height: 32px;
+  color: var(--color-text-primary);
+}
+
+.brand-text, .mark-v {
+  fill: currentColor;
+  font-family: var(--font-title, 'Inter', -apple-system, sans-serif);
+  font-weight: 800;
+}
+
+.brand-dot, .mark-dot {
+  fill: #d4a347;
+}
 
 /* --- 3. BOTONERA SUPERIOR (Play, Pausa, Tema...) --- */
 .play-button-container {
@@ -98,7 +162,7 @@
 }
 
 /* --- 5. EL ACORDEÓN (Área de scroll y secciones) --- */
-.sidebar-scrollable-filters { padding-top: var(--space-xxl); overflow-x: hidden; touch-action: pan-y; }
+.sidebar-scrollable-filters { padding-top: var(--space-lg); overflow-x: hidden; touch-action: pan-y; }
 /* Protege gestos nativos de táctil en elementos interactivos */
 .sidebar-inner-wrapper :is(button, a, input, select) { touch-action: pan-y; }
 
@@ -124,8 +188,17 @@
 body.sidebar-collapsed .sidebar {
   flex-basis: 65px; width: 65px; 
   & .sidebar-inner-wrapper { padding-inline: 0; }
-  & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
-  & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
+  & .logo-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+    padding-top: var(--space-xs);
+  }
+  & .brand-logo--full { display: none !important; }
+  & .brand-logo--mark { display: block !important; width: 34px; height: 34px; }
+  & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
+  & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-sm); }
   & .profile-container { height: auto; padding-bottom: var(--space-xs); }
   & .user-session-group { flex-direction: column; gap: var(--space-md); }
 }
@@ -162,17 +235,17 @@ body.sidebar-collapsed .sidebar {
   &.active {
     position: relative;
     padding-left: calc(var(--space-sm) + 2px);
-    background-color: #1e293b;
+    background-color: var(--color-accent);
     color: #ffffff !important;
     font-weight: 700;
     border-radius: var(--radius-sm);
-    border-left: 3px solid #38bdf8;
+    border-left: 3px solid var(--color-accent-darker);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
     
     :where(html.dark-mode) & {
-      background-color: #334155;
-      color: #ffffff !important;
-      border-left: 3px solid #38bdf8;
+      background-color: var(--color-surface-2);
+      color: var(--color-text-primary) !important;
+      border-left: 3px solid var(--color-accent);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
@@ -181,7 +254,11 @@ body.sidebar-collapsed .sidebar {
       position: absolute; left: var(--space-xs); top: 50%;
       font-size: 0.75em; line-height: 1;
       transform: translateY(-50%);
-      color: #38bdf8;
+      color: var(--color-accent);
+    }
+
+    :where(html.dark-mode) &::before {
+      color: var(--color-accent);
     }
   }
 }
@@ -236,24 +313,29 @@ body.sidebar-collapsed .sidebar {
   padding: var(--space-sm);
   cursor: pointer; font-size: var(--font-size-sm);
   transition: background-color var(--transition-duration-fast), color var(--transition-duration-fast);
+  color: var(--color-text-secondary);
+
   &.is-active, &:hover {
-    background-color: #1e293b;
-    color: #ffffff !important;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary) !important;
     font-weight: 600;
   }
   &.is-active strong, &:hover strong {
-    color: #38bdf8 !important;
+    color: var(--color-accent) !important;
   }
   :where(html.dark-mode) &.is-active,
   :where(html.dark-mode) &:hover {
-    background-color: #334155;
-    color: #ffffff !important;
+    background-color: var(--color-surface-2);
+    color: var(--color-text-primary) !important;
   }
   :where(html.dark-mode) &.is-active strong,
   :where(html.dark-mode) &:hover strong {
-    color: #38bdf8 !important;
+    color: var(--color-accent) !important;
   }
-  & strong { color: var(--color-accent); }
+  & strong {
+    color: var(--color-accent);
+    font-weight: var(--font-weight-bold);
+  }
 }
 
 /* --- 8. LÍNEA DEL TIEMPO (Slider de Años) --- */
@@ -566,11 +648,11 @@ body.sidebar-collapsed .sidebar {
 }
 
 .bento-grid .filter-link.active {
-  background-image: linear-gradient(135deg, #1e293b, #0f172a);
-  background-color: #1e293b;
+  background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-darker));
+  background-color: var(--color-accent);
   color: #ffffff !important;
   font-weight: 700;
-  border-color: #0f172a;
+  border-color: var(--color-accent-darker);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   padding-left: var(--space-xs); 
 }
@@ -590,11 +672,11 @@ body.sidebar-collapsed .sidebar {
   color: var(--color-text-primary);
 }
 :where(html.dark-mode) .bento-grid .filter-link.active {
-  background-image: linear-gradient(135deg, #334155, #1e293b);
-  background-color: #334155;
-  color: #ffffff !important;
+  background-image: linear-gradient(135deg, var(--color-surface-2), var(--color-surface-1));
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary) !important;
   font-weight: 700;
-  border-color: #64748b;
+  border-color: var(--color-accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 

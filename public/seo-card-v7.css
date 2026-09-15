@@ -2872,17 +2872,81 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 }
 
 /* --- 2. EL LOGOTIPO --- */
-.logo-area { margin-bottom: var(--space-xl); text-align: center; transition: margin-bottom 0.5s var(--ease-panel); }
-.logo-title {
-  margin: 0; font-family: var(--font-title); font-size: calc(var(--font-size-xl) * 1.5625); font-weight: 700; line-height: 1.2; letter-spacing: -0.03em;
-  transition: font-size 0.5s var(--ease-panel);
-  @media (min-width: 769px) and (min-height: 501px) { font-size: calc(var(--font-size-xl) * 1.25); }
+.logo-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: var(--space-xl);
+  text-align: center;
+  transition: margin-bottom 0.5s var(--ease-panel);
 }
-.sidebar-inner-wrapper.is-compact .logo-title {
-  font-size: calc(var(--font-size-lg) * 1.5625);
-  @media (min-width: 769px) and (min-height: 501px) { font-size: calc(var(--font-size-lg) * 1.25); }
+
+.brand-link {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  transition: transform var(--transition-duration-fast) ease, opacity var(--transition-duration-fast) ease;
+
+  &:hover {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+  &:active {
+    transform: scale(0.98);
+  }
+  &:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-focus);
+    border-radius: var(--radius-sm);
+  }
 }
-.logo-line-1, .logo-line-2 { display: block; }
+
+.brand-logo {
+  display: block;
+}
+
+.brand-logo--full {
+  width: 202px;
+  height: auto;
+  color: var(--color-text-primary);
+  transition: width 0.5s var(--ease-panel);
+  
+  @media (min-width: 769px) and (min-height: 501px) {
+    width: 162px;
+  }
+}
+
+.sidebar-inner-wrapper.is-compact .brand-logo--full {
+  width: 166px;
+
+  @media (min-width: 769px) and (min-height: 501px) {
+    width: 138px;
+  }
+}
+
+.brand-logo--mark {
+  display: none;
+  width: 32px;
+  height: 32px;
+  color: var(--color-text-primary);
+}
+
+.brand-text, .mark-v {
+  fill: currentColor;
+  font-family: var(--font-title, 'Inter', -apple-system, sans-serif);
+  font-weight: 800;
+}
+
+.brand-dot, .mark-dot {
+  fill: #d4a347;
+}
 
 /* --- 3. BOTONERA SUPERIOR (Play, Pausa, Tema...) --- */
 .play-button-container {
@@ -2944,7 +3008,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 }
 
 /* --- 5. EL ACORDEÓN (Área de scroll y secciones) --- */
-.sidebar-scrollable-filters { padding-top: var(--space-xxl); overflow-x: hidden; touch-action: pan-y; }
+.sidebar-scrollable-filters { padding-top: var(--space-lg); overflow-x: hidden; touch-action: pan-y; }
 /* Protege gestos nativos de táctil en elementos interactivos */
 .sidebar-inner-wrapper :is(button, a, input, select) { touch-action: pan-y; }
 
@@ -2970,8 +3034,17 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 body.sidebar-collapsed .sidebar {
   flex-basis: 65px; width: 65px; 
   & .sidebar-inner-wrapper { padding-inline: 0; }
-  & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
-  & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
+  & .logo-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+    padding-top: var(--space-xs);
+  }
+  & .brand-logo--full { display: none !important; }
+  & .brand-logo--mark { display: block !important; width: 34px; height: 34px; }
+  & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
+  & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-sm); }
   & .profile-container { height: auto; padding-bottom: var(--space-xs); }
   & .user-session-group { flex-direction: column; gap: var(--space-md); }
 }
@@ -3008,17 +3081,17 @@ body.sidebar-collapsed .sidebar {
   &.active {
     position: relative;
     padding-left: calc(var(--space-sm) + 2px);
-    background-color: #1e293b;
+    background-color: var(--color-accent);
     color: #ffffff !important;
     font-weight: 700;
     border-radius: var(--radius-sm);
-    border-left: 3px solid #38bdf8;
+    border-left: 3px solid var(--color-accent-darker);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
     
     :where(html.dark-mode) & {
-      background-color: #334155;
-      color: #ffffff !important;
-      border-left: 3px solid #38bdf8;
+      background-color: var(--color-surface-2);
+      color: var(--color-text-primary) !important;
+      border-left: 3px solid var(--color-accent);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
 
@@ -3027,7 +3100,11 @@ body.sidebar-collapsed .sidebar {
       position: absolute; left: var(--space-xs); top: 50%;
       font-size: 0.75em; line-height: 1;
       transform: translateY(-50%);
-      color: #38bdf8;
+      color: var(--color-accent);
+    }
+
+    :where(html.dark-mode) &::before {
+      color: var(--color-accent);
     }
   }
 }
@@ -3082,24 +3159,29 @@ body.sidebar-collapsed .sidebar {
   padding: var(--space-sm);
   cursor: pointer; font-size: var(--font-size-sm);
   transition: background-color var(--transition-duration-fast), color var(--transition-duration-fast);
+  color: var(--color-text-secondary);
+
   &.is-active, &:hover {
-    background-color: #1e293b;
-    color: #ffffff !important;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary) !important;
     font-weight: 600;
   }
   &.is-active strong, &:hover strong {
-    color: #38bdf8 !important;
+    color: var(--color-accent) !important;
   }
   :where(html.dark-mode) &.is-active,
   :where(html.dark-mode) &:hover {
-    background-color: #334155;
-    color: #ffffff !important;
+    background-color: var(--color-surface-2);
+    color: var(--color-text-primary) !important;
   }
   :where(html.dark-mode) &.is-active strong,
   :where(html.dark-mode) &:hover strong {
-    color: #38bdf8 !important;
+    color: var(--color-accent) !important;
   }
-  & strong { color: var(--color-accent); }
+  & strong {
+    color: var(--color-accent);
+    font-weight: var(--font-weight-bold);
+  }
 }
 
 /* --- 8. LÍNEA DEL TIEMPO (Slider de Años) --- */
@@ -3412,11 +3494,11 @@ body.sidebar-collapsed .sidebar {
 }
 
 .bento-grid .filter-link.active {
-  background-image: linear-gradient(135deg, #1e293b, #0f172a);
-  background-color: #1e293b;
+  background-image: linear-gradient(135deg, var(--color-accent), var(--color-accent-darker));
+  background-color: var(--color-accent);
   color: #ffffff !important;
   font-weight: 700;
-  border-color: #0f172a;
+  border-color: var(--color-accent-darker);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   padding-left: var(--space-xs); 
 }
@@ -3436,11 +3518,11 @@ body.sidebar-collapsed .sidebar {
   color: var(--color-text-primary);
 }
 :where(html.dark-mode) .bento-grid .filter-link.active {
-  background-image: linear-gradient(135deg, #334155, #1e293b);
-  background-color: #334155;
-  color: #ffffff !important;
+  background-image: linear-gradient(135deg, var(--color-surface-2), var(--color-surface-1));
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary) !important;
   font-weight: 700;
-  border-color: #64748b;
+  border-color: var(--color-accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
@@ -4809,35 +4891,45 @@ body.sidebar-collapsed .sidebar {
 /*  EDGE SSR ESPECÍFICOS Y COMPATIBILIDAD CON LA SPA          */
 /* ========================================================== */
 .brand-logo-text {
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.55rem;
-  letter-spacing: -0.03em;
-  color: var(--color-text-primary);
-  text-decoration: none;
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  line-height: 1.05;
-}
-.brand-logo-text .logo-line-1,
-.brand-logo-text .logo-line-2 {
-  display: block;
-  font-weight: 700;
-  text-align: center;
-  width: 100%;
-}
-.brand-logo-text .logo-line-1 {
-  font-size: 1.55rem;
-}
-.brand-logo-text .logo-line-2 {
-  font-size: 1.45rem;
-  opacity: 0.95;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  line-height: 1;
+  transition: transform var(--duration-fast, 0.15s) ease, opacity var(--duration-fast, 0.15s) ease;
 }
 
-/* Header SEO específico para fichas de título (Logo repartido a izquierda y derecha de la ficha) */
+.brand-logo-text:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+
+.brand-logo-full {
+  display: block;
+  width: 130px;
+  height: auto;
+  color: var(--color-text-primary);
+}
+
+.brand-logo-mark {
+  display: block;
+  width: 34px;
+  height: 34px;
+  color: var(--color-text-primary);
+}
+
+.brand-text, .mark-v {
+  fill: currentColor;
+  font-family: var(--font-title, 'Inter', -apple-system, sans-serif);
+  font-weight: 800;
+}
+
+.brand-dot, .mark-dot {
+  fill: #d4a347;
+}
+
+/* Header SEO específico para fichas de título (Logo reducido V• a la izquierda de la ficha) */
 .movie-seo-header {
   position: relative;
   z-index: calc(var(--z-index-overlay, 1999) + 2);
@@ -4853,7 +4945,7 @@ body.sidebar-collapsed .sidebar {
   margin-inline: auto;
   padding: 0;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   box-sizing: border-box;
 }
@@ -4865,45 +4957,6 @@ body.sidebar-collapsed .sidebar {
   .movie-header-content {
     width: 96%;
   }
-}
-
-.movie-seo-header .brand-logo-text {
-  display: flex !important;
-  flex-direction: row !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  width: 100% !important;
-  text-decoration: none !important;
-  pointer-events: none;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-1,
-.movie-seo-header .brand-logo-text .logo-line-2 {
-  display: inline-block !important;
-  font-family: var(--font-title);
-  font-weight: 700;
-  font-size: 1.55rem;
-  letter-spacing: -0.03em;
-  color: var(--color-text-primary);
-  width: auto !important;
-  pointer-events: auto;
-  transition: transform var(--duration-fast, 0.15s) ease, color var(--duration-fast, 0.15s) ease;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-1 {
-  text-align: left !important;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-2 {
-  text-align: right !important;
-  font-size: 1.55rem !important;
-  opacity: 1 !important;
-}
-
-.movie-seo-header .brand-logo-text .logo-line-1:hover,
-.movie-seo-header .brand-logo-text .logo-line-2:hover {
-  color: var(--color-accent);
-  transform: scale(1.04);
 }
 
 

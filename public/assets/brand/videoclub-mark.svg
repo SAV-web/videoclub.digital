@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" role="img" aria-label="V•">
+  <style>
+    .mark-v { fill: currentColor; }
+    .mark-dot { fill: #d4a347; }
+  </style>
+  <path d="M 10 10 L 34 10 L 52 64 L 70 10 L 94 10 L 63 88 L 41 88 Z" class="mark-v" />
+  <circle cx="82" cy="76" r="8" class="mark-dot" />
+</svg>
