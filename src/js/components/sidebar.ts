@@ -1070,14 +1070,59 @@ function setupAutocompleteHandlers(): void {
     input.setAttribute("aria-autocomplete", "list");
     input.setAttribute("aria-expanded", "false");
 
+    let isSubmitting = false;
+
+    const selectCandidate = async () => {
+      if (isSubmitting) return;
+      const rawTerm = input.value.trim();
+      const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+      const hasRenderedItems = !!(resultsContainer && resultsContainer.children.length > 0);
+
+      if (!rawTerm && !hasRenderedItems) return;
+
+      isSubmitting = true;
+      debouncedFetch.cancel();
+
+      try {
+        if (hasRenderedItems) {
+          const items = Array.from(resultsContainer!.children) as HTMLElement[];
+          const activeItem = items.find(i => i.classList.contains('is-active')) || items[0];
+          if (activeItem) {
+            activeItem.click();
+            return;
+          }
+        }
+
+        input.blur();
+        if (rawTerm.length < 2) return;
+
+        const apiTerm = sanitizeSearchTerm(rawTerm);
+        let selectedValue = rawTerm;
+
+        try {
+          const suggestions = await fetcher(apiTerm);
+          if (suggestions && suggestions.length > 0) {
+            const normalizedRaw = normalizeText(rawTerm).toLowerCase();
+            const exactMatch = suggestions.find(s => normalizeText(s).toLowerCase() === normalizedRaw);
+            selectedValue = exactMatch || suggestions[0];
+          }
+        } catch {
+          selectedValue = rawTerm;
+        }
+
+        triggerHapticFeedback('light');
+        handleFilterChangeOptimistic(filterType, selectedValue);
+        input.value = "";
+        clearAllSidebarAutocomplete();
+        tryCloseMobileDrawer();
+      } finally {
+        isSubmitting = false;
+      }
+    };
+
     const handleSubmit = (e: Event) => {
       e.preventDefault();
-      const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
-      if (resultsContainer && resultsContainer.children.length > 0) {
-        const items = Array.from(resultsContainer.children) as HTMLElement[];
-        const activeItem = items.find(i => i.classList.contains('is-active')) || items[0];
-        if (activeItem) activeItem.click();
-      }
+      selectCandidate();
     };
 
     form.addEventListener("submit", handleSubmit);
@@ -1088,13 +1133,24 @@ function setupAutocompleteHandlers(): void {
 
       const apiTerm = sanitizeSearchTerm(rawTerm);
       const suggestions = await fetcher(apiTerm);
+      if (input.value.trim() !== rawTerm) return;
       renderSidebarAutocomplete(form, suggestions, rawTerm);
     }, CONFIG.SEARCH_DEBOUNCE_DELAY);
 
     input.addEventListener("input", debouncedFetch);
 
     const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") e.preventDefault();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        selectCandidate();
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        clearAllSidebarAutocomplete();
+        return;
+      }
 
       const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
       if (!resultsContainer || resultsContainer.children.length === 0) return;
@@ -1128,17 +1184,6 @@ function setupAutocompleteHandlers(): void {
           e.preventDefault();
           activeIndex = activeIndex > -1 ? activeIndex - 1 : items.length - 1;
           updateActiveSuggestion(activeIndex);
-          break;
-        case "Enter":
-          if (activeIndex >= 0 && items[activeIndex]) {
-            items[activeIndex].click();
-          } else if (items.length > 0) {
-            items[0].click();
-          }
-          break;
-        case "Escape":
-          e.preventDefault();
-          clearAllSidebarAutocomplete();
           break;
       }
     };

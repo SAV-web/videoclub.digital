@@ -253,8 +253,8 @@ export function renderMovieHtml(movie, options = {}) {
           <div class="flip-card-front">
             
             <!-- Contenedor del Póster -->
-            <div class="poster-container"${movie.thumbhash_st ? ` style="overflow: hidden; border-radius: var(--radius-xxl); background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;"` : ''}>
-              <a href="${escapeAttr(spaTargetUrl)}" class="poster-media-link" aria-label="Abrir ${escapeAttr(movie.title)} en el videoclub" style="display:block; width:100%; height:100%; position:relative; text-decoration:none; color:inherit;">
+            <div class="poster-container">
+              <a href="${escapeAttr(spaTargetUrl)}" class="poster-media-link" aria-label="Abrir ${escapeAttr(movie.title)} en el videoclub" style="display:block; width:100%; position:relative; text-decoration:none; color:inherit;">
                 ${posterPath ? `
                   <img 
                     src="${escapeAttr(posterPath)}" 

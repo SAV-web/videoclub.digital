@@ -151,3 +151,15 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
    Uso intensivo de la propiedad `contain` y `will-change: transform` para evitar que las animaciones locales provoquen recálculos globales en la pantalla.
 6. **Gestión de Ciclo de Vida y Limpieza de Memoria (Teardown):**
    Todos los módulos (`card.ts`, `modal.ts`, `sidebar.ts`, `main.ts`) implementan funciones de desmontaje explícito (`disposeCardEvents`, `disposeModalEvents`, `disposeSidebarEvents`, `disposeMainEvents`, `disposeApp`) y un bus de eventos global con desuscripción limpia (`appEvents.off`, `appEvents.clearAll`) para prevenir _memory leaks_ y listeners huérfanos.
+
+## ⏱️ Protocolo de Eficiencia en Desarrollo y Validación (Cost & Latency Optimization)
+
+Para optimizar el uso de recursos, reducir tiempos de ciclo y minimizar costes operativos en agentes de IA y flujos CI/CD:
+
+1. **Diagnóstico Directo:** Identificación precisa de la causa raíz mediante lecturas de código acotadas y análisis focalizado antes de intervenir.
+2. **Edición Quirúrgica:** Modificación exclusiva de las líneas responsables del comportamiento deseado, sin formateos globales ni alteraciones en módulos colaterales.
+3. **Validación Mínima Suficiente (*Targeted Testing & Builds*):**
+   - **Pruebas Focalizadas:** Ejecutar únicamente el archivo de pruebas correspondiente al módulo modificado (`node --test tests/<modulo>.test.mjs`), evitando suites globales innecesarias durante la iteración activa.
+   - **Compilaciones Desacopladas:** Construir únicamente los artefactos alterados (ej. compilar CSS sin regenerar manifiestos pesados de base de datos).
+   - **Suite Global como Gatekeeper:** Reservar `npm run test` completo exclusivamente para el paso previo al *commit* o cambios en el SSOT (`src/shared/`).
+

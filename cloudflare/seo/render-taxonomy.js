@@ -105,7 +105,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
       <div class="flip-card-inner">
         <!-- Cara frontal -->
         <div class="flip-card-front">
-          <div class="poster-container"${movie.thumbhash_st ? ` style="overflow: hidden; border-radius: var(--radius-xxl); background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;"` : ''}>
+          <div class="poster-container">
             <img
               src="${escapeAttr(posterUrl)}"
               alt="Póster de ${escapeAttr(title)}"

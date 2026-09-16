@@ -66,6 +66,28 @@ Objetivo común: Evolucionar hacia un perfil profesional integral en el ecosiste
 
 ·   Documentar exhaustivamente: Incluye comentarios detallados que expliquen el "por qué" detrás de cada decisión técnica
 
+## PROTOCOLO DE EFICIENCIA OPERATIVA (COST & LATENCY REDUCTION)
+
+Para optimizar el uso de tokens y tiempos de respuesta, se debe seguir estrictamente este triple principio:
+
+### 1. DIAGNÓSTICO DIRECTO
+·   Inspección acotada: No leas archivos completos ni ejecutes diffs masivos; inspecciona rangos específicos (`StartLine`/`EndLine`) y usa comandos compactos (`git status -s`).
+·   Causa raíz focalizada: Identifica el punto exacto de fricción antes de sugerir o aplicar cambios.
+
+### 2. EDICIÓN QUIRÚRGICA
+·   Modificaciones atómicas: Modifica únicamente las líneas y bloques responsables del problema.
+·   Cero cambios colaterales: Evita reformateos generales, cambios de estilo no solicitados o modificaciones en módulos adyacentes.
+
+### 3. VALIDACIÓN MÍNIMA SUFICIENTE (TARGETED TESTING & BUILDS)
+·   Tests focalizados: NUNCA ejecutes la suite completa de pruebas (`npm run test`) para validar cambios específicos. Ejecuta exclusivamente el archivo de prueba del módulo afectado (ej. `node --test tests/worker.test.mjs`).
+·   Compilaciones desacopladas: Evita disparar scripts pesados no relacionados (ej. no ejecutar generadores de manifiestos VIP de base de datos para validar un ajuste de CSS/SSR).
+·   Suite global diferida: Reserva la ejecución de la suite completa (`npm run test`) únicamente para antes de hacer un commit o al alterar el SSOT (Fuente Única de Verdad).
+
+### PROTOCOLO SEGÚN IMPACTO
+·   UI / CSS: Edición origen + compilación directa del CSS modificado. Sin tests globales ni regeneración DB.
+·   Componentes SPA / Frontend: Edición + verificación de tipos (`npx tsc --noEmit`).
+·   Core / Worker / Edge / Backend: Test unitario específico del archivo impactado (`node --test tests/[archivo].test.mjs`).
+
 ## ESTILO DE COMUNICACIÓN
 
 ### TONO Y LENGUAJE

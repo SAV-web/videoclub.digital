@@ -111,7 +111,7 @@ export function renderVipPersonCard(person, options = {}) {
       <div class="flip-card-inner">
         <!-- Cara frontal -->
         <div class="flip-card-front">
-          <div class="poster-container"${person.thumbhash_st ? ` style="overflow: hidden; border-radius: var(--radius-xxl); background-image: url('${escapeAttr(person.thumbhash_st)}'); background-size: cover; background-position: center;"` : ''}>
+          <div class="poster-container">
             <img
               src="${escapeAttr(photoUrl)}"
               alt="Foto de ${escapeAttr(person.name)}"

@@ -166,8 +166,19 @@
   height: auto;
   width: 100%;
   border: none;
+  background: transparent;
+
+  & .poster-media-link {
+    display: block;
+    width: 100%;
+    position: relative;
+    border-radius: var(--radius-xxl);
+  }
 
   & img {
+    display: block;
+    width: 100%;
+    height: auto;
     border-radius: var(--radius-xxl);
     box-shadow: var(--shadow);
     border: none;
