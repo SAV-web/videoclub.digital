@@ -9,13 +9,13 @@
 
 // modal.css se importa de forma eager en main.css para prevenir FOUC
 import { openAccessibleModal, closeAccessibleModal, setIsClosingModalViaHistory, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
-import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
+import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist, prefetchImageUrl } from "./card.js";
 
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
 
 import { fetchUserMovieDataForIds } from "../api.js";
-import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl } from "../utils.js";
+import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, getPosterUrl } from "../utils.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
 
 
@@ -36,7 +36,7 @@ interface ModalDom {
 }
 
 export interface ExtendedMovie extends MappedMovie {
-  image_hq?: string | null;
+  image_hq?: string | null; // Alias de retrocompatibilidad hacia posterUrl
   // Propiedades para personas en caso de person-card
   name?: string;
   place_of_birth?: string | null;
@@ -390,6 +390,33 @@ function updateNavButtons(currentId: number | string, contextCards: HTMLElement[
   }
 }
 
+/**
+ * Precarga de forma predictiva y limitada (máximo 2) las imágenes de las fichas inmediatamente adyacentes (anterior / siguiente).
+ */
+function prefetchAdjacentModalImages(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
+  const cards = contextCards || getGridCards();
+  if (!cards || cards.length === 0) return;
+
+  const currentId = cardElement?.dataset?.movieId || (cardElement?.movieData ? String(cardElement.movieData.id) : null);
+  if (!currentId) return;
+
+  const currentIndex = cards.findIndex(c => c.dataset.movieId === currentId);
+  if (currentIndex === -1) return;
+
+  const adjacentIndices = [currentIndex - 1, currentIndex + 1];
+  for (const idx of adjacentIndices) {
+    if (idx >= 0 && idx < cards.length) {
+      const adjacentCard = cards[idx] as MovieCardElement;
+      const img = adjacentCard.querySelector<HTMLImageElement>("img");
+      const movieData = adjacentCard.movieData as Partial<MappedMovie> | undefined;
+      const url = img?.dataset?.src || (img?.src && !img.src.startsWith("data:") ? img.src : null) || movieData?.posterUrl || (movieData?.slug ? getPosterUrl(movieData.slug) : null);
+      if (url) {
+        prefetchImageUrl(url);
+      }
+    }
+  }
+}
+
 
 // =================================================================
 //          4. RENDERIZADO (POBLADO DE DATOS)
@@ -435,10 +462,10 @@ function getModalNodes(root: HTMLElement): ModalNodes {
 function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
   // Imagen (Efecto LQIP suave)
   if (nodes.img) {
-    const hqUrl = movie.image_hq || movie.posterUrl;
+    const posterUrl = movie.image_hq || movie.posterUrl;
     nodes.img.alt = `Póster de ${movie.title}`;
 
-    if (movie.thumbhash_st && hqUrl) {
+    if (movie.thumbhash_st && posterUrl) {
       nodes.img.classList.remove(CSS_CLASSES.LOADED);
       nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
       nodes.img.src = movie.thumbhash_st;
@@ -450,21 +477,19 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
         tempImg.onload = () => {
           if (lqipGen !== modalLifecycleGen) return;
           if (nodes.img) {
-            nodes.img.src = hqUrl;
+            nodes.img.src = posterUrl;
             scheduleModalRAF(() => {
               if (lqipGen !== modalLifecycleGen) return;
               nodes.img?.classList.add(CSS_CLASSES.LOADED);
             });
           }
         };
-        tempImg.src = hqUrl;
+        tempImg.src = posterUrl;
       }, 150);
     } else {
-      nodes.img.src = hqUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+      nodes.img.src = posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
       nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
     }
-
-
   }
 
   // Título
@@ -621,12 +646,13 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
   const { template, content, modal } = getDom();
   if (!template || !content || !modal) return;
 
-  // Extraemos URL HQ si ya se cargó en la card para evitar parpadeo
+  // Extraemos URL del póster ya cargado en la tarjeta para evitar parpadeo
   const cardImg = cardElement.querySelector("img");
-  const image_hq = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
+  const posterUrl = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
 
   // Clon superficial para evitar mutaciones cruzadas con la card del grid.
-  const movie = { ...cardElement.movieData, image_hq } as ExtendedMovie;
+  const basePosterUrl = (cardElement.movieData && "posterUrl" in cardElement.movieData) ? cardElement.movieData.posterUrl : undefined;
+  const movie = { ...cardElement.movieData, image_hq: posterUrl, posterUrl: posterUrl || basePosterUrl } as ExtendedMovie;
   const isPerson = cardElement.classList.contains('person-card') || movie.isPerson;
 
   // Si es persona, usamos person-card-template en lugar de quick-view-template
@@ -665,7 +691,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     // --- CAPA PERSONA (Síncrona) ---
     // Foto de perfil
     const img = cardClone.querySelector("img");
-    if (img && image_hq) {
+    if (img && posterUrl) {
       img.classList.remove(CSS_CLASSES.LOADED);
       img.classList.add(CSS_CLASSES.LAZY_LQIP);
 
@@ -678,7 +704,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
         img.classList.add(CSS_CLASSES.LOADED);
       };
 
-      img.src = image_hq;
+      img.src = posterUrl;
       if (img.complete) {
         img.classList.add(CSS_CLASSES.LOADED);
       }
@@ -944,6 +970,7 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
       openAccessibleModal(modal, overlay, false);
       if (content) content.scrollTop = 0;
       scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 350);
+      prefetchAdjacentModalImages(cardElement, contextCards);
     });
   };
 

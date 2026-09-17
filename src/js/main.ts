@@ -367,7 +367,6 @@ export async function loadAndRenderMovies(
     }
 
     if (movies && movies.length > 0) {
-      preloadLcpImage(movies[0]);
       if (document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
         const movieIds = movies.map((m) => m.id);
         fetchUserMovieDataForIds(movieIds).then((userEntries) => {

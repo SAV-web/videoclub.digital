@@ -3,7 +3,7 @@
 // src/js/seo.ts
 import { CONFIG, FILTER_CONFIG, STUDIO_DATA } from "./constants.js";
 import { getActiveFilters, stateToPrettyUrl } from "./state.js";
-import { capitalizeWords, getHqPosterUrl } from "./utils.js";
+import { capitalizeWords, getPosterUrl } from "./utils.js";
 import { ActiveFilters, Movie, MappedMovie } from "./types.js";
 
 // =================================================================
@@ -118,7 +118,7 @@ export function buildItemListSchema(movies: Array<Movie | MappedMovie> | null | 
       "item": {
         "@type": movie.type && movie.type.toLowerCase().startsWith('s') ? "TVSeries" : "Movie",
         "name": movie.title,
-        "image": ("posterUrl" in movie ? movie.posterUrl : (movie.slug ? getHqPosterUrl(movie.slug) : undefined)) || undefined,
+        "image": ("posterUrl" in movie ? movie.posterUrl : (movie.slug ? getPosterUrl(movie.slug) : undefined)) || undefined,
         "dateCreated": movie.year ? String(movie.year) : undefined,
         "director": movie.directors_list ? movie.directors_list.split(",").map(d => ({ "@type": "Person", "name": d.trim() })) : undefined,
         "actor": movie.actors_list ? movie.actors_list.split(",").map(a => ({ "@type": "Person", "name": a.trim() })) : undefined,

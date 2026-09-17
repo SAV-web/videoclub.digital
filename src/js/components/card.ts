@@ -8,7 +8,7 @@
 // =================================================================
 
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, ICONS, FILTER_CONFIG } from "../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getHqPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, scheduleWork, yieldToMain, LocalStore, getPosterUrl, debounce, getFriendlyErrorMessage, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { saveLocalEntry } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
@@ -58,8 +58,8 @@ let hoverTimeout: ReturnType<typeof setTimeout> | undefined;
 let singleTapTimeout: ReturnType<typeof setTimeout> | undefined;
 let currentHoveredCard: MovieCardElement | null = null;
 let preloadedLinkElements: HTMLLinkElement[] = [];
-const prefetchedUrls = new Set<string>();
-const MAX_PREFETCH_LINKS = 12;
+export const prefetchedUrls = new Set<string>();
+export const MAX_PREFETCH_LINKS = 4;
 const HOVER_DELAY = 1000;
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
 const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
@@ -155,6 +155,52 @@ function handleDocumentClick(e: MouseEvent): void {
 //          2. LÓGICA DE INTERACCIÓN (Pointer Events)
 // =================================================================
 
+/**
+ * Precarga controlada de imagen con deduplicación estricta y límite FIFO de 4 enlaces.
+ */
+export function prefetchImageUrl(url: string | null | undefined): void {
+  if (!url || typeof document === "undefined" || !document.head) return;
+  if (url.startsWith("data:")) return;
+
+  // 1. Evitar duplicados si ya está en el Set
+  if (prefetchedUrls.has(url)) return;
+
+  // 2. Evitar duplicados si ya existe un <link rel="prefetch"> en el documento
+  if (document.querySelector(`link[rel="prefetch"][href="${url}"]`)) {
+    prefetchedUrls.add(url);
+    return;
+  }
+
+  // 3. Evitar prefetch innecesario si la imagen ya está presente y cargada en el DOM
+  const existingImg = document.querySelector<HTMLImageElement>(`img[src="${url}"]`);
+  if (existingImg && existingImg.complete && existingImg.naturalWidth > 0) {
+    prefetchedUrls.add(url);
+    return;
+  }
+
+  prefetchedUrls.add(url);
+
+  // 4. Política FIFO con límite MAX_PREFETCH_LINKS (4)
+  if (preloadedLinkElements.length >= MAX_PREFETCH_LINKS) {
+    const oldest = preloadedLinkElements.shift();
+    try {
+      if (oldest?.href) {
+        prefetchedUrls.delete(oldest.href);
+        prefetchedUrls.delete(oldest.getAttribute("href") || "");
+      }
+      oldest?.remove();
+    } catch (e) { }
+  }
+
+  // 5. Inserción en el head
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.as = "image";
+  link.href = url;
+  document.head.appendChild(link);
+  preloadedLinkElements.push(link);
+}
+
 function prefetchCardResources(card: MovieCardElement): void {
   if (card.dataset.prefetched) return;
   card.dataset.prefetched = "true";
@@ -162,32 +208,11 @@ function prefetchCardResources(card: MovieCardElement): void {
   // 1. Intención de detalle: Cargar lógica del modal bajo demanda
   import("./modal.js");
 
-  // 2. Intención visual: Precarga no bloqueante de imagen HQ (prefetch)
+  // 2. Intención visual en desktop (hover prolongado 1000ms): Precarga no bloqueante de imagen
   const img = card.querySelector<HTMLImageElement>("img");
-  const src = img?.dataset?.src;
-  if (src && !prefetchedUrls.has(src)) {
-    prefetchedUrls.add(src);
-
-    if (preloadedLinkElements.length >= MAX_PREFETCH_LINKS) {
-      const oldest = preloadedLinkElements.shift();
-      try {
-        if (oldest?.href) {
-          prefetchedUrls.delete(oldest.href);
-          prefetchedUrls.delete(oldest.getAttribute("href") || "");
-        }
-        oldest?.remove();
-      } catch (e) { }
-    }
-
-
-    if (typeof document !== "undefined" && document.head) {
-      const link = document.createElement("link");
-      link.rel = "prefetch";
-      link.as = "image";
-      link.href = src;
-      document.head.appendChild(link);
-      preloadedLinkElements.push(link);
-    }
+  const src = img?.dataset?.src || (img?.src && !img.src.startsWith("data:") ? img.src : null);
+  if (src) {
+    prefetchImageUrl(src);
   }
 }
 
@@ -221,7 +246,9 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
 
   triggerHapticFeedback("light");
   inner.classList.toggle("is-flipped");
-  prefetchCardResources(cardElement);
+  // En tap táctil de móvil/tablet NO se descarga el póster.
+  // Solo precargamos bajo demanda la lógica JS del modal si el usuario aún no la tiene.
+  import("./modal.js");
 
   if (!isFlipped) {
     currentlyFlippedCard = cardElement;
@@ -754,7 +781,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   const img = card.querySelector<HTMLImageElement>("img");
   if (!img) return;
 
-  const hqPoster = movie.posterUrl || getHqPosterUrl(movie.slug);
+  const posterUrl = movie.posterUrl || getPosterUrl(movie.slug);
   img.alt = `Póster de ${movie.title}`;
 
   // Uniformidad visual LQIP idéntica a SEO: background-image con ThumbHash inmediato
@@ -781,7 +808,7 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   img.loading = isPriority ? "eager" : "lazy";
 
   if (isPriority) {
-    img.src = hqPoster;
+    img.src = posterUrl;
     if (img.complete) {
       img.classList.add(CSS_CLASSES.LOADED);
     } else {
@@ -790,10 +817,10 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     }
   } else if (lazyLoadObserver) {
     img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-    img.dataset.src = hqPoster;
+    img.dataset.src = posterUrl;
     lazyLoadObserver.observe(img);
   } else {
-    img.src = hqPoster;
+    img.src = posterUrl;
     img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
     img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
   }

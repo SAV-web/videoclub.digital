@@ -53,7 +53,6 @@ export type { PersonAgeInfo };
 // Aliases de retrocompatibilidad
 export const isMovieSeries = isSeriesType;
 export const formatYearRange = formatYear;
-export const getHqPosterUrl = getPosterUrl;
 
 // =================================================================
 //          1. PREPARAR DATOS DE PELÍCULAS
@@ -258,7 +257,7 @@ export function preloadLcpImage(target: Partial<MappedMovie> | string | null | u
   if (!target) return;
   const imageUrl = typeof target === "string"
     ? target
-    : (target.posterUrl || (target.slug ? getHqPosterUrl(target.slug) : undefined));
+    : (target.posterUrl || (target.slug ? getPosterUrl(target.slug) : undefined));
   if (!imageUrl) return;
 
   if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) return;
