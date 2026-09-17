@@ -45,7 +45,7 @@
 | **Frontend Core (SPA)** | TypeScript (ES2022+), HTML5 Semántico |
 | **Estilos (CSS)** | Vanilla CSS3 (Variables, Grid, Flexbox, Container Queries, `contain: layout paint`) |
 | **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
-| **Edge SSR & CDN (Cloudflare)** | Cloudflare Worker (`cloudflare/worker.js`) para Edge SSR (títulos, personas VIP, taxonomías), JSON-LD, sitemaps, caché `immutable`, proxy de assets y negociación IA |
+| **Edge SSR, Static Assets & CDN (Cloudflare)** | Cloudflare Workers (`cloudflare/worker.js` + `[assets]`) como origen integral de producción: Edge SSR, serving nativo de SPA/assets, JSON-LD, sitemaps, caché `immutable`, proxy Supabase y negociación IA |
 | **Fuente Única de Verdad (SSOT)** | Módulos compartidos en `src/shared/` para reglas de negocio y formateadores |
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
@@ -60,9 +60,10 @@
 VIDEOCLUB.DIGITAL/
 ├── index.html                   # Shell HTML principal, CSS crítico y plantillas <template>
 ├── vite.config.js               # Configuración de Vite y plugin inyector de Service Worker
+├── wrangler.toml                # Configuración de Cloudflare Workers y Static Assets ([assets] -> ./dist)
 ├── package.json                 # Dependencias y scripts de desarrollo/test
-├── cloudflare/                  # Capa perimetral en el Edge (Cloudflare Worker & SSR)
-│   ├── worker.js                # Edge SSR de títulos, taxonomías, personas VIP, proxy de imágenes y negociación Markdown
+├── cloudflare/                  # Origen de producción perimetral (Cloudflare Worker & SSR)
+│   ├── worker.js                # Edge SSR de títulos, taxonomías, personas VIP, proxy de imágenes y fallback a env.ASSETS
 │   ├── seo/                     # Renderizadores perimetrales HTML/CSS (render-taxonomy, render-person, render-movie)
 │   └── README.md                # Guía de configuración y verificación de Cloudflare Edge
 ├── scripts/                     # Scripts auxiliares de automatización y CI
@@ -73,7 +74,7 @@ VIDEOCLUB.DIGITAL/
 │   ├── run-data-tests.mjs       # DataOps Runner: evalúa contratos de calidad en PostgreSQL
 │   └── sync-sprites.mjs         # Sincronizador de iconos SVG inlined en index.html
 ├── public/
-│   ├── 404.html                 # Fallback SPA para GitHub Pages (?_p y ?_q)
+│   ├── 404.html                 # Fallback SPA de contingencia
 │   ├── sw.js                    # Service Worker interceptor (CACHE_STATIC y CACHE_DYNAMIC)
 │   └── manifest.webmanifest     # Manifiesto PWA
 ├── src/

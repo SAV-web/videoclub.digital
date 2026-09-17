@@ -20,18 +20,20 @@
 
 - `index.html`: Punto de entrada. Contiene el CSS crítico (_Above the Fold_), preloads, meta tags SEO, política CSP ajustada (sin directivas exclusivas de cabecera como `frame-ancestors`) y los `<template>` de los componentes para instanciación rápida.
 - `vite.config.js`: Configurado para generar código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase) e inyección automática de versión de Service Worker (`injectSwVersion`).
-- `public/404.html`: Fallback SPA para GitHub Pages. Intercepta rutas directas y recargas (`F5`) no coincidentes y redirige a la raíz preservando la ruta y query string mediante `?_p=` y `?_q=`.
+- `public/404.html`: Fallback SPA histórico de contingencia. En la arquitectura actual, Cloudflare Workers gestiona el enrutamiento SPA de forma nativa a través de `not_found_handling = "single-page-application"`.
 - `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`), aislamiento estricto por origen (`url.origin === self.location.origin`) y estrategias:
   - _Network First_ (`CACHE_STATIC` para navegación HTML y App Shell).
   - _Stale-While-Revalidate_ (`CACHE_DYNAMIC` para assets estáticos JS/CSS con precacheo de `./index.html` y `./manifest.webmanifest` en `CRITICAL_ASSETS`; los iconos SVG viajan inlined en el DOM).
   - _Cache First_ (`CACHE_DYNAMIC` para pósters y fotos VIP proxyeadas con límite FIFO).
   - _Aislamiento de Origen Cruzado_: Los recursos alojados en `*.supabase.co` (fuentes Inter, Auth, RPC) fluyen directamente por red nativa sin ser interceptados por el SW, previniendo advertencias de colisión con `<link rel="preload">`.
   - Estrategia de invalidación documentada en `docs/service_worker_invalidation.md`.
-- `cloudflare/worker.js`: Capa perimetral (*Edge Optimizer & Reverse Proxy*) desplegada delante de GitHub Pages:
+- `wrangler.toml`: Configuración de Cloudflare Workers y Static Assets. Declara la ruta de zona `videoclub.digital/*` y vincula `./dist` con binding `ASSETS` y enrutamiento SPA directo.
+- `cloudflare/worker.js`: Origen de producción y capa perimetral (*Edge SSR, Reverse Proxy & Static Assets serving*):
   - Inyección de `Cache-Control: public, max-age=31536000, immutable` en bundles de Vite (`/assets/*`).
   - Proxy perimetral de imágenes (`/posters/*` y `/vips/*`) con reescritura hacia Supabase Storage para evitar consumo de egress.
   - Negociación de contenido Markdown (`Accept: text/markdown` $\to$ `/llms.txt`) y cabeceras de descubrimiento para agentes de IA (`Link: </llms.txt>; rel="alternate"`). Documentado en `cloudflare/README.md`.
   - Endpoint de purga selectiva perimetral (`POST /internal/purge`) protegido estrictamente mediante variable de entorno secreta `PURGE_SECRET` (sin fallbacks hardcodeados en código; devuelve `500 Server misconfigured` si el secreto no está configurado).
+  - Fallback a `env.ASSETS.fetch(request)` para servir la SPA y recursos estáticos sin servidores externos.
 
 ### 2. Módulos Compartidos SSOT (`src/shared/`)
 
