@@ -8,7 +8,7 @@
 // =================================================================
 
 // modal.css se importa de forma eager en main.css para prevenir FOUC
-import { openAccessibleModal, closeAccessibleModal, setIsClosingModalViaHistory } from "../ui.js";
+import { openAccessibleModal, closeAccessibleModal, setIsClosingModalViaHistory, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
 import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist } from "./card.js";
 
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
@@ -137,6 +137,7 @@ const scheduleModalRAF = (fn: () => void): number => {
  * Cierra el modal si se hace clic fuera del contenido.
  */
 function handleOutsideClick(event: MouseEvent): void {
+  if (areInteractionsLocked()) return;
   const { modal } = getDom();
   if (!modal) return;
 
@@ -902,6 +903,7 @@ export function openModalForMovie(movie: MappedMovie | Movie): void {
  */
 export function openModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   if (!cardElement) return;
+  lockGlobalInteractions(500);
 
   if (!isQuickViewInitialized) {
     initQuickView();
@@ -941,7 +943,7 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
       overlay.classList.add("is-visible");
       openAccessibleModal(modal, overlay, false);
       if (content) content.scrollTop = 0;
-      scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 50);
+      scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 350);
     });
   };
 

@@ -745,6 +745,7 @@ body.sidebar-is-open .sidebar {
    1. ANIMACIONES Y KEYFRAMES
    ================================================================= */
 
+/* Animación de entrada en Cascada Suave idéntica a SEO */
 @keyframes card-cascade-appear {
   0% {
     opacity: 0;
@@ -820,15 +821,12 @@ body.sidebar-is-open .sidebar {
   aspect-ratio: 500 / 950;
   border-radius: var(--radius-xl);
 
-  /* Aislamiento para evitar repintados en el resto de la página */
-  contain: layout paint style;
-  /* Renderizado perezoso hiper-optimizado (Chromium) */
-
+  /* Aislamiento y fluidez para el reparto */
+  contain: layout style;
+  contain-intrinsic-size: 180px 320px;
   content-visibility: auto;
 
-
-
-  /* Animación de entrada en Cascada Suave (Smooth Staggered Cascade) */
+  /* Animación de entrada en Cascada Suave (Smooth Staggered Cascade) idéntica a SEO */
   animation: card-cascade-appear 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   animation-delay: calc(var(--card-index, 0) * 45ms);
 
@@ -989,11 +987,11 @@ body.sidebar-is-open .sidebar {
   }
 }
 
-/* Efecto carga LQIP (Blur) */
+/* Efecto carga LQIP (Blur) - Reducido a la mitad (200ms) */
 :is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.05);
-  transition: filter var(--duration-normal) ease-in-out, transform var(--duration-normal) ease-in-out;
+  transition: filter var(--duration-quick, 200ms) ease-in-out, transform var(--duration-quick, 200ms) ease-in-out;
 
   &.loaded {
     filter: blur(0);
@@ -3760,7 +3758,7 @@ body.sidebar-collapsed .sidebar {
 .is-quick-view img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.03);
-  transition: filter var(--duration-normal, 0.4s) ease-in-out, transform var(--duration-normal, 0.4s) ease-in-out;
+  transition: filter var(--duration-quick, 200ms) ease-in-out, transform var(--duration-quick, 200ms) ease-in-out;
 
   &.loaded {
     filter: blur(0);

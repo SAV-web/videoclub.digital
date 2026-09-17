@@ -616,7 +616,7 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");
 
-  loadAndRenderMovies(1, { forceSkeleton: true, replaceHistory });
+  loadAndRenderMovies(1, { forceSkeleton: false, replaceHistory });
 }
 
 // Aplica un filtro específico preservando las categorías activas (Años, Selección, Estudio, País)
@@ -654,7 +654,7 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
 
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");
-  loadAndRenderMovies(1, { forceSkeleton: true });
+  loadAndRenderMovies(1, { forceSkeleton: false });
 }
 
 // --- 4. PREPARATIVOS AL ARRANCAR (Cableado) ---

@@ -12,7 +12,7 @@ import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag,
 import { getUserDataForMovie, updateUserDataForMovie, hasActiveMeaningfulFilters, getCurrentPage, appEvents } from "../state.js";
 import { saveLocalEntry } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
-import { showToast, areInteractionsLocked } from "../ui.js";
+import { showToast, areInteractionsLocked, lockGlobalInteractions } from "../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "./rating.js";
 import { normalizeMovieId } from "../contracts.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
@@ -79,6 +79,7 @@ async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
     const personData = cardElement.movieData as PersonDetails | undefined;
     if (!personData?.biography || !personData.biography.trim()) return;
   }
+  lockGlobalInteractions(500);
   const { openModal, initQuickView } = await import("./modal.js");
   const win = window as unknown as Record<string, unknown>;
   if (!win[QUICK_VIEW_INIT_FLAG]) {
@@ -350,9 +351,15 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 
   // --- Doble Click (Desktop) ---
   const handleDblClick = (e: MouseEvent) => {
+    if (areInteractionsLocked() || document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const target = e.target as HTMLElement;
     const card = target.closest<MovieCardElement>(".movie-card");
     if (card && !document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
+      lockGlobalInteractions(500);
       loadAndOpenModal(card);
     }
   };
@@ -479,8 +486,14 @@ export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: M
 }
 
 export function handleCardClick(this: MovieCardElement, event: MouseEvent): void {
-  // Contrato Global: Respetar el cooldown de gestos
-  if (areInteractionsLocked()) { event.preventDefault(); event.stopPropagation(); return; }
+  // Contrato Global: Respetar el cooldown de gestos y descartar clics adicionales si la modal está abriéndose/abierta
+  if (areInteractionsLocked() || document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+    if (!this.classList.contains('is-quick-view') && !this.closest('#quick-view-content')) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+  }
 
   const card = this;
   const isPerson = card.classList.contains('person-card');
@@ -700,7 +713,7 @@ const lazyLoadObserver: IntersectionObserver | null = typeof IntersectionObserve
     }
   });
 }, {
-  rootMargin: "200px"
+  rootMargin: "500px"
 }) : null;
 
 // Despertar de la hibernación: fuerza la carga de imágenes visibles en el viewport al volver a la pestaña
@@ -744,14 +757,14 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
   const hqPoster = movie.posterUrl || getHqPosterUrl(movie.slug);
   img.alt = `Póster de ${movie.title}`;
 
-  // Uniformidad visual LQIP: Todas las tarjetas inician con thumbhash_st borroso
-  img.src = movie.thumbhash_st || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-  img.dataset.src = hqPoster;
-  img.decoding = "async";
-  img.classList.remove(CSS_CLASSES.LOADED);
+  // Uniformidad visual LQIP idéntica a SEO: background-image con ThumbHash inmediato
   if (movie.thumbhash_st) {
+    img.style.backgroundImage = `url('${movie.thumbhash_st}')`;
+    img.style.backgroundSize = "cover";
+    img.style.backgroundPosition = "center";
     img.classList.add(CSS_CLASSES.LAZY_LQIP);
   } else {
+    img.style.backgroundImage = "";
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
   }
 
@@ -762,13 +775,22 @@ function populateCard(card: MovieCardElement, movie: MappedMovie, index: number)
     img.removeAttribute("fetchpriority");
   }
 
-  // Las tarjetas iniciales usan loading="eager" para acelerar la petición de red del póster HQ
+  // Las tarjetas visibles iniciales usan loading="eager" y src directo como en SEO
   const priorityCount = isMobileViewport() ? 6 : (CONFIG.CARD_BATCH_SIZE || 12);
-  const isFirstPage = getCurrentPage() === 1;
-  const isPriority = isFirstPage && index < priorityCount;
+  const isPriority = index < priorityCount;
   img.loading = isPriority ? "eager" : "lazy";
 
-  if (lazyLoadObserver) {
+  if (isPriority) {
+    img.src = hqPoster;
+    if (img.complete) {
+      img.classList.add(CSS_CLASSES.LOADED);
+    } else {
+      img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
+      img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+    }
+  } else if (lazyLoadObserver) {
+    img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+    img.dataset.src = hqPoster;
     lazyLoadObserver.observe(img);
   } else {
     img.src = hqPoster;
@@ -1048,8 +1070,7 @@ export async function renderMovieGrid(
   if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
 
   cleanupLazyImages(container);
-  container.textContent = "";
-  container.appendChild(fragment);
+  container.replaceChildren(fragment);
 }
 
 function createCardElement(movie: MappedMovie, index: number): DocumentFragment {
@@ -1061,7 +1082,7 @@ function createCardElement(movie: MappedMovie, index: number): DocumentFragment 
   if (card) {
     card.dataset.movieId = String(movie.id);
     card.movieData = movie;
-    card.style.setProperty("--card-index", String(Math.min(index, 24)));
+    card.style.setProperty("--card-index", String(Math.min(index, 20)));
 
     populateCard(card, movie, index);
     updateCardUI(card);
@@ -1317,12 +1338,10 @@ function createStudioCardElement(studioCode: string, totalMovies: number = 0, th
 // Skeletons y Estados Vacíos
 export function renderSkeletons(container: HTMLElement | null, pagContainer: HTMLElement | null): void {
   currentRenderRequestId++;
-  if (container) {
-    cleanupLazyImages(container);
-    container.textContent = "";
-  }
   if (pagContainer) pagContainer.textContent = "";
   if (!container) return;
+
+  cleanupLazyImages(container);
 
   const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
   const count = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
@@ -1331,7 +1350,7 @@ export function renderSkeletons(container: HTMLElement | null, pagContainer: HTM
   for (let i = 0; i < count; i++) {
     frag.appendChild(createElement("div", { className: "skeleton-card" }));
   }
-  container.appendChild(frag);
+  container.replaceChildren(frag);
 }
 
 export function renderNoResults(
