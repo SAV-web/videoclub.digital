@@ -81,10 +81,13 @@
   /* Contexto de apilamiento local */
   aspect-ratio: 500 / 950;
   border-radius: var(--radius-xl);
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
 
   /* Aislamiento y fluidez para el reparto */
   contain: layout style;
-  contain-intrinsic-size: 180px 320px;
+  contain-intrinsic-size: auto 160px 304px;
   content-visibility: auto;
 
   /* Animación de entrada en Cascada Suave (Smooth Staggered Cascade) idéntica a SEO */
@@ -1112,6 +1115,7 @@ html.dark-mode .bbc-icon {
 /* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
+  contain-intrinsic-size: auto 105px 158px;
   transition: transform var(--duration-quick) ease;
 
   /* Reducir sombra en modo muro para que sea proporcional al tamaño */
