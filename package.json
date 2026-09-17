@@ -22,7 +22,7 @@
     "vite": "^6.4.3"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.2",
+    "@supabase/supabase-js": "^2.116.0",
     "lru-cache": "^11.2.2"
   }
 }
