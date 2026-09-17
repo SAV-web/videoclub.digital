@@ -468,6 +468,26 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.headers.get("Link"), '</llms.txt>; rel="alternate"; type="text/markdown"');
   });
 
+  test("Static Assets: env.ASSETS procesa peticiones estáticas cuando el binding está presente", async () => {
+    let assetsFetchCalled = false;
+    const mockEnv = {
+      ASSETS: {
+        fetch: async (req) => {
+          assetsFetchCalled = true;
+          return new Response("console.log('asset');", {
+            status: 200,
+            headers: { "Content-Type": "application/javascript" },
+          });
+        }
+      }
+    };
+    const reqAsset = new Request("https://videoclub.digital/assets/index-mock.js");
+    const resAsset = await worker.fetch(reqAsset, mockEnv, defaultCtx);
+    assert.equal(assetsFetchCalled, true);
+    assert.equal(resAsset.status, 200);
+    assert.equal(resAsset.headers.get("Cache-Control"), "public, max-age=31536000, immutable");
+  });
+
   // =================================================================
   //              PRUEBAS DE LA FASE 1B (EDGE SSR & CACHÉ)
   // =================================================================

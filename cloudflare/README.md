@@ -1,32 +1,35 @@
-# Guía de Configuración: Cloudflare delante de GitHub Pages para VIDEOCLUB.DIGITAL
+# Guía de Configuración: Cloudflare como Origen Completo para VIDEOCLUB.DIGITAL
 
-Esta guía documenta la puesta en marcha de **Cloudflare (Plan Gratuito)** como capa perimetral (Edge) delante de **GitHub Pages**, resolviendo tres retos arquitectónicos clave:
+Esta guía documenta la puesta en marcha de **Cloudflare** como origen de producción autónomo (Edge + Workers Static Assets) eliminando la dependencia de **GitHub Pages**, resolviendo los retos arquitectónicos clave:
 
-1. **Cache-Control Inmutable (`immutable`)**: Caché de 1 año para los bundles de Vite versionados con hash (`/assets/*`).
-2. **Protección de Cuota de Supabase Storage (Egress Cero)**: Caché perimetral permanente de pósters (`/posters/*`) y fotos VIP (`/vips/*`).
-3. **Compatibilidad con Agentes de IA (`IsItAgentReady`)**:
+1. **Origen Autónomo en el Edge**: Static Assets y SPA servidos directamente desde el Edge de Cloudflare con latencia cero a orígenes externos.
+2. **Cache-Control Inmutable (`immutable`)**: Caché de 1 año para los bundles de Vite versionados con hash (`/assets/*`).
+3. **Protección de Cuota de Supabase Storage (Egress Cero)**: Caché perimetral permanente de pósters (`/posters/*`) y fotos VIP (`/vips/*`).
+4. **Compatibilidad con Agentes de IA (`IsItAgentReady`)**:
    - Inyección de cabecera HTTP `Link: </llms.txt>; rel="alternate"; type="text/markdown"`.
    - Negociación de contenido automática ante peticiones con `Accept: text/markdown`.
-4. **Edge SSR para SEO de Alto Rendimiento**:
+5. **Edge SSR para SEO de Alto Rendimiento**:
    - Fichas canónicas de títulos (`/titulo/:slug/`) con Schema.org Movie/TVSeries, BreadcrumbList y normalización 301 case-insensitive.
    - Fichas VIP en la raíz (`/:vip-slug/`) para directores y actores con foto oficial, biografía y filmografía destacada (descarte $O(1)$ sin consultar Supabase para slugs ordinarios).
    - Taxonomías cerradas (`/genero/:slug/`, `/pais/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/`) con muros de 42 tarjetas oficiales.
    - Reverso canónico de tarjeta idéntico a la SPA (enlace a ficha en el título original, sinopsis fluida y botón `+`).
-5. **Coherencia de Modo Claro / Oscuro**:
+6. **Coherencia de Modo Claro / Oscuro**:
    - Script anti-flicker síncrono en `<head>` (0 ms) con persistencia dual (`localStorage` + cookie `theme=...`).
    - Botón interactivo `#theme-toggle` en todas las cabeceras perimetrales.
-6. **CSS Perimetral en Memoria (`/seo-card-v7.css`)**:
+7. **CSS Perimetral en Memoria (`/seo-card-v7.css`)**:
    - Servido desde la memoria perimetral del Worker sin peticiones de red adicionales ni latencia de origen.
 
 ---
 
 ## 1. Configuración de DNS en Cloudflare
 
-1. En el panel de **Cloudflare DNS**, añade o edita el registro CNAME para tu dominio:
-   - **Tipo**: `CNAME`
+Al operar Cloudflare como origen autónomo (sin servidor externo ni GitHub Pages):
+1. En el panel de **Cloudflare DNS**, el dominio `videoclub.digital` requiere un registro proxied para que Cloudflare enrute el tráfico a través del Worker y sus Static Assets:
+   - **Tipo**: `AAAA`
    - **Nombre**: `@` (o `videoclub.digital`)
-   - **Destino**: `<tu-usuario>.github.io`
+   - **Destino**: `100::` *(dirección RFC 6666 / Cloudflare Dummy Origin estándar para zonas 100% Workers)*
    - **Estado de Proxy**: ☁️ **Nube Naranja (Proxied)**.
+   *(Nota: Durante la fase transitoria de prueba, el registro CNAME previo hacia GitHub Pages con nube naranja sigue funcionando idénticamente, ya que el Worker intercepta todo el tráfico antes de cualquier resolución de origen).*
 2. En la sección **SSL/TLS**:
    - Configura el modo de cifrado en **Full (Estricto)** o **Full**.
 

@@ -11,7 +11,7 @@
  * 5. Proxy y Edge Cache perpetuo para pósters (/posters/*) y fotos VIP (/vips/*).
  * 6. Negociación de contenido Markdown (Accept: text/markdown) para Agentes de IA en la raíz.
  * 7. Inyección de cabeceras HTTP Link rel="alternate" para agentes.
- * 8. Delegación transparente al origen (GitHub Pages) con revalidación segura.
+ * 8. Servicio de Static Assets y SPA nativo en Cloudflare Edge con revalidación segura.
  */
 
 import { renderMovieHtml } from "./seo/render-movie.js";
@@ -438,8 +438,9 @@ export default {
       return fetchAndCacheImage(originImageUrl, request, ctx);
     }
 
-    // 7. PETICIÓN POR DEFECTO AL ORIGEN (GitHub Pages)
-    const response = await fetch(request);
+    // 7. PETICIÓN POR DEFECTO A STATIC ASSETS DE CLOUDFLARE (Fallback a fetch si no hay binding en tests)
+    const assetFetcher = env?.ASSETS || { fetch: globalThis.fetch };
+    const response = await assetFetcher.fetch(request);
     const headers = new Headers(response.headers);
 
     // 7.A Assets versionados con hash (/assets/*) y /seo-card*.css -> Caché inmutable (1 año)
