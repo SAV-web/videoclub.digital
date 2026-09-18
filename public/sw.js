@@ -8,9 +8,8 @@ const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 
 // --- 1. ACTIVOS CRÍTICOS (Instalación) ---
 const CRITICAL_ASSETS = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest"
+  "/",
+  "/manifest.webmanifest"
 ];
 
 // --- 2. HELPERS DE ESTRATEGIAS ---
