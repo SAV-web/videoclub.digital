@@ -58,6 +58,12 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
 
       // 1. Simulación de Supabase REST API: Consulta de películas por slug
       if (urlStr.includes("/rest/v1/movies")) {
+        if (urlStr.includes("slug=eq.server-error")) {
+          return new Response("Internal Server Error", { status: 500 });
+        }
+        if (urlStr.includes("slug=eq.network-error")) {
+          throw new Error("Connection reset by peer");
+        }
         if (urlStr.includes("slug=eq.not-found")) {
           return new Response(JSON.stringify([]), {
             status: 200,
@@ -537,13 +543,31 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(fetchCalls.length, initialFetchCalls, "No debe invocar fetch en Cache HIT");
   });
 
-  test("Edge SSR: Título inexistente en Supabase delega al origen", async () => {
+  test("Edge SSR: Título inexistente en Supabase devuelve 404 explícito", async () => {
     const request = new Request("https://videoclub.digital/titulo/not-found/");
     const response = await worker.fetch(request, {}, defaultCtx);
 
-    assert.equal(response.status, 200);
-    // Debe haber llamado a Supabase y luego al origen HTML de fallback
+    assert.equal(response.status, 404);
+    assert.ok(response.headers.get("Cache-Control").includes("max-age=300"));
+    const html = await response.text();
+    assert.ok(html.includes("Título no encontrado"));
     assert.ok(fetchCalls.some(c => c.url.includes("slug=eq.not-found")));
+  });
+
+  test("Edge SSR: Error 5xx de Supabase devuelve 502 con no-store", async () => {
+    const request = new Request("https://videoclub.digital/titulo/server-error/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 502);
+    assert.ok(response.headers.get("Cache-Control").includes("no-store"));
+  });
+
+  test("Edge SSR: Fallo de red o excepción devuelve 500 con no-store", async () => {
+    const request = new Request("https://videoclub.digital/titulo/network-error/");
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 500);
+    assert.ok(response.headers.get("Cache-Control").includes("no-store"));
   });
 
   test("Case-Insensitive SEO: /titulo/Chernobyl-2019 redirige con 301 a /titulo/chernobyl-2019/", async () => {
@@ -814,6 +838,18 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(body.success, true);
   });
 
+  test("Taxonomías: Categoría no reconocida o vacía devuelve 404 explícito", async () => {
+    // 1. Categoría no reconocida en diccionario
+    const reqInvalid = new Request("https://videoclub.digital/genero/categoria-inventada/");
+    const resInvalid = await worker.fetch(reqInvalid, {}, defaultCtx);
+    assert.equal(resInvalid.status, 404);
+
+    // 2. Categoría reconocida pero sin resultados (items: [])
+    const reqEmpty = new Request("https://videoclub.digital/pais/emptycountry/");
+    const resEmpty = await worker.fetch(reqEmpty, {}, defaultCtx);
+    assert.equal(resEmpty.status, 404);
+  });
+
   test("Estilos: /seo-card-v7.css se sirve desde Edge Memory con componentes oficiales de la SPA", async () => {
     const req = new Request("https://videoclub.digital/seo-card-v7.css");
     const res = await worker.fetch(req, {}, defaultCtx);
@@ -947,6 +983,14 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     const newCalls = fetchCalls.slice(initialCallsCount);
     const calledSupabasePeople = newCalls.some(c => c.url.includes("/rest/v1/people"));
     assert.equal(calledSupabasePeople, false, "El descarte O(1) no debe contactar la base de datos para slugs no VIP");
+  });
+
+  test("Personas VIP: Slug en manifiesto pero no encontrado en Supabase devuelve 404", async () => {
+    VIP_SLUGS.add("not-found");
+    const req = new Request("https://videoclub.digital/not-found/");
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 404);
+    VIP_SLUGS.delete("not-found");
   });
 
   test("Purga selectiva: /internal/purge invalida claves de personas y taxonomías", async () => {

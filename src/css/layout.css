@@ -97,6 +97,7 @@ body.sidebar-is-open .sidebar {
 .grid-container {
   display: grid; justify-content: center; gap: var(--space-sm);
   width: 100%;
+  contain: layout; /* Evita que el navegador recalcule todo si algo cambia dentro */
   grid-template-columns: repeat(2, minmax(0, 1fr)); /* Móvil por defecto: 2 columnas */
 
   &.is-fetching { opacity: 0.6; pointer-events: none; cursor: wait; transition: opacity 0.2s ease-out; }

@@ -489,6 +489,7 @@ body.sidebar-is-open .sidebar {
 .grid-container {
   display: grid; justify-content: center; gap: var(--space-sm);
   width: 100%;
+  contain: layout; /* Evita que el navegador recalcule todo si algo cambia dentro */
   grid-template-columns: repeat(2, minmax(0, 1fr)); /* Móvil por defecto: 2 columnas */
 
   &.is-fetching { opacity: 0.6; pointer-events: none; cursor: wait; transition: opacity 0.2s ease-out; }
@@ -824,9 +825,14 @@ body.rotation-disabled .grid-container {
   max-width: 100%;
   width: 100%;
 
-  /* Animación de entrada en Cascada Suave solo para las primeras tarjetas del primer pantallazo */
-  animation: card-cascade-appear 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(min(var(--card-index, 0), 6) * 35ms);
+  /* Aislamiento y fluidez para el reparto */
+  contain: layout style;
+  contain-intrinsic-size: auto 160px 304px;
+  content-visibility: auto;
+
+  /* Animación de entrada en Cascada Suave (Smooth Staggered Cascade) idéntica a SEO */
+  animation: card-cascade-appear 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--card-index, 0) * 45ms);
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -1849,6 +1855,7 @@ html.dark-mode .bbc-icon {
 /* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
+  contain-intrinsic-size: auto 105px 158px;
   transition: transform var(--duration-quick) ease;
 
   /* Reducir sombra en modo muro para que sea proporcional al tamaño */
@@ -3657,8 +3664,6 @@ body.sidebar-collapsed .sidebar {
   aspect-ratio: auto;
   perspective: none;
   animation: none;
-  contain: none !important;
-  content-visibility: visible !important;
 }
 
 .is-quick-view .flip-card-inner {
@@ -3751,18 +3756,14 @@ body.sidebar-collapsed .sidebar {
     box-shadow: var(--shadow);
     border: none;
     margin-bottom: 0;
-
-    &:not(.loaded) {
-      animation: modal-poster-fade-in 0.25s ease-out backwards;
-    }
+    animation: modal-poster-fade-in 0.5s ease-out backwards;
   }
 }
 
-/* Efecto carga LQIP (Blur) en modal - Reducido a la mitad (100ms) */
 .is-quick-view img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.03);
-  transition: filter 100ms ease-in-out, transform 100ms ease-in-out;
+  transition: filter var(--duration-quick, 200ms) ease-in-out, transform var(--duration-quick, 200ms) ease-in-out;
 
   &.loaded {
     filter: blur(0);
@@ -5281,11 +5282,6 @@ body.sidebar-collapsed .sidebar {
 /* Ventana modal de vista rápida siempre por encima del header al hacer zoom */
 .quick-view-modal {
   z-index: calc(var(--z-index-overlay, 1999) + 10) !important;
-}
-
-.is-quick-view.movie-card {
-  contain: none !important;
-  content-visibility: visible !important;
 }
 
 /* Ficha SEO de título (/titulo/:slug/): géneros y reparto sin restricción de espacio ni truncado con '...' */

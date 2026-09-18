@@ -405,11 +405,6 @@ combined += `
   z-index: calc(var(--z-index-overlay, 1999) + 10) !important;
 }
 
-.is-quick-view.movie-card {
-  contain: none !important;
-  content-visibility: visible !important;
-}
-
 /* Ficha SEO de título (/titulo/:slug/): géneros y reparto sin restricción de espacio ni truncado con '...' */
 .is-quick-view .detail-item[data-template="actors-container"],
 .is-quick-view .detail-item[data-template="genre-container"] {

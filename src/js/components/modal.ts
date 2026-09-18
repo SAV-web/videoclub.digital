@@ -37,7 +37,6 @@ interface ModalDom {
 
 export interface ExtendedMovie extends MappedMovie {
   image_hq?: string | null; // Alias de retrocompatibilidad hacia posterUrl
-  isAlreadyLoaded?: boolean;
   // Propiedades para personas en caso de person-card
   name?: string;
   place_of_birth?: string | null;
@@ -461,17 +460,10 @@ function getModalNodes(root: HTMLElement): ModalNodes {
  * Configura la cabecera del modal (Póster, Título, Info básica).
  */
 function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
-  // Imagen (Carga instantánea si ya está en pantalla, o efecto LQIP si es nueva)
+  // Imagen (Efecto LQIP suave)
   if (nodes.img) {
     const posterUrl = movie.image_hq || movie.posterUrl;
     nodes.img.alt = `Póster de ${movie.title}`;
-
-    if (movie.isAlreadyLoaded && posterUrl) {
-      nodes.img.src = posterUrl;
-      nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
-      nodes.img.classList.add(CSS_CLASSES.LOADED);
-      return;
-    }
 
     if (movie.thumbhash_st && posterUrl) {
       nodes.img.classList.remove(CSS_CLASSES.LOADED);
@@ -493,11 +485,10 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
           }
         };
         tempImg.src = posterUrl;
-      }, 75);
+      }, 150);
     } else {
       nodes.img.src = posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
       nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
-      nodes.img.classList.add(CSS_CLASSES.LOADED);
     }
   }
 
@@ -655,14 +646,13 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
   const { template, content, modal } = getDom();
   if (!template || !content || !modal) return;
 
-  // Extraemos URL del póster y si ya está cargado en la tarjeta para evitar parpadeo o desenfoque artificial
+  // Extraemos URL del póster ya cargado en la tarjeta para evitar parpadeo
   const cardImg = cardElement.querySelector("img");
   const posterUrl = cardImg ? (cardImg.dataset.src || cardImg.src) : null;
-  const isAlreadyLoaded = Boolean(cardImg && cardImg.complete && cardImg.naturalWidth > 0);
 
   // Clon superficial para evitar mutaciones cruzadas con la card del grid.
   const basePosterUrl = (cardElement.movieData && "posterUrl" in cardElement.movieData) ? cardElement.movieData.posterUrl : undefined;
-  const movie = { ...cardElement.movieData, image_hq: posterUrl, posterUrl: posterUrl || basePosterUrl, isAlreadyLoaded } as ExtendedMovie;
+  const movie = { ...cardElement.movieData, image_hq: posterUrl, posterUrl: posterUrl || basePosterUrl } as ExtendedMovie;
   const isPerson = cardElement.classList.contains('person-card') || movie.isPerson;
 
   // Si es persona, usamos person-card-template en lugar de quick-view-template
@@ -702,27 +692,21 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     // Foto de perfil
     const img = cardClone.querySelector("img");
     if (img && posterUrl) {
-      if (isAlreadyLoaded) {
-        img.src = posterUrl;
-        img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+      img.classList.remove(CSS_CLASSES.LOADED);
+      img.classList.add(CSS_CLASSES.LAZY_LQIP);
+
+      img.onload = () => {
+        scheduleModalRAF(() => {
+          img.classList.add(CSS_CLASSES.LOADED);
+        });
+      };
+      img.onerror = () => {
         img.classList.add(CSS_CLASSES.LOADED);
-      } else {
-        img.classList.remove(CSS_CLASSES.LOADED);
-        img.classList.add(CSS_CLASSES.LAZY_LQIP);
+      };
 
-        img.onload = () => {
-          scheduleModalRAF(() => {
-            img.classList.add(CSS_CLASSES.LOADED);
-          });
-        };
-        img.onerror = () => {
-          img.classList.add(CSS_CLASSES.LOADED);
-        };
-
-        img.src = posterUrl;
-        if (img.complete) {
-          img.classList.add(CSS_CLASSES.LOADED);
-        }
+      img.src = posterUrl;
+      if (img.complete) {
+        img.classList.add(CSS_CLASSES.LOADED);
       }
     }
 

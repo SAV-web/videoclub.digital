@@ -91,8 +91,6 @@
   aspect-ratio: auto;
   perspective: none;
   animation: none;
-  contain: none !important;
-  content-visibility: visible !important;
 }
 
 .is-quick-view .flip-card-inner {
@@ -185,18 +183,14 @@
     box-shadow: var(--shadow);
     border: none;
     margin-bottom: 0;
-
-    &:not(.loaded) {
-      animation: modal-poster-fade-in 0.25s ease-out backwards;
-    }
+    animation: modal-poster-fade-in 0.5s ease-out backwards;
   }
 }
 
-/* Efecto carga LQIP (Blur) en modal - Reducido a la mitad (100ms) */
 .is-quick-view img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.03);
-  transition: filter 100ms ease-in-out, transform 100ms ease-in-out;
+  transition: filter var(--duration-quick, 200ms) ease-in-out, transform var(--duration-quick, 200ms) ease-in-out;
 
   &.loaded {
     filter: blur(0);

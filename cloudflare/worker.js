@@ -202,25 +202,31 @@ export default {
             }
           });
 
-          if (apiResponse.ok) {
-            const rows = await apiResponse.json();
-            if (Array.isArray(rows) && rows.length > 0) {
-              const movie = rows[0];
-              const html = renderMovieHtml(movie, { siteOrigin: url.origin, baseUrl: "/" });
-              const responseHeaders = new Headers({
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-              });
-              const response = new Response(html, {
-                status: 200,
-                headers: responseHeaders
-              });
-              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-              return response;
-            }
+          if (!apiResponse.ok) {
+            return createErrorResponse(apiResponse.status >= 500 ? 502 : apiResponse.status, "Error al conectar con la base de datos", url.origin);
           }
-        } catch (_) {}
+
+          const rows = await apiResponse.json();
+          if (!Array.isArray(rows) || rows.length === 0) {
+            return createErrorResponse(404, "Título no encontrado en el catálogo", url.origin);
+          }
+
+          const movie = rows[0];
+          const html = renderMovieHtml(movie, { siteOrigin: url.origin, baseUrl: "/" });
+          const responseHeaders = new Headers({
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+            "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+          });
+          const response = new Response(html, {
+            status: 200,
+            headers: responseHeaders
+          });
+          ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+          return response;
+        } catch (_) {
+          return createErrorResponse(500, "Error interno del servidor al procesar el título", url.origin);
+        }
       }
     }
 
@@ -265,26 +271,36 @@ export default {
               body: JSON.stringify(taxInfo.rpcParams)
             });
 
-            if (apiResponse.ok) {
-              const data = await apiResponse.json();
-              const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-              
-              if (items.length > 0) {
-                const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
-                const response = new Response(html, {
-                  status: 200,
-                  headers: {
-                    "Content-Type": "text/html; charset=utf-8",
-                    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                    "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-                  }
-                });
-                ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-                return response;
-              }
+            if (!apiResponse.ok) {
+              return createErrorResponse(apiResponse.status >= 500 ? 502 : apiResponse.status, "Error al consultar la categoría", url.origin);
             }
-          } catch (_) {}
+
+            const data = await apiResponse.json();
+            const items = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+            
+            if (items.length === 0) {
+              return createErrorResponse(404, "No se encontraron títulos en esta categoría", url.origin);
+            }
+
+            const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
+            const response = new Response(html, {
+              status: 200,
+              headers: {
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+              }
+            });
+            ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+            return response;
+          } catch (_) {
+            return createErrorResponse(500, "Error interno del servidor al procesar la categoría", url.origin);
+          }
+        } else {
+          return createErrorResponse(404, "Categoría no reconocida en el catálogo", url.origin);
         }
+      } else {
+        return createErrorResponse(404, "Ruta de categoría no válida", url.origin);
       }
     }
 
@@ -336,76 +352,82 @@ export default {
               }
             });
 
-            if (personRes.ok) {
-              const persons = await personRes.json();
-              const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
-
-              if (person) {
-                const defaultRole = (person.type === "D" || person.type === "DA") ? "director" : "actor";
-                const hasBothRoles = person.type === "AD" || person.type === "DA";
-                const activeRole = defaultRole;
-
-                const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
-                const fetchFilmography = async (roleName) => {
-                  const rpcParams = {
-                    [roleName === "director" ? "director_name" : "actor_name"]: person.name,
-                    sort_field: "fa_votes",
-                    sort_direction: "desc",
-                    page_limit: 42,
-                    get_count: true
-                  };
-                  try {
-                    const res = await fetch(rpcUrl, {
-                      method: "POST",
-                      headers: {
-                        apikey: supabaseAnonKey,
-                        Authorization: `Bearer ${supabaseAnonKey}`,
-                        "Content-Type": "application/json",
-                        Accept: "application/json"
-                      },
-                      body: JSON.stringify(rpcParams)
-                    });
-                    if (res && res.ok) {
-                      const data = await res.json().catch(() => ({}));
-                      return Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-                    }
-                  } catch (_) {}
-                  return [];
-                };
-
-                const filmographies = { director: [], actor: [] };
-
-                if (hasBothRoles) {
-                  [filmographies.director, filmographies.actor] = await Promise.all([
-                    fetchFilmography("director"),
-                    fetchFilmography("actor")
-                  ]);
-                } else {
-                  filmographies[activeRole] = await fetchFilmography(activeRole);
-                }
-
-                const html = renderPersonHtml(person, {
-                  activeRole,
-                  hasBothRoles,
-                  filmographies,
-                  siteOrigin: url.origin,
-                  baseUrl: "/",
-                  storageUrl
-                });
-                const response = new Response(html, {
-                  status: 200,
-                  headers: {
-                    "Content-Type": "text/html; charset=utf-8",
-                    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                    "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-                  }
-                });
-
-                ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-                return response;
-              }
+            if (!personRes.ok) {
+              return createErrorResponse(personRes.status >= 500 ? 502 : personRes.status, "Error al consultar la ficha de persona", url.origin);
             }
-          } catch (_) {}
+
+            const persons = await personRes.json();
+            const person = Array.isArray(persons) && persons.length > 0 ? persons[0] : null;
+
+            if (!person) {
+              return createErrorResponse(404, "Persona VIP no encontrada en el catálogo", url.origin);
+            }
+
+            const defaultRole = (person.type === "D" || person.type === "DA") ? "director" : "actor";
+            const hasBothRoles = person.type === "AD" || person.type === "DA";
+            const activeRole = defaultRole;
+
+            const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+            const fetchFilmography = async (roleName) => {
+              const rpcParams = {
+                [roleName === "director" ? "director_name" : "actor_name"]: person.name,
+                sort_field: "fa_votes",
+                sort_direction: "desc",
+                page_limit: 42,
+                get_count: true
+              };
+              try {
+                const res = await fetch(rpcUrl, {
+                  method: "POST",
+                  headers: {
+                    apikey: supabaseAnonKey,
+                    Authorization: `Bearer ${supabaseAnonKey}`,
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                  },
+                  body: JSON.stringify(rpcParams)
+                });
+                if (res && res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  return Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+                }
+              } catch (_) {}
+              return [];
+            };
+
+            const filmographies = { director: [], actor: [] };
+
+            if (hasBothRoles) {
+              [filmographies.director, filmographies.actor] = await Promise.all([
+                fetchFilmography("director"),
+                fetchFilmography("actor")
+              ]);
+            } else {
+              filmographies[activeRole] = await fetchFilmography(activeRole);
+            }
+
+            const html = renderPersonHtml(person, {
+              activeRole,
+              hasBothRoles,
+              filmographies,
+              siteOrigin: url.origin,
+              baseUrl: "/",
+              storageUrl
+            });
+            const response = new Response(html, {
+              status: 200,
+              headers: {
+                "Content-Type": "text/html; charset=utf-8",
+                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+              }
+            });
+
+            ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+            return response;
+          } catch (_) {
+            return createErrorResponse(500, "Error interno del servidor al procesar la persona VIP", url.origin);
+          }
         }
       }
     }
@@ -460,6 +482,49 @@ export default {
     });
   },
 };
+
+/**
+ * Genera una respuesta de error semántica (404 o 5xx) para peticiones SEO.
+ * Garantiza un contrato HTTP explícito y evita que fallos de backend se silencien como 200 OK.
+ */
+function createErrorResponse(status, message, siteOrigin = "https://videoclub.digital") {
+  const isServer = status >= 500;
+  const title = status === 404 ? "Página no encontrada — VIDEOCLUB" : "Error en el servidor — VIDEOCLUB";
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <meta name="robots" content="noindex, follow">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f1115; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 1rem; box-sizing: border-box; text-align: center; }
+    .card { background: #1a1f29; border: 1px solid #2d3748; padding: 2.5rem; border-radius: 12px; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h1 { font-size: 3.5rem; margin: 0 0 0.5rem; color: #e50914; font-weight: 800; line-height: 1; }
+    h2 { font-size: 1.25rem; margin: 0 0 1rem; font-weight: 600; }
+    p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0 0 1.5rem; }
+    a { display: inline-block; background: #e50914; color: #fff; text-decoration: none; padding: 0.65rem 1.4rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem; transition: background 0.2s ease; }
+    a:hover { background: #b80710; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>${status}</h1>
+    <h2>${status === 404 ? "Contenido no encontrado" : "Error de servicio"}</h2>
+    <p>${message}</p>
+    <a href="${siteOrigin}/">Volver al videoclub</a>
+  </div>
+</body>
+</html>`;
+
+  return new Response(html, {
+    status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": isServer ? "no-store, no-cache, must-revalidate" : "public, max-age=300, must-revalidate"
+    }
+  });
+}
 
 /**
  * Función auxiliar para servir y cachear imágenes en Cloudflare Edge (TTL: 1 año)
