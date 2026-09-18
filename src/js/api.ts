@@ -58,8 +58,9 @@ let supabasePromise: Promise<SupabaseClient> | null = null;
 export function getSupabase(): Promise<SupabaseClient> {
   if (!supabasePromise) {
     supabasePromise = (async () => {
+      const globalProcess = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })?.process;
       const isTestEnv =
-        (typeof process !== "undefined" && process.env?.NODE_ENV === "test") ||
+        Boolean(globalProcess?.env?.NODE_ENV === "test") ||
         Boolean((globalThis as unknown as Record<string, unknown>)?._isTestEnv) ||
         (typeof window !== "undefined" && Boolean((window as unknown as Record<string, unknown>)?._isTestEnv));
       const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = CONFIG;
