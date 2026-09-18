@@ -159,12 +159,14 @@ export default {
 
     // 2. NORMALIZACIÓN CANÓNICA 301 (CASE-INSENSITIVITY, TRAILING SLASH Y ELIMINACIÓN DE QUERY STRING) PARA RUTAS SEO PREFIJADAS
     const lowerPath = url.pathname.toLowerCase();
+    const hasFileExtension = url.pathname.includes(".") && !url.pathname.endsWith("/");
     const isPrefixedSeoRoute = 
-      lowerPath.startsWith("/titulo/") ||
-      lowerPath.startsWith("/genero/") ||
-      lowerPath.startsWith("/pais/") ||
-      lowerPath.startsWith("/estudio/") ||
-      lowerPath.startsWith("/seleccion/");
+      !hasFileExtension &&
+      (lowerPath.startsWith("/titulo/") ||
+       lowerPath.startsWith("/genero/") ||
+       lowerPath.startsWith("/pais/") ||
+       lowerPath.startsWith("/estudio/") ||
+       lowerPath.startsWith("/seleccion/"));
 
     if (isPrefixedSeoRoute) {
       const canonicalPath = lowerPath.replace(/\/+$/, "") + "/";
@@ -178,7 +180,7 @@ export default {
     }
 
     // 3. RENDERER SEO EN EDGE BAJO DEMANDA (/titulo/:slug/)
-    if (lowerPath.startsWith("/titulo/")) {
+    if (!hasFileExtension && lowerPath.startsWith("/titulo/")) {
       const slug = url.pathname.replace(/^\/titulo\//i, "").replace(/\/$/, "").trim().toLowerCase();
       if (slug) {
         const cache = caches.default;
@@ -232,10 +234,11 @@ export default {
 
     // 4. RENDERER SEO EN EDGE PARA TAXONOMÍAS PREFIJADAS (/genero/, /pais/, /estudio/, /seleccion/)
     const isTaxonomyRoute = 
-      lowerPath.startsWith("/genero/") ||
-      lowerPath.startsWith("/pais/") ||
-      lowerPath.startsWith("/estudio/") ||
-      lowerPath.startsWith("/seleccion/");
+      !hasFileExtension &&
+      (lowerPath.startsWith("/genero/") ||
+       lowerPath.startsWith("/pais/") ||
+       lowerPath.startsWith("/estudio/") ||
+       lowerPath.startsWith("/seleccion/"));
 
     if (isTaxonomyRoute) {
       const parts = url.pathname.toLowerCase().split("/").filter(Boolean);
@@ -307,7 +310,6 @@ export default {
     // 5. RENDERER SEO EN EDGE PARA PERSONAS VIP EN LA RAÍZ (/:person-slug/)
     const isReservedPrefix = RESERVED_PREFIXES.some(p => lowerPath.startsWith(p));
     const isReservedExact = RESERVED_EXACT.has(lowerPath);
-    const hasFileExtension = url.pathname.includes(".") && !url.pathname.endsWith("/");
 
     if (!isReservedPrefix && !isReservedExact && !hasFileExtension) {
       const segments = url.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);

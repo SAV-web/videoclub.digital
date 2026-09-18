@@ -92,8 +92,8 @@ export default defineConfig({
       ignored: ['**/dist/**']
     }
   },
-  // Base relativa para que los assets carguen correctamente en subdirectorios (GitHub Pages)
-  base: './',
+  // Base absoluta en la raíz del dominio para que las rutas anidadas (/genero/:slug/, etc.) resuelvan assets correctamente
+  base: '/',
   
   build: {
     target: 'es2022', // Asume navegadores modernos, reduciendo código basura (polyfills)

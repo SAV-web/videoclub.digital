@@ -8,9 +8,8 @@ const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 
 // --- 1. ACTIVOS CRÍTICOS (Instalación) ---
 const CRITICAL_ASSETS = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest"
+  "/",
+  "/manifest.webmanifest"
 ];
 
 // --- 2. HELPERS DE ESTRATEGIAS ---
@@ -142,6 +141,20 @@ self.addEventListener("fetch", (event) => {
 
   // 3. ESTRATEGIA: Navegación (HTML)
   if (request.mode === 'navigate') {
+    const lowerPath = url.pathname.toLowerCase();
+    const isSeoRoute = 
+      lowerPath.startsWith("/titulo/") ||
+      lowerPath.startsWith("/genero/") ||
+      lowerPath.startsWith("/pais/") ||
+      lowerPath.startsWith("/estudio/") ||
+      lowerPath.startsWith("/seleccion/") ||
+      (lowerPath.split("/").filter(Boolean).length === 1 && !lowerPath.includes("."));
+
+    // Las rutas SEO SSR del Edge nunca deben ser interceptadas ni cacheadas por el Service Worker
+    if (isSeoRoute) {
+      return;
+    }
+
     event.respondWith(networkFirst(request));
     return;
   }
