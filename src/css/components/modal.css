@@ -91,6 +91,8 @@
   aspect-ratio: auto;
   perspective: none;
   animation: none;
+  contain: none !important;
+  content-visibility: visible !important;
 }
 
 .is-quick-view .flip-card-inner {

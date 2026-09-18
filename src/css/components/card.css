@@ -85,14 +85,9 @@
   max-width: 100%;
   width: 100%;
 
-  /* Aislamiento y fluidez para el reparto */
-  contain: layout style;
-  contain-intrinsic-size: auto 160px 304px;
-  content-visibility: auto;
-
-  /* Animación de entrada en Cascada Suave (Smooth Staggered Cascade) idéntica a SEO */
-  animation: card-cascade-appear 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  animation-delay: calc(var(--card-index, 0) * 45ms);
+  /* Animación de entrada en Cascada Suave solo para las primeras tarjetas del primer pantallazo */
+  animation: card-cascade-appear 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(min(var(--card-index, 0), 6) * 35ms);
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -1115,7 +1110,6 @@ html.dark-mode .bbc-icon {
 /* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
-  contain-intrinsic-size: auto 105px 158px;
   transition: transform var(--duration-quick) ease;
 
   /* Reducir sombra en modo muro para que sea proporcional al tamaño */
