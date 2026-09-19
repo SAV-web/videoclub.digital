@@ -91,6 +91,13 @@
   aspect-ratio: auto;
   perspective: none;
   animation: none;
+  transform: none !important;
+  outline: none !important;
+
+  &:hover {
+    transform: none !important;
+    outline: none !important;
+  }
 }
 
 .is-quick-view .flip-card-inner {
@@ -876,10 +883,11 @@
     box-shadow: var(--shadow), 0 0 0 1px var(--color-border) !important;
     transition: transform var(--duration-quick) var(--ease-spring) !important;
     display: block !important;
+    transform: none !important;
 
     @media (hover: hover) and (pointer: fine) {
       &:hover {
-        transform: scale(1.03) !important;
+        transform: none !important;
       }
     }
   }

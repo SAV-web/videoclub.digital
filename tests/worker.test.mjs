@@ -5,6 +5,17 @@ import { VIP_SLUGS } from "../cloudflare/seo/vip-manifest.js";
 
 const SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 
+const defaultEnv = {
+  SUPABASE_URL: "https://wibygecgfczcvaqewleq.supabase.co",
+  SUPABASE_ANON_KEY: "test-anon-key-abc",
+};
+
+const originalWorkerFetch = worker.fetch.bind(worker);
+worker.fetch = (request, env = {}, ctx) => {
+  const mergedEnv = { ...defaultEnv, ...env };
+  return originalWorkerFetch(request, mergedEnv, ctx);
+};
+
 describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
   let originalFetch;
   let originalCaches;
@@ -1119,6 +1130,19 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     await worker.fetch(posterReq, customEnv, defaultCtx);
     const posterCall = fetchCalls.find(c => c.url.includes("custom-project.supabase.co/storage/v1/object/public/posters/sample.webp"));
     assert.ok(posterCall, "Debe deducir automáticamente SUPABASE_STORAGE_URL a partir de SUPABASE_URL");
+  });
+
+  test("Seguridad Fail-Closed: Entorno sin credenciales SUPABASE_URL / SUPABASE_ANON_KEY devuelve 500 controlado", async () => {
+    const emptyEnv = {
+      SUPABASE_URL: "",
+      SUPABASE_ANON_KEY: ""
+    };
+
+    const req = new Request("https://videoclub.digital/titulo/titulo-nuevo-fail-closed/");
+    const res = await worker.fetch(req, emptyEnv, defaultCtx);
+    assert.equal(res.status, 500, "Debe responder 500 si el entorno no tiene credenciales");
+    const text = await res.text();
+    assert.ok(text.includes("Faltan credenciales de Supabase") || text.includes("Error"), "Debe devolver respuesta de error controlada");
   });
 
   test("Carga de imágenes ThumbHash (LQIP) en páginas SEO: MOVIE_PROJECTION, películas, VIPs y taxonomías", async () => {

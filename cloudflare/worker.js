@@ -23,18 +23,8 @@ import { renderPersonHtml } from "./seo/render-person.js";
 import { VIP_SLUGS } from "./seo/vip-manifest.js";
 
 /**
- * Configuración de transición para entornos de desarrollo / pruebas donde aún
- * no se inyectan variables vía wrangler.toml o Cloudflare Dashboard.
- * En proceso de deprecación progresiva hacia inyección exclusiva vía ENVIRONMENT (env).
- */
-const TRANSITIONAL_CONFIG = {
-  SUPABASE_URL: "https://wibygecgfczcvaqewleq.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc"
-};
-
-/**
- * Resuelve la configuración de ejecución con prioridad absoluta para ENVIRONMENT (env):
- *   ENVIRONMENT
+ * Resuelve la configuración de ejecución exclusivamente desde el ENVIRONMENT (env) de Cloudflare:
+ *   ENVIRONMENT (wrangler.toml / Cloudflare Dashboard)
  *      ↓
  *   SUPABASE_URL
  *   SUPABASE_ANON_KEY
@@ -42,8 +32,8 @@ const TRANSITIONAL_CONFIG = {
  *   PURGE_SECRET (estrictamente fail-closed, sin fallback por diseño de seguridad)
  */
 function resolveEnvironment(env) {
-  const supabaseUrl = env?.SUPABASE_URL || TRANSITIONAL_CONFIG.SUPABASE_URL;
-  const supabaseAnonKey = env?.SUPABASE_ANON_KEY || TRANSITIONAL_CONFIG.SUPABASE_ANON_KEY;
+  const supabaseUrl = env?.SUPABASE_URL || "";
+  const supabaseAnonKey = env?.SUPABASE_ANON_KEY || "";
   const storageUrl = env?.SUPABASE_STORAGE_URL || (supabaseUrl ? `${supabaseUrl}/storage/v1/object/public` : "");
   const purgeSecret = env?.PURGE_SECRET;
 
@@ -193,6 +183,10 @@ export default {
         }
 
         // Cache MISS: Consulta puntual a Supabase REST con proyección mínima
+        if (!supabaseUrl || !supabaseAnonKey) {
+          return createErrorResponse(500, "Error de configuración: Faltan credenciales de Supabase en el entorno del Worker", url.origin);
+        }
+
         const queryUrl = `${supabaseUrl}/rest/v1/movies?slug=eq.${encodeURIComponent(slug)}&select=${MOVIE_PROJECTION}&limit=1`;
         
         try {
@@ -259,6 +253,10 @@ export default {
           const cached = await cache.match(canonicalKey);
           if (cached) {
             return cached;
+          }
+
+          if (!supabaseUrl || !supabaseAnonKey) {
+            return createErrorResponse(500, "Error de configuración: Faltan credenciales de Supabase en el entorno del Worker", url.origin);
           }
 
           const rpcUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
@@ -342,6 +340,10 @@ export default {
           }
 
           // Cache MISS: Consulta a Supabase exclusivamente filtrada por vip = 1
+          if (!supabaseUrl || !supabaseAnonKey) {
+            return createErrorResponse(500, "Error de configuración: Faltan credenciales de Supabase en el entorno del Worker", url.origin);
+          }
+
           const selectFields = "id,name,slug,type,vip,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
           const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&vip=eq.1&select=${selectFields}&limit=1`;
 

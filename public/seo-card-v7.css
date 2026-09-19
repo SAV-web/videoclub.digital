@@ -847,19 +847,19 @@ body.rotation-disabled .grid-container {
 
   /* Interacciones Desktop */
   @media (hover: hover) and (pointer: fine) {
-    &:hover {
+    &:not(.is-quick-view):hover {
       z-index: 10;
       transform: translateY(-4px) scale(1.01);
       will-change: transform;
     }
 
-    &:not(.person-card):not(.collection-card):not(.studio-card):hover {
+    &:not(.is-quick-view):not(.person-card):not(.collection-card):not(.studio-card):hover {
       outline: 2px solid var(--color-accent);
       outline-offset: 4px;
       border-radius: var(--radius-xl);
     }
 
-    :where(html.dark-mode) &:not(.person-card):not(.collection-card):not(.studio-card):hover {
+    :where(html.dark-mode) &:not(.is-quick-view):not(.person-card):not(.collection-card):not(.studio-card):hover {
       outline: 2px solid rgba(255, 255, 255, 0.7);
       outline-offset: 4px;
     }
@@ -869,7 +869,7 @@ body.rotation-disabled .grid-container {
       outline: none;
     }
 
-    &:not(.is-flipped):hover {
+    &:not(.is-quick-view):not(.is-flipped):hover {
       & .flip-card-inner {
         box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
       }
@@ -3664,6 +3664,13 @@ body.sidebar-collapsed .sidebar {
   aspect-ratio: auto;
   perspective: none;
   animation: none;
+  transform: none !important;
+  outline: none !important;
+
+  &:hover {
+    transform: none !important;
+    outline: none !important;
+  }
 }
 
 .is-quick-view .flip-card-inner {
@@ -4449,10 +4456,11 @@ body.sidebar-collapsed .sidebar {
     box-shadow: var(--shadow), 0 0 0 1px var(--color-border) !important;
     transition: transform var(--duration-quick) var(--ease-spring) !important;
     display: block !important;
+    transform: none !important;
 
     @media (hover: hover) and (pointer: fine) {
       &:hover {
-        transform: scale(1.03) !important;
+        transform: none !important;
       }
     }
   }

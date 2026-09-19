@@ -37,15 +37,16 @@ const projectRoot = path.resolve(__dirname, "../");
 const publicDir = path.resolve(projectRoot, "public");
 const distDir = path.resolve(projectRoot, "dist");
 
-const supabaseUrl =
-  process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  "https://wibygecgfczcvaqewleq.supabase.co";
+try {
+  process.loadEnvFile();
+} catch (_) {}
 
-const supabaseAnonKey =
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpYnlnZWNnZmN6Y3ZhcWV3bGVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNTQzOTYsImV4cCI6MjA2OTgzMDM5Nn0.rmTThnjKCQDbwY-_3Xa2ravmUyChgiXNE9tLq2upkOc";
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variable. Ensure .env exists or variables are set.");
+}
 
 const SITE_ORIGIN = "https://videoclub.digital";
 const PAGE_SIZE = 1000;

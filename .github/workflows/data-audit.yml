@@ -31,5 +31,5 @@ jobs:
       - name: Execute Data Quality Assertions (run_data_tests) 🛡️
         run: node scripts/run-data-tests.mjs --strict
         env:
-          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://wibygecgfczcvaqewleq.supabase.co' }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
