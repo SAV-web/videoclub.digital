@@ -873,6 +873,7 @@ export function clearAllSidebarAutocomplete(exceptForm: HTMLFormElement | null =
     const input = parentForm?.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
     if (input) input.removeAttribute("aria-expanded");
     container.remove();
+    parentForm?.closest(".section-content")?.classList.remove("is-searching");
   });
 }
 

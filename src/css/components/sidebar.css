@@ -538,6 +538,38 @@ body.sidebar-collapsed .sidebar {
   cursor: pointer; transition: transform 0.2s ease;
   &:hover { transform: scale(1.1); }
 }
+
+.profile-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; min-height: 36px; padding: 6px 14px;
+  border-radius: var(--radius-pill); border: 1.5px solid var(--color-border);
+  background-color: var(--color-surface); color: var(--color-text-secondary);
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-duration-fast), color var(--transition-duration-fast), transform var(--transition-duration-fast), background-color var(--transition-duration-fast);
+}
+.profile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
+.profile-button:hover {
+  border-color: var(--color-brand-gold, #d4a347);
+  color: var(--color-brand-gold, #d4a347);
+  transform: scale(1.03);
+}
+:where(html.dark-mode) .profile-button {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+:where(html.dark-mode) .profile-button:hover {
+  border-color: var(--color-brand-gold, #d4a347);
+  color: var(--color-brand-gold, #d4a347);
+}
+body.sidebar-collapsed .profile-button {
+  padding: 0; width: 36px; height: 36px;
+  border: none; background: transparent; box-shadow: none;
+}
+body.sidebar-collapsed .profile-button .profile-button-label { display: none; }
+body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
+
 :where(body.user-logged-in) #login-button { display: none; }
 :where(body.user-logged-in) #user-session-group { display: inline-flex; }
 
@@ -817,4 +849,121 @@ body.sidebar-collapsed .sidebar {
   margin-top: 0;
   width: 96%;
   margin-inline: auto;
+  position: relative;
 }
+
+.bento-input {
+  padding-right: 32px !important;
+}
+
+.sidebar-input-icon,
+.sidebar-input-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  transition: opacity var(--transition-duration-fast), color var(--transition-duration-fast), transform var(--transition-duration-fast);
+}
+
+.sidebar-input-icon--idle {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.sidebar-filter-form:hover .sidebar-input-icon--idle,
+.sidebar-filter-form:focus-within .sidebar-input-icon--idle {
+  color: var(--color-brand-gold, #d4a347);
+  opacity: 0.95;
+}
+
+.sidebar-input-clear {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  z-index: 2;
+}
+
+.sidebar-input-clear:hover {
+  color: var(--color-brand-gold, #d4a347);
+  transform: translateY(-50%) scale(1.15);
+}
+
+.sidebar-filter-form:has(.bento-input:not(:placeholder-shown)) .sidebar-input-icon--idle,
+.sidebar-filter-form.has-value .sidebar-input-icon--idle {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.sidebar-filter-form:has(.bento-input:not(:placeholder-shown)) .sidebar-input-clear,
+.sidebar-filter-form.has-value .sidebar-input-clear {
+  opacity: 0.85;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* --- INHIBIR HOVER DE CELDAS BENTO EN MODO DESPLIEGUE DE COINCIDENCIAS / BÚSQUEDA --- */
+@media (hover: hover) and (pointer: fine) {
+  .section-content:has(.sidebar-filter-form:focus-within) .filter-link:hover:not(.active),
+  .section-content:has(.sidebar-autocomplete-results) .filter-link:hover:not(.active),
+  .section-content:has(.sidebar-filter-form.has-value) .filter-link:hover:not(.active),
+  .section-content.is-searching .filter-link:hover:not(.active) {
+    color: var(--color-text-secondary) !important;
+    border-color: var(--color-border) !important;
+    background-color: var(--color-surface) !important;
+    transform: none !important;
+    box-shadow: var(--shadow-sm) !important;
+    cursor: default;
+  }
+
+  .section-content:has(.sidebar-filter-form:focus-within) .filter-link:not(.bento-grid .filter-link):hover:not(.active),
+  .section-content:has(.sidebar-autocomplete-results) .filter-link:not(.bento-grid .filter-link):hover:not(.active),
+  .section-content:has(.sidebar-filter-form.has-value) .filter-link:not(.bento-grid .filter-link):hover:not(.active),
+  .section-content.is-searching .filter-link:not(.bento-grid .filter-link):hover:not(.active) {
+    border-color: transparent !important;
+    background-color: transparent !important;
+  }
+
+  :where(html.dark-mode) .section-content:has(.sidebar-filter-form:focus-within) .filter-link:hover:not(.active),
+  :where(html.dark-mode) .section-content:has(.sidebar-autocomplete-results) .filter-link:hover:not(.active),
+  :where(html.dark-mode) .section-content:has(.sidebar-filter-form.has-value) .filter-link:hover:not(.active),
+  :where(html.dark-mode) .section-content.is-searching .filter-link:hover:not(.active) {
+    color: var(--color-text-primary) !important;
+    border-color: var(--color-border) !important;
+    background-color: rgba(255, 255, 255, 0.03) !important;
+  }
+
+  :where(html.dark-mode) .section-content:has(.sidebar-filter-form:focus-within) .filter-link:not(.bento-grid .filter-link):hover:not(.active),
+  :where(html.dark-mode) .section-content:has(.sidebar-autocomplete-results) .filter-link:not(.bento-grid .filter-link):hover:not(.active),
+  :where(html.dark-mode) .section-content:has(.sidebar-filter-form.has-value) .filter-link:not(.bento-grid .filter-link):hover:not(.active),
+  :where(html.dark-mode) .section-content.is-searching .filter-link:not(.bento-grid .filter-link):hover:not(.active) {
+    border-color: transparent !important;
+    background-color: transparent !important;
+  }
+
+  .section-content:has(.sidebar-filter-form:focus-within) .filter-link:hover .exclude-filter-btn,
+  .section-content:has(.sidebar-autocomplete-results) .filter-link:hover .exclude-filter-btn,
+  .section-content:has(.sidebar-filter-form.has-value) .filter-link:hover .exclude-filter-btn,
+  .section-content.is-searching .filter-link:hover .exclude-filter-btn {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+/* Atenuación de celdas Bento bajo el menú flotante para centrar la atención en las coincidencias */
+.section-content:has(.sidebar-autocomplete-results) .filter-link:not(.active),
+.section-content.is-searching .filter-link:not(.active) {
+  opacity: 0.35;
+  transition: opacity var(--transition-duration-fast);
+}
+

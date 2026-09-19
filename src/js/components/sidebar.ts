@@ -465,8 +465,11 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
     input.removeAttribute("aria-activedescendant");
     input.removeAttribute("aria-controls");
     resultsContainer.remove();
+    formElement.closest(".section-content")?.classList.remove("is-searching");
     return;
   }
+
+  formElement.closest(".section-content")?.classList.add("is-searching");
 
   const filterType = formElement.dataset.filterType || "";
 
@@ -1072,6 +1075,28 @@ function setupAutocompleteHandlers(): void {
 
     let isSubmitting = false;
 
+    const clearBtn = form.querySelector<HTMLButtonElement>(".sidebar-input-clear");
+    const syncClearState = () => {
+      const hasVal = input.value.trim().length > 0;
+      form.classList.toggle("has-value", hasVal);
+      if (!hasVal) {
+        form.closest(".section-content")?.classList.remove("is-searching");
+      }
+    };
+
+    const handleClearPointerDown = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      input.value = "";
+      syncClearState();
+      clearAllSidebarAutocomplete();
+      input.focus();
+    };
+
+    if (clearBtn) {
+      clearBtn.addEventListener("pointerdown", handleClearPointerDown);
+    }
+
     const selectCandidate = async () => {
       if (isSubmitting) return;
       const rawTerm = input.value.trim();
@@ -1113,6 +1138,7 @@ function setupAutocompleteHandlers(): void {
         triggerHapticFeedback('light');
         handleFilterChangeOptimistic(filterType, selectedValue);
         input.value = "";
+        syncClearState();
         clearAllSidebarAutocomplete();
         tryCloseMobileDrawer();
       } finally {
@@ -1137,7 +1163,12 @@ function setupAutocompleteHandlers(): void {
       renderSidebarAutocomplete(form, suggestions, rawTerm);
     }, CONFIG.SEARCH_DEBOUNCE_DELAY);
 
-    input.addEventListener("input", debouncedFetch);
+    const handleInput = () => {
+      syncClearState();
+      debouncedFetch();
+    };
+
+    input.addEventListener("input", handleInput);
 
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
@@ -1197,6 +1228,7 @@ function setupAutocompleteHandlers(): void {
         triggerHapticFeedback('light');
         handleFilterChangeOptimistic(filterType, suggestionItem.dataset.value || null);
         input.value = "";
+        syncClearState();
         clearAllSidebarAutocomplete();
         tryCloseMobileDrawer();
       }
@@ -1206,9 +1238,10 @@ function setupAutocompleteHandlers(): void {
 
     sidebarUnsubscribers.push(() => {
       form.removeEventListener("submit", handleSubmit);
-      input.removeEventListener("input", debouncedFetch);
+      input.removeEventListener("input", handleInput);
       input.removeEventListener("keydown", handleKeydown);
       form.removeEventListener("click", handleFormClick);
+      if (clearBtn) clearBtn.removeEventListener("pointerdown", handleClearPointerDown);
       debouncedFetch.cancel();
     });
   });
