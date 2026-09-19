@@ -119,20 +119,80 @@ Esta matriz está verificada por pruebas automatizadas de regresión en CI:
 | `/Drama/`, `/EEUU/`, `/ drama /` | Mayúsculas, espacios accidentales o falta de trim. | `parsePrettyPath` aplica `.trim().toLowerCase()` a cada segmento; se resuelve idéntico a la versión canónica. |
 | Segmento desconocido (`/estrenos/`, typos) | No pertenece a ningún diccionario ni tiene prefijo reconocido. | Se ignora silenciosamente; no se interpreta como comodín. |
 
-### E. Contrato del Criterio por Defecto 'ORDEN' (Daily Showcase Adaptativo - Alternativa 2)
+---
 
-Cuando el usuario navega con el orden por defecto (`sort: "relevance,asc"`, visualizado como **"Orden"** en la interfaz), el backend aplica un algoritmo híbrido de serendipia y relevancia estricta mediante `hashtext(id || fecha_madrid)`:
+## 2.2. Contrato de Producto Editorial: Daily Showcase y Barajado Determinista (*Editorial Showcase Contract Specification*)
 
-1. **Sin Búsqueda de Texto ni Personas VIP**:
-   - Las búsquedas libres (`search_term`) y las filmografías de directores/actores **nunca se barajan**: siempre se ordenan 100% por relevancia pura para no desvirtuar los resultados de búsqueda ni las carreras cinematográficas.
-2. **Portada General (Home limpia sin filtros)**:
-   - Se barajan las **378 mejores películas** del catálogo (o **377** si hay una tarjeta VIP en cabecera), garantizando 9 páginas completas y variadas cada mañana sin perder el canon cualitativo.
-3. **Filtros Específicos (País, Género, Estudio, Selección, Años, Tipo)**:
-   La ventana de barajado se adapta automáticamente al volumen total de títulos que superan el filtro (`total_matches`):
-   - **Subcatálogos pequeños (`< 50` títulos)**: Se barajan únicamente las **Top 12** mejores películas.
-   - **Subcatálogos medianos (`50..200` títulos)**: Se barajan únicamente las **Top 24** mejores películas.
-   - **Subcatálogos grandes (`> 200` títulos)**: Se barajan únicamente las **Top 42** mejores películas (exactamente la primera página).
-   - **A partir del corte adaptativo**: A partir de la película 13, 25 o 43 en adelante, el catálogo continúa ordenado de forma **100% estricta por mérito y relevancia natural** (`relevance ASC, id ASC`).
+Este apartado formaliza la lógica de negocio y producto que gobierna el orden de presentación predeterminado del catálogo en **VIDEOCLUB.DIGITAL**. Aunque por estrictos motivos de rendimiento y eficiencia de costes (*zero-egress, stateless pagination*) su ejecución reside en la función PL/pgSQL `public.search_movies_offset` ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)), sus especificaciones son un **contrato formal de producto inmutable** para cualquier capa cliente, middleware o rastreador.
+
+### A. Racional de Producto: Serendipia Controlada vs. Canon Cinematográfico
+
+Un videoclub digital se enfrenta al dilema entre la **estabilidad del canon** (las mejores obras deben ser visibles) y la **frescura del descubrimiento** (un catálogo estático genera fatiga en el usuario recurrente).
+
+* **Objetivo de Negocio**: Ofrecer un escaparate diario rotativo (*Daily Showcase*) que cambie cada medianoche sin degradar el nivel cualitativo de la portada ni empujar obras mediocres a las primeras posiciones.
+* **Mecanismo Híbrido**: Se aplica un barajado pseudoaleatorio determinista exclusivamente sobre una **ventana acotada de excelencia** (*Top Tier*), manteniendo el resto del catálogo ordenado con rigor absoluto por relevancia natural.
+
+### B. Justificación Arquitectónica: ¿Por qué reside en PL/pgSQL?
+
+1. **Eficiencia Operativa y Ahorro de Egress**: Barajar una ventana de hasta 378 películas en la capa de aplicación (Edge Worker o cliente SPA) obligaría a transferir por red los metadatos completos de cientos de títulos solo para que el servidor descarte la mayoría y entregue una página de 42 o 50 ítems. En PostgreSQL, la proyección y paginación (`LIMIT` / `OFFSET`) ocurren en memoria local del motor C con coste de transferencia mínimo.
+2. **Paginación Determinista sin Estado (*Stateless Determinism*)**: El uso de una función hash pura dependiente de la fecha permite que la navegación entre páginas consecutivas (`página 1: 0..42`, `página 2: 42..84`, etc.) conserve un orden consistente sin requerir sesiones en servidor, almacenamiento en Redis ni cookies de usuario.
+3. **Paridad Absoluta SPA / Edge SSR**: Al ser una función SQL pura consumida tanto por el cliente de Supabase en la SPA como por el Cloudflare Worker para bots y pre-renderizado, se garantiza que humanos y motores de búsqueda observen exactamente el mismo escaparate en cualquier instante del día.
+
+### C. Especificación Matemática del Algoritmo
+
+#### 1. Semilla Temporal de Referencia (*Seed*)
+La rotación diaria está anclada a la fecha civil oficial de España:
+$$\text{seed} = (\text{CURRENT\_TIMESTAMP AT TIME ZONE 'Europe/Madrid'})::\text{date}::\text{text}$$
+* **Zona Horaria Canónica**: `Europe/Madrid` (CET / CEST).
+* **Cambio de Escaparate**: Ocurre exactamente a las `00:00:00` hora peninsular española, garantizando sincronía global para todos los usuarios independientemente de su huso horario local.
+
+#### 2. Función de Dispersión Pseudoaleatoria (*Hashing*)
+Para cada película $m$ dentro de la ventana elegible, su posición relativa en el escaparate del día se computa mediante:
+$$\text{rank\_hash}(m) = \operatorname{hashtext}(m.\text{id}::\text{text} \mathbin{\Vert} \text{seed})$$
+Esta función produce una distribución uniforme de enteros de 32 bits, determinista y libre de sesgos de inserción.
+
+#### 3. Cláusula de Ordenación de Dos Niveles (*Two-Tier SQL Order*)
+La consulta aplica un orden jerárquico que aísla la ventana de serendipia del catálogo general:
+
+```sql
+ORDER BY 
+    CASE WHEN m.natural_rank <= (v_threshold_expr) THEN 0 ELSE 1 END ASC,
+    CASE WHEN m.natural_rank <= (v_threshold_expr) 
+         THEN hashtext(m.id::text || (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Madrid')::date::text) 
+    END ASC,
+    m.natural_rank ASC
+```
+
+* **Tier 0 (Dentro de la ventana)**: Títulos con `natural_rank <= threshold`. Se ordenan según `rank_hash(m)`.
+* **Tier 1 (Fuera de la ventana)**: Títulos restantes. Se ordenan estrictamente por mérito natural (`natural_rank ASC`), asegurando que la calidad continúe decreciendo de forma predecible en las páginas profundas.
+
+---
+
+### D. Matriz de Comportamiento y Reglas de Negocio
+
+El barajado editorial se activa **únicamente** cuando el campo de ordenación es la relevancia por defecto (`sort_field = 'relevance'`, visualizado como **"Orden"** en la UI).
+
+| Contexto de Navegación | Condición de Activación | Tamaño de Ventana (*Threshold*) | Comportamiento Editorial |
+| :--- | :--- | :--- | :--- |
+| **Portada General Limpia** | Sin búsqueda de texto ni ningún filtro activo. | **378 títulos** | Baraja las 378 mejores películas del catálogo general. El número 378 es el mínimo común múltiplo ($\operatorname{mcm}(42, 54)$) que garantiza cuadrículas completas y simétricas tanto en vistas de 6 como de 7 columnas (9 páginas enteras de serendipia). |
+| **Portada con Colección o Estudio VIP** | `p_selection_code` o `p_studio_code` activo. | **377 títulos** | La primera posición de la interfaz ($slot\ 0$) queda reservada contractualmente para la tarjeta destacada VIP. La ventana se reduce a 377 para totalizar exactamente 378 casillas. |
+| **Filtros Temáticos Pequeños** | Filtro activo con $\text{total\_matches} < 50$. | **Top 12** | En subcatálogos reducidos (ej. países con poca producción o periodos históricos cortos), un barajado amplio degradaría la primera página con obras menores. Se baraja solo el núcleo selecto de 12 títulos. |
+| **Filtros Temáticos Medianos** | Filtro activo con $50 \le \text{total\_matches} \le 200$. | **Top 24** | Baraja los dos mejores bloques de 12 películas. A partir del puesto 25, rige la relevancia natural. |
+| **Filtros Temáticos Extensos** | Filtro activo con $\text{total\_matches} > 200$. | **Top 42** | Baraja exactamente la primera página completa (42 títulos en rejilla estándar). A partir de la página 2 ($offset \ge 42$), el usuario navega por relevancia estricta. |
+| **Búsqueda de Texto Libre** | `search_term` presente y no vacío. | **Desactivado** ($threshold = 0$) | **Invariante de búsqueda**: Una búsqueda por texto (`q=...`) jamás se baraja. La relevancia léxica y trigramas de PostgreSQL tienen prioridad absoluta para no confundir al usuario. |
+| **Filmografías de Personas** | `director_name` o `actor_name` presente. | **Desactivado** ($threshold = 0$) | **Invariante autoral**: La filmografía de un autor o intérprete jamás se baraja. Debe preservar su orden canónico de relevancia o cronología histórica. |
+| **Criterios Explícitos de Orden** | `sort_field` distinto de `'relevance'` (año, notas, votos). | **Desactivado** | Si el usuario solicita explícitamente ordenar por nota (Filmaffinity/IMDb), año o votos, se anula el Showcase y se aplica la ordenación solicitada con desempate determinista por `relevance ASC, id ASC`. |
+
+---
+
+### E. Invariantes Contractuales para Testing e Integración
+
+Cualquier consumidor del backend (pruebas en `tests/`, Edge Worker o componentes cliente) puede asumir contractualmente las siguientes garantías:
+
+1. **Idempotencia Intra-Día**: Dos peticiones con idénticos parámetros ejecutadas en el mismo día natural (hora Madrid) garantizan exactamente los mismos resultados en el mismo orden:
+   $$\forall\ t_1, t_2 \in \text{mismo día Madrid} \implies \operatorname{RPC}(P, t_1) \equiv \operatorname{RPC}(P, t_2)$$
+2. **Cero Duplicados en Paginación**: Un ítem retornado en la página $N$ jamás aparecerá en la página $N+1$, incluso si coincide con el límite exacto del umbral de corte del Showcase.
+3. **Preservación del Desempate Determinista**: Si dos películas empatan en nota, año o relevancia, el desempate final siempre lo dicta `m.id ASC`, eliminando cualquier indeterminación aleatoria del motor relacional.
 
 ---
 
@@ -207,6 +267,12 @@ Reglas:
   Los slugs del manifiesto perimetral (`cloudflare/seo/vip-manifest.js`) derivan de `people.slug` (`vip = 1`) y deben cumplir estrictamente el formato URL-safe canónico: minúsculas alfanuméricas ASCII separadas exclusivamente por guiones simples (`/^[a-z0-9]+(?:-[a-z0-9]+)*$/`), sin espacios ni guiones terminales. El generador `generate-vip-manifest.mjs` aplica `.trim().toLowerCase()` y valida el patrón, descartando anomalías y garantizando paridad determinista con `rawSlug.toLowerCase()` en la evaluación $O(1)$ de `VIP_SLUGS.has(slug)` del Cloudflare Worker.
 - **Principio Arquitectónico: VIP = Fuente Editorial (SSOT en Supabase)**:
   `VIP_SLUGS` actúa exclusivamente como filtro de enrutamiento perimetral para decidir en tiempo constante $O(1)$ si una ruta raíz debe intentar resolverse como ficha SEO VIP. Toda la información editorial (nombre, biografía, foto, fechas cronológicas, rol cruzado y filmografía) reside y procede **siempre de Supabase** (`public.people`). El manifiesto no sustituye a la base de datos ni almacena fichas, preservando la ligereza del bundle perimetral y la frescura editorial de los contenidos.
+- **Principio Arquitectónico: Artefacto de Enrutamiento Versionado en Git (*Checked-in Routing Manifest*)**:
+  Aunque `cloudflare/seo/vip-manifest.js` es un archivo derivado generado mediante el script [`scripts/generate-vip-manifest.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/scripts/generate-vip-manifest.mjs), **se versiona deliberadamente en el repositorio de Git** en lugar de ser ignorado en `.gitignore`. Esta decisión de ingeniería garantiza tres propiedades críticas:
+  1. *Compilaciones herméticas y pruebas offline*: Permite que la suite de pruebas del Worker ([`tests/worker.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/worker.test.mjs)), el chequeo de tipos (`tsc --noEmit`) y los entornos de CI se ejecuten de forma determinista y desconectada de la red, sin requerir conexión a internet ni variables de entorno secretas de Supabase en cada clon del repositorio.
+  2. *Resiliencia perimetral durante el despliegue*: Elimina el riesgo de que una caída transitoria de red hacia Supabase durante `wrangler deploy` genere un manifiesto vacío o aborte la publicación del Cloudflare Worker en producción.
+  3. *Auditoría de superficie de enrutamiento*: Cada adición, modificación o baja de una personalidad VIP genera un `diff` explícito en Git (`+ "denis-villeneuve"`), posibilitando la revisión por pares (*Code Review*) del impacto SEO antes de pasar a producción.
+  *Garantía de frescura*: Para evitar artefactos obsoletos (*stale artifacts*), el ciclo de vida del proyecto en `package.json` enlaza automáticamente el paso `prepare:worker` dentro de `npm run build`, `npm run build:worker` y `npm run deploy:worker`.
 - **SEO VIP Dual (Actor y Director) — URL Inmutable e Intercambio D/A**:
   Para personas VIP que son simultáneamente actor y director (`people.type` `'DA'` o `'AD'`), existe **una única URL SEO canónica** (`https://videoclub.digital/:slug/`). La alternancia entre la filmografía como Director (**D**) y como Actor (**A**) es una interacción de interfaz en cliente, controlada mediante la insignia circular interactiva `.person-role-toggle-btn` (idéntica a las fichas de la SPA: muestra una única letra 'D' o 'A' a la vez sin coincidir ambos círculos en pantalla, conmutando al pulsar). Dicha alternancia conmuta la visibilidad en el grid (`display: contents` / `display: none`) sin modificar la URL, sin parámetros query (`?rol=...`), sin redirecciones y sin alterar el historial (`pushState`/`replaceState`). Ambas filmografías se resuelven en paralelo (`Promise.all`) durante el SSR en el Edge para garantizar 0 ms de latencia al alternar. El sitemap y las etiquetas canónicas registran exclusivamente la URL raíz única del VIP.
 - **Trasera Ampliada de Tarjetas (SPA y Páginas SEO Edge SSR)**:
