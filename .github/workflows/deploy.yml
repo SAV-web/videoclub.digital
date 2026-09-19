@@ -54,7 +54,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Deploy Cloudflare Worker & Static Assets 🚀
-        run: npx wrangler deploy --var SUPABASE_URL:${{ secrets.VITE_SUPABASE_URL }} --var SUPABASE_ANON_KEY:${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          SUPA_URL=$(printf '%s' "$RAW_SUPABASE_URL" | tr -d '\r\n')
+          SUPA_KEY=$(printf '%s' "$RAW_SUPABASE_KEY" | tr -d '\r\n')
+          npx wrangler deploy --var "SUPABASE_URL:$SUPA_URL" --var "SUPABASE_ANON_KEY:$SUPA_KEY"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RAW_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          RAW_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
