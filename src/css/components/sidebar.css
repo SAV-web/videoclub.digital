@@ -178,9 +178,17 @@
   background-color: transparent; color: var(--color-text-primary);
   cursor: pointer; text-align: left;
   font-family: var(--font-title); font-size: var(--font-size-base); font-weight: bold;
-  transition: background-color var(--transition-duration-fast);
+  transition: background-color var(--transition-duration-fast), color var(--transition-duration-fast);
   
-  @media (hover: hover) and (pointer: fine) { &:hover { background-color: var(--color-bg); } }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background-color: var(--color-bg);
+      color: var(--color-brand-gold, #d4a347);
+    }
+    &:hover .chevron-icon {
+      stroke: var(--color-brand-gold, #d4a347);
+    }
+  }
   &:active { transform: scale(0.99); transition-duration: 0.1s; }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 }
@@ -207,7 +215,7 @@ body.sidebar-collapsed .sidebar {
 
 .section-content {
   display: flex; flex-direction: column; gap: 1px;
-  padding-left: var(--space-xs);
+  padding-inline: var(--space-xs);
   max-height: 0; opacity: 0; transform: translateY(-10px);
   overflow: hidden; visibility: hidden;
   position: relative; z-index: 1;
@@ -220,15 +228,22 @@ body.sidebar-collapsed .sidebar {
 .filter-link {
   display: flex; justify-content: space-between; align-items: center;
   padding: 2px var(--space-xs);
-  border: none; border-radius: var(--radius-sm); background: none;
+  border: 1.5px solid transparent; border-radius: var(--radius-sm); background: none;
   color: var(--color-text-secondary);
   cursor: pointer; text-align: left; text-decoration: none;
   font: inherit; font-size: var(--font-size-sm); font-weight: bold;
   min-height: 34px;
   box-sizing: border-box;
-  transition: color var(--transition-duration-fast), background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
+  transition: color var(--transition-duration-fast), border-color var(--transition-duration-fast), background-color var(--transition-duration-fast), transform var(--transition-duration-fast);
   &:active { transform: scale(0.98); transition-duration: 0.1s; }
-  @media (hover: hover) and (pointer: fine) { &:hover { color: var(--color-text-primary); transform: translateX(2px); } &:hover:active { transform: translateX(2px) scale(0.99); } }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(.active) {
+      color: var(--color-brand-gold, #d4a347);
+      border-color: var(--color-brand-gold, #d4a347);
+      transform: translateX(2px);
+    }
+    &:hover:active { transform: translateX(2px) scale(0.99); }
+  }
   
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); background-color: var(--color-bg); }
 
@@ -272,10 +287,23 @@ body.sidebar-collapsed .sidebar {
   border: 1px solid transparent; border-radius: 50%;
   background-color: transparent; color: var(--color-text-secondary);
   opacity: 0;
-  transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast), transform 0.2s var(--ease-bounce-sharp);
+  transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast), border-color var(--transition-duration-fast), transform 0.2s var(--ease-bounce-sharp);
 
-  .filter-link:hover &, .filter-link:focus-visible &, &:focus-visible { opacity: 1; }
-  @media (hover: hover) and (pointer: fine) { &:hover { background-color: var(--color-border-soft); color: var(--color-accent-exclude); transform: scale(1.15); } }
+  .filter-link:hover &, .filter-link:focus-visible &, &:focus-visible {
+    opacity: 1;
+    color: var(--color-brand-gold, #d4a347);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background-color: rgba(212, 163, 71, 0.15);
+      color: var(--color-brand-gold, #d4a347);
+      border-color: var(--color-brand-gold, #d4a347);
+      transform: scale(1.15);
+    }
+    :where(html.dark-mode) &:hover {
+      background-color: rgba(212, 163, 71, 0.2);
+    }
+  }
   @media (hover: none) and (pointer: coarse) { opacity: 1; color: var(--color-text-tertiary); }
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
@@ -321,7 +349,7 @@ body.sidebar-collapsed .sidebar {
     font-weight: 600;
   }
   &.is-active strong, &:hover strong {
-    color: var(--color-accent) !important;
+    color: var(--color-brand-gold, #d4a347) !important;
   }
   :where(html.dark-mode) &.is-active,
   :where(html.dark-mode) &:hover {
@@ -330,7 +358,7 @@ body.sidebar-collapsed .sidebar {
   }
   :where(html.dark-mode) &.is-active strong,
   :where(html.dark-mode) &:hover strong {
-    color: var(--color-accent) !important;
+    color: var(--color-brand-gold, #d4a347) !important;
   }
   & strong {
     color: var(--color-accent);
@@ -525,10 +553,24 @@ body.sidebar-collapsed .sidebar {
 /* --- 12. LOGOS DE ESTUDIOS Y PLATAFORMAS --- */
 .filter-link--studio,
 .filter-link--icon {
-  justify-content: flex-start;
-  padding-block: 2px;
-  border: 2px solid transparent; 
+  justify-content: center;
+  padding: 4px 2px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
 }
+
+@media (hover: hover) and (pointer: fine) {
+  .filter-link--icon:hover:not(.active),
+  .filter-link--studio:hover:not(.active) {
+    transform: none;
+  }
+  .filter-link--icon:hover:active,
+  .filter-link--studio:hover:active {
+    transform: scale(0.98);
+  }
+}
+
 .sidebar-platform-icon {
   height: 30px; width: auto; max-width: 100%;
   transition: transform var(--transition-duration-fast);
@@ -539,12 +581,16 @@ body.sidebar-collapsed .sidebar {
   transition: transform var(--transition-duration-fast), filter 0.3s ease;
 }
 :where(html.dark-mode) .sidebar-platform-img.invert-on-dark { filter: invert(1) brightness(2); }
-.filter-link--icon:hover :is(.sidebar-platform-icon, .sidebar-platform-img) { transform: scale(1.1); }
+.filter-link--icon:hover :is(.sidebar-platform-icon, .sidebar-platform-img) { transform: scale(1.08); }
+.filter-link--studio:hover,
+.filter-link--icon:hover {
+  border-color: var(--color-brand-gold, #d4a347);
+}
 
 .filter-link--icon.active {
   background-color: transparent;
   border-color: var(--color-accent);
-  padding-inline: var(--space-xs); 
+  padding: 4px 2px;
   color: var(--color-text-primary);
   box-shadow: none;
 }
@@ -552,7 +598,11 @@ body.sidebar-collapsed .sidebar {
 :where(html.dark-mode) .filter-link--icon.active { color: var(--color-text-primary); }
 
 #studios-list-container {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-xs);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xxs);
+  width: 100%;
+  box-sizing: border-box;
 }
 #studios-list-container .filter-link { justify-content: center; }
 
@@ -618,7 +668,7 @@ body.sidebar-collapsed .sidebar {
 .bento-grid .filter-link,
 .bento-input {
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
   text-align: left;
   min-height: 36px;
@@ -645,6 +695,33 @@ body.sidebar-collapsed .sidebar {
 }
 .bento-grid .filter-link:active {
   transform: scale(0.96);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bento-grid .filter-link:hover:not(.active):not(.is-excluded) {
+    border-color: var(--color-brand-gold, #d4a347);
+    color: var(--color-brand-gold, #d4a347);
+    transform: none;
+  }
+  :where(html.dark-mode) .bento-grid .filter-link:hover:not(.active):not(.is-excluded) {
+    border-color: var(--color-brand-gold, #d4a347);
+    color: var(--color-brand-gold, #d4a347);
+  }
+  .bento-input:hover {
+    border-color: var(--color-brand-gold, #d4a347);
+  }
+  :where(html.dark-mode) .bento-input:hover {
+    border-color: var(--color-brand-gold, #d4a347);
+  }
+  .bento-input:focus:hover {
+    border-color: var(--color-brand-gold, #d4a347);
+    box-shadow: 0 0 0 2px rgba(212, 163, 71, 0.2);
+  }
+}
+.bento-input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-focus);
 }
 
 .bento-grid .filter-link.active {
@@ -704,16 +781,36 @@ body.sidebar-collapsed .sidebar {
   width: 24px; height: 24px;
   min-width: 0; min-height: 0;
   flex-shrink: 0;
+  border: 1px solid transparent;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--color-text-secondary);
+  transition: opacity var(--transition-duration-fast), background-color var(--transition-duration-fast), color var(--transition-duration-fast), border-color var(--transition-duration-fast), transform 0.2s var(--ease-bounce-sharp);
 }
 .bento-grid .exclude-filter-btn svg {
   width: 16px; height: 16px;
 }
 :where(html.dark-mode) .bento-grid .exclude-filter-btn {
   background-color: rgba(255,255,255,0.1);
+  color: var(--color-text-secondary);
+}
+.bento-grid .filter-link:hover .exclude-filter-btn {
+  color: var(--color-brand-gold, #d4a347);
+}
+@media (hover: hover) and (pointer: fine) {
+  .bento-grid .exclude-filter-btn:hover {
+    background-color: rgba(212, 163, 71, 0.15);
+    color: var(--color-brand-gold, #d4a347);
+    border-color: var(--color-brand-gold, #d4a347);
+    transform: scale(1.15);
+  }
+  :where(html.dark-mode) .bento-grid .exclude-filter-btn:hover {
+    background-color: rgba(212, 163, 71, 0.2);
+    color: var(--color-brand-gold, #d4a347);
+    border-color: var(--color-brand-gold, #d4a347);
+  }
 }
 
 .collapsible-section:has(.bento-input) .sidebar-filter-form {

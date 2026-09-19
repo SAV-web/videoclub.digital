@@ -327,9 +327,9 @@
     background-color: transparent;
 
     & svg {
-      color: #e50914 !important;
-      fill: #e50914 !important;
-      stroke: #e50914 !important;
+      color: var(--color-brand-gold, #d4a347) !important;
+      fill: var(--color-brand-gold, #d4a347) !important;
+      stroke: var(--color-brand-gold, #d4a347) !important;
     }
   }
 }

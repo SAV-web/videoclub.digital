@@ -227,17 +227,17 @@
 }
 
 .profile-stars-container .star-icon-path {
-  stroke: var(--color-star-gold, #ffd700);
+  stroke: var(--color-brand-gold, #d4a347);
 }
 
 .profile-stars-container .star-icon-path--filled {
-  fill: var(--color-star-gold, #ffd700);
+  fill: var(--color-brand-gold, #d4a347);
 }
 
 .stat-card-stars-text {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--color-star-gold, #ffd700);
+  color: var(--color-brand-gold, #d4a347);
 }
 
 .stat-card-action {
@@ -313,7 +313,7 @@
   transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.breakdown-bar-fill--level3 { background: #ffd700; } /* 3 estrellas */
+.breakdown-bar-fill--level3 { background: var(--color-brand-gold, #d4a347); } /* 3 estrellas */
 .breakdown-bar-fill--level2 { background: #ff9800; } /* 2 estrellas */
 .breakdown-bar-fill--level1 { background: #00c0ff; } /* 1 estrella */
 .breakdown-bar-fill--level0 { background: #888888; } /* Suspenso */

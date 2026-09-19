@@ -79,9 +79,13 @@
   --color-success-bg: #28a74520;
   --color-info-rgb: 23, 162, 184;
 
-  /* Dorado de valoración de usuario (estrellas activas) */
-  --color-star-gold: #ffbd07;
-  --color-star-gold-rgb: 255, 189, 7;
+  /* Color de Marca (Punto dorado del logo videoclub.digital #d4a347) */
+  --color-brand-gold: #d4a347;
+  --color-brand-gold-rgb: 212, 163, 71;
+
+  /* Dorado de valoración de usuario (estrellas activas) y favoritos */
+  --color-star-gold: var(--color-brand-gold);
+  --color-star-gold-rgb: var(--color-brand-gold-rgb);
 
   /* ---- Espaciado y Layout ---- */
   --sidebar-width-mobile: 300px;
