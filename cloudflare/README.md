@@ -85,10 +85,10 @@ SUPABASE_STORAGE_URL (deducida automáticamente si no se provee)
 PURGE_SECRET
 ```
 
-- **Variables de Entorno Públicas (`[vars]` en `wrangler.toml` o Dashboard)**:
-  - `SUPABASE_URL`: URL del proyecto Supabase (ej. `https://wibygecgfczcvaqewleq.supabase.co`).
+- **Variables de Entorno Inyectadas (CI/CD `--var` o Dashboard)**:
+  - `SUPABASE_URL`: URL del proyecto Supabase (inyectada dinámicamente desde secretos de CI/CD o Cloudflare Dashboard).
   - `SUPABASE_ANON_KEY`: Clave pública (anon JWT) para consultas REST y RPC.
-  - `SUPABASE_STORAGE_URL`: Opcional; si no se especifica en el entorno, se deduce de forma determinista a partir de `${SUPABASE_URL}/storage/v1/object/public`.
+  - `SUPABASE_STORAGE_URL`: Opcional; deducida de forma determinista a partir de `${SUPABASE_URL}/storage/v1/object/public`.
 
 - **Cero Credenciales Hardcodeadas y Fail-Closed**:
   El objeto transitorio de credenciales de respaldo (`TRANSITIONAL_CONFIG`) fue **completamente eliminado**. El código en `resolveEnvironment(env)` valida estrictamente la presencia de `SUPABASE_URL` y `SUPABASE_ANON_KEY`. Si alguna no está inyectada en `env`, cualquier petición SEO devuelve de forma inmediata e inequívoca un error `500 Server misconfigured (missing Supabase credentials)` con cabecera `Cache-Control: no-store`, evitando respuestas zombies o caídas silenciosas a la SPA.
