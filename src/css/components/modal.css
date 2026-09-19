@@ -190,14 +190,14 @@
     box-shadow: var(--shadow);
     border: none;
     margin-bottom: 0;
-    animation: modal-poster-fade-in 0.5s ease-out backwards;
+    animation: modal-poster-fade-in 0.25s ease-out backwards;
   }
 }
 
 .is-quick-view img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.03);
-  transition: filter var(--duration-quick, 200ms) ease-in-out, transform var(--duration-quick, 200ms) ease-in-out;
+  transition: filter 140ms ease-in-out, transform 140ms ease-in-out;
 
   &.loaded {
     filter: blur(0);

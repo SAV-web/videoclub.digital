@@ -466,14 +466,20 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
     nodes.img.alt = `Póster de ${movie.title}`;
 
     if (movie.thumbhash_st && posterUrl) {
-      nodes.img.classList.remove(CSS_CLASSES.LOADED);
-      nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
-      nodes.img.src = movie.thumbhash_st;
+      // Si la imagen ya está en memoria caché del navegador, mostrar directamente en alta resolución
+      const tempImg = new Image();
+      tempImg.src = posterUrl;
 
-      const lqipGen = modalLifecycleGen;
-      scheduleModalTimeout(() => {
-        if (lqipGen !== modalLifecycleGen) return;
-        const tempImg = new Image();
+      if (tempImg.complete && tempImg.naturalWidth > 0) {
+        nodes.img.src = posterUrl;
+        nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+        nodes.img.classList.add(CSS_CLASSES.LOADED);
+      } else {
+        nodes.img.classList.remove(CSS_CLASSES.LOADED);
+        nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
+        nodes.img.src = movie.thumbhash_st;
+
+        const lqipGen = modalLifecycleGen;
         tempImg.onload = () => {
           if (lqipGen !== modalLifecycleGen) return;
           if (nodes.img) {
@@ -484,11 +490,18 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
             });
           }
         };
-        tempImg.src = posterUrl;
-      }, 150);
+        tempImg.onerror = () => {
+          if (lqipGen !== modalLifecycleGen) return;
+          if (nodes.img) {
+            nodes.img.src = posterUrl;
+            nodes.img.classList.add(CSS_CLASSES.LOADED);
+          }
+        };
+      }
     } else {
       nodes.img.src = posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
       nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+      nodes.img.classList.add(CSS_CLASSES.LOADED);
     }
   }
 
