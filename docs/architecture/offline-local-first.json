@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "VIDEOCLUB.DIGITAL - Ciclo de Vida Local-First y Cola Offline",
+    "output": "docs/architecture/offline-local-first.html",
+    "viewBox": [1040, 640],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "main-path",
+        "label": "Flujo nominal en línea",
+        "focus": ["user_action", "optimistic_ui", "sync_dispatch", "server_commit", "synced"],
+        "note": "Ruta nominal: mutación reactiva en UI y confirmación asíncrona mediante Supabase RPC."
+      },
+      {
+        "id": "offline-waits",
+        "label": "Interrupción offline y cola IndexedDB",
+        "focus": ["sync_dispatch", "offline_hold", "merge_conflict"],
+        "note": "Resiliencia sin red: retención local de datos y detección de estados pendientes."
+      },
+      {
+        "id": "recovery-exits",
+        "label": "Reconexión, drenado y salidas",
+        "focus": ["offline_hold", "background_retry", "sync_dispatch", "sync_aborted"],
+        "note": "Reconexión automática, drenado con idempotencia y gestión de errores terminales."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "Fases en Línea (Fast Path)" },
+    { "id": "waiting", "label": "Interrupciones y Esperas" },
+    { "id": "terminal", "label": "Recuperación y Salidas" }
+  ],
+  "states": [
+    { "id": "user_action", "type": "start", "label": "Acción Usuario", "sublabel": "Rating o Watchlist", "lane": "main", "col": 0, "step": "01", "tag": "UI" },
+    { "id": "optimistic_ui", "type": "active", "label": "Mutación Optimista", "sublabel": "Badge y caché local", "lane": "main", "col": 1, "step": "02", "tag": "DOM" },
+    { "id": "sync_dispatch", "type": "active", "label": "Despacho Sync", "sublabel": "Canal Supabase RPC", "lane": "main", "col": 2, "step": "03", "tag": "Gateway" },
+    { "id": "server_commit", "type": "decision", "label": "Commit Supabase", "sublabel": "RLS + PostgreSQL", "lane": "main", "col": 3, "step": "04", "tag": "Cloud" },
+    { "id": "synced", "type": "success", "label": "Confirmado SSOT", "sublabel": "Dato consolidado", "lane": "main", "col": 4, "step": "05", "tag": "SSOT" },
+    { "id": "offline_hold", "type": "waiting", "label": "Cola IndexedDB", "sublabel": "En espera de red", "lane": "waiting", "col": 0, "tag": "Storage" },
+    { "id": "merge_conflict", "type": "waiting", "label": "Merge on Login", "sublabel": "Resolución sesión", "lane": "waiting", "col": 1, "tag": "Auth" },
+    { "id": "background_retry", "type": "failure", "label": "Background Sync", "sublabel": "Drenado por lotes", "lane": "terminal", "col": 0, "tag": "Retry" },
+    { "id": "sync_aborted", "type": "failure", "label": "Error Terminal", "sublabel": "Descarte con toast", "lane": "terminal", "col": 1, "tag": "Discard" }
+  ],
+  "transitions": [
+    { "id": "offline-branch", "from": "sync_dispatch", "to": "offline_hold", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight" },
+    { "id": "conflict-branch", "from": "server_commit", "to": "merge_conflict", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight" },
+    { "id": "reconnect-trigger", "from": "offline_hold", "to": "background_retry", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "straight" },
+    { "id": "reconnect-loop", "from": "background_retry", "to": "sync_dispatch", "variant": "emphasis", "fromSide": "left", "toSide": "top", "via": [[20, 479], [20, 80], [402, 80]] },
+    { "id": "conflict-drain", "from": "merge_conflict", "to": "background_retry", "variant": "default", "fromSide": "bottom", "toSide": "right", "via": [[556, 360], [490, 360], [490, 479]] },
+    { "id": "abort-exit", "from": "background_retry", "to": "sync_aborted", "variant": "security", "fromSide": "right", "toSide": "left" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Optimismo en UI y Resiliencia",
+      "items": [
+        "Las valoraciones y cambios de Watchlist responden al instante en pantalla sin latencia de red",
+        "Si no hay red, la mutación se almacena en IndexedDB ('videoclub_offline_db')",
+        "La interfaz actualiza badges y estados locales sin bloquear en ningún momento al usuario"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Drenado Automático e Idempotencia",
+      "items": [
+        "El evento nativo 'online' o el Service Worker disparan el vaciado ordenado de la cola",
+        "Cada mutación mantiene idempotencia criptográfica ante reintentos múltiples para evitar duplicados",
+        "La función 'mergeOnLogin' reconcilia los elementos locales huérfanos con la cuenta del usuario en Supabase"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Resolución de Conflictos y Salidas",
+      "items": [
+        "Estrategia Last-Write-Wins (LWW) basada en timestamps ISO UTC auditables",
+        "Si ocurre un rechazo definitivo de RLS o descarte, se emite un aviso no intrusivo (toast)",
+        "Los datos locales obsoletos nunca sobrescriben registros remotos más actualizados"
+      ]
+    }
+  ]
+}

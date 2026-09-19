@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "VIDEOCLUB.DIGITAL - Pipeline de Datos y DataOps",
+    "output": "docs/architecture/dataops-pipeline.html",
+    "viewBox": [1080, 520],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "qa-pipeline",
+        "label": "Contratos y Validación DataOps",
+        "focus": ["db_catalog", "contract_tests", "gen_vip", "gen_sitemap"],
+        "note": "El catálogo de PostgreSQL es auditado por tests de contratos antes de disparar el pipeline de compilación."
+      },
+      {
+        "id": "manifest-build",
+        "label": "Generación Estática y Manifiestos",
+        "focus": ["gen_vip", "gen_sitemap", "gen_llms", "build_worker", "build_seo_css"],
+        "note": "Los scripts DataOps generan artefactos especializados: VIP Manifest en memoria, sitemaps XML y contexto LLM."
+      },
+      {
+        "id": "edge-delivery",
+        "label": "Empaquetado y Distribución Edge",
+        "focus": ["build_worker", "cf_edge", "cdn_cache", "bot_client"],
+        "note": "El Cloudflare Worker compila el bundle ESM, sirve SSR optimizado y distribuye las páginas al usuario."
+      }
+    ]
+  },
+  "stages": [
+    { "label": "1. Catálogo & DB" },
+    { "label": "2. Contratos & QA" },
+    { "label": "3. Generación Batch" },
+    { "label": "4. Build & Bundle" },
+    { "label": "5. Entrega Edge" }
+  ],
+  "nodes": [
+    { "id": "db_catalog", "type": "database", "label": "Supabase DB", "sublabel": "Catálogo SSOT", "stage": 0, "row": 1, "tag": "Postgres" },
+    { "id": "contract_tests", "type": "security", "label": "Data Contracts", "sublabel": "node --test suite", "stage": 1, "row": 1, "tag": "DataOps" },
+    { "id": "gen_vip", "type": "backend", "label": "VIP Manifest", "sublabel": "generate-vip.mjs", "stage": 2, "row": 0, "tag": "JSON" },
+    { "id": "gen_sitemap", "type": "backend", "label": "Sitemaps SEO", "sublabel": "generate-sitemap", "stage": 2, "row": 1, "tag": "XML" },
+    { "id": "gen_llms", "type": "backend", "label": "LLMs Context", "sublabel": "generate-llms.mjs", "stage": 2, "row": 2, "tag": "AI/TXT" },
+    { "id": "build_worker", "type": "cloud", "label": "Worker Bundle", "sublabel": "esbuild ESM", "stage": 3, "row": 0, "tag": "ESM" },
+    { "id": "build_seo_css", "type": "frontend", "label": "Critical CSS", "sublabel": "build-seo-css.mjs", "stage": 3, "row": 1, "tag": "SSR Head" },
+    { "id": "build_spa", "type": "frontend", "label": "Vite SPA Build", "sublabel": "Rollup chunks", "stage": 3, "row": 2, "tag": "Assets" },
+    { "id": "cf_edge", "type": "cloud", "label": "Cloudflare Edge", "sublabel": "Worker Runtime", "stage": 4, "row": 0, "tag": "Serverless" },
+    { "id": "cdn_cache", "type": "cloud", "label": "Global CDN", "sublabel": "Edge Cache & HTML", "stage": 4, "row": 1, "tag": "Edge KV" },
+    { "id": "bot_client", "type": "external", "label": "Bots y Usuarios", "sublabel": "Googlebot / Navegador", "stage": 4, "row": 2, "tag": "200 OK" }
+  ],
+  "flows": [
+    { "id": "f_cat_qa", "from": "db_catalog", "to": "contract_tests", "label": "schema facts", "classification": "database", "variant": "emphasis", "route": "straight", "labelAt": [207, 258] },
+    { "id": "f_qa_vip", "from": "contract_tests", "to": "gen_vip", "label": "audit ok", "classification": "DataOps audit", "variant": "emphasis", "fromSide": "top", "toSide": "left", "via": [[315, 112], [440, 112], [440, 157]], "labelAt": [380, 100] },
+    { "id": "f_qa_site", "from": "contract_tests", "to": "gen_sitemap", "label": "metadata slugs", "classification": "DataOps audit", "variant": "default", "route": "straight", "labelAt": [422, 258] },
+    { "id": "f_qa_llms", "from": "contract_tests", "to": "gen_llms", "label": "catalog dump", "classification": "DataOps audit", "variant": "default", "fromSide": "bottom", "toSide": "left", "via": [[315, 430], [440, 430], [440, 385]], "labelAt": [380, 442] },
+    { "id": "f_vip_work", "from": "gen_vip", "to": "build_worker", "label": "vip manifest", "classification": "manifest", "variant": "emphasis", "route": "straight", "labelAt": [637, 144] },
+    { "id": "f_site_css", "from": "gen_sitemap", "to": "build_seo_css", "label": "sitemap paths", "classification": "routes", "variant": "default", "route": "straight", "labelAt": [637, 258] },
+    { "id": "f_llms_spa", "from": "gen_llms", "to": "build_spa", "label": "llms.txt", "classification": "context", "variant": "dashed", "route": "straight", "labelAt": [637, 372] },
+    { "id": "f_work_cf", "from": "build_worker", "to": "cf_edge", "label": "esm bundle", "classification": "deploy bundle", "variant": "emphasis", "route": "straight", "labelAt": [848, 114] },
+    { "id": "f_css_cf", "from": "build_seo_css", "to": "cf_edge", "label": "critical css", "classification": "inlined css", "variant": "default", "fromSide": "right", "toSide": "left", "via": [[870, 271], [870, 157]], "labelAt": [880, 214] },
+    { "id": "f_edge_cdn", "from": "cf_edge", "to": "cdn_cache", "label": "cached ssr", "classification": "rendered html", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [975, 214] },
+    { "id": "f_cdn_client", "from": "cdn_cache", "to": "bot_client", "label": "fast response", "classification": "fast response", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [975, 328] }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "DataOps y Contratos de Esquema",
+      "items": [
+        "Las pruebas unitarias y de integración (`node --test`) verifican la consistencia del catálogo",
+        "Se asegura que todas las entidades (películas, directores, actores) cumplan el contrato antes de compilar",
+        "Evita que cambios de esquema o datos corruptos se propaguen a producción"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Generación de Artefactos de Alto Rendimiento",
+      "items": [
+        "El script `generate-vip-manifest.mjs` precalcula las páginas más visitadas en un objeto JSON en memoria",
+        "`build-seo-css.mjs` aísla las reglas de estilo críticas para inyección inline en SSR",
+        "`generate-llms.mjs` y `generate-sitemap.mjs` aseguran indexación máxima por motores y agentes IA"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Distribución Edge y Cache Serverless",
+      "items": [
+        "Cloudflare Worker sirve respuestas renderizadas en <50ms a nivel global",
+        "Los bots reciben HTML enriquecido con microdatos semánticos (Schema.org / JSON-LD)",
+        "Los usuarios reciben la SPA instantáneamente con hidratación limpia y sin bloqueo"
+      ]
+    }
+  ]
+}

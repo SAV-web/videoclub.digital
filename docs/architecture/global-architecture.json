@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "VIDEOCLUB.DIGITAL - Arquitectura Global",
+    "output": "docs/architecture/global-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-flow",
+        "label": "Flujo de usuario e hidratación",
+        "focus": ["users", "spa", "edge", "postgres", "storage"],
+        "note": "Petición desde el navegador a través del Edge Worker hasta Supabase."
+      },
+      {
+        "id": "offline-local",
+        "label": "Capa Cliente y Local-First",
+        "focus": ["users", "spa", "idb"],
+        "note": "Almacenamiento local en IndexedDB y sincronización en reconexión."
+      },
+      {
+        "id": "edge-ssr",
+        "label": "Edge Computing y SEO",
+        "focus": ["edge", "edge_cache", "postgres"],
+        "note": "SSR de fichas canónicas, taxonomías y personas VIP con caché Edge."
+      }
+    ]
+  },
+  "components": [
+    { "id": "users", "type": "external", "label": "Cliente Web", "sublabel": "Browser / PWA", "pos": [40, 270], "size": [130, 60] },
+    { "id": "idb", "type": "database", "label": "IndexedDB", "sublabel": "offline store", "pos": [40, 440], "size": [130, 60], "tag": "Local-First" },
+    { "id": "spa", "type": "frontend", "label": "SPA Vanilla TS", "sublabel": "Vite core", "pos": [270, 270], "size": [130, 60] },
+    { "id": "ext_media", "type": "external", "label": "Metadatos Externos", "sublabel": "FA · IMDb · JustWatch", "pos": [270, 440], "size": [130, 60] },
+    { "id": "edge_cache", "type": "cloud", "label": "Edge Cache", "sublabel": "HTML + ASSETS", "pos": [510, 110], "size": [140, 60], "tag": "Inmutable" },
+    { "id": "edge", "type": "backend", "label": "Cloudflare Worker", "sublabel": "Proxy SSR & Edge", "pos": [510, 270], "size": [140, 64], "brand": "cloudflare", "tag": "worker.js" },
+    { "id": "auth", "type": "security", "label": "Supabase Auth", "sublabel": "JWT Session", "pos": [760, 110], "size": [140, 60], "brand": "supabase" },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL DB", "sublabel": "RLS + RPCs", "pos": [760, 270], "size": [140, 64], "brand": "postgresql", "tag": "SSOT" },
+    { "id": "storage", "type": "cloud", "label": "Supabase Storage", "sublabel": "/posters & /vips", "pos": [760, 440], "size": [140, 60], "tag": "ThumbHash" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Entorno Cliente (Navegador)", "wraps": ["users", "spa", "idb", "ext_media"] },
+    { "kind": "security-group", "label": "Cloudflare Global Edge", "wraps": ["edge", "edge_cache"] },
+    { "kind": "region", "label": "Supabase Cloud Platform", "wraps": ["auth", "postgres", "storage"] }
+  ],
+  "connections": [
+    { "id": "users-to-spa", "from": "users", "to": "spa" },
+    { "id": "spa-to-idb", "from": "spa", "to": "idb", "label": "sync cola", "variant": "dashed", "fromSide": "left", "toSide": "top" },
+    { "id": "spa-to-ext", "from": "spa", "to": "ext_media", "variant": "dashed" },
+    { "id": "spa-to-edge", "from": "spa", "to": "edge", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "edge-to-cache", "from": "edge", "to": "edge_cache", "label": "cache-control", "fromSide": "top", "toSide": "bottom", "labelDy": -48 },
+    { "id": "edge-to-auth", "from": "edge", "to": "auth", "label": "auth verify", "variant": "security", "fromSide": "top", "toSide": "left" },
+    { "id": "edge-to-db", "from": "edge", "to": "postgres", "label": "SQL RPC", "variant": "emphasis" },
+    { "id": "edge-to-storage", "from": "edge", "to": "storage", "label": "proxy media", "fromSide": "bottom", "toSide": "left" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Edge Architecture",
+      "items": [
+        "Cloudflare Worker actúa como proxy inverso inteligente y orquestador SSR",
+        "Entrega assets estáticos con compresión Brotli y cabeceras inmutables de 1 año",
+        "Renderizado en el borde de fichas SEO para títulos, taxonomías y personas VIP"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Local-First & Client Resilience",
+      "items": [
+        "Soporte offline completo con IndexedDB y Background Sync en reconexión",
+        "Autonomía total de catálogo mediante caché optimista en memoria",
+        "UI reactiva construida en Vanilla TypeScript sin sobrecarga de frameworks"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Seguridad & Backend",
+      "items": [
+        "Supabase PostgreSQL como Fuente Única de Verdad (SSOT)",
+        "Seguridad de datos estricta mediante Row Level Security (RLS)",
+        "Gestión de sesiones sin cookies invasivas, cumpliendo RGPD/AEPD"
+      ]
+    }
+  ]
+}

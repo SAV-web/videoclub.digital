@@ -741,14 +741,23 @@ html.dark-mode .bbc-icon {
 
 .movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] {
   position: relative;
+  overflow: visible;
+  display: flex;
+  align-items: flex-start;
+  min-height: 20px;
+  padding-right: 22px;
+  line-height: 1.35;
+}
+
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] .detail-data {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
-  padding-right: 20px;
-  line-height: 1.35;
 }
 
 /* Áreas con Scroll */
@@ -916,7 +925,7 @@ html.dark-mode .bbc-icon {
 }
 
 .actors-expand-btn {
-  bottom: 0;
+  bottom: 1px;
   right: 0;
 }
 

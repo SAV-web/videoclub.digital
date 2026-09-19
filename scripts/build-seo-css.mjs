@@ -193,16 +193,26 @@ combined += `
   inset: -10px !important;
 }
 
-/* Botón '+' de reparto en la esquina derecha del bloque de actores sin romper line-clamp */
+/* Botón '+' de reparto en la esquina derecha del bloque de actores sin recortar su sombra */
 .detail-item[data-template="actors-container"] {
   position: relative !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  min-height: 20px !important;
+  line-height: 1.35 !important;
+  padding-right: 22px !important;
+}
+
+.detail-item[data-template="actors-container"] .detail-data {
+  flex: 1 !important;
+  min-width: 0 !important;
   overflow: hidden !important;
+  text-overflow: ellipsis !important;
   display: -webkit-box !important;
   -webkit-line-clamp: 3 !important;
   line-clamp: 3 !important;
   -webkit-box-orient: vertical !important;
-  padding-right: 20px !important;
-  line-height: 1.35 !important;
 }
 
 .actors-expand-btn {
