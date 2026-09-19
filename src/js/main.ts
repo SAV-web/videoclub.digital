@@ -21,13 +21,13 @@ import {
 
 import {
   fetchMovies,
-  getSupabase,
   fetchUserMovieDataForIds,
   fetchPersonDetails,
   fetchGroupDetails,
   fetchAllUserMovieData,
   fetchMovieById
 } from "./api.js";
+import { signOutCurrentUser, onAuthStateChange } from "./auth.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
 import { isAbortError, getAppBasePath, toSlug, createAppError, ERROR_CODES } from "./contracts.js";
 import { getAllLocalEntries, clearLocalStore } from "./localStore.js";
@@ -1028,8 +1028,7 @@ function setupAuthSystem(): void {
   }
 
   async function handleLogout() {
-    const supabase = await getSupabase();
-    const { error } = await supabase.auth.signOut();
+    const { error } = await signOutCurrentUser();
     if (error) {
       if (import.meta.env.DEV) console.error("Logout error:", error);
       showToast("Error al cerrar sesión.", "error");
@@ -1062,43 +1061,42 @@ function setupAuthSystem(): void {
     mainUnsubscribers.push(cleanupProfile);
   }).catch(() => {});
 
-  getSupabase().then(supabase => {
+  onAuthStateChange((event, session) => {
     if (authGen !== mainLifecycleGen) return;
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (authGen !== mainLifecycleGen) return;
-      const currentUser = session?.user || null;
-      const currentUserId = currentUser?.id || null;
+    const currentUser = session?.user || null;
+    const currentUserId = currentUser?.id || null;
 
-      if (event === "PASSWORD_RECOVERY") {
-        import("./auth.js").then(({ showResetPasswordView }) => {
-          if (authGen !== mainLifecycleGen) return;
-          showResetPasswordView();
-        });
-      }
+    if (event === "PASSWORD_RECOVERY") {
+      import("./auth.js").then(({ showResetPasswordView }) => {
+        if (authGen !== mainLifecycleGen) return;
+        showResetPasswordView();
+      });
+    }
 
-      if (currentUser) {
-        onLogin(currentUser);
-      } else {
-        onLogout();
-      }
+    if (currentUser) {
+      onLogin(currentUser);
+    } else {
+      onLogout();
+    }
 
-      // Limpieza preventiva del hash de redirección para todos los casos de retorno OTP/Magic Link
-      const hasAuthHash = window.location.hash.includes("access_token=") ||
-        window.location.hash.includes("error_code=") ||
-        window.location.hash.includes("error=");
+    // Limpieza preventiva del hash de redirección para todos los casos de retorno OTP/Magic Link
+    const hasAuthHash = window.location.hash.includes("access_token=") ||
+      window.location.hash.includes("error_code=") ||
+      window.location.hash.includes("error=");
 
-      if (hasAuthHash && !window.location.hash.includes("type=recovery")) {
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      }
+    if (hasAuthHash && !window.location.hash.includes("type=recovery")) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
 
-      // Si el usuario cambia realmente (login o logout manual) tras la carga inicial, refrescar grid
-      if (lastUserId !== undefined && currentUserId !== lastUserId) {
-        lastUserId = currentUserId;
-        loadAndRenderMovies(getCurrentPage());
-      } else {
-        lastUserId = currentUserId;
-      }
-    });
+    // Si el usuario cambia realmente (login o logout manual) tras la carga inicial, refrescar grid
+    if (lastUserId !== undefined && currentUserId !== lastUserId) {
+      lastUserId = currentUserId;
+      loadAndRenderMovies(getCurrentPage());
+    } else {
+      lastUserId = currentUserId;
+    }
+  }).then(({ data }) => {
+    if (authGen !== mainLifecycleGen) return;
 
     if (data?.subscription) {
       authSubscription = data.subscription;

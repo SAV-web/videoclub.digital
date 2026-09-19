@@ -27,6 +27,7 @@ import {
 } from "./contracts.js";
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getCurrentSession } from "./auth.js";
 
 
 
@@ -305,7 +306,7 @@ export function fetchMovies(
     try {
       // MODO A: MI LISTA (Películas privadas del usuario)
       if (normFilters.myList) {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = await getCurrentSession();
         if (!session?.user) return { total: 0, items: [] };
 
         let query = supabase
@@ -442,7 +443,7 @@ export function fetchMovies(
 export async function fetchAllUserMovieData(): Promise<Record<string, UserMovieEntry>> {
   try {
     const supabase = await getSupabase();
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await getCurrentSession();
     if (!session?.user) return {};
 
     const PAGE_SIZE = 1000;
@@ -516,7 +517,7 @@ export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): P
   }
 
   const supabase = await getSupabase();
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getCurrentSession();
   if (!session?.user) return {};
 
   const { data, error } = await supabase
@@ -687,7 +688,7 @@ export async function setUserMovieDataAPI(movieId: number | string, partialData:
 
   const supabase = await getSupabase();
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getCurrentSession();
   if (!session || !session.user) throw createAppError(ERROR_CODES.AUTH_REQUIRED, "Debes iniciar sesión.");
 
   const currentState = getUserDataForMovie(normalizedMovieId) || { rating: null, onWatchlist: false };

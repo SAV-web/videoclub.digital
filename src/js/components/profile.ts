@@ -7,6 +7,7 @@
 // =================================================================
 
 import { getSupabase } from "../api.js";
+import { getCurrentSession, signOutCurrentUser } from "../auth.js";
 import { getAllUserMovieData, clearUserMovieData, appEvents } from "../state.js";
 import { openAccessibleModal, closeAccessibleModal, showToast } from "../ui.js";
 import { UserMovieEntry } from "../types.js";
@@ -265,8 +266,7 @@ export async function openProfileModal(): Promise<void> {
 
   lastFocusedElement = document.activeElement as HTMLElement | null;
 
-  const supabase = await getSupabase();
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getCurrentSession();
 
   const userEmail = session?.user?.email || "Usuario";
   const initial = userEmail.charAt(0).toUpperCase();
@@ -565,7 +565,7 @@ export async function deleteUserAccount(): Promise<{ success: boolean; error?: s
     }
     clearUserMovieData();
 
-    await supabase.auth.signOut();
+    await signOutCurrentUser();
     return { success: true };
   } catch (err: unknown) {
     const msg = (err as Error)?.message || "Error al eliminar la cuenta.";
@@ -720,8 +720,7 @@ export function setupProfileModal(): () => void {
       }
       try {
         await syncWithServer();
-        const supabase = await getSupabase();
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = await getCurrentSession();
         if (session?.user) {
           await mergeOnLogin(session.user.id);
         }
@@ -761,8 +760,7 @@ export function setupProfileModal(): () => void {
       } catch (err) {
         console.error("Error al limpiar almacén local en logout:", err);
       }
-      const supabase = await getSupabase();
-      await supabase.auth.signOut();
+      await signOutCurrentUser();
     };
     dom.logoutBtn.addEventListener("click", onLogout);
     unsubscribers.push(() => dom.logoutBtn?.removeEventListener("click", onLogout));

@@ -6,6 +6,7 @@
 // =================================================================
 
 import { getSupabase } from "./api.js";
+import { getCurrentSession } from "./auth.js";
 import {
   getPendingSyncEntries,
   markEntriesAsSynced,
@@ -66,7 +67,7 @@ export async function syncWithServer(): Promise<void> {
 
   try {
     const supabase = await getSupabase();
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await getCurrentSession();
 
     // Si el usuario es invitado (anónimo), los datos quedan seguros en IndexedDB hasta que inicie sesión
     if (!session?.user) {

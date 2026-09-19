@@ -7,10 +7,37 @@
 // visualización de contraseña y restablecimiento de contraseña.
 // =================================================================
 
-import type { AuthError } from "@supabase/supabase-js";
+import type { AuthError, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { getSupabase } from "./api.js";
 import { openAuthModal, closeAuthModal, showToast } from "./ui.js";
 import { getAppBasePath } from "./contracts.js";
+
+/**
+ * Obtiene la sesión actual de autenticación en Supabase.
+ */
+export async function getCurrentSession(): Promise<Session | null> {
+  const supabase = await getSupabase();
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
+}
+
+/**
+ * Cierra la sesión activa del usuario actual en Supabase.
+ */
+export async function signOutCurrentUser() {
+  const supabase = await getSupabase();
+  return await supabase.auth.signOut();
+}
+
+/**
+ * Suscribe un callback a los cambios de estado de autenticación en Supabase.
+ */
+export async function onAuthStateChange(
+  callback: (event: AuthChangeEvent, session: Session | null) => void
+) {
+  const supabase = await getSupabase();
+  return supabase.auth.onAuthStateChange(callback);
+}
 
 interface AuthDom {
   vLogin: HTMLElement | null;
