@@ -5,7 +5,7 @@
 // local (IndexedDB) y Supabase en segundo plano sin bloquear jamás la UI.
 // =================================================================
 
-import { getSupabase } from "./api.js";
+import { getSupabase } from "./supabaseClient.js";
 import { getCurrentSession } from "./auth.js";
 import {
   getPendingSyncEntries,

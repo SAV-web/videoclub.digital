@@ -8,7 +8,7 @@
 // =================================================================
 
 import type { AuthError, Session, AuthChangeEvent } from "@supabase/supabase-js";
-import { getSupabase } from "./api.js";
+import { getSupabase } from "./supabaseClient.js";
 import { openAuthModal, closeAuthModal, showToast } from "./ui.js";
 import { getAppBasePath } from "./contracts.js";
 
@@ -37,6 +37,14 @@ export async function onAuthStateChange(
 ) {
   const supabase = await getSupabase();
   return supabase.auth.onAuthStateChange(callback);
+}
+
+/**
+ * Actualiza la contraseña del usuario actualmente autenticado en Supabase.
+ */
+export async function updatePassword(newPassword: string) {
+  const supabase = await getSupabase();
+  return await supabase.auth.updateUser({ password: newPassword });
 }
 
 interface AuthDom {
@@ -425,8 +433,7 @@ async function handleResetPasswordSubmit(e: Event): Promise<void> {
     form,
     btn,
     async () => {
-      const supabase = await getSupabase();
-      return await supabase.auth.updateUser({ password: newPassword });
+      return await updatePassword(newPassword);
     },
     () => {
       showToast("Contraseña actualizada con éxito.", "success");

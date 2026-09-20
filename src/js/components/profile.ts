@@ -6,8 +6,8 @@
 // exportación de datos y sincronización Local-First.
 // =================================================================
 
-import { getSupabase } from "../api.js";
-import { getCurrentSession, signOutCurrentUser } from "../auth.js";
+import { getSupabase } from "../supabaseClient.js";
+import { getCurrentSession, signOutCurrentUser, updatePassword } from "../auth.js";
 import { getAllUserMovieData, clearUserMovieData, appEvents } from "../state.js";
 import { openAccessibleModal, closeAccessibleModal, showToast } from "../ui.js";
 import { UserMovieEntry } from "../types.js";
@@ -678,8 +678,7 @@ export function setupProfileModal(): () => void {
       }
 
       try {
-        const supabase = await getSupabase();
-        const { error } = await supabase.auth.updateUser({ password: newPwd });
+        const { error } = await updatePassword(newPwd);
 
         if (error) {
           throw error;
