@@ -32,3 +32,4 @@ cloudflare/dist
 # Agentes locales y skills
 .agents/
 skills-lock.json
+.codebase-memory/

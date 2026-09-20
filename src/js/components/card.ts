@@ -18,6 +18,19 @@ import { normalizeMovieId } from "../contracts.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
 
 import { MappedMovie, ActiveFilters, UserMovieEntry, PersonDetails, VipData, MovieCardElement } from "../types.js";
+import {
+  preloadedLinkElements,
+  prefetchedUrls,
+  lazyLoadObserver,
+  getFlippedCard,
+  setFlippedCard,
+  getHoverTimeout,
+  setHoverTimeout,
+  getSingleTapTimeout,
+  setSingleTapTimeout,
+  getHoveredCard,
+  setHoveredCard
+} from "./card/context.js";
 
 // =================================================================
 //          CONSTANTES Y ESTADO
@@ -53,12 +66,6 @@ function getCollectionTemplate(): HTMLTemplateElement | null {
 let currentRenderRequestId = 0;
 
 // Estado de Interacción
-let currentlyFlippedCard: MovieCardElement | null = null;
-let hoverTimeout: ReturnType<typeof setTimeout> | undefined;
-let singleTapTimeout: ReturnType<typeof setTimeout> | undefined;
-let currentHoveredCard: MovieCardElement | null = null;
-let preloadedLinkElements: HTMLLinkElement[] = [];
-const prefetchedUrls = new Set<string>();
 const MAX_PREFETCH_LINKS = 4;
 const HOVER_DELAY = 1000;
 const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
@@ -109,13 +116,15 @@ function resetCardBackState(cardElement: MovieCardElement): void {
 }
 
 export function unflipAllCards(): void {
-  if (hoverTimeout) {
-    clearTimeout(hoverTimeout);
-    hoverTimeout = undefined;
+  const hTimeout = getHoverTimeout();
+  if (hTimeout) {
+    clearTimeout(hTimeout);
+    setHoverTimeout(undefined);
   }
-  if (singleTapTimeout) {
-    clearTimeout(singleTapTimeout);
-    singleTapTimeout = undefined;
+  const stTimeout = getSingleTapTimeout();
+  if (stTimeout) {
+    clearTimeout(stTimeout);
+    setSingleTapTimeout(undefined);
   }
   if (flipOnboardingTimeout) {
     clearTimeout(flipOnboardingTimeout);
@@ -135,9 +144,10 @@ export function unflipAllCards(): void {
     });
   }
 
-  if (currentlyFlippedCard) {
-    resetCardBackState(currentlyFlippedCard);
-    currentlyFlippedCard = null;
+  const flipped = getFlippedCard();
+  if (flipped) {
+    resetCardBackState(flipped);
+    setFlippedCard(null);
     document.removeEventListener("click", handleDocumentClick);
   }
 }
@@ -146,7 +156,8 @@ export function unflipAllCards(): void {
 
 function handleDocumentClick(e: MouseEvent): void {
   const target = e.target as HTMLElement;
-  if (currentlyFlippedCard && !currentlyFlippedCard.contains(target)) {
+  const flipped = getFlippedCard();
+  if (flipped && !flipped.contains(target)) {
     unflipAllCards();
   }
 }
@@ -226,15 +237,16 @@ function startFlipTimer(cardElement: MovieCardElement): void {
   const inner = cardElement.querySelector(".flip-card-inner");
   if (inner?.classList.contains("is-flipped")) return;
 
-  if (hoverTimeout) clearTimeout(hoverTimeout);
+  const hTimeout = getHoverTimeout();
+  if (hTimeout) clearTimeout(hTimeout);
   const currentGen = cardLifecycleGen;
-  hoverTimeout = setTimeout(() => {
+  setHoverTimeout(setTimeout(() => {
     if (currentGen !== cardLifecycleGen) return;
-    if (currentHoveredCard === cardElement) {
+    if (getHoveredCard() === cardElement) {
       cardElement.classList.add("is-hovered");
       prefetchCardResources(cardElement);
     }
-  }, HOVER_DELAY);
+  }, HOVER_DELAY));
 }
 
 const handleSingleTap = (cardElement: MovieCardElement): void => {
@@ -244,7 +256,8 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
 
   const isFlipped = inner.classList.contains("is-flipped");
 
-  if (currentlyFlippedCard && currentlyFlippedCard !== cardElement) {
+  const flipped = getFlippedCard();
+  if (flipped && flipped !== cardElement) {
     unflipAllCards();
   }
 
@@ -255,21 +268,23 @@ const handleSingleTap = (cardElement: MovieCardElement): void => {
   import("./modal.js");
 
   if (!isFlipped) {
-    currentlyFlippedCard = cardElement;
-    if (singleTapTimeout) clearTimeout(singleTapTimeout);
+    setFlippedCard(cardElement);
+    const stTimeout = getSingleTapTimeout();
+    if (stTimeout) clearTimeout(stTimeout);
     const currentGen = cardLifecycleGen;
-    singleTapTimeout = setTimeout(() => {
+    setSingleTapTimeout(setTimeout(() => {
       if (currentGen !== cardLifecycleGen) return;
-      if (currentlyFlippedCard === cardElement) {
+      if (getFlippedCard() === cardElement) {
         document.addEventListener("click", handleDocumentClick);
       }
-    }, 0);
+    }, 0));
   } else {
-    currentlyFlippedCard = null;
+    setFlippedCard(null);
     resetCardBackState(cardElement);
-    if (singleTapTimeout) {
-      clearTimeout(singleTapTimeout);
-      singleTapTimeout = undefined;
+    const stTimeout = getSingleTapTimeout();
+    if (stTimeout) {
+      clearTimeout(stTimeout);
+      setSingleTapTimeout(undefined);
     }
     document.removeEventListener("click", handleDocumentClick);
   }
@@ -287,13 +302,15 @@ export function disposeCardEvents(): void {
   cardUnsubscribers = [];
   initializedContainers.clear();
   unflipAllCards();
-  if (hoverTimeout) {
-    clearTimeout(hoverTimeout);
-    hoverTimeout = undefined;
+  const hTimeout = getHoverTimeout();
+  if (hTimeout) {
+    clearTimeout(hTimeout);
+    setHoverTimeout(undefined);
   }
-  if (singleTapTimeout) {
-    clearTimeout(singleTapTimeout);
-    singleTapTimeout = undefined;
+  const stTimeout = getSingleTapTimeout();
+  if (stTimeout) {
+    clearTimeout(stTimeout);
+    setSingleTapTimeout(undefined);
   }
   if (flipOnboardingTimeout) {
     clearTimeout(flipOnboardingTimeout);
@@ -313,9 +330,9 @@ export function disposeCardEvents(): void {
       }
     }
   });
-  preloadedLinkElements = [];
+  preloadedLinkElements.length = 0;
   prefetchedUrls.clear();
-  currentHoveredCard = null;
+  setHoveredCard(null);
   isCardEventsInitialized = false;
 }
 
@@ -333,29 +350,34 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     const card = target.closest<MovieCardElement>(".movie-card");
     if (!card || card.classList.contains('collection-card') || card.classList.contains('person-card')) return;
 
-    if (currentHoveredCard !== card) {
-      if (currentHoveredCard) {
-        if (hoverTimeout) clearTimeout(hoverTimeout);
-        currentHoveredCard.classList.remove("is-hovered");
-        resetCardBackState(currentHoveredCard);
+    const hovered = getHoveredCard();
+    if (hovered !== card) {
+      if (hovered) {
+        const hoverT = getHoverTimeout();
+        if (hoverT) clearTimeout(hoverT);
+        hovered.classList.remove("is-hovered");
+        resetCardBackState(hovered);
       }
-      currentHoveredCard = card;
+      setHoveredCard(card);
       startFlipTimer(card);
     } else if (!target.closest(INTERACTIVE_SELECTOR)) {
       startFlipTimer(card);
     } else {
-      if (hoverTimeout) clearTimeout(hoverTimeout);
+      const hoverT = getHoverTimeout();
+      if (hoverT) clearTimeout(hoverT);
     }
   };
 
   const handlePointerOut = (e: PointerEvent) => {
-    if (e.pointerType !== 'mouse' || !currentHoveredCard) return;
+    const hovered = getHoveredCard();
+    if (e.pointerType !== 'mouse' || !hovered) return;
     const relatedTarget = e.relatedTarget as HTMLElement | null;
-    if (!relatedTarget || !currentHoveredCard.contains(relatedTarget)) {
-      if (hoverTimeout) clearTimeout(hoverTimeout);
-      currentHoveredCard.classList.remove("is-hovered");
-      resetCardBackState(currentHoveredCard);
-      currentHoveredCard = null;
+    if (!relatedTarget || !hovered.contains(relatedTarget)) {
+      const hoverT = getHoverTimeout();
+      if (hoverT) clearTimeout(hoverT);
+      hovered.classList.remove("is-hovered");
+      resetCardBackState(hovered);
+      setHoveredCard(null);
     }
   };
 
@@ -734,24 +756,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
 //          4. RENDERIZADO (Builders)
 // =================================================================
 
-const lazyLoadObserver: IntersectionObserver | null = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver((entries, obs) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      const img = entry.target as HTMLImageElement;
-      if (img.dataset.src) {
-        img.src = img.dataset.src;
-        img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
-        img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
-        if (img.complete) {
-          img.classList.add(CSS_CLASSES.LOADED);
-        }
-      }
-      obs.unobserve(img);
-    }
-  });
-}, {
-  rootMargin: "500px"
-}) : null;
+
 
 // Despertar de la hibernación: fuerza la carga de imágenes visibles en el viewport al volver a la pestaña
 function handleCardVisibilityChange(): void {
@@ -778,7 +783,8 @@ function handleCardVisibilityChange(): void {
 
 function cleanupLazyImages(container: HTMLElement): void {
   if (!container || !lazyLoadObserver) return;
-  container.querySelectorAll<HTMLImageElement>("img[data-src]").forEach(img => lazyLoadObserver.unobserve(img));
+  const observer = lazyLoadObserver;
+  container.querySelectorAll<HTMLImageElement>("img[data-src]").forEach(img => observer.unobserve(img));
 }
 
 
@@ -1129,6 +1135,46 @@ function createCardElement(movie: MappedMovie, index: number): DocumentFragment 
   return clone;
 }
 
+function applyLqipImage(img: HTMLImageElement, thumbhashSrc: string | null | undefined, fullUrl: string): void {
+  if (thumbhashSrc) {
+    img.src = thumbhashSrc;
+    img.classList.remove(CSS_CLASSES.LOADED);
+    img.classList.add(CSS_CLASSES.LAZY_LQIP);
+
+    const highResImg = new Image();
+    highResImg.onload = () => {
+      img.src = fullUrl;
+      requestAnimationFrame(() => {
+        img.classList.add(CSS_CLASSES.LOADED);
+      });
+    };
+    highResImg.onerror = () => {
+      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+      img.classList.add(CSS_CLASSES.LOADED);
+    };
+    highResImg.src = fullUrl;
+  } else {
+    img.classList.remove(CSS_CLASSES.LOADED);
+    img.classList.add(CSS_CLASSES.LAZY_LQIP);
+
+    img.onload = () => {
+      requestAnimationFrame(() => {
+        img.classList.add(CSS_CLASSES.LOADED);
+      });
+    };
+    img.onerror = () => {
+      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+      img.classList.add(CSS_CLASSES.LOADED);
+      img.onerror = null;
+    };
+
+    img.src = fullUrl;
+    if (img.complete) {
+      img.classList.add(CSS_CLASSES.LOADED);
+    }
+  }
+}
+
 function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const template = getPersonTemplate();
   if (!template) return document.createDocumentFragment();
@@ -1158,44 +1204,7 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
     img.decoding = "async";
     img.setAttribute("fetchpriority", "high");
 
-    if (person.thumbhash_st) {
-      img.src = person.thumbhash_st;
-      img.classList.remove(CSS_CLASSES.LOADED);
-      img.classList.add(CSS_CLASSES.LAZY_LQIP);
-
-      const highResImg = new Image();
-      highResImg.onload = () => {
-        img.src = photoUrl;
-        requestAnimationFrame(() => {
-          img.classList.add(CSS_CLASSES.LOADED);
-        });
-      };
-      highResImg.onerror = () => {
-        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-        img.classList.add(CSS_CLASSES.LOADED);
-      };
-      highResImg.src = photoUrl;
-    } else {
-      img.classList.remove(CSS_CLASSES.LOADED);
-      img.classList.add(CSS_CLASSES.LAZY_LQIP);
-
-      img.onload = () => {
-        requestAnimationFrame(() => {
-          img.classList.add(CSS_CLASSES.LOADED);
-        });
-      };
-      img.onerror = () => {
-        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-        img.classList.add(CSS_CLASSES.LOADED);
-        img.onerror = null;
-      };
-
-      img.src = photoUrl;
-      if (img.complete) {
-        img.classList.add(CSS_CLASSES.LOADED);
-      }
-    }
-
+    applyLqipImage(img, person.thumbhash_st, photoUrl);
   }
 
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
@@ -1310,43 +1319,7 @@ function createGroupCardElement(
     img.decoding = "async";
     img.setAttribute("fetchpriority", "high");
 
-    if (thumbhash_st) {
-      img.src = thumbhash_st;
-      img.classList.remove(CSS_CLASSES.LOADED);
-      img.classList.add(CSS_CLASSES.LAZY_LQIP);
-
-      const highResImg = new Image();
-      highResImg.onload = () => {
-        img.src = fullUrl;
-        requestAnimationFrame(() => {
-          img.classList.add(CSS_CLASSES.LOADED);
-        });
-      };
-      highResImg.onerror = () => {
-        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-        img.classList.add(CSS_CLASSES.LOADED);
-      };
-      highResImg.src = fullUrl;
-    } else {
-      img.classList.remove(CSS_CLASSES.LOADED);
-      img.classList.add(CSS_CLASSES.LAZY_LQIP);
-
-      img.onload = () => {
-        requestAnimationFrame(() => {
-          img.classList.add(CSS_CLASSES.LOADED);
-        });
-      };
-      img.onerror = () => {
-        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-        img.classList.add(CSS_CLASSES.LOADED);
-        img.onerror = null;
-      };
-
-      img.src = fullUrl;
-      if (img.complete) {
-        img.classList.add(CSS_CLASSES.LOADED);
-      }
-    }
+    applyLqipImage(img, thumbhash_st, fullUrl);
   }
 
   const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
@@ -1480,7 +1453,7 @@ export function runFlipOnboarding(container: HTMLElement | null): void {
     ) {
       return;
     }
-    if (currentlyFlippedCard) return; // Si el usuario ya está interactuando, no interrumpir
+    if (getFlippedCard()) return; // Si el usuario ya está interactuando, no interrumpir
 
     // Seleccionar la primera ficha de película real (omitiendo fichas de cabecera VIP: Director, Actor, Colección o Estudio)
     const targetMovieCard = container.querySelector<HTMLElement>(
@@ -1495,7 +1468,7 @@ export function runFlipOnboarding(container: HTMLElement | null): void {
 
       flipBackTimeout = setTimeout(() => {
         if (onboardGen !== cardLifecycleGen) return;
-        if (inner.isConnected && inner.classList.contains("is-flipped") && currentlyFlippedCard !== targetMovieCard) {
+        if (inner.isConnected && inner.classList.contains("is-flipped") && getFlippedCard() !== targetMovieCard) {
           inner.classList.remove("is-flipped");
         }
       }, 1400);
