@@ -41,10 +41,7 @@ export function applyPendingYearFilters(): void {
 }
 
 export function initYearSlider(): void {
-  if (yearSliderInstance) {
-    yearSliderInstance.destroy();
-    yearSliderInstance = null;
-  }
+  destroyYearSlider();
 
   if (!dom.yearSlider || !dom.yearStartInput || !dom.yearEndInput) return;
   const yearInputs = [dom.yearStartInput, dom.yearEndInput];
@@ -63,13 +60,6 @@ export function initYearSlider(): void {
   });
 
   const slider = yearSliderInstance;
-
-  sidebarUnsubscribers.push(() => {
-    if (yearSliderInstance === slider) {
-      yearSliderInstance.destroy();
-      yearSliderInstance = null;
-    }
-  });
 
   slider.on("update", (values, handle) => {
     if (yearInputs[handle]) {

@@ -67,7 +67,7 @@ const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
 
 // Consulta de Viewport sin listeners pesados de resize
 const mobileQuery = typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)") : null;
-export const isMobileViewport = (): boolean => mobileQuery ? mobileQuery.matches : false;
+const isMobileViewport = (): boolean => mobileQuery ? mobileQuery.matches : false;
 
 // =================================================================
 //          0. LAZY LOADING (Modal)
@@ -189,7 +189,11 @@ export function prefetchImageUrl(url: string | null | undefined): void {
         prefetchedUrls.delete(oldest.getAttribute("href") || "");
       }
       oldest?.remove();
-    } catch (e) { }
+    } catch (e) {
+      if (import.meta.env.DEV) {
+        console.warn("[Card] Error al retirar enlace de precarga FIFO:", e);
+      }
+    }
   }
 
   // 5. Inserción en el head
@@ -301,7 +305,13 @@ export function disposeCardEvents(): void {
   }
   // Purgar enlaces de precarga acumulados
   preloadedLinkElements.forEach(link => {
-    try { link.remove(); } catch (e) { }
+    try {
+      link.remove();
+    } catch (e) {
+      if (import.meta.env.DEV) {
+        console.warn("[Card] Error al purgar enlace de precarga:", e);
+      }
+    }
   });
   preloadedLinkElements = [];
   prefetchedUrls.clear();
