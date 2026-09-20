@@ -69,3 +69,29 @@ export function getHoveredCard(): MovieCardElement | null {
 export function setHoveredCard(card: MovieCardElement | null): void {
   currentHoveredCard = card;
 }
+
+let cardLifecycleGen = 0;
+export function getCardGeneration(): number {
+  return cardLifecycleGen;
+}
+export function bumpCardGeneration(): void {
+  cardLifecycleGen++;
+}
+
+let flipOnboardingTimeout: ReturnType<typeof setTimeout> | null = null;
+export function getFlipOnboardingTimeout(): ReturnType<typeof setTimeout> | null {
+  return flipOnboardingTimeout;
+}
+export function setFlipOnboardingTimeout(id: ReturnType<typeof setTimeout> | null): void {
+  flipOnboardingTimeout = id;
+}
+
+let flipBackTimeout: ReturnType<typeof setTimeout> | null = null;
+export function getFlipBackTimeout(): ReturnType<typeof setTimeout> | null {
+  return flipBackTimeout;
+}
+export function setFlipBackTimeout(id: ReturnType<typeof setTimeout> | null): void {
+  flipBackTimeout = id;
+}
+
+
