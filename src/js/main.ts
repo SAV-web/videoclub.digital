@@ -115,7 +115,7 @@ async function loadSidebar(): Promise<SidebarModule | null> {
     return sidebarModule;
   }
   try {
-    const mod = await import("./components/sidebar.js") as unknown as SidebarModule;
+    const mod = await import("./components/sidebar/index.js") as unknown as SidebarModule;
     if (loadGen !== mainLifecycleGen) return null;
     sidebarModule = mod;
     sidebarModule.initSidebar(); // Inicializar listeners al cargar
@@ -190,7 +190,7 @@ export async function loadAndRenderMovies(
   }
 
   const currentKnownTotal = getTotalMovies();
-  const activeFilters = getActiveFilters();
+  let activeFilters = getActiveFilters();
   updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
   updateTypeFilterUI(activeFilters.mediaType as "movies" | "series" | "all");
 
@@ -211,12 +211,13 @@ export async function loadAndRenderMovies(
           if (personData.name && personData.name !== vipName) {
             if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
               setFilter(vipType, personData.name, true);
+              activeFilters = getActiveFilters();
               updatePageTitle();
-              updateBreadcrumbData(getActiveFilters());
+              updateBreadcrumbData(activeFilters);
             }
           }
 
-          const isVip = Boolean(personData.birthday);
+          const isVip = personData.vip === 1 || Boolean(personData.birthday);
           if (isVip) {
             const personSlug = personData.slug || toSlug(personData.name);
             preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
@@ -809,7 +810,7 @@ export async function disposeApp(): Promise<void> {
   } catch (e) { }
 
   try {
-    const { disposeSidebarEvents } = await import("./components/sidebar.js");
+    const { disposeSidebarEvents } = await import("./components/sidebar/index.js");
     disposeSidebarEvents();
   } catch (e) { }
 

@@ -1139,7 +1139,7 @@ function createPersonCardElement(person: PersonDetails): DocumentFragment {
 
   if (img) {
     const personSlug = person.slug || toSlug(person.name);
-    const photoUrl = person.birthday
+    const photoUrl = (person.vip === 1 || Boolean(person.birthday) || Boolean(person.thumbhash_st))
       ? `${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`
       : `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
 

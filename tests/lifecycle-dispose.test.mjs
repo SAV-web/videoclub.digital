@@ -22,7 +22,7 @@ before(async () => {
     "/src/js/state.ts",
     "/src/js/components/card.ts",
     "/src/js/components/modal.ts",
-    "/src/js/components/sidebar.ts",
+    "/src/js/components/sidebar/index.ts",
     "/src/js/main.ts",
   ]);
   [stateModule, cardModule, modalModule, sidebarModule, mainModule] = viteEnv.modules;

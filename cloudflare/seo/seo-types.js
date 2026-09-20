@@ -64,9 +64,21 @@ export const OFFICIAL_GENRES = [
 export function toSlug(text) {
   if (!text) return "";
   return text
+    .toLowerCase()
+    .replace(/[’‘`]/g, "'")
+    .replace(/[øØ]/g, "o")
+    .replace(/[æÆ]/g, "ae")
+    .replace(/[œŒ]/g, "oe")
+    .replace(/[ß]/g, "ss")
+    .replace(/[ðÐ]/g, "d")
+    .replace(/[þÞ]/g, "th")
+    .replace(/[łŁ]/g, "l")
+    .replace(/[đĐ]/g, "d")
+    .replace(/[ħĦ]/g, "h")
+    .replace(/[ŋŊ]/g, "n")
+    .replace(/[ıI]/g, "i")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }

@@ -75,7 +75,7 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
   before(async () => {
     viteEnv = await startViteSsrServer([
       "/src/js/state.ts",
-      "/src/js/components/sidebar.ts",
+      "/src/js/components/sidebar/index.ts",
       "/src/js/main.ts",
       "/src/js/api.ts",
     ]);

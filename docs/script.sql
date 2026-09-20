@@ -67,7 +67,7 @@ BEGIN
     IF v_clean IS NULL OR v_clean = '' OR v_clean = '.' THEN
         RETURN NULL;
     END IF;
-    IF v_clean ~ '^[0-9]{4,6}$' THEN
+    IF v_clean ~ '^[0-9]{1,6}$' THEN
         RETURN DATE '1899-12-30' + v_clean::INTEGER;
     END IF;
     IF v_clean ~ '^[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{4}$' THEN

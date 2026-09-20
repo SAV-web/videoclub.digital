@@ -201,6 +201,9 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(contracts.toSlug("Vincent D'Onofrio"), "vincent-d-onofrio");
     assert.equal(contracts.toSlug("Chris O'Dowd"), "chris-o-dowd");
     assert.equal(contracts.toSlug("Jean-Luc Godard"), "jean-luc-godard");
+    assert.equal(contracts.toSlug("Joachim Rønning"), "joachim-ronning");
+    assert.equal(contracts.toSlug("Søren Kierkegaard"), "soren-kierkegaard");
+    assert.equal(contracts.toSlug("Stellan Skarsgård"), "stellan-skarsgard");
   });
 
   test("genreToSlug y countryToSlug aplican whitelist estricta (no fallback algorítmico)", () => {

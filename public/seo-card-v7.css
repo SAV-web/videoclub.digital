@@ -3123,7 +3123,7 @@ body.sidebar-collapsed .sidebar {
 
   &.active {
     position: relative;
-    padding-left: calc(var(--space-sm) + 2px);
+    padding-left: var(--space-xs);
     background-color: var(--color-accent);
     color: #ffffff !important;
     font-weight: 700;
@@ -3136,18 +3136,6 @@ body.sidebar-collapsed .sidebar {
       color: var(--color-text-primary) !important;
       border-left: 3px solid var(--color-accent);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    }
-
-    &::before {
-      content: "▶";
-      position: absolute; left: var(--space-xs); top: 50%;
-      font-size: 0.75em; line-height: 1;
-      transform: translateY(-50%);
-      color: var(--color-accent);
-    }
-
-    :where(html.dark-mode) &::before {
-      color: var(--color-accent);
     }
   }
 }
@@ -3499,8 +3487,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   padding: 4px 2px;
   color: var(--color-text-primary);
   box-shadow: none;
-}
-.filter-link--icon.active::before { content: none; display: none; } 
+} 
 :where(html.dark-mode) .filter-link--icon.active { color: var(--color-text-primary); }
 
 #studios-list-container {
@@ -3639,7 +3626,6 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   padding-left: var(--space-xs); 
 }
-.bento-grid .filter-link.active::before { display: none; }
 .bento-grid .filter-link.is-excluded {
   background-image: linear-gradient(45deg, var(--color-accent-exclude-darker), var(--color-accent-exclude));
   background-color: var(--color-accent-exclude);
@@ -4034,14 +4020,14 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     box-shadow: var(--shadow);
     border: none;
     margin-bottom: 0;
-    animation: modal-poster-fade-in 0.5s ease-out backwards;
+    animation: modal-poster-fade-in 0.25s ease-out backwards;
   }
 }
 
 .is-quick-view img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.03);
-  transition: filter var(--duration-quick, 200ms) ease-in-out, transform var(--duration-quick, 200ms) ease-in-out;
+  transition: filter 140ms ease-in-out, transform 140ms ease-in-out;
 
   &.loaded {
     filter: blur(0);
