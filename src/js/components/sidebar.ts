@@ -138,7 +138,7 @@ function updateRewindButtonState(isOpen: boolean): void {
 }
 
 // Sincroniza el estado visual del sidebar y de sus botones según el viewport (móvil vs escritorio/apaisado)
-export function syncSidebarResponsiveState(): void {
+function syncSidebarResponsiveState(): void {
   const isMobile = isMobileLayout();
   if (isMobile) {
     updateDrawerWidth();
@@ -573,7 +573,7 @@ function updateAllFilterControls(): void {
   }
 }
 
-export function isPredefinedFilterItem(type: string, value: string): boolean {
+function isPredefinedFilterItem(type: string, value: string): boolean {
   if (!value || !type) return false;
   const normVal = value.trim().toLowerCase();
 
@@ -614,7 +614,7 @@ export function isPredefinedFilterItem(type: string, value: string): boolean {
   return false;
 }
 
-export function updatePillVisibility(): void {
+function updatePillVisibility(): void {
   Object.keys(sectionContainers).forEach(type => {
     const cont = sectionContainers[type];
     if (!cont) return;
@@ -735,6 +735,12 @@ async function handleMyListToggle(): Promise<void> {
   await loadAndRenderMovies(1);
 }
 
+function clearActiveSearchTerm(): void {
+  setSearchTerm("");
+  const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
+  if (mainSearchInput) mainSearchInput.value = "";
+}
+
 async function handleFilterChangeOptimistic(type: string, value: string | null, forceSet = false): Promise<void> {
   clearToast();
   const previousFilters = getActiveFilters();
@@ -752,8 +758,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
 
     appEvents.emit("updateSidebarUI");
 
-    const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
-    if (mainSearchInput) mainSearchInput.value = "";
+    clearActiveSearchTerm();
 
     renderFilterPills();
     appEvents.emit("uiActionTriggered");
@@ -787,9 +792,7 @@ async function handleFilterChangeOptimistic(type: string, value: string | null, 
 
   // Si activamos un filtro, limpiamos la búsqueda de texto
   if (newValue && previousFilters.searchTerm) {
-    setSearchTerm("");
-    const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
-    if (mainSearchInput) mainSearchInput.value = "";
+    clearActiveSearchTerm();
   }
 
   setFilter(type, newValue);
@@ -820,9 +823,7 @@ async function handleToggleExcludedFilterOptimistic(type: string, value: string)
   const previousState = getActiveFilters();
 
   if (previousState.searchTerm) {
-    setSearchTerm("");
-    const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
-    if (mainSearchInput) mainSearchInput.value = "";
+    clearActiveSearchTerm();
   }
 
   if (!toggleExcludedFilter(type, value)) return;
@@ -1585,7 +1586,9 @@ export function initSidebar(): void {
         FILTER_CONFIG.director.items = directors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
         populateFilterSection('director');
       }
-    } catch (e) { }
+    } catch (e) {
+      if (import.meta.env.DEV) console.error("Error cargando filtros dinámicos:", e);
+    }
   };
 
   sidebarUnsubscribers.push(

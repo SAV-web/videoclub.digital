@@ -5,11 +5,13 @@
  */
 
 export function createMockDomElement(tagName = "div", extraProps = {}) {
+  const { className: extraClassName, textContent: initialTextContent, ...restProps } = extraProps;
   const listeners = {};
   const classListSet = new Set();
   const dataset = {};
   const attributes = {};
   const children = [];
+  let _textContent = initialTextContent !== undefined && initialTextContent !== null ? String(initialTextContent) : "";
 
   const el = {
     id: "",
@@ -18,9 +20,24 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     attributes,
     hidden: false,
     disabled: false,
-    textContent: "",
+    get textContent() {
+      if (children.length > 0) {
+        return children.map((c) => (c.textContent !== undefined ? c.textContent : "")).join("");
+      }
+      return _textContent;
+    },
+    set textContent(val) {
+      _textContent = val === null || val === undefined ? "" : String(val);
+      if (val === "") {
+        children.length = 0;
+      }
+    },
     innerHTML: "",
-    style: {},
+    style: {
+      setProperty: (k, v) => { el.style[k] = String(v); },
+      getPropertyValue: (k) => el.style[k] || "",
+      removeProperty: (k) => { delete el.style[k]; },
+    },
     children,
     focus: () => {},
     blur: () => {},
@@ -58,9 +75,11 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
       }
     },
     dispatchEvent: (event) => {
-      const type = typeof event === "string" ? event : event.type;
-      const handlers = listeners[type] || [];
-      handlers.forEach((h) => h(event));
+      const e = typeof event === "string" ? { type: event } : event;
+      if (!e.stopPropagation) e.stopPropagation = () => {};
+      if (!e.preventDefault) e.preventDefault = () => {};
+      const handlers = listeners[e.type] || [];
+      handlers.forEach((h) => h(e));
     },
     replaceChildren: (...newChildren) => {
       el.textContent = "";
@@ -80,6 +99,7 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
       return null;
     },
     appendChild: (child) => {
+      child.parentElement = el;
       children.push(child);
       return child;
     },
@@ -88,10 +108,17 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     },
     removeChild: (child) => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+        child.parentElement = null;
+      }
       return child;
     },
-    remove: () => {},
+    remove: () => {
+      if (el.parentElement && typeof el.parentElement.removeChild === "function") {
+        el.parentElement.removeChild(el);
+      }
+    },
     setAttribute: (k, v) => { attributes[k] = String(v); },
     removeAttribute: (k) => { delete attributes[k]; },
     getAttribute: (k) => (k in attributes ? attributes[k] : null),
@@ -111,8 +138,12 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     setPointerCapture: () => {},
     releasePointerCapture: () => {},
     _getListenerCount: (event) => (listeners[event] ? listeners[event].length : 0),
-    ...extraProps,
+    ...restProps,
   };
+
+  if (extraClassName) {
+    el.className = extraClassName;
+  }
 
   if (tagName.toLowerCase() === "template" || (extraProps.id && extraProps.id.includes("template"))) {
     if (!el.content) {
@@ -135,8 +166,12 @@ export function createMockWindow(initialPath = "/", initialSearch = "") {
     innerWidth: 1024,
     innerHeight: 768,
     scrollY: 0,
+    scrollTo: () => {},
+    scroll: () => {},
+    scrollBy: () => {},
     _isTestEnv: true,
     location: {
+      origin: "http://localhost",
       get pathname() { return _pathname; },
       get search() { return _search; },
       get href() { return _href; },
@@ -206,6 +241,7 @@ export function setupGlobalDom(options = {}) {
   globalThis.window = options.window || createMockWindow(options.pathname || "/", options.search || "");
 
   globalThis.document = {
+    title: "",
     body,
     documentElement: html,
     head,

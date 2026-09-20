@@ -20,6 +20,7 @@ function setupMockProfileDom() {
     domMap[id] = createMockDomElement("div", {
       id,
       hidden: true,
+      reset: () => {},
       children: [
         { style: {}, lastElementChild: { style: {} } },
         { style: {}, lastElementChild: { style: {} } },
@@ -48,15 +49,17 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
   let stateModule;
   let apiModule;
   let localStoreModule;
+  let authModule;
 
   before(async () => {
     viteEnv = await startViteSsrServer([
       "/src/js/components/profile.ts",
       "/src/js/state.ts",
       "/src/js/api.ts",
-      "/src/js/localStore.ts"
+      "/src/js/localStore.ts",
+      "/src/js/auth.ts"
     ]);
-    [profileModule, stateModule, apiModule, localStoreModule] = viteEnv.modules;
+    [profileModule, stateModule, apiModule, localStoreModule, authModule] = viteEnv.modules;
   });
 
   after(async () => {
@@ -296,6 +299,125 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
       supabase.auth.getSession = originalGetSession;
       supabase.from = originalFrom;
       stateModule.clearUserMovieData();
+      teardown();
+    }
+  });
+
+  test("updatePassword delega en supabase.auth.updateUser con la contraseña indicada", async () => {
+    const supabase = await apiModule.getSupabase();
+    const originalUpdateUser = supabase.auth.updateUser;
+    let capturedParam = null;
+
+    supabase.auth.updateUser = async (param) => {
+      capturedParam = param;
+      return { data: { user: { id: "test-user-id" } }, error: null };
+    };
+
+    try {
+      const res = await authModule.updatePassword("nueva-clave-segura-123");
+      assert.deepEqual(capturedParam, { password: "nueva-clave-segura-123" });
+      assert.equal(res.error, null);
+      assert.equal(res.data.user.id, "test-user-id");
+    } finally {
+      supabase.auth.updateUser = originalUpdateUser;
+    }
+  });
+
+  test("setupProfileModal: rechaza contraseñas menores de 8 caracteres antes de invocar a Supabase", async () => {
+    const { domMap, teardown } = setupMockProfileDom();
+    const supabase = await apiModule.getSupabase();
+    const originalUpdateUser = supabase.auth.updateUser;
+    let updateUserCalled = false;
+
+    supabase.auth.updateUser = async () => {
+      updateUserCalled = true;
+      return { data: null, error: null };
+    };
+
+    try {
+      const cleanup = profileModule.setupProfileModal();
+
+      domMap["profile-new-password"].value = "12345"; // < 8 caracteres
+      domMap["profile-password-form"].dispatchEvent({ type: "submit", preventDefault: () => {} });
+
+      assert.equal(updateUserCalled, false, "No debe invocar updateUser si la contraseña tiene menos de 8 caracteres");
+      assert.equal(domMap["profile-security-message"].hidden, false);
+      assert.equal(domMap["profile-security-message"].textContent, "La contraseña debe tener al menos 8 caracteres.");
+      assert.ok(domMap["profile-security-message"].className.includes("auth-message--error"));
+
+      cleanup();
+    } finally {
+      supabase.auth.updateUser = originalUpdateUser;
+      teardown();
+    }
+  });
+
+  test("setupProfileModal: actualiza la contraseña con éxito y limpia el formulario", async () => {
+    const { domMap, teardown } = setupMockProfileDom();
+    const supabase = await apiModule.getSupabase();
+    const originalUpdateUser = supabase.auth.updateUser;
+    let updatedPayload = null;
+
+    supabase.auth.updateUser = async (payload) => {
+      updatedPayload = payload;
+      return { data: { user: { id: "user-123" } }, error: null };
+    };
+
+    try {
+      const cleanup = profileModule.setupProfileModal();
+
+      domMap["profile-new-password"].value = "ContraseñaValida!2026";
+      let formResetCalled = false;
+      domMap["profile-password-form"].reset = () => {
+        formResetCalled = true;
+      };
+
+      domMap["profile-password-form"].dispatchEvent({ type: "submit", preventDefault: () => {} });
+
+      // Esperar resolución de microtareas asíncronas
+      await new Promise((r) => setTimeout(r, 30));
+
+      assert.deepEqual(updatedPayload, { password: "ContraseñaValida!2026" });
+      assert.equal(domMap["profile-security-message"].hidden, false);
+      assert.equal(domMap["profile-security-message"].textContent, "¡Contraseña actualizada con éxito!");
+      assert.ok(domMap["profile-security-message"].className.includes("auth-message--success"));
+      assert.equal(formResetCalled, true, "El formulario debe resetearse tras actualizar la contraseña");
+      assert.equal(domMap["profile-password-submit-btn"].disabled, false);
+      assert.equal(domMap["profile-password-submit-btn"].textContent, "Actualizar Contraseña");
+
+      cleanup();
+    } finally {
+      supabase.auth.updateUser = originalUpdateUser;
+      teardown();
+    }
+  });
+
+  test("setupProfileModal: gestiona errores devueltos por Supabase y muestra mensaje descriptivo", async () => {
+    const { domMap, teardown } = setupMockProfileDom();
+    const supabase = await apiModule.getSupabase();
+    const originalUpdateUser = supabase.auth.updateUser;
+
+    supabase.auth.updateUser = async () => {
+      return { data: null, error: new Error("Sesión expirada. Inicia sesión de nuevo.") };
+    };
+
+    try {
+      const cleanup = profileModule.setupProfileModal();
+
+      domMap["profile-new-password"].value = "NuevaPassValida888";
+      domMap["profile-password-form"].dispatchEvent({ type: "submit", preventDefault: () => {} });
+
+      await new Promise((r) => setTimeout(r, 30));
+
+      assert.equal(domMap["profile-security-message"].hidden, false);
+      assert.equal(domMap["profile-security-message"].textContent, "Sesión expirada. Inicia sesión de nuevo.");
+      assert.ok(domMap["profile-security-message"].className.includes("auth-message--error"));
+      assert.equal(domMap["profile-password-submit-btn"].disabled, false);
+      assert.equal(domMap["profile-password-submit-btn"].textContent, "Actualizar Contraseña");
+
+      cleanup();
+    } finally {
+      supabase.auth.updateUser = originalUpdateUser;
       teardown();
     }
   });

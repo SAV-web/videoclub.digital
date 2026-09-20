@@ -77,6 +77,10 @@ export function getSupabase(): Promise<SupabaseClient> {
               ilike: () => queryObj,
               order: () => queryObj,
               abortSignal: () => queryObj,
+              limit: () => queryObj,
+              in: () => queryObj,
+              maybeSingle: () => Promise.resolve({ data: null, error: null }),
+              single: () => Promise.resolve({ data: null, error: null }),
               range: () => Promise.resolve({ data: [], error: null, count: 0 }),
               upsert: createMockQuery,
             };
