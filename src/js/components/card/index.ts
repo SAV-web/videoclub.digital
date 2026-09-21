@@ -3,15 +3,15 @@
 // =================================================================
 //          COMPONENTE: Movie Card (Ficha e Interacciones)
 // =================================================================
-// FICHERO: src/js/components/card.ts
+// FICHERO: src/js/components/card/index.ts
 // RESPONSABILIDAD: Gestión del renderizado y API pública de tarjeta.
 // =================================================================
 
-import { CONFIG, CSS_CLASSES, ICONS } from "../constants.js";
-import { createElement } from "../utils.js";
-import { hasActiveMeaningfulFilters } from "../state.js";
+import { CONFIG, CSS_CLASSES, ICONS } from "../../constants.js";
+import { createElement } from "../../utils.js";
+import { hasActiveMeaningfulFilters } from "../../state.js";
 
-import type { MappedMovie, ActiveFilters, VipData, PersonDetails } from "../types.js";
+import type { MappedMovie, ActiveFilters, VipData, PersonDetails } from "../../types.js";
 import {
   getCardGeneration,
   getFlippedCard,
@@ -19,7 +19,7 @@ import {
   setFlipOnboardingTimeout,
   getFlipBackTimeout,
   setFlipBackTimeout
-} from "./card/context.js";
+} from "./context.js";
 
 import {
   unflipAllCards,
@@ -32,13 +32,13 @@ import {
   createPersonCardElement,
   createCollectionCardElement,
   createStudioCardElement
-} from "./card/cardElement.js";
+} from "./cardElement.js";
 
 import {
   disposeCardEvents,
   initCardInteractions,
   cleanupLazyImages
-} from "./card/lifecycle.js";
+} from "./lifecycle.js";
 
 // Re-exportar API pública para compatibilidad con consumidores externos hasta el paso 4
 export {

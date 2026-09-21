@@ -382,7 +382,7 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
   before(async () => {
     viteEnv = await startViteSsrServer([
       "/src/js/state.ts",
-      "/src/js/components/card.ts",
+      "/src/js/components/card/index.ts",
     ]);
     [stateModule, cardModule] = viteEnv.modules;
   });

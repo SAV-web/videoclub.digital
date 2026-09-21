@@ -9,7 +9,7 @@
 
 // modal.css se importa de forma eager en main.css para prevenir FOUC
 import { openAccessibleModal, closeAccessibleModal, setIsClosingModalViaHistory, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
-import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist, prefetchImageUrl } from "./card.js";
+import { updateCardUI, initializeCard, unflipAllCards, toggleWatchlist, prefetchImageUrl } from "./card/index.js";
 
 import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rating.js";
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";

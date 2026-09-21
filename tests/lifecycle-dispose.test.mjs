@@ -20,7 +20,7 @@ let mainModule;
 before(async () => {
   viteEnv = await startViteSsrServer([
     "/src/js/state.ts",
-    "/src/js/components/card.ts",
+    "/src/js/components/card/index.ts",
     "/src/js/components/modal.ts",
     "/src/js/components/sidebar/index.ts",
     "/src/js/main.ts",

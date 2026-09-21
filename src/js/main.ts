@@ -92,7 +92,7 @@ import {
   initCardInteractions,
   updateCardUI,
   disposeCardEvents
-} from "./components/card.js";
+} from "./components/card/index.js";
 
 
 // Interfaces para carga dinámica de módulos

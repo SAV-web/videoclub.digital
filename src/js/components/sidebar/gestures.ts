@@ -1,7 +1,7 @@
 import { CONFIG, CSS_CLASSES, ICONS } from "../../constants.js";
 import { debounce, triggerHapticFeedback, triggerPopAnimation, executeViewTransition, LocalStore } from "../../utils.js";
 import { getCurrentPage, appEvents } from "../../state.js";
-import { unflipAllCards } from "../card.js";
+import { unflipAllCards } from "../card/index.js";
 import { closeModal } from "../modal.js";
 import { lockGlobalInteractions, areInteractionsLocked } from "../../ui.js";
 import { loadAndRenderMovies } from "../../main.js";
