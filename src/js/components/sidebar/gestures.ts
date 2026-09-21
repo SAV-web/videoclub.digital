@@ -4,7 +4,7 @@ import { getCurrentPage, appEvents } from "../../state.js";
 import { unflipAllCards } from "../card/index.js";
 import { closeModal } from "../modal.js";
 import { lockGlobalInteractions, areInteractionsLocked } from "../../ui.js";
-import { loadAndRenderMovies } from "../../main.js";
+import { loadAndRenderMovies } from "../../renderEngine.js";
 import { dom, isMobileLayout, sidebarUnsubscribers } from "./context.js";
 
 declare module "../../state.js" {

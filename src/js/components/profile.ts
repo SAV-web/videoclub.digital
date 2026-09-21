@@ -264,6 +264,9 @@ export async function openProfileModal(): Promise<void> {
   const dom = getProfileDom();
   if (!dom.modal || !dom.overlay) return;
 
+  dom.modal.style.transform = "";
+  dom.modal.classList.remove("is-dragging");
+
   lastFocusedElement = document.activeElement as HTMLElement | null;
 
   const session = await getCurrentSession();
@@ -326,6 +329,9 @@ export async function openProfileModal(): Promise<void> {
 export function closeProfileModal(isPopstate = false, options: { suppressHistoryBack?: boolean } = {}): void {
   const dom = getProfileDom();
   if (!dom.modal || !dom.overlay) return;
+
+  dom.modal.style.transform = "";
+  dom.modal.classList.remove("is-dragging");
 
   closeAccessibleModal(dom.modal, dom.overlay);
 
@@ -587,11 +593,22 @@ export function setupProfileModal(): () => void {
     unsubscribers.push(() => dom.closeBtn?.removeEventListener("click", onClose));
   }
 
-  // 2. Cierre al pulsar overlay
+  // 2. Cierre al pulsar fuera del cuadro de perfil (overlay o backdrop exterior de la modal en desktop)
   if (dom.overlay) {
     const onOverlayClick = () => closeProfileModal();
     dom.overlay.addEventListener("click", onOverlayClick);
     unsubscribers.push(() => dom.overlay?.removeEventListener("click", onOverlayClick));
+  }
+
+  if (dom.modal) {
+    const onModalClick = (e: MouseEvent) => {
+      // Si el click ocurre en el contenedor modal de fondo (fuera de .profile-box)
+      if (e.target === dom.modal) {
+        closeProfileModal();
+      }
+    };
+    dom.modal.addEventListener("click", onModalClick);
+    unsubscribers.push(() => dom.modal?.removeEventListener("click", onModalClick));
   }
 
   // 3. Accesos directos a catálogo desde las estadísticas
@@ -848,6 +865,76 @@ export function setupProfileModal(): () => void {
     };
     window.addEventListener("keydown", onKeyDown);
     unsubscribers.push(() => window.removeEventListener("keydown", onKeyDown));
+  }
+
+  // 12. Gesto táctil de deslizamiento hacia abajo para cerrar (Bottom Sheet Swipe Down en móvil)
+  if (dom.modal) {
+    const modalEl = dom.modal;
+    const scrollContent = modalEl.querySelector<HTMLElement>(".profile-content-scroll") || modalEl;
+    let startY = 0;
+    let startX = 0;
+    let isDragging = false;
+    let startTime = 0;
+    let currentY = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (window.innerWidth > 768) return;
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      isDragging = false;
+      startTime = Date.now();
+      modalEl.classList.remove("is-dragging");
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (window.innerWidth > 768) return;
+      const clientY = e.touches[0].clientY;
+      const clientX = e.touches[0].clientX;
+      const deltaY = clientY - startY;
+      const deltaX = clientX - startX;
+
+      if (!isDragging) {
+        if (Math.abs(deltaY) < 5 && Math.abs(deltaX) < 5) return;
+        // Solo iniciar arrastre hacia abajo si el scroll interno está en el tope
+        if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && scrollContent.scrollTop <= 5) {
+          isDragging = true;
+          modalEl.classList.add("is-dragging");
+        }
+      }
+
+      if (isDragging) {
+        if (e.cancelable) e.preventDefault();
+        currentY = Math.max(0, deltaY);
+        modalEl.style.transform = `translate(-50%, ${currentY}px)`;
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isDragging) return;
+      modalEl.classList.remove("is-dragging");
+      const duration = Date.now() - startTime;
+      const velocityY = currentY / (duration || 1);
+
+      if (currentY > 100 || velocityY > 0.5) {
+        closeProfileModal();
+      } else {
+        modalEl.style.transform = "";
+      }
+      isDragging = false;
+      currentY = 0;
+    };
+
+    modalEl.addEventListener("touchstart", onTouchStart, { passive: true });
+    modalEl.addEventListener("touchmove", onTouchMove, { passive: false });
+    modalEl.addEventListener("touchend", onTouchEnd, { passive: true });
+    modalEl.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+    unsubscribers.push(() => {
+      modalEl.removeEventListener("touchstart", onTouchStart);
+      modalEl.removeEventListener("touchmove", onTouchMove);
+      modalEl.removeEventListener("touchend", onTouchEnd);
+      modalEl.removeEventListener("touchcancel", onTouchEnd);
+    });
   }
 
   return () => {

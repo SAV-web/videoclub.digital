@@ -50,7 +50,7 @@
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing & Calidad** | Node.js Test Runner nativo (163 tests en 30 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
+| **Testing & Calidad** | Node.js Test Runner nativo (183 tests en 32 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
 
 ---
 
@@ -84,20 +84,31 @@ VIDEOCLUB.DIGITAL/
 │   │   ├── layout.css           # Estructura principal y grid adaptativo
 │   │   └── components/          # Estilos scopeados por componente (card, modal, sidebar con alto contraste, etc.)
 │   ├── js/                      # Lógica de la aplicación en TypeScript
-│   │   ├── main.ts              # Orquestador del DOM y flujo de renderizado
+│   │   ├── main.ts              # Director de orquesta SPA (arranque, auth y eventos globales)
+│   │   ├── renderEngine.ts      # Motor de catálogo (loadAndRenderMovies, paginación, SEO)
+│   │   ├── router.ts            # Sincronizador de URL, Pretty Paths e History API
+│   │   ├── scrollWatcher.ts     # Monitorización pasiva de scroll (rAF, header dinámico)
 │   │   ├── state.ts             # Estado inmutable global y sincronización con URL
 │   │   ├── api.ts               # Capa de datos, reintentos, deduplicación e integración Supabase
 │   │   ├── contracts.ts         # Contratos, guardas de tipos, getAppBasePath() y normalizadores
 │   │   ├── types.ts             # Interfaces TypeScript centralizadas
 │   │   ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
 │   │   ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación, Theme Toggle)
-│   │   └── components/          # Módulos UI (card, modal, sidebar, rating, yearSlider)
+│   │   └── components/          # Módulos UI
+│   │       ├── card/            # Tarjeta/Ficha modular (index, context, cardElement, lifecycle)
+│   │       ├── sidebar/         # Menú lateral modular (index, context, filters, gestures, yearFilter)
+│   │       ├── modal.ts         # Vista rápida (Quick View / Bottom Sheet)
+│   │       ├── profile.ts       # Perfil de usuario y estadísticas cinemáticas
+│   │       ├── rating.ts        # Sistema interactivo de puntuación por estrellas
+│   │       └── yearSlider.ts    # Control de rango dual nativo
 │   └── shared/                  # Fuente Única de Verdad (SSOT) compartida entre SPA y Edge SEO
 │       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
 │       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
 │       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
-├── tests/                       # Suite de 163 pruebas unitarias y de integración (30 suites)
+├── tests/                       # Suite de 184 pruebas unitarias y de integración (32 suites)
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
+│   ├── card.test.mjs            # Tests de caracterización de tarjeta y renderizado
+│   ├── lifecycle-dispose.test.mjs # Ciclo de vida y desmontaje de Card, Modal, Sidebar y App
 │   ├── url-contract.test.mjs    # Test del contrato canónico de URLs y Tabla de Prohibidos
 │   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (Edge SSR, proxy y headers)
 │   ├── profile-stats.test.mjs   # Estadísticas de usuario y reconciliación de login
@@ -137,7 +148,7 @@ Abre `http://localhost:5173` en tu navegador.
 npm run check
 ```
 
-### 4. Ejecución de la suite completa de tests (163 pruebas en 30 suites)
+### 4. Ejecución de la suite completa de tests (184 pruebas en 32 suites)
 ```bash
 npm run test
 ```

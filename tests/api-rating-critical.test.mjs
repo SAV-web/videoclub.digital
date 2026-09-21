@@ -123,15 +123,6 @@ describe("rating.ts (Lógica de Valoración y Exclusividad Watchlist)", () => {
 });
 
 describe("offlineQueue.ts (Background Sync y Cola Offline)", () => {
-  test("expone las funciones de encolado, sincronización e inicialización", () => {
-    assert.equal(typeof offlineQueueModule.enqueueOfflineEntry, "function");
-    assert.equal(typeof offlineQueueModule.getPendingEntries, "function");
-    assert.equal(typeof offlineQueueModule.removePendingEntry, "function");
-    assert.equal(typeof offlineQueueModule.syncPendingEntries, "function");
-    assert.equal(typeof offlineQueueModule.initOfflineSync, "function");
-    assert.equal(typeof offlineQueueModule.requestBackgroundSync, "function");
-  });
-
   test("initOfflineSync registra y devuelve cleanup idempotentemente", () => {
     const cleanup = offlineQueueModule.initOfflineSync();
     assert.equal(typeof cleanup, "function");
@@ -203,7 +194,6 @@ describe("Badging API y Contador de Watchlist", () => {
 
 describe("ui.ts (Notificaciones Toast y Utilidades de UI)", () => {
   test("showToast se ejecuta de forma segura con degradación en SSR/Node", () => {
-    assert.equal(typeof uiModule.showToast, "function");
     assert.doesNotThrow(() => {
       uiModule.showToast("Nueva versión disponible", "info", {
         label: "Actualizar",

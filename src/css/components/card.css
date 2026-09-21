@@ -749,6 +749,7 @@ html.dark-mode .bbc-icon {
   -webkit-box-orient: vertical;
   padding-right: 22px;
   line-height: 1.35;
+  min-height: 20px;
 }
 
 .movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] .detail-data {
@@ -874,15 +875,14 @@ html.dark-mode .bbc-icon {
 .expand-content-btn,
 .actors-expand-btn {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  /* Reducir tamaño (de 22px a 18px) */
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: none;
   background-color: var(--color-accent);
   color: var(--color-surface);
-  font-size: 1rem;
-  font-weight: 400;
+  font-size: 0.9rem;
+  font-weight: 500;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -901,7 +901,7 @@ html.dark-mode .bbc-icon {
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
-      transform: scale(1.15);
+      transform: scale(1.06);
       background-color: var(--color-text-primary);
     }
   }
@@ -915,19 +915,19 @@ html.dark-mode .bbc-icon {
     content: "";
     position: absolute;
     inset: -12px;
-    /* Expande 12px por cada lado: 22 + 24 = 46px */
+    /* Expande 12px por cada lado: 16 + 24 = 40px (cumple estándares táctiles WCAG) */
   }
 }
 
 .actors-expand-btn {
-  bottom: 1px;
-  right: 0;
+  bottom: 2px;
+  right: 3px;
 }
 
-/* Alineación milimétrica con actors-expand-btn */
+/* Alineación milimétrica con actors-expand-btn (padding lateral 8px + margen 3px = 11px) */
 .expand-content-btn {
   bottom: 8px;
-  right: var(--space-xs, 8px);
+  right: calc(var(--space-xs, 8px) + 3px);
 }
 
 .flip-card-back.is-expanded .expand-content-btn {

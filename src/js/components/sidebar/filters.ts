@@ -3,7 +3,7 @@ import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, hi
 import { fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions } from "../../api.js";
 import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, appEvents } from "../../state.js";
 import { showToast, clearToast, clearAllSidebarAutocomplete, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI } from "../../ui.js";
-import { loadAndRenderMovies } from "../../main.js";
+import { loadAndRenderMovies } from "../../renderEngine.js";
 import { ActiveFilters, MovieCardElement } from "../../types.js";
 import { dom, sectionContainers, isMobileLayout, sidebarUnsubscribers } from "./context.js";
 import { tryCloseMobileDrawer } from "./gestures.js";

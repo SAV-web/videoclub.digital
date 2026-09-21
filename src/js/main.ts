@@ -1,46 +1,32 @@
 // =================================================================
 //             EL DIRECTOR DE ORQUESTA (main.ts)
 // =================================================================
-// Lee la URL, pide datos a la API, pinta resultados y vigila el scroll.
+// FICHERO: src/js/main.ts
+// RESPONSABILIDAD: Punto de entrada SPA, orquestación de eventos globales,
+// integración del sistema de autenticación y carga bajo demanda.
 // =================================================================
 import "../css/main.css";
 import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
 import {
   debounce,
   triggerPopAnimation,
-  getFriendlyErrorMessage,
-  preloadLcpImage,
-  createAbortableRequest,
   triggerHapticFeedback,
   LocalStore,
-  executeViewTransition,
-  getAdjustedTotalPages,
-  runWhenIdle,
-  normalizeText
+  runWhenIdle
 } from "./utils.js";
 
-import {
-  fetchMovies,
-  fetchUserMovieDataForIds,
-  fetchPersonDetails,
-  fetchGroupDetails,
-  fetchAllUserMovieData,
-  fetchMovieById
-} from "./api.js";
+import { fetchMovieById } from "./api.js";
 import { signOutCurrentUser, onAuthStateChange } from "./auth.js";
 import { clearCheckedUserMovieIds } from "./checkedIds.js";
-import { isAbortError, getAppBasePath, toSlug, createAppError, ERROR_CODES } from "./contracts.js";
+import { getAppBasePath } from "./contracts.js";
 import { getAllLocalEntries, clearLocalStore } from "./localStore.js";
 import { mergeOnLogin, initSyncListeners, scheduleSync } from "./syncManager.js";
 import {
   dom,
-  renderPagination,
-  updateHeaderPaginationState,
   prefetchNextPage,
   setupAuthModal,
   setupLegalModal,
   updateTypeFilterUI,
-  updateTotalResultsUI,
   clearAllSidebarAutocomplete,
   showToast,
   clearToast,
@@ -58,12 +44,9 @@ import {
 
 
 import {
-  getState,
   getActiveFilters,
   getCurrentPage,
   getTotalMovies,
-  setCurrentPage,
-  setTotalMovies,
   setFilter,
   setSearchTerm,
   setSort,
@@ -71,23 +54,24 @@ import {
   resetFiltersState,
   setUserMovieData,
   clearUserMovieData,
-  syncStateWithUrl,
-  syncStateWithUrlParams,
-  canonicalizeCurrentUrl,
   stateToPrettyUrl,
-  stateToUrlParams,
-  appEvents,
-  updateUserDataForMovie
+  appEvents
 } from "./state.js";
-import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
-import { MappedMovie, ActiveFilters, VipData, MovieCardElement } from "./types.js";
+import {
+  saveCurrentScrollPosition,
+  getSavedScrollPosition,
+  readUrlAndSetState,
+  updateUrl,
+  normalizeUrl
+} from "./router.js";
+export { saveCurrentScrollPosition };
+import { loadAndRenderMovies, type RenderOptions } from "./renderEngine.js";
+export { loadAndRenderMovies, type RenderOptions };
+import { initScrollWatcher, disposeScrollWatcher } from "./scrollWatcher.js";
+export { initScrollWatcher, disposeScrollWatcher };
+import type { MovieCardElement } from "./types.js";
 import type { User } from "@supabase/supabase-js";
 import {
-  renderMovieGrid,
-  renderNoResults,
-  renderSkeletons,
-  renderErrorState,
-  runFlipOnboarding,
   handleCardClick,
   initCardInteractions,
   updateCardUI,
@@ -127,344 +111,6 @@ async function loadSidebar(): Promise<SidebarModule | null> {
 }
 
 
-
-export interface RenderOptions {
-  replaceHistory?: boolean;
-  forceSkeleton?: boolean;
-  isYearFilter?: boolean;
-  restoreScrollY?: number | null;
-}
-
-const scrollPositionsCache = new Map<string, number>();
-
-export function saveCurrentScrollPosition(): void {
-  if (typeof window === "undefined") return;
-  const currentKey = `${window.location.pathname}${window.location.search}`;
-  const scrollY = Math.max(0, window.scrollY);
-  scrollPositionsCache.set(currentKey, scrollY);
-
-  try {
-    const currentState = window.history.state || {};
-    if (currentState.scrollY !== scrollY) {
-      window.history.replaceState({ ...currentState, scrollY }, "", window.location.href);
-    }
-  } catch {}
-}
-
-// --- 1. MOTOR PRINCIPAL (Cargar y Pintar Películas) ---
-export async function loadAndRenderMovies(
-  page = 1,
-  { replaceHistory = false, forceSkeleton = false, isYearFilter = false, restoreScrollY = null }: RenderOptions = {}
-): Promise<void> {
-  const signal = createAbortableRequest("movie-grid-load").signal;
-
-  // 1. Actualizar estado -> 2. Actualizar URL -> 3. Actualizar SEO -> 4. Lanzar fetch
-  setCurrentPage(page);
-  updateUrl({ replace: replaceHistory });
-  updatePageTitle();
-  updateBreadcrumbData(getActiveFilters());
-
-  document.body.classList.add(CSS_CLASSES.IS_FETCHING);
-  dom.gridContainer?.classList.add(CSS_CLASSES.IS_FETCHING);
-  dom.gridContainer?.setAttribute("aria-busy", "true");
-
-  let skeletonTimeout: ReturnType<typeof setTimeout> | null = null;
-  if (forceSkeleton) {
-    renderSkeletons(dom.gridContainer, dom.paginationContainer);
-  } else {
-    interface NetworkInfo {
-      effectiveType?: "slow-2g" | "2g" | "3g" | "4g";
-    }
-    const nav = navigator as Navigator & {
-      connection?: NetworkInfo;
-      mozConnection?: NetworkInfo;
-      webkitConnection?: NetworkInfo;
-    };
-    const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
-    const effType = connection?.effectiveType;
-    const skeletonDelay = isYearFilter ? 300 : (effType === "slow-2g" ? 0 : effType === "2g" ? 50 : effType === "3g" ? 100 : 150);
-
-    skeletonTimeout = setTimeout(() => {
-      renderSkeletons(dom.gridContainer, dom.paginationContainer);
-    }, skeletonDelay);
-  }
-
-  const currentKnownTotal = getTotalMovies();
-  let activeFilters = getActiveFilters();
-  updateHeaderPaginationState(getCurrentPage(), currentKnownTotal);
-  updateTypeFilterUI(activeFilters.mediaType as "movies" | "series" | "all");
-
-  try {
-    let vipData: VipData | null = null;
-    let hasVip = false;
-
-    // Si buscamos por un VIP (Tarantino), cargamos su cara grande primero
-    if (!activeFilters.myList && !activeFilters.searchTerm) {
-      const vipType = activeFilters.director ? "director" : (activeFilters.actor ? "actor" : null);
-      const vipName = activeFilters.director || activeFilters.actor;
-
-      if (vipType && vipName) {
-        const personData = await fetchPersonDetails(vipType, vipName);
-        if (personData) {
-          // Si el nombre canónico de la BD difiere del filtro reconstruido desde URL (ej. guiones o mayúsculas),
-          // restauramos el nombre canónico en el estado activo solo si representan la misma persona (mismo slug/normalización).
-          if (personData.name && personData.name !== vipName) {
-            if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
-              setFilter(vipType, personData.name, true);
-              activeFilters = getActiveFilters();
-              updatePageTitle();
-              updateBreadcrumbData(activeFilters);
-            }
-          }
-
-          const isVip = personData.vip === 1 || Boolean(personData.birthday);
-          if (isVip) {
-            const personSlug = personData.slug || toSlug(personData.name);
-            preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
-            hasVip = true;
-            if (page === 1) vipData = { type: "person", data: personData };
-          }
-        }
-      } else if (activeFilters.selection) {
-        const groupDetails = await fetchGroupDetails("selection", activeFilters.selection);
-        if (page === 1) {
-          vipData = {
-            type: "collection",
-            code: activeFilters.selection,
-            thumbhash_st: groupDetails?.thumbhash_st || null
-          };
-        }
-        hasVip = true;
-      } else if (activeFilters.studio) {
-        const groupDetails = await fetchGroupDetails("studio", activeFilters.studio);
-        if (page === 1) {
-          vipData = {
-            type: "studio",
-            code: activeFilters.studio,
-            thumbhash_st: groupDetails?.thumbhash_st || null
-          };
-        }
-        hasVip = true;
-      }
-    }
-
-    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-    const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
-
-    let fetchLimit: number = basePageSize;
-    let fetchOffset = (page - 1) * basePageSize;
-
-    if (hasVip) {
-      if (page === 1) {
-        fetchLimit = firstPageLimit - 1;
-        fetchOffset = 0;
-      } else {
-        fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
-        fetchOffset = ((page - 1) * basePageSize) - 1;
-      }
-    } else {
-      if (page === 1) {
-        fetchLimit = firstPageLimit;
-      } else {
-        fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
-      }
-    }
-
-    const shouldRequestCount = isYearFilter || (page === 1) || (currentKnownTotal === 0);
-
-    let result = await fetchMovies(
-      activeFilters,
-      page,
-      fetchLimit,
-      signal,
-      shouldRequestCount,
-      fetchOffset
-    );
-
-    if (skeletonTimeout) clearTimeout(skeletonTimeout);
-
-    if (result.aborted) {
-      if (signal.aborted) return;
-      // Si la petición fue abortada externamente pero este signal sigue activo,
-      // reintentamos de forma transparente una vez antes de desistir
-      const retryResult = await fetchMovies(
-        activeFilters,
-        page,
-        fetchLimit,
-        signal,
-        shouldRequestCount,
-        fetchOffset
-      );
-      if (retryResult.aborted || signal.aborted) return;
-      result = retryResult;
-    }
-
-    const { items: movies, total: returnedTotal } = result;
-
-    const effectiveTotal = returnedTotal >= 0 ? returnedTotal : currentKnownTotal;
-
-    // --- OPTIMIZACIÓN FILTRO DE AÑO ---
-    if (isYearFilter) {
-      const gridTotalItems = hasVip ? effectiveTotal + 1 : effectiveTotal;
-      const totalPages = getAdjustedTotalPages(gridTotalItems, basePageSize);
-
-      // 1. Si el número total de películas CAMBIÓ o la página actual excede el límite de páginas (ej: estamos en pág 2 pero solo hay 1 página):
-      if ((currentKnownTotal > 0 && effectiveTotal !== currentKnownTotal) || page > totalPages) {
-        const p1Limit = (hasVip) ? firstPageLimit - 1 : firstPageLimit;
-        const p1Result = await fetchMovies(activeFilters, 1, p1Limit, signal, false, 0);
-        if (p1Result.aborted) return;
-
-        const p1Movies = p1Result.items || [];
-        setCurrentPage(1);
-
-        updateUrl({ replace: replaceHistory });
-
-        await updateDomWithResults(p1Movies, effectiveTotal, vipData, hasVip);
-        const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
-        window.scrollTo({ top: targetScroll, behavior: "auto" });
-        return;
-      }
-
-      // 2. Si el total NO cambió y estamos dentro del rango de páginas, comprobamos si las películas a renderizar en la página actual son idénticas:
-      const lastPageSlots = gridTotalItems % basePageSize || basePageSize;
-      const isOrphanPage = (Math.ceil(gridTotalItems / basePageSize) > 1) && lastPageSlots <= 2;
-      let slotBudget: number = basePageSize;
-      if (page === totalPages) {
-        slotBudget = isOrphanPage ? basePageSize + lastPageSlots : lastPageSlots;
-      }
-      const currentLimit = (page === 1 && hasVip) ? slotBudget - 1 : slotBudget;
-      const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
-
-      const currentCardEls = Array.from(dom.gridContainer?.querySelectorAll<HTMLElement>('.movie-card') || []);
-      const currentCardIds = currentCardEls.map((el) => el.dataset.movieId || "").filter(Boolean);
-      const newCardIds = moviesToRender.map((m) => String(m.id));
-
-      const isIdenticalPage = currentCardIds.length === newCardIds.length &&
-        currentCardIds.every((id, idx) => id === newCardIds[idx]);
-
-      if (isIdenticalPage) {
-        // Ningún cambio en las fichas en pantalla: actualizamos estado y metadatos sin refrescar el grid ni hacer scroll
-        setTotalMovies(effectiveTotal);
-        updateTotalResultsUI(effectiveTotal, movies);
-        updateStructuredData(movies, effectiveTotal);
-        updateBreadcrumbData(getActiveFilters());
-        updatePageTitle(movies);
-
-        const logicalGridTotalItems = isOrphanPage ? totalPages * basePageSize : gridTotalItems;
-        if (totalPages > 1) {
-          renderPagination(dom.paginationContainer, logicalGridTotalItems, page);
-        } else {
-          if (dom.paginationContainer) dom.paginationContainer.textContent = "";
-        }
-        updateHeaderPaginationState(page, logicalGridTotalItems);
-
-        return; // Salida limpia sin refresco del grid ni scroll
-      }
-    }
-
-    if (vipData && (vipData.type === "collection" || vipData.type === "studio")) {
-      vipData.total = effectiveTotal;
-    }
-
-    if (movies && movies.length > 0) {
-      if (document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-        const movieIds = movies.map((m) => m.id);
-        fetchUserMovieDataForIds(movieIds).then((userEntries) => {
-          if (Object.keys(userEntries).length > 0) {
-            for (const [id, entry] of Object.entries(userEntries)) {
-              updateUserDataForMovie(id, entry);
-            }
-            appEvents.emit("userDataUpdated");
-          }
-        }).catch((err) => {
-          if (import.meta.env.DEV) console.error("Error syncing page user data", err);
-        });
-      }
-    }
-
-    // Pinta la cuadrícula con efecto cascada
-    await updateDomWithResults(movies, effectiveTotal, vipData, hasVip);
-    const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
-    window.scrollTo({ top: targetScroll, behavior: "auto" });
-
-  } catch (error: unknown) {
-    if (skeletonTimeout) clearTimeout(skeletonTimeout); // Asegurar limpieza en error
-    if (isAbortError(error, signal)) return;
-
-    const msg = getFriendlyErrorMessage(error);
-    if (msg) showToast(msg, "error");
-    renderErrorState(dom.gridContainer, dom.paginationContainer, msg || "Error desconocido");
-
-    // Re-lanzar para que sidebar.js pueda revertir filtros optimistas
-    if (msg) throw new Error(msg);
-  } finally {
-    if (!signal.aborted) {
-      document.body.classList.remove(CSS_CLASSES.IS_FETCHING);
-      dom.gridContainer?.classList.remove(CSS_CLASSES.IS_FETCHING);
-      dom.gridContainer?.setAttribute("aria-busy", "false");
-    }
-  }
-}
-
-// Ayudante: Pone las pelis en pantalla y actualiza las miguitas de pan (SEO)
-async function updateDomWithResults(
-  movies: MappedMovie[],
-  totalMovies: number,
-  vipData: VipData | null = null,
-  hasVip = false
-): Promise<void> {
-  setTotalMovies(totalMovies);
-  updateTotalResultsUI(totalMovies, movies);
-
-  updateStructuredData(movies, totalMovies);
-  updateBreadcrumbData(getActiveFilters());
-  updatePageTitle(movies);
-
-  const currentPage = getCurrentPage();
-  const activeFilters = getActiveFilters();
-  const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-  const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-  const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
-
-  const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
-
-  if (totalMovies <= 0) {
-    renderNoResults(dom.gridContainer, dom.paginationContainer, activeFilters);
-    updateHeaderPaginationState(1, 0);
-    return;
-  } else {
-    // Calculamos el número de páginas real ajustado por la orfandad
-    const totalPages = getAdjustedTotalPages(gridTotalItems, baseLimit);
-
-    // Determinamos el presupuesto de slots de la página actual
-    const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
-    const isOrphanPage = (Math.ceil(gridTotalItems / baseLimit) > 1) && lastPageSlots <= 2;
-
-    let slotBudget: number = baseLimit;
-    if (currentPage === totalPages) {
-      slotBudget = isOrphanPage ? baseLimit + lastPageSlots : lastPageSlots;
-    }
-
-    // Convertimos el presupuesto de slots en número de películas a renderizar
-    const currentLimit = (currentPage === 1 && hasVip) ? slotBudget - 1 : slotBudget;
-    const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
-
-    await renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
-
-    const logicalGridTotalItems = isOrphanPage ? totalPages * baseLimit : gridTotalItems;
-    if (totalPages > 1) {
-      renderPagination(dom.paginationContainer, logicalGridTotalItems, currentPage);
-    } else {
-      if (dom.paginationContainer) dom.paginationContainer.textContent = "";
-    }
-    updateHeaderPaginationState(currentPage, logicalGridTotalItems);
-  }
-
-  if (currentPage === 1 && totalMovies > 0) {
-    runFlipOnboarding(dom.gridContainer);
-  }
-}
 
 // --- 2. MANEJADORES DE UI (Clícs, Teclado) ---
 
@@ -519,78 +165,6 @@ async function handleSearchInput(): Promise<void> {
 
     appEvents.emit("updateSidebarUI");
     await loadAndRenderMovies(1, { replaceHistory: isContinuingSearch });
-  }
-}
-
-// --- 3. VIGILANTE DE SCROLL (Muy optimizado) ---
-let isTicking = false;
-let lastScrollY = 0;
-let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-let scrollSaveTimer: ReturnType<typeof setTimeout> | null = null;
-let scrollRafId: number | null = null;
-
-function handleGlobalScroll(): void {
-  if (scrollSaveTimer) {
-    clearTimeout(scrollSaveTimer);
-  }
-  scrollSaveTimer = setTimeout(() => {
-    saveCurrentScrollPosition();
-  }, 100);
-
-  if (scrollTimer) {
-    clearTimeout(scrollTimer);
-    scrollTimer = null;
-  }
-  const scrollGen = mainLifecycleGen;
-  scrollTimer = setTimeout(() => {
-    if (scrollGen !== mainLifecycleGen) return;
-    // Prefetch Predictivo: Si el usuario se detiene (mira) cerca del final (>70%)
-    const scrollPos = window.scrollY + window.innerHeight;
-    const docHeight = document.documentElement.scrollHeight;
-
-    if (docHeight > 0 && scrollPos / docHeight > 0.7) {
-      prefetchNextPage(getCurrentPage(), getTotalMovies(), getActiveFilters());
-    }
-  }, 250);
-
-  if (!isTicking) {
-    isTicking = true;
-    scrollRafId = window.requestAnimationFrame(() => {
-      scrollRafId = null;
-      isTicking = false;
-      if (scrollGen !== mainLifecycleGen) return;
-      const currentScrollY = Math.max(0, window.scrollY);
-      const docHeight = document.documentElement.scrollHeight;
-      const vHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-
-      const isMobileLayout = window.innerWidth <= 768 || window.innerHeight <= 500;
-      const isSearchActive = document.activeElement === dom.searchInput;
-      const isKeyboardOpen = vHeight < (window.innerHeight * 0.9);
-      const isAtBottom = (window.innerHeight + currentScrollY) >= (docHeight - 50);
-      const isSearchFocused = dom.mainHeader?.classList.contains("is-search-focused");
-
-      dom.mainHeader?.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 20);
-
-      if (isMobileLayout && dom.mainHeader) {
-        if (isSearchActive || isSearchFocused || isKeyboardOpen) {
-          dom.mainHeader.classList.remove("is-hidden-mobile");
-          lastScrollY = currentScrollY; // Reset ancla
-        } else {
-          const scrollDifference = Math.abs(currentScrollY - lastScrollY);
-
-          if (isAtBottom) {
-            dom.mainHeader.classList.remove("is-hidden-mobile");
-            lastScrollY = currentScrollY;
-          } else if (scrollDifference > 12) {
-            const isScrollingDown = currentScrollY > lastScrollY;
-            dom.mainHeader.classList.toggle("is-hidden-mobile", isScrollingDown && currentScrollY > 60);
-            lastScrollY = currentScrollY;
-          }
-        }
-      } else {
-        lastScrollY = currentScrollY; // En desktop, mantener sincronizado
-      }
-    });
   }
 }
 
@@ -782,15 +356,7 @@ export function disposeMainEvents(): void {
   mainLifecycleGen++;
   mainUnsubscribers.forEach(unsub => unsub());
   mainUnsubscribers = [];
-  if (scrollTimer) {
-    clearTimeout(scrollTimer);
-    scrollTimer = null;
-  }
-  if (scrollRafId !== null && typeof cancelAnimationFrame === "function") {
-    cancelAnimationFrame(scrollRafId);
-    scrollRafId = null;
-  }
-  isTicking = false;
+  disposeScrollWatcher();
   sidebarModule = null;
   isMainEventsInitialized = false;
   isMainInitialized = false;
@@ -910,9 +476,8 @@ function setupGlobalListeners(): void {
     mainUnsubscribers.push(() => dom.paginationContainer?.removeEventListener("click", handlePaginationClick));
   }
 
-  lastScrollY = window.scrollY;
-  window.addEventListener("scroll", handleGlobalScroll, { passive: true });
-  mainUnsubscribers.push(() => window.removeEventListener("scroll", handleGlobalScroll));
+  const cleanupScroll = initScrollWatcher();
+  mainUnsubscribers.push(cleanupScroll);
 
   const handleEscKey = (e: KeyboardEvent) => {
     if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
@@ -1040,6 +605,10 @@ function setupAuthSystem(): void {
 
   if (userProfileButton) {
     const onProfileClick = async () => {
+      if (document.body.classList.contains("sidebar-is-open")) {
+        const sidebarMod = await loadSidebar();
+        sidebarMod?.closeMobileDrawer();
+      }
       const { openProfileModal } = await import("./components/profile.js");
       openProfileModal();
     };
@@ -1130,44 +699,7 @@ function setupAuthSystem(): void {
 
 
 
-function readUrlAndSetState(): void {
-  syncStateWithUrl(window.location.pathname, window.location.search);
-  // Canonicalizar la URL después de normalizar el estado (sin añadir entrada al historial)
-  canonicalizeCurrentUrl();
 
-  const activeFilters = getActiveFilters();
-  if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
-  if (dom.sortSelect) dom.sortSelect.value = activeFilters.sort;
-  updateTypeFilterUI(activeFilters.mediaType as "movies" | "series" | "all");
-  updateMobileStatusBar();
-}
-
-function updateUrl({ replace = false }: { replace?: boolean } = {}): void {
-  const basePrefix = getAppBasePath();
-  const { pathname, search } = stateToPrettyUrl(getActiveFilters(), getCurrentPage());
-  const cleanPath = search ? `${pathname}?${search}` : pathname;
-  const newUrl = `${basePrefix}${cleanPath}`;
-  const currentFullUrl = `${window.location.pathname}${window.location.search}`;
-
-  if (newUrl !== currentFullUrl) {
-    saveCurrentScrollPosition();
-    if (typeof window !== "undefined" && window.history) {
-      if (replace) {
-        const nextState = { ...window.history.state, path: newUrl };
-        delete nextState.profileModalOpen;
-        delete nextState.quickViewOpen;
-        window.history.replaceState(nextState, "", newUrl);
-      } else {
-        window.history.pushState({ path: newUrl, scrollY: 0 }, "", newUrl);
-      }
-    }
-  } else if (replace && typeof window !== "undefined" && window.history) {
-    const nextState = { ...window.history.state, path: newUrl };
-    delete nextState.profileModalOpen;
-    delete nextState.quickViewOpen;
-    window.history.replaceState(nextState, "", newUrl);
-  }
-}
 
 
 export function init(): void {
@@ -1303,14 +835,6 @@ export function init(): void {
     const basePrefix = getAppBasePath();
     const { pathname: canonPath, search: canonSearch } = stateToPrettyUrl(getActiveFilters(), getCurrentPage());
 
-    const normalizeUrl = (path: string, query: string) => {
-      const cleanPath = path.endsWith("/") ? path : `${path}/`;
-      const params = new URLSearchParams(query);
-      params.sort();
-      const sortedQuery = params.toString();
-      return `${cleanPath}${sortedQuery ? `?${sortedQuery}` : ""}`;
-    };
-
     const canonFullNormalized = normalizeUrl(`${basePrefix}${canonPath}`, canonSearch);
     const incomingFullNormalized = normalizeUrl(window.location.pathname, window.location.search);
 
@@ -1324,7 +848,7 @@ export function init(): void {
     const historyState = window.history.state as { scrollY?: number } | null;
     const targetScrollY = (typeof historyState?.scrollY === "number")
       ? historyState.scrollY
-      : (scrollPositionsCache.get(incomingFull) ?? 0);
+      : getSavedScrollPosition(incomingFull);
 
     readUrlAndSetState(); // sincroniza estado con la nueva URL e invoca canonicalizeCurrentUrl()
     appEvents.emit("updateSidebarUI");

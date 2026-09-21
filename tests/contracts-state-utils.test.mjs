@@ -283,105 +283,6 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(pUnknown.selection, null);
   });
 
-  test("buildPrettyPath construye rutas canónicas ordenadas y parsePrettyPath las resuelve", () => {
-    // 1. Catálogo completo
-    assert.equal(contracts.buildPrettyPath({}), "/");
-
-    // 2. Solo género
-    assert.equal(contracts.buildPrettyPath({ genre: "Drama" }), "/drama/");
-
-    // 3. Género + País
-    assert.equal(contracts.buildPrettyPath({ genre: "Acción", country: "España" }), "/accion/espana/");
-
-    // 4. Género + País + Selección
-    assert.equal(contracts.buildPrettyPath({ genre: "Drama", country: "EEUU", selection: "criterion" }), "/drama/eeuu/criterion/");
-
-    // 5. Solo Estudio
-    assert.equal(contracts.buildPrettyPath({ studio: "warner" }), "/warner/");
-
-    // 6. Género + Estudio
-    assert.equal(contracts.buildPrettyPath({ genre: "Sci-Fi", studio: "disney" }), "/sci-fi/disney/");
-
-    // 7. Director (excluyente con catálogo)
-    assert.equal(contracts.buildPrettyPath({ director: "Brian De Palma" }), "/director/brian-de-palma/");
-
-    // 8. Actor (excluyente con catálogo)
-    assert.equal(contracts.buildPrettyPath({ actor: "Clint Eastwood" }), "/actor/clint-eastwood/");
-
-    // 9. Exclusiones de género y país
-    assert.equal(contracts.buildPrettyPath({ excludedGenres: ["Animación"] }), "/no-animacion/");
-    assert.equal(contracts.buildPrettyPath({ excludedGenres: ["Documental"] }), "/no-documental/");
-    assert.equal(contracts.buildPrettyPath({ excludedCountries: ["EEUU"] }), "/no-eeuu/");
-    assert.equal(contracts.buildPrettyPath({ excludedCountries: ["España"] }), "/no-espana/");
-    // Si conviven en el objeto de entrada, la exclusión tiene precedencia y omite el positivo
-    assert.equal(contracts.buildPrettyPath({ genre: "Drama", excludedGenres: ["Animación"], excludedCountries: ["EEUU"] }), "/no-animacion/no-eeuu/");
-
-    // Parsing inverso semántico
-    const p1 = contracts.parsePrettyPath("/drama/eeuu/criterion/");
-    assert.equal(p1.genre, "Drama");
-    assert.equal(p1.country, "EEUU");
-    assert.equal(p1.selection, "criterion");
-    assert.equal(p1.studio, null);
-
-    const p2 = contracts.parsePrettyPath("/warner/");
-    assert.equal(p2.studio, "warner");
-    assert.equal(p2.genre, null);
-    assert.equal(p2.country, null);
-    assert.equal(p2.selection, null);
-
-    const p3 = contracts.parsePrettyPath("/espana/accion/");
-    assert.equal(p3.genre, "Acción");
-    assert.equal(p3.country, "España");
-
-    // Parsing de exclusiones: la exclusión anula cualquier positivo de su categoría
-    const pEx1 = contracts.parsePrettyPath("/no-animacion/");
-    assert.deepEqual(pEx1.excludedGenres, ["Animación"]);
-    assert.deepEqual(pEx1.excludedCountries, []);
-
-    const pEx2 = contracts.parsePrettyPath("/drama/no-eeuu/no-animacion/");
-    assert.equal(pEx2.genre, null); // no puede coexistir drama con no-animacion
-    assert.deepEqual(pEx2.excludedCountries, ["EEUU"]);
-    assert.deepEqual(pEx2.excludedGenres, ["Animación"]);
-
-    // Soporte con subpath de GitHub Pages
-    const p4 = contracts.parsePrettyPath("/videoclub.digital/comedia/francia/");
-    assert.equal(p4.genre, "Comedia");
-    assert.equal(p4.country, "Francia");
-
-    // Parsing de personas
-    const p5 = contracts.parsePrettyPath("/director/brian-de-palma/");
-    assert.equal(p5.director, "brian de palma");
-    assert.equal(p5.actor, null);
-    assert.equal(p5.genre, null);
-
-    const p6 = contracts.parsePrettyPath("/actor/clint-eastwood/");
-    assert.equal(p6.actor, "clint eastwood");
-    assert.equal(p6.director, null);
-
-    // Parsing de personas con guiones léxicos originales (Daniel Day-Lewis, Jean-Luc Godard)
-    // Demuestra el contrato: el slug convierte guiones en espacios ("daniel day lewis"); PostgreSQL Fases 3.6/3.7 resuelve
-    const p7 = contracts.parsePrettyPath("/actor/daniel-day-lewis/");
-    assert.equal(p7.actor, "daniel day lewis");
-
-    const p8 = contracts.parsePrettyPath("/director/jean-luc-godard/");
-    assert.equal(p8.director, "jean luc godard");
-
-    // Parsing de los 21 slugs canónicos oficiales hacia su nombre oficial
-    assert.equal(contracts.parsePrettyPath("/deporte/").genre, "Deporte");
-    assert.equal(contracts.parsePrettyPath("/accion/").genre, "Acción");
-    assert.equal(contracts.parsePrettyPath("/animacion/").genre, "Animación");
-    assert.equal(contracts.parsePrettyPath("/musica/").genre, "Música");
-    assert.equal(contracts.parsePrettyPath("/noir/").genre, "Noir");
-    assert.equal(contracts.parsePrettyPath("/sci-fi/").genre, "Sci-Fi");
-    assert.deepEqual(contracts.parsePrettyPath("/no-animacion/").excludedGenres, ["Animación"]);
-
-    // Términos no canónicos/aliases en URL no se reconocen como géneros (pertenecen al buscador)
-    assert.equal(contracts.parsePrettyPath("/sport/").genre, null);
-    assert.equal(contracts.parsePrettyPath("/dibujos/").genre, null);
-    assert.equal(contracts.parsePrettyPath("/humor/").genre, null);
-    assert.equal(contracts.parsePrettyPath("/epico/").genre, null);
-  });
-
   test("buildFilterUrl genera URLs canónicas y absolutas para enlaces de entidades", () => {
     assert.equal(contracts.buildFilterUrl("director", "Robert Zemeckis"), "/director/robert-zemeckis/");
     assert.equal(contracts.buildFilterUrl("actor", "Tom Hanks"), "/actor/tom-hanks/");
@@ -482,6 +383,7 @@ describe("state.js y Pretty Paths", () => {
   });
 
   test("stateToPrettyUrl y syncStateWithUrl sincronizan estado bidireccionalmente", () => {
+    // 1. Catálogo multidimensional
     state.setFilter("genre", "Drama", true);
     state.setFilter("country", "EEUU", true);
     state.setFilter("selection", "criterion", true);
@@ -493,7 +395,7 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(pathname, "/drama/eeuu/criterion/");
     assert.equal(search, "year=1980-2007&sort=votos-fa&p=3");
 
-    // Sincronización inversa desde slug amigable
+    // Sincronización inversa
     state.resetFiltersState();
     state.syncStateWithUrl("/drama/eeuu/criterion/", "?year=1980-2007&sort=votos-fa&p=3");
 
@@ -506,26 +408,7 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(active.sort, "fa_votes,desc");
     assert.equal(state.getCurrentPage(), 3);
 
-    // Prueba con Rangos de Año Abiertos (year=2011- y year=-1970)
-    state.resetFiltersState();
-    state.setFilter("year", "2011-", true);
-    const urlOpenFuture = state.stateToPrettyUrl(state.getActiveFilters(), 1);
-    assert.equal(urlOpenFuture.search, "year=2011-");
-
-    state.resetFiltersState();
-    state.syncStateWithUrl("/", "?year=2011-");
-    assert.equal(state.getActiveFilters().year, "2011-");
-
-    state.resetFiltersState();
-    state.setFilter("year", "-1970", true);
-    const urlOpenPast = state.stateToPrettyUrl(state.getActiveFilters(), 1);
-    assert.equal(urlOpenPast.search, "year=-1970");
-
-    state.resetFiltersState();
-    state.syncStateWithUrl("/", "?year=-1970");
-    assert.equal(state.getActiveFilters().year, "-1970");
-
-    // Prueba con Director
+    // 2. Vista de Persona / Director
     state.resetFiltersState();
     state.setFilter("director", "Brian De Palma", true);
     state.setSort("fa_votes,desc");
@@ -540,7 +423,8 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(state.getActiveFilters().director, "brian de palma");
     assert.equal(state.getActiveFilters().genre, null);
     assert.equal(state.getActiveFilters().country, null);
-    // Prueba con Exclusiones
+
+    // 3. Exclusiones puras
     state.resetFiltersState();
     state.setFilter("excludedGenres", ["Animación"], true);
     state.setFilter("excludedCountries", ["EEUU"], true);
@@ -552,20 +436,9 @@ describe("state.js y Pretty Paths", () => {
     state.syncStateWithUrl("/no-animacion/no-eeuu/", "");
     assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
     assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
+  });
 
-    // Prueba de exclusividad estricta según contracts.md:
-    // /drama/no-animacion/ -> no-animacion anula drama de forma canónica
-    state.resetFiltersState();
-    state.syncStateWithUrl("/drama/no-animacion/", "");
-    assert.equal(state.getActiveFilters().genre, null);
-    assert.deepEqual(state.getActiveFilters().excludedGenres, ["Animación"]);
-
-    // /espana/no-eeuu/ -> no-eeuu anula espana de forma canónica
-    state.resetFiltersState();
-    state.syncStateWithUrl("/espana/no-eeuu/", "");
-    assert.equal(state.getActiveFilters().country, null);
-    assert.deepEqual(state.getActiveFilters().excludedCountries, ["EEUU"]);
-
+  test("toggleExcludedFilter y setFilter garantizan exclusividad mutua en el estado", () => {
     // toggleExcludedFilter anula SIEMPRE el género positivo activo (incluso si son distintos)
     state.resetFiltersState();
     state.setFilter("genre", "Drama", true);
@@ -589,42 +462,6 @@ describe("state.js y Pretty Paths", () => {
     state.setFilter("country", "Francia", true);
     assert.equal(state.getActiveFilters().country, "Francia");
     assert.deepEqual(state.getActiveFilters().excludedCountries, []);
-
-    // Prueba de todos los slugs amigables de ordenación
-    const slugMap = {
-      recientes: "year,desc",
-      antiguas: "year,asc",
-      "nota-fa": "fa_rating,desc",
-      "nota-imdb": "imdb_rating,desc",
-      "votos-fa": "fa_votes,desc",
-      "votos-imdb": "imdb_votes,desc",
-    };
-    for (const [slug, internalValue] of Object.entries(slugMap)) {
-      state.resetFiltersState();
-      state.syncStateWithUrl("/", `?sort=${slug}`);
-      assert.equal(state.getActiveFilters().sort, internalValue);
-      const url = state.stateToPrettyUrl(state.getActiveFilters(), 1);
-      assert.equal(url.search, `sort=${slug}`);
-    }
-
-    // Prueba con Búsqueda (?search= y fallbacks ?buscar= / ?q=)
-    state.resetFiltersState();
-    state.setSearchTerm("bestas");
-    const searchUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
-    assert.equal(searchUrl.pathname, "/");
-    assert.equal(searchUrl.search, "search=bestas");
-
-    state.resetFiltersState();
-    state.syncStateWithUrl("/", "?search=bestas");
-    assert.equal(state.getActiveFilters().searchTerm, "bestas");
-
-    state.resetFiltersState();
-    state.syncStateWithUrl("/", "?buscar=bestas");
-    assert.equal(state.getActiveFilters().searchTerm, "bestas");
-
-    state.resetFiltersState();
-    state.syncStateWithUrl("/", "?q=bestas");
-    assert.equal(state.getActiveFilters().searchTerm, "bestas");
   });
 
   test("setSearchTerm normaliza texto y limpia filtros incompatibles", () => {

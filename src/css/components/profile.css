@@ -9,7 +9,7 @@
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: var(--z-index-modal-overlay, 1100);
+  z-index: var(--z-index-overlay, 1999);
   transition: opacity var(--transition-duration-normal, 0.25s) ease;
 }
 
@@ -23,7 +23,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: var(--z-index-modal, 1101);
+  z-index: calc(var(--z-index-overlay, 1999) + 1);
   padding: var(--space-md, 16px);
   outline: none;
 }
@@ -544,10 +544,74 @@
   border-color: #ef4444;
 }
 
-/* --- RESPONSIVE (< 640px) --- */
-@media (max-width: 640px) {
+/* --- MODO MÓVIL (<= 768px): Formato Bottom Sheet con tirador y arrastre táctil --- */
+@media (max-width: 768px) {
+  .profile-overlay {
+    backdrop-filter: blur(4px) saturate(85%);
+    -webkit-backdrop-filter: blur(4px) saturate(85%);
+  }
+
+  .profile-modal {
+    padding: 0;
+    top: auto;
+    bottom: 0;
+    left: 50%;
+    width: 100%;
+    max-width: 540px;
+    max-height: 92dvh;
+    border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+    transform: translate(-50%, 0);
+    transition: transform 0.35s var(--ease-smooth-out, ease-out);
+
+    /* Tirador de arrastre superior (Pill Handle táctil) */
+    &::before {
+      content: "";
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 44px;
+      height: 5px;
+      background-color: var(--color-border, rgba(255, 255, 255, 0.2));
+      border-radius: 10px;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    &.is-dragging {
+      transition: none !important;
+      will-change: transform;
+    }
+  }
+
   .profile-box {
-    max-height: 92vh;
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+    border-bottom: none;
+    border-left: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    animation: profile-slide-up 0.35s var(--ease-smooth-out, cubic-bezier(0.16, 1, 0.3, 1));
+  }
+
+  .profile-header {
+    padding: calc(var(--space-md, 16px) + 8px) var(--space-lg, 16px) var(--space-sm, 12px);
+  }
+
+  .profile-close-btn {
+    display: none;
+  }
+
+  .profile-email {
+    max-width: 220px;
+    font-size: 1rem;
+  }
+
+  .profile-content-scroll {
+    padding: var(--space-md, 16px);
+    padding-bottom: max(var(--space-lg, 24px), env(safe-area-inset-bottom, 24px));
+    overscroll-behavior-y: contain;
   }
 
   .profile-stats-grid {
@@ -576,5 +640,14 @@
   .profile-secondary-btn {
     width: 100%;
     text-align: center;
+  }
+}
+
+@keyframes profile-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
