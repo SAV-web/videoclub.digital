@@ -4223,7 +4223,11 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     margin: -1px -4px;
     cursor: pointer;
     touch-action: manipulation;
-    transition: color 100ms ease;
+    transition: color 80ms ease, opacity 80ms ease;
+
+    &:active {
+      opacity: 0.6;
+    }
 
     &:focus-visible {
       outline: 2px solid var(--color-accent);
@@ -4247,7 +4251,11 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   transform-origin: center right;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform 120ms ease-out;
+  transition: transform 80ms ease-out;
+
+  &:active {
+    transform: scale(0.9);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--color-accent);
@@ -4307,9 +4315,13 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   box-shadow: none !important;
   cursor: pointer;
   touch-action: manipulation;
-  transition: transform 120ms ease-out, filter 120ms ease-out;
+  transition: transform 80ms ease-out, filter 80ms ease-out;
   margin-left: 0;
   pointer-events: auto;
+
+  &:active {
+    transform: scale(0.92) !important;
+  }
 
   &:focus-visible {
     outline: none;
@@ -4368,7 +4380,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view :is(.details-list, .detail-item, .detail-data, [data-template="genre"], [data-template="actors"]) a {
   color: var(--color-text-primary);
   text-decoration: none;
-  transition: color 100ms ease;
+  transition: color 80ms ease, opacity 80ms ease;
   cursor: pointer;
   touch-action: manipulation;
   display: inline;
@@ -4377,6 +4389,10 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   &:hover {
     color: var(--color-text-primary);
     text-decoration: underline;
+  }
+
+  &:active {
+    opacity: 0.6;
   }
 
   &:focus-visible {
@@ -4392,7 +4408,16 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   border-radius: var(--radius-sm, 3px);
   cursor: pointer;
   touch-action: manipulation;
-  transition: color 100ms ease;
+  transition: color 80ms ease, opacity 80ms ease;
+
+  &:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+  }
+
+  &:active {
+    opacity: 0.6;
+  }
 
   &:focus-visible {
     outline: 2px solid var(--color-accent);
@@ -4613,6 +4638,12 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     }
   }
 
+  &:active .rating-icon,
+  &:active :is([data-template="fa-rating"], [data-template="imdb-rating"]) {
+    opacity: 0.6;
+    transform: scale(0.95);
+  }
+
   &.disabled {
     pointer-events: none;
     opacity: 0.7;
@@ -4628,7 +4659,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   border-radius: 10px;
   align-self: center;
   flex-shrink: 0;
-  transition: opacity 120ms ease-out, transform 120ms ease-out;
+  transition: opacity 80ms ease-out, transform 80ms ease-out;
 }
 
 .is-quick-view :is([data-template="fa-rating"], [data-template="imdb-rating"]) {
@@ -4640,7 +4671,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   letter-spacing: -0.03em;
   color: var(--color-text-primary);
   display: block;
-  transition: opacity 120ms ease-out, transform 120ms ease-out;
+  transition: opacity 80ms ease-out, transform 80ms ease-out;
   transform-origin: left center;
 }
 
