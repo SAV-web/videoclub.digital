@@ -801,7 +801,14 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
 
     // Montaje
     content.textContent = "";
+    content.scrollTop = 0;
+    content.classList.remove("is-scrolled");
     content.appendChild(clone);
+    const initialBack = cardClone.querySelector<HTMLElement>(".flip-card-back");
+    if (initialBack) {
+      initialBack.scrollTop = 0;
+      initialBack.classList.remove("is-scrolled");
+    }
 
     // Inicializar interactividad básica
     updateCardUI(cardClone);
@@ -1090,6 +1097,18 @@ export function initQuickView(): void {
     content.addEventListener("click", handleContentClick);
     modalUnsubscribers.push(() => {
       content.removeEventListener("click", handleContentClick);
+    });
+
+    // Control de máscara de continuidad: detecta scroll para retirar el degradado superior en el tope
+    const handleScrollMask = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.classList?.contains("flip-card-back") || target === content)) {
+        target.classList.toggle("is-scrolled", target.scrollTop > 4);
+      }
+    };
+    content.addEventListener("scroll", handleScrollMask, { passive: true, capture: true });
+    modalUnsubscribers.push(() => {
+      content.removeEventListener("scroll", handleScrollMask, { capture: true });
     });
   }
 

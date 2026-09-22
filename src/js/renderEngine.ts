@@ -326,7 +326,7 @@ export async function loadAndRenderMovies(
 /**
  * Pone las películas en pantalla, gestiona orfandad de páginas y actualiza metadatos SEO.
  */
-export async function updateDomWithResults(
+async function updateDomWithResults(
   movies: MappedMovie[],
   totalMovies: number,
   vipData: VipData | null = null,

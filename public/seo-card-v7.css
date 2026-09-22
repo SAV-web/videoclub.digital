@@ -1493,6 +1493,7 @@ html.dark-mode .bbc-icon {
   -webkit-box-orient: vertical;
   padding-right: 22px;
   line-height: 1.35;
+  min-height: 20px;
 }
 
 .movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] .detail-data {
@@ -1618,15 +1619,14 @@ html.dark-mode .bbc-icon {
 .expand-content-btn,
 .actors-expand-btn {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  /* Reducir tamaño (de 22px a 18px) */
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: none;
   background-color: var(--color-accent);
   color: var(--color-surface);
-  font-size: 1rem;
-  font-weight: 400;
+  font-size: 0.9rem;
+  font-weight: 500;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -1645,7 +1645,7 @@ html.dark-mode .bbc-icon {
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
-      transform: scale(1.15);
+      transform: scale(1.06);
       background-color: var(--color-text-primary);
     }
   }
@@ -1659,19 +1659,19 @@ html.dark-mode .bbc-icon {
     content: "";
     position: absolute;
     inset: -12px;
-    /* Expande 12px por cada lado: 22 + 24 = 46px */
+    /* Expande 12px por cada lado: 16 + 24 = 40px (cumple estándares táctiles WCAG) */
   }
 }
 
 .actors-expand-btn {
-  bottom: 1px;
-  right: 0;
+  bottom: 2px;
+  right: 3px;
 }
 
-/* Alineación milimétrica con actors-expand-btn */
+/* Alineación milimétrica con actors-expand-btn (padding lateral 8px + margen 3px = 11px) */
 .expand-content-btn {
   bottom: 8px;
-  right: var(--space-xs, 8px);
+  right: calc(var(--space-xs, 8px) + 3px);
 }
 
 .flip-card-back.is-expanded .expand-content-btn {
@@ -4049,6 +4049,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .quick-view-modal .title-director-block {
   min-height: 82px;
   justify-content: center;
+  text-align: center;
   margin-bottom: 0;
 }
 
@@ -4064,6 +4065,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-align: center;
 
   &.title-medium {
     font-size: 1.75rem;
@@ -4089,7 +4091,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .front-director-info {
   font-size: calc(var(--font-size-xs) * 1.5);
   color: var(--color-text-secondary);
-  margin-top: 6px;
+  margin-top: 2px;
   margin-bottom: var(--space-sm);
   line-height: 1.35;
   white-space: normal;
@@ -4159,28 +4161,32 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   }
 }
 
-/* Metadatos */
+/* Metadatos (Estudios + Año + Bandera centrados en la parte inferior) */
 .is-quick-view .movie-meta {
-  align-items: center;
-  margin-top: auto;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 28px !important; /* Separación equivalente al ancho visual de la bandera */
+  width: 100% !important;
+  margin-top: auto !important;
+  margin-inline: auto !important;
   padding-top: var(--space-xs);
 }
 
 .is-quick-view .modal-horizontal-divider {
-  flex-grow: 1;
-  height: 1px;
-  background-color: var(--color-border);
-  align-self: center;
-  margin-inline: var(--space-md);
-  opacity: 0.8;
-}
-
-.is-quick-view .card-icons-line:empty+.modal-horizontal-divider {
-  margin-left: 0;
+  display: none !important;
 }
 
 .is-quick-view .card-icons-line {
-  gap: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: 0 !important;
+  flex: 0 0 auto;
+}
+
+.is-quick-view .card-icons-line:empty {
+  display: none;
 }
 
 .is-quick-view .platform-icon svg {
@@ -4189,21 +4195,35 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 }
 
 .is-quick-view .year-country-line {
-  padding-right: 6px;
+  display: flex;
+  align-items: center;
+  margin: 0 !important;
+  margin-left: 0 !important;
+  padding-right: 0;
   overflow: visible;
+  flex: 0 0 auto;
 }
 
 .is-quick-view .year-flag-group {
+  display: flex;
+  align-items: center;
+  justify-content: center !important;
   font-size: 2rem;
+  font-weight: var(--font-weight-bold, 700) !important;
+  letter-spacing: 0.06em !important;
   line-height: 1;
-  gap: var(--space-sm);
+  gap: 28px; /* Separación entre año y bandera equivalente al ancho visual de la bandera */
   overflow: visible;
+  margin: 0 !important;
 
   & a {
     display: inline-block;
     border-radius: var(--radius-sm, 3px);
     padding: 1px 4px;
     margin: -1px -4px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: color 100ms ease;
 
     &:focus-visible {
       outline: 2px solid var(--color-accent);
@@ -4215,11 +4235,19 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   }
 }
 
+.is-quick-view [data-template="year"] {
+  font-weight: var(--font-weight-bold, 700) !important;
+  letter-spacing: 0.06em !important;
+}
+
 .is-quick-view .country-info {
-  margin-right: 6px;
+  margin-right: 0;
   padding: 3px;
   border-radius: var(--radius-sm, 4px);
   transform-origin: center right;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 120ms ease-out;
 
   &:focus-visible {
     outline: 2px solid var(--color-accent);
@@ -4235,23 +4263,90 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Textos descriptivos (Reparto y Sinopsis) */
+/* Cabecera trasera: Duración/Episodios + JustWatch/Wikipedia alineados a la derecha con generosa separación */
+.is-quick-view .back-meta-header {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: var(--space-md);
+  flex-shrink: 0;
+}
+
 .is-quick-view .episode-duration-group {
-  font-size: calc(var(--font-size-sm) * 1.5);
-  font-weight: var(--font-weight-bold, 700);
-  letter-spacing: 1px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: calc(var(--font-size-sm) * 1.3);
+  font-weight: var(--font-weight-bold, 700) !important;
+  color: var(--color-text-secondary);
+  letter-spacing: -0.01em;
+  gap: 16px;
 }
 
 .is-quick-view :is([data-template="duration"], [data-template="episodes"]) {
-  font-weight: var(--font-weight-bold, 700);
+  font-weight: var(--font-weight-bold, 700) !important;
+  color: var(--color-text-secondary);
 }
 
-.is-quick-view :is(.rating-left, .rating-line) {
-  gap: 12px;
+/* Enlaces externos JustWatch / Wikipedia alineados a la derecha con efecto hover original y sin fondo circular */
+.is-quick-view [data-template="justwatch-link"] {
+  margin-left: 0 !important;
 }
 
-.is-quick-view .rating-left {
-  font-size: calc(var(--font-size-base) * 1.5);
+.is-quick-view :is([data-template="justwatch-link"], [data-template="wikipedia-link"]) {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+  margin-left: 0;
+  pointer-events: auto;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+    border-radius: var(--radius-sm);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: scale(1.15);
+    }
+  }
+
+  &[data-template="justwatch-link"]:hover svg {
+    filter: drop-shadow(0 0 6px rgba(154, 20, 133, 0.6));
+  }
+
+  &[data-template="wikipedia-link"]:hover svg {
+    filter: drop-shadow(0 0 6px rgba(179, 64, 74, 0.6));
+  }
+
+  &.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+    filter: grayscale(100%);
+    cursor: default;
+  }
+}
+
+.is-quick-view :is([data-template="justwatch-link"], [data-template="wikipedia-link"]) .rating-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  grid-column: unset !important;
+  grid-row: unset !important;
+  align-self: center;
 }
 
 .is-quick-view :is(.details-list, .plot-summary-final) {
@@ -4273,8 +4368,9 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view :is(.details-list, .detail-item, .detail-data, [data-template="genre"], [data-template="actors"]) a {
   color: var(--color-text-primary);
   text-decoration: none;
-  transition: color var(--duration-fast, 0.15s) ease;
+  transition: color 100ms ease;
   cursor: pointer;
+  touch-action: manipulation;
   display: inline;
   border-radius: var(--radius-sm, 3px);
 
@@ -4294,6 +4390,9 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .front-director-info a {
   display: inline;
   border-radius: var(--radius-sm, 3px);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 100ms ease;
 
   &:focus-visible {
     outline: 2px solid var(--color-accent);
@@ -4307,9 +4406,10 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 
 
 .is-quick-view .details-list {
-  margin-top: var(--space-lg);
+  border-top: none !important;
+  margin-top: var(--space-md);
   margin-bottom: 0;
-  padding-top: var(--space-md);
+  padding-top: 0;
   gap: var(--space-md);
 }
 
@@ -4342,6 +4442,9 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 
 .is-quick-view .detail-label-title {
   display: inline-block;
+  font-variant: small-caps;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
   font-weight: var(--font-weight-bold, 700);
   color: var(--color-text-primary);
   margin-right: 0.5em;
@@ -4398,44 +4501,45 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   }
 }
 
-/* Título original (Cara trasera) */
+/* Título original (Cara trasera) - Kicker en cursiva con menor jerarquía visual */
 .is-quick-view .back-original-title-wrapper {
   min-height: 0;
-  margin-top: var(--space-lg);
-  margin-bottom: 2px;
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
   padding: 0;
   align-items: flex-start;
   flex-shrink: 0;
   animation: none;
+  display: block;
 
   & span {
-    font-size: 1.6rem;
-    font-weight: bold;
-    line-height: 1.1;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin-top: -0.2em;
+    font-size: 0.95rem;
+    font-weight: var(--font-weight-normal, 400);
+    font-style: italic;
+    color: var(--color-text-secondary);
+    line-height: 1.35;
+    display: inline-block;
+
+    &::before {
+      content: "Título original: ";
+      font-style: italic;
+      color: var(--color-text-secondary);
+    }
   }
 
-  & span.title-medium {
-    font-size: 1.45rem;
+  & span:is(.title-medium, .title-long, .title-xl-long) {
+    font-size: 0.95rem;
   }
+}
 
-  & span.title-long {
-    font-size: 1.3rem;
-  }
-
-  & span.title-xl-long {
-    font-size: 1.05rem;
-  }
+.is-quick-view .flip-card-back .front-director-info {
+  margin-top: 2px !important;
+  margin-bottom: var(--space-md) !important;
 }
 
 .is-quick-view .back-meta-header {
   flex-shrink: 0;
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
 }
 
 /* Limpieza de elementos que no aplican aquí */
@@ -4474,8 +4578,113 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   white-space: normal;
 }
 
+/* Bloque de Notas FA e IMDb: 50/50 equilibrado, notas aumentadas y votos debajo */
 .is-quick-view .ratings-container {
-  gap: var(--space-lg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg, 24px);
+  width: 100%;
+  margin-top: var(--space-xs);
+  margin-bottom: 30px !important;
+  padding: 0;
+}
+
+.is-quick-view .ratings-container .rating-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 12px;
+  align-items: center;
+  position: relative;
+  min-width: 0;
+}
+
+.is-quick-view .ratings-container .rating-left {
+  display: contents;
+  cursor: pointer;
+  touch-action: manipulation;
+  text-decoration: none;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover .rating-icon,
+    &:hover :is([data-template="fa-rating"], [data-template="imdb-rating"]) {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  &.disabled {
+    pointer-events: none;
+    opacity: 0.7;
+    cursor: default;
+  }
+}
+
+.is-quick-view .ratings-container .rating-icon {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  width: clamp(38px, 9vw, 44px);
+  height: clamp(38px, 9vw, 44px);
+  border-radius: 10px;
+  align-self: center;
+  flex-shrink: 0;
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.is-quick-view :is([data-template="fa-rating"], [data-template="imdb-rating"]) {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: clamp(1.85rem, 5vw, 2.35rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--color-text-primary);
+  display: block;
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+  transform-origin: left center;
+}
+
+.is-quick-view .rating-bar-container {
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.12);
+  margin-top: 6px;
+  margin-bottom: 4px;
+  overflow: hidden;
+
+  :where(html:not(.dark-mode)) & {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+.is-quick-view [data-template="fa-votes-bar"] {
+  background-color: #2570b8;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.is-quick-view [data-template="imdb-votes-bar"] {
+  background-color: #f5c518;
+  height: 100%;
+  border-radius: 2px;
+}
+
+.is-quick-view .rating-votes-count {
+  grid-column: 2;
+  grid-row: 3;
+  display: block !important;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+  white-space: nowrap;
+
+  &:not(:empty)::after {
+    content: " votos";
+  }
 }
 
 /* --- 4. LOS BOTONES DE NAVEGACIÓN (Flechas) --- */
@@ -4580,7 +4789,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 
   .is-quick-view .flip-card-front {
     padding-top: 30px;
-    padding-bottom: var(--space-xs);
+    padding-bottom: 32px;
     border-bottom: none;
 
     & img {
@@ -4589,7 +4798,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   }
 
   .is-quick-view .flip-card-back {
-    padding-top: 0;
+    padding-top: 16px;
   }
 
   .modal-nav-btn {
@@ -4605,6 +4814,22 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   .quick-view-modal.hide-arrows .is-quick-view .poster-container {
     width: 100%;
   }
+
+  .quick-view-content {
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
+
+    &.is-scrolled {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
+    }
+
+    @supports (animation-timeline: scroll()) {
+      animation: scroll-fade-mask linear both;
+      animation-timeline: scroll(self);
+    }
+  }
 }
 
 /* B) ORDENADOR: Ventana flotante clásica con scroll en ambos lados */
@@ -4617,6 +4842,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     max-height: 92dvh;
     height: auto;
     border-radius: var(--radius-xl);
+    overflow: visible;
     transform: translate(-50%, calc(-50% + 15px)) scale(0.92);
 
     &.is-visible {
@@ -4627,6 +4853,16 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   /* Evitar scroll anidado redundante en escritorio: las columnas gestionan su propio scroll */
   .quick-view-content {
     overflow: hidden;
+    border-radius: inherit;
+  }
+
+  /* Flechas de navegación situadas 2/3 fuera de la ficha (32px de los 48px de diámetro) */
+  .modal-nav-btn--prev {
+    left: -32px;
+  }
+
+  .modal-nav-btn--next {
+    right: -32px;
   }
 
   .is-quick-view .flip-card-inner {
@@ -4646,8 +4882,13 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     box-sizing: border-box;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   .is-quick-view .flip-card-back {
@@ -4662,8 +4903,26 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     box-sizing: border-box;
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &.is-scrolled {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
+    }
+
+    @supports (animation-timeline: scroll()) {
+      animation: scroll-fade-mask linear both;
+      animation-timeline: scroll(self);
+    }
   }
 }
 

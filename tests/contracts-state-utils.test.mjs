@@ -281,6 +281,13 @@ describe("state.js y Pretty Paths", () => {
     assert.equal(pUnknown.country, null);
     assert.equal(pUnknown.studio, null);
     assert.equal(pUnknown.selection, null);
+
+    // parsePrettyPath: resuelve correctamente personas con guiones léxicos originales (Daniel Day-Lewis, Jean-Luc Godard)
+    const pActor = contracts.parsePrettyPath("/actor/daniel-day-lewis/");
+    assert.equal(pActor.actor, "daniel day lewis");
+
+    const pDirector = contracts.parsePrettyPath("/director/jean-luc-godard/");
+    assert.equal(pDirector.director, "jean luc godard");
   });
 
   test("buildFilterUrl genera URLs canónicas y absolutas para enlaces de entidades", () => {
