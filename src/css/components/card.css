@@ -628,7 +628,7 @@ html.dark-mode .bbc-icon {
   display: flex;
   align-items: center;
   text-decoration: none;
-  transition: transform var(--duration-fast), filter var(--duration-fast);
+  transition: transform 100ms ease-out, filter 100ms ease-out;
   margin-left: var(--space-xs);
   pointer-events: auto;
 
@@ -999,7 +999,7 @@ html.dark-mode .bbc-icon {
     pointer-events: auto;
     /* Optimización: Una sola sombra robusta en lugar de múltiples apiladas para rendimiento móvil */
     filter: drop-shadow(0 0 5px var(--color-surface));
-    transition: filter 0.3s ease, transform var(--duration-quick) var(--ease-spring);
+    transition: filter 100ms ease-out, transform 100ms ease-out;
 
     html.dark-mode & {
       /* Optimización: Sombra negra sólida suficiente para contraste */
@@ -1025,7 +1025,7 @@ html.dark-mode .bbc-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
+  transition: transform 100ms ease-out, background-color 100ms ease-out, color 100ms ease-out;
   position: relative;
   isolation: isolate;
 

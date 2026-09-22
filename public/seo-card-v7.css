@@ -1372,7 +1372,7 @@ html.dark-mode .bbc-icon {
   display: flex;
   align-items: center;
   text-decoration: none;
-  transition: transform var(--duration-fast), filter var(--duration-fast);
+  transition: transform 100ms ease-out, filter 100ms ease-out;
   margin-left: var(--space-xs);
   pointer-events: auto;
 
@@ -1743,7 +1743,7 @@ html.dark-mode .bbc-icon {
     pointer-events: auto;
     /* Optimización: Una sola sombra robusta en lugar de múltiples apiladas para rendimiento móvil */
     filter: drop-shadow(0 0 5px var(--color-surface));
-    transition: filter 0.3s ease, transform var(--duration-quick) var(--ease-spring);
+    transition: filter 100ms ease-out, transform 100ms ease-out;
 
     html.dark-mode & {
       /* Optimización: Sombra negra sólida suficiente para contraste */
@@ -1769,7 +1769,7 @@ html.dark-mode .bbc-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform var(--duration-normal) var(--ease-smooth-out), background-color var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out);
+  transition: transform 100ms ease-out, background-color 100ms ease-out, color 100ms ease-out;
   position: relative;
   isolation: isolate;
 
@@ -2768,7 +2768,7 @@ body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .person-role-
     transform: scale(1.35); 
     z-index: 20;
     filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
-    transition: transform 0.15s var(--ease-bounce-sharp); /* Bounce sutil */
+    transition: transform 100ms ease-out;
   }
 }
 
@@ -2827,7 +2827,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   display: flex; align-items: center; gap: 6px; flex-shrink: 0;
   color: var(--color-text-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
   text-decoration: none; cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
   pointer-events: auto;
   
   @media (hover: hover) and (pointer: fine) {
@@ -4117,6 +4117,10 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   justify-content: center;
   align-items: center;
   gap: var(--space-lg);
+
+  & > * {
+    transition: filter 80ms ease-out, transform 80ms ease-out !important;
+  }
 }
 
 .is-quick-view .card-rating-block * {
@@ -4133,6 +4137,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   width: 42px;
   height: 42px;
   margin-right: 0;
+  transition: transform 80ms ease-out, filter 80ms ease-out !important;
 }
 
 .is-quick-view .low-rating-star {
@@ -4143,11 +4148,13 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   width: 48px;
   height: 48px;
   margin: -6px 0 0 0;
+  transition: transform 80ms ease-out, background-color 80ms ease-out, color 80ms ease-out !important;
 
   & svg {
     width: 46px;
     height: 46px;
     stroke-width: 2.3px;
+    transition: transform 80ms ease-out, filter 80ms ease-out !important;
   }
 
   &.is-active {
@@ -4855,11 +4862,6 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
       -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
     }
-
-    @supports (animation-timeline: scroll()) {
-      animation: scroll-fade-mask linear both;
-      animation-timeline: scroll(self);
-    }
   }
 }
 
@@ -4948,11 +4950,6 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     &.is-scrolled {
       -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
-    }
-
-    @supports (animation-timeline: scroll()) {
-      animation: scroll-fade-mask linear both;
-      animation-timeline: scroll(self);
     }
   }
 }

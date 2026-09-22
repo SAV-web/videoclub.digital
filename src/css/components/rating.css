@@ -49,7 +49,7 @@
     transform: scale(1.35); 
     z-index: 20;
     filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
-    transition: transform 0.15s var(--ease-bounce-sharp); /* Bounce sutil */
+    transition: transform 100ms ease-out;
   }
 }
 
@@ -108,7 +108,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   display: flex; align-items: center; gap: 6px; flex-shrink: 0;
   color: var(--color-text-primary); font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
   text-decoration: none; cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 100ms ease-out, transform 100ms ease-out;
   pointer-events: auto;
   
   @media (hover: hover) and (pointer: fine) {
