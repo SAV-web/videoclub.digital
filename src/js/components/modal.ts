@@ -801,8 +801,10 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     updateNavButtons(modalId, contextCards);
   } else {
     // --- CAPA PELÍCULA ---
-    // --- CAPA 1: CABECERA (Síncrona) ---
+    // Poblar cabecera, detalles y notas síncronamente para evitar parpadeos y FOUC
     setupModalHeader(nodes, movie);
+    setupModalDetails(nodes, movie);
+    setupCardRatings(cardClone, movie);
 
     // Montaje
     content.textContent = "";
@@ -824,28 +826,17 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     }
     updateNavButtons(modalId, contextCards);
 
-    // --- CAPA 2: DETALLES (Asíncrona / Diferida) ---
-    scheduleModalRAF(() => {
-      scheduleModalRAF(() => {
-        if (content.dataset.movieId !== String(movie.id)) return;
-
-        setupModalDetails(nodes, movie);
-        setupCardRatings(cardClone, movie);
-
-        // Si el usuario está autenticado, sincronizar sus datos específicos (nota/watchlist) para la modal
-        if (movie.id && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-          fetchUserMovieDataForIds([movie.id]).then(userEntries => {
-            if (userEntries[movie.id]) {
-              updateUserDataForMovie(movie.id, userEntries[movie.id]);
-              if (content && content.dataset.movieId === String(movie.id)) {
-                updateCardUI(cardClone);
-              }
-            }
-          }).catch(() => { });
+    // Si el usuario está autenticado, sincronizar sus datos específicos (nota/watchlist) para la modal
+    if (movie.id && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
+      fetchUserMovieDataForIds([movie.id]).then(userEntries => {
+        if (userEntries[movie.id]) {
+          updateUserDataForMovie(movie.id, userEntries[movie.id]);
+          if (content && content.dataset.movieId === String(movie.id)) {
+            updateCardUI(cardClone);
+          }
         }
-
-      });
-    });
+      }).catch(() => { });
+    }
   }
 }
 
@@ -975,6 +966,20 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   }
 
   modal.classList.remove("modal-is-loading");
+
+  const isAlreadyOpen = modal.classList.contains("is-visible");
+
+  // Si la modal ya está abierta (navegación prev/next/swipe), actualizar síncronamente sin ViewTransition
+  if (isAlreadyOpen) {
+    unflipAllCards();
+    populateModal(cardElement, contextCards);
+    if (content) content.scrollTop = 0;
+    prefetchAdjacentModalImages(cardElement, contextCards);
+    return;
+  }
+
+  // Apertura inicial (Transición Hero desde la tarjeta del Grid)
+  lockGlobalInteractions(500);
 
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");

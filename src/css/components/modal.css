@@ -265,7 +265,7 @@
 
 .is-quick-view .front-director-info {
   font-size: calc(var(--font-size-xs) * 1.5);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   margin-top: 2px;
   margin-bottom: var(--space-sm);
   line-height: 1.35;
@@ -275,7 +275,8 @@
   display: block;
   width: 100%;
   flex-shrink: 0;
-  text-align: right;
+  text-align: left;
+  padding-left: 3ch;
 
   &:empty {
     display: none;
@@ -588,6 +589,7 @@
 
 .is-quick-view .front-director-info a {
   display: inline;
+  color: var(--color-text-primary);
   border-radius: var(--radius-sm, 3px);
   cursor: pointer;
   touch-action: manipulation;
@@ -622,8 +624,9 @@
 }
 
 .is-quick-view .plot-summary-final {
-  margin-top: var(--space-xl);
-  padding-top: var(--space-md);
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: none !important;
 }
 
 .is-quick-view .detail-label {
@@ -682,7 +685,7 @@
   }
 }
 
-/* Título original (Cara trasera) - Kicker en cursiva con menor jerarquía visual */
+/* Título original (Cara trasera) - En cursiva con menor jerarquía visual */
 .is-quick-view .back-original-title-wrapper {
   min-height: 0;
   margin-top: 0 !important;
@@ -702,12 +705,6 @@
     display: inline-block;
     padding-right: 0.35em;
     overflow: visible;
-
-    &::before {
-      content: "V. O. ";
-      font-style: italic;
-      color: var(--color-text-secondary);
-    }
   }
 
   & span:is(.title-medium, .title-long, .title-xl-long) {
@@ -718,7 +715,8 @@
 .is-quick-view .flip-card-back .front-director-info {
   margin-top: 2px !important;
   margin-bottom: var(--space-md) !important;
-  text-align: right;
+  text-align: left;
+  padding-left: 3ch;
   width: 100%;
 }
 
@@ -732,6 +730,7 @@
   overflow: visible;
   height: auto;
   mask-image: none;
+  margin-top: var(--space-md);
 
   &::after {
     display: none;
