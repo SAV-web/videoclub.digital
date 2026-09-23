@@ -239,7 +239,7 @@ combined += `
   transition: transform var(--duration-quick, 0.15s) ease-out, background-color var(--duration-quick, 0.15s) ease-out !important;
 }
 
-.flip-card-back .ratings-container {
+.movie-card:not(.is-quick-view) .flip-card-back .ratings-container {
   margin-bottom: 4px !important;
 }
 
@@ -256,11 +256,11 @@ combined += `
   margin-bottom: 0 !important;
 }
 
-/* Alineación de año y bandera a la derecha si no hay iconos de plataformas */
-.year-country-line {
+/* Alineación de año y bandera a la derecha si no hay iconos de plataformas (solo en cards estándar de grid) */
+.movie-card:not(.is-quick-view) .year-country-line {
   margin-left: auto !important;
 }
-.year-flag-group {
+.movie-card:not(.is-quick-view) .year-flag-group {
   justify-content: flex-end !important;
 }
 
