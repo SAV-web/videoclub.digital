@@ -275,6 +275,7 @@
   display: block;
   width: 100%;
   flex-shrink: 0;
+  text-align: right;
 
   &:empty {
     display: none;
@@ -703,7 +704,7 @@
     overflow: visible;
 
     &::before {
-      content: "Título original: ";
+      content: "V. O. ";
       font-style: italic;
       color: var(--color-text-secondary);
     }
@@ -717,6 +718,8 @@
 .is-quick-view .flip-card-back .front-director-info {
   margin-top: 2px !important;
   margin-bottom: var(--space-md) !important;
+  text-align: right;
+  width: 100%;
 }
 
 .is-quick-view .back-meta-header {
@@ -742,6 +745,7 @@
 .is-quick-view .detail-item[data-template="actors-container"],
 .is-quick-view .detail-item[data-template="genre-container"] {
   display: block;
+  line-height: 1.5;
   -webkit-line-clamp: none;
   line-clamp: none;
   -webkit-box-orient: unset;
@@ -755,6 +759,7 @@
 .is-quick-view .detail-item[data-template="actors-container"] .detail-data,
 .is-quick-view .detail-item[data-template="genre-container"] .detail-data {
   display: inline;
+  line-height: 1.5;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
@@ -849,13 +854,13 @@
 }
 
 .is-quick-view [data-template="fa-votes-bar"] {
-  background-color: #2570b8;
+  background-color: #2570b8 !important;
   height: 100%;
   border-radius: 2px;
 }
 
 .is-quick-view [data-template="imdb-votes-bar"] {
-  background-color: #f5c518;
+  background-color: #f5c518 !important;
   height: 100%;
   border-radius: 2px;
 }

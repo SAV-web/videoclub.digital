@@ -4100,6 +4100,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   display: block;
   width: 100%;
   flex-shrink: 0;
+  text-align: right;
 
   &:empty {
     display: none;
@@ -4528,7 +4529,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     overflow: visible;
 
     &::before {
-      content: "Título original: ";
+      content: "V. O. ";
       font-style: italic;
       color: var(--color-text-secondary);
     }
@@ -4542,6 +4543,8 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .flip-card-back .front-director-info {
   margin-top: 2px !important;
   margin-bottom: var(--space-md) !important;
+  text-align: right;
+  width: 100%;
 }
 
 .is-quick-view .back-meta-header {
@@ -4567,6 +4570,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .detail-item[data-template="actors-container"],
 .is-quick-view .detail-item[data-template="genre-container"] {
   display: block;
+  line-height: 1.5;
   -webkit-line-clamp: none;
   line-clamp: none;
   -webkit-box-orient: unset;
@@ -4580,6 +4584,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .detail-item[data-template="actors-container"] .detail-data,
 .is-quick-view .detail-item[data-template="genre-container"] .detail-data {
   display: inline;
+  line-height: 1.5;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
@@ -4674,13 +4679,13 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 }
 
 .is-quick-view [data-template="fa-votes-bar"] {
-  background-color: #2570b8;
+  background-color: #2570b8 !important;
   height: 100%;
   border-radius: 2px;
 }
 
 .is-quick-view [data-template="imdb-votes-bar"] {
-  background-color: #f5c518;
+  background-color: #f5c518 !important;
   height: 100%;
   border-radius: 2px;
 }
@@ -5596,7 +5601,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 }
 
 /* Botón '+' de reparto en la esquina derecha del bloque de actores sin recortar su sombra */
-.detail-item[data-template="actors-container"] {
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] {
   position: relative !important;
   overflow: visible !important;
   display: flex !important;
@@ -5606,7 +5611,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   padding-right: 22px !important;
 }
 
-.detail-item[data-template="actors-container"] .detail-data {
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] .detail-data {
   flex: 1 !important;
   min-width: 0 !important;
   overflow: hidden !important;
@@ -5821,6 +5826,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .detail-item[data-template="actors-container"],
 .is-quick-view .detail-item[data-template="genre-container"] {
   display: block !important;
+  line-height: 1.5 !important;
   -webkit-line-clamp: none !important;
   line-clamp: none !important;
   -webkit-box-orient: unset !important;
@@ -5834,7 +5840,19 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .detail-item[data-template="actors-container"] .detail-data,
 .is-quick-view .detail-item[data-template="genre-container"] .detail-data {
   display: inline !important;
+  line-height: 1.5 !important;
   overflow: visible !important;
   text-overflow: clip !important;
   white-space: normal !important;
+}
+
+/* Colores de barras de puntuaciones FA e IMDb en ficha SEO */
+[data-template="fa-votes-bar"],
+.is-quick-view [data-template="fa-votes-bar"] {
+  background-color: #2570b8 !important;
+}
+
+[data-template="imdb-votes-bar"],
+.is-quick-view [data-template="imdb-votes-bar"] {
+  background-color: #f5c518 !important;
 }

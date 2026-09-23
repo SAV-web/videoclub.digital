@@ -373,7 +373,7 @@ export function renderMovieHtml(movie, options = {}) {
                   </a>
                   <span class="rating-votes-count">${escapeHtml(formattedFaVotes)}</span>
                   <div class="rating-bar-container" style="display:block;" data-votes="${escapeAttr(formattedFaVotes)}">
-                    <div class="rating-bar" data-template="fa-votes-bar" style="width: ${faBarWidth}%;"></div>
+                    <div class="rating-bar" data-template="fa-votes-bar" style="width: ${faBarWidth}%; background-color: #2570b8;"></div>
                   </div>
                 </div>
               ` : ''}
@@ -386,7 +386,7 @@ export function renderMovieHtml(movie, options = {}) {
                   </a>
                   <span class="rating-votes-count">${escapeHtml(formattedImdbVotes)}</span>
                   <div class="rating-bar-container" style="display:block;" data-votes="${escapeAttr(formattedImdbVotes)}">
-                    <div class="rating-bar" data-template="imdb-votes-bar" style="width: ${imdbBarWidth}%;"></div>
+                    <div class="rating-bar" data-template="imdb-votes-bar" style="width: ${imdbBarWidth}%; background-color: #f5c518;"></div>
                   </div>
                 </div>
               ` : ''}

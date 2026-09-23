@@ -194,7 +194,7 @@ combined += `
 }
 
 /* Botón '+' de reparto en la esquina derecha del bloque de actores sin recortar su sombra */
-.detail-item[data-template="actors-container"] {
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] {
   position: relative !important;
   overflow: visible !important;
   display: flex !important;
@@ -204,7 +204,7 @@ combined += `
   padding-right: 22px !important;
 }
 
-.detail-item[data-template="actors-container"] .detail-data {
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] .detail-data {
   flex: 1 !important;
   min-width: 0 !important;
   overflow: hidden !important;
@@ -419,6 +419,7 @@ combined += `
 .is-quick-view .detail-item[data-template="actors-container"],
 .is-quick-view .detail-item[data-template="genre-container"] {
   display: block !important;
+  line-height: 1.5 !important;
   -webkit-line-clamp: none !important;
   line-clamp: none !important;
   -webkit-box-orient: unset !important;
@@ -432,9 +433,21 @@ combined += `
 .is-quick-view .detail-item[data-template="actors-container"] .detail-data,
 .is-quick-view .detail-item[data-template="genre-container"] .detail-data {
   display: inline !important;
+  line-height: 1.5 !important;
   overflow: visible !important;
   text-overflow: clip !important;
   white-space: normal !important;
+}
+
+/* Colores de barras de puntuaciones FA e IMDb en ficha SEO */
+[data-template="fa-votes-bar"],
+.is-quick-view [data-template="fa-votes-bar"] {
+  background-color: #2570b8 !important;
+}
+
+[data-template="imdb-votes-bar"],
+.is-quick-view [data-template="imdb-votes-bar"] {
+  background-color: #f5c518 !important;
 }
 `;
 
