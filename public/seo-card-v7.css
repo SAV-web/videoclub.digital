@@ -4898,9 +4898,17 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
     scrollbar-width: none;
     -ms-overflow-style: none;
     box-sizing: border-box;
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
 
     &::-webkit-scrollbar {
       display: none;
+    }
+
+    &.is-scrolled {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
     }
   }
 
@@ -4931,6 +4939,162 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
       -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
     }
+  }
+}
+
+/* --- 5.1. ADAPTACIÓN MÓVIL EN MODO APAISADO (LANDSCAPE) --- */
+@media (orientation: landscape) and (max-height: 550px),
+       (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .quick-view-modal {
+    top: 50% !important;
+    bottom: auto !important;
+    left: 50% !important;
+    width: 94vw !important;
+    max-width: 760px !important;
+    height: 94dvh !important;
+    max-height: 94dvh !important;
+    border-radius: var(--radius-xl) !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+    overflow: visible !important;
+
+    &::before {
+      display: none !important;
+    }
+  }
+
+  .quick-view-content {
+    overflow: hidden !important;
+    height: 100% !important;
+    border-radius: inherit !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .modal-nav-btn {
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .modal-nav-btn--prev {
+    left: -28px !important;
+  }
+
+  .modal-nav-btn--next {
+    right: -28px !important;
+  }
+
+  .is-quick-view .flip-card-inner {
+    display: flex !important;
+    flex-direction: row !important;
+    position: relative !important;
+    overflow: visible !important;
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  /* Columna izquierda: 50%, altura 100%, flex vertical, scroll independiente */
+  .is-quick-view .flip-card-front {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    width: 50% !important;
+    height: 100% !important;
+    max-height: 94dvh !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    border-right: 1px solid var(--color-border) !important;
+    border-bottom: none !important;
+    box-sizing: border-box !important;
+    padding: var(--space-sm) var(--space-md) var(--space-lg) var(--space-md) !important;
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
+
+    &::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    &.is-scrolled {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+    }
+  }
+
+  /* Columna derecha: 50%, altura 100%, scroll independiente */
+  .is-quick-view .flip-card-back {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 50% !important;
+    height: 100% !important;
+    max-height: 94dvh !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    box-sizing: border-box !important;
+    padding: var(--space-sm) var(--space-md) var(--space-lg) var(--space-md) !important;
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
+
+    &::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    &.is-scrolled {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+    }
+  }
+
+  /* Adaptación de hijos de la columna izquierda para evitar cortes de contenido */
+  .is-quick-view .poster-container {
+    width: 100% !important;
+    max-width: 290px !important;
+    margin-inline: auto !important;
+    margin-bottom: var(--space-sm) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .is-quick-view .card-rating-block {
+    flex-shrink: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: var(--space-xs) !important;
+    padding-bottom: 0 !important;
+  }
+
+  .is-quick-view .movie-summary {
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+  }
+
+  .is-quick-view .title-director-block {
+    flex-shrink: 0 !important;
+    min-height: unset !important;
+    overflow: visible !important;
+    margin-bottom: 0 !important;
+  }
+
+  .is-quick-view .movie-meta {
+    flex-shrink: 0 !important;
+    overflow: visible !important;
+    margin-top: var(--space-xs) !important;
+    padding-bottom: var(--space-xs) !important;
+  }
+
+  .is-quick-view.person-card .poster-container {
+    width: min(100%, 240px) !important;
   }
 }
 

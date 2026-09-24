@@ -242,10 +242,10 @@ function handleTouchMove(e: TouchEvent): void {
 
     const SCROLL_TOLERANCE = 5; // Tolerancia para scroll inercial (iOS)
 
-    // Gesto Vertical (Cierre): Solo si estamos arriba del todo y arrastramos hacia abajo
+    // Gesto Vertical (Cierre): Solo en modo bottom-sheet vertical si estamos arriba del todo y arrastramos hacia abajo
     if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= SCROLL_TOLERANCE) {
-      const isMobile = window.innerWidth <= 700 || (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 700px)").matches);
-      if (isMobile) {
+      const isMobilePortrait = window.innerWidth <= 700 && (typeof window.matchMedia === "function" ? !window.matchMedia("(orientation: landscape)").matches : window.innerHeight > window.innerWidth);
+      if (isMobilePortrait) {
         touchState.isDragging = true;
         modal.classList.add(CSS_CLASSES.IS_DRAGGING); // Desactivar transición para seguir el dedo
       }
@@ -811,6 +811,11 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     content.scrollTop = 0;
     content.classList.remove("is-scrolled");
     content.appendChild(clone);
+    const initialFront = cardClone.querySelector<HTMLElement>(".flip-card-front");
+    if (initialFront) {
+      initialFront.scrollTop = 0;
+      initialFront.classList.remove("is-scrolled");
+    }
     const initialBack = cardClone.querySelector<HTMLElement>(".flip-card-back");
     if (initialBack) {
       initialBack.scrollTop = 0;
@@ -1112,7 +1117,7 @@ export function initQuickView(): void {
     // Control de máscara de continuidad: detecta scroll para retirar el degradado superior en el tope
     const handleScrollMask = (e: Event) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.classList?.contains("flip-card-back") || target === content)) {
+      if (target && (target.classList?.contains("flip-card-back") || target.classList?.contains("flip-card-front") || target === content)) {
         target.classList.toggle("is-scrolled", target.scrollTop > 4);
       }
     };
