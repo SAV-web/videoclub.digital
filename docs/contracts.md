@@ -377,3 +377,48 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
 3. **Autocompletado de Entrada**:
    - Los resultados activos (`.sidebar-autocomplete-item.is-active`, `:hover`) usan fondos contrastados (`#1e293b` en claro, `#334155` en oscuro) y texto blanco con resaltado azul `#38bdf8` en coincidencias (`<strong>`).
 
+---
+
+## 11. Contrato de la Vista Rápida (Modal): Modos Escritorio, Móvil Vertical y Móvil Apaisado
+
+1. **Estructura y Breakpoints Responsivos**:
+   - **Modo Escritorio (`> 700px`)**:
+     - Ventana flotante centrada (`width: 90%; max-width: 720px; max-height: 92dvh;`).
+     - Estructura de dos columnas al 50% con scroll vertical independiente (`overflow-y: auto`) y barras invisibles (`scrollbar-width: none`).
+     - Botones de navegación exteriores (`left: -32px; right: -32px;`).
+     - Contenedor elástico con supresión de scroll anidado (`overflow: hidden`).
+   - **Modo Móvil Vertical (`<= 700px` y orientación *portrait*)**:
+     - Modal de panel inferior (*Bottom Sheet*, `width: 96%; height: 92dvh;`).
+     - Barra de arrastre superior visible (`&::before`).
+     - Apilamiento vertical de columnas (`flex-direction: column`).
+     - Arrastre vertical de cierre (*swipe-to-dismiss*) activo cuando `scrollTop <= 5px`.
+   - **Modo Móvil Apaisado (*Landscape* con altura `<= 600px` táctil o `<= 550px`)**:
+     - Breakpoint específico: `@media (orientation: landscape) and (max-height: 550px), (orientation: landscape) and (max-height: 600px) and (pointer: coarse)`.
+     - Modal centrado en el viewport (`top: 50%; left: 50%; transform: translate(-50%, -50%); width: 94vw; max-width: 760px; height: 94dvh;`).
+     - Supresión estricta de la barra de arrastre superior (`&::before { display: none !important; }`).
+     - Desacoplamiento del gesto de cierre vertical: el *swipe-to-dismiss* se inhabilita para garantizar el scroll vertical nativo en ambas columnas.
+     - Dos columnas independientes al 50% (`.flip-card-front` y `.flip-card-back`), cada una con altura completa y `overflow-y: auto`.
+     - Flechas de navegación adaptadas a los flancos (`left: -28px; right: -28px; top: 50%; transform: translateY(-50%);`).
+
+2. **Contrato de Reducción Progresiva del Cartel (`.poster-compact`)**:
+   - **Estado Inicial**: El cartel arranca siempre en tamaño completo de columna (`width: 100%; max-width: 290px; margin-inline: auto;`), destacando la portada cinematográfica.
+   - **Activación por Desplazamiento**:
+     - Cuando el usuario se desplaza por la columna izquierda y alcanza el tope inferior (`scrollTop > 20px` y `scrollBottom <= 15px`), se inyecta la clase `.poster-compact` en `.flip-card-front`.
+     - El cartel reduce sus dimensiones a `clamp(175px, 44vh, 220px)` (y `clamp(140px, 36vh, 185px)` en fichas de personas VIP) mediante una transición desacelerada fluida de `0.45s` (`cubic-bezier(0.16, 1, 0.3, 1)`).
+     - El padding horizontal de la columna se optimiza a `var(--space-sm)` (8px) para eliminar holguras laterales innecesarias a la izquierda.
+     - Se garantiza la visualización simultánea del cartel con estrellas, watchlist, título traducido, estudio, año y bandera de país.
+   - **Persistencia**:
+     - El cartel permanece en tamaño reducido mientras el usuario lee o interactúa con los controles inferiores (votar con estrellas, añadir a watchlist o abrir enlaces).
+     - El desplazamiento o lectura en la columna derecha (`.flip-card-back`) es totalmente autónomo y no afecta al estado del cartel en la columna izquierda.
+   - **Restauración al Hacer Scroll Arriba**:
+     - La clase `.poster-compact` se retira y el cartel recupera suavemente su tamaño completo (hasta 290px) ante cualquier acción intencional de subida en la columna izquierda:
+       1. Arrastre táctil hacia abajo (`touchmove` con `deltaY > 15px` originado en `.flip-card-front`).
+       2. Giro de rueda de ratón o trackpad hacia arriba (`wheel` con `deltaY < -5px` sobre `.flip-card-front`).
+       3. Pulsación de teclas `ArrowUp` o `PageUp`.
+   - **Máscaras de Continuidad**:
+     - Degradados de desvanecimiento dinámicos superior (`24px`) e inferior (`28px`).
+     - Al activarse `.poster-compact`, la máscara de `.flip-card-front` se desactiva (`mask-image: none !important`) para asegurar que la línea de estudio + año + bandera se visualice con nitidez y opacidad absoluta.
+   - **Reseteo Determinista**:
+     - Al cambiar de ficha (navegación previa/siguiente) o cerrar la modal, se restablece `scrollTop = 0` y se eliminan las clases `.is-scrolled` y `.poster-compact`.
+
+

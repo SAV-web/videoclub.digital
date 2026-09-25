@@ -81,6 +81,7 @@ interface TouchState {
   startTime: number;
   isDragging: boolean;
   isHorizontalSwipe: boolean;
+  target: HTMLElement | null;
 }
 
 const touchState: TouchState = {
@@ -89,7 +90,8 @@ const touchState: TouchState = {
   currentY: 0,
   startTime: 0,
   isDragging: false,
-  isHorizontalSwipe: false
+  isHorizontalSwipe: false,
+  target: null
 };
 
 // Estado para la transición Hero (Card -> Modal)
@@ -213,6 +215,7 @@ function handleTouchStart(e: TouchEvent): void {
 
   touchState.startY = e.touches[0].clientY;
   touchState.startX = e.touches[0].clientX;
+  touchState.target = e.target as HTMLElement | null;
   touchState.currentY = 0;
   touchState.isDragging = false;
   touchState.isHorizontalSwipe = false;
@@ -235,6 +238,20 @@ function handleTouchMove(e: TouchEvent): void {
   const currentX = e.touches[0].clientX;
   const deltaY = currentY - touchState.startY;
   const deltaX = currentX - touchState.startX;
+
+  // Restaurar tamaño del cartel en columna izquierda (modo apaisado) si el usuario hace scroll hacia arriba (swipe abajo)
+  if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 15 && touchState.target?.closest(".flip-card-front")) {
+    const isLandscape = typeof window.matchMedia === "function"
+      ? window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches
+      : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
+
+    if (isLandscape) {
+      const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      if (compactFront) {
+        compactFront.classList.remove("poster-compact");
+      }
+    }
+  }
 
   // 1. Detección de Intención (Primera vez)
   if (!touchState.isDragging && !touchState.isHorizontalSwipe) {
@@ -290,11 +307,15 @@ function handleTouchEnd(e: TouchEvent): void {
       navigateToSibling(deltaX < 0 ? 1 : -1);
     }
     touchState.isHorizontalSwipe = false;
+    touchState.target = null;
     return;
   }
 
   // B. Cierre Vertical
-  if (!touchState.isDragging) return;
+  if (!touchState.isDragging) {
+    touchState.target = null;
+    return;
+  }
 
   modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS
 
@@ -307,6 +328,7 @@ function handleTouchEnd(e: TouchEvent): void {
 
   touchState.currentY = 0;
   touchState.isDragging = false;
+  touchState.target = null;
 }
 
 // =================================================================
@@ -798,6 +820,12 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     // Montaje
     content.textContent = "";
     content.appendChild(clone);
+    const personFront = cardClone.querySelector<HTMLElement>(".flip-card-front");
+    if (personFront) {
+      personFront.scrollTop = 0;
+      personFront.classList.remove("is-scrolled");
+      personFront.classList.remove("poster-compact");
+    }
     updateNavButtons(modalId, contextCards);
   } else {
     // --- CAPA PELÍCULA ---
@@ -815,6 +843,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     if (initialFront) {
       initialFront.scrollTop = 0;
       initialFront.classList.remove("is-scrolled");
+      initialFront.classList.remove("poster-compact");
     }
     const initialBack = cardClone.querySelector<HTMLElement>(".flip-card-back");
     if (initialBack) {
@@ -890,6 +919,9 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
     modal.classList.remove("hide-arrows");
     overlay.classList.remove("is-visible");
     document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
+    modal.querySelectorAll<HTMLElement>(".flip-card-front.poster-compact").forEach(cf => {
+      cf.classList.remove("poster-compact");
+    });
 
     // Limpieza
     scheduleModalTimeout(resetModalTransform, MODAL_TRANSITION_MS);
@@ -1117,13 +1149,43 @@ export function initQuickView(): void {
     // Control de máscara de continuidad: detecta scroll para retirar el degradado superior en el tope
     const handleScrollMask = (e: Event) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.classList?.contains("flip-card-back") || target.classList?.contains("flip-card-front") || target === content)) {
+      if (!target) return;
+      if (target.classList?.contains("flip-card-back") || target.classList?.contains("flip-card-front") || target === content) {
         target.classList.toggle("is-scrolled", target.scrollTop > 4);
+      }
+
+      if (target.classList?.contains("flip-card-front")) {
+        const isLandscape = typeof window.matchMedia === "function"
+          ? window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches
+          : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
+
+        if (isLandscape) {
+          const scrollBottom = target.scrollHeight - target.clientHeight - target.scrollTop;
+          // Al llegar al final del scroll tras haber iniciado desplazamiento, compactar cartel suavemente
+          if (target.scrollTop > 20 && scrollBottom <= 15) {
+            target.classList.add("poster-compact");
+          }
+        }
       }
     };
     content.addEventListener("scroll", handleScrollMask, { passive: true, capture: true });
     modalUnsubscribers.push(() => {
       content.removeEventListener("scroll", handleScrollMask, { capture: true });
+    });
+
+    // Control de rueda para expandir cartel al hacer scroll hacia arriba en columna izquierda apaisada
+    const handleContentWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (e.deltaY < -5 && target?.closest(".flip-card-front")) {
+        const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+        if (compactFront) {
+          compactFront.classList.remove("poster-compact");
+        }
+      }
+    };
+    content.addEventListener("wheel", handleContentWheel, { passive: true });
+    modalUnsubscribers.push(() => {
+      content.removeEventListener("wheel", handleContentWheel);
     });
   }
 
@@ -1155,6 +1217,10 @@ export function initQuickView(): void {
     else if (e.key === "ArrowUp") {
       e.preventDefault();
       e.stopPropagation();
+      const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      if (compactFront) {
+        compactFront.classList.remove("poster-compact");
+      }
       const scrollTarget = window.innerWidth > 700
         ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
         : content;
@@ -1171,6 +1237,10 @@ export function initQuickView(): void {
     else if (e.key === "PageUp") {
       e.preventDefault();
       e.stopPropagation();
+      const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      if (compactFront) {
+        compactFront.classList.remove("poster-compact");
+      }
       const scrollTarget = window.innerWidth > 700
         ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
         : content;

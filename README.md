@@ -32,7 +32,7 @@
 - 📱 **Experiencia Móvil Nativa**:
   - Interfaz responsiva con Container Queries y cabecera elástica *sticky* sin solapamientos.
   - Línea informativa en cabecera estructurada 1:1 con la jerarquía canónica de las URLs.
-  - Menú lateral deslizante (*Drawer*) y modales *Bottom Sheet* con física de arrastre (*swipe-to-dismiss*) y respuesta háptica.
+  - Menú lateral deslizante (*Drawer*) y modales adaptativas: *Bottom Sheet* con física de arrastre (*swipe-to-dismiss*) en orientación vertical, y dos columnas al 50% con scroll vertical independiente y contracción suave del cartel (`poster-compact`) en orientación apaisada (*landscape*).
 - 🧹 **Gestión de Ciclo de Vida y Limpieza (Teardown)**:
   - Funciones de desmontaje explícito (`disposeApp`, `disposeCardEvents`, `disposeModalEvents`, etc.) y bus de eventos global seguro para garantizar cero fugas de memoria (*zero memory leaks*).
 
@@ -97,7 +97,7 @@ VIDEOCLUB.DIGITAL/
 │   │   └── components/          # Módulos UI
 │   │       ├── card/            # Tarjeta/Ficha modular (index, context, cardElement, lifecycle)
 │   │       ├── sidebar/         # Menú lateral modular (index, context, filters, gestures, yearFilter)
-│   │       ├── modal.ts         # Vista rápida (Quick View / Bottom Sheet)
+│   │       ├── modal.ts         # Vista rápida (Quick View en 2 columnas escritorio/landscape y Bottom Sheet portrait)
 │   │       ├── profile.ts       # Perfil de usuario y estadísticas cinemáticas
 │   │       ├── rating.ts        # Sistema interactivo de puntuación por estrellas
 │   │       └── yearSlider.ts    # Control de rango dual nativo
