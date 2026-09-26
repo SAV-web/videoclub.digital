@@ -789,6 +789,8 @@ html.dark-mode .bbc-icon {
   line-height: 1.38;
   text-wrap: pretty;
   /* Evita palabras huérfanas al final */
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 
 /* Overlay de Actores */

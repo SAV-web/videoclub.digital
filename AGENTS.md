@@ -84,9 +84,9 @@ Para optimizar el uso de tokens y tiempos de respuesta, se debe seguir estrictam
 ·   Suite global diferida: Reserva la ejecución de la suite completa (`npm run test`) únicamente para antes de hacer un commit o al alterar el SSOT (Fuente Única de Verdad).
 
 ### PROTOCOLO SEGÚN IMPACTO
-·   UI / CSS: Edición origen + compilación directa del CSS modificado. Sin tests globales ni regeneración DB.
-·   Componentes SPA / Frontend: Edición + verificación de tipos (`npx tsc --noEmit`).
-·   Core / Worker / Edge / Backend: Test unitario específico del archivo impactado (`node --test tests/[archivo].test.mjs`).
+·   UI / CSS: Edición exclusiva en los archivos fuente originales (`src/css/components/`). PROHIBIDO editar manualmente o recompilar en cada cambio los artefactos generados para SEO (`public/seo-card-v7.*`, `cloudflare/seo/seo-card-css.js`). En desarrollo local (`npm run dev`), Vite consume directamente `src/css/main.css` vía HMR. La compilación perimetral (`npm run prepare:worker` o `node scripts/build-seo-css.mjs`) se reserva estrictamente para antes de un commit o despliegue.
+·   Componentes SPA / Frontend: Edición + verificación de tipos (`npx tsc --noEmit`).
+·   Core / Worker / Edge / Backend: Test unitario específico del archivo impactado (`node --test tests/[archivo].test.mjs`).
 
 ## ESTILO DE COMUNICACIÓN
 

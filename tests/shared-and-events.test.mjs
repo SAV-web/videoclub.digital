@@ -88,6 +88,9 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
   test("formatYear formatea rangos de emisión para series y películas", () => {
     assert.equal(sharedFormatters.formatYear(1994, null, false), "1994");
     assert.equal(sharedFormatters.formatYear(2017, "2020", true), "2017-20");
+    assert.equal(sharedFormatters.formatYear(1990, "2010", true), "1990-'10");
+    assert.equal(sharedFormatters.formatYear(1990, 1998, true), "1990-98");
+    assert.equal(sharedFormatters.formatYear(1999, "2000", true, "", "SM"), "1999-'00 (M)");
     assert.equal(sharedFormatters.formatYear(2022, "current", true), "2022-");
     assert.equal(sharedFormatters.formatYear(2020, "present", true), "2020-");
     assert.equal(

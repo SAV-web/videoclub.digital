@@ -109,6 +109,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 - **`globals.css`**: Reset, utilidades generales y scrollbars personalizados.
 - **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`), cabecera fija elástica (`position: sticky; top: 0;`) y CSS Grid para la cuadrícula principal adaptativa.
 - **`components/*.css`**: CSS scopeado a componentes. Uso intensivo de `contain: layout paint style` y `content-visibility: auto` para máximo rendimiento. Evita transicionar propiedades pesadas (`width`, `padding`) en móviles, priorizando `transform` y `opacity` (GPU).
+- **Principio SSOT en Desarrollo vs Compilación Perimetral**: El directorio `src/css/` es la **Única Fuente de Verdad** de los estilos. Durante el desarrollo local (`npm run dev`), Vite procesa estos archivos en tiempo real con HMR (*Hot Module Replacement*). Los artefactos derivados para SEO perimetral (`public/seo-card-v7.*` y `cloudflare/seo/seo-card-css.js`) son generados automáticamente por `scripts/build-seo-css.mjs` y **nunca deben editarse manualmente ni recompilarse en cada cambio menor de diseño**. Su regeneración se delega exclusivamente a `npm run prepare:worker` antes de un commit o despliegue.
 
 ### 8. Suite de Tests (`tests/`)
 

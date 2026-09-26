@@ -737,7 +737,7 @@ body.rotation-disabled .grid-container {
 
   /* Sobrescribe componentes específicos */
   .type-filter-toggle,
-  .sidebar .sidebar-control-button {
+  .sidebar .sidebar-control-button:not(.profile-button) {
     height: var(--tap-target-size); width: var(--tap-target-size); padding: 0;
   }
 }
@@ -1533,6 +1533,8 @@ html.dark-mode .bbc-icon {
   line-height: 1.38;
   text-wrap: pretty;
   /* Evita palabras huérfanas al final */
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 
 /* Overlay de Actores */
@@ -3398,18 +3400,27 @@ body.sidebar-collapsed .sidebar {
 
 .profile-button {
   display: inline-flex; align-items: center; justify-content: center;
-  gap: 8px; min-height: 36px; padding: 6px 14px;
+  gap: 8px; min-height: 38px; padding: 6px 16px;
   border-radius: var(--radius-pill); border: 1.5px solid var(--color-border);
   background-color: var(--color-surface); color: var(--color-text-secondary);
   font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
   cursor: pointer; box-shadow: var(--shadow-sm);
-  transition: border-color var(--transition-duration-fast), color var(--transition-duration-fast), transform var(--transition-duration-fast), background-color var(--transition-duration-fast);
+  white-space: nowrap; user-select: none;
+  transition: border-color var(--transition-duration-fast), color var(--transition-duration-fast), transform var(--transition-duration-fast), background-color var(--transition-duration-fast), box-shadow var(--transition-duration-fast);
 }
 .profile-button svg { width: 18px; height: 18px; flex-shrink: 0; }
 .profile-button:hover {
   border-color: var(--color-brand-gold, #d4a347);
   color: var(--color-brand-gold, #d4a347);
   transform: scale(1.03);
+}
+.profile-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus, rgba(212, 163, 71, 0.35));
+  border-color: var(--color-brand-gold, #d4a347);
+}
+.profile-button:active {
+  transform: scale(0.97);
 }
 :where(html.dark-mode) .profile-button {
   background-color: rgba(255, 255, 255, 0.03);
@@ -3421,7 +3432,7 @@ body.sidebar-collapsed .sidebar {
   color: var(--color-brand-gold, #d4a347);
 }
 body.sidebar-collapsed .profile-button {
-  padding: 0; width: 36px; height: 36px;
+  padding: 0; width: 36px; height: 36px; min-height: 36px;
   border: none; background: transparent; box-shadow: none;
 }
 body.sidebar-collapsed .profile-button .profile-button-label { display: none; }
@@ -3527,6 +3538,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   .filter-pill .remove-filter-btn::after { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; }
   .sidebar-autocomplete-item:active, .collapsible-section .section-header:active { transform: scale(0.98); }
   .sidebar-control-button { min-width: var(--tap-target-size); min-height: var(--tap-target-size); }
+  .profile-button { min-height: 42px; padding-inline: 18px; }
   .filter-link { min-height: var(--tap-target-size); align-items: center; }
   .exclude-filter-btn {
     position: relative;
@@ -4175,7 +4187,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
-  gap: 28px !important; /* Separación equivalente al ancho visual de la bandera */
+  gap: 16px !important; /* Separación armónica entre grupo de estudios y grupo año/país */
   width: 100% !important;
   margin-top: auto !important;
   margin-inline: auto !important;
@@ -4189,7 +4201,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 .is-quick-view .card-icons-line {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 6px;
   margin: 0 !important;
   flex: 0 0 auto;
 }
@@ -4199,8 +4211,13 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 }
 
 .is-quick-view .platform-icon svg {
-  width: 33px;
-  height: 33px;
+  width: 28px;
+  height: 28px;
+}
+
+.is-quick-view .card-icons-line.compact .platform-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .is-quick-view .year-country-line {
@@ -4217,11 +4234,11 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   display: flex;
   align-items: center;
   justify-content: center !important;
-  font-size: 2rem;
+  font-size: 1.85rem;
   font-weight: var(--font-weight-bold, 700) !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: -0.02em !important;
   line-height: 1;
-  gap: 28px; /* Separación entre año y bandera equivalente al ancho visual de la bandera */
+  gap: 16px; /* Separación simétrica entre año y bandera */
   overflow: visible;
   margin: 0 !important;
 
@@ -4250,7 +4267,7 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
 
 .is-quick-view [data-template="year"] {
   font-weight: var(--font-weight-bold, 700) !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: -0.02em !important;
 }
 
 .is-quick-view .country-info {
@@ -4370,12 +4387,20 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   align-self: center;
 }
 
-.is-quick-view :is(.details-list, .plot-summary-final) {
+.is-quick-view .details-list {
   font-size: calc(var(--font-size-xs) * 1.5);
   line-height: 1.5;
   color: var(--color-text-secondary);
   hyphens: none;
   -webkit-hyphens: none;
+}
+
+.is-quick-view .plot-summary-final {
+  font-size: calc(var(--font-size-xs) * 1.5);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 
 .is-quick-view .detail-data {

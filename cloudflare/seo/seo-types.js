@@ -170,8 +170,14 @@ export function formatYear(year, yearEnd, isSeries = false, fallback = '', type 
     if (isOngoing) return `${text}-`;
     if (yearEnd && String(yearEnd).trim() !== 'M' && String(yearEnd).trim() !== '') {
       const normEnd = String(yearEnd).trim();
+      const startNum = Number.parseInt(text, 10);
+      let endNum = Number.parseInt(normEnd, 10);
+      if (normEnd.length <= 2 && Number.isFinite(endNum)) {
+        endNum = endNum < 50 ? 2000 + endNum : 1900 + endNum;
+      }
+      const isCenturyChange = Number.isFinite(startNum) && Number.isFinite(endNum) && startNum < 2000 && endNum >= 2000;
       const endSuffix = normEnd.length === 4 ? normEnd.slice(-2) : normEnd;
-      const formatted = `${text}-${endSuffix}`;
+      const formatted = isCenturyChange ? `${text}-'${endSuffix}` : `${text}-${endSuffix}`;
       return isMini ? `${formatted} (M)` : formatted;
     }
     if (isMini) return `${text} (M)`;

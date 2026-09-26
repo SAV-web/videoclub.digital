@@ -148,7 +148,7 @@
 
   /* Sobrescribe componentes específicos */
   .type-filter-toggle,
-  .sidebar .sidebar-control-button {
+  .sidebar .sidebar-control-button:not(.profile-button) {
     height: var(--tap-target-size); width: var(--tap-target-size); padding: 0;
   }
 }

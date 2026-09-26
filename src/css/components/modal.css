@@ -350,7 +350,7 @@
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
-  gap: 28px !important; /* Separación equivalente al ancho visual de la bandera */
+  gap: 16px !important; /* Separación armónica entre grupo de estudios y grupo año/país */
   width: 100% !important;
   margin-top: auto !important;
   margin-inline: auto !important;
@@ -364,7 +364,7 @@
 .is-quick-view .card-icons-line {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 6px;
   margin: 0 !important;
   flex: 0 0 auto;
 }
@@ -374,8 +374,13 @@
 }
 
 .is-quick-view .platform-icon svg {
-  width: 33px;
-  height: 33px;
+  width: 28px;
+  height: 28px;
+}
+
+.is-quick-view .card-icons-line.compact .platform-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .is-quick-view .year-country-line {
@@ -392,11 +397,11 @@
   display: flex;
   align-items: center;
   justify-content: center !important;
-  font-size: 2rem;
+  font-size: 1.85rem;
   font-weight: var(--font-weight-bold, 700) !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: -0.02em !important;
   line-height: 1;
-  gap: 28px; /* Separación entre año y bandera equivalente al ancho visual de la bandera */
+  gap: 16px; /* Separación simétrica entre año y bandera */
   overflow: visible;
   margin: 0 !important;
 
@@ -425,7 +430,7 @@
 
 .is-quick-view [data-template="year"] {
   font-weight: var(--font-weight-bold, 700) !important;
-  letter-spacing: 0.06em !important;
+  letter-spacing: -0.02em !important;
 }
 
 .is-quick-view .country-info {
@@ -545,12 +550,20 @@
   align-self: center;
 }
 
-.is-quick-view :is(.details-list, .plot-summary-final) {
+.is-quick-view .details-list {
   font-size: calc(var(--font-size-xs) * 1.5);
   line-height: 1.5;
   color: var(--color-text-secondary);
   hyphens: none;
   -webkit-hyphens: none;
+}
+
+.is-quick-view .plot-summary-final {
+  font-size: calc(var(--font-size-xs) * 1.5);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 
 .is-quick-view .detail-data {

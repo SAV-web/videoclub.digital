@@ -3,7 +3,7 @@
 //                (cloudflare/seo/vip-manifest.js)
 // =================================================================
 // Generado automáticamente mediante: node scripts/generate-vip-manifest.mjs
-// Fecha de generación: 2026-09-18T21:35:19.830Z
+// Fecha de generación: 2026-09-26T07:04:26.427Z
 // Total entidades VIP: 1379
 //
 // PRINCIPIO ARQUITECTÓNICO (FILOSOFÍA "VIP = FUENTE EDITORIAL"):
@@ -45,7 +45,6 @@ export const VIP_SLUGS = new Set([
   "alba-rohrwacher",
   "albert-hughes",
   "albert-serra",
-  "alberto-caballero",
   "alberto-rodriguez",
   "alberto-san-juan",
   "alec-baldwin",
@@ -525,6 +524,7 @@ export const VIP_SLUGS = new Set([
   "henry-hathaway",
   "henry-king",
   "herbert-ross",
+  "hermanos-caballero",
   "hermanos-dardenne",
   "hermanos-duffer",
   "hermanos-pastor",
