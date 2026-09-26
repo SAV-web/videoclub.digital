@@ -113,6 +113,73 @@ export function formatRuntime(minutes: string | number | null | undefined, isSer
   return `${hrs} h ${mins} m`;
 }
 
+/**
+ * Formatea el bloque de episodios y duración para la modal:
+ * - Series: "10 ep. x 30 min.", "10 ep." o "30 min."
+ * - Películas: "1 h. 45 min.", "2 h.", "45 min." o "Película"
+ */
+export function formatModalDuration(
+  minutes: string | number | null | undefined,
+  episodes: string | number | null | undefined,
+  isSeries: boolean = false
+): { episodesText: string; durationText: string } {
+  const numMinutes = typeof minutes === "number" ? minutes : parseInt(String(minutes || 0), 10);
+  const numEpisodes = typeof episodes === "number" ? episodes : parseInt(String(episodes || 0), 10);
+
+  if (isSeries) {
+    const hasEpisodes = !isNaN(numEpisodes) && numEpisodes > 0;
+    const hasMinutes = !isNaN(numMinutes) && numMinutes > 0;
+
+    if (hasEpisodes && hasMinutes) {
+      return {
+        episodesText: `${numEpisodes} ep. x`,
+        durationText: `${numMinutes} min.`
+      };
+    }
+    if (hasEpisodes) {
+      return {
+        episodesText: `${numEpisodes} ep.`,
+        durationText: ""
+      };
+    }
+    if (hasMinutes) {
+      return {
+        episodesText: "",
+        durationText: `${numMinutes} min.`
+      };
+    }
+    return {
+      episodesText: "",
+      durationText: "Serie TV"
+    };
+  }
+
+  // Películas
+  if (!numMinutes || isNaN(numMinutes) || numMinutes <= 0) {
+    return {
+      episodesText: "",
+      durationText: "Película"
+    };
+  }
+
+  const hrs = Math.floor(numMinutes / 60);
+  const mins = numMinutes % 60;
+
+  let durationText = "";
+  if (hrs === 0) {
+    durationText = `${mins} min.`;
+  } else if (mins === 0) {
+    durationText = `${hrs} h.`;
+  } else {
+    durationText = `${hrs} h. ${mins} min.`;
+  }
+
+  return {
+    episodesText: "",
+    durationText
+  };
+}
+
 
 /**
  * Formatea el año o rango de años de emisión de una película o serie.

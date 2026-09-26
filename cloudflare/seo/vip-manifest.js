@@ -3,7 +3,7 @@
 //                (cloudflare/seo/vip-manifest.js)
 // =================================================================
 // Generado automáticamente mediante: node scripts/generate-vip-manifest.mjs
-// Fecha de generación: 2026-09-26T07:04:26.427Z
+// Fecha de generación: 2026-09-26T18:20:59.096Z
 // Total entidades VIP: 1379
 //
 // PRINCIPIO ARQUITECTÓNICO (FILOSOFÍA "VIP = FUENTE EDITORIAL"):

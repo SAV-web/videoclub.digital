@@ -15,7 +15,7 @@ import { setupCardRatings, handleRatingClick, setupRatingListeners } from "./rat
 import { appEvents, getState, getCurrentPage, getTotalMovies, updateUserDataForMovie } from "../state.js";
 
 import { fetchUserMovieDataForIds } from "../api.js";
-import { formatRuntime, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, getPosterUrl } from "../utils.js";
+import { formatRuntime, formatModalDuration, createElement, renderCountryFlag, executeViewTransition, mapMoviePayload, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, getPosterUrl } from "../utils.js";
 import { preserveHyphenatedWords } from "../../shared/formatters.js";
 
 
@@ -604,6 +604,31 @@ function setupModalHeader(nodes: ModalNodes, movie: ExtendedMovie): void {
 }
 
 /**
+ * Renderiza unidades y palabras de metadatos en spans con clase .meta-unit para
+ * permitir una modulación tipográfica más ligera (-20% font-weight) respecto a las cifras numéricas.
+ */
+function renderModalMetaUnits(container: HTMLElement, text: string): void {
+  container.textContent = "";
+  if (!text) return;
+  const regex = /([a-zA-ZáéíóúÁÉÍÓÚñÑ]+(?:\.)?)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      container.append(text.substring(lastIndex, match.index));
+    }
+    const span = document.createElement("span");
+    span.className = "meta-unit";
+    span.textContent = match[0];
+    container.appendChild(span);
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    container.append(text.substring(lastIndex));
+  }
+}
+
+/**
  * Configura los detalles extendidos del modal (Sinopsis, Reparto, etc.).
  */
 function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
@@ -619,13 +644,19 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
     nodes.origTitleWrap.hidden = false; // Siempre visible
   }
 
-  // Duración y Episodios
-  if (nodes.duration) nodes.duration.textContent = formatRuntime(movie.minutes, movie.isSeries);
+  // Duración y Episodios (Formato modal: "10 ep. x 30 min." o "1 h. 45 min.")
+  const { episodesText, durationText } = formatModalDuration(movie.minutes, movie.episodes, movie.isSeries);
 
   if (nodes.episodes) {
-    nodes.episodes.textContent = movie.displayEpisodes || "";
-    nodes.episodes.hidden = !movie.displayEpisodes;
+    renderModalMetaUnits(nodes.episodes, episodesText);
+    nodes.episodes.hidden = !episodesText;
   }
+
+  if (nodes.duration) {
+    renderModalMetaUnits(nodes.duration, durationText);
+    nodes.duration.hidden = !durationText;
+  }
+
 
   // Links Externos
   const setupLink = (key: string, url: string | null | undefined) => {

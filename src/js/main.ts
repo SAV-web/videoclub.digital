@@ -710,11 +710,23 @@ export function init(): void {
     window.history.scrollRestoration = "manual";
   }
 
-  requestAnimationFrame(() => {
-    document.querySelectorAll("[data-loading]").forEach(el => {
-      el.removeAttribute("data-loading");
+  let uiRevealed = false;
+  const revealUI = () => {
+    if (uiRevealed) return;
+    uiRevealed = true;
+    requestAnimationFrame(() => {
+      document.querySelectorAll("[data-loading]").forEach(el => {
+        el.removeAttribute("data-loading");
+      });
     });
-  });
+  };
+
+  if (typeof document !== "undefined" && "fonts" in document && document.fonts?.ready) {
+    document.fonts.ready.then(revealUI).catch(revealUI);
+    setTimeout(revealUI, 150);
+  } else {
+    revealUI();
+  }
 
 
   // Restaurar estado de rotación (Modo Muro) antes de renderizar para evitar saltos visuales

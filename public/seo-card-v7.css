@@ -463,7 +463,7 @@ body.sidebar-is-open .sidebar {
   }
   
   /* Menú Contraído (Solo iconos) */
-  body.sidebar-collapsed .sidebar {
+  :is(html.sidebar-collapsed, body.sidebar-collapsed) .sidebar {
     flex-basis: 65px; width: 65px; 
     & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
     & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
@@ -502,7 +502,7 @@ body.sidebar-is-open .sidebar {
 }
 
 /* Modo Muro (Tarjetas pequeñas que no giran) */
-body.rotation-disabled .grid-container {
+:is(html.rotation-disabled, body.rotation-disabled) .grid-container {
   grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--space-xxs) + 3px) calc(var(--space-xs) + 3px);
   @media (min-width: 500px) { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); }
 }
@@ -515,14 +515,14 @@ body.rotation-disabled .grid-container {
   .grid-container { gap: var(--space-lg) var(--space-md); }
 
   /* Divisores de 72 (Modo Muro) */
-  @container (min-width: 660px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-  @container (min-width: 880px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
-  @container (min-width: 1000px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(9, minmax(0, 1fr)); } }
-  @container (min-width: 1200px) { :where(body.rotation-disabled) .grid-container { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
+  @container (min-width: 660px) { :where(:is(html.rotation-disabled, body.rotation-disabled)) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  @container (min-width: 880px) { :where(:is(html.rotation-disabled, body.rotation-disabled)) .grid-container { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @container (min-width: 1000px) { :where(:is(html.rotation-disabled, body.rotation-disabled)) .grid-container { grid-template-columns: repeat(9, minmax(0, 1fr)); } }
+  @container (min-width: 1200px) { :where(:is(html.rotation-disabled, body.rotation-disabled)) .grid-container { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
 
   /* Divisores de 42 (Modo Exploración con Flip) */
-  @container (min-width: 940px) { :where(body:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-  @container (min-width: 1080px) { :where(body:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+  @container (min-width: 940px) { :where(:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  @container (min-width: 1080px) { :where(:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 }
 
 /* --- 5. ACCESIBILIDAD TÁCTIL --- */
@@ -3064,7 +3064,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 }
 /* Menú Contraído (Solo iconos) */
-body.sidebar-collapsed .sidebar {
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .sidebar {
   flex-basis: 65px; width: 65px; 
   & .sidebar-inner-wrapper { padding-inline: 0; }
   & .logo-area {
@@ -3431,12 +3431,12 @@ body.sidebar-collapsed .sidebar {
   border-color: var(--color-brand-gold, #d4a347);
   color: var(--color-brand-gold, #d4a347);
 }
-body.sidebar-collapsed .profile-button {
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .profile-button {
   padding: 0; width: 36px; height: 36px; min-height: 36px;
   border: none; background: transparent; box-shadow: none;
 }
-body.sidebar-collapsed .profile-button .profile-button-label { display: none; }
-body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .profile-button .profile-button-label { display: none; }
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .profile-button svg { width: 24px; height: 24px; }
 
 :where(body.user-logged-in) #login-button { display: none; }
 :where(body.user-logged-in) #user-session-group { display: inline-flex; }
@@ -4319,10 +4319,19 @@ body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
   gap: 16px;
 }
 
+.is-quick-view [data-template="episodes"]:not([hidden]) {
+  margin-right: -10px;
+}
+
 .is-quick-view :is([data-template="duration"], [data-template="episodes"]) {
   font-weight: var(--font-weight-bold, 700) !important;
   color: var(--color-text-secondary);
 }
+
+.is-quick-view :is([data-template="duration"], [data-template="episodes"]) .meta-unit {
+  font-weight: 560 !important;
+}
+
 
 /* Enlaces externos JustWatch / Wikipedia alineados a la derecha con efecto hover original y sin fondo circular */
 .is-quick-view [data-template="justwatch-link"] {

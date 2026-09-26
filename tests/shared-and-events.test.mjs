@@ -85,6 +85,48 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.formatRuntime("135", false), "2 h 15 m");
   });
 
+  test("formatModalDuration formatea episodios y duración para la modal según especificación", () => {
+    // Series
+    assert.deepEqual(sharedFormatters.formatModalDuration(30, 10, true), {
+      episodesText: "10 ep. x",
+      durationText: "30 min."
+    });
+    assert.deepEqual(sharedFormatters.formatModalDuration(45, "8", true), {
+      episodesText: "8 ep. x",
+      durationText: "45 min."
+    });
+    assert.deepEqual(sharedFormatters.formatModalDuration(null, 12, true), {
+      episodesText: "12 ep.",
+      durationText: ""
+    });
+    assert.deepEqual(sharedFormatters.formatModalDuration(50, null, true), {
+      episodesText: "",
+      durationText: "50 min."
+    });
+    assert.deepEqual(sharedFormatters.formatModalDuration(null, null, true), {
+      episodesText: "",
+      durationText: "Serie TV"
+    });
+
+    // Películas
+    assert.deepEqual(sharedFormatters.formatModalDuration(105, null, false), {
+      episodesText: "",
+      durationText: "1 h. 45 min."
+    });
+    assert.deepEqual(sharedFormatters.formatModalDuration(120, null, false), {
+      episodesText: "",
+      durationText: "2 h."
+    });
+    assert.deepEqual(sharedFormatters.formatModalDuration(50, null, false), {
+      episodesText: "",
+      durationText: "50 min."
+    });
+    assert.deepEqual(sharedFormatters.formatModalDuration(null, null, false), {
+      episodesText: "",
+      durationText: "Película"
+    });
+  });
+
   test("formatYear formatea rangos de emisión para series y películas", () => {
     assert.equal(sharedFormatters.formatYear(1994, null, false), "1994");
     assert.equal(sharedFormatters.formatYear(2017, "2020", true), "2017-20");
@@ -284,7 +326,7 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
       utilsModule.formatYearRange(2017, "2020", true),
     );
 
-    // 3. formatRuntime
+    // 3. formatRuntime y formatModalDuration
     assert.equal(
       sharedFormatters.formatRuntime(125, false),
       utilsModule.formatRuntime(125, false),
@@ -292,6 +334,14 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(
       sharedFormatters.formatRuntime(50, true),
       utilsModule.formatRuntime(50, true),
+    );
+    assert.deepEqual(
+      sharedFormatters.formatModalDuration(105, null, false),
+      utilsModule.formatModalDuration(105, null, false),
+    );
+    assert.deepEqual(
+      sharedFormatters.formatModalDuration(30, 10, true),
+      utilsModule.formatModalDuration(30, 10, true),
     );
 
     // 4. normalizeText

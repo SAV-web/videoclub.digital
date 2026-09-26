@@ -421,4 +421,18 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
    - **Reseteo Determinista**:
      - Al cambiar de ficha (navegación previa/siguiente) o cerrar la modal, se restablece `scrollTop = 0` y se eliminan las clases `.is-scrolled` y `.poster-compact`.
 
+3. **Contrato de Metadatos y Formateo en la Modal (Duración, Episodios y Años)**:
+   - **Formateo de Episodios y Duración (`formatModalDuration`)**:
+     - **Series**: Sigue estrictamente la estructura `[N] ep. x [M] min.` (ej. `10 ep. x 30 min.`).
+       - Si solo se dispone de episodios: `10 ep.`
+       - Si solo se dispone de duración por episodio: `30 min.`
+       - Si no se dispone de ninguno: fallback semántico `"Serie TV"`.
+       - *Distribución en el DOM*: El nodo `[data-template="episodes"]` aloja `10 ep. x` y el nodo `[data-template="duration"]` aloja `30 min.`. Se aplica un ajuste de espaciado (`margin-right: -10px` en modo modal) para mantener un espacio visual natural de palabra entre ambos elementos y preservar los `16px` canónicos de separación respecto a los iconos adyacentes (JustWatch/Wikipedia).
+       - *Jerarquía Tipográfica (-20% de peso en palabras/unidades)*: Las palabras y abreviaturas (`ep.`, `min.`, `h.`, `x`, `Película`, `Serie TV`) se encapsulan en elementos `<span class="meta-unit">` con `font-weight: 560 !important` (exactamente un 20% menos de peso frente al `font-weight: 700` de las cifras numéricas en la fuente variable Inter), destacando las cantidades y reduciendo la prominencia visual de las unidades.
+     - **Películas**: Formato de tiempo canónico `[H] h. [M] min.` (ej. `1 h. 45 min.`), `[H] h.` (ej. `2 h.`), o `[M] min.` (ej. `45 min.`). Si no hay duración informada, fallback semántico `"Película"`.
+     - *Desacoplamiento Card / SEO*: El dorso de las tarjetas del catálogo (`cardElement.ts`) y las páginas SSR de Cloudflare (`render-movie.js`) preservan el formato condensado perimetral (`[N] x`), manteniendo desacoplada la presentación extendida de la modal.
+   - **Formateo de Años en Series con Cambio de Siglo (`formatYear`)**:
+     - Cuando una serie tiene un año inicial anterior al 2000 (ej. `1990`) y un año final igual o posterior a 2000 (ej. `2010`), se inserta un apóstrofe al año abreviado final: `1990-'10`.
+     - Si ambos años pertenecen al mismo siglo, se mantiene el formato canónico sin apóstrofe (ej. `1990-95`, `2010-15`).
+
 

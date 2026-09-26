@@ -193,7 +193,7 @@
   &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 }
 /* Menú Contraído (Solo iconos) */
-body.sidebar-collapsed .sidebar {
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .sidebar {
   flex-basis: 65px; width: 65px; 
   & .sidebar-inner-wrapper { padding-inline: 0; }
   & .logo-area {
@@ -560,12 +560,12 @@ body.sidebar-collapsed .sidebar {
   border-color: var(--color-brand-gold, #d4a347);
   color: var(--color-brand-gold, #d4a347);
 }
-body.sidebar-collapsed .profile-button {
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .profile-button {
   padding: 0; width: 36px; height: 36px; min-height: 36px;
   border: none; background: transparent; box-shadow: none;
 }
-body.sidebar-collapsed .profile-button .profile-button-label { display: none; }
-body.sidebar-collapsed .profile-button svg { width: 24px; height: 24px; }
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .profile-button .profile-button-label { display: none; }
+:is(html.sidebar-collapsed, body.sidebar-collapsed) .profile-button svg { width: 24px; height: 24px; }
 
 :where(body.user-logged-in) #login-button { display: none; }
 :where(body.user-logged-in) #user-session-group { display: inline-flex; }

@@ -482,10 +482,19 @@
   gap: 16px;
 }
 
+.is-quick-view [data-template="episodes"]:not([hidden]) {
+  margin-right: -10px;
+}
+
 .is-quick-view :is([data-template="duration"], [data-template="episodes"]) {
   font-weight: var(--font-weight-bold, 700) !important;
   color: var(--color-text-secondary);
 }
+
+.is-quick-view :is([data-template="duration"], [data-template="episodes"]) .meta-unit {
+  font-weight: 560 !important;
+}
+
 
 /* Enlaces externos JustWatch / Wikipedia alineados a la derecha con efecto hover original y sin fondo circular */
 .is-quick-view [data-template="justwatch-link"] {

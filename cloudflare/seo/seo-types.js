@@ -159,6 +159,64 @@ export function formatRuntime(minutes, isSeries = false) {
   return `${hrs} h ${mins} m`;
 }
 
+export function formatModalDuration(minutes, episodes, isSeries = false) {
+  const numMinutes = typeof minutes === 'number' ? minutes : parseInt(String(minutes || 0), 10);
+  const numEpisodes = typeof episodes === 'number' ? episodes : parseInt(String(episodes || 0), 10);
+
+  if (isSeries) {
+    const hasEpisodes = !isNaN(numEpisodes) && numEpisodes > 0;
+    const hasMinutes = !isNaN(numMinutes) && numMinutes > 0;
+
+    if (hasEpisodes && hasMinutes) {
+      return {
+        episodesText: `${numEpisodes} ep. x`,
+        durationText: `${numMinutes} min.`
+      };
+    }
+    if (hasEpisodes) {
+      return {
+        episodesText: `${numEpisodes} ep.`,
+        durationText: ''
+      };
+    }
+    if (hasMinutes) {
+      return {
+        episodesText: '',
+        durationText: `${numMinutes} min.`
+      };
+    }
+    return {
+      episodesText: '',
+      durationText: 'Serie TV'
+    };
+  }
+
+  // Películas
+  if (!numMinutes || isNaN(numMinutes) || numMinutes <= 0) {
+    return {
+      episodesText: '',
+      durationText: 'Película'
+    };
+  }
+
+  const hrs = Math.floor(numMinutes / 60);
+  const mins = numMinutes % 60;
+
+  let durationText = '';
+  if (hrs === 0) {
+    durationText = `${mins} min.`;
+  } else if (mins === 0) {
+    durationText = `${hrs} h.`;
+  } else {
+    durationText = `${hrs} h. ${mins} min.`;
+  }
+
+  return {
+    episodesText: '',
+    durationText
+  };
+}
+
 export function formatYear(year, yearEnd, isSeries = false, fallback = '', type = '') {
   if (!year) return fallback;
   const text = String(year);

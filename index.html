@@ -93,6 +93,23 @@
     <!-- === 5. CSS CRÍTICO === -->
     <!-- Estilos mínimos para renderizar el "Above the Fold" (Header, Sidebar básico, Skeleton) antes de cargar el CSS principal -->
     <style>
+      /* Inter Variable y Fallback métrico en CSS crítico para prevenir FOUT y CLS */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: swap;
+        src: url("https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Inter Fallback";
+        src: local("Arial");
+        ascent-override: 92.77%;
+        descent-override: 24.41%;
+        line-gap-override: 0%;
+        size-adjust: 107.8%;
+      }
+
       :root {
         --color-bg: #f5f5f5;
         --color-surface: #fff;
@@ -112,7 +129,7 @@
         --z-index-sidebar: 1000;
         --mobile-header-height: 88px;
         /* Variables críticas para evitar CLS (Cumulative Layout Shift) antes de cargar variables.css */
-        --font-body: system-ui, -apple-system, sans-serif;
+        --font-body: "Inter", "Inter Fallback", system-ui, -apple-system, sans-serif;
         --space-xs: 0.5rem;
         --space-sm: 0.75rem;
         --space-md: 1rem;
@@ -205,7 +222,7 @@
           var(--space-md) var(--space-xs);
       }
 
-      @media (min-width: 701px) {
+      @media (min-width: 769px) and (min-height: 501px) {
         .main-header {
           position: sticky;
           top: 0;
@@ -220,8 +237,6 @@
         .content {
           padding: var(--space-md) var(--space-xxl) var(--space-xs);
         }
-      }
-      @media (min-width: 769px) {
         .sidebar {
           position: sticky;
           transform: none;
@@ -229,7 +244,7 @@
           flex-basis: 200px;
           flex-shrink: 0;
         }
-        body.sidebar-collapsed .sidebar {
+        :is(html.sidebar-collapsed, body.sidebar-collapsed) .sidebar {
           width: 65px;
           flex-basis: 65px;
         }
@@ -254,17 +269,19 @@
         position: relative;
       }
       #sort-select {
-        width: 100px;
+        height: 40px;
+        width: 130px;
         color: var(--color-text-primary);
         background-color: var(--color-surface);
         border: 1px solid var(--color-border);
         border-radius: var(--radius-md);
-        padding: var(--space-xs) var(--space-sm);
-        padding-right: 1.8em;
+        padding: 0 1.8em 0 var(--space-sm);
         -moz-appearance: none;
         -webkit-appearance: none;
         appearance: none;
         cursor: pointer;
+        font-family: inherit;
+        font-size: 0.9rem;
       }
       .sort-control::after {
         content: "";
@@ -291,6 +308,19 @@
       }
       .header-pagination-group {
         display: flex;
+        gap: 2px;
+      }
+      .header-pagination-group .btn {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-border);
+        background-color: var(--color-surface);
+        color: var(--color-text-primary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
       .search-form {
         position: relative;
@@ -298,10 +328,13 @@
         align-items: center;
       }
       .search-form input {
+        height: 40px;
+        min-width: 130px;
         border: 1px solid var(--color-border);
-        padding: var(--space-xs) var(--space-xl) var(--space-xs) var(--space-md);
+        padding: 0 var(--space-xl) 0 var(--space-md);
         border-radius: var(--radius-md);
-        width: 90px;
+        background-color: var(--color-surface);
+        color: var(--color-text-primary);
       }
       .search-icon {
         position: absolute;
@@ -419,12 +452,18 @@
           metas.forEach(function (m) {
             m.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5");
           });
+          if (window.innerWidth >= 769 && window.innerWidth <= 1024 && window.innerHeight > 500) {
+            document.documentElement.classList.add("sidebar-collapsed");
+          }
+          if (localStorage.getItem("rotationState") === "disabled") {
+            document.documentElement.classList.add("rotation-disabled");
+          }
         } catch (e) {}
       })();
     </script>
 
-    <!-- === 7. ESTILOS EXTERNOS === -->
-    <!-- CSS inyectado automáticamente por Vite via main.js -->
+    <!-- === 7. ESTILOS PRINCIPALES === -->
+    <link rel="stylesheet" href="/src/css/main.css" />
   </head>
 
   <body>
@@ -1023,7 +1062,50 @@
             id="grid-container"
             class="grid-container"
             aria-live="polite"
-          ></div>
+          >
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+            <div class="skeleton-card"></div>
+          </div>
           <nav
             id="pagination-container"
             class="pagination-container"

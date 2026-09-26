@@ -79,14 +79,15 @@ Para optimizar el uso de tokens y tiempos de respuesta, se debe seguir estrictam
 ·   Cero cambios colaterales: Evita reformateos generales, cambios de estilo no solicitados o modificaciones en módulos adyacentes.
 
 ### 3. VALIDACIÓN MÍNIMA SUFICIENTE (TARGETED TESTING & BUILDS)
-·   Tests focalizados: NUNCA ejecutes la suite completa de pruebas (`npm run test`) para validar cambios específicos. Ejecuta exclusivamente el archivo de prueba del módulo afectado (ej. `node --test tests/worker.test.mjs`).
-·   Compilaciones desacopladas: Evita disparar scripts pesados no relacionados (ej. no ejecutar generadores de manifiestos VIP de base de datos para validar un ajuste de CSS/SSR).
-·   Suite global diferida: Reserva la ejecución de la suite completa (`npm run test`) únicamente para antes de hacer un commit o al alterar el SSOT (Fuente Única de Verdad).
+·   Zero Chrome DevTools proactivo: PROHIBIDO abrir el navegador, tomar capturas o ejecutar scripts en Chrome de forma automática tras cada cambio ordinario. La inspección en Chrome se reserva ÚNICA Y EXCLUSIVAMENTE para cuando el usuario solicite explícitamente auditar o depurar el navegador (ej. "revisa el FOUC", "inspecciona el layout en Chrome"). Para todo lo demás, el servidor local de Vite actualiza la pantalla del usuario en tiempo real vía HMR sin requerir intervención de la IA.
+·   Tests focalizados: NUNCA ejecutes la suite completa de pruebas (`npm run test`) para validar cambios específicos. Si se modifica lógica pura o contratos, ejecuta como máximo el archivo de prueba unitaria del módulo afectado (ej. `node --test tests/shared-and-events.test.mjs`).
+·   Compilaciones desacopladas: Evita disparar scripts pesados no relacionados (ej. no ejecutar generadores de manifiestos VIP de base de datos para validar un ajuste de CSS/SSR).
+·   Suite global y compilaciones perimetrales diferidas: Reserva la ejecución de la suite completa (`npm run test`) y la compilación perimetral (`npm run prepare:worker`) ÚNICA Y EXCLUSIVAMENTE para cuando el usuario ordene "sube los cambios" o inmediatamente antes de formalizar un commit hacia el repositorio.
 
 ### PROTOCOLO SEGÚN IMPACTO
-·   UI / CSS: Edición exclusiva en los archivos fuente originales (`src/css/components/`). PROHIBIDO editar manualmente o recompilar en cada cambio los artefactos generados para SEO (`public/seo-card-v7.*`, `cloudflare/seo/seo-card-css.js`). En desarrollo local (`npm run dev`), Vite consume directamente `src/css/main.css` vía HMR. La compilación perimetral (`npm run prepare:worker` o `node scripts/build-seo-css.mjs`) se reserva estrictamente para antes de un commit o despliegue.
-·   Componentes SPA / Frontend: Edición + verificación de tipos (`npx tsc --noEmit`).
-·   Core / Worker / Edge / Backend: Test unitario específico del archivo impactado (`node --test tests/[archivo].test.mjs`).
+·   UI / CSS / Textos: Edición exclusiva en los archivos fuente originales (`src/css/components/`, etc.). CERO tests y CERO inspecciones de Chrome. En desarrollo local (`npm run dev`), Vite consume directamente `src/css/main.css` vía HMR instantáneo. PROHIBIDO editar manualmente o recompilar en cada cambio los artefactos generados para SEO (`public/seo-card-v7.*`, `cloudflare/seo/seo-card-css.js`).
+·   Componentes SPA / Frontend: Edición + verificación rápida de tipos en 1 segundo (`npx tsc --noEmit`). Sin tests globales ni capturas.
+·   Core / Worker / Edge / Backend / SSOT: Verificación de tipos (`npx tsc --noEmit`) y, si aplica, test unitario específico del archivo impactado (`node --test tests/[archivo].test.mjs`).
 
 ## ESTILO DE COMUNICACIÓN
 
