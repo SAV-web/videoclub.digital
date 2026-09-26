@@ -1193,7 +1193,7 @@ export function initQuickView(): void {
         if (isLandscape) {
           const scrollBottom = target.scrollHeight - target.clientHeight - target.scrollTop;
           // Al llegar al final del scroll tras haber iniciado desplazamiento, compactar cartel suavemente
-          if (target.scrollTop > 20 && scrollBottom <= 15) {
+          if (target.scrollTop > 15 && scrollBottom <= 35) {
             target.classList.add("poster-compact");
           }
         }
@@ -1204,7 +1204,29 @@ export function initQuickView(): void {
       content.removeEventListener("scroll", handleScrollMask, { capture: true });
     });
 
-    // Control de rueda para expandir cartel al hacer scroll hacia arriba en columna izquierda apaisada
+    // Control táctil y de rueda para expandir cartel al hacer scroll hacia arriba en columna izquierda apaisada
+    let touchStartY = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      const currentY = e.touches[0]?.clientY ?? 0;
+      const deltaY = currentY - touchStartY;
+      const target = e.target as HTMLElement | null;
+      if (deltaY > 12 && target?.closest(".flip-card-front")) {
+        const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+        if (compactFront) {
+          compactFront.classList.remove("poster-compact");
+        }
+      }
+    };
+    content.addEventListener("touchstart", handleTouchStart, { passive: true });
+    content.addEventListener("touchmove", handleTouchMove, { passive: true });
+    modalUnsubscribers.push(() => {
+      content.removeEventListener("touchstart", handleTouchStart);
+      content.removeEventListener("touchmove", handleTouchMove);
+    });
+
     const handleContentWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
       if (e.deltaY < -5 && target?.closest(".flip-card-front")) {

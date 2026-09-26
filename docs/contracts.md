@@ -394,17 +394,18 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
      - Arrastre vertical de cierre (*swipe-to-dismiss*) activo cuando `scrollTop <= 5px`.
    - **Modo Móvil Apaisado (*Landscape* con altura `<= 600px` táctil o `<= 550px`)**:
      - Breakpoint específico: `@media (orientation: landscape) and (max-height: 550px), (orientation: landscape) and (max-height: 600px) and (pointer: coarse)`.
-     - Modal centrado en el viewport (`top: 50%; left: 50%; transform: translate(-50%, -50%); width: 94vw; max-width: 760px; height: 94dvh;`).
+     - Modal centrado en el viewport (`top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(84vw, 700px); max-width: 700px; height: min(92dvh, 92svh);`). El ancho de `84vw` deja `8vw` de holgura libre a cada flanco para facilitar el toque y cierre sobre el overlay; la altura con `svh` previene desbordamientos por la barra de direcciones en Chrome móvil.
      - Supresión estricta de la barra de arrastre superior (`&::before { display: none !important; }`).
      - Desacoplamiento del gesto de cierre vertical: el *swipe-to-dismiss* se inhabilita para garantizar el scroll vertical nativo en ambas columnas.
      - Dos columnas independientes al 50% (`.flip-card-front` y `.flip-card-back`), cada una con altura completa y `overflow-y: auto`.
-     - Flechas de navegación adaptadas a los flancos (`left: -28px; right: -28px; top: 50%; transform: translateY(-50%);`).
+     - Flechas de navegación adaptadas a los flancos (`left: -24px; right: -24px; top: 50%; transform: translateY(-50%);`).
+     - Fichas de personas VIP: el lugar de nacimiento (`.front-director-info`) se centra con `padding-inline: 0` para sincronizarse perfectamente con el nombre.
 
 2. **Contrato de Reducción Progresiva del Cartel (`.poster-compact`)**:
-   - **Estado Inicial**: El cartel arranca siempre en tamaño completo de columna (`width: 100%; max-width: 290px; margin-inline: auto;`), destacando la portada cinematográfica.
+   - **Estado Inicial**: El cartel arranca siempre en tamaño completo de columna (`width: 100%; max-width: 290px; margin-inline: auto;`), destacando la portada cinematográfica (en personas VIP: `max-width: min(200px, 44svh)` y `padding-top: 0` en apaisado).
    - **Activación por Desplazamiento**:
-     - Cuando el usuario se desplaza por la columna izquierda y alcanza el tope inferior (`scrollTop > 20px` y `scrollBottom <= 15px`), se inyecta la clase `.poster-compact` en `.flip-card-front`.
-     - El cartel reduce sus dimensiones a `clamp(175px, 44vh, 220px)` (y `clamp(140px, 36vh, 185px)` en fichas de personas VIP) mediante una transición desacelerada fluida de `0.45s` (`cubic-bezier(0.16, 1, 0.3, 1)`).
+     - Cuando el usuario se desplaza por la columna izquierda y alcanza el fondo (`scrollTop > 15px` y `scrollBottom <= 35px`), se inyecta la clase `.poster-compact` en `.flip-card-front`.
+     - El cartel reduce sus dimensiones a `clamp(175px, 44vh, 220px)` (y `clamp(105px, 28svh, 135px)` en fichas de personas VIP) mediante una transición desacelerada fluida de `0.45s` (`cubic-bezier(0.16, 1, 0.3, 1)`).
      - El padding horizontal de la columna se optimiza a `var(--space-sm)` (8px) para eliminar holguras laterales innecesarias a la izquierda.
      - Se garantiza la visualización simultánea del cartel con estrellas, watchlist, título traducido, estudio, año y bandera de país.
    - **Persistencia**:
@@ -412,7 +413,7 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
      - El desplazamiento o lectura en la columna derecha (`.flip-card-back`) es totalmente autónomo y no afecta al estado del cartel en la columna izquierda.
    - **Restauración al Hacer Scroll Arriba**:
      - La clase `.poster-compact` se retira y el cartel recupera suavemente su tamaño completo (hasta 290px) ante cualquier acción intencional de subida en la columna izquierda:
-       1. Arrastre táctil hacia abajo (`touchmove` con `deltaY > 15px` originado en `.flip-card-front`).
+       1. Arrastre táctil hacia abajo (`touchmove` con `deltaY > 12px` originado en `.flip-card-front`).
        2. Giro de rueda de ratón o trackpad hacia arriba (`wheel` con `deltaY < -5px` sobre `.flip-card-front`).
        3. Pulsación de teclas `ArrowUp` o `PageUp`.
    - **Máscaras de Continuidad**:
