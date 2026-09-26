@@ -4983,8 +4983,8 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     top: 50% !important;
     bottom: auto !important;
     left: 50% !important;
-    width: min(84vw, 700px) !important;
-    max-width: 700px !important;
+    width: min(94vw, 780px) !important;
+    max-width: 780px !important;
     height: min(92dvh, 92svh) !important;
     max-height: min(92dvh, 92svh) !important;
     border-radius: var(--radius-xl) !important;
@@ -5010,11 +5010,11 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   }
 
   .modal-nav-btn--prev {
-    left: -24px !important;
+    left: -26px !important;
   }
 
   .modal-nav-btn--next {
-    right: -24px !important;
+    right: -26px !important;
   }
 
   .is-quick-view .flip-card-inner {
@@ -5156,13 +5156,44 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   }
 
   .is-quick-view.person-card .flip-card-front {
-    padding-bottom: var(--space-xl) !important;
+    padding-bottom: 2rem !important;
+  }
+
+  .is-quick-view.person-card .movie-info.movie-summary {
+    flex-grow: 0 !important;
+    width: 100% !important;
+  }
+
+  .is-quick-view.person-card .title-director-block {
+    flex-grow: 0 !important;
+    min-height: unset !important;
+    text-align: center !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
   }
 
   .is-quick-view.person-card .front-director-info {
     text-align: center !important;
+    padding: 0 !important;
     padding-left: 0 !important;
+    padding-right: 0 !important;
     padding-inline: 0 !important;
+    margin-inline: auto !important;
+    margin-top: 2px !important;
+    margin-bottom: 4px !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  .is-quick-view.person-card .movie-meta {
+    margin-top: 2px !important;
+    padding-top: 0 !important;
+    margin-bottom: 2.75rem !important;
+    flex-grow: 0 !important;
+    width: 100% !important;
+    justify-content: center !important;
   }
 }
 
@@ -5207,11 +5238,37 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     }
   }
 
+  & .title-director-block {
+    min-height: unset !important;
+    flex-grow: 0 !important;
+    text-align: center !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+  }
+
   & .front-director-info {
     text-align: center !important;
+    padding: 0 !important;
     padding-left: 0 !important;
+    padding-right: 0 !important;
     padding-inline: 0 !important;
+    margin-inline: auto !important;
+    margin-top: 2px !important;
+    margin-bottom: 4px !important;
+    width: 100% !important;
+    display: block !important;
   }
+
+  & .movie-meta {
+    margin-top: 2px !important;
+    padding-top: 0 !important;
+    flex-grow: 0 !important;
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
 
 
   & .poster-container img {

@@ -394,11 +394,11 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
      - Arrastre vertical de cierre (*swipe-to-dismiss*) activo cuando `scrollTop <= 5px`.
    - **Modo Móvil Apaisado (*Landscape* con altura `<= 600px` táctil o `<= 550px`)**:
      - Breakpoint específico: `@media (orientation: landscape) and (max-height: 550px), (orientation: landscape) and (max-height: 600px) and (pointer: coarse)`.
-     - Modal centrado en el viewport (`top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(84vw, 700px); max-width: 700px; height: min(92dvh, 92svh);`). El ancho de `84vw` deja `8vw` de holgura libre a cada flanco para facilitar el toque y cierre sobre el overlay; la altura con `svh` previene desbordamientos por la barra de direcciones en Chrome móvil.
+     - Modal centrado en el viewport (`top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(94vw, 780px); max-width: 780px; height: min(92dvh, 92svh);`). El ancho de `94vw` optimiza el aprovechamiento horizontal en pantalla reduciendo márgenes laterales excesivos; la altura con `svh` previene desbordamientos por la barra de direcciones en Chrome móvil.
      - Supresión estricta de la barra de arrastre superior (`&::before { display: none !important; }`).
      - Desacoplamiento del gesto de cierre vertical: el *swipe-to-dismiss* se inhabilita para garantizar el scroll vertical nativo en ambas columnas.
      - Dos columnas independientes al 50% (`.flip-card-front` y `.flip-card-back`), cada una con altura completa y `overflow-y: auto`.
-     - Flechas de navegación adaptadas a los flancos (`left: -24px; right: -24px; top: 50%; transform: translateY(-50%);`).
+     - Flechas de navegación adaptadas a los flancos (`left: -26px; right: -26px; top: 50%; transform: translateY(-50%);`).
      - Fichas de personas VIP: el lugar de nacimiento (`.front-director-info`) se centra con `padding-inline: 0` para sincronizarse perfectamente con el nombre.
 
 2. **Contrato de Reducción Progresiva del Cartel (`.poster-compact`)**:
