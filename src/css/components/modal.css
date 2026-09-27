@@ -118,7 +118,7 @@
 }
 
 /* PRIORIDAD 1: Contenedor estructural de paneles (no es un papel 3D giratorio) */
-.is-quick-view :is(.quick-view-inner, .flip-card-inner) {
+.is-quick-view .quick-view-inner {
   position: relative;
   width: 100%;
   height: 100%;
@@ -131,7 +131,7 @@
 }
 
 /* Estado de carga durante navegación entre fichas */
-.quick-view-modal.modal-is-loading .is-quick-view :is(.quick-view-inner, .flip-card-inner) {
+.quick-view-modal.modal-is-loading .is-quick-view .quick-view-inner {
   opacity: 0.25;
   pointer-events: none;
 }
@@ -147,13 +147,13 @@
   box-sizing: border-box;
 }
 
-.is-quick-view :is(.quick-view-media, .flip-card-front) {
+.is-quick-view .quick-view-media {
   padding: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
-.is-quick-view :is(.quick-view-details, .flip-card-back) {
+.is-quick-view .quick-view-details {
   padding: var(--space-lg);
   flex-grow: 1;
   min-width: 0;
@@ -370,7 +370,7 @@
 }
 
 /* En cara trasera / detalles: separación aumentada para armonizar con la lista de detalles */
-.is-quick-view :is(.quick-view-details, .flip-card-back) .front-director-info {
+.is-quick-view .quick-view-details .front-director-info {
   margin-top: 2px;
   margin-bottom: var(--space-md);
   text-align: left;
@@ -1019,7 +1019,7 @@
     }
   }
 
-  .is-quick-view :is(.quick-view-media, .flip-card-front) {
+  .is-quick-view .quick-view-media {
     padding-top: 30px;
     padding-bottom: 32px;
     border-bottom: none;
@@ -1029,7 +1029,7 @@
     }
   }
 
-  .is-quick-view :is(.quick-view-details, .flip-card-back) {
+  .is-quick-view .quick-view-details {
     padding-top: 16px;
   }
 
@@ -1095,14 +1095,14 @@
     right: -32px;
   }
 
-  .is-quick-view :is(.quick-view-inner, .flip-card-inner) {
+  .is-quick-view .quick-view-inner {
     display: block;
     position: relative;
     overflow: visible;
   }
 
   /* Partimos la tarjeta en dos columnas con scroll vertical */
-  .is-quick-view :is(.quick-view-media, .flip-card-front) {
+  .is-quick-view .quick-view-media {
     width: 50%;
     height: auto;
     max-height: 92dvh;
@@ -1128,7 +1128,7 @@
     }
   }
 
-  .is-quick-view :is(.quick-view-details, .flip-card-back) {
+  .is-quick-view .quick-view-details {
     position: absolute;
     top: 0;
     right: 0;
@@ -1202,7 +1202,7 @@
     right: -26px !important;
   }
 
-  .is-quick-view :is(.quick-view-inner, .flip-card-inner) {
+  .is-quick-view .quick-view-inner {
     display: flex !important;
     flex-direction: row !important;
     position: relative !important;
@@ -1212,7 +1212,7 @@
   }
 
   /* Columna izquierda: 50%, altura 100%, flex vertical, scroll independiente */
-  .is-quick-view :is(.quick-view-media, .flip-card-front) {
+  .is-quick-view .quick-view-media {
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
@@ -1244,7 +1244,7 @@
   }
 
   /* Columna derecha: 50%, altura 100%, scroll independiente */
-  .is-quick-view :is(.quick-view-details, .flip-card-back) {
+  .is-quick-view .quick-view-details {
     position: relative !important;
     top: auto !important;
     right: auto !important;
@@ -1291,7 +1291,7 @@
     will-change: max-width;
   }
 
-  .is-quick-view :is(.quick-view-media, .flip-card-front).poster-compact .poster-container {
+  .is-quick-view .quick-view-media.poster-compact .poster-container {
     max-width: clamp(175px, 44vh, 220px) !important;
     margin-bottom: var(--space-xs) !important;
   }
@@ -1444,7 +1444,7 @@
 
   /* Estructura alineada al modal de películas en escritorio con reparto 45%/55% (>= 769px) */
   @media (min-width: 769px) {
-    & :is(.quick-view-inner, .flip-card-inner) {
+    & .quick-view-inner {
       display: block !important;
       position: relative !important;
       overflow: visible !important;
@@ -1452,7 +1452,7 @@
       min-height: min(600px, 92vh) !important;
     }
 
-    & :is(.quick-view-media, .flip-card-front) {
+    & .quick-view-media {
       width: 45% !important;
       min-height: min(600px, 92vh) !important;
       height: auto !important;
@@ -1468,7 +1468,7 @@
       flex-shrink: 0 !important;
     }
 
-    & :is(.quick-view-details, .flip-card-back) {
+    & .quick-view-details {
       position: absolute !important;
       top: 0 !important;
       right: 0 !important;
