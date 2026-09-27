@@ -137,7 +137,7 @@
 }
 
 /* PRIORIDAD 2: Paneles Frontal (Media) y Trasero (Detalles) en flujo estático */
-.is-quick-view :is(.quick-view-media, .quick-view-details, .flip-card-front, .flip-card-back) {
+.is-quick-view :is(.quick-view-media, .quick-view-details) {
   position: relative;
   width: 100%;
   height: auto;
