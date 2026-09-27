@@ -109,7 +109,21 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 - **`globals.css`**: Reset, utilidades generales y scrollbars personalizados.
 - **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`), cabecera fija elástica (`position: sticky; top: 0;`) y CSS Grid para la cuadrícula principal adaptativa.
 - **`components/*.css`**: CSS scopeado a componentes. Uso intensivo de `contain: layout paint style` y `content-visibility: auto` para máximo rendimiento. Evita transicionar propiedades pesadas (`width`, `padding`) en móviles, priorizando `transform` y `opacity` (GPU).
+- **Frontera Canónica de Breakpoints (Mobile / Desktop)**: Estandarización unificada en todo el proyecto:
+  - `≤ 768px` $\to$ **MÓVIL** (panel deslizable *Bottom Sheet*, gestos táctiles, botones de acción ampliados para accesibilidad WCAG).
+  - `≥ 769px` $\to$ **ESCRITORIO** (ventanas flotantes bicolumna con scroll independiente, flechas exteriores y hover habilitado para ratón `pointer: fine`).
+  - Eliminada toda frontera transitoria o inconsistente (antiguos 700/701px).
+- **Refactorización Modular de Componentes CSS (Fases 1 y 2)**:
+  - **`modal.css` (Fase 1: Quick View & Legal Modal)**:
+    - Estructurado en 10 secciones delimitadas (A a J): Base/Estructura, Contenido/Tipografía, Ratings/Acciones, Navegación, Mobile (Bottom Sheet), Desktop (Bicolumna 50/50), Landscape (móviles apaisados $\le 550\text{px}/600\text{px}$ con cartel dinámico `.poster-compact`), Personas VIP, Rendimiento/Transiciones y Modal Legal e Informativo.
+    - Eliminación de selectores fragmentados y reglas muertas (`.details-list`, `.plot-summary-final`, `.back-meta-header`, altura fantasma en `.rating-bar-container`).
+    - Blindaje de especificidad: preservación estricta de las reglas y los `!important` funcionales en *Landscape* y *Person Card* para anular estilos heredados de tarjeta en espacios reducidos.
+  - **`card.css` (Fase 2: Card System)**:
+    - Estructurado en 10 secciones modulares (A a J): Base/3D, Frontal (Póster/LQIP), Frontal (Títulos `text-wrap: balance`/Metadatos), Trasera (Títulos/Duración/Enlaces externos), Trasera (Detalles/Sinopsis `text-wrap: pretty`/Actores), Botones expansores (`+`/`−` con área táctil 40px WCAG), Elementos interactivos/Watchlist (microanimaciones Pop/Glow/Settle), Modo Muro (`body.rotation-disabled`, ratio 2:3, lógica estrellas usuario vs media), Fichas VIP (fotos 2:3 con `object-position: top center`, botón dual D/A `.person-role-toggle-btn`) y Rendimiento/Accesibilidad.
+    - Reducción neta del 16% en tamaño en bytes (~5,8 KB ahorrados), eliminación de reglas redundantes en Dark Mode (contorno dorado) y consolidación cromática de estudios con selector `:is()`.
+    - Preservación íntegra de los 9 `!important` deliberados para aislamiento entre componentes (Modo Muro, marco VIP de personas y desvanecimiento de sinopsis en overlay de reparto).
 - **Principio SSOT en Desarrollo vs Compilación Perimetral**: El directorio `src/css/` es la **Única Fuente de Verdad** de los estilos. Durante el desarrollo local (`npm run dev`), Vite procesa estos archivos en tiempo real con HMR (*Hot Module Replacement*). Los artefactos derivados para SEO perimetral (`public/seo-card-v7.*` y `cloudflare/seo/seo-card-css.js`) son generados automáticamente por `scripts/build-seo-css.mjs` y **nunca deben editarse manualmente ni recompilarse en cada cambio menor de diseño**. Su regeneración se delega exclusivamente a `npm run prepare:worker` antes de un commit o despliegue.
+- **Grafo Semántico de Código (`.codebase-memory/`)**: Índice persistente del repositorio (`graph.db.zst`, 2.692 nodos y 12.169 aristas semánticas) gestionado por el servidor MCP `codebase-memory` para análisis de impacto y trazabilidad de dependencias TypeScript/Edge sin afectar al control de versiones (excluido en `.gitignore`).
 
 ### 8. Suite de Tests (`tests/`)
 

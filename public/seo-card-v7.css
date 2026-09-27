@@ -825,7 +825,7 @@ body.sidebar-is-open .sidebar {
 }
 
 /* --- Contenedor Principal (Tarjeta 3D) --- */
-.movie-card {
+.movie-card:not(.is-quick-view) {
   position: relative;
   perspective: 1000px;
   z-index: 1;
@@ -855,13 +855,13 @@ body.sidebar-is-open .sidebar {
 
   /* Interacciones Desktop */
   @media (hover: hover) and (pointer: fine) {
-    &:not(.is-quick-view):hover {
+    &:hover {
       z-index: 10;
       transform: translateY(-4px) scale(1.01);
       will-change: transform;
     }
 
-    &:not(.is-quick-view):not(.person-card):not(.collection-card):not(.studio-card):is(:hover, :has(.flip-card-inner.is-flipped)) {
+    &:not(.person-card):not(.collection-card):not(.studio-card):is(:hover, :has(.flip-card-inner.is-flipped)) {
       outline: 2px solid var(--color-brand-gold, #d4a347);
       outline-offset: 4px;
       border-radius: var(--radius-xl);
@@ -872,7 +872,7 @@ body.sidebar-is-open .sidebar {
       outline: none;
     }
 
-    &:not(.is-quick-view):not(.is-flipped):hover {
+    &:not(.is-flipped):hover {
       & .flip-card-inner {
         box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
       }
@@ -885,7 +885,7 @@ body.sidebar-is-open .sidebar {
 }
 
 /* --- Contenedor Giratorio (Flip Card Inner) --- */
-.flip-card-inner {
+.movie-card:not(.is-quick-view) .flip-card-inner {
   position: relative;
   width: 100%;
   height: 100%;
@@ -908,8 +908,7 @@ body.sidebar-is-open .sidebar {
 }
 
 /* --- Caras de la Tarjeta (Front & Back) --- */
-.flip-card-front,
-.flip-card-back {
+.movie-card:not(.is-quick-view) :is(.flip-card-front, .flip-card-back) {
   position: absolute;
   inset: 0;
   border-radius: var(--radius-xl);
@@ -922,13 +921,13 @@ body.sidebar-is-open .sidebar {
 }
 
 /* Cara Frontal */
-.flip-card-front {
+.movie-card:not(.is-quick-view) .flip-card-front {
   z-index: 2;
   pointer-events: auto;
 }
 
 /* Cara Trasera */
-.flip-card-back {
+.movie-card:not(.is-quick-view) .flip-card-back {
   transform: rotateY(180deg);
   padding: var(--space-xs);
   line-height: var(--line-height-normal);
@@ -942,7 +941,7 @@ body.sidebar-is-open .sidebar {
   }
 }
 
-:is(.flip-card-inner.is-flipped, .movie-card.is-hovered .flip-card-inner) .flip-card-front {
+.movie-card:not(.is-quick-view) :is(.flip-card-inner.is-flipped, .movie-card.is-hovered .flip-card-inner) .flip-card-front {
   pointer-events: none;
   z-index: 1;
 }
@@ -951,7 +950,7 @@ body.sidebar-is-open .sidebar {
  *  B. FRONTAL: PÓSTER E IMÁGENES
  * ================================================================= */
 
-.poster-container {
+.movie-card:not(.is-quick-view) .poster-container {
   position: relative;
   width: 100%;
   height: 66%;
@@ -997,7 +996,7 @@ body.sidebar-is-open .sidebar {
  *  C. FRONTAL: INFORMACIÓN Y METADATOS
  * ================================================================= */
 
-.movie-summary {
+.movie-card:not(.is-quick-view) .movie-summary {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -1005,14 +1004,14 @@ body.sidebar-is-open .sidebar {
   overflow: hidden;
 }
 
-.title-director-block {
+.movie-card:not(.is-quick-view) .title-director-block {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-.movie-summary h3 {
+.movie-card:not(.is-quick-view) .movie-summary h3 {
   margin-bottom: 0;
   line-height: 1.1;
   font-family: var(--font-title);
@@ -1043,7 +1042,7 @@ body.sidebar-is-open .sidebar {
   }
 }
 
-.front-director-info {
+.movie-card:not(.is-quick-view) .front-director-info {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-normal);
   color: var(--color-text-secondary);
@@ -1066,7 +1065,7 @@ body.sidebar-is-open .sidebar {
 }
 
 /* Metadatos Frontales */
-.movie-meta {
+.movie-card:not(.is-quick-view) .movie-meta {
   padding-top: 1px;
   display: flex;
   justify-content: space-between;
@@ -1915,39 +1914,39 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
  *  I. FICHAS VIP: PERSONAS, COLECCIONES Y ESTUDIOS
  * ================================================================= */
 
-.person-card .flip-card-inner {
+.person-card:not(.is-quick-view) .flip-card-inner {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
-.person-card .flip-card-back {
+.person-card:not(.is-quick-view) .flip-card-back {
   padding: var(--space-md);
   background-color: var(--color-surface-1);
 }
 
-.person-card .poster-container img {
+.person-card:not(.is-quick-view) .poster-container img {
   object-position: top center;
   border: 3px solid var(--color-accent) !important;
 }
 
-.collection-card .poster-container img {
+.collection-card:not(.is-quick-view) .poster-container img {
   object-position: center center;
 }
 
-.person-card .year-flag-group {
+.person-card:not(.is-quick-view) .year-flag-group {
   width: 100%;
   justify-content: flex-end;
   gap: var(--space-xs);
 }
 
-.person-card .card-icons-line {
+.person-card:not(.is-quick-view) .card-icons-line {
   display: none;
 }
 
-.person-card .year-country-line {
+.person-card:not(.is-quick-view) .year-country-line {
   width: 100%;
 }
 
-.person-card .poster-container::after {
+.person-card:not(.is-quick-view) .poster-container::after {
   content: "";
   position: absolute;
   bottom: -10px;
@@ -2015,13 +2014,13 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 }
 
 /* Fichas de Selección y Estudio: Centrado y divisores */
-.collection-card .movie-summary {
+.collection-card:not(.is-quick-view) .movie-summary {
   position: relative;
   justify-content: center;
   padding: calc(var(--space-sm) + 2px) var(--space-xxs) calc(var(--space-sm) + 2px);
 }
 
-.collection-card .movie-meta {
+.collection-card:not(.is-quick-view) .movie-meta {
   position: absolute;
   bottom: 6px;
   left: 0;
@@ -2044,7 +2043,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 }
 
 /* Ajustes VIP en Modo Muro */
-.movie-card.person-card .card-rating-block {
+.movie-card.person-card:not(.is-quick-view) .card-rating-block {
   display: none;
 }
 
@@ -2100,7 +2099,7 @@ body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .person-role-
  * ================================================================= */
 
 @media (hover: hover) and (pointer: fine) {
-  body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
+  body:not(.rotation-disabled) .movie-card:not(.is-quick-view).is-hovered .flip-card-inner {
     transform: rotateY(180deg);
   }
 }
@@ -3809,41 +3808,56 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   }
 }
 
-.is-quick-view.movie-card {
-  aspect-ratio: auto;
-  perspective: none;
-  animation: none;
-  transform: none !important;
-  outline: none !important;
+/* =================================================================
+ *  CONTRATO VISUAL AISLADO DE QUICK VIEW (Frontera: .movie-card.is-quick-view)
+ * ================================================================= */
+
+/* Contenedor raíz Quick View: plano, elástico y desacoplado del 3D de Card */
+.movie-card.is-quick-view {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  transform: none;
 
   &:hover {
-    transform: none !important;
-    outline: none !important;
+    transform: none;
+    outline: none;
   }
 }
 
+/* PRIORIDAD 1: Contenedor estructural de paneles (no es un papel 3D giratorio) */
 .is-quick-view .flip-card-inner {
-  transform-style: flat;
-  box-shadow: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
   transition: opacity var(--duration-fast) ease-in-out;
 }
 
-/* Estado de carga para transición de página */
+/* Estado de carga durante navegación entre fichas */
 .quick-view-modal.modal-is-loading .is-quick-view .flip-card-inner {
   opacity: 0.25;
   pointer-events: none;
 }
 
+/* PRIORIDAD 2: Paneles Frontal (Media) y Trasero (Detalles) en flujo estático */
 .is-quick-view :is(.flip-card-front, .flip-card-back) {
   position: relative;
-  inset: auto;
-  transform: none;
-  backface-visibility: visible;
+  width: 100%;
   height: auto;
   overflow: visible;
+  background-color: var(--color-surface-1);
+  color: var(--color-text-primary);
+  box-sizing: border-box;
 }
 
 .is-quick-view .flip-card-front {
@@ -4039,6 +4053,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 .is-quick-view .front-director-info a {
   display: inline;
   color: var(--color-text-primary);
+  text-decoration: none;
   border-radius: var(--radius-sm, 3px);
   cursor: pointer;
   touch-action: manipulation;
@@ -4342,6 +4357,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 
   & a {
     display: inline-block;
+    text-decoration: none;
     border-radius: var(--radius-sm, 3px);
     padding: 1px 4px;
     margin: -1px -4px;
@@ -4369,6 +4385,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 }
 
 .is-quick-view .country-info {
+  text-decoration: none;
   margin-right: 0;
   padding: 3px;
   border-radius: var(--radius-sm, 4px);

@@ -95,41 +95,56 @@
   }
 }
 
-.is-quick-view.movie-card {
-  aspect-ratio: auto;
-  perspective: none;
-  animation: none;
-  transform: none !important;
-  outline: none !important;
+/* =================================================================
+ *  CONTRATO VISUAL AISLADO DE QUICK VIEW (Frontera: .movie-card.is-quick-view)
+ * ================================================================= */
+
+/* Contenedor raíz Quick View: plano, elástico y desacoplado del 3D de Card */
+.movie-card.is-quick-view {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  transform: none;
 
   &:hover {
-    transform: none !important;
-    outline: none !important;
+    transform: none;
+    outline: none;
   }
 }
 
+/* PRIORIDAD 1: Contenedor estructural de paneles (no es un papel 3D giratorio) */
 .is-quick-view .flip-card-inner {
-  transform-style: flat;
-  box-shadow: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
   transition: opacity var(--duration-fast) ease-in-out;
 }
 
-/* Estado de carga para transición de página */
+/* Estado de carga durante navegación entre fichas */
 .quick-view-modal.modal-is-loading .is-quick-view .flip-card-inner {
   opacity: 0.25;
   pointer-events: none;
 }
 
+/* PRIORIDAD 2: Paneles Frontal (Media) y Trasero (Detalles) en flujo estático */
 .is-quick-view :is(.flip-card-front, .flip-card-back) {
   position: relative;
-  inset: auto;
-  transform: none;
-  backface-visibility: visible;
+  width: 100%;
   height: auto;
   overflow: visible;
+  background-color: var(--color-surface-1);
+  color: var(--color-text-primary);
+  box-sizing: border-box;
 }
 
 .is-quick-view .flip-card-front {
@@ -325,6 +340,7 @@
 .is-quick-view .front-director-info a {
   display: inline;
   color: var(--color-text-primary);
+  text-decoration: none;
   border-radius: var(--radius-sm, 3px);
   cursor: pointer;
   touch-action: manipulation;
@@ -628,6 +644,7 @@
 
   & a {
     display: inline-block;
+    text-decoration: none;
     border-radius: var(--radius-sm, 3px);
     padding: 1px 4px;
     margin: -1px -4px;
@@ -655,6 +672,7 @@
 }
 
 .is-quick-view .country-info {
+  text-decoration: none;
   margin-right: 0;
   padding: 3px;
   border-radius: var(--radius-sm, 4px);
