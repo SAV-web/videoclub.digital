@@ -236,7 +236,7 @@
 }
 
 /* Efecto de carga LQIP (Blur) - 200ms */
-:is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
+.movie-card:not(.is-quick-view) :is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.05);
   transition: filter var(--duration-quick, 200ms) ease-in-out,
@@ -330,13 +330,13 @@
   font-size: var(--font-size-sm);
 }
 
-.card-icons-line {
+.movie-card:not(.is-quick-view) .card-icons-line {
   display: flex;
   align-items: center;
   gap: var(--space-xxs);
 }
 
-.card-icons-line.compact .platform-icon svg {
+.movie-card:not(.is-quick-view) .card-icons-line.compact .platform-icon svg {
   width: 16px;
   height: 16px;
 }
@@ -345,7 +345,7 @@
   vertical-align: middle;
 }
 
-.year-country-line {
+.movie-card:not(.is-quick-view) .year-country-line {
   margin-left: auto;
 }
 
@@ -1303,7 +1303,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   display: none;
 }
 
-body.rotation-disabled .movie-card.person-card .card-rating-block {
+body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .card-rating-block {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1312,7 +1312,7 @@ body.rotation-disabled .movie-card.person-card .card-rating-block {
   pointer-events: none !important;
 }
 
-body.rotation-disabled .movie-card.person-card .wall-person-name {
+body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .wall-person-name {
   display: block;
   font-size: 0.95rem;
   font-weight: var(--font-weight-bold);
@@ -1325,7 +1325,7 @@ body.rotation-disabled .movie-card.person-card .wall-person-name {
   transform: translateY(-4px) !important;
 }
 
-body.rotation-disabled .movie-card.person-card.no-bio {
+body.rotation-disabled .movie-card.person-card:not(.is-quick-view).no-bio {
   cursor: default;
 }
 

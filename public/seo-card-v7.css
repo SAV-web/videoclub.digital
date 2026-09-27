@@ -980,7 +980,7 @@ body.sidebar-is-open .sidebar {
 }
 
 /* Efecto de carga LQIP (Blur) - 200ms */
-:is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
+.movie-card:not(.is-quick-view) :is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.05);
   transition: filter var(--duration-quick, 200ms) ease-in-out,
@@ -1074,13 +1074,13 @@ body.sidebar-is-open .sidebar {
   font-size: var(--font-size-sm);
 }
 
-.card-icons-line {
+.movie-card:not(.is-quick-view) .card-icons-line {
   display: flex;
   align-items: center;
   gap: var(--space-xxs);
 }
 
-.card-icons-line.compact .platform-icon svg {
+.movie-card:not(.is-quick-view) .card-icons-line.compact .platform-icon svg {
   width: 16px;
   height: 16px;
 }
@@ -1089,7 +1089,7 @@ body.sidebar-is-open .sidebar {
   vertical-align: middle;
 }
 
-.year-country-line {
+.movie-card:not(.is-quick-view) .year-country-line {
   margin-left: auto;
 }
 
@@ -2047,7 +2047,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   display: none;
 }
 
-body.rotation-disabled .movie-card.person-card .card-rating-block {
+body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .card-rating-block {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -2056,7 +2056,7 @@ body.rotation-disabled .movie-card.person-card .card-rating-block {
   pointer-events: none !important;
 }
 
-body.rotation-disabled .movie-card.person-card .wall-person-name {
+body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .wall-person-name {
   display: block;
   font-size: 0.95rem;
   font-weight: var(--font-weight-bold);
@@ -2069,7 +2069,7 @@ body.rotation-disabled .movie-card.person-card .wall-person-name {
   transform: translateY(-4px) !important;
 }
 
-body.rotation-disabled .movie-card.person-card.no-bio {
+body.rotation-disabled .movie-card.person-card:not(.is-quick-view).no-bio {
   cursor: default;
 }
 
@@ -3966,14 +3966,19 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
  *  B. QUICK VIEW — CONTENIDO Y TIPOGRAFÍA
  * ================================================================= */
 
-.quick-view-modal .movie-summary {
-  padding-inline: 0;
-  padding-top: 0;
+.is-quick-view .movie-summary {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 0;
+  overflow: visible;
 }
 
-.quick-view-modal .title-director-block {
-  min-height: 82px;
+.is-quick-view .title-director-block {
+  display: flex;
+  flex-direction: column;
   justify-content: center;
+  min-height: 82px;
   text-align: center;
   margin-bottom: 0;
 }
@@ -4045,7 +4050,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   font-size: calc(var(--font-size-xs) * 1.5);
   color: var(--color-text-primary);
   margin-top: 2px;
-  margin-bottom: var(--space-sm);
+  margin-bottom: var(--space-md);
   line-height: 1.35;
   white-space: normal;
   overflow: visible;
@@ -4090,8 +4095,8 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 
 /* En cara trasera: separación aumentada para armonizar con la lista de detalles */
 .is-quick-view .flip-card-back .front-director-info {
-  margin-top: 2px !important;
-  margin-bottom: var(--space-md) !important;
+  margin-top: 2px;
+  margin-bottom: var(--space-md);
   text-align: left;
   padding-left: 3ch;
   width: 100%;
@@ -4309,13 +4314,13 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 
 /* Metadatos (Estudios + Año + Bandera centrados en la parte inferior) */
 .is-quick-view .movie-meta {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  gap: 16px !important; /* Separación armónica entre grupo de estudios y grupo año/país */
-  width: 100% !important;
-  margin-top: auto !important;
-  margin-inline: auto !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px; /* Separación armónica entre grupo de estudios y grupo año/país */
+  width: 100%;
+  margin-top: auto;
+  margin-inline: auto;
   padding-top: var(--space-xs);
 }
 
@@ -4327,7 +4332,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 !important;
+  margin: 0;
   flex: 0 0 auto;
 
   &:empty {
@@ -4348,7 +4353,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 .is-quick-view .year-country-line {
   display: flex;
   align-items: center;
-  margin: 0 !important;
+  margin: 0;
   padding-right: 0;
   overflow: visible;
   flex: 0 0 auto;
@@ -5088,7 +5093,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 
 .is-quick-view.person-card {
   & .poster-container {
-    position: relative !important;
+    position: relative;
   }
 
   & .title-director-block {
@@ -5149,12 +5154,8 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     transform: none !important;
   }
 
-  & .poster-container::after {
-    display: none !important;
-  }
-
   & .card-rating-block {
-    display: none !important;
+    display: none;
   }
 
   & .person-role-toggle-btn {
