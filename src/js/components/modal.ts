@@ -240,13 +240,13 @@ function handleTouchMove(e: TouchEvent): void {
   const deltaX = currentX - touchState.startX;
 
   // Restaurar tamaño del cartel en columna izquierda (modo apaisado) si el usuario hace scroll hacia arriba (swipe abajo)
-  if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 15 && touchState.target?.closest(".flip-card-front")) {
+  if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 15 && touchState.target?.closest(".quick-view-media, .flip-card-front")) {
     const isLandscape = typeof window.matchMedia === "function"
       ? window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches
       : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
 
     if (isLandscape) {
-      const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
@@ -739,6 +739,9 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
   if (!cardClone) return;
 
   cardClone.classList.add('is-quick-view');
+  cardClone.querySelector('.flip-card-inner')?.classList.add('quick-view-inner');
+  cardClone.querySelector('.flip-card-front')?.classList.add('quick-view-media');
+  cardClone.querySelector('.flip-card-back')?.classList.add('quick-view-details');
 
   const modalId = isPerson ? `person-${movie.id}` : String(movie.id);
 
@@ -851,7 +854,7 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     // Montaje
     content.textContent = "";
     content.appendChild(clone);
-    const personFront = cardClone.querySelector<HTMLElement>(".flip-card-front");
+    const personFront = cardClone.querySelector<HTMLElement>(".quick-view-media, .flip-card-front");
     if (personFront) {
       personFront.scrollTop = 0;
       personFront.classList.remove("is-scrolled");
@@ -870,13 +873,13 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
     content.scrollTop = 0;
     content.classList.remove("is-scrolled");
     content.appendChild(clone);
-    const initialFront = cardClone.querySelector<HTMLElement>(".flip-card-front");
+    const initialFront = cardClone.querySelector<HTMLElement>(".quick-view-media, .flip-card-front");
     if (initialFront) {
       initialFront.scrollTop = 0;
       initialFront.classList.remove("is-scrolled");
       initialFront.classList.remove("poster-compact");
     }
-    const initialBack = cardClone.querySelector<HTMLElement>(".flip-card-back");
+    const initialBack = cardClone.querySelector<HTMLElement>(".quick-view-details, .flip-card-back");
     if (initialBack) {
       initialBack.scrollTop = 0;
       initialBack.classList.remove("is-scrolled");
@@ -957,7 +960,7 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
     modal.classList.remove("hide-arrows");
     overlay.classList.remove("is-visible");
     document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
-    modal.querySelectorAll<HTMLElement>(".flip-card-front.poster-compact").forEach(cf => {
+    modal.querySelectorAll<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact").forEach(cf => {
       cf.classList.remove("poster-compact");
     });
     modal.style.viewTransitionName = "";
@@ -1210,11 +1213,11 @@ export function initQuickView(): void {
     const handleScrollMask = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      if (target.classList?.contains("flip-card-back") || target.classList?.contains("flip-card-front") || target === content) {
+      if (target.classList?.contains("quick-view-details") || target.classList?.contains("quick-view-media") || target.classList?.contains("flip-card-back") || target.classList?.contains("flip-card-front") || target === content) {
         target.classList.toggle("is-scrolled", target.scrollTop > 4);
       }
 
-      if (target.classList?.contains("flip-card-front")) {
+      if (target.classList?.contains("quick-view-media") || target.classList?.contains("flip-card-front")) {
         const isLandscape = typeof window.matchMedia === "function"
           ? window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches
           : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
@@ -1242,8 +1245,8 @@ export function initQuickView(): void {
       const currentY = e.touches[0]?.clientY ?? 0;
       const deltaY = currentY - touchStartY;
       const target = e.target as HTMLElement | null;
-      if (deltaY > 12 && target?.closest(".flip-card-front")) {
-        const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      if (deltaY > 12 && target?.closest(".quick-view-media, .flip-card-front")) {
+        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
         if (compactFront) {
           compactFront.classList.remove("poster-compact");
         }
@@ -1258,8 +1261,8 @@ export function initQuickView(): void {
 
     const handleContentWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
-      if (e.deltaY < -5 && target?.closest(".flip-card-front")) {
-        const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      if (e.deltaY < -5 && target?.closest(".quick-view-media, .flip-card-front")) {
+        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
         if (compactFront) {
           compactFront.classList.remove("poster-compact");
         }
@@ -1292,19 +1295,19 @@ export function initQuickView(): void {
       e.preventDefault();
       e.stopPropagation();
       const scrollTarget = window.innerWidth > 768
-        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        ? (modal.querySelector<HTMLElement>(".quick-view-details, .flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: 70, behavior: "smooth" });
     }
     else if (e.key === "ArrowUp") {
       e.preventDefault();
       e.stopPropagation();
-      const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
       const scrollTarget = window.innerWidth > 768
-        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        ? (modal.querySelector<HTMLElement>(".quick-view-details, .flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: -70, behavior: "smooth" });
     }
@@ -1312,19 +1315,19 @@ export function initQuickView(): void {
       e.preventDefault();
       e.stopPropagation();
       const scrollTarget = window.innerWidth > 768
-        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        ? (modal.querySelector<HTMLElement>(".quick-view-details, .flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: 250, behavior: "smooth" });
     }
     else if (e.key === "PageUp") {
       e.preventDefault();
       e.stopPropagation();
-      const compactFront = modal.querySelector<HTMLElement>(".flip-card-front.poster-compact");
+      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
       const scrollTarget = window.innerWidth > 768
-        ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
+        ? (modal.querySelector<HTMLElement>(".quick-view-details, .flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: -250, behavior: "smooth" });
     }

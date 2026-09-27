@@ -3842,7 +3842,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 }
 
 /* PRIORIDAD 1: Contenedor estructural de paneles (no es un papel 3D giratorio) */
-.is-quick-view .flip-card-inner {
+.is-quick-view :is(.quick-view-inner, .flip-card-inner) {
   position: relative;
   width: 100%;
   height: 100%;
@@ -3855,13 +3855,13 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 }
 
 /* Estado de carga durante navegación entre fichas */
-.quick-view-modal.modal-is-loading .is-quick-view .flip-card-inner {
+.quick-view-modal.modal-is-loading .is-quick-view :is(.quick-view-inner, .flip-card-inner) {
   opacity: 0.25;
   pointer-events: none;
 }
 
 /* PRIORIDAD 2: Paneles Frontal (Media) y Trasero (Detalles) en flujo estático */
-.is-quick-view :is(.flip-card-front, .flip-card-back) {
+.is-quick-view :is(.quick-view-media, .quick-view-details, .flip-card-front, .flip-card-back) {
   position: relative;
   width: 100%;
   height: auto;
@@ -3871,13 +3871,13 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   box-sizing: border-box;
 }
 
-.is-quick-view .flip-card-front {
+.is-quick-view :is(.quick-view-media, .flip-card-front) {
   padding: var(--space-lg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
-.is-quick-view .flip-card-back {
+.is-quick-view :is(.quick-view-details, .flip-card-back) {
   padding: var(--space-lg);
   flex-grow: 1;
   min-width: 0;
@@ -4093,8 +4093,8 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   }
 }
 
-/* En cara trasera: separación aumentada para armonizar con la lista de detalles */
-.is-quick-view .flip-card-back .front-director-info {
+/* En cara trasera / detalles: separación aumentada para armonizar con la lista de detalles */
+.is-quick-view :is(.quick-view-details, .flip-card-back) .front-director-info {
   margin-top: 2px;
   margin-bottom: var(--space-md);
   text-align: left;
@@ -4743,7 +4743,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     }
   }
 
-  .is-quick-view .flip-card-front {
+  .is-quick-view :is(.quick-view-media, .flip-card-front) {
     padding-top: 30px;
     padding-bottom: 32px;
     border-bottom: none;
@@ -4753,7 +4753,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     }
   }
 
-  .is-quick-view .flip-card-back {
+  .is-quick-view :is(.quick-view-details, .flip-card-back) {
     padding-top: 16px;
   }
 
@@ -4819,14 +4819,14 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     right: -32px;
   }
 
-  .is-quick-view .flip-card-inner {
+  .is-quick-view :is(.quick-view-inner, .flip-card-inner) {
     display: block;
     position: relative;
     overflow: visible;
   }
 
   /* Partimos la tarjeta en dos columnas con scroll vertical */
-  .is-quick-view .flip-card-front {
+  .is-quick-view :is(.quick-view-media, .flip-card-front) {
     width: 50%;
     height: auto;
     max-height: 92dvh;
@@ -4852,7 +4852,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     }
   }
 
-  .is-quick-view .flip-card-back {
+  .is-quick-view :is(.quick-view-details, .flip-card-back) {
     position: absolute;
     top: 0;
     right: 0;
@@ -4926,7 +4926,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     right: -26px !important;
   }
 
-  .is-quick-view .flip-card-inner {
+  .is-quick-view :is(.quick-view-inner, .flip-card-inner) {
     display: flex !important;
     flex-direction: row !important;
     position: relative !important;
@@ -4936,7 +4936,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   }
 
   /* Columna izquierda: 50%, altura 100%, flex vertical, scroll independiente */
-  .is-quick-view .flip-card-front {
+  .is-quick-view :is(.quick-view-media, .flip-card-front) {
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
@@ -4968,7 +4968,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   }
 
   /* Columna derecha: 50%, altura 100%, scroll independiente */
-  .is-quick-view .flip-card-back {
+  .is-quick-view :is(.quick-view-details, .flip-card-back) {
     position: relative !important;
     top: auto !important;
     right: auto !important;
@@ -5015,7 +5015,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     will-change: max-width;
   }
 
-  .is-quick-view .flip-card-front.poster-compact .poster-container {
+  .is-quick-view :is(.quick-view-media, .flip-card-front).poster-compact .poster-container {
     max-width: clamp(175px, 44vh, 220px) !important;
     margin-bottom: var(--space-xs) !important;
   }
@@ -5168,7 +5168,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 
   /* Estructura alineada al modal de películas en escritorio con reparto 45%/55% (>= 769px) */
   @media (min-width: 769px) {
-    & .flip-card-inner {
+    & :is(.quick-view-inner, .flip-card-inner) {
       display: block !important;
       position: relative !important;
       overflow: visible !important;
@@ -5176,7 +5176,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
       min-height: min(600px, 92vh) !important;
     }
 
-    & .flip-card-front {
+    & :is(.quick-view-media, .flip-card-front) {
       width: 45% !important;
       min-height: min(600px, 92vh) !important;
       height: auto !important;
@@ -5192,7 +5192,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
       flex-shrink: 0 !important;
     }
 
-    & .flip-card-back {
+    & :is(.quick-view-details, .flip-card-back) {
       position: absolute !important;
       top: 0 !important;
       right: 0 !important;

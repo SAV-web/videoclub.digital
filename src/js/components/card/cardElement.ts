@@ -369,7 +369,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
         .filter(Boolean);
 
       if (genres.length > 0) {
-        const genreHeading = createElement("h4", { textContent: "Géneros" });
+        const genreHeading = createElement("h4", { textContent: "Género." });
         const genreListText = createElement("div", { className: "actors-list-text genres-list-text" });
         genres.forEach(name => {
           genreListText.appendChild(createElement("button", {
@@ -385,7 +385,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
       // 2. Reparto de actores
       const actors = movieData?.parsedActors || [];
       if (actors.length > 0) {
-        const heading = createElement("h4", { textContent: "Reparto" });
+        const heading = createElement("h4", { textContent: "Reparto." });
         const listText = createElement("div", { className: "actors-list-text" });
 
         actors.forEach(name => {
