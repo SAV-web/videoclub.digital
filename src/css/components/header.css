@@ -36,22 +36,33 @@
 
 /* --- 2. EL BUSCADOR Y SELECTORES --- */
 .search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+
   & input {
     height: 40px;
+    width: 120px;
     padding: 0 var(--space-xl) 0 var(--space-md);
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
     background: var(--color-surface);
     color: var(--color-text-primary);
-    min-width: 130px;
-    transition: min-width var(--transition-duration-normal) ease-in-out;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    box-shadow: none;
+    transition: width var(--transition-duration-normal) ease-in-out, border-color var(--transition-duration-fast), box-shadow var(--transition-duration-fast);
 
     &::placeholder {
       color: var(--color-text-secondary);
     }
 
     &:focus {
-      min-width: 160px;
+      width: 160px;
       outline: none;
       border-color: var(--color-accent);
       box-shadow: 0 0 0 3px var(--color-focus);
@@ -86,7 +97,7 @@
 
 #sort-select {
   height: 40px;
-  width: 130px;
+  width: 120px;
   padding: 0 1.8em 0 var(--space-sm);
   color: var(--color-text-primary);
   background-color: var(--color-surface);
