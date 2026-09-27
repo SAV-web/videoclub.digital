@@ -2880,6 +2880,81 @@
       </div>
     </template>
 
+    <template id="quick-view-person-template">
+      <div class="movie-card person-card is-quick-view">
+        <div class="quick-view-inner">
+          <div class="quick-view-media">
+            <div class="poster-container">
+              <img
+                src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                alt=""
+                class="lazy-image"
+                width="400"
+                height="496"
+                decoding="async"
+              />
+              <div class="poster-overlay-guard"></div>
+              <button
+                type="button"
+                class="person-role-toggle-btn"
+                data-template="role-toggle-btn"
+                aria-label="Cambiar labor"
+                style="display: none"
+              >
+                <span
+                  class="role-badge-letter"
+                  data-template="role-badge-letter"
+                ></span>
+              </button>
+              <div class="card-rating-block">
+                <span class="wall-person-name" data-template="wall-name"></span>
+              </div>
+            </div>
+
+            <div class="movie-info movie-summary">
+              <div class="title-director-block">
+                <h3 data-template="title"></h3>
+                <div
+                  class="front-director-info"
+                  data-template="birthplace"
+                ></div>
+              </div>
+              <div class="movie-meta">
+                <div class="card-icons-line"></div>
+                <div class="year-country-line">
+                  <div class="year-flag-group">
+                    <span class="person-age" data-template="age"></span
+                    ><span class="person-dates" data-template="dates"></span
+                    ><a class="country-info" data-template="country-container"
+                      ><span class="fi" data-template="country-flag"></span
+                    ></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="quick-view-details">
+            <div
+              class="scrollable-content"
+              style="flex-grow: 1; margin-top: var(--space-xs)"
+            >
+              <h4 class="bio-headline" data-template="bio-headline"></h4>
+              <div
+                class="plot-summary-final"
+                data-template="biography"
+                style="
+                  border-top: none;
+                  padding-top: 0;
+                  font-size: calc(var(--font-size-sm) * 1.2);
+                  line-height: 1.5;
+                "
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <!-- Script Principal -->
     <script type="module" src="/src/js/main.ts"></script>
   </body>

@@ -726,10 +726,11 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
   const movie = { ...cardElement.movieData, image_hq: posterUrl, posterUrl: posterUrl || basePosterUrl } as ExtendedMovie;
   const isPerson = cardElement.classList.contains('person-card') || movie.isPerson;
 
-  // Si es persona, usamos person-card-template en lugar de quick-view-template
-  const personTemplate = document.getElementById("person-card-template") as HTMLTemplateElement | null;
+  // Si es persona, usamos quick-view-person-template en lugar de quick-view-template
+  const personQuickViewTemplate =
+    document.getElementById("quick-view-person-template") as HTMLTemplateElement | null;
   const currentTemplate = isPerson
-    ? personTemplate?.content
+    ? personQuickViewTemplate?.content
     : template;
 
   if (!currentTemplate) return;
