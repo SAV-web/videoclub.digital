@@ -955,8 +955,8 @@
 
 /* --- 5. ADAPTACIÓN AL ENTORNO (Móvil vs Ordenador) --- */
 
-/* A) MÓVIL: Panel desde abajo (Bottom Sheet) */
-@media (max-width: 700px) {
+/* A) MÓVIL: Panel desde abajo (Bottom Sheet) (<= 768px) */
+@media (max-width: 768px) {
   .quick-view-overlay {
     backdrop-filter: blur(4px) saturate(85%);
     -webkit-backdrop-filter: blur(4px) saturate(85%);
@@ -1042,8 +1042,8 @@
   }
 }
 
-/* B) ORDENADOR: Ventana flotante clásica con scroll en ambos lados */
-@media (min-width: 701px) {
+/* B) ORDENADOR: Ventana flotante clásica con scroll en ambos lados (>= 769px) */
+@media (min-width: 769px) {
   .quick-view-modal {
     top: 50%;
     left: 50%;
@@ -1443,8 +1443,8 @@
     font-size: 0.85rem !important;
   }
 
-  /* Estructura alineada al modal de películas en escritorio con reparto 40%/60% */
-  @media (min-width: 701px) {
+  /* Estructura alineada al modal de películas en escritorio con reparto 40%/60% (>= 769px) */
+  @media (min-width: 769px) {
     & .flip-card-inner {
       display: block !important;
       position: relative !important;
@@ -1520,8 +1520,8 @@
   }
 }
 
-/* Modo Escritorio (> 700px): Modal centrado */
-@media (min-width: 701px) {
+/* Modo Escritorio (>= 769px): Modal centrado */
+@media (min-width: 769px) {
   .legal-modal {
     top: 50%;
     left: 50%;
@@ -1544,8 +1544,8 @@
   }
 }
 
-/* Modo Móvil (<= 700px): Formato Bottom Sheet accesible */
-@media (max-width: 700px) {
+/* Modo Móvil (<= 768px): Formato Bottom Sheet accesible */
+@media (max-width: 768px) {
   .legal-modal {
     top: auto;
     bottom: 0;
@@ -1636,7 +1636,7 @@
     display: none;
   }
 
-  @media (min-width: 701px) {
+  @media (min-width: 769px) {
     padding: 0 var(--space-lg);
   }
 }

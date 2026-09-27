@@ -144,7 +144,7 @@
      - Móvil: max-width: 768px
      - Escritorio: min-width: 769px */
   --bp-mobile-max: 768px;
-  --bp-desktop-min: 769px;
+  --bp-desktop-min: 769px; /* 769px es el único breakpoint horizontal estructural que separa MOBILE/DESKTOP en la aplicación. Cualquier excepción deberá documentarse junto a la regla que la utilice. */
 }
 
 /* Restaurar escala compacta para Escritorio */

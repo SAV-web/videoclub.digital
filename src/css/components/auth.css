@@ -29,8 +29,8 @@
   }
 }
 
-/* A) Modo Escritorio (> 700px): Modal flotante centrado */
-@media (min-width: 701px) {
+/* A) Modo Escritorio (>= 769px): Modal flotante centrado */
+@media (min-width: 769px) {
   .auth-modal {
     top: 50%;
     left: 50%;
@@ -50,8 +50,8 @@
   }
 }
 
-/* B) Modo Móvil (<= 700px): Formato Bottom Sheet con tirador y arrastre */
-@media (max-width: 700px) {
+/* B) Modo Móvil (<= 768px): Formato Bottom Sheet con tirador y arrastre */
+@media (max-width: 768px) {
   .auth-overlay {
     backdrop-filter: blur(4px) saturate(85%);
     -webkit-backdrop-filter: blur(4px) saturate(85%);

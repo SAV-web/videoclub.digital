@@ -261,7 +261,7 @@ function handleTouchMove(e: TouchEvent): void {
 
     // Gesto Vertical (Cierre): Solo en modo bottom-sheet vertical si estamos arriba del todo y arrastramos hacia abajo
     if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= SCROLL_TOLERANCE) {
-      const isMobilePortrait = window.innerWidth <= 700 && (typeof window.matchMedia === "function" ? !window.matchMedia("(orientation: landscape)").matches : window.innerHeight > window.innerWidth);
+      const isMobilePortrait = window.innerWidth <= 768 && (typeof window.matchMedia === "function" ? !window.matchMedia("(orientation: landscape)").matches : window.innerHeight > window.innerWidth);
       if (isMobilePortrait) {
         touchState.isDragging = true;
         modal.classList.add(CSS_CLASSES.IS_DRAGGING); // Desactivar transición para seguir el dedo
@@ -1291,7 +1291,7 @@ export function initQuickView(): void {
     else if (e.key === "ArrowDown") {
       e.preventDefault();
       e.stopPropagation();
-      const scrollTarget = window.innerWidth > 700
+      const scrollTarget = window.innerWidth > 768
         ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: 70, behavior: "smooth" });
@@ -1303,7 +1303,7 @@ export function initQuickView(): void {
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
-      const scrollTarget = window.innerWidth > 700
+      const scrollTarget = window.innerWidth > 768
         ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: -70, behavior: "smooth" });
@@ -1311,7 +1311,7 @@ export function initQuickView(): void {
     else if (e.key === "PageDown") {
       e.preventDefault();
       e.stopPropagation();
-      const scrollTarget = window.innerWidth > 700
+      const scrollTarget = window.innerWidth > 768
         ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: 250, behavior: "smooth" });
@@ -1323,7 +1323,7 @@ export function initQuickView(): void {
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
-      const scrollTarget = window.innerWidth > 700
+      const scrollTarget = window.innerWidth > 768
         ? (modal.querySelector<HTMLElement>(".flip-card-back") || content)
         : content;
       scrollTarget?.scrollBy({ top: -250, behavior: "smooth" });
