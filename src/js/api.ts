@@ -572,7 +572,7 @@ export async function fetchGroupDetails(
     const table = type === "studio" ? "studios" : "selections";
     const { data, error } = await supabase
       .from(table)
-      .select("code, thumbhash_st, thumbhash")
+      .select("code, thumbhash_st")
       .eq("code", normCode)
       .maybeSingle();
 
@@ -583,8 +583,8 @@ export async function fetchGroupDetails(
       return null;
     }
 
-    const row = data as { thumbhash_st?: string | null; thumbhash?: string | null } | null;
-    const thumbhash_st = row ? (row.thumbhash_st || row.thumbhash || null) : null;
+    const row = data as { thumbhash_st?: string | null } | null;
+    const thumbhash_st = row ? (row.thumbhash_st || null) : null;
     const result = { thumbhash_st };
     groupDetailsCache.set(cacheKey, result);
     return result;

@@ -815,16 +815,20 @@ export function init(): void {
   }
 
   const handlePopState = async () => {
+    // Si el cierre fue disparado por una acción manual (swipe, botón, ESC) que ya ejecutó history.back(),
+    // no volver a invocar closeModal para evitar transiciones concurrentes
+    const closingViaHistory = consumeIsClosingModalViaHistory();
+
     const { isModalOpen, closeModal } = await import("./components/modal.js");
 
-    let modalWasOpen = false;
+    let modalWasOpen = Boolean(closingViaHistory);
 
-    if (isModalOpen()) {
+    if (!closingViaHistory && isModalOpen()) {
       closeModal({ fromPopstate: true, suppressHistoryBack: true });
       modalWasOpen = true;
     }
 
-    if (isAuthModalOpen()) {
+    if (!closingViaHistory && isAuthModalOpen()) {
       closeAuthModal({ fromPopstate: true });
       modalWasOpen = true;
     }
@@ -839,9 +843,6 @@ export function init(): void {
       closeProfileModal(true);
       modalWasOpen = true;
     }
-
-    // Consumir la bandera de cierre de modal si fue activada
-    consumeIsClosingModalViaHistory();
 
     // Normalizar URLs canónicas y entrantes para una comparación fidedigna
     const basePrefix = getAppBasePath();

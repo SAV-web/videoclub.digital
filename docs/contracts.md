@@ -402,10 +402,10 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
      - Fichas de personas VIP: el lugar de nacimiento (`.front-director-info`) se centra con `padding-inline: 0` para sincronizarse perfectamente con el nombre.
 
 2. **Contrato de Reducción Progresiva del Cartel (`.poster-compact`)**:
-   - **Estado Inicial**: El cartel arranca siempre en tamaño completo de columna (`width: 100%; max-width: 290px; margin-inline: auto;`), destacando la portada cinematográfica (en personas VIP: `max-width: min(200px, 44svh)` y `padding-top: 0` en apaisado).
+   - **Estado Inicial**: El cartel arranca siempre en tamaño completo de columna (`width: 100%; max-width: 290px; margin-inline: auto; margin-bottom: var(--space-sm);`), destacando la portada cinematográfica o fotografía del cineasta bajo la misma regla unificada.
    - **Activación por Desplazamiento**:
      - Cuando el usuario se desplaza por la columna izquierda y alcanza el fondo (`scrollTop > 15px` y `scrollBottom <= 35px`), se inyecta la clase `.poster-compact` en `.flip-card-front`.
-     - El cartel reduce sus dimensiones a `clamp(175px, 44vh, 220px)` (y `clamp(105px, 28svh, 135px)` en fichas de personas VIP) mediante una transición desacelerada fluida de `0.45s` (`cubic-bezier(0.16, 1, 0.3, 1)`).
+     - El cartel reduce sus dimensiones a `clamp(175px, 44vh, 220px)` (tanto en películas como en directores/actores) mediante una transición desacelerada fluida de `0.45s` (`cubic-bezier(0.16, 1, 0.3, 1)`).
      - El padding horizontal de la columna se optimiza a `var(--space-sm)` (8px) para eliminar holguras laterales innecesarias a la izquierda.
      - Se garantiza la visualización simultánea del cartel con estrellas, watchlist, título traducido, estudio, año y bandera de país.
    - **Persistencia**:

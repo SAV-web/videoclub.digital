@@ -470,6 +470,7 @@ export function closeAccessibleModal(modal: HTMLElement | null, overlay: HTMLEle
   if (!modal) return;
 
   modal.hidden = true;
+  modal.style.viewTransitionName = "";
   if (overlay) overlay.hidden = true;
 
   if (focusTrapListener) {

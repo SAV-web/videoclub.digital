@@ -910,18 +910,22 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
 // =================================================================
 
 
+let isClosingModalInProgress = false;
+
 /**
- * Comprueba si la modal está actualmente visible.
+ * Comprueba si la modal está actualmente visible y no está en proceso de cierre.
  */
 export function isModalOpen(): boolean {
   const { modal } = getDom();
-  return Boolean(modal && modal.classList.contains("is-visible"));
+  return Boolean(modal && modal.classList.contains("is-visible") && !isClosingModalInProgress);
 }
 
 /**
  * Cierra el modal con animación y limpieza.
  */
 export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean; skipHistory?: boolean } | Event): void {
+  if (isClosingModalInProgress) return;
+
   const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
   const suppressHistoryBack = Boolean(
     options && (
@@ -931,6 +935,8 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
   );
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
+
+  isClosingModalInProgress = true;
 
   // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
   if (!isPopstate && !suppressHistoryBack && window.history.state?.modalOpen) {
@@ -946,6 +952,7 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
   if (header) header.style.viewTransitionName = "none";
 
   const performClose = (): void => {
+    isClosingModalInProgress = false;
     modal.classList.remove("is-visible");
     modal.classList.remove("hide-arrows");
     overlay.classList.remove("is-visible");
@@ -953,6 +960,7 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
     modal.querySelectorAll<HTMLElement>(".flip-card-front.poster-compact").forEach(cf => {
       cf.classList.remove("poster-compact");
     });
+    modal.style.viewTransitionName = "";
 
     // Limpieza
     scheduleModalTimeout(resetModalTransform, MODAL_TRANSITION_MS);
@@ -963,16 +971,21 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
   // View Transition (Hero Reverso: Modal -> Card). El helper maneja el fallback y el a11y.
   const hasHeroCard = Boolean(activeHeroCard && typeof document !== "undefined" && typeof document.body?.contains === "function" && document.body.contains(activeHeroCard));
   if (hasHeroCard && activeHeroCard) {
+    const cardToTarget = activeHeroCard;
+    // Solo el modal tiene hero-expansion en el snapshot inicial
     modal.style.viewTransitionName = "hero-expansion";
-    activeHeroCard.style.viewTransitionName = "hero-expansion";
+    cardToTarget.style.viewTransitionName = "";
 
     const transition = executeViewTransition(() => {
       modal.style.viewTransitionName = "";
+      cardToTarget.style.viewTransitionName = "hero-expansion";
       performClose();
     });
 
-    transition.finished.finally(() => {
-      if (activeHeroCard) activeHeroCard.style.viewTransitionName = "";
+    transition.finished.catch(() => {}).finally(() => {
+      isClosingModalInProgress = false;
+      cardToTarget.style.viewTransitionName = "";
+      modal.style.viewTransitionName = "";
       activeHeroCard = null;
 
       modalTransitionCount--;
@@ -981,8 +994,13 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
       }
     });
   } else {
+    if (activeHeroCard) activeHeroCard.style.viewTransitionName = "";
     activeHeroCard = null;
-    executeViewTransition(performClose).finished.finally(() => {
+    modal.style.viewTransitionName = "";
+
+    executeViewTransition(performClose).finished.catch(() => {}).finally(() => {
+      isClosingModalInProgress = false;
+      modal.style.viewTransitionName = "";
       modalTransitionCount--;
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
         header.style.viewTransitionName = "";
@@ -1073,6 +1091,7 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   };
 
   if (hasHeroCard) {
+    modal.style.viewTransitionName = "";
     cardElement.style.viewTransitionName = "hero-expansion";
 
     const transition = executeViewTransition(() => {
@@ -1081,14 +1100,18 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
       cardElement.style.viewTransitionName = "";
     });
 
-    transition.finished.finally(() => {
+    transition.finished.catch(() => {}).finally(() => {
+      modal.style.viewTransitionName = "";
+      cardElement.style.viewTransitionName = "";
       modalTransitionCount--;
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
         header.style.viewTransitionName = "";
       }
     });
   } else {
-    executeViewTransition(performOpen).finished.finally(() => {
+    modal.style.viewTransitionName = "";
+    executeViewTransition(performOpen).finished.catch(() => {}).finally(() => {
+      modal.style.viewTransitionName = "";
       modalTransitionCount--;
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
         header.style.viewTransitionName = "";
@@ -1102,10 +1125,16 @@ let modalUnsubscribers: Array<() => void> = [];
 
 export function disposeModalEvents(): void {
   modalLifecycleGen++;
+  isClosingModalInProgress = false;
 
   try {
     closeModal({ suppressHistoryBack: true, skipHistory: true, fromPopstate: true });
   } catch (e) { }
+
+  const { modal } = getDom();
+  if (modal) modal.style.viewTransitionName = "";
+  if (activeHeroCard) activeHeroCard.style.viewTransitionName = "";
+  activeHeroCard = null;
 
   modalTimeouts.forEach(t => clearTimeout(t));
   modalTimeouts = [];

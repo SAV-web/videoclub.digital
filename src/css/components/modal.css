@@ -1303,25 +1303,6 @@
     padding-bottom: var(--space-xs) !important;
   }
 
-  .is-quick-view.person-card .poster-container {
-    width: 100% !important;
-    max-width: min(200px, 44svh) !important;
-    padding-top: 0 !important;
-    margin-bottom: var(--space-xs) !important;
-    transition: max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                margin-bottom 0.45s ease !important;
-    will-change: max-width;
-  }
-
-  .is-quick-view.person-card .flip-card-front.poster-compact .poster-container {
-    max-width: clamp(105px, 28svh, 135px) !important;
-    margin-bottom: var(--space-xs) !important;
-  }
-
-  .is-quick-view.person-card .flip-card-front {
-    padding-bottom: 2rem !important;
-  }
-
   .is-quick-view.person-card .movie-info.movie-summary {
     flex-grow: 0 !important;
     width: 100% !important;
@@ -1353,7 +1334,6 @@
   .is-quick-view.person-card .movie-meta {
     margin-top: 2px !important;
     padding-top: 0 !important;
-    margin-bottom: 2.75rem !important;
     flex-grow: 0 !important;
     width: 100% !important;
     justify-content: center !important;
@@ -1384,21 +1364,7 @@
 /* --- 8. ADAPTACIONES ESPECÍFICAS PARA PERSONAS EN VISTA RÁPIDA --- */
 .is-quick-view.person-card {
   & .poster-container {
-    width: 240px !important;
-    height: auto !important;
-    margin: 0 auto !important;
     position: relative !important;
-    background: transparent !important;
-    display: block !important;
-
-    @media (orientation: portrait), (min-height: 601px) {
-      padding-top: var(--space-lg) !important;
-    }
-
-    @media (orientation: landscape) and (max-height: 600px) {
-      padding-top: 0 !important;
-      margin-bottom: var(--space-xs) !important;
-    }
   }
 
   & .title-director-block {
@@ -1520,13 +1486,6 @@
       width: 100% !important;
       margin-top: var(--space-md) !important;
       padding-top: 0 !important;
-    }
-  }
-
-    /* Separación de foto y nombre en móvil vertical */
-  @media (max-width: 700px) and (orientation: portrait) {
-    & .poster-container {
-      margin-bottom: var(--space-lg) !important;
     }
   }
 }
