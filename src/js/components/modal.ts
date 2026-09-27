@@ -246,7 +246,7 @@ function handleTouchMove(e: TouchEvent): void {
       : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
 
     if (isLandscape) {
-      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
+      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
@@ -957,7 +957,7 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
     modal.classList.remove("hide-arrows");
     overlay.classList.remove("is-visible");
     document.body.classList.remove(CSS_CLASSES.MODAL_OPEN);
-    modal.querySelectorAll<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact").forEach(cf => {
+    modal.querySelectorAll<HTMLElement>(".quick-view-media.poster-compact").forEach(cf => {
       cf.classList.remove("poster-compact");
     });
     modal.style.viewTransitionName = "";
@@ -1210,11 +1210,11 @@ export function initQuickView(): void {
     const handleScrollMask = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      if (target.classList?.contains("quick-view-details") || target.classList?.contains("quick-view-media") || target.classList?.contains("flip-card-back") || target.classList?.contains("flip-card-front") || target === content) {
+      if (target.classList?.contains("quick-view-details") || target.classList?.contains("quick-view-media") || target === content) {
         target.classList.toggle("is-scrolled", target.scrollTop > 4);
       }
 
-      if (target.classList?.contains("quick-view-media") || target.classList?.contains("flip-card-front")) {
+      if (target.classList?.contains("quick-view-media")) {
         const isLandscape = typeof window.matchMedia === "function"
           ? window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches
           : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
@@ -1243,7 +1243,7 @@ export function initQuickView(): void {
       const deltaY = currentY - touchStartY;
       const target = e.target as HTMLElement | null;
       if (deltaY > 12 && target?.closest(".quick-view-media")) {
-        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
+        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
         if (compactFront) {
           compactFront.classList.remove("poster-compact");
         }
@@ -1259,7 +1259,7 @@ export function initQuickView(): void {
     const handleContentWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
       if (e.deltaY < -5 && target?.closest(".quick-view-media")) {
-        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
+        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
         if (compactFront) {
           compactFront.classList.remove("poster-compact");
         }
@@ -1299,7 +1299,7 @@ export function initQuickView(): void {
     else if (e.key === "ArrowUp") {
       e.preventDefault();
       e.stopPropagation();
-      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
+      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
@@ -1319,7 +1319,7 @@ export function initQuickView(): void {
     else if (e.key === "PageUp") {
       e.preventDefault();
       e.stopPropagation();
-      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact, .flip-card-front.poster-compact");
+      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
       }
