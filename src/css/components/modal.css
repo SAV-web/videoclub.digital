@@ -1,10 +1,26 @@
 /* =================================================================
  *                 LA PANTALLA EMERGENTE (Modales)
  * =================================================================
- * Controla la "Vista Rápida" de las películas y el panel de login.
+ * Controla la "Vista Rápida" (Quick View) de películas/personas
+ * y el Modal Legal/Informativo.
+ *
+ * ESTRUCTURA MODULAR:
+ *  A. Quick View — Estructura y Base
+ *  B. Quick View — Contenido y Tipografía
+ *  C. Quick View — Ratings y Acciones
+ *  D. Quick View — Navegación
+ *  E. Quick View — Mobile (<= 768px): Panel Bottom Sheet
+ *  F. Quick View — Desktop (>= 769px): Ventana Flotante Bicolumna
+ *  G. Quick View — Landscape (Móvil Apaisado)
+ *  H. Quick View — Personas / Ficha VIP
+ *  I. Estados Especiales y Rendimiento
+ *  J. Modal Legal e Informativo
  * ================================================================= */
 
-/* --- 1. LA CORTINA OSCURA Y LA VENTANA (Base y Fondo) --- */
+/* =================================================================
+ *  A. QUICK VIEW — ESTRUCTURA Y BASE
+ * ================================================================= */
+
 .quick-view-overlay {
   position: fixed;
   inset: 0;
@@ -60,19 +76,11 @@
     will-change: transform, opacity;
   }
 
-
   :where(html.dark-mode) & {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
 }
 
-
-::view-transition-group(hero-expansion) {
-  animation-duration: 0.4s;
-  animation-timing-function: var(--ease-smooth-out);
-}
-
-/* --- 2. DESMONTANDO LA TARJETA (Estructura interna) --- */
 .quick-view-content {
   width: 100%;
   height: 100%;
@@ -137,7 +145,7 @@
   pointer-events: auto;
 }
 
-/* Reordenamos las piezas del puzzle */
+/* Reordenación interna de elementos en la cara trasera */
 .is-quick-view {
   & .back-meta-header {
     order: 1;
@@ -168,7 +176,7 @@
   }
 }
 
-/* --- 3. TAMAÑOS GIGANTES (Adaptación visual) --- */
+/* Contenedor del Póster */
 .is-quick-view .poster-container {
   height: auto;
   width: 100%;
@@ -215,6 +223,9 @@
   }
 }
 
+/* =================================================================
+ *  B. QUICK VIEW — CONTENIDO Y TIPOGRAFÍA
+ * ================================================================= */
 
 .quick-view-modal .movie-summary {
   padding-inline: 0;
@@ -263,6 +274,34 @@
   }
 }
 
+/* Título original (Cara trasera) - En cursiva con menor jerarquía visual */
+.is-quick-view .back-original-title-wrapper {
+  min-height: 0;
+  margin-top: 0 !important;
+  margin-bottom: 2px !important;
+  padding: 0;
+  align-items: flex-start;
+  flex-shrink: 0;
+  animation: none;
+  display: block;
+
+  & span {
+    font-size: 0.95rem;
+    font-weight: var(--font-weight-normal, 400);
+    font-style: italic;
+    color: var(--color-text-secondary);
+    line-height: 1.35;
+    display: inline-block;
+    padding-right: 0.35em;
+    overflow: visible;
+  }
+
+  & span:is(.title-medium, .title-long, .title-xl-long) {
+    font-size: 0.95rem;
+  }
+}
+
+/* Información de directores */
 .is-quick-view .front-director-info {
   font-size: calc(var(--font-size-xs) * 1.5);
   color: var(--color-text-primary);
@@ -283,7 +322,190 @@
   }
 }
 
-/* Botones y estrellas enormes */
+.is-quick-view .front-director-info a {
+  display: inline;
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm, 3px);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 80ms ease, opacity 80ms ease;
+
+  &:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+  }
+
+  &:active {
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm, 3px);
+    text-decoration: none;
+    color: var(--color-text-primary);
+  }
+}
+
+/* En cara trasera: separación aumentada para armonizar con la lista de detalles */
+.is-quick-view .flip-card-back .front-director-info {
+  margin-top: 2px !important;
+  margin-bottom: var(--space-md) !important;
+  text-align: left;
+  padding-left: 3ch;
+  width: 100%;
+}
+
+/* Lista de detalles unificada (consolida bloques de líneas 562 y 640) */
+.is-quick-view .details-list {
+  font-size: calc(var(--font-size-xs) * 1.5);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  hyphens: none;
+  -webkit-hyphens: none;
+  border-top: none !important;
+  margin-top: var(--space-md);
+  margin-bottom: 0;
+  padding-top: 0;
+  gap: var(--space-md);
+}
+
+/* Sinopsis unificada (consolida bloques de líneas 570 y 648) */
+.is-quick-view .plot-summary-final {
+  font-size: calc(var(--font-size-xs) * 1.5);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: none !important;
+}
+
+.is-quick-view .detail-data {
+  color: var(--color-text-primary);
+}
+
+.is-quick-view .plot-summary-final span[data-template="synopsis"] {
+  color: var(--color-text-primary);
+}
+
+.is-quick-view .detail-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -2px;
+  margin-right: 8px;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.is-quick-view .detail-icon {
+  width: 18px;
+  height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  fill: none;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.is-quick-view .detail-label-title {
+  display: inline-block;
+  font-variant: small-caps;
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-text-primary);
+  margin-right: 0.5em;
+}
+
+/* Enlaces generales dentro de detalles */
+.is-quick-view :is(.details-list, .detail-item, .detail-data, [data-template="genre"], [data-template="actors"]) a {
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color 80ms ease, opacity 80ms ease;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: inline;
+  border-radius: var(--radius-sm, 3px);
+
+  &:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+  }
+
+  &:active {
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm, 3px);
+    text-decoration: none;
+  }
+}
+
+/* Especificidad para actores: preserva color secundario en reposo */
+.is-quick-view [data-template="actors"] a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--duration-fast);
+
+  &:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+  }
+}
+
+/* Contenedores de texto corrido y descarte de botones expansores */
+.is-quick-view .scrollable-content {
+  overflow: visible;
+  height: auto;
+  mask-image: none;
+  margin-top: var(--space-md);
+
+  &::after {
+    display: none;
+  }
+}
+
+.is-quick-view :is(.expand-content-btn, .actors-expand-btn) {
+  display: none;
+}
+
+.is-quick-view .detail-item[data-template="actors-container"],
+.is-quick-view .detail-item[data-template="genre-container"] {
+  display: block;
+  line-height: 1.5;
+  -webkit-line-clamp: none;
+  line-clamp: none;
+  -webkit-box-orient: unset;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  max-height: none;
+  padding-right: 0;
+}
+
+.is-quick-view .detail-item[data-template="actors-container"] .detail-data,
+.is-quick-view .detail-item[data-template="genre-container"] .detail-data {
+  display: inline;
+  line-height: 1.5;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* =================================================================
+ *  C. QUICK VIEW — RATINGS Y ACCIONES
+ * ================================================================= */
+
+/* Botones y estrellas frontales */
 .is-quick-view .card-rating-block {
   position: relative;
   z-index: 10;
@@ -367,10 +589,10 @@
   gap: 6px;
   margin: 0 !important;
   flex: 0 0 auto;
-}
 
-.is-quick-view .card-icons-line:empty {
-  display: none;
+  &:empty {
+    display: none;
+  }
 }
 
 .is-quick-view .platform-icon svg {
@@ -387,7 +609,6 @@
   display: flex;
   align-items: center;
   margin: 0 !important;
-  margin-left: 0 !important;
   padding-right: 0;
   overflow: visible;
   flex: 0 0 auto;
@@ -460,7 +681,7 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Cabecera trasera: Duración/Episodios + JustWatch/Wikipedia alineados a la derecha con generosa separación */
+/* Cabecera trasera: Duración/Episodios + JustWatch/Wikipedia (consolidada en bloque único) */
 .is-quick-view .back-meta-header {
   width: 100%;
   display: flex;
@@ -495,12 +716,7 @@
   font-weight: 560 !important;
 }
 
-
-/* Enlaces externos JustWatch / Wikipedia alineados a la derecha con efecto hover original y sin fondo circular */
-.is-quick-view [data-template="justwatch-link"] {
-  margin-left: 0 !important;
-}
-
+/* Enlaces externos JustWatch / Wikipedia alineados a la derecha con efecto hover */
 .is-quick-view :is([data-template="justwatch-link"], [data-template="wikipedia-link"]) {
   display: inline-flex !important;
   align-items: center;
@@ -514,7 +730,7 @@
   cursor: pointer;
   touch-action: manipulation;
   transition: transform 80ms ease-out, filter 80ms ease-out;
-  margin-left: 0;
+  margin-left: 0 !important;
   pointer-events: auto;
 
   &:active {
@@ -557,233 +773,6 @@
   grid-column: unset !important;
   grid-row: unset !important;
   align-self: center;
-}
-
-.is-quick-view .details-list {
-  font-size: calc(var(--font-size-xs) * 1.5);
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-  hyphens: none;
-  -webkit-hyphens: none;
-}
-
-.is-quick-view .plot-summary-final {
-  font-size: calc(var(--font-size-xs) * 1.5);
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-  hyphens: auto;
-  -webkit-hyphens: auto;
-}
-
-.is-quick-view .detail-data {
-  color: var(--color-text-primary);
-}
-
-.is-quick-view .plot-summary-final span[data-template="synopsis"] {
-  color: var(--color-text-primary);
-}
-
-.is-quick-view :is(.details-list, .detail-item, .detail-data, [data-template="genre"], [data-template="actors"]) a {
-  color: var(--color-text-primary);
-  text-decoration: none;
-  transition: color 80ms ease, opacity 80ms ease;
-  cursor: pointer;
-  touch-action: manipulation;
-  display: inline;
-  border-radius: var(--radius-sm, 3px);
-
-  &:hover {
-    color: var(--color-text-primary);
-    text-decoration: underline;
-  }
-
-  &:active {
-    opacity: 0.6;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-    border-radius: var(--radius-sm, 3px);
-    text-decoration: none;
-  }
-}
-
-.is-quick-view .front-director-info a {
-  display: inline;
-  color: var(--color-text-primary);
-  border-radius: var(--radius-sm, 3px);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: color 80ms ease, opacity 80ms ease;
-
-  &:hover {
-    color: var(--color-text-primary);
-    text-decoration: underline;
-  }
-
-  &:active {
-    opacity: 0.6;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-    border-radius: var(--radius-sm, 3px);
-    text-decoration: none;
-    color: var(--color-text-primary);
-  }
-}
-
-
-
-.is-quick-view .details-list {
-  border-top: none !important;
-  margin-top: var(--space-md);
-  margin-bottom: 0;
-  padding-top: 0;
-  gap: var(--space-md);
-}
-
-.is-quick-view .plot-summary-final {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-  border-top: none !important;
-}
-
-.is-quick-view .detail-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: -2px;
-  margin-right: 8px;
-  color: var(--color-accent);
-  flex-shrink: 0;
-}
-
-.is-quick-view .detail-icon {
-  width: 18px;
-  height: 18px;
-  max-width: 18px;
-  max-height: 18px;
-  stroke: currentColor;
-  stroke-width: 2.6;
-  fill: none;
-  flex-shrink: 0;
-  display: inline-block;
-}
-
-.is-quick-view .detail-label-title {
-  display: inline-block;
-  font-variant: small-caps;
-  font-size: 1rem;
-  letter-spacing: 0.12em;
-  font-weight: var(--font-weight-bold, 700);
-  color: var(--color-text-primary);
-  margin-right: 0.5em;
-}
-
-
-
-
-.is-quick-view .rating-bar-container {
-  height: var(--space-sm);
-
-  &[data-votes]:hover::after {
-    display: none;
-  }
-}
-
-
-
-.is-quick-view [data-template="actors"] a {
-  color: inherit;
-  text-decoration: none;
-  transition: color var(--duration-fast);
-
-  &:hover {
-    color: var(--color-text-primary);
-    text-decoration: underline;
-  }
-}
-
-/* Título original (Cara trasera) - En cursiva con menor jerarquía visual */
-.is-quick-view .back-original-title-wrapper {
-  min-height: 0;
-  margin-top: 0 !important;
-  margin-bottom: 2px !important;
-  padding: 0;
-  align-items: flex-start;
-  flex-shrink: 0;
-  animation: none;
-  display: block;
-
-  & span {
-    font-size: 0.95rem;
-    font-weight: var(--font-weight-normal, 400);
-    font-style: italic;
-    color: var(--color-text-secondary);
-    line-height: 1.35;
-    display: inline-block;
-    padding-right: 0.35em;
-    overflow: visible;
-  }
-
-  & span:is(.title-medium, .title-long, .title-xl-long) {
-    font-size: 0.95rem;
-  }
-}
-
-.is-quick-view .flip-card-back .front-director-info {
-  margin-top: 2px !important;
-  margin-bottom: var(--space-md) !important;
-  text-align: left;
-  padding-left: 3ch;
-  width: 100%;
-}
-
-.is-quick-view .back-meta-header {
-  flex-shrink: 0;
-  margin-bottom: var(--space-md);
-}
-
-/* Limpieza de elementos que no aplican aquí */
-.is-quick-view .scrollable-content {
-  overflow: visible;
-  height: auto;
-  mask-image: none;
-  margin-top: var(--space-md);
-
-  &::after {
-    display: none;
-  }
-}
-
-.is-quick-view :is(.expand-content-btn, .actors-expand-btn) {
-  display: none;
-}
-
-.is-quick-view .detail-item[data-template="actors-container"],
-.is-quick-view .detail-item[data-template="genre-container"] {
-  display: block;
-  line-height: 1.5;
-  -webkit-line-clamp: none;
-  line-clamp: none;
-  -webkit-box-orient: unset;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  max-height: none;
-  padding-right: 0;
-}
-
-.is-quick-view .detail-item[data-template="actors-container"] .detail-data,
-.is-quick-view .detail-item[data-template="genre-container"] .detail-data {
-  display: inline;
-  line-height: 1.5;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
 }
 
 /* Bloque de Notas FA e IMDb: 50/50 equilibrado, notas aumentadas y votos debajo */
@@ -858,6 +847,7 @@
   transform-origin: left center;
 }
 
+/* Barra de progreso consolidada (elimina altura muerta height: var(--space-sm) de línea 689) */
 .is-quick-view .rating-bar-container {
   grid-column: 2;
   grid-row: 2;
@@ -871,6 +861,10 @@
 
   :where(html:not(.dark-mode)) & {
     background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  &[data-votes]:hover::after {
+    display: none;
   }
 }
 
@@ -902,7 +896,10 @@
   }
 }
 
-/* --- 4. LOS BOTONES DE NAVEGACIÓN (Flechas) --- */
+/* =================================================================
+ *  D. QUICK VIEW — NAVEGACIÓN (Flechas)
+ * ================================================================= */
+
 .modal-nav-btn {
   position: absolute;
   top: 50%;
@@ -953,9 +950,10 @@
   pointer-events: none !important;
 }
 
-/* --- 5. ADAPTACIÓN AL ENTORNO (Móvil vs Ordenador) --- */
+/* =================================================================
+ *  E. QUICK VIEW — MOBILE (<= 768px): Panel Bottom Sheet
+ * ================================================================= */
 
-/* A) MÓVIL: Panel desde abajo (Bottom Sheet) (<= 768px) */
 @media (max-width: 768px) {
   .quick-view-overlay {
     backdrop-filter: blur(4px) saturate(85%);
@@ -998,10 +996,6 @@
     }
   }
 
-  .is-quick-view .flip-card-inner {
-    flex-direction: column;
-  }
-
   .is-quick-view .flip-card-front {
     padding-top: 30px;
     padding-bottom: 32px;
@@ -1042,7 +1036,10 @@
   }
 }
 
-/* B) ORDENADOR: Ventana flotante clásica con scroll en ambos lados (>= 769px) */
+/* =================================================================
+ *  F. QUICK VIEW — DESKTOP (>= 769px): Ventana Flotante Bicolumna
+ * ================================================================= */
+
 @media (min-width: 769px) {
   .quick-view-modal {
     top: 50%;
@@ -1080,7 +1077,6 @@
     position: relative;
     overflow: visible;
   }
-
 
   /* Partimos la tarjeta en dos columnas con scroll vertical */
   .is-quick-view .flip-card-front {
@@ -1139,7 +1135,10 @@
   }
 }
 
-/* --- 5.1. ADAPTACIÓN MÓVIL EN MODO APAISADO (LANDSCAPE) --- */
+/* =================================================================
+ *  G. QUICK VIEW — LANDSCAPE (Móvil Apaisado)
+ * ================================================================= */
+
 @media (orientation: landscape) and (max-height: 550px),
        (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
   .quick-view-modal {
@@ -1303,6 +1302,7 @@
     padding-bottom: var(--space-xs) !important;
   }
 
+  /* Adaptaciones específicas para ficha VIP en móvil apaisado */
   .is-quick-view.person-card .movie-info.movie-summary {
     flex-grow: 0 !important;
     width: 100% !important;
@@ -1340,28 +1340,10 @@
   }
 }
 
-/* --- 6. RENDIMIENTO EXTREMO (Prefers Reduced Motion/Transparency) --- */
-@media (hover: none) and (pointer: coarse) {
-  .quick-view-overlay {
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
-    background-color: rgba(0, 0, 0, 0.5);
-  }
-}
+/* =================================================================
+ *  H. QUICK VIEW — PERSONAS / FICHA VIP
+ * ================================================================= */
 
-
-@media (prefers-reduced-transparency: reduce),
-(prefers-reduced-motion: reduce) {
-
-  .quick-view-overlay,
-  .auth-overlay {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background-color: rgba(0, 0, 0, 0.9);
-  }
-}
-
-/* --- 8. ADAPTACIONES ESPECÍFICAS PARA PERSONAS EN VISTA RÁPIDA --- */
 .is-quick-view.person-card {
   & .poster-container {
     position: relative !important;
@@ -1397,8 +1379,6 @@
     width: 100% !important;
     justify-content: center !important;
   }
-
-
 
   & .poster-container img {
     width: 100% !important;
@@ -1443,7 +1423,7 @@
     font-size: 0.85rem !important;
   }
 
-  /* Estructura alineada al modal de películas en escritorio con reparto 40%/60% (>= 769px) */
+  /* Estructura alineada al modal de películas en escritorio con reparto 45%/55% (>= 769px) */
   @media (min-width: 769px) {
     & .flip-card-inner {
       display: block !important;
@@ -1491,7 +1471,34 @@
 }
 
 /* =================================================================
- *                 MODAL LEGAL E INFORMATIVO
+ *  I. ESTADOS ESPECIALES Y RENDIMIENTO
+ * ================================================================= */
+
+::view-transition-group(hero-expansion) {
+  animation-duration: 0.4s;
+  animation-timing-function: var(--ease-smooth-out);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .quick-view-overlay {
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce),
+(prefers-reduced-motion: reduce) {
+  .quick-view-overlay,
+  .auth-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* =================================================================
+ *  J. MODAL LEGAL E INFORMATIVO
  * =================================================================
  * Secciones: Quiénes somos, Contacto, Aviso legal, Privacidad, Cookies
  * ================================================================= */
@@ -1708,7 +1715,7 @@
 
   & p {
     margin: 0 0 var(--space-md) 0;
-    
+
     &:last-child {
       margin-bottom: 0;
     }
@@ -1721,7 +1728,7 @@
   & ul {
     margin: 0 0 var(--space-md) 0;
     padding-left: var(--space-lg);
-    
+
     & li {
       margin-bottom: var(--space-xs);
     }
