@@ -744,13 +744,27 @@ body.sidebar-is-open .sidebar {
 /* src/css/components/card.css */
 /* =================================================================
  *          COMPONENTE: TARJETA DE PELÍCULA (Card System)
+ * =================================================================
+ * Arquitectura modular y predecible del sistema de tarjetas.
+ *
+ * SECCIONES:
+ *  A. Card base y estructura 3D
+ *  B. Frontal: Póster e imágenes
+ *  C. Frontal: Información y metadatos
+ *  D. Trasera: Títulos, duración y enlaces externos
+ *  E. Trasera: Lista de detalles, sinopsis y actores
+ *  F. Botones de expansión y lógica de despliegue
+ *  G. Elementos interactivos y valoración
+ *  H. Modo Muro de Exploración (Rotation Disabled)
+ *  I. Fichas VIP: Personas, Colecciones y Estudios
+ *  J. Rendimiento y accesibilidad
  * ================================================================= */
 
 /* =================================================================
-   1. ANIMACIONES Y KEYFRAMES
-   ================================================================= */
+ *  A. CARD BASE Y ESTRUCTURA 3D
+ * ================================================================= */
 
-/* Animación de entrada en Cascada Suave idéntica a SEO */
+/* --- Keyframes de Animación --- */
 @keyframes card-cascade-appear {
   0% {
     opacity: 0;
@@ -778,7 +792,6 @@ body.sidebar-is-open .sidebar {
 }
 
 @keyframes watchlist-glow {
-
   0%,
   100% {
     filter: drop-shadow(0 0 0 rgba(var(--color-star-gold-rgb), 0));
@@ -797,8 +810,6 @@ body.sidebar-is-open .sidebar {
   100% {
     transform: translateY(-2px);
   }
-
-  /* Simula "enganche" físico */
 }
 
 @keyframes fade-in-subtle {
@@ -813,16 +824,11 @@ body.sidebar-is-open .sidebar {
   }
 }
 
-/* =================================================================
-   2. ESTRUCTURA BASE (Contenedor 3D)
-   ================================================================= */
-
+/* --- Contenedor Principal (Tarjeta 3D) --- */
 .movie-card {
   position: relative;
   perspective: 1000px;
-  /* Profundidad 3D */
   z-index: 1;
-  /* Contexto de apilamiento local */
   aspect-ratio: 500 / 950;
   border-radius: var(--radius-xl);
   min-width: 0;
@@ -834,7 +840,7 @@ body.sidebar-is-open .sidebar {
   contain-intrinsic-size: auto 160px 304px;
   content-visibility: auto;
 
-  /* Animación de entrada en Cascada Suave (Smooth Staggered Cascade) idéntica a SEO */
+  /* Animación de entrada en cascada suave (Smooth Staggered Cascade) */
   animation: card-cascade-appear 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   animation-delay: calc(var(--card-index, 0) * 45ms);
 
@@ -845,8 +851,6 @@ body.sidebar-is-open .sidebar {
   }
 
   transition: transform var(--duration-quick) var(--ease-spring);
-
-  /* UX TÁCTIL: Permite pan/zoom, deshabilita "doble tap para zoom" y delay */
   touch-action: manipulation;
 
   /* Interacciones Desktop */
@@ -861,11 +865,6 @@ body.sidebar-is-open .sidebar {
       outline: 2px solid var(--color-brand-gold, #d4a347);
       outline-offset: 4px;
       border-radius: var(--radius-xl);
-    }
-
-    :where(html.dark-mode) &:not(.is-quick-view):not(.person-card):not(.collection-card):not(.studio-card):is(:hover, :has(.flip-card-inner.is-flipped)) {
-      outline: 2px solid var(--color-brand-gold, #d4a347);
-      outline-offset: 4px;
     }
 
     /* Las fichas VIP (persona, colección, estudio) no se recuadran al pasar el ratón */
@@ -885,7 +884,7 @@ body.sidebar-is-open .sidebar {
   }
 }
 
-/* El "papel" que gira (Contenedor de caras) */
+/* --- Contenedor Giratorio (Flip Card Inner) --- */
 .flip-card-inner {
   position: relative;
   width: 100%;
@@ -894,63 +893,49 @@ body.sidebar-is-open .sidebar {
   box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06);
   background-color: var(--color-surface-1);
   border: none;
-
   transform-style: preserve-3d;
-  /* Habilita el 3D real */
-  transition: transform var(--duration-leisurely) var(--ease-smooth-out), box-shadow var(--duration-quick) var(--ease-smooth-out);
+  transition: transform var(--duration-leisurely) var(--ease-smooth-out),
+              box-shadow var(--duration-quick) var(--ease-smooth-out);
 
   &.is-flipped {
     transform: rotateY(180deg);
   }
 
-  /* Elevación Material en Dark Mode */
   html.dark-mode & {
     box-shadow: 0 6px 20px -2px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
     border: none;
-    /* El borde lo maneja el box-shadow */
   }
 }
 
-/* =================================================================
-   3. CARAS DE LA TARJETA (Front & Back)
-   ================================================================= */
-
+/* --- Caras de la Tarjeta (Front & Back) --- */
 .flip-card-front,
 .flip-card-back {
   position: absolute;
   inset: 0;
-  /* Reemplaza top/left/width/height */
   border-radius: var(--radius-xl);
-
-  /* Fix para bordes redondeados en Safari durante animación */
   overflow: hidden;
-
   backface-visibility: hidden;
-
   background-color: var(--color-surface-1);
   color: var(--color-text-primary);
   display: flex;
   flex-direction: column;
 }
 
-/* --- Cara Frontal --- */
+/* Cara Frontal */
 .flip-card-front {
   z-index: 2;
   pointer-events: auto;
-  /* Interactuable por defecto */
 }
 
-/* --- Cara Trasera --- */
+/* Cara Trasera */
 .flip-card-back {
   transform: rotateY(180deg);
-  /* Pre-girada */
   padding: var(--space-xs);
-  /* Reducir padding lateral (de 12px a 8px) */
   line-height: var(--line-height-normal);
   z-index: 1;
   pointer-events: none;
 
-  /* Gestión de Interactividad al girar (tanto por click .is-flipped como por hover en escritorio .is-hovered) */
+  /* Gestión de interactividad al girar (click .is-flipped o hover en escritorio .is-hovered) */
   :is(.flip-card-inner.is-flipped, .movie-card.is-hovered .flip-card-inner) & {
     pointer-events: auto;
     z-index: 2;
@@ -963,8 +948,8 @@ body.sidebar-is-open .sidebar {
 }
 
 /* =================================================================
-   4. CONTENIDO FRONTAL (Póster y Resumen)
-   ================================================================= */
+ *  B. FRONTAL: PÓSTER E IMÁGENES
+ * ================================================================= */
 
 .poster-container {
   position: relative;
@@ -995,11 +980,12 @@ body.sidebar-is-open .sidebar {
   }
 }
 
-/* Efecto carga LQIP (Blur) - Reducido a la mitad (200ms) */
+/* Efecto de carga LQIP (Blur) - 200ms */
 :is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.05);
-  transition: filter var(--duration-quick, 200ms) ease-in-out, transform var(--duration-quick, 200ms) ease-in-out;
+  transition: filter var(--duration-quick, 200ms) ease-in-out,
+              transform var(--duration-quick, 200ms) ease-in-out;
 
   &.loaded {
     filter: blur(0);
@@ -1007,6 +993,9 @@ body.sidebar-is-open .sidebar {
   }
 }
 
+/* =================================================================
+ *  C. FRONTAL: INFORMACIÓN Y METADATOS
+ * ================================================================= */
 
 .movie-summary {
   flex-grow: 1;
@@ -1030,17 +1019,15 @@ body.sidebar-is-open .sidebar {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.01em;
-  /* Base más relajada */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   text-wrap: balance;
-  /* Títulos equilibrados visualmente */
   overflow: hidden;
   text-overflow: ellipsis;
 
-  /* Tipografía Responsiva con suelo mínimo garantizado para legibilidad */
+  /* Tipografía responsiva con escala según longitud */
   &.title-medium {
     font-size: 0.96rem;
   }
@@ -1059,9 +1046,7 @@ body.sidebar-is-open .sidebar {
 .front-director-info {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-normal);
-  /* Igualar peso a actores */
   color: var(--color-text-secondary);
-  /* Igualar color a actores */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1083,7 +1068,6 @@ body.sidebar-is-open .sidebar {
 /* Metadatos Frontales */
 .movie-meta {
   padding-top: 1px;
-  /* Reducir distancia con la línea superior */
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1102,7 +1086,6 @@ body.sidebar-is-open .sidebar {
   height: 16px;
 }
 
-/* Reducción 20% si >= 3 */
 .platform-icon svg {
   vertical-align: middle;
 }
@@ -1173,7 +1156,7 @@ body.sidebar-is-open .sidebar {
   height: 14px;
 }
 
-/* Colores de Estudios (Paleta policromática equilibrada y calibrada) */
+/* Colores de Estudios (Paleta policromática calibrada) */
 .netflix-icon {
   color: #e50914;
 }
@@ -1182,7 +1165,7 @@ body.sidebar-is-open .sidebar {
   color: #0063e5;
 }
 
-.wb-icon {
+:is(.wb-icon, .twenty-icon) {
   color: #004db3;
 }
 
@@ -1206,14 +1189,6 @@ body.sidebar-is-open .sidebar {
   color: #ff9900;
 }
 
-.twenty-icon {
-  color: #004db3;
-}
-
-.a24-icon {
-  color: #1a1a1a;
-}
-
 .movistar-icon {
   color: #0090c7;
 }
@@ -1222,82 +1197,48 @@ body.sidebar-is-open .sidebar {
   color: #005596;
 }
 
-.apple-icon {
+:is(.a24-icon, .apple-icon, .canalplus-icon, .bbc-icon) {
   color: #1a1a1a;
 }
 
-.canalplus-icon {
-  color: #1a1a1a;
-}
+/* Ajustes Dark Mode para Estudios */
+html.dark-mode {
+  & .disney-icon {
+    color: #3b82f6;
+  }
 
-.bbc-icon {
-  color: #1a1a1a;
-}
+  & :is(.wb-icon, .miramax-icon) {
+    color: #4da4f2;
+  }
 
-/* Ajustes Dark Mode Estudios (Alta visibilidad y saturación armónica) */
-html.dark-mode .netflix-icon {
-  color: #e50914;
-}
+  & .universal-icon {
+    color: #3ea6ff;
+  }
 
-html.dark-mode .disney-icon {
-  color: #3b82f6;
-}
+  & :is(.sony-icon, .paramount-icon, .twenty-icon) {
+    color: #38bdf8;
+  }
 
-html.dark-mode .wb-icon {
-  color: #4da4f2;
-}
+  & .lionsgate-icon {
+    color: #f59e0b;
+  }
 
-html.dark-mode .universal-icon {
-  color: #3ea6ff;
-}
+  & .amazon-icon {
+    color: #fbbf24;
+  }
 
-html.dark-mode .sony-icon {
-  color: #38bdf8;
-}
+  & .movistar-icon {
+    color: #00c0f3;
+  }
 
-html.dark-mode .paramount-icon {
-  color: #38bdf8;
-}
-
-html.dark-mode .lionsgate-icon {
-  color: #f59e0b;
-}
-
-html.dark-mode .amazon-icon {
-  color: #fbbf24;
-}
-
-html.dark-mode .twenty-icon {
-  color: #38bdf8;
-}
-
-html.dark-mode .a24-icon {
-  color: #ffffff;
-}
-
-html.dark-mode .movistar-icon {
-  color: #00c0f3;
-}
-
-html.dark-mode .miramax-icon {
-  color: #4da4f2;
-}
-
-html.dark-mode .apple-icon {
-  color: #ffffff;
-}
-
-html.dark-mode .canalplus-icon {
-  color: #ffffff;
-}
-
-html.dark-mode .bbc-icon {
-  color: #ffffff;
+  & :is(.a24-icon, .apple-icon, .canalplus-icon, .bbc-icon) {
+    color: #ffffff;
+  }
 }
 
 /* =================================================================
-   5. CONTENIDO TRASERO (Detalles y Links)
-   ================================================================= */
+ *  D. TRASERA: TÍTULOS, DURACIÓN Y ENLACES EXTERNOS
+ * ================================================================= */
 
 .flip-card-back .ratings-container {
   margin-bottom: 4px;
@@ -1312,7 +1253,6 @@ html.dark-mode .bbc-icon {
   padding-inline: 0;
   width: 100%;
   min-height: 0;
-  /* Espaciado armónico para no chocar con ratings ni con la línea divisoria */
   animation: fade-in-subtle 0.5s var(--ease-smooth-out) 0.2s backwards;
 
   & span {
@@ -1330,7 +1270,6 @@ html.dark-mode .bbc-icon {
     overflow: hidden;
     text-overflow: ellipsis;
 
-    /* Tipografía Responsiva (Reverso) con suelo mínimo garantizado */
     &.title-medium {
       font-size: 0.88rem;
     }
@@ -1366,9 +1305,8 @@ html.dark-mode .bbc-icon {
   letter-spacing: -0.03em;
 }
 
-/* Enlaces Externos (Wiki/JustWatch) */
-[data-template="wikipedia-link"],
-[data-template="justwatch-link"] {
+/* Enlaces Externos (Wikipedia / JustWatch) */
+:is([data-template="wikipedia-link"], [data-template="justwatch-link"]) {
   display: flex;
   align-items: center;
   text-decoration: none;
@@ -1388,7 +1326,6 @@ html.dark-mode .bbc-icon {
     }
   }
 
-  /* Glow Effect de Marca */
   &[data-template="justwatch-link"]:hover svg {
     filter: drop-shadow(0 0 6px rgba(154, 20, 133, 0.6));
   }
@@ -1407,9 +1344,18 @@ html.dark-mode .bbc-icon {
       filter: grayscale(100%) brightness(5);
     }
   }
+
+  & .rating-icon {
+    width: 1.5em;
+    height: 1.5em;
+    transform: translateY(-1px);
+  }
 }
 
-/* Listas de Detalles */
+/* =================================================================
+ *  E. TRASERA: LISTA DE DETALLES, SINOPSIS Y ACTORES
+ * ================================================================= */
+
 .details-list {
   display: flex;
   flex-direction: column;
@@ -1434,9 +1380,6 @@ html.dark-mode .bbc-icon {
     text-decoration: underline;
   }
 }
-
-
-
 
 .detail-label {
   display: inline-flex;
@@ -1467,10 +1410,6 @@ html.dark-mode .bbc-icon {
   margin-right: 0.5em;
 }
 
-
-
-
-
 .movie-card:not(.is-quick-view) .detail-item[data-template="genre-container"] {
   position: relative;
   overflow: hidden;
@@ -1494,17 +1433,18 @@ html.dark-mode .bbc-icon {
   padding-right: 22px;
   line-height: 1.35;
   min-height: 20px;
+
+  & .detail-data {
+    display: inline;
+  }
 }
 
-.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] .detail-data {
-  display: inline;
-}
-
-/* Áreas con Scroll */
+/* Áreas con Scroll y Degradado de desvanecimiento */
 .scrollable-content {
   position: relative;
   overflow: hidden;
-  transition: opacity var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
+  transition: opacity var(--duration-normal) var(--ease-smooth-out),
+              transform var(--duration-normal) var(--ease-smooth-out);
 
   &::after {
     content: "";
@@ -1532,12 +1472,11 @@ html.dark-mode .bbc-icon {
   font-weight: var(--font-weight-normal);
   line-height: 1.38;
   text-wrap: pretty;
-  /* Evita palabras huérfanas al final */
   hyphens: auto;
   -webkit-hyphens: auto;
 }
 
-/* Overlay de Actores */
+/* Overlay Desplegable de Actores */
 .actors-scrollable-content {
   position: absolute;
   inset: 0;
@@ -1550,7 +1489,9 @@ html.dark-mode .bbc-icon {
   opacity: 0;
   visibility: hidden;
   transform: translateY(100%);
-  transition: opacity var(--duration-normal) var(--ease-smooth-out), visibility var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
+  transition: opacity var(--duration-normal) var(--ease-smooth-out),
+              visibility var(--duration-normal) var(--ease-smooth-out),
+              transform var(--duration-normal) var(--ease-smooth-out);
   z-index: 5;
   font-size: var(--font-size-sm);
   line-height: 1.6;
@@ -1560,7 +1501,6 @@ html.dark-mode .bbc-icon {
   & h4 {
     margin-top: 0;
     margin-bottom: var(--space-xs);
-    /* Reducir espacio entre título y lista */
     font-family: var(--font-title);
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-bold);
@@ -1581,7 +1521,6 @@ html.dark-mode .bbc-icon {
   padding-bottom: var(--space-xs);
 }
 
-/* Reducir espacio final */
 .actor-list-item {
   background: none;
   border: none;
@@ -1599,14 +1538,13 @@ html.dark-mode .bbc-icon {
   overflow: hidden;
   text-overflow: ellipsis;
   text-decoration: none;
+  transition: color var(--transition-duration-fast);
 
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--color-focus);
     border-radius: var(--radius-sm);
   }
-
-  transition: color var(--transition-duration-fast);
 
   &:hover {
     color: var(--color-accent);
@@ -1615,8 +1553,8 @@ html.dark-mode .bbc-icon {
 }
 
 /* =================================================================
-   6. BOTONES DE EXPANSIÓN Y LOGICA
-   ================================================================= */
+ *  F. BOTONES DE EXPANSIÓN Y LÓGICA DE DESPLIEGUE
+ * ================================================================= */
 
 .expand-content-btn,
 .actors-expand-btn {
@@ -1636,7 +1574,8 @@ html.dark-mode .bbc-icon {
   padding-bottom: 1px;
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-  transition: transform var(--duration-quick) ease-out, background-color var(--duration-quick) ease-out;
+  transition: transform var(--duration-quick) ease-out,
+              background-color var(--duration-quick) ease-out;
   z-index: var(--z-index-card-content);
   pointer-events: auto;
 
@@ -1656,12 +1595,11 @@ html.dark-mode .bbc-icon {
     transform: scale(0.9);
   }
 
-  /* MEJORA: Área táctil expandida (Hit Area) */
+  /* Área táctil expandida (WCAG touch target) */
   &::after {
     content: "";
     position: absolute;
     inset: -12px;
-    /* Expande 12px por cada lado: 16 + 24 = 40px (cumple estándares táctiles WCAG) */
   }
 }
 
@@ -1670,7 +1608,6 @@ html.dark-mode .bbc-icon {
   right: 3px;
 }
 
-/* Alineación milimétrica con actors-expand-btn (padding lateral 8px + margen 3px = 11px) */
 .expand-content-btn {
   bottom: 8px;
   right: calc(var(--space-xs, 8px) + 3px);
@@ -1680,9 +1617,7 @@ html.dark-mode .bbc-icon {
   z-index: 60;
 }
 
-/* Pegar más al borde inferior */
-
-/* Lógica de Visibilidad al Expandir */
+/* Lógica de visibilidad al expandir */
 .flip-card-back.is-expanded>*:not(.scrollable-content):not(.expand-content-btn):not(.actors-scrollable-content) {
   opacity: 0;
   transform: translateY(-100%);
@@ -1702,7 +1637,6 @@ html.dark-mode .bbc-icon {
   z-index: 15;
 }
 
-/* Sinopsis expandida: Misma tipografía que el listado de actores */
 .flip-card-back.is-expanded .plot-summary-final {
   font-size: var(--font-size-sm);
   line-height: 1.6;
@@ -1724,8 +1658,8 @@ html.dark-mode .bbc-icon {
 }
 
 /* =================================================================
-   7. ELEMENTOS INTERACTIVOS (Botones y Estrellas)
-   ================================================================= */
+ *  G. ELEMENTOS INTERACTIVOS Y VALORACIÓN
+ * ================================================================= */
 
 .card-rating-block {
   position: absolute;
@@ -1740,21 +1674,17 @@ html.dark-mode .bbc-icon {
   padding-inline: var(--space-md);
   pointer-events: none;
 
-  /* Efecto Aura */
   &>* {
     pointer-events: auto;
-    /* Optimización: Una sola sombra robusta en lugar de múltiples apiladas para rendimiento móvil */
     filter: drop-shadow(0 0 5px var(--color-surface));
     transition: filter 100ms ease-out, transform 100ms ease-out;
 
     html.dark-mode & {
-      /* Optimización: Sombra negra sólida suficiente para contraste */
       filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9));
     }
   }
 }
 
-/* Nota numérica (oculta por defecto) */
 .wall-rating-number {
   display: none;
 }
@@ -1775,7 +1705,6 @@ html.dark-mode .bbc-icon {
   position: relative;
   isolation: isolate;
 
-  /* Crear contexto de apilamiento para controlar hit area */
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--color-focus);
@@ -1801,15 +1730,16 @@ html.dark-mode .bbc-icon {
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-    transition: fill var(--duration-normal) var(--ease-smooth-out), stroke var(--duration-normal) var(--ease-smooth-out), color var(--duration-normal) var(--ease-smooth-out), transform var(--duration-normal) var(--ease-smooth-out);
+    transition: fill var(--duration-normal) var(--ease-smooth-out),
+                stroke var(--duration-normal) var(--ease-smooth-out),
+                color var(--duration-normal) var(--ease-smooth-out),
+                transform var(--duration-normal) var(--ease-smooth-out);
     pointer-events: none;
-    /* El click debe registrarse en el botón/área expandida, no en el SVG */
     position: relative;
     z-index: 0;
   }
 
   &.is-active {
-    /* Animación del botón contenedor (Pop) */
     animation: watchlist-pop 0.3s var(--ease-bounce-in);
 
     & svg {
@@ -1817,37 +1747,19 @@ html.dark-mode .bbc-icon {
       fill: var(--color-brand-gold, #d4a347);
       stroke: var(--color-brand-gold, #d4a347);
       --icon-plus-color: var(--color-surface);
-      /* Animación del icono: Glow + Settle (encadenadas) */
       animation: watchlist-glow 0.6s ease-out,
-        bookmark-settle 0.2s 0.3s ease-out forwards;
+                 bookmark-settle 0.2s 0.3s ease-out forwards;
     }
   }
 }
 
-/* =================================================================
-   8. UTILIDADES
-   ================================================================= */
-
-[data-template="wikipedia-link"] .rating-icon,
-[data-template="justwatch-link"] .rating-icon {
-  width: 1.5em;
-  height: 1.5em;
-  transform: translateY(-1px);
-}
-
-/* =================================================================
-   9. ACCESIBILIDAD TÁCTIL (WCAG 2.5.5)
-   ================================================================= */
-
+/* Accesibilidad Táctil (WCAG 2.5.5) */
 @media (hover: none) and (pointer: coarse) {
-
-  /* Feedback táctil nativo */
   .movie-card:active {
     transform: scale(0.98);
     transition-duration: 0s;
   }
 
-  /* Expandir áreas táctiles */
   .card-action-btn::after {
     content: '';
     position: absolute;
@@ -1861,33 +1773,20 @@ html.dark-mode .bbc-icon {
 }
 
 /* =================================================================
-   10. INTERACCIONES ESCRITORIO (Solo Mouse)
-   ================================================================= */
+ *  H. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
+ * ================================================================= */
 
-@media (hover: hover) and (pointer: fine) {
-  body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
-    transform: rotateY(180deg);
-  }
-}
-
-/* =================================================================
-   11. MODO MURO DE EXPLORACIÓN (Rotation Disabled)
-   ================================================================= */
-
-/* Ajuste de tarjeta visual */
 body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
   contain-intrinsic-size: auto 105px 158px;
   transition: transform var(--duration-quick) ease;
 
-  /* Reducir sombra en modo muro para que sea proporcional al tamaño */
   & .flip-card-inner {
     box-shadow: var(--shadow-sm);
     border: none;
     background-color: transparent;
   }
 
-  /* Ocultar textos y limpiar fondos */
   & .movie-summary {
     display: none;
   }
@@ -1896,7 +1795,6 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     background-color: transparent;
   }
 
-  /* Póster limpio sin borde artificial en vista rápida */
   & .poster-container {
     height: 100%;
     display: flex;
@@ -1913,7 +1811,6 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     }
   }
 
-  /* Bloque valoración inferior */
   & .card-rating-block {
     position: relative;
     transform: none;
@@ -1927,12 +1824,10 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     cursor: pointer;
     pointer-events: auto;
 
-    /* Ajuste de posición vertical para elementos de valoración */
     &>*:not(.card-action-btn) {
       transform: translateY(calc(-40% + 4px));
     }
 
-    /* Nota numérica para el muro */
     & .wall-rating-number {
       display: block;
       flex-grow: 0;
@@ -1943,10 +1838,8 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
       font-variant-numeric: tabular-nums;
       text-shadow: none;
       filter: none;
-      /* Eliminar aura circular */
       cursor: pointer;
       transform: translateY(calc(-40% + 6px));
-      /* Ajuste óptico: 2px más abajo que las estrellas */
 
       &:hover {
         transform: translateY(calc(-40% + 6px)) scale(1.15) rotate(10deg);
@@ -1954,13 +1847,11 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     }
   }
 
-  /* --- Lógica de Visualización de Valoración (Prioridad: Usuario > Media) --- */
-  /* 1. Ocultar contenedor de estrellas si no hay voto de usuario */
+  /* Visualización de Valoración: Usuario vs Media */
   & .star-rating-container:not(.has-user-rating) {
     display: none !important;
   }
 
-  /* Mostrar estrellas SOLO si hay voto de usuario */
   & .star-rating-container.has-user-rating {
     display: flex !important;
     gap: 4px;
@@ -1973,12 +1864,10 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     }
   }
 
-  /* Ocultar nota numérica si hay voto de usuario */
   & .star-rating-container.has-user-rating~.wall-rating-number {
     display: none !important;
   }
 
-  /* Watchlist junto a la nota (Modo Muro) */
   & .card-action-btn {
     position: absolute;
     right: var(--space-xxs);
@@ -2007,13 +1896,11 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     }
   }
 
-  /* Ocultar watchlist si hay voto de usuario (prioridad a estrellas) */
   & .star-rating-container.has-user-rating~.card-action-btn {
     display: none;
   }
 }
 
-/* En móvil desactivar interacción en elementos pequeños del muro */
 @media (hover: none) and (pointer: coarse) {
   body.rotation-disabled .movie-card:not(.is-quick-view) .card-rating-block {
     pointer-events: none;
@@ -2025,12 +1912,11 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 }
 
 /* =================================================================
-   12. TARJETA DE PERSONA (Director/Actor VIP)
-   ================================================================= */
+ *  I. FICHAS VIP: PERSONAS, COLECCIONES Y ESTUDIOS
+ * ================================================================= */
 
 .person-card .flip-card-inner {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  /* Elevación estática elegante */
 }
 
 .person-card .flip-card-back {
@@ -2040,17 +1926,13 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 
 .person-card .poster-container img {
   object-position: top center;
-  /* CRÍTICO: Evita cortar cabezas en recortes verticales (fotos en relación de aspecto 2:3) */
-  /* Forzamos el borde para que envuelva SOLO a la imagen, incluso en Modo Muro */
   border: 3px solid var(--color-accent) !important;
 }
 
-/* Las colecciones usan el centro de la imagen (suelen ser logos o collages) */
 .collection-card .poster-container img {
   object-position: center center;
 }
 
-/* Alinear Edad, Años y Bandera a la derecha con mayor separación */
 .person-card .year-flag-group {
   width: 100%;
   justify-content: flex-end;
@@ -2065,7 +1947,6 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   width: 100%;
 }
 
-/* Línea sutil e incompleta debajo de la foto */
 .person-card .poster-container::after {
   content: "";
   position: absolute;
@@ -2100,7 +1981,10 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   cursor: pointer;
   pointer-events: auto;
   user-select: none;
-  transition: transform var(--duration-quick) var(--ease-spring), background var(--duration-fast) ease, color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+  transition: transform var(--duration-quick) var(--ease-spring),
+              background var(--duration-fast) ease,
+              color var(--duration-fast) ease,
+              box-shadow var(--duration-fast) ease;
 
   &:hover {
     transform: scale(1.18);
@@ -2129,24 +2013,14 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     color: #141414;
   }
 }
-/* Centrado vertical de la información en fichas de Selección y Estudio */
+
+/* Fichas de Selección y Estudio: Centrado y divisores */
 .collection-card .movie-summary {
   position: relative;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
   justify-content: center;
   padding: calc(var(--space-sm) + 2px) var(--space-xxs) calc(var(--space-sm) + 2px);
 }
 
-.collection-card .title-director-block {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-/* Línea horizontal inferior para fichas de Selección y Estudio (réplica de la superior) */
 .collection-card .movie-meta {
   position: absolute;
   bottom: 6px;
@@ -2156,23 +2030,22 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   height: 1px;
   margin: 0;
   padding: 0;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--color-text-tertiary), transparent);
+    opacity: 0.4;
+  }
 }
 
-.collection-card .movie-meta::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-text-tertiary), transparent);
-  opacity: 0.4;
-}
-
-/* Ajuste VIP en Modo Muro: Nombre en la parte inferior */
+/* Ajustes VIP en Modo Muro */
 .movie-card.person-card .card-rating-block {
   display: none;
-  /* Oculto en modo normal (ya tiene la info abajo) */
 }
 
 body.rotation-disabled .movie-card.person-card .card-rating-block {
@@ -2180,10 +2053,8 @@ body.rotation-disabled .movie-card.person-card .card-rating-block {
   justify-content: center;
   align-items: center;
   height: 26px;
-  /* Iguala la altura de las estrellas para que la foto no crezca ni un milímetro */
   width: 100%;
   pointer-events: none !important;
-  /* Bloquea clics accidentales (error de votos) y efectos hover */
 }
 
 body.rotation-disabled .movie-card.person-card .wall-person-name {
@@ -2195,25 +2066,20 @@ body.rotation-disabled .movie-card.person-card .wall-person-name {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
-  /* Permite espacio para los descendentes (g, q, y, j) */
   padding-bottom: 2px;
-  /* Margen de seguridad inferior */
   transform: translateY(-4px) !important;
-  /* Ajuste óptico: subida estática para igualar el solapamiento de la nota */
 }
 
-/* Si la persona no tiene biografía específica, el cursor en Modo Muro es normal */
 body.rotation-disabled .movie-card.person-card.no-bio {
   cursor: default;
 }
 
-/* Posición del botón de rol en Modo Muro (se eleva por encima del bloque de nombre para quedar dentro de la foto) */
 body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .person-role-toggle-btn {
   bottom: calc(26px + 8px);
   right: 8px;
 }
 
-/* Titular previo al texto de la biografía en directores/actores */
+/* Biografía en Fichas VIP */
 .bio-headline {
   font-size: calc(var(--font-size-base) * 1.25);
   font-weight: var(--font-weight-extrabold);
@@ -2228,6 +2094,17 @@ body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .person-role-
 .bio-headline:empty {
   display: none !important;
 }
+
+/* =================================================================
+ *  J. RENDIMIENTO Y ACCESIBILIDAD
+ * ================================================================= */
+
+@media (hover: hover) and (pointer: fine) {
+  body:not(.rotation-disabled) .movie-card.is-hovered .flip-card-inner {
+    transform: rotateY(180deg);
+  }
+}
+
 /* src/css/components/header.css */
 /* =================================================================
  *                 LA CABECERA (Header)
