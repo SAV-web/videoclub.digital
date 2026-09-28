@@ -11,8 +11,8 @@
  *  D. Quick View — Navegación
  *  E. Quick View — Mobile (<= 768px): Panel Bottom Sheet
  *  F. Quick View — Desktop (>= 769px): Ventana Flotante Bicolumna
- *  G. Quick View — Landscape (Móvil Apaisado)
- *  H. Quick View — Personas / Ficha VIP
+ *  G. Quick View — Personas / Ficha VIP
+ *  H. Quick View — Landscape (Móvil Apaisado)
  *  I. Estados Especiales y Rendimiento
  *  J. Modal Legal e Informativo
  * ================================================================= */
@@ -1159,212 +1159,7 @@
 }
 
 /* =================================================================
- *  G. QUICK VIEW — LANDSCAPE (Móvil Apaisado)
- * ================================================================= */
-
-@media (orientation: landscape) and (max-height: 550px),
-       (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
-  .quick-view-modal {
-    top: 50% !important;
-    bottom: auto !important;
-    left: 50% !important;
-    width: min(94vw, 780px) !important;
-    max-width: 780px !important;
-    height: min(92dvh, 92svh) !important;
-    max-height: min(92dvh, 92svh) !important;
-    border-radius: var(--radius-xl) !important;
-    transform: translate(-50%, -50%) scale(1) !important;
-    overflow: visible !important;
-
-    &::before {
-      display: none !important;
-    }
-  }
-
-  .quick-view-content {
-    overflow: hidden !important;
-    height: 100% !important;
-    border-radius: inherit !important;
-    -webkit-mask-image: none !important;
-    mask-image: none !important;
-  }
-
-  .modal-nav-btn {
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-  }
-
-  .modal-nav-btn--prev {
-    left: -26px !important;
-  }
-
-  .modal-nav-btn--next {
-    right: -26px !important;
-  }
-
-  .is-quick-view .quick-view-inner {
-    display: flex !important;
-    flex-direction: row !important;
-    position: relative !important;
-    overflow: visible !important;
-    height: 100% !important;
-    min-height: 100% !important;
-  }
-
-  /* Columna izquierda: 50%, altura 100%, flex vertical, scroll independiente */
-  .is-quick-view .quick-view-media {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
-    width: 50% !important;
-    height: 100% !important;
-    max-height: 94dvh !important;
-    overflow-y: auto !important;
-    overscroll-behavior: contain !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-    border-right: 1px solid var(--color-border) !important;
-    border-bottom: none !important;
-    box-sizing: border-box !important;
-    padding: var(--space-sm) var(--space-md) var(--space-lg) var(--space-md) !important;
-    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
-
-    &::-webkit-scrollbar {
-      display: none !important;
-    }
-
-    &.is-scrolled {
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
-      mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
-    }
-  }
-
-  /* Columna derecha: 50%, altura 100%, scroll independiente */
-  .is-quick-view .quick-view-details {
-    position: relative !important;
-    top: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    left: auto !important;
-    width: 50% !important;
-    height: 100% !important;
-    max-height: 94dvh !important;
-    overflow-y: auto !important;
-    overscroll-behavior: contain !important;
-    -webkit-overflow-scrolling: touch !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-    box-sizing: border-box !important;
-    padding: var(--space-sm) var(--space-sm) var(--space-md) var(--space-sm) !important;
-    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
-
-    &::-webkit-scrollbar {
-      display: none !important;
-    }
-
-    &.is-scrolled {
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
-      mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
-    }
-
-    &.poster-compact {
-      -webkit-mask-image: none !important;
-      mask-image: none !important;
-    }
-  }
-
-  /* Adaptación de hijos de la columna izquierda para evitar cortes de contenido */
-  .is-quick-view .poster-container {
-    width: 100% !important;
-    max-width: 290px !important;
-    margin-inline: auto !important;
-    margin-bottom: var(--space-sm) !important;
-    flex-shrink: 0 !important;
-    transition: max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                margin-bottom 0.45s ease !important;
-    will-change: max-width;
-  }
-
-  .is-quick-view .quick-view-media.poster-compact .poster-container {
-    max-width: clamp(175px, 44vh, 220px) !important;
-    margin-bottom: var(--space-xs) !important;
-  }
-
-  .is-quick-view .card-rating-block {
-    flex-shrink: 0 !important;
-    margin-top: 0 !important;
-    margin-bottom: var(--space-xs) !important;
-    padding-bottom: 0 !important;
-  }
-
-  .is-quick-view .movie-summary {
-    flex-shrink: 0 !important;
-    overflow: visible !important;
-    width: 100% !important;
-    margin-top: 0 !important;
-    padding: 0 !important;
-  }
-
-  .is-quick-view .title-director-block {
-    flex-shrink: 0 !important;
-    min-height: unset !important;
-    overflow: visible !important;
-    margin-bottom: 0 !important;
-  }
-
-  .is-quick-view .movie-meta {
-    flex-shrink: 0 !important;
-    overflow: visible !important;
-    margin-top: var(--space-xs) !important;
-    padding-bottom: var(--space-xs) !important;
-  }
-
-  /* Adaptaciones específicas para ficha VIP en móvil apaisado */
-  .is-quick-view.person-card .movie-info.movie-summary {
-    flex-grow: 0 !important;
-    width: 100% !important;
-  }
-
-  .is-quick-view.person-card .title-director-block {
-    flex-grow: 0 !important;
-    min-height: unset !important;
-    text-align: center !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 100% !important;
-    margin-bottom: 0 !important;
-  }
-
-  .is-quick-view.person-card .front-director-info {
-    text-align: center !important;
-    padding: 0 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    padding-inline: 0 !important;
-    margin-inline: auto !important;
-    margin-top: 2px !important;
-    margin-bottom: 4px !important;
-    width: 100% !important;
-    display: block !important;
-  }
-
-  .is-quick-view.person-card .movie-meta {
-    margin-top: 2px !important;
-    padding-top: 0 !important;
-    flex-grow: 0 !important;
-    width: 100% !important;
-    justify-content: center !important;
-  }
-}
-
-/* =================================================================
- *  H. QUICK VIEW — PERSONAS / FICHA VIP
+ *  G. QUICK VIEW — PERSONAS / FICHA VIP
  * ================================================================= */
 
 .is-quick-view.person-card {
@@ -1486,6 +1281,187 @@
       margin-top: var(--space-md);
       padding-top: 0;
     }
+  }
+}
+
+/* =================================================================
+ *  H. QUICK VIEW — LANDSCAPE (Móvil Apaisado)
+ * ================================================================= */
+
+@media (orientation: landscape) and (max-height: 550px),
+       (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .quick-view-modal {
+    top: 50%;
+    bottom: auto;
+    left: 50%;
+    width: min(94vw, 780px);
+    max-width: 780px;
+    height: min(92dvh, 92svh);
+    max-height: min(92dvh, 92svh);
+    border-radius: var(--radius-xl);
+    transform: translate(-50%, calc(-50% + 15px)) scale(0.92);
+    overflow: visible;
+
+    &.is-visible {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    &::before {
+      display: none;
+    }
+  }
+
+  .quick-view-content {
+    overflow: hidden;
+    height: 100%;
+    border-radius: inherit;
+    -webkit-mask-image: none;
+    mask-image: none;
+
+    &.is-scrolled {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+  }
+
+  .modal-nav-btn {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .modal-nav-btn--prev {
+    left: -26px;
+  }
+
+  .modal-nav-btn--next {
+    right: -26px;
+  }
+
+  .is-quick-view .quick-view-inner,
+  .is-quick-view.person-card .quick-view-inner {
+    display: flex;
+    flex-direction: row;
+    position: relative;
+    overflow: visible;
+    height: 100%;
+    min-height: 100%;
+  }
+
+  /* Columna izquierda: 50%, altura 100%, flex vertical, scroll independiente */
+  .is-quick-view .quick-view-media,
+  .is-quick-view.person-card .quick-view-media {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    width: 50%;
+    height: 100%;
+    min-height: unset;
+    max-height: 94dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-right: 1px solid var(--color-border);
+    border-bottom: none;
+    box-sizing: border-box;
+    padding: var(--space-sm) var(--space-md) var(--space-lg) var(--space-md);
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &.is-scrolled {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+    }
+  }
+
+  /* Columna derecha: 50%, altura 100%, scroll independiente */
+  .is-quick-view .quick-view-details,
+  .is-quick-view.person-card .quick-view-details {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 50%;
+    height: 100%;
+    max-height: 94dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    box-sizing: border-box;
+    padding: var(--space-sm) var(--space-sm) var(--space-md) var(--space-sm);
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &.is-scrolled {
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
+    }
+
+    &.poster-compact {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+  }
+
+  /* Adaptación de hijos de la columna izquierda para evitar cortes de contenido */
+  .is-quick-view .poster-container {
+    width: 100%;
+    max-width: 290px;
+    margin-inline: auto;
+    margin-bottom: var(--space-sm);
+    flex-shrink: 0;
+    transition: max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                margin-bottom 0.45s ease;
+    will-change: max-width;
+  }
+
+  .is-quick-view .quick-view-media.poster-compact .poster-container {
+    max-width: clamp(175px, 44vh, 220px);
+    margin-bottom: var(--space-xs);
+  }
+
+  .is-quick-view .card-rating-block {
+    flex-shrink: 0;
+    margin-top: 0;
+    margin-bottom: var(--space-xs);
+    padding-bottom: 0;
+  }
+
+  .is-quick-view .movie-summary {
+    flex-shrink: 0;
+    overflow: visible;
+    width: 100%;
+    margin-top: 0;
+    padding: 0;
+  }
+
+  .is-quick-view .title-director-block {
+    flex-shrink: 0;
+    min-height: unset;
+    overflow: visible;
+    margin-bottom: 0;
+  }
+
+  .is-quick-view .movie-meta {
+    flex-shrink: 0;
+    overflow: visible;
+    margin-top: var(--space-xs);
+    padding-bottom: var(--space-xs);
   }
 }
 
