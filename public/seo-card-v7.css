@@ -3812,7 +3812,6 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 
   &::-webkit-scrollbar {
     display: none;
@@ -4836,7 +4835,6 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    -ms-overflow-style: none;
     box-sizing: border-box;
     -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
     mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
@@ -4865,7 +4863,6 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    -ms-overflow-style: none;
     box-sizing: border-box;
     -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
     mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
@@ -5086,7 +5083,6 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    -ms-overflow-style: none;
     border-right: 1px solid var(--color-border);
     border-bottom: none;
     box-sizing: border-box;
@@ -5120,7 +5116,6 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    -ms-overflow-style: none;
     box-sizing: border-box;
     padding: var(--space-sm) var(--space-sm) var(--space-md) var(--space-sm);
     -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
