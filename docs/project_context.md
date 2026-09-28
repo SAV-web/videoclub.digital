@@ -107,7 +107,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 
 - **`variables.css`**: Design tokens. Fuentes (Inter), paleta de colores adaptable (Tema Claro/Oscuro dinámico con tokens como `--color-rating-star` y `--color-accent-darker`) y duraciones de animación (_Quiet Luxury easing_).
 - **`globals.css`**: Reset, utilidades generales y scrollbars personalizados.
-- **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`), cabecera fija elástica (`position: sticky; top: 0;`) y CSS Grid para la cuadrícula principal adaptativa.
+- **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`), cabecera fija elástica (`position: sticky; top: 0;`), CSS Grid para la cuadrícula principal adaptativa y componente de portada `#landing-hero` ("Cartelera de Cine & Haz Dorado") con halo radial suave de proyector (`radial-gradient`), titular en oro metálico pulido (`background-clip: text`), micro-separador de haz de luz (`::after` con destello difuso) y transición de desvanecimiento suave (`.is-scrolled-away`) sincronizada con el bucle rAF de `scrollWatcher.ts`.
 - **`components/*.css`**: CSS scopeado a componentes. Uso intensivo de `contain: layout paint style` y `content-visibility: auto` para máximo rendimiento. Evita transicionar propiedades pesadas (`width`, `padding`) en móviles, priorizando `transform` y `opacity` (GPU).
 - **Frontera Canónica de Breakpoints (Mobile / Desktop)**: Estandarización unificada en todo el proyecto:
   - `≤ 768px` $\to$ **MÓVIL** (panel deslizable *Bottom Sheet*, gestos táctiles, botones de acción ampliados para accesibilidad WCAG).

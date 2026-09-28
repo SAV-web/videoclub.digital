@@ -490,53 +490,108 @@ body.sidebar-is-open .sidebar {
 
 /* --- 4. HERO INTRO LANDPAGE --- */
 .landing-hero {
+  position: relative;
   margin-inline: auto;
   max-width: 860px;
-  padding: var(--space-xs) var(--space-xs) var(--space-lg);
+  padding: var(--space-sm) var(--space-sm) var(--space-xl);
   text-align: center;
   user-select: none;
   contain: content;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+
+  /* Halo radial suave de proyector cinematográfico */
+  background: radial-gradient(ellipse 65% 55% at 50% 15%, rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.09) 0%, rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.02) 45%, transparent 75%);
+  border-radius: var(--radius-md, 8px);
 
   &[hidden],
   &.is-hidden {
     display: none !important;
   }
+
+  &.is-scrolled-away {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+  }
 }
 
 .landing-hero-title {
   font-family: var(--font-title, 'Inter', -apple-system, sans-serif);
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 2vw, 1.02rem);
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-brand-gold, #d4a347);
+  line-height: 1.45;
+  text-wrap: balance;
   margin-bottom: var(--space-xs);
-  line-height: 1.4;
+
+  /* Oro metalizado pulido con halo lumínico */
+  background: linear-gradient(135deg, #fff3c4 0%, #e5b95c 30%, #d4a347 55%, #9e7123 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 10px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.22));
+
+  /* Micro-separador de haz de luz cinematográfico */
+  &::after {
+    content: "";
+    display: block;
+    width: 60px;
+    height: 1.5px;
+    margin: var(--space-sm) auto var(--space-xs);
+    background: linear-gradient(90deg, transparent 0%, var(--color-brand-gold, #d4a347) 50%, transparent 100%);
+    box-shadow: 0 0 8px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.45);
+    border-radius: 1px;
+  }
+}
+
+html:not(.dark-mode) .landing-hero-title {
+  /* Contraste enriquecido en tema claro */
+  background: linear-gradient(135deg, #b8862d 0%, #9e7123 50%, #7d5714 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
 .landing-hero-description {
   font-family: var(--font-body, 'Inter', -apple-system, sans-serif);
-  font-size: 0.875rem;
+  font-size: clamp(0.8rem, 1.5vw, 0.885rem);
   font-weight: 400;
   color: var(--color-text-secondary);
-  line-height: 1.6;
-  max-width: 720px;
+  line-height: 1.65;
+  max-width: 680px;
   margin-inline: auto;
+  text-wrap: pretty;
+}
+
+.landing-hero-description + .landing-hero-description {
+  margin-top: 3px;
+  color: color-mix(in srgb, var(--color-text-secondary) 88%, transparent);
 }
 
 @media (max-width: 768px) {
   .landing-hero {
-    padding: 0 var(--space-xxs) var(--space-md);
+    padding: var(--space-xs) var(--space-xxs) var(--space-md);
+    background: radial-gradient(ellipse 90% 70% at 50% 10%, rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.1) 0%, transparent 75%);
   }
 
   .landing-hero-title {
-    font-size: 0.8rem;
-    letter-spacing: 0.06em;
-    line-height: 1.35;
+    font-size: 0.78rem;
+    letter-spacing: 0.07em;
+    line-height: 1.4;
+
+    &::after {
+      width: 44px;
+      margin: var(--space-xs) auto;
+    }
   }
 
   .landing-hero-description {
-    font-size: 0.775rem;
+    font-size: 0.76rem;
     line-height: 1.5;
   }
 }

@@ -813,13 +813,24 @@ export function updateLandingHeroVisibility(): void {
   if (!hero) return;
 
   const filters = getActiveFilters();
-  const hasFilters = hasActiveMeaningfulFilters() || (filters.mediaType && filters.mediaType !== 'all') || (filters.sort && filters.sort !== DEFAULTS.SORT);
+  const hasFilters = hasActiveMeaningfulFilters() || (filters.mediaType && filters.mediaType !== 'all');
   const searchInput = document.getElementById("search-input") as HTMLInputElement | null;
   const hasSearch = !!(searchInput && typeof searchInput.value === "string" && searchInput.value.trim());
   const isFirstPage = getCurrentPage() === 1;
 
   const shouldShow = !hasFilters && !hasSearch && isFirstPage;
   hero.hidden = !shouldShow;
+
+  if (shouldShow && typeof window !== "undefined") {
+    const currentScrollY = Math.max(0, window.scrollY);
+    if (currentScrollY > 45) {
+      hero.classList.add(CSS_CLASSES.HERO_SCROLLED_AWAY);
+    } else if (currentScrollY < 15) {
+      hero.classList.remove(CSS_CLASSES.HERO_SCROLLED_AWAY);
+    }
+  } else if (!shouldShow) {
+    hero.classList.remove(CSS_CLASSES.HERO_SCROLLED_AWAY);
+  }
 }
 
 export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null = null): void {

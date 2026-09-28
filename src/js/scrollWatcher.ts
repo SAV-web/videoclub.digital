@@ -67,6 +67,14 @@ function handleGlobalScroll(): void {
 
       dom.mainHeader?.classList.toggle(CSS_CLASSES.IS_SCROLLED, currentScrollY > 20);
 
+      if (dom.landingHero && !dom.landingHero.hidden) {
+        if (currentScrollY > 45) {
+          dom.landingHero.classList.add(CSS_CLASSES.HERO_SCROLLED_AWAY);
+        } else if (currentScrollY < 15) {
+          dom.landingHero.classList.remove(CSS_CLASSES.HERO_SCROLLED_AWAY);
+        }
+      }
+
       if (isMobileLayout && dom.mainHeader) {
         if (isSearchActive || isSearchFocused || isKeyboardOpen) {
           dom.mainHeader.classList.remove("is-hidden-mobile");

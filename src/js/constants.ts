@@ -84,6 +84,7 @@ export const CSS_CLASSES = {
   IS_FETCHING: "is-fetching",
   DARK_MODE: "dark-mode",
   IS_SCROLLING: "is-scrolling",
+  HERO_SCROLLED_AWAY: "is-scrolled-away",
 
   // Componentes
   MOVIE_CARD: "movie-card",
