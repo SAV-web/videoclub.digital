@@ -70,7 +70,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
   - **`cardElement.ts`**: Construcción y formateo del DOM de tarjetas individuales. Resuelve plantillas `<template>` mediante *Lazy Getters* bajo demanda; gestiona plantillas específicas (películas, personas VIP con insignias duales `(D)`/`(A)`, colecciones y estudios); administra eventos individuales (tap, doble clic, *flip*, atajos táctiles, prefetch FIFO de imágenes y actualización optimista de Watchlist con autenticación activa `body.user-logged-in`). Mantiene el ritmo vertical e interlineado armónico y la disposición milimétrica de botones expansores `+`/`−`.
   - **`lifecycle.ts`**: Delegación de eventos e interacciones a nivel de cuadrícula (*Grid*). Gestiona eventos `pointerover`, `pointerout`, clics y escuchadores del documento (`visibilitychange` para repliegue al cambiar de pestaña). Exporta `initCardInteractions()` y `disposeCardEvents()` para la limpieza estricta de *listeners* y *observers*.
   - **`index.ts`**: Orquestador principal y fachada pública de la tarjeta. Implementa el renderizado por lotes masivo (`renderMovieGrid` mediante `yieldToMain`), esqueletos (`renderSkeletons`), estados vacíos/error (`renderNoResults`, `renderErrorState`), animación guiada de inicio (`runFlipOnboarding`) y re-exporta la API pública completa para el resto de la aplicación.
-- **`modal.ts`**: Vista rápida (_Quick View_). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (_landscape_), y formato _Bottom Sheet_ en móviles verticales con física de arrastre (_swipe-to-dismiss_) y _View Transitions API_ para el efecto _Hero_ desde la tarjeta. En móvil apaisado integra reducción dinámica del cartel (`.poster-compact` a `clamp(175px, 44vh, 220px)`) al alcanzar el final del scroll en la columna izquierda con transición `cubic-bezier(0.16, 1, 0.3, 1)`, preservando la visibilidad conjunta de la portada con estrellas, título traducido, estudio, año y bandera sin holguras laterales excesivas, y restaurando el tamaño completo ante gestos de scroll hacia arriba (swipe hacia abajo, rueda de ratón o teclado). Los enlaces dentro de la modal (géneros, países, directores, actores, año, insignias de rol cruzado) son interactivos y cierran automáticamente la modal al aplicarse.
+- **`modal.ts`**: Vista rápida (_Quick View_). Implementa modal flotante en dos columnas con scroll vertical independiente en escritorio y móvil apaisado (_landscape_), y formato _Bottom Sheet_ en móviles verticales con física de arrastre (_swipe-to-dismiss_) y _View Transitions API_ para el efecto _Hero_ desde la tarjeta. Opera sobre dos plantillas `<template>` estructuralmente desacopladas de las tarjetas 3D del catálogo: `#quick-view-template` para películas y `#quick-view-person-template` para personas VIP, utilizando exclusivamente la semántica de paneles de vista rápida (`.quick-view-*`). En móvil apaisado integra reducción dinámica del cartel (`.poster-compact` a `clamp(175px, 44vh, 220px)`) al alcanzar el final del scroll en la columna izquierda con transición `cubic-bezier(0.16, 1, 0.3, 1)`, preservando la visibilidad conjunta de la portada con estrellas, título traducido, estudio, año y bandera sin holguras laterales excesivas, y restaurando el tamaño completo ante gestos de scroll hacia arriba (swipe hacia abajo, rueda de ratón o teclado). Los enlaces dentro de la modal (géneros, países, directores, actores, año, insignias de rol cruzado) son interactivos y cierran automáticamente la modal al aplicarse.
 - **`profile.ts`**: Panel de perfil de usuario y estadísticas cinemáticas en tiempo real. Procesa catálogos masivos (>2.500 entradas), calculando media sobre 10 y sobre 3 estrellas, desglose por franjas de valoración, distribución por géneros, exportación de datos en formato CSV/JSON y baja de cuenta vía RPC.
 - **`sidebar/` (Módulo del Menú Lateral de Filtrado)**: Descompuesto en submódulos modulares para aislar lógica de filtros, sincronización de años y gestos móviles:
   - **`context.ts`**: Almacena el caché de selectores del DOM (`dom`), referencias al estado de layout móvil/escritorio (`isMobileLayout`) y registro de desuscripciones del bus de eventos.
@@ -113,12 +113,32 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
   - `≤ 768px` $\to$ **MÓVIL** (panel deslizable *Bottom Sheet*, gestos táctiles, botones de acción ampliados para accesibilidad WCAG).
   - `≥ 769px` $\to$ **ESCRITORIO** (ventanas flotantes bicolumna con scroll independiente, flechas exteriores y hover habilitado para ratón `pointer: fine`).
   - Eliminada toda frontera transitoria o inconsistente (antiguos 700/701px).
-- **Refactorización Modular de Componentes CSS (Fases 1 y 2)**:
-  - **`modal.css` (Fase 1: Quick View & Legal Modal)**:
-    - Estructurado en 10 secciones delimitadas (A a J): Base/Estructura, Contenido/Tipografía, Ratings/Acciones, Navegación, Mobile (Bottom Sheet), Desktop (Bicolumna 50/50), Landscape (móviles apaisados $\le 550\text{px}/600\text{px}$ con cartel dinámico `.poster-compact`), Personas VIP, Rendimiento/Transiciones y Modal Legal e Informativo.
-    - Eliminación de selectores fragmentados y reglas muertas (`.details-list`, `.plot-summary-final`, `.back-meta-header`, altura fantasma en `.rating-bar-container`).
-    - Blindaje de especificidad: preservación estricta de las reglas y los `!important` funcionales en *Landscape* y *Person Card* para anular estilos heredados de tarjeta en espacios reducidos.
-  - **`card.css` (Fase 2: Card System)**:
+- **Contrato Arquitectónico Card vs. Quick View**:
+  El sistema mantiene una separación estricta e infranqueable entre la tarjeta 3D del catálogo y la modal editorial de vista rápida:
+
+  ```text
+  CARD NORMAL (.movie-card:not(.is-quick-view))
+  ├── .flip-card-inner
+  ├── .flip-card-front
+  └── .flip-card-back
+
+  QUICK VIEW (.movie-card.is-quick-view)
+  ├── .quick-view-inner
+  ├── .quick-view-media
+  └── .quick-view-details
+  ```
+
+  **Reglas de aislamiento estructural:**
+  1. `flip-card-*` pertenece exclusivamente a la interacción 3D de Card (`card.css` y plantillas de catálogo).
+  2. `quick-view-*` pertenece exclusivamente a Quick View (`modal.css` y plantillas `#quick-view-template` / `#quick-view-person-template`).
+  3. Los cambios de estilo y estructura de Quick View no deben depender de selectores estructurales internos de Card.
+  4. **Invariante de mantenimiento:** `modal.css` es responsable de Quick View y no debe volver a introducir selectores `flip-card-*`.
+
+- **Arquitectura de Componentes CSS**:
+  - **`modal.css` (Quick View & Legal Modal)**:
+    - Estructurado en 10 secciones delimitadas (A a J): Base/Estructura, Contenido/Tipografía, Ratings/Acciones, Navegación, Mobile (Bottom Sheet), Desktop (Bicolumna Películas 50/50), Personas VIP (45/55), Landscape (móviles apaisados $\le 550\text{px}/600\text{px}$ con layout 50/50 y cartel dinámico `.poster-compact`), Rendimiento/Transiciones y Modal Legal e Informativo.
+    - Cascada limpia y unidireccional: la capa base establece el contrato común, Desktop define las ventanas flotantes (50/50 películas y 45/55 personas), y Landscape actúa al final como excepción terminal para alturas compactas, eliminando conflictos de cascada sin depender de `!important` artificiales.
+  - **`card.css` (Card System)**:
     - Estructurado en 10 secciones modulares (A a J): Base/3D, Frontal (Póster/LQIP), Frontal (Títulos `text-wrap: balance`/Metadatos), Trasera (Títulos/Duración/Enlaces externos), Trasera (Detalles/Sinopsis `text-wrap: pretty`/Actores), Botones expansores (`+`/`−` con área táctil 40px WCAG), Elementos interactivos/Watchlist (microanimaciones Pop/Glow/Settle), Modo Muro (`body.rotation-disabled`, ratio 2:3, lógica estrellas usuario vs media), Fichas VIP (fotos 2:3 con `object-position: top center`, botón dual D/A `.person-role-toggle-btn`) y Rendimiento/Accesibilidad.
     - Reducción neta del 16% en tamaño en bytes (~5,8 KB ahorrados), eliminación de reglas redundantes en Dark Mode (contorno dorado) y consolidación cromática de estudios con selector `:is()`.
     - Preservación íntegra de los 9 `!important` deliberados para aislamiento entre componentes (Modo Muro, marco VIP de personas y desvanecimiento de sinopsis en overlay de reparto).

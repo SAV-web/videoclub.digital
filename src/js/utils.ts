@@ -189,12 +189,13 @@ export function createAbortableRequest(key: string): AbortController {
 //          4. MANIPULACIÓN VISUAL (DOM, Táctil y CSS)
 // =================================================================
 
-// Pinta la banderita del país y permite hacer clic para filtrar por país
+// Pinta la banderita del país y permite hacer clic para filtrar por país (si isInteractive es true)
 export function renderCountryFlag(
   container: HTMLElement | null, 
   flagSpan: HTMLElement | null, 
   countryCode: string | null | undefined, 
-  countryName: string = ""
+  countryName: string = "",
+  isInteractive: boolean = true
 ): void {
   if (!container || !flagSpan) return;
   if (countryCode) {
@@ -203,11 +204,19 @@ export function renderCountryFlag(
     flagSpan.textContent = "";
 
     if (countryName) {
-      container.setAttribute("data-country-name", countryName);
       container.title = countryName;
-      container.setAttribute("aria-label", `Ver títulos de ${countryName}`);
-      if (container instanceof HTMLAnchorElement) {
-        container.href = buildFilterUrl("country", countryName);
+      if (isInteractive) {
+        container.setAttribute("data-country-name", countryName);
+        container.setAttribute("aria-label", `Ver títulos de ${countryName}`);
+        if (container instanceof HTMLAnchorElement) {
+          container.href = buildFilterUrl("country", countryName);
+        }
+      } else {
+        delete container.dataset.countryName;
+        container.setAttribute("aria-label", countryName);
+        if (container instanceof HTMLAnchorElement) {
+          container.removeAttribute("href");
+        }
       }
     } else {
       delete container.dataset.countryName;

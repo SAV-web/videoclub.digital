@@ -61,9 +61,13 @@ export function syncSidebarResponsiveState(): void {
     const isMobileOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
     updateRewindButtonState(isMobileOpen);
   } else {
+    const wasMobileOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
     document.body.classList.remove(CSS_CLASSES.SIDEBAR_OPEN);
     if (dom.sidebar) dom.sidebar.style.transform = '';
     touchState.currentTranslate = -DRAWER_WIDTH;
+    if (wasMobileOpen) {
+      document.body.classList.remove(CSS_CLASSES.SIDEBAR_COLLAPSED);
+    }
     const isDesktopOpen = !document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
     updateRewindButtonState(isDesktopOpen);
   }
@@ -217,12 +221,28 @@ export function initTouchGestures(): void {
   document.addEventListener("touchend", tEnd, { passive: true });
   document.addEventListener("touchcancel", tEnd, { passive: true });
 
+  let orientationSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  let orientationSyncTimer2: ReturnType<typeof setTimeout> | null = null;
+
   const handleResize = debounce(() => {
     syncSidebarResponsiveState();
-  }, 100);
+  }, 50);
 
   const handleOrientation = () => {
+    // 1. Sincronización inmediata con dimensiones efectivas adaptadas a la nueva orientación
     syncSidebarResponsiveState();
+
+    // 2. Fases temporizadas para acompañar el fin del reflow/animación en WebKit/iPadOS (~300ms)
+    if (orientationSyncTimer) clearTimeout(orientationSyncTimer);
+    if (orientationSyncTimer2) clearTimeout(orientationSyncTimer2);
+
+    orientationSyncTimer = setTimeout(() => {
+      syncSidebarResponsiveState();
+    }, 150);
+
+    orientationSyncTimer2 = setTimeout(() => {
+      syncSidebarResponsiveState();
+    }, 350);
   };
 
   window.addEventListener("resize", handleResize);
@@ -243,6 +263,8 @@ export function initTouchGestures(): void {
     } else if (typeof window !== "undefined") {
       window.removeEventListener("orientationchange", handleOrientation);
     }
+    if (orientationSyncTimer) clearTimeout(orientationSyncTimer);
+    if (orientationSyncTimer2) clearTimeout(orientationSyncTimer2);
     handleResize.cancel();
   });
 }

@@ -914,7 +914,8 @@ export function createPersonCardElement(person: PersonDetails): DocumentFragment
     card.querySelector(SELECTORS.COUNTRY_CONTAINER),
     card.querySelector(SELECTORS.COUNTRY_FLAG),
     person.countries?.code ?? undefined,
-    person.countries?.name ?? undefined
+    person.countries?.name ?? undefined,
+    false
   );
 
   const headlineEl = card.querySelector('[data-template="bio-headline"]');

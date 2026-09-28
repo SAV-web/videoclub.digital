@@ -382,12 +382,12 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
 ## 11. Contrato de la Vista Rápida (Modal): Modos Escritorio, Móvil Vertical y Móvil Apaisado
 
 1. **Estructura y Breakpoints Responsivos**:
-   - **Modo Escritorio (`> 700px`)**:
+   - **Modo Escritorio (`≥ 769px`)**:
      - Ventana flotante centrada (`width: 90%; max-width: 720px; max-height: 92dvh;`).
-     - Estructura de dos columnas al 50% con scroll vertical independiente (`overflow-y: auto`) y barras invisibles (`scrollbar-width: none`).
+     - Estructura de dos columnas al 50% con scroll vertical independiente (`overflow-y: auto`) y barras invisibles (`scrollbar-width: none`). En fichas de personas VIP, la partición se adapta a 45% (media) / 55% (detalles).
      - Botones de navegación exteriores (`left: -32px; right: -32px;`).
      - Contenedor elástico con supresión de scroll anidado (`overflow: hidden`).
-   - **Modo Móvil Vertical (`<= 700px` y orientación *portrait*)**:
+   - **Modo Móvil Vertical (`≤ 768px` y orientación *portrait*)**:
      - Modal de panel inferior (*Bottom Sheet*, `width: 96%; height: 92dvh;`).
      - Barra de arrastre superior visible (`&::before`).
      - Apilamiento vertical de columnas (`flex-direction: column`).
@@ -395,30 +395,30 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
    - **Modo Móvil Apaisado (*Landscape* con altura `<= 600px` táctil o `<= 550px`)**:
      - Breakpoint específico: `@media (orientation: landscape) and (max-height: 550px), (orientation: landscape) and (max-height: 600px) and (pointer: coarse)`.
      - Modal centrado en el viewport (`top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(94vw, 780px); max-width: 780px; height: min(92dvh, 92svh);`). El ancho de `94vw` optimiza el aprovechamiento horizontal en pantalla reduciendo márgenes laterales excesivos; la altura con `svh` previene desbordamientos por la barra de direcciones en Chrome móvil.
-     - Supresión estricta de la barra de arrastre superior (`&::before { display: none !important; }`).
+     - Supresión estricta de la barra de arrastre superior (`&::before { display: none; }`).
      - Desacoplamiento del gesto de cierre vertical: el *swipe-to-dismiss* se inhabilita para garantizar el scroll vertical nativo en ambas columnas.
-     - Dos columnas independientes al 50% (`.flip-card-front` y `.flip-card-back`), cada una con altura completa y `overflow-y: auto`.
+     - Dos columnas independientes al 50% (`.quick-view-media` y `.quick-view-details`), cada una con altura completa y `overflow-y: auto`.
      - Flechas de navegación adaptadas a los flancos (`left: -26px; right: -26px; top: 50%; transform: translateY(-50%);`).
      - Fichas de personas VIP: el lugar de nacimiento (`.front-director-info`) se centra con `padding-inline: 0` para sincronizarse perfectamente con el nombre.
 
 2. **Contrato de Reducción Progresiva del Cartel (`.poster-compact`)**:
    - **Estado Inicial**: El cartel arranca siempre en tamaño completo de columna (`width: 100%; max-width: 290px; margin-inline: auto; margin-bottom: var(--space-sm);`), destacando la portada cinematográfica o fotografía del cineasta bajo la misma regla unificada.
    - **Activación por Desplazamiento**:
-     - Cuando el usuario se desplaza por la columna izquierda y alcanza el fondo (`scrollTop > 15px` y `scrollBottom <= 35px`), se inyecta la clase `.poster-compact` en `.flip-card-front`.
+     - Cuando el usuario se desplaza por la columna izquierda y alcanza el fondo (`scrollTop > 15px` y `scrollBottom <= 35px`), se inyecta la clase `.poster-compact` en `.quick-view-media`.
      - El cartel reduce sus dimensiones a `clamp(175px, 44vh, 220px)` (tanto en películas como en directores/actores) mediante una transición desacelerada fluida de `0.45s` (`cubic-bezier(0.16, 1, 0.3, 1)`).
      - El padding horizontal de la columna se optimiza a `var(--space-sm)` (8px) para eliminar holguras laterales innecesarias a la izquierda.
      - Se garantiza la visualización simultánea del cartel con estrellas, watchlist, título traducido, estudio, año y bandera de país.
    - **Persistencia**:
      - El cartel permanece en tamaño reducido mientras el usuario lee o interactúa con los controles inferiores (votar con estrellas, añadir a watchlist o abrir enlaces).
-     - El desplazamiento o lectura en la columna derecha (`.flip-card-back`) es totalmente autónomo y no afecta al estado del cartel en la columna izquierda.
+     - El desplazamiento o lectura en la columna derecha (`.quick-view-details`) es totalmente autónomo y no afecta al estado del cartel en la columna izquierda.
    - **Restauración al Hacer Scroll Arriba**:
      - La clase `.poster-compact` se retira y el cartel recupera suavemente su tamaño completo (hasta 290px) ante cualquier acción intencional de subida en la columna izquierda:
-       1. Arrastre táctil hacia abajo (`touchmove` con `deltaY > 12px` originado en `.flip-card-front`).
-       2. Giro de rueda de ratón o trackpad hacia arriba (`wheel` con `deltaY < -5px` sobre `.flip-card-front`).
+       1. Arrastre táctil hacia abajo (`touchmove` con `deltaY > 12px` originado en `.quick-view-media`).
+       2. Giro de rueda de ratón o trackpad hacia arriba (`wheel` con `deltaY < -5px` sobre `.quick-view-media`).
        3. Pulsación de teclas `ArrowUp` o `PageUp`.
    - **Máscaras de Continuidad**:
      - Degradados de desvanecimiento dinámicos superior (`24px`) e inferior (`28px`).
-     - Al activarse `.poster-compact`, la máscara de `.flip-card-front` se desactiva (`mask-image: none !important`) para asegurar que la línea de estudio + año + bandera se visualice con nitidez y opacidad absoluta.
+     - Al activarse `.poster-compact`, la máscara inferior de `.quick-view-details` se desactiva (`mask-image: none`) para asegurar que la línea de estudio + año + bandera se visualice con nitidez y opacidad absoluta.
    - **Reseteo Determinista**:
      - Al cambiar de ficha (navegación previa/siguiente) o cerrar la modal, se restablece `scrollTop = 0` y se eliminan las clases `.is-scrolled` y `.poster-compact`.
 

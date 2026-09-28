@@ -488,7 +488,60 @@ body.sidebar-is-open .sidebar {
 
 .header-pagination-group { display: flex; gap: 2px; }
 
-/* --- 4. LA CUADRÍCULA (El muro de películas) --- */
+/* --- 4. HERO INTRO LANDPAGE --- */
+.landing-hero {
+  margin-inline: auto;
+  max-width: 860px;
+  padding: var(--space-xs) var(--space-xs) var(--space-lg);
+  text-align: center;
+  user-select: none;
+  contain: content;
+
+  &[hidden],
+  &.is-hidden {
+    display: none !important;
+  }
+}
+
+.landing-hero-title {
+  font-family: var(--font-title, 'Inter', -apple-system, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand-gold, #d4a347);
+  margin-bottom: var(--space-xs);
+  line-height: 1.4;
+}
+
+.landing-hero-description {
+  font-family: var(--font-body, 'Inter', -apple-system, sans-serif);
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+@media (max-width: 768px) {
+  .landing-hero {
+    padding: 0 var(--space-xxs) var(--space-md);
+  }
+
+  .landing-hero-title {
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    line-height: 1.35;
+  }
+
+  .landing-hero-description {
+    font-size: 0.775rem;
+    line-height: 1.5;
+  }
+}
+
+/* --- 5. LA CUADRÍCULA (El muro de películas) --- */
 
 .grid-container {
   display: grid; justify-content: center; gap: var(--space-sm);
@@ -1147,6 +1200,26 @@ body.sidebar-is-open .sidebar {
     border-radius: var(--radius-sm, 3px);
     transform: scale(1.15);
     z-index: 10;
+  }
+}
+
+.person-card .country-info {
+  cursor: default;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    transform: none;
   }
 }
 
@@ -4956,6 +5029,20 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     width: 26px;
     height: 26px;
     font-size: 0.85rem;
+  }
+
+  & .country-info {
+    cursor: default;
+    touch-action: auto;
+
+    &:active {
+      transform: none;
+    }
+
+    &:focus-visible {
+      outline: none;
+      transform: none;
+    }
   }
 
   /* Estructura alineada al modal de películas en escritorio con reparto 45%/55% (>= 769px) */

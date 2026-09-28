@@ -1234,6 +1234,20 @@
     font-size: 0.85rem;
   }
 
+  & .country-info {
+    cursor: default;
+    touch-action: auto;
+
+    &:active {
+      transform: none;
+    }
+
+    &:focus-visible {
+      outline: none;
+      transform: none;
+    }
+  }
+
   /* Estructura alineada al modal de películas en escritorio con reparto 45%/55% (>= 769px) */
   @media (min-width: 769px) {
     & .quick-view-inner {

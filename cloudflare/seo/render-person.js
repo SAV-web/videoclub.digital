@@ -156,13 +156,13 @@ export function renderVipPersonCard(person, options = {}) {
                   ${ageInfo.ageStr ? `<span class="person-age">${escapeHtml(ageInfo.ageStr)}</span>` : ''}
                   ${ageInfo.datesStr ? `<span class="person-dates">${escapeHtml(ageInfo.datesStr)}</span>` : ''}
                   ${countryCode ? `
-                    <a class="country-info" href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
+                    <span class="country-info" title="${escapeAttr(countryName)}" aria-label="${escapeAttr(countryName)}">
                       <span class="country-flag-icon">
                         <svg width="14" height="14" aria-hidden="true">
                           <use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use>
                         </svg>
                       </span>
-                    </a>
+                    </span>
                   ` : ''}
                 </div>
               </div>

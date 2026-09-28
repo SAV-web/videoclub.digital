@@ -811,7 +811,8 @@ function populateModal(cardElement: MovieCardElement, contextCards: HTMLElement[
       cardClone.querySelector('[data-template="country-container"]'),
       cardClone.querySelector('[data-template="country-flag"]'),
       countryCode,
-      countryName
+      countryName,
+      false
     );
 
     // Biografía

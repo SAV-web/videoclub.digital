@@ -406,6 +406,26 @@
   }
 }
 
+.person-card .country-info {
+  cursor: default;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    transform: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    transform: none;
+  }
+}
+
 .country-flag-icon svg {
   width: 14px;
   height: 14px;

@@ -8,7 +8,7 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS, FILTER_CONFIG, STUDIO_DATA, REGIONAL_GROUPS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
-import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents, getWatchlistCount } from "./state.js";
+import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents, getWatchlistCount, getCurrentPage } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
@@ -37,6 +37,7 @@ export interface DomElements {
   toastContainer: HTMLElement | null;
   mobileSidebarToggle: HTMLButtonElement | null;
   mobileStatusBar: HTMLElement | null;
+  landingHero: HTMLElement | null;
 }
 
 /**
@@ -66,6 +67,7 @@ const domSelectors: Record<keyof DomElements, string> = {
   toastContainer: SELECTORS.TOAST_CONTAINER,
   mobileSidebarToggle: "#mobile-sidebar-toggle",
   mobileStatusBar: "#mobile-status-bar",
+  landingHero: "#landing-hero",
 };
 
 // Exportamos un Proxy para mantener compatibilidad con el código existente (dom.algo)
@@ -806,6 +808,20 @@ function shouldShowTotalCount(): boolean {
   return true;
 }
 
+export function updateLandingHeroVisibility(): void {
+  const hero = document.getElementById("landing-hero");
+  if (!hero) return;
+
+  const filters = getActiveFilters();
+  const hasFilters = hasActiveMeaningfulFilters() || (filters.mediaType && filters.mediaType !== 'all') || (filters.sort && filters.sort !== DEFAULTS.SORT);
+  const searchInput = document.getElementById("search-input") as HTMLInputElement | null;
+  const hasSearch = !!(searchInput && typeof searchInput.value === "string" && searchInput.value.trim());
+  const isFirstPage = getCurrentPage() === 1;
+
+  const shouldShow = !hasFilters && !hasSearch && isFirstPage;
+  hero.hidden = !shouldShow;
+}
+
 export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null = null): void {
   const containers = document.querySelectorAll<HTMLElement>(".total-results-container");
   const counts = document.querySelectorAll<HTMLElement>(".total-results-count");
@@ -818,6 +834,9 @@ export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null
   } else {
     containers.forEach(el => el.hidden = true);
   }
+
+  // Actualizar visibilidad del texto explicativo del landpage
+  updateLandingHeroVisibility();
 
   // Actualizar barra de estado móvil evitando re-consultas redundantes
   updateMobileStatusBar(movies, total, showTotal);
@@ -921,14 +940,14 @@ export function updateMobileStatusBar(
         .split(/\s+/)
         .map(w => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
-      segments.push(`${directorName} (D)`);
+      segments.push(directorName);
     } else if (filters.actor) {
       const actorName = filters.actor
         .trim()
         .split(/\s+/)
         .map(w => w.charAt(0).toUpperCase() + w.slice(1))
         .join(" ");
-      segments.push(`${actorName} (A)`);
+      segments.push(actorName);
     }
 
     // 2. Género e inclusiones/exclusiones
@@ -998,6 +1017,7 @@ export function updateMobileStatusBar(
 
   // Si no hay filtros aplicados (Catálogo completo inicial sin filtros)
   mobileStatusBar.textContent = "";
+  updateLandingHeroVisibility();
 }
 
 // =================================================================

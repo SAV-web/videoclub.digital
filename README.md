@@ -50,7 +50,7 @@
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing & Calidad** | Node.js Test Runner nativo (183 tests en 32 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
+| **Testing & Calidad** | Node.js Test Runner nativo (184 tests en 32 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
 
 ---
 

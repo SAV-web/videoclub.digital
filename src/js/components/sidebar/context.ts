@@ -22,8 +22,42 @@ export const dom = {
 
 export const sectionContainers: Record<string, HTMLElement> = {};
 
-export const isMobileLayout = (): boolean =>
-  window.innerWidth <= MOBILE_BREAKPOINT || window.innerHeight <= MOBILE_HEIGHT_LIMIT;
+export function getEffectiveViewportDimensions(): { width: number; height: number } {
+  if (typeof window === "undefined") {
+    return { width: 1024, height: 768 };
+  }
+
+  let isLandscape: boolean | null = null;
+
+  if (typeof screen !== "undefined" && screen?.orientation?.type) {
+    isLandscape = screen.orientation.type.startsWith("landscape");
+  } else if (typeof window.orientation === "number") {
+    isLandscape = Math.abs(window.orientation) === 90;
+  } else if (typeof window.matchMedia === "function") {
+    isLandscape = window.matchMedia("(orientation: landscape)").matches;
+  }
+
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  if (isLandscape !== null && w && h) {
+    if (isLandscape && w < h) {
+      // Dimensiones desactualizadas durante rotación a horizontal (landscape) en WebKit
+      return { width: Math.max(w, h), height: Math.min(w, h) };
+    }
+    if (!isLandscape && w > h) {
+      // Dimensiones desactualizadas durante rotación a vertical (portrait) en WebKit
+      return { width: Math.min(w, h), height: Math.max(w, h) };
+    }
+  }
+
+  return { width: w, height: h };
+}
+
+export const isMobileLayout = (): boolean => {
+  const { width, height } = getEffectiveViewportDimensions();
+  return width <= MOBILE_BREAKPOINT || height <= MOBILE_HEIGHT_LIMIT;
+};
 
 // --- Registro de ciclo de vida compartido ---
 // Los arrays se exportan como const y se vacían con .length = 0 
