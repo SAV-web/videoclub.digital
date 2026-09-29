@@ -44,6 +44,11 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   }
 
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+
   &:active {
     /* Quiet Luxury: Micro-squish (apenas perceptible) */
     transform: translateY(1px) scale(0.98) scaleY(0.99);

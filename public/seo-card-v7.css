@@ -751,6 +751,11 @@ html:not(.dark-mode) .landing-hero-title {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   }
 
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+
   &:active {
     /* Quiet Luxury: Micro-squish (apenas perceptible) */
     transform: translateY(1px) scale(0.98) scaleY(0.99);
@@ -1711,6 +1716,11 @@ html.dark-mode {
   z-index: var(--z-index-card-content);
   pointer-events: auto;
 
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       transform: scale(1.06);
@@ -1832,6 +1842,11 @@ html.dark-mode {
   position: relative;
   isolation: isolate;
 
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       transform: scale(1.15) rotate(10deg);
@@ -1839,6 +1854,8 @@ html.dark-mode {
   }
 
   &:active {
+    transform: scale(0.96);
+    filter: brightness(0.95);
     transition: transform 50ms var(--ease-luxury);
   }
 
@@ -3021,7 +3038,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   font-size: var(--font-size-xs); font-weight: bold; line-height: 1.1;
   animation: pill-pop-in 0.3s var(--transition-timing-function);
 
-  &:active { transition: transform 50ms var(--ease-luxury); }
+  &:active { transform: scale(0.96); filter: brightness(0.95); transition: transform 50ms var(--ease-luxury); }
   & > span:first-child {
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     text-transform: capitalize;
@@ -3069,6 +3086,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     }
   }
   &:active { transform: scale(0.99); transition-duration: 0.1s; }
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 }
 /* Menú Contraído (Solo iconos) */
 :is(html.sidebar-collapsed, body.sidebar-collapsed) .sidebar {
@@ -3176,6 +3194,7 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
     }
   }
   @media (hover: none) and (pointer: coarse) { opacity: 1; color: var(--color-text-tertiary); }
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
   .filter-link.active &,
   .filter-link.is-excluded & { display: none !important; }
@@ -5339,6 +5358,11 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
   &:focus {
     outline: none;
   }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
 }
 
 /* Modo Escritorio (>= 769px): Modal centrado */
@@ -5676,30 +5700,12 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
 }
 
 /* src/css/utilities.css */
-/* =================================================================
-   UTILIDADES COMPARTIDAS (SHARED UTILITIES)
-   Patrones canónicos reutilizables centralizados
-   ================================================================= */
-
-/* --- 1. FOCUS RING CANÓNICO --- */
-.u-focus-ring:focus-visible,
-.btn:focus-visible,
-.section-header:focus-visible,
-.filter-link-exclude-btn:focus-visible,
-.expand-content-btn:focus-visible,
-.actors-expand-btn:focus-visible,
-.card-action-btn:focus-visible,
-.legal-modal:focus-visible,
-.auth-modal:focus-visible,
-.auth-button:focus-visible {
+.u-focus-ring:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--color-focus);
 }
 
-/* --- 2. PRESSED CANÓNICO --- */
-.u-pressed:active,
-.filter-pill:active,
-.card-action-btn:active {
+.u-pressed:active {
   transform: scale(0.96);
   filter: brightness(0.95);
 }

@@ -1,27 +1,9 @@
-/* =================================================================
-   UTILIDADES COMPARTIDAS (SHARED UTILITIES)
-   Patrones canónicos reutilizables centralizados
-   ================================================================= */
-
-/* --- 1. FOCUS RING CANÓNICO --- */
-.u-focus-ring:focus-visible,
-.btn:focus-visible,
-.section-header:focus-visible,
-.filter-link-exclude-btn:focus-visible,
-.expand-content-btn:focus-visible,
-.actors-expand-btn:focus-visible,
-.card-action-btn:focus-visible,
-.legal-modal:focus-visible,
-.auth-modal:focus-visible,
-.auth-button:focus-visible {
+.u-focus-ring:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--color-focus);
 }
 
-/* --- 2. PRESSED CANÓNICO --- */
-.u-pressed:active,
-.filter-pill:active,
-.card-action-btn:active {
+.u-pressed:active {
   transform: scale(0.96);
   filter: brightness(0.95);
 }
