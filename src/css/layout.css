@@ -83,11 +83,20 @@ body.sidebar-is-open .sidebar {
   display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-xs);
   position: sticky; top: 0; inset-inline: 0; z-index: var(--z-index-header);
   padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-xs) var(--space-xs);
+  transition: padding 0.5s var(--ease-smooth-out), gap 0.5s var(--ease-smooth-out), background-color var(--duration-normal), border-color var(--duration-normal);
 
   @media (min-width: 769px) and (min-height: 501px) {
     padding: var(--space-lg); gap: var(--space-md) var(--space-lg);
   }
   @media (min-width: 1200px) { padding-inline: var(--space-xxl); }
+}
+
+@media (min-width: 769px) and (min-height: 501px) {
+  /* Al contraer el sidebar, el header reduce su altura un 30% (de 88px a 62px) */
+  :is(html.sidebar-collapsed, body.sidebar-collapsed) .main-header {
+    padding-block: 11px;
+    gap: var(--space-xs) var(--space-lg);
+  }
 }
 
 .header-pagination-group { display: flex; gap: 2px; }
@@ -110,6 +119,7 @@ body.sidebar-is-open .sidebar {
   background: radial-gradient(ellipse 65% 55% at 50% 15%, rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.09) 0%, rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.02) 45%, transparent 75%);
   border-radius: var(--radius-md, 8px);
 
+  html.not-landing &,
   &[hidden],
   &.is-hidden {
     display: none !important;

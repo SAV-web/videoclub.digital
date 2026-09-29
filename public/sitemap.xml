@@ -771,11 +771,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://videoclub.digital/alberto-caballero/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://videoclub.digital/alberto-rodriguez/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -3167,6 +3162,11 @@
   </url>
   <url>
     <loc>https://videoclub.digital/herbert-ross/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://videoclub.digital/hermanos-caballero/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

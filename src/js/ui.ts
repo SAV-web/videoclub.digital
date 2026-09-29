@@ -821,6 +821,10 @@ export function updateLandingHeroVisibility(): void {
   const shouldShow = !hasFilters && !hasSearch && isFirstPage;
   hero.hidden = !shouldShow;
 
+  if (typeof document !== "undefined" && document.documentElement) {
+    document.documentElement.classList.toggle("not-landing", !shouldShow);
+  }
+
   if (shouldShow && typeof window !== "undefined") {
     const currentScrollY = Math.max(0, window.scrollY);
     if (currentScrollY > 45) {

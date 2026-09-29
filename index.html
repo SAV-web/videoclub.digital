@@ -225,6 +225,16 @@
         width: 65px;
         flex-basis: 65px;
       }
+
+      :is(html.sidebar-collapsed, body.sidebar-collapsed) .main-header {
+        padding-block: 11px;
+        gap: var(--space-xs) var(--space-lg);
+      }
+    }
+
+    /* Ocultar de inmediato el hero de portada en cargas de páginas internas (Anti-FOUC) */
+    html.not-landing #landing-hero {
+      display: none !important;
     }
 
     .grid-container {
@@ -460,6 +470,23 @@
         }
         if (localStorage.getItem("rotationState") === "disabled") {
           document.documentElement.classList.add("rotation-disabled");
+        }
+        var basePrefix = window.location.pathname.startsWith("/videoclub.digital") ? "/videoclub.digital" : "";
+        var relativePath = window.location.pathname.slice(basePrefix.length);
+        var path = (relativePath || "/").replace(/\/+$/, "") || "/";
+        var isRootPath = path === "/" || path === "/index.html";
+        var searchParams = window.location.search ? new URLSearchParams(window.location.search) : null;
+        var hasSearchOrFilter = false;
+        if (searchParams) {
+          var p = searchParams.get("p") || searchParams.get("page");
+          if (p && p !== "1") hasSearchOrFilter = true;
+          if (searchParams.get("q") || searchParams.get("buscar") || searchParams.get("search")) hasSearchOrFilter = true;
+          if (searchParams.get("genre") || searchParams.get("country") || searchParams.get("director") || searchParams.get("actor") || searchParams.get("type")) hasSearchOrFilter = true;
+          var routeParam = searchParams.get("_p");
+          if (routeParam && routeParam !== "/") hasSearchOrFilter = true;
+        }
+        if (!isRootPath || hasSearchOrFilter) {
+          document.documentElement.classList.add("not-landing");
         }
       } catch (e) { }
     })();
