@@ -22,11 +22,6 @@
   &:focus {
     outline: none;
   }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-focus);
-  }
 }
 
 /* A) Modo Escritorio (>= 769px): Modal flotante centrado */
@@ -409,11 +404,6 @@
 
   &:focus {
     outline: none;
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-focus);
   }
 
   &:hover {

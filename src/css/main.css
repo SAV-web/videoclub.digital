@@ -26,6 +26,9 @@
 @import "components/profile.css"; /* Modal de perfil de usuario y estadísticas */
 @import "components/ui.css";
 
+/* --- 4. UTILIDADES COMPARTIDAS --- */
+@import "utilities.css";
+
 
 /* =================================================================
    ANTI-FOUC (Flash of Unstyled Content) - GESTIÓN DE ESTADO

@@ -142,7 +142,7 @@
   font-size: var(--font-size-xs); font-weight: bold; line-height: 1.1;
   animation: pill-pop-in 0.3s var(--transition-timing-function);
 
-  &:active { transform: scale(0.96); filter: brightness(0.95); transition: transform 50ms var(--ease-luxury); }
+  &:active { transition: transform 50ms var(--ease-luxury); }
   & > span:first-child {
     display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     text-transform: capitalize;
@@ -190,7 +190,6 @@
     }
   }
   &:active { transform: scale(0.99); transition-duration: 0.1s; }
-  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 }
 /* Menú Contraído (Solo iconos) */
 :is(html.sidebar-collapsed, body.sidebar-collapsed) .sidebar {
@@ -298,7 +297,6 @@
     }
   }
   @media (hover: none) and (pointer: coarse) { opacity: 1; color: var(--color-text-tertiary); }
-  &:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-focus); }
 
   .filter-link.active &,
   .filter-link.is-excluded & { display: none !important; }

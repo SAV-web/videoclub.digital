@@ -10,7 +10,8 @@ const files = [
   "src/css/components/header.css",
   "src/css/components/rating.css",
   "src/css/components/sidebar.css",
-  "src/css/components/modal.css"
+  "src/css/components/modal.css",
+  "src/css/utilities.css"
 ];
 
 let combined = "/* VIDEOCLUB DIGITAL - UNIFIED EDGE CSS (v4) */\n";

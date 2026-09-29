@@ -854,11 +854,6 @@ html.dark-mode {
   z-index: var(--z-index-card-content);
   pointer-events: auto;
 
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-focus);
-  }
-
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       transform: scale(1.06);
@@ -980,11 +975,6 @@ html.dark-mode {
   position: relative;
   isolation: isolate;
 
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-focus);
-  }
-
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       transform: scale(1.15) rotate(10deg);
@@ -992,8 +982,6 @@ html.dark-mode {
   }
 
   &:active {
-    transform: scale(0.96);
-    filter: brightness(0.95);
     transition: transform 50ms var(--ease-luxury);
   }
 
