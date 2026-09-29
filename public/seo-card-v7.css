@@ -89,6 +89,20 @@
   --color-star-gold: var(--color-brand-gold);
   --color-star-gold-rgb: var(--color-brand-gold-rgb);
 
+  /* ---- Panel de Perfil (Superficie y Contraste Dedicado) ---- */
+  --profile-surface: #161922;
+  --profile-text-primary: #ffffff;
+  --profile-text-secondary: rgba(255, 255, 255, 0.7);
+  --profile-text-muted: rgba(255, 255, 255, 0.5);
+  --profile-border: rgba(255, 255, 255, 0.12);
+  --profile-success: #10b981;
+  --profile-warning: #f59e0b;
+
+  --profile-danger: #dc2626;
+  --profile-danger-border: #ef4444;
+  --profile-danger-hover: #b91c1c;
+  --profile-danger-text: #fca5a5;
+
   /* ---- Espaciado y Layout ---- */
   --sidebar-width-mobile: 300px;
   --tap-target-size: 48px; /* Mínimo táctil accesible */

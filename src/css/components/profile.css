@@ -39,11 +39,11 @@
   max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
-  background: var(--bg-surface-elevated, #161922);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+  background: var(--profile-surface);
+  border: 1px solid var(--profile-border);
   border-radius: var(--radius-xl, 16px);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  color: var(--text-primary, #ffffff);
+  color: var(--profile-text-primary);
   overflow: hidden;
   animation: profile-appear 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -66,7 +66,7 @@
   justify-content: space-between;
   padding: var(--space-lg, 20px) var(--space-xl, 24px);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--profile-border);
 }
 
 .profile-user-summary {
@@ -103,7 +103,7 @@
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-primary, #fff);
+  color: var(--profile-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -113,7 +113,7 @@
 .profile-badge {
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.65));
+  color: var(--profile-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -121,7 +121,7 @@
 .profile-close-btn {
   background: transparent;
   border: none;
-  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  color: var(--profile-text-muted);
   font-size: 1.75rem;
   line-height: 1;
   cursor: pointer;
@@ -131,7 +131,7 @@
 }
 
 .profile-close-btn:hover {
-  color: var(--text-primary, #fff);
+  color: var(--profile-text-primary);
   background-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -158,7 +158,7 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-primary, #fff);
+  color: var(--profile-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -194,7 +194,7 @@
 
 .stat-card-label {
   font-size: 0.75rem;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  color: var(--profile-text-secondary);
   font-weight: 500;
 }
 
@@ -208,7 +208,7 @@
 
 .stat-card-sublabel {
   font-size: 0.7rem;
-  color: var(--text-muted, rgba(255, 255, 255, 0.5));
+  color: var(--profile-text-muted);
 }
 
 .profile-stat-card--stars {
@@ -244,7 +244,7 @@
   margin-top: 4px;
   background: transparent;
   border: none;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+  color: var(--profile-text-secondary);
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
@@ -254,7 +254,7 @@
 }
 
 .stat-card-action:hover {
-  color: var(--text-primary, #fff);
+  color: var(--profile-text-primary);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -273,7 +273,7 @@
   margin: 0;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.75));
+  color: var(--profile-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -296,7 +296,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-primary, #fff);
+  color: var(--profile-text-primary);
   white-space: nowrap;
 }
 
@@ -320,7 +320,7 @@
 
 .breakdown-count {
   text-align: right;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  color: var(--profile-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -372,20 +372,20 @@
   align-items: center;
   gap: 8px;
   font-size: 0.82rem;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+  color: var(--profile-text-secondary);
 }
 
 .sync-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #10b981; /* Verde sincronizado */
-  box-shadow: 0 0 8px #10b981;
+  background-color: var(--profile-success); /* Verde sincronizado */
+  box-shadow: 0 0 8px var(--profile-success);
 }
 
 .sync-dot--dirty {
-  background-color: #f59e0b; /* Ámbar pendiente */
-  box-shadow: 0 0 8px #f59e0b;
+  background-color: var(--profile-warning); /* Ámbar pendiente */
+  box-shadow: 0 0 8px var(--profile-warning);
 }
 
 .profile-buttons-row {
@@ -398,7 +398,7 @@
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-md, 8px);
-  color: var(--text-primary, #fff);
+  color: var(--profile-text-primary);
   font-size: 0.82rem;
   font-weight: 500;
   padding: 8px 14px;
@@ -437,29 +437,29 @@
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #fca5a5;
+  color: var(--profile-danger-text);
 }
 
 .profile-delete-warning {
   margin: 0;
   font-size: 0.82rem;
-  color: var(--text-secondary, rgba(255, 255, 255, 0.8));
+  color: var(--profile-text-secondary);
   line-height: 1.45;
 }
 
 .profile-delete-warning strong {
-  color: #fca5a5;
+  color: var(--profile-danger-text);
 }
 
 .profile-delete-tip {
   margin: 0;
   font-size: 0.78rem;
-  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  color: var(--profile-text-muted);
   line-height: 1.4;
 }
 
 .profile-delete-tip strong {
-  color: var(--text-secondary, rgba(255, 255, 255, 0.85));
+  color: var(--profile-text-secondary);
 }
 
 .profile-delete-actions {
@@ -471,9 +471,9 @@
 }
 
 .profile-danger-confirm-btn {
-  background: #dc2626;
+  background: var(--profile-danger);
   color: #ffffff;
-  border: 1px solid #ef4444;
+  border: 1px solid var(--profile-danger-border);
   border-radius: var(--radius-md, 8px);
   font-size: 0.82rem;
   font-weight: 600;
@@ -483,7 +483,7 @@
 }
 
 .profile-danger-confirm-btn:hover:not(:disabled) {
-  background: #b91c1c;
+  background: var(--profile-danger-hover);
 }
 
 .profile-danger-confirm-btn:disabled {
@@ -495,7 +495,7 @@
 .profile-box-footer {
   padding: 14px var(--space-xl, 24px);
   background: rgba(0, 0, 0, 0.25);
-  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  border-top: 1px solid var(--profile-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -510,7 +510,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-md, 8px);
-  color: var(--text-muted, rgba(255, 255, 255, 0.6));
+  color: var(--profile-text-muted);
   font-size: 0.82rem;
   font-weight: 500;
   padding: 7px 12px;
@@ -521,7 +521,7 @@
 .profile-delete-btn:hover {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
+  color: var(--profile-danger-text);
 }
 
 .profile-logout-btn {
@@ -531,7 +531,7 @@
   background: transparent;
   border: 1px solid rgba(239, 68, 68, 0.35);
   border-radius: var(--radius-md, 8px);
-  color: #ef4444;
+  color: var(--profile-danger-border);
   font-size: 0.85rem;
   font-weight: 600;
   padding: 8px 16px;
@@ -541,7 +541,7 @@
 
 .profile-logout-btn:hover {
   background: rgba(239, 68, 68, 0.12);
-  border-color: #ef4444;
+  border-color: var(--profile-danger-border);
 }
 
 /* --- MODO MÓVIL (<= 768px): Formato Bottom Sheet con tirador y arrastre táctil --- */
@@ -589,9 +589,9 @@
     max-height: 92dvh;
     border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
     border-bottom: none;
-    border-left: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
-    border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));
+    border-left: 1px solid var(--profile-border);
+    border-right: 1px solid var(--profile-border);
+    border-top: 1px solid var(--profile-border);
     animation: profile-slide-up 0.35s var(--ease-smooth-out, cubic-bezier(0.16, 1, 0.3, 1));
   }
 
