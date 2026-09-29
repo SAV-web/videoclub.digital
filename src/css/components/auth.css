@@ -199,13 +199,13 @@
 }
 
 .form-group input.is-valid {
-  border-color: var(--color-success) !important;
-  box-shadow: 0 0 0 2px var(--color-success-bg) !important;
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-success-bg);
 }
 
 .form-group input.is-invalid {
-  border-color: var(--color-error) !important;
-  box-shadow: 0 0 0 2px var(--color-error-bg) !important;
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 2px var(--color-error-bg);
 }
 
 .validation-message {
@@ -242,7 +242,7 @@
 }
 
 .password-wrapper input {
-  padding-right: 42px !important;
+  padding-right: 42px;
 }
 
 .password-toggle-btn {
@@ -360,16 +360,16 @@
 }
 
 .form-group--checkbox input[type="checkbox"] {
-  width: auto !important;
+  width: auto;
   cursor: pointer;
   padding: 0;
   margin: 0;
 }
 
 .form-group--checkbox label {
-  margin-bottom: 0 !important;
+  margin-bottom: 0;
   cursor: pointer;
-  font-weight: normal !important;
+  font-weight: normal;
   color: var(--color-text-secondary);
 }
 
@@ -453,23 +453,23 @@
 }
 
 .auth-button--secondary {
-  background-color: transparent !important;
-  color: var(--color-text-secondary) !important;
-  border: 1px solid var(--color-border) !important;
-  margin-top: 0 !important;
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  margin-top: 0;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.05) !important;
-    color: var(--color-text-primary) !important;
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--color-text-primary);
   }
 
   :where(html.dark-mode) &:hover {
-    background-color: rgba(255, 255, 255, 0.05) !important;
+    background-color: rgba(255, 255, 255, 0.05);
   }
 
   &.is-loading::after {
-    border-color: var(--color-border-soft) !important;
-    border-top-color: var(--color-text-primary) !important;
+    border-color: var(--color-border-soft);
+    border-top-color: var(--color-text-primary);
   }
 }
 

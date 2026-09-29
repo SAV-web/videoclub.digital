@@ -1134,15 +1134,15 @@ BEGIN
         INSERT INTO public.movie_selections (movie_id, selection_id)
         SELECT t.movie_id, c.id
         FROM tmp_affected_staging t
-        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS sel_code(code)
-        JOIN public.selections c ON (c.letter = UPPER(TRIM(sel_code.code)) OR c.code = LOWER(TRIM(sel_code.code)))
+        CROSS JOIN LATERAL REGEXP_SPLIT_TO_TABLE(NULLIF(TRIM(t.collection), ''), '') AS sel_code(code)
+        JOIN public.selections c ON c.letter = UPPER(TRIM(sel_code.code))
         ON CONFLICT (movie_id, selection_id) DO NOTHING;
 
         INSERT INTO public.movie_studios (movie_id, studio_id)
         SELECT t.movie_id, st.id
         FROM tmp_affected_staging t
-        CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-        JOIN public.studios st ON (st.letter = UPPER(TRIM(stu_code.code)) OR st.code = LOWER(TRIM(stu_code.code)))
+        CROSS JOIN LATERAL REGEXP_SPLIT_TO_TABLE(NULLIF(TRIM(t.studio), ''), '') AS stu_code(code)
+        JOIN public.studios st ON st.letter = UPPER(TRIM(stu_code.code))
         ON CONFLICT (movie_id, studio_id) DO NOTHING;
 
         -- Borrados diferenciales desde tabla temporal
@@ -1177,8 +1177,8 @@ BEGIN
         WHERE ms.movie_id = ANY(affected_movie_ids)
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
-            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.collection, ',')) AS s_code(code)
-            JOIN public.selections sel ON (sel.letter = UPPER(TRIM(s_code.code)) OR sel.code = LOWER(TRIM(s_code.code)))
+            CROSS JOIN LATERAL REGEXP_SPLIT_TO_TABLE(NULLIF(TRIM(t.collection), ''), '') AS s_code(code)
+            JOIN public.selections sel ON sel.letter = UPPER(TRIM(s_code.code))
             WHERE t.movie_id = ms.movie_id AND sel.id = ms.selection_id
           );
 
@@ -1186,8 +1186,8 @@ BEGIN
         WHERE mst.movie_id = ANY(affected_movie_ids)
           AND NOT EXISTS (
             SELECT 1 FROM tmp_affected_staging t
-            CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(t.studio, ',')) AS stu_code(code)
-            JOIN public.studios stu ON (stu.letter = UPPER(TRIM(stu_code.code)) OR stu.code = LOWER(TRIM(stu_code.code)))
+            CROSS JOIN LATERAL REGEXP_SPLIT_TO_TABLE(NULLIF(TRIM(t.studio), ''), '') AS stu_code(code)
+            JOIN public.studios stu ON stu.letter = UPPER(TRIM(stu_code.code))
             WHERE t.movie_id = mst.movie_id AND stu.id = mst.studio_id
           );
 
