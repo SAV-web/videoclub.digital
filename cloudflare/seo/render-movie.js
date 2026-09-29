@@ -247,10 +247,10 @@ export function renderMovieHtml(movie, options = {}) {
       
       <!-- Ficha de Película con contrato de clases de la SPA -->
       <article class="movie-card is-quick-view" data-movie-id="${movie.id}">
-        <div class="flip-card-inner">
+        <div class="quick-view-inner">
 
-          <!-- COLUMNA IZQUIERDA EN DESKTOP / ARRIBA EN MÓVIL (FRONTCARD) -->
-          <div class="flip-card-front">
+          <!-- COLUMNA IZQUIERDA EN DESKTOP / ARRIBA EN MÓVIL (MEDIA) -->
+          <div class="quick-view-media">
             
             <!-- Contenedor del Póster -->
             <div class="poster-container">
@@ -342,8 +342,8 @@ export function renderMovieHtml(movie, options = {}) {
 
           </div>
 
-          <!-- COLUMNA DERECHA EN DESKTOP / ABAJO EN MÓVIL (FRONTCARD) -->
-          <div class="flip-card-back">
+          <!-- COLUMNA DERECHA EN DESKTOP / ABAJO EN MÓVIL (DETALLES) -->
+          <div class="quick-view-details">
             
             <!-- Duración, Episodios y Links Externos -->
             <div class="back-meta-header">

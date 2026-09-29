@@ -639,6 +639,14 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
 
     // Overlay sin desenfoque
     assert.ok(html.includes('backdrop-filter: none'), "El overlay no debe aplicar desenfoque al fondo");
+
+    // Estructura modal bicolumna alineada con el contrato de la SPA
+    assert.ok(html.includes('class="quick-view-inner"'), "Debe incluir quick-view-inner");
+    assert.ok(html.includes('class="quick-view-media"'), "Debe incluir quick-view-media");
+    assert.ok(html.includes('class="quick-view-details"'), "Debe incluir quick-view-details");
+    assert.ok(!html.includes('flip-card-inner'), "NO debe incluir flip-card-inner en modal de título");
+    assert.ok(!html.includes('flip-card-front'), "NO debe incluir flip-card-front en modal de título");
+    assert.ok(!html.includes('flip-card-back'), "NO debe incluir flip-card-back en modal de título");
   });
 
   test("Ficha SEO de título: bandera enlaza a /pais/:slug/ y estrellas/watchlist enlazan a la modal con filtro de director", async () => {
