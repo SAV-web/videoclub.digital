@@ -14,7 +14,7 @@
     "generate:vip-manifest": "node scripts/generate-vip-manifest.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "deploy:worker": "npm run prepare:worker && npx wrangler deploy",
-    "test": "node --test --test-concurrency=1 --test-reporter=spec tests/*.test.mjs"
+    "test": "node --test --test-reporter=spec tests/*.test.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
