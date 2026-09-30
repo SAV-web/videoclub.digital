@@ -356,15 +356,15 @@
   }
 
   .type-filter-toggle.type-filter--movies {
-    background-color: var(--color-accent) !important;
-    color: #fff !important;
-    border-color: transparent !important;
+    background-color: var(--color-accent);
+    color: #fff;
+    border-color: transparent;
   }
 
   .type-filter-toggle.type-filter--series {
-    background-color: var(--color-accent-exclude) !important;
-    color: #fff !important;
-    border-color: transparent !important;
+    background-color: var(--color-accent-exclude);
+    color: #fff;
+    border-color: transparent;
   }
 
   .type-filter-toggle .mobile-icon svg {
