@@ -144,12 +144,12 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
 * **Vulnerabilidad 4 — Inflación de Arrays y Parámetros (Input Size Inflation / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)):**
   - *Diagnóstico:* Los parámetros vectoriales `p_country_codes text[]`, `excluded_genres text[]` y `excluded_countries text[]` no poseían restricción de cardinalidad. Un cliente anónimo podía transmitir payloads JSON con miles de elementos, forzando a PostgreSQL a ejecutar bucles masivos de `unnest` y funciones de coste no despreciable (`plainto_tsquery('spanish', ...)`, `public.unaccent_immutable(...)`) por cada elemento, provocando saturación computacional. De igual modo, `search_term` carecía de cota de longitud máxima.
   - *Remediación (Cortocircuito Preventivo de Fase 1.3):*
-    Considerando que el dominio de la plataforma cuenta con ~25 géneros y <100 países, se definió un umbral estricto de 50 elementos y 100 caracteres para la búsqueda:
+    Considerando que la interfaz y el dominio de negocio manejan selecciones acotadas (un usuario rara vez excluye más de 2-4 taxonomías simultáneas), se definió un umbral estricto de 10 elementos por array y 100 caracteres para la búsqueda:
     ```sql
     -- FASE 1.3: VALIDACIÓN DE TAMAÑO MÁXIMO DE ARRAYS Y BÚSQUEDA (INPUT INFLATION DOS)
-    IF (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 50)
-       OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 50)
-       OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 50)
+    IF (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 10)
+       OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 10)
+       OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 10)
        OR (search_term IS NOT NULL AND length(search_term) > 100) THEN
         RETURN json_build_object('total', 0, 'items', '[]'::json);
     END IF;

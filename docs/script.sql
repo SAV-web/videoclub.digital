@@ -243,9 +243,9 @@ BEGIN
     -- FASE 1.3: VALIDACIÓN DE TAMAÑO MÁXIMO DE ARRAYS Y BÚSQUEDA (INPUT INFLATION DOS)
     -- Evita el consumo abusivo de CPU por desanidado (unnest), lematización lingüística (plainto_tsquery)
     -- o normalización (unaccent) de colecciones o cadenas sobredimensionadas.
-    IF (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 50)
-       OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 50)
-       OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 50)
+    IF (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 10)
+       OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 10)
+       OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 10)
        OR (search_term IS NOT NULL AND length(search_term) > 100) THEN
         RETURN json_build_object('total', 0, 'items', '[]'::json);
     END IF;
