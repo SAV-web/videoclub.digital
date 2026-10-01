@@ -316,5 +316,7 @@ BEGIN
 END;
 $$;
 
--- Permisos de ejecución
+-- Hardening y permisos de ejecución (Principio de Menor Privilegio)
+REVOKE EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) TO authenticated, service_role;
+

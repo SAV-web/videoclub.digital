@@ -3,11 +3,11 @@
 
 <head>
   <!-- === 0. SEGURIDAD Y PROTECCIÓN CLIENTE === -->
-  <!-- Content Security Policy (CSP) robusta adaptada al stack Supabase -->
+  <!-- Content Security Policy (CSP) adaptada al stack Supabase (Defensa en profundidad local y fallback) -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co; img-src 'self' data: https://wibygecgfczcvaqewleq.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://wibygecgfczcvaqewleq.supabase.co;" />
+    content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://*.supabase.co; object-src 'none'; base-uri 'self';" />
 
-  <!-- Evitar Clickjacking (Equivalente cliente a X-Frame-Options: DENY) -->
+  <!-- Evitar Clickjacking (Defensa en profundidad en cliente; gobernado autoritativamente en Edge vía X-Frame-Options: DENY y CSP frame-ancestors: 'none') -->
   <script>
     if (window.self !== window.top) {
       window.top.location = window.self.location;

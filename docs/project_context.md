@@ -34,13 +34,14 @@
   - Proxy perimetral de imágenes (`/posters/*` y `/vips/*`) con reescritura hacia Supabase Storage para evitar consumo de egress.
   - Negociación de contenido Markdown (`Accept: text/markdown` $\to$ `/llms.txt`) y cabeceras de descubrimiento para agentes de IA (`Link: </llms.txt>; rel="alternate"`). Documentado en `cloudflare/README.md`.
   - Endpoint de purga selectiva perimetral (`POST /internal/purge`) protegido estrictamente mediante variable de entorno secreta `PURGE_SECRET` (sin fallbacks hardcodeados en código; devuelve `500 Server misconfigured` si el secreto no está configurado).
+  - Inyección de cabeceras HTTP de seguridad simétricas (`applySecurityHeaders`): endurecimiento perimetral mediante `X-Frame-Options: DENY`, `Content-Security-Policy` con directiva `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Strict-Transport-Security` y `X-XSS-Protection: 0`, aplicado homogéneamente sobre la SPA, Edge SSR y páginas semánticas de error (documentado exhaustivamente en `docs/security.md`).
   - Fallback a `env.ASSETS.fetch(request)` para servir la SPA y recursos estáticos sin servidores externos.
 
 ### 2. Módulos Compartidos SSOT (`src/shared/`)
 
 - **`slugs.ts`**: Fuente Única de Verdad para slugs canónicos. Mapea y normaliza los 21 géneros canónicos oficiales (`GENRE_SLUG_MAP`), el catálogo oficial de países (`COUNTRY_SLUG_MAP`), estudios, colecciones y personas. La resolución de sinónimos temáticos y multilingües de búsqueda se delega dinámicamente a PostgreSQL (`genres.synonyms`).
 - **`constants.ts`**: Constantes globales compartidas, límites de años dinámicos y taxonomías.
-- **`formatters.ts`**: Funciones puras de formateo, puntuación y normalización de texto.
+- **`formatters.ts`**: Funciones puras de formateo, puntuación y normalización de texto. Incluye la función canónica de seguridad `sanitizeExternalUrl` para validar esquemas seguros (`^https?://`) y neutralizar vectores de inyección XSS (`javascript:`, `data:`) en hipervínculos externos de la UI y del Edge SSR.
 
 ### 3. Frontend TS (`src/js/`)
 
@@ -191,8 +192,9 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
   - **Compensación de Personas con Guiones (Fases 3.6 y 3.7)**: Al recibir nombres transformados a espacios desde el frontend (`slugToPersonQuery`), el SQL compensa mediante reconstrucción contra el índice `slug` y un fallback alfanumérico estricto (`regexp_replace(name_norm, '[^a-z0-9]', '', 'g')`), garantizando que nombres como "Daniel Day-Lewis" o "Jean-Luc Godard" casen siempre sin importar la pérdida del guion en URL.
 - **ETL Diferencial de Alto Rendimiento (`process_staging_data`)**: Pipeline transaccional con tabla temporal en memoria (`tmp_affected_staging`), cruce por clave primaria inmutable `id` (`ON CONFLICT (id) DO UPDATE`), admisión por `show IS TRUE` y **pre-agregación lineal $O(N_1 + N_2 + ...)$** que elimina la multiplicación por producto cartesiano en relaciones N:M.
 - **DataOps Quality Gate (`run_data_tests`)**: Suite declarativa inspirada en dbt ejecutada nativamente en PostgreSQL, integrada en GitHub Actions ([`.github/workflows/data-audit.yml`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/.github/workflows/data-audit.yml)) mediante [`scripts/run-data-tests.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/scripts/run-data-tests.mjs) (ejecución diaria programada a las 03:00 UTC y manual), desacoplada del pipeline de despliegue continuo de código para optimizar los tiempos de ciclo en CI.
-- **Seguridad (RLS & DCL)**: Row Level Security habilitado en todas las tablas. Lectura pública general; `user_movie_entries` protegida con política unificada `FOR ALL` al `auth.uid()`; tablas de staging restringidas exclusivamente a `service_role` mediante DCL (`REVOKE ALL`).
+- **Seguridad (RLS & DCL Hardening)**: Row Level Security habilitado en todas las tablas. Lectura pública general; `user_movie_entries` protegida con política unificada `FOR ALL` al `auth.uid()`; tablas de staging restringidas exclusivamente a `service_role` mediante DCL (`REVOKE ALL`). Hardening explícito en vistas de telemetría (`view_slow_queries`, `view_top_cpu_queries`) y funciones de auditoría (`run_data_tests`) revocando el acceso por defecto de `PUBLIC`/`anon` para evitar exfiltración de telemetría o abusos DoS vía RPC.
 - **`search_path` Seguro**: Fijado estrictamente en todas las funciones `SECURITY DEFINER` (`SET search_path = pg_catalog, public, extensions, pg_temp;`).
+- **Auditoría Forense y Mitigaciones**: Documentadas íntegramente en `docs/security.md`.
 
 ## ⚡ Patrones de Rendimiento y Arquitectura (Performance)
 

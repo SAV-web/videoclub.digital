@@ -1,4 +1,4 @@
-import { createElement, renderCountryFlag, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, formatModalDuration } from "../../utils.js";
+import { createElement, renderCountryFlag, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, formatModalDuration, sanitizeExternalUrl } from "../../utils.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
 import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES } from "../../constants.js";
 import { updateCardUI, initializeCard } from "../card/index.js";
@@ -249,11 +249,12 @@ export function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void
   }
 
   // Links Externos
-  const setupLink = (key: string, url: string | null | undefined) => {
+  const setupLink = (key: string, rawUrl: string | null | undefined) => {
     const el = nodes[`${key}-link`] as HTMLAnchorElement | null | undefined;
     if (!el) return;
-    if (url) {
-      el.href = url; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
+    const safeUrl = sanitizeExternalUrl(rawUrl);
+    if (safeUrl) {
+      el.href = safeUrl; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
     } else {
       el.removeAttribute('href'); el.classList.add('disabled'); el.removeAttribute("aria-label");
     }

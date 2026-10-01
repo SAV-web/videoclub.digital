@@ -305,6 +305,49 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     ); // guión aislado sin tocar
   });
 
+  test("sanitizeExternalUrl valida protocolos seguros (http/https) y bloquea vectores XSS (javascript:, data:)", () => {
+    // 1. URLs válidas
+    assert.equal(
+      sharedFormatters.sanitizeExternalUrl("https://www.justwatch.com/es/pelicula/matrix"),
+      "https://www.justwatch.com/es/pelicula/matrix",
+    );
+    assert.equal(
+      sharedFormatters.sanitizeExternalUrl("http://es.wikipedia.org/wiki/Matrix"),
+      "http://es.wikipedia.org/wiki/Matrix",
+    );
+    assert.equal(
+      sharedFormatters.sanitizeExternalUrl("  https://filmaffinity.com/es/film123.html  "),
+      "https://filmaffinity.com/es/film123.html",
+    );
+
+    // 2. Vectores de inyección XSS bloqueados
+    assert.equal(sharedFormatters.sanitizeExternalUrl("javascript:alert(1)"), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl("javascript:/*--></title></style></textarea></script>alert(1)"), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl("data:text/html,<script>alert(1)</script>"), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl("vbscript:msgbox(1)"), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl("file:///etc/passwd"), null);
+
+    // 3. URLs relativas, esquemas inválidos o valores vacíos
+    assert.equal(sharedFormatters.sanitizeExternalUrl("//attacker.com/evil"), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl("/local/path"), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl(""), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl("   "), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl(null), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl(undefined), null);
+
+    // 4. Paridad y exportación idéntica en SPA utilsModule y Edge edgeSeoModule
+    assert.equal(
+      utilsModule.sanitizeExternalUrl("https://videoclub.digital"),
+      "https://videoclub.digital/",
+    );
+    assert.equal(
+      edgeSeoModule.sanitizeExternalUrl("https://videoclub.digital"),
+      "https://videoclub.digital/",
+    );
+    assert.equal(utilsModule.sanitizeExternalUrl("javascript:void(0)"), null);
+    assert.equal(edgeSeoModule.sanitizeExternalUrl("javascript:void(0)"), null);
+  });
+
   test("Equivalencia SPA vs SEO en formateadores unificados", () => {
     // 1. isSeriesType y isMovieSeries
     assert.equal(

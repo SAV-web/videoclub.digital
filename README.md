@@ -119,6 +119,7 @@ VIDEOCLUB.DIGITAL/
     ├── contracts.md             # Especificación de contratos de datos, URLs y temas
     ├── data_contracts.md        # Disciplina DataOps y catálogo de aserciones PostgreSQL
     ├── data_tests.sql           # Suite nativa de pruebas de base de datos (run_data_tests)
+    ├── security.md              # Auditoría forense de seguridad, hardening perimetral y mitigaciones
     ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
     ├── script.sql               # Esquema SQL completo, funciones RPC e índices
     ├── schema.sql               # Esquema DDL de tablas y restricciones relacionales

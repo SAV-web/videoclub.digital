@@ -1184,6 +1184,45 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(taxHtml.includes("lazy-lqip"), "Tarjetas de película en taxonomías deben incluir clase 'lazy-lqip'");
     assert.ok(taxHtml.includes("background-image: url('data:image/webp;base64,samplethumbhashtaxonomy')"), "Tarjetas deben portar su thumbhash_st inline");
   });
+
+  test("Seguridad Simétrica: Cabeceras HTTP de endurecimiento (Clickjacking, CSP, HSTS, Sniffing) en SPA, SSR y Errores", async () => {
+    const urlsToTest = [
+      { url: "https://videoclub.digital/", type: "SPA Root" },
+      { url: "https://videoclub.digital/drama/", type: "SPA Subroute" },
+      { url: "https://videoclub.digital/titulo/chernobyl-2019/", type: "Edge SSR Título" },
+      { url: "https://videoclub.digital/genero/sci-fi/", type: "Edge SSR Taxonomía" },
+      { url: "https://videoclub.digital/christopher-nolan/", type: "Edge SSR Persona VIP" },
+      { url: "https://videoclub.digital/titulo/not-found/", type: "Error Response 404" },
+    ];
+
+    for (const { url, type } of urlsToTest) {
+      const req = new Request(url);
+      const res = await worker.fetch(req, {}, defaultCtx);
+
+      // 1. Anti-Clickjacking estricto
+      assert.equal(res.headers.get("X-Frame-Options"), "DENY", `${type} debe portar X-Frame-Options: DENY`);
+      assert.ok(res.headers.get("Content-Security-Policy")?.includes("frame-ancestors 'none'"), `${type} debe portar frame-ancestors 'none' en CSP`);
+
+      // 2. Content Security Policy homogénea
+      const csp = res.headers.get("Content-Security-Policy");
+      assert.ok(csp, `${type} debe portar Content-Security-Policy`);
+      assert.ok(csp.includes("default-src 'self'"), `${type} debe incluir default-src 'self'`);
+      assert.ok(csp.includes("object-src 'none'"), `${type} debe incluir object-src 'none'`);
+      assert.ok(csp.includes("base-uri 'self'"), `${type} debe incluir base-uri 'self'`);
+      assert.ok(csp.includes("https://*.supabase.co"), `${type} debe incluir *.supabase.co`);
+
+      // 3. MIME sniffing y transporte seguro
+      assert.equal(res.headers.get("X-Content-Type-Options"), "nosniff", `${type} debe portar nosniff`);
+      assert.equal(res.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin", `${type} debe portar Referrer-Policy`);
+      assert.ok(res.headers.get("Permissions-Policy")?.includes("camera=()"), `${type} debe restringir Permissions-Policy`);
+      assert.ok(res.headers.get("Strict-Transport-Security")?.includes("max-age=31536000"), `${type} debe portar HSTS`);
+      assert.equal(res.headers.get("X-XSS-Protection"), "0", `${type} debe portar X-XSS-Protection: 0`);
+    }
+
+    // 4. Assets estáticos portan nosniff
+    const assetRes = await worker.fetch(new Request("https://videoclub.digital/assets/test.css"), {}, defaultCtx);
+    assert.equal(assetRes.headers.get("X-Content-Type-Options"), "nosniff", "Assets estáticos deben portar nosniff");
+  });
 });
 
 

@@ -21,7 +21,8 @@ import {
   getPosterUrl,
   toSlug,
   genreToSlug,
-  STUDIO_DATA
+  STUDIO_DATA,
+  sanitizeExternalUrl
 } from './seo-types.js';
 
 const SQRT_MAX_VOTES = {
@@ -350,13 +351,13 @@ export function renderMovieHtml(movie, options = {}) {
               <div class="episode-duration-group">
                 ${episodesText ? `<span data-template="episodes">${escapeHtml(episodesText)}</span>` : ''}
                 ${durationText ? `<span data-template="duration">${escapeHtml(durationText)}</span>` : ''}
-                ${movie.justwatch ? `
-                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(movie.justwatch)}" title="Ver en JustWatch" data-template="justwatch-link">
+                ${sanitizeExternalUrl(movie.justwatch) ? `
+                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(sanitizeExternalUrl(movie.justwatch))}" title="Ver en JustWatch" data-template="justwatch-link">
                     <svg class="rating-icon" fill="#9A1485"><use href="${baseUrl}sprite.svg#icon-justwatch"></use></svg>
                   </a>
                 ` : ''}
-                ${movie.wikipedia ? `
-                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(movie.wikipedia)}" title="Ver en Wikipedia" data-template="wikipedia-link">
+                ${sanitizeExternalUrl(movie.wikipedia) ? `
+                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(sanitizeExternalUrl(movie.wikipedia))}" title="Ver en Wikipedia" data-template="wikipedia-link">
                     <svg class="rating-icon" fill="#B3404A"><use href="${baseUrl}sprite.svg#icon-wikipedia"></use></svg>
                   </a>
                 ` : ''}
@@ -367,7 +368,7 @@ export function renderMovieHtml(movie, options = {}) {
             <div class="ratings-container">
               ${movie.fa_rating ? `
                 <div class="rating-line">
-                  <a target="_blank" rel="noopener noreferrer" class="rating-left" href="${escapeAttr(movie.fa_id || '#')}" data-template="fa-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-left" ${sanitizeExternalUrl(movie.fa_id) ? `href="${escapeAttr(sanitizeExternalUrl(movie.fa_id))}"` : ''} data-template="fa-link">
                     <svg class="rating-icon"><use href="${baseUrl}sprite.svg#icon-filmaffinity"></use></svg>
                     <span data-template="fa-rating">${movie.fa_rating.toFixed(1)}</span>
                   </a>
@@ -380,7 +381,7 @@ export function renderMovieHtml(movie, options = {}) {
 
               ${movie.imdb_rating ? `
                 <div class="rating-line">
-                  <a target="_blank" rel="noopener noreferrer" class="rating-left" href="${escapeAttr(movie.imdb_id || '#')}" data-template="imdb-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-left" ${sanitizeExternalUrl(movie.imdb_id) ? `href="${escapeAttr(sanitizeExternalUrl(movie.imdb_id))}"` : ''} data-template="imdb-link">
                     <svg class="rating-icon" fill="#F5C618"><use href="${baseUrl}sprite.svg#icon-imdb"></use></svg>
                     <span data-template="imdb-rating">${movie.imdb_rating.toFixed(1)}</span>
                   </a>

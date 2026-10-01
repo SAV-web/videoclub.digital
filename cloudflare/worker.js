@@ -40,6 +40,42 @@ function resolveEnvironment(env) {
   return { supabaseUrl, supabaseAnonKey, storageUrl, purgeSecret };
 }
 
+/**
+ * Inyecta un conjunto simétrico y estricto de cabeceras HTTP de seguridad
+ * en todas las respuestas HTML navegables (tanto SPA como SSR en el Edge).
+ * 
+ * Mitiga:
+ * - Clickjacking (X-Frame-Options: DENY + CSP frame-ancestors 'none')
+ * - Inyección y XSS (Content-Security-Policy con dominios controlados, object-src 'none', base-uri 'self')
+ * - MIME Confusion (X-Content-Type-Options: nosniff)
+ * - Fuga de privacidad en enlaces (Referrer-Policy: strict-origin-when-cross-origin)
+ * - Abuso de APIs de dispositivos (Permissions-Policy restrictiva)
+ * - Ataques Man-in-the-Middle (Strict-Transport-Security HSTS)
+ */
+export function applySecurityHeaders(headers) {
+  headers.set("X-Frame-Options", "DENY");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  headers.set("X-XSS-Protection", "0");
+
+  const cspDirectives = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.supabase.co https://videoclub.digital",
+    "font-src 'self' data: https://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'"
+  ];
+  headers.set("Content-Security-Policy", cspDirectives.join("; "));
+
+  return headers;
+}
+
 const RESERVED_PREFIXES = [
   "/api/",
   "/assets/",
@@ -214,6 +250,7 @@ export default {
             "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
             "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
           });
+          applySecurityHeaders(responseHeaders);
           const response = new Response(html, {
             status: 200,
             headers: responseHeaders
@@ -284,13 +321,15 @@ export default {
             }
 
             const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
+            const responseHeaders = new Headers({
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+              "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+            });
+            applySecurityHeaders(responseHeaders);
             const response = new Response(html, {
               status: 200,
-              headers: {
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-              }
+              headers: responseHeaders
             });
             ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
             return response;
@@ -418,13 +457,15 @@ export default {
               baseUrl: "/",
               storageUrl
             });
+            const responseHeaders = new Headers({
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+              "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+            });
+            applySecurityHeaders(responseHeaders);
             const response = new Response(html, {
               status: 200,
-              headers: {
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-              }
+              headers: responseHeaders
             });
 
             ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
@@ -472,11 +513,13 @@ export default {
     // 7.A Assets versionados con hash (/assets/*) y /seo-card*.css -> Caché inmutable (1 año)
     if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/seo-card")) {
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      headers.set("X-Content-Type-Options", "nosniff");
     }
-    // 7.B Respuestas HTML / Rutas SPA -> Revalidación y cabecera Link para Agentes
+    // 7.B Respuestas HTML / Rutas SPA -> Revalidación y cabeceras de seguridad simétricas
     else if (headers.get("Content-Type")?.includes("text/html") || !url.pathname.includes(".")) {
       headers.set("Cache-Control", "public, max-age=0, must-revalidate");
       headers.set("Link", '</llms.txt>; rel="alternate"; type="text/markdown"');
+      applySecurityHeaders(headers);
     }
 
     return new Response(response.body, {
@@ -521,12 +564,15 @@ function createErrorResponse(status, message, siteOrigin = "https://videoclub.di
 </body>
 </html>`;
 
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": isServer ? "no-store, no-cache, must-revalidate" : "public, max-age=300, must-revalidate"
+  });
+  applySecurityHeaders(headers);
+
   return new Response(html, {
     status,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": isServer ? "no-store, no-cache, must-revalidate" : "public, max-age=300, must-revalidate"
-    }
+    headers
   });
 }
 

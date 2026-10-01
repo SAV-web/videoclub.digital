@@ -1325,7 +1325,9 @@ FROM extensions.pg_stat_statements
 ORDER BY total_exec_time DESC
 LIMIT 10;
 
--- 9.3. Permisos de Visualización
+-- 9.3. Hardening y Permisos de Visualización (Principio de Menor Privilegio)
+REVOKE ALL ON public.view_slow_queries FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON public.view_top_cpu_queries FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.view_slow_queries TO service_role;
 GRANT SELECT ON public.view_top_cpu_queries TO service_role;
 

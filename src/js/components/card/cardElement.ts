@@ -1,5 +1,5 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, FILTER_CONFIG } from "../../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, getPosterUrl, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, getPosterUrl, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug, sanitizeExternalUrl } from "../../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../../state.js";
 import { saveLocalEntry } from "../../localStore.js";
 import { scheduleSync } from "../../syncManager.js";
@@ -701,11 +701,12 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
   }
 
   // Links Externos
-  const setupLink = (key: string, url: string | null | undefined) => {
+  const setupLink = (key: string, rawUrl: string | null | undefined) => {
     const el = back.querySelector(`[data-template="${key}-link"]`) as HTMLAnchorElement | null;
     if (!el) return;
-    if (url) {
-      el.href = url;
+    const safeUrl = sanitizeExternalUrl(rawUrl);
+    if (safeUrl) {
+      el.href = safeUrl;
       el.classList.remove('disabled');
       el.setAttribute("aria-label", `Ver en ${key}`);
     } else {

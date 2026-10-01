@@ -304,3 +304,25 @@ export function getPosterUrl(movie) {
   if (!movie || !movie.slug) return '';
   return `${POSTER_BASE_URL}${movie.slug}.webp`;
 }
+
+/**
+ * Sanitiza una URL externa asegurando que utilice exclusivamente un protocolo seguro (HTTP o HTTPS).
+ * Bloquea esquemas peligrosos como `javascript:`, `data:`, `vbscript:`, etc.
+ */
+export function sanitizeExternalUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.href;
+    }
+  } catch (_) {
+    // Si no es una URL absoluta válida con protocolo, se descarta
+  }
+
+  return null;
+}
+

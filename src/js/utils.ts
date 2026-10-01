@@ -30,6 +30,7 @@ import {
   calculateAverageStars,
   calculateWeightedAverageRating,
   computePersonAgeInfo,
+  sanitizeExternalUrl,
 } from "../shared/formatters.js";
 import type { PersonAgeInfo } from "../shared/formatters.js";
 
@@ -49,6 +50,7 @@ export {
   calculateAverageStars,
   calculateWeightedAverageRating,
   computePersonAgeInfo,
+  sanitizeExternalUrl,
 };
 export type { PersonAgeInfo };
 

@@ -389,3 +389,28 @@ export function computePersonAgeInfo(
 
   return { bYear, dYear, datesStr, ageStr };
 }
+
+/**
+ * Sanitiza una URL externa asegurando que utilice exclusivamente un protocolo seguro (HTTP o HTTPS).
+ * Bloquea esquemas peligrosos como `javascript:`, `data:`, `vbscript:`, etc., previniendo
+ * vulnerabilidades de DOM XSS o Stored XSS a través de hipervínculos externos en la UI o SSR.
+ * 
+ * Si la URL no es válida o utiliza un protocolo no permitido, devuelve `null`.
+ */
+export function sanitizeExternalUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      return parsed.href;
+    }
+  } catch (_) {
+    // Si no es una URL absoluta válida con protocolo, se descarta por seguridad
+  }
+
+  return null;
+}
+
