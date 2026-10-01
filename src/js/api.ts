@@ -210,6 +210,11 @@ export function fetchMovies(
       if (res.aborted && signal && !signal.aborted) {
         return fetchMovies(activeFilters, currentPage, pageSize, signal, requestCount, explicitOffset);
       }
+      // Si la petición previa en vuelo se resolvió sin conteo (total < 0) pero el llamador actual
+      // requiere explícitamente el conteo real, lanzamos la consulta con conteo:
+      if (normRequestCount && res.total < 0 && !res.aborted && (!signal || !signal.aborted)) {
+        return fetchMovies(activeFilters, currentPage, pageSize, signal, true, explicitOffset);
+      }
       return res;
     });
   }

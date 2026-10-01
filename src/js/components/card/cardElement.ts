@@ -541,21 +541,33 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
   img.loading = isPriority ? "eager" : "lazy";
 
   if (isPriority) {
+    const handleLoad = () => {
+      img.classList.add(CSS_CLASSES.LOADED);
+      img.onload = null;
+      img.onerror = null;
+    };
+    img.onload = handleLoad;
+    img.onerror = handleLoad;
     img.src = posterUrl;
     if (img.complete) {
-      img.classList.add(CSS_CLASSES.LOADED);
-    } else {
-      img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
-      img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+      handleLoad();
     }
   } else if (lazyLoadObserver) {
     img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     img.dataset.src = posterUrl;
     lazyLoadObserver.observe(img);
   } else {
+    const handleLoad = () => {
+      img.classList.add(CSS_CLASSES.LOADED);
+      img.onload = null;
+      img.onerror = null;
+    };
+    img.onload = handleLoad;
+    img.onerror = handleLoad;
     img.src = posterUrl;
-    img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
-    img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+    if (img.complete) {
+      handleLoad();
+    }
   }
 
 
@@ -766,42 +778,41 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
 }
 
 export function applyLqipImage(img: HTMLImageElement, thumbhashSrc: string | null | undefined, fullUrl: string): void {
+  // 1. Uniformidad visual LQIP: background-image con ThumbHash inmediato
   if (thumbhashSrc) {
-    img.src = thumbhashSrc;
-    img.classList.remove(CSS_CLASSES.LOADED);
+    img.style.backgroundImage = `url('${thumbhashSrc}')`;
+    img.style.backgroundSize = "cover";
+    img.style.backgroundPosition = "center";
     img.classList.add(CSS_CLASSES.LAZY_LQIP);
-
-    const highResImg = new Image();
-    highResImg.onload = () => {
-      img.src = fullUrl;
-      requestAnimationFrame(() => {
-        img.classList.add(CSS_CLASSES.LOADED);
-      });
-    };
-    highResImg.onerror = () => {
-      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-      img.classList.add(CSS_CLASSES.LOADED);
-    };
-    highResImg.src = fullUrl;
   } else {
-    img.classList.remove(CSS_CLASSES.LOADED);
-    img.classList.add(CSS_CLASSES.LAZY_LQIP);
+    img.style.backgroundImage = "";
+    img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+  }
 
-    img.onload = () => {
-      requestAnimationFrame(() => {
-        img.classList.add(CSS_CLASSES.LOADED);
-      });
-    };
-    img.onerror = () => {
-      img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-      img.classList.add(CSS_CLASSES.LOADED);
-      img.onerror = null;
-    };
+  img.classList.remove(CSS_CLASSES.LOADED);
 
-    img.src = fullUrl;
-    if (img.complete) {
-      img.classList.add(CSS_CLASSES.LOADED);
-    }
+  const handleLoad = () => {
+    img.classList.add(CSS_CLASSES.LOADED);
+    img.onload = null;
+    img.onerror = null;
+  };
+
+  const handleError = () => {
+    img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+    img.classList.add(CSS_CLASSES.LOADED);
+    img.onload = null;
+    img.onerror = null;
+  };
+
+  img.onload = handleLoad;
+  img.onerror = handleError;
+
+  // 2. Asignación directa de src: el navegador utiliza inmediatamente sus atributos nativos
+  // (fetchpriority="high", loading="eager", decoding="async") sin intermediarios new Image().
+  img.src = fullUrl;
+
+  if (img.complete) {
+    handleLoad();
   }
 }
 

@@ -267,17 +267,26 @@ export const triggerPopAnimation = (element: HTMLElement | null): void => {
 
 // Avisa al navegador para que cargue la primera imagen antes que nada (Mejora el LCP)
 export function preloadLcpImage(target: Partial<MappedMovie> | string | null | undefined): void {
-  if (!target) return;
+  if (!target || typeof document === "undefined") return;
   const imageUrl = typeof target === "string"
     ? target
     : (target.posterUrl || (target.slug ? getPosterUrl(target.slug) : undefined));
   if (!imageUrl) return;
 
-  if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) return;
+  const existingLink = document.querySelector<HTMLLinkElement>('link[data-lcp-preload="true"]');
+  if (existingLink) {
+    if (existingLink.href === imageUrl) return;
+    existingLink.remove();
+  } else if (document.querySelector(`link[rel="preload"][href="${imageUrl}"]`)) {
+    return;
+  }
 
   const link = document.createElement("link");
-  Object.assign(link, { rel: "preload", as: "image", href: imageUrl });
-  link.setAttribute("fetchpriority", "high"); 
+  link.rel = "preload";
+  link.as = "image";
+  link.href = imageUrl;
+  link.setAttribute("fetchpriority", "high");
+  link.dataset.lcpPreload = "true";
   document.head.appendChild(link);
 }
 

@@ -212,6 +212,12 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
    Uso intensivo de la propiedad `contain` y `will-change: transform` para evitar que las animaciones locales provoquen recálculos globales en la pantalla.
 6. **Gestión de Ciclo de Vida y Limpieza de Memoria (Teardown):**
    Todos los módulos (`card/`, `modal.ts`, `sidebar/`, `main.ts`) implementan funciones de desmontaje explícito (`disposeCardEvents`, `disposeModalEvents`, `disposeSidebarEvents`, `disposeMainEvents`, `disposeApp`) y un bus de eventos global con desuscripción limpia (`appEvents.off`, `appEvents.clearAll`) para prevenir _memory leaks_ y listeners huérfanos.
+7. **Desacoplamiento Crítico de Conteo (Pintar Primero → Contar Después):**
+   La primera carga de catálogo solicita `get_count = false` para no bloquear el First/Largest Contentful Paint esperando el cálculo secuencial del `COUNT(*)` en PostgreSQL. El grid se pinta inmediatamente y el total se obtiene en un camino secundario post-render, actualizando paginación y contadores de forma atómica (`applyResolvedTotal`) con cero flicker y cero reconstrucción de tarjetas.
+8. **Navegación Fluida sin Parpadeo de Skeletons (*In-Flight Stale Grid*):**
+   Al cambiar de página o filtro con contenido ya visible, se conserva temporalmente el grid anterior con estado visual de carga discreto (`.grid-container.is-fetching`, opacidad 0.6 y `aria-busy="true"`), sustituyendo el DOM de una sola vez al llegar la nueva respuesta y reservando el esqueleto únicamente para la primera carga o contenedores vacíos.
+9. **Camino LCP Optimizado y Gestión de Preloads:**
+   Garantía de que exactamente una sola imagen en pantalla (tarjeta VIP en posición 0 o primera película) ostente `fetchpriority="high"` y `loading="eager"`. Eliminación de instancias redundantes de `new Image()` en `applyLqipImage`, unificando el ThumbHash como `backgroundImage` directo y conectando el `src` al elemento `<img>` del DOM. Reutilización higiénica de un único elemento `<link data-lcp-preload="true">` en `<head>` para evitar preloads huérfanos acumulativos.
 
 ## ⏱️ Protocolo de Eficiencia en Desarrollo y Validación (Cost & Latency Optimization)
 
