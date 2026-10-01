@@ -114,6 +114,7 @@ VIDEOCLUB.DIGITAL/
 │   ├── profile-stats.test.mjs   # Estadísticas de usuario y reconciliación de login
 │   └── *.test.mjs               # Pruebas de api, state, rating, seo, utils, formatters
 └── docs/                        # Documentación técnica y de arquitectura
+    ├── architecture/            # Diagramas interactivos Archify (Global, DataOps, Local-First, SPA Modular)
     ├── project_context.md       # Contexto global y mapa del proyecto
     ├── contracts.md             # Especificación de contratos de datos, URLs y temas
     ├── data_contracts.md        # Disciplina DataOps y catálogo de aserciones PostgreSQL

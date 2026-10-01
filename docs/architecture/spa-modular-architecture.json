@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "VIDEOCLUB.DIGITAL - Arquitectura Modular SPA y Ciclo de Vida",
+    "output": "docs/architecture/spa-modular-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-spa",
+        "label": "Flujo Global SPA",
+        "focus": ["main", "router", "state", "render_engine", "card_mod", "modal_mod"],
+        "note": "Orquestación centralizada, flujo reactivo y componentes desacoplados."
+      },
+      {
+        "id": "ui-submodules",
+        "label": "Descomposición de Componentes",
+        "focus": ["card_mod", "card_subs", "modal_mod", "modal_subs"],
+        "note": "Aislamiento de responsabilidades: renderizado, navegación, gestos y eventos."
+      },
+      {
+        "id": "teardown-lifecycle",
+        "label": "Ciclo de Vida y Local-First",
+        "focus": ["main", "events", "local_store", "shared_ssot"],
+        "note": "Desmontaje explícito de escuchadores y persistencia IndexedDB."
+      }
+    ]
+  },
+  "components": [
+    { "id": "router", "type": "frontend", "label": "Router & URL", "sublabel": "router.ts", "pos": [40, 110], "size": [130, 60], "tag": "Pretty Paths" },
+    { "id": "main", "type": "frontend", "label": "Director SPA", "sublabel": "main.ts", "pos": [40, 270], "size": [130, 64], "tag": "Wiring Hub" },
+    { "id": "events", "type": "messagebus", "label": "Bus de Eventos", "sublabel": "appEvents", "pos": [40, 440], "size": [130, 60], "tag": "Pub/Sub" },
+    { "id": "state", "type": "frontend", "label": "Estado Global", "sublabel": "state.ts", "pos": [270, 110], "size": [130, 60], "tag": "SSOT State" },
+    { "id": "render_engine", "type": "frontend", "label": "Motor Catálogo", "sublabel": "renderEngine.ts", "pos": [270, 270], "size": [130, 64], "tag": "Grid & SEO" },
+    { "id": "api", "type": "backend", "label": "Capa de Datos", "sublabel": "api.ts", "pos": [270, 440], "size": [130, 60], "tag": "LRU + Dedup" },
+    { "id": "card_mod", "type": "frontend", "label": "Módulo Card", "sublabel": "card/index.ts", "pos": [510, 110], "size": [140, 60], "tag": "3D Catalog" },
+    { "id": "modal_mod", "type": "frontend", "label": "Quick View Modal", "sublabel": "modal/modal.ts", "pos": [510, 270], "size": [140, 64], "tag": "Sheet / Dual" },
+    { "id": "local_store", "type": "database", "label": "Almacén Local", "sublabel": "localStore.ts", "pos": [510, 440], "size": [140, 60], "tag": "IndexedDB" },
+    { "id": "card_subs", "type": "frontend", "label": "Submódulos Card", "sublabel": "element · lifecycle", "pos": [760, 110], "size": [140, 60], "tag": "Lazy Getters" },
+    { "id": "modal_subs", "type": "frontend", "label": "Submódulos Modal", "sublabel": "render · nav · gestures", "pos": [760, 270], "size": [140, 64], "tag": "Events & DOM" },
+    { "id": "shared_ssot", "type": "backend", "label": "SSOT Compartido", "sublabel": "slugs · constants", "pos": [760, 440], "size": [140, 60], "tag": "Rules & Slugs" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Orquestación y Enrutamiento", "wraps": ["router", "main", "events"] },
+    { "kind": "region", "label": "Núcleo Reactivo & Datos", "wraps": ["state", "render_engine", "api"] },
+    { "kind": "region", "label": "Subsistemas UI & Local-First", "wraps": ["card_mod", "modal_mod", "local_store"] },
+    { "kind": "region", "label": "Submódulos Especializados & SSOT", "wraps": ["card_subs", "modal_subs", "shared_ssot"] }
+  ],
+  "connections": [
+    { "id": "router-to-state", "from": "router", "to": "state", "label": "url sync", "variant": "emphasis" },
+    { "id": "main-to-router", "from": "main", "to": "router", "fromSide": "top", "toSide": "bottom" },
+    { "id": "main-to-events", "from": "main", "to": "events", "fromSide": "bottom", "toSide": "top" },
+    { "id": "state-to-render", "from": "state", "to": "render_engine", "fromSide": "bottom", "toSide": "top" },
+    { "id": "render-to-api", "from": "render_engine", "to": "api", "fromSide": "bottom", "toSide": "top" },
+    { "id": "render-to-card", "from": "render_engine", "to": "card_mod", "label": "batch render", "variant": "emphasis" },
+    { "id": "card-to-modal", "from": "card_mod", "to": "modal_mod", "fromSide": "bottom", "toSide": "top" },
+    { "id": "card-to-subs", "from": "card_mod", "to": "card_subs", "label": "lazy DOM", "variant": "dashed" },
+    { "id": "modal-to-subs", "from": "modal_mod", "to": "modal_subs", "label": "delegated", "variant": "dashed" },
+    { "id": "modal-to-store", "from": "modal_mod", "to": "local_store", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-to-store", "from": "api", "to": "local_store", "label": "sync cache", "variant": "dashed" },
+    { "id": "store-to-ssot", "from": "local_store", "to": "shared_ssot", "label": "SSOT contracts", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Descomposición Modular UI",
+      "items": [
+        "Modal y Card desacoplados en submódulos especializados (render, navigation, gestures, events)",
+        "Aislamiento estructural total: 'flip-card-*' para tarjetas de catálogo y 'quick-view-*' para modal",
+        "Plantillas resueltas bajo demanda con Lazy Getters para tolerancia a arranques en frío"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Ciclo de Vida y Teardown Limpio",
+      "items": [
+        "Funciones de desmontaje explícito ('disposeApp', 'disposeCardEvents', 'disposeModalEvents')",
+        "Desuscripción atómica en el bus global 'appEvents' garantizando cero fugas de memoria",
+        "Monitor pasivo de scroll desacoplado con requestAnimationFrame para 60-120 FPS estables"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Sincronización Local-First y SSOT",
+      "items": [
+        "Persistencia local inmediata en IndexedDB ('videoclub_local_db') con marcas synced/dirty/deleted",
+        "Resolución determinista Last-Write-Wins (LWW) en reconciliación con Supabase",
+        "Fuente única de verdad en 'src/shared/' compartida con el Edge Worker de Cloudflare"
+      ]
+    }
+  ]
+}

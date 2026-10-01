@@ -58,7 +58,7 @@
       "title": "Optimismo en UI y Resiliencia",
       "items": [
         "Las valoraciones y cambios de Watchlist responden al instante en pantalla sin latencia de red",
-        "Si no hay red, la mutación se almacena en IndexedDB ('videoclub_offline_db')",
+        "Si no hay red, la mutación se almacena en IndexedDB ('videoclub_local_db' / 'user_entries')",
         "La interfaz actualiza badges y estados locales sin bloquear en ningún momento al usuario"
       ]
     },

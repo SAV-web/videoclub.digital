@@ -37,16 +37,16 @@
   ],
   "nodes": [
     { "id": "db_catalog", "type": "database", "label": "Supabase DB", "sublabel": "Catálogo SSOT", "stage": 0, "row": 1, "tag": "Postgres" },
-    { "id": "contract_tests", "type": "security", "label": "Data Contracts", "sublabel": "node --test suite", "stage": 1, "row": 1, "tag": "DataOps" },
-    { "id": "gen_vip", "type": "backend", "label": "VIP Manifest", "sublabel": "generate-vip.mjs", "stage": 2, "row": 0, "tag": "JSON" },
+    { "id": "contract_tests", "type": "security", "label": "Data Contracts", "sublabel": "run_data_tests SQL", "stage": 1, "row": 1, "tag": "DataOps" },
+    { "id": "gen_vip", "type": "backend", "label": "VIP Manifest", "sublabel": "generate-vip-manifest", "stage": 2, "row": 0, "tag": "ESM Set" },
     { "id": "gen_sitemap", "type": "backend", "label": "Sitemaps SEO", "sublabel": "generate-sitemap", "stage": 2, "row": 1, "tag": "XML" },
     { "id": "gen_llms", "type": "backend", "label": "LLMs Context", "sublabel": "generate-llms.mjs", "stage": 2, "row": 2, "tag": "AI/TXT" },
     { "id": "build_worker", "type": "cloud", "label": "Worker Bundle", "sublabel": "esbuild ESM", "stage": 3, "row": 0, "tag": "ESM" },
     { "id": "build_seo_css", "type": "frontend", "label": "Critical CSS", "sublabel": "build-seo-css.mjs", "stage": 3, "row": 1, "tag": "SSR Head" },
     { "id": "build_spa", "type": "frontend", "label": "Vite SPA Build", "sublabel": "Rollup chunks", "stage": 3, "row": 2, "tag": "Assets" },
     { "id": "cf_edge", "type": "cloud", "label": "Cloudflare Edge", "sublabel": "Worker Runtime", "stage": 4, "row": 0, "tag": "Serverless" },
-    { "id": "cdn_cache", "type": "cloud", "label": "Global CDN", "sublabel": "Edge Cache & HTML", "stage": 4, "row": 1, "tag": "Edge KV" },
-    { "id": "bot_client", "type": "external", "label": "Bots y Usuarios", "sublabel": "Googlebot / Navegador", "stage": 4, "row": 2, "tag": "200 OK" }
+    { "id": "cdn_cache", "type": "cloud", "label": "Global CDN", "sublabel": "Cache API & Assets", "stage": 4, "row": 1, "tag": "Cache API" },
+    { "id": "bot_client", "type": "external", "label": "Clientes y Bots", "sublabel": "Googlebot / Navegador", "stage": 4, "row": 2, "tag": "200 OK" }
   ],
   "flows": [
     { "id": "f_cat_qa", "from": "db_catalog", "to": "contract_tests", "label": "schema facts", "classification": "database", "variant": "emphasis", "route": "straight", "labelAt": [207, 258] },
@@ -54,7 +54,7 @@
     { "id": "f_qa_site", "from": "contract_tests", "to": "gen_sitemap", "label": "metadata slugs", "classification": "DataOps audit", "variant": "default", "route": "straight", "labelAt": [422, 258] },
     { "id": "f_qa_llms", "from": "contract_tests", "to": "gen_llms", "label": "catalog dump", "classification": "DataOps audit", "variant": "default", "fromSide": "bottom", "toSide": "left", "via": [[315, 430], [440, 430], [440, 385]], "labelAt": [380, 442] },
     { "id": "f_vip_work", "from": "gen_vip", "to": "build_worker", "label": "vip manifest", "classification": "manifest", "variant": "emphasis", "route": "straight", "labelAt": [637, 144] },
-    { "id": "f_site_css", "from": "gen_sitemap", "to": "build_seo_css", "label": "sitemap paths", "classification": "routes", "variant": "default", "route": "straight", "labelAt": [637, 258] },
+    { "id": "f_site_css", "from": "gen_sitemap", "to": "build_seo_css", "label": "prepare sync", "classification": "routes", "variant": "default", "route": "straight", "labelAt": [637, 258] },
     { "id": "f_llms_spa", "from": "gen_llms", "to": "build_spa", "label": "llms.txt", "classification": "context", "variant": "dashed", "route": "straight", "labelAt": [637, 372] },
     { "id": "f_work_cf", "from": "build_worker", "to": "cf_edge", "label": "esm bundle", "classification": "deploy bundle", "variant": "emphasis", "route": "straight", "labelAt": [848, 114] },
     { "id": "f_css_cf", "from": "build_seo_css", "to": "cf_edge", "label": "critical css", "classification": "inlined css", "variant": "default", "fromSide": "right", "toSide": "left", "via": [[870, 271], [870, 157]], "labelAt": [880, 214] },
@@ -64,29 +64,29 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "DataOps y Contratos de Esquema",
+      "title": "DataOps y Calidad de Datos (PostgreSQL)",
       "items": [
-        "Las pruebas unitarias y de integración (`node --test`) verifican la consistencia del catálogo",
-        "Se asegura que todas las entidades (películas, directores, actores) cumplan el contrato antes de compilar",
-        "Evita que cambios de esquema o datos corruptos se propaguen a producción"
+        "Auditoría declarativa nativa en PostgreSQL mediante la función 'run_data_tests' (run-data-tests.mjs --strict)",
+        "Workflow desacoplado en GitHub Actions ('data-audit.yml') con ejecución programada diaria a las 03:00 UTC",
+        "Aserciones de integridad referencial, paridad de slugs, directores/actores VIP y métricas consolidadas"
       ]
     },
     {
       "dot": "cyan",
       "title": "Generación de Artefactos de Alto Rendimiento",
       "items": [
-        "El script `generate-vip-manifest.mjs` precalcula las páginas más visitadas en un objeto JSON en memoria",
-        "`build-seo-css.mjs` aísla las reglas de estilo críticas para inyección inline en SSR",
-        "`generate-llms.mjs` y `generate-sitemap.mjs` aseguran indexación máxima por motores y agentes IA"
+        "El script 'generate-vip-manifest.mjs' genera un Set en memoria ('vip-manifest.js') para descarte O(1) en Edge",
+        "'build-seo-css.mjs' compila y minifica el CSS perimetral unificado para inyección síncrona en el <head>",
+        "'generate-llms.mjs' y 'generate-sitemap.mjs' aseguran indexación canónica para agentes IA y rastreadores"
       ]
     },
     {
       "dot": "rose",
       "title": "Distribución Edge y Cache Serverless",
       "items": [
-        "Cloudflare Worker sirve respuestas renderizadas en <50ms a nivel global",
-        "Los bots reciben HTML enriquecido con microdatos semánticos (Schema.org / JSON-LD)",
-        "Los usuarios reciben la SPA instantáneamente con hidratación limpia y sin bloqueo"
+        "Cloudflare Worker sirve respuestas renderizadas en <50ms a nivel global con Edge SSR fail-closed",
+        "Caché perimetral mediante Cloudflare Cache API (caches.default) y cabeceras 'Cache-Control: immutable'",
+        "Entrega nativa de la SPA e hidratación reactiva desacoplada del hilo principal a 60-120 FPS"
       ]
     }
   ]
