@@ -305,29 +305,33 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     ); // guión aislado sin tocar
   });
 
-  test("sanitizeExternalUrl valida protocolos seguros (http/https) y bloquea vectores XSS (javascript:, data:)", () => {
-    // 1. URLs válidas
+  test("sanitizeExternalUrl valida protocolo seguro exclusivo (https://) y bloquea http://, vectores XSS y esquemas no seguros", () => {
+    // 1. URLs válidas estrictamente HTTPS
     assert.equal(
       sharedFormatters.sanitizeExternalUrl("https://www.justwatch.com/es/pelicula/matrix"),
       "https://www.justwatch.com/es/pelicula/matrix",
     );
     assert.equal(
-      sharedFormatters.sanitizeExternalUrl("http://es.wikipedia.org/wiki/Matrix"),
-      "http://es.wikipedia.org/wiki/Matrix",
+      sharedFormatters.sanitizeExternalUrl("https://es.wikipedia.org/wiki/Matrix"),
+      "https://es.wikipedia.org/wiki/Matrix",
     );
     assert.equal(
       sharedFormatters.sanitizeExternalUrl("  https://filmaffinity.com/es/film123.html  "),
       "https://filmaffinity.com/es/film123.html",
     );
 
-    // 2. Vectores de inyección XSS bloqueados
+    // 2. Protocolo HTTP inseguro explícitamente rechazado
+    assert.equal(sharedFormatters.sanitizeExternalUrl("http://es.wikipedia.org/wiki/Matrix"), null);
+    assert.equal(sharedFormatters.sanitizeExternalUrl("http://insecure-site.com"), null);
+
+    // 3. Vectores de inyección XSS bloqueados
     assert.equal(sharedFormatters.sanitizeExternalUrl("javascript:alert(1)"), null);
     assert.equal(sharedFormatters.sanitizeExternalUrl("javascript:/*--></title></style></textarea></script>alert(1)"), null);
     assert.equal(sharedFormatters.sanitizeExternalUrl("data:text/html,<script>alert(1)</script>"), null);
     assert.equal(sharedFormatters.sanitizeExternalUrl("vbscript:msgbox(1)"), null);
     assert.equal(sharedFormatters.sanitizeExternalUrl("file:///etc/passwd"), null);
 
-    // 3. URLs relativas, esquemas inválidos o valores vacíos
+    // 4. URLs relativas, esquemas inválidos o valores vacíos
     assert.equal(sharedFormatters.sanitizeExternalUrl("//attacker.com/evil"), null);
     assert.equal(sharedFormatters.sanitizeExternalUrl("/local/path"), null);
     assert.equal(sharedFormatters.sanitizeExternalUrl(""), null);
@@ -335,7 +339,7 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.sanitizeExternalUrl(null), null);
     assert.equal(sharedFormatters.sanitizeExternalUrl(undefined), null);
 
-    // 4. Paridad y exportación idéntica en SPA utilsModule y Edge edgeSeoModule
+    // 5. Paridad y exportación idéntica en SPA utilsModule y Edge edgeSeoModule
     assert.equal(
       utilsModule.sanitizeExternalUrl("https://videoclub.digital"),
       "https://videoclub.digital/",
@@ -344,6 +348,8 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
       edgeSeoModule.sanitizeExternalUrl("https://videoclub.digital"),
       "https://videoclub.digital/",
     );
+    assert.equal(utilsModule.sanitizeExternalUrl("http://videoclub.digital"), null);
+    assert.equal(edgeSeoModule.sanitizeExternalUrl("http://videoclub.digital"), null);
     assert.equal(utilsModule.sanitizeExternalUrl("javascript:void(0)"), null);
     assert.equal(edgeSeoModule.sanitizeExternalUrl("javascript:void(0)"), null);
   });

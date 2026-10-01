@@ -240,6 +240,24 @@ BEGIN
     v_limit := LEAST(GREATEST(COALESCE(page_limit, 50), 1), 100);
     v_offset := GREATEST(COALESCE(page_offset, 0), 0);
 
+    -- FASE 1.3: VALIDACIÓN DE TAMAÑO MÁXIMO DE ARRAYS Y BÚSQUEDA (INPUT INFLATION DOS)
+    -- Evita el consumo abusivo de CPU por desanidado (unnest), lematización lingüística (plainto_tsquery)
+    -- o normalización (unaccent) de colecciones o cadenas sobredimensionadas.
+    IF (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 50)
+       OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 50)
+       OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 50)
+       OR (search_term IS NOT NULL AND length(search_term) > 100) THEN
+        RETURN json_build_object('total', 0, 'items', '[]'::json);
+    END IF;
+
+    -- FASE 1.4: MITIGACIÓN DE ABUSO POR PAGINACIÓN PROFUNDA (DEEP PAGINATION DOS / RESOURCE EXHAUSTION)
+    -- El catálogo completo contiene ~15.000 títulos. Un offset superior a 15.000 excede el volumen total
+    -- de la plataforma y representa un vector de consumo abusivo de CPU/IOPS mediante ordenación y descarte masivo.
+    -- Cortocircuitamos inmediatamente devolviendo un conjunto vacío sin evaluar CTEs, ordenaciones ni conteos.
+    IF v_offset > 15000 THEN
+        RETURN json_build_object('total', 0, 'items', '[]'::json);
+    END IF;
+
     -- FASE 1.5: VALIDACIÓN DE LONGITUD MÍNIMA DE TÉRMINO DE BÚSQUEDA
     IF search_term IS NOT NULL AND length(TRIM(search_term)) > 0 AND length(TRIM(search_term)) < 3 THEN
         RETURN json_build_object('total', 0, 'items', '[]'::json);

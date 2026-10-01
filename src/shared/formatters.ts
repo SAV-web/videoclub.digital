@@ -391,11 +391,11 @@ export function computePersonAgeInfo(
 }
 
 /**
- * Sanitiza una URL externa asegurando que utilice exclusivamente un protocolo seguro (HTTP o HTTPS).
- * Bloquea esquemas peligrosos como `javascript:`, `data:`, `vbscript:`, etc., previniendo
- * vulnerabilidades de DOM XSS o Stored XSS a través de hipervínculos externos en la UI o SSR.
+ * Sanitiza una URL externa asegurando que utilice exclusivamente el protocolo seguro HTTPS (https://).
+ * Bloquea esquemas no seguros como HTTP (inseguro/cleartext), `javascript:`, `data:`, `vbscript:`, etc.,
+ * previniendo vulnerabilidades de DOM XSS, Stored XSS y degradación de transporte en la UI o SSR.
  * 
- * Si la URL no es válida o utiliza un protocolo no permitido, devuelve `null`.
+ * Si la URL no es válida o no utiliza https://, devuelve `null`.
  */
 export function sanitizeExternalUrl(url: string | null | undefined): string | null {
   if (!url || typeof url !== "string") return null;
@@ -404,7 +404,7 @@ export function sanitizeExternalUrl(url: string | null | undefined): string | nu
 
   try {
     const parsed = new URL(trimmed);
-    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+    if (parsed.protocol === "https:") {
       return parsed.href;
     }
   } catch (_) {

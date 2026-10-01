@@ -306,8 +306,8 @@ export function getPosterUrl(movie) {
 }
 
 /**
- * Sanitiza una URL externa asegurando que utilice exclusivamente un protocolo seguro (HTTP o HTTPS).
- * Bloquea esquemas peligrosos como `javascript:`, `data:`, `vbscript:`, etc.
+ * Sanitiza una URL externa asegurando que utilice exclusivamente el protocolo seguro HTTPS (https://).
+ * Bloquea esquemas inseguros (http://) y peligrosos (`javascript:`, `data:`, `vbscript:`, etc.).
  */
 export function sanitizeExternalUrl(url) {
   if (!url || typeof url !== 'string') return null;
@@ -316,7 +316,7 @@ export function sanitizeExternalUrl(url) {
 
   try {
     const parsed = new URL(trimmed);
-    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+    if (parsed.protocol === 'https:') {
       return parsed.href;
     }
   } catch (_) {

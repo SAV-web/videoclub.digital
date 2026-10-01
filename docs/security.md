@@ -129,6 +129,38 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     GRANT EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) TO authenticated, service_role;
     ```
 
+* **Vulnerabilidad 3 — Agotamiento de Recursos por Paginación Profunda (Deep Pagination DoS / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)):**
+  - *Diagnóstico:* La RPC pública `public.search_movies_offset` acotaba el parámetro `page_limit` entre 1 y 100 (`LEAST(GREATEST(COALESCE(page_limit, 50), 1), 100)`), pero `page_offset` carecía de cota superior (`v_offset := GREATEST(COALESCE(page_offset, 0), 0);`), admitiendo valores hasta `2.147.483.647` (máximo de entero con signo en PostgreSQL). Al ser invocable directamente por el rol público `anon` vía PostgREST, un actor malicioso podía forzar la materialización, ordenación y descarte secuencial de millones de filas en memoria (`work_mem`) y disco, agravado por la ejecución de `count(*)` si se adjuntaba `get_count = true`. Esto creaba un vector severo de denegación de servicio (DoS) por agotamiento de CPU e IOPS.
+  - *Remediación (Cortocircuito Preventivo de Fase 1.4):*
+    Dado que el catálogo completo comprende ~15.000 títulos, cualquier offset superior a 15.000 excede la totalidad de la plataforma. Se añadió una cláusula de cortocircuito inmediata previa al preprocesamiento de países, resolución de *tsqueries* y ejecución de CTEs:
+    ```sql
+    -- FASE 1.4: MITIGACIÓN DE ABUSO POR PAGINACIÓN PROFUNDA (DEEP PAGINATION DOS / RESOURCE EXHAUSTION)
+    IF v_offset > 15000 THEN
+        RETURN json_build_object('total', 0, 'items', '[]'::json);
+    END IF;
+    ```
+    Si el offset supera la cota física de la plataforma, la función responde de forma instantánea un objeto JSON vacío (`{ "total": 0, "items": [] }`), garantizando complejidad temporal $O(1)$ y consumo nulo de CPU/IOPS en el motor de base de datos.
+
+* **Vulnerabilidad 4 — Inflación de Arrays y Parámetros (Input Size Inflation / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)):**
+  - *Diagnóstico:* Los parámetros vectoriales `p_country_codes text[]`, `excluded_genres text[]` y `excluded_countries text[]` no poseían restricción de cardinalidad. Un cliente anónimo podía transmitir payloads JSON con miles de elementos, forzando a PostgreSQL a ejecutar bucles masivos de `unnest` y funciones de coste no despreciable (`plainto_tsquery('spanish', ...)`, `public.unaccent_immutable(...)`) por cada elemento, provocando saturación computacional. De igual modo, `search_term` carecía de cota de longitud máxima.
+  - *Remediación (Cortocircuito Preventivo de Fase 1.3):*
+    Considerando que el dominio de la plataforma cuenta con ~25 géneros y <100 países, se definió un umbral estricto de 50 elementos y 100 caracteres para la búsqueda:
+    ```sql
+    -- FASE 1.3: VALIDACIÓN DE TAMAÑO MÁXIMO DE ARRAYS Y BÚSQUEDA (INPUT INFLATION DOS)
+    IF (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 50)
+       OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 50)
+       OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 50)
+       OR (search_term IS NOT NULL AND length(search_term) > 100) THEN
+        RETURN json_build_object('total', 0, 'items', '[]'::json);
+    END IF;
+    ```
+
+* **Deuda Técnica Aceptada — Funciones Auxiliares Puras del Esquema `public`:**
+  - *Funciones identificadas:* `unaccent_immutable(text)`, `to_integer_safe(text)`, `to_real_safe(text)`, `to_date_safe(text)` y `handle_updated_at()`.
+  - *Evaluación de Riesgo:* **Bajo / Sin riesgo operacional**. Son funciones puras deterministas de conversión o triggers internos que no leen datos de usuario, no alteran estado ni exponen información sensible. Además, `handle_updated_at()` al retornar tipo `trigger` es descartada por diseño por PostgREST y no se publica como endpoint HTTP.
+  - *Decisión Arquitectónica:* **No aplicar `REVOKE ALL` global a ciegas**. `unaccent_immutable` está vinculada a índices funcionales por expresión (`people(unaccent_immutable(lower(name)))`) y columnas generadas. Revocar permisos de ejecución a `anon` o `PUBLIC` provocaría errores en tiempo de ejecución (`42501 permission denied for function unaccent_immutable`) al resolver consultas del catálogo o búsquedas mediante `search_movies_offset`.
+  - *Estrategia a Futuro:* En una refactorización de esquemas, migrar estas utilidades a un esquema técnico desacoplado (`CREATE SCHEMA IF NOT EXISTS internal;` o `util;`) no expuesto en la configuración `db-schemas` de PostgREST, aislándolas de la superficie HTTP sin fricción de privilegios en el motor SQL.
+
 ---
 
 ### 3.2. Sanitización Canónica de Hipervínculos Externos (`sanitizeExternalUrl`)
@@ -145,7 +177,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
 
     try {
       const parsed = new URL(trimmed);
-      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      if (parsed.protocol === "https:") {
         return parsed.href;
       }
     } catch (_) {
@@ -185,5 +217,5 @@ La cobertura de las mitigaciones se encuentra integrada en la suite de pruebas u
 | Suite de Pruebas | Archivo | Casos Clave Verificados |
 | :--- | :--- | :--- |
 | **Edge Worker & Proxy** | [`tests/worker.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/worker.test.mjs) | - Inyección de `X-Frame-Options: DENY` y CSP `frame-ancestors 'none'` en SPA, SSR y errores.<br>- Inyección de `nosniff`, `Referrer-Policy`, `Permissions-Policy` y `HSTS`.<br>- Directiva `nosniff` en assets estáticos. |
-| **Shared & Formateadores** | [`tests/shared-and-events.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/shared-and-events.test.mjs) | - Aceptación de protocolos válidos (`https://`, `http://`).<br>- Bloqueo de vectores XSS (`javascript:`, `data:`, `vbscript:`, `file:`).<br>- Bloqueo de URLs relativas y esquemas sin protocolo.<br>- Paridad de exportación entre SPA (`utilsModule`) y Edge SSR (`edgeSeoModule`). |
+| **Shared & Formateadores** | [`tests/shared-and-events.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/shared-and-events.test.mjs) | - Aceptación exclusiva del protocolo HTTPS (`https://`).<br>- Rechazo explícito de HTTP (`http://`), vectores XSS (`javascript:`, `data:`, `vbscript:`, `file:`) y esquemas no seguros.<br>- Bloqueo de URLs relativas y esquemas sin protocolo.<br>- Paridad de exportación entre SPA (`utilsModule`) y Edge SSR (`edgeSeoModule`). |
 | **Ficha de Tarjeta** | [`tests/card.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/card.test.mjs) | - Comportamiento de enlaces externos e inhabilitación con clase `.disabled`. |
