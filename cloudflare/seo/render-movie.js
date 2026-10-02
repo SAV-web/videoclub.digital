@@ -153,12 +153,44 @@ export function renderMovieHtml(movie, options = {}) {
     itemListElement: breadcrumbElements,
   };
 
-  // 3. Render HTML Markup
+  // 3. Speculation Rules API (Prerender SPA y rutas de navegación frecuente)
+  const speculationRules = {
+    prerender: [
+      {
+        source: "list",
+        urls: ["/"]
+      },
+      {
+        where: {
+          and: [
+            {
+              or: [
+                { href_matches: "/*\\?movie=*" },
+                { href_matches: "/*\\?_p=*" },
+                { href_matches: "/*\\?year=*" },
+                { href_matches: "/director/*" },
+                { href_matches: "/actor/*" },
+                { href_matches: "/genero/*" },
+                { href_matches: "/pais/*" },
+                { href_matches: "/seleccion/*" },
+                { href_matches: "/estudio/*" }
+              ]
+            },
+            { not: { href_matches: "/*#*" } }
+          ]
+        },
+        eagerness: "moderate"
+      }
+    ]
+  };
+
+  // 4. Render HTML Markup
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://*.supabase.co; object-src 'none'; base-uri 'self';" />
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
   <!-- Anti-flicker para sincronización exacta de modo claro/oscuro entre SPA y SEO -->
@@ -209,22 +241,8 @@ export function renderMovieHtml(movie, options = {}) {
   <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
   <script type="application/ld+json">${safeJsonLd(breadcrumbLd)}</script>
 
-  <!-- Speculation Rules API: Prerender nativo instantáneo entre fichas de película (Chromium) -->
-  <script type="speculationrules">
-    {
-      "prerender": [
-        {
-          "where": {
-            "and": [
-              { "href_matches": "/titulo/*" },
-              { "not": { "href_matches": "/titulo/*#*" } }
-            ]
-          },
-          "eagerness": "moderate"
-        }
-      ]
-    }
-  </script>
+  <!-- Speculation Rules API: Prerender nativo instantáneo en rutas de navegación frecuente (Chromium) -->
+  <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
 </head>
 <body>
   <!-- Header Superior de Marca (Logo V• a la izquierda de la ficha) -->
@@ -444,7 +462,7 @@ export function renderMovieHtml(movie, options = {}) {
             <!-- Sinopsis -->
             ${movie.synopsis ? `
               <div class="scrollable-content">
-                <div class="plot-summary-final" title="Sinopsis">
+                <div class="plot-summary-final">
                   <span class="detail-label">
                     <svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-synopsis"></use></svg>
                   </span>

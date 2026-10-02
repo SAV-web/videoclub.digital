@@ -242,8 +242,8 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
           </div>
 
           <div class="scrollable-content">
-            <div class="plot-summary-final" title="Sinopsis">
-              <span class="detail-label" title="Sinopsis"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-synopsis"></use></svg></span>
+            <div class="plot-summary-final">
+              <span class="detail-label"><svg class="detail-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><use href="${baseUrl}sprite.svg#icon-synopsis"></use></svg></span>
               <span data-template="synopsis">${escapeHtml(preserveHyphenatedWords(movie.synopsis || 'Sinopsis no disponible.'))}</span>
             </div>
           </div>
@@ -356,11 +356,35 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
     ]
   };
 
-  // 3. Speculation Rules API (Prerender SPA y prefetch de primeros títulos)
-  const topSlugsUrls = items.slice(0, 5).map(m => `${siteOrigin}/titulo/${m.slug}/`);
+  // 3. Speculation Rules API (Prerender SPA y rutas de navegación frecuente)
   const speculationRules = {
-    prerender: [{ source: "list", urls: ["/"] }],
-    prefetch: [{ source: "list", urls: topSlugsUrls }]
+    prerender: [
+      {
+        source: "list",
+        urls: ["/"]
+      },
+      {
+        where: {
+          and: [
+            {
+              or: [
+                { href_matches: "/*\\?movie=*" },
+                { href_matches: "/*\\?_p=*" },
+                { href_matches: "/*\\?year=*" },
+                { href_matches: "/director/*" },
+                { href_matches: "/actor/*" },
+                { href_matches: "/genero/*" },
+                { href_matches: "/pais/*" },
+                { href_matches: "/seleccion/*" },
+                { href_matches: "/estudio/*" }
+              ]
+            },
+            { not: { href_matches: "/*#*" } }
+          ]
+        },
+        eagerness: "moderate"
+      }
+    ]
   };
 
   return `<!DOCTYPE html>
@@ -368,6 +392,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://*.supabase.co; object-src 'none'; base-uri 'self';" />
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
   <!-- Anti-flicker para sincronización exacta de modo claro/oscuro entre SPA y SEO -->

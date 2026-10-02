@@ -322,11 +322,35 @@ export function renderPersonHtml(person, options = {}) {
     ]
   };
 
-  // 4. Speculation Rules API
-  const topSlugsUrls = primaryMovies.slice(0, 5).map(m => `${siteOrigin}/titulo/${m.slug}/`);
+  // 4. Speculation Rules API (Prerender SPA y rutas de navegación frecuente)
   const speculationRules = {
-    prerender: [{ source: "list", urls: ["/"] }],
-    prefetch: [{ source: "list", urls: topSlugsUrls }]
+    prerender: [
+      {
+        source: "list",
+        urls: ["/"]
+      },
+      {
+        where: {
+          and: [
+            {
+              or: [
+                { href_matches: "/*\\?movie=*" },
+                { href_matches: "/*\\?_p=*" },
+                { href_matches: "/*\\?year=*" },
+                { href_matches: "/director/*" },
+                { href_matches: "/actor/*" },
+                { href_matches: "/genero/*" },
+                { href_matches: "/pais/*" },
+                { href_matches: "/seleccion/*" },
+                { href_matches: "/estudio/*" }
+              ]
+            },
+            { not: { href_matches: "/*#*" } }
+          ]
+        },
+        eagerness: "moderate"
+      }
+    ]
   };
 
   // Renderizar la tarjeta VIP de la persona (#0) y las tarjetas de su filmografía (#1..#42)
@@ -350,6 +374,7 @@ export function renderPersonHtml(person, options = {}) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://*.supabase.co; object-src 'none'; base-uri 'self';" />
   <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
   <!-- Anti-flicker para sincronización exacta de modo claro/oscuro entre SPA y SEO -->

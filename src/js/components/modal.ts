@@ -53,8 +53,8 @@ const resetModalTransform = (): void => {
 
 // Estado para la transición Hero (Card -> Modal)
 let activeHeroCard: HTMLElement | null = null;
-const MODAL_TRANSITION_MS = 400;
-const OVERLAY_FADE_IN_DELAY_MS = 200;
+const MODAL_TRANSITION_MS = 280;
+const OVERLAY_FADE_IN_DELAY_MS = 130;
 
 // Contador para evitar race conditions al modificar el view-transition del header
 let modalTransitionCount = 0;
@@ -257,7 +257,7 @@ export function openModalForMovie(movie: MappedMovie | Movie): void {
  */
 export function openModal(cardElement: MovieCardElement, contextCards: HTMLElement[] | null = null): void {
   if (!cardElement) return;
-  lockGlobalInteractions(500);
+  lockGlobalInteractions(300);
 
   if (!isQuickViewInitialized) {
     initQuickView();
@@ -291,7 +291,7 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   }
 
   // Apertura inicial (Transición Hero desde la tarjeta del Grid)
-  lockGlobalInteractions(500);
+  lockGlobalInteractions(300);
 
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
@@ -312,7 +312,7 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
     }
     openAccessibleModal(modal, overlay, false);
     if (content) content.scrollTop = 0;
-    scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 350);
+    scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 260);
     prefetchAdjacentModalImages(cardElement, contextCards);
   };
 

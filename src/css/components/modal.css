@@ -31,7 +31,7 @@
   pointer-events: none;
   backdrop-filter: blur(6px) saturate(85%);
   -webkit-backdrop-filter: blur(6px) saturate(85%);
-  transition: opacity 0.4s ease, visibility 0s linear 0.4s;
+  transition: opacity 0.28s ease, visibility 0s linear 0.28s;
 
   &.is-visible {
     opacity: 1;
@@ -53,7 +53,7 @@
   visibility: hidden;
   pointer-events: none;
   touch-action: pan-y;
-  transition: opacity 0.35s ease, transform 0.4s var(--ease-smooth-out), visibility 0s linear 0.4s;
+  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.28s;
 
   &:focus {
     outline: none;
@@ -994,7 +994,7 @@
     max-height: 92dvh;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     transform: translate(-50%, 30px) scale(0.94);
-    transition: opacity 0.35s ease, transform 0.4s var(--ease-smooth-out);
+    transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 
     &.is-visible {
       transform: translate(-50%, 0) scale(1);
@@ -1482,14 +1482,14 @@
  * ================================================================= */
 
 ::view-transition-group(hero-expansion) {
-  animation-duration: 0.4s;
-  animation-timing-function: var(--ease-smooth-out);
+  animation-duration: 0.28s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 ::view-transition-old(hero-expansion),
 ::view-transition-new(hero-expansion) {
-  animation-duration: 0.4s;
-  animation-timing-function: var(--ease-smooth-out);
+  animation-duration: 0.28s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   overflow: clip;
 }
 

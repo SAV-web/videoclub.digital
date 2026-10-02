@@ -171,7 +171,20 @@ html:not(.dark-mode) .landing-hero-title {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
+.landing-hero-taglines {
+  display: grid;
+  grid-template-areas: "hero-tagline";
+  justify-items: center;
+  align-items: start;
+  max-width: 680px;
+  margin-inline: auto;
+  min-height: 1.65em;
+}
+
 .landing-hero-description {
+  grid-area: hero-tagline;
+  width: 100%;
+  margin: 0;
   font-family: var(--font-body, 'Inter', -apple-system, sans-serif);
   font-size: clamp(0.8rem, 1.5vw, 0.885rem);
   font-weight: 400;
@@ -180,11 +193,56 @@ html:not(.dark-mode) .landing-hero-title {
   max-width: 680px;
   margin-inline: auto;
   text-wrap: pretty;
+  opacity: 0;
+  visibility: hidden;
+  animation: heroTaglineCrossfade 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: opacity;
 }
 
-.landing-hero-description + .landing-hero-description {
-  margin-top: 3px;
-  color: color-mix(in srgb, var(--color-text-secondary) 88%, transparent);
+.landing-hero-description:first-child {
+  opacity: 1;
+  visibility: visible;
+  animation-delay: 0s;
+}
+
+.landing-hero-description:nth-child(2) {
+  opacity: 0;
+  visibility: hidden;
+  animation-delay: -6s;
+}
+
+@keyframes heroTaglineCrossfade {
+  0%, 43% {
+    opacity: 1;
+    visibility: visible;
+  }
+  48%, 95% {
+    opacity: 0;
+    visibility: hidden;
+  }
+  100% {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (hover: hover) {
+  .landing-hero-taglines:hover .landing-hero-description {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-description {
+    animation: none;
+  }
+  .landing-hero-description:first-child {
+    opacity: 1;
+    visibility: visible;
+  }
+  .landing-hero-description:nth-child(2) {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -242,7 +300,9 @@ html:not(.dark-mode) .landing-hero-title {
   @container (min-width: 1000px) { :where(:is(html.rotation-disabled, body.rotation-disabled)) .grid-container { grid-template-columns: repeat(9, minmax(0, 1fr)); } }
   @container (min-width: 1200px) { :where(:is(html.rotation-disabled, body.rotation-disabled)) .grid-container { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
 
-  /* Divisores de 42 (Modo Exploración con Flip) */
+  /* Divisores y escalonado fluido (Modo Exploración con Flip) */
+  @container (min-width: 600px) { :where(:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @container (min-width: 760px) { :where(:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
   @container (min-width: 940px) { :where(:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
   @container (min-width: 1080px) { :where(:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 }

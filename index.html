@@ -7,12 +7,6 @@
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://*.supabase.co; object-src 'none'; base-uri 'self';" />
 
-  <!-- Evitar Clickjacking (Defensa en profundidad en cliente; gobernado autoritativamente en Edge vía X-Frame-Options: DENY y CSP frame-ancestors: 'none') -->
-  <script>
-    if (window.self !== window.top) {
-      window.top.location = window.self.location;
-    }
-  </script>
 
   <!-- === 1. METADATOS Y CONFIGURACIÓN === -->
   <meta charset="UTF-8" />
@@ -843,14 +837,16 @@
         <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
         <header id="landing-hero" class="landing-hero">
           <h1 class="landing-hero-title">
-            EL CINE Y LAS SERIES EN SU ESTADO MÁS PURO... A LA VELOCIDAD DE LA LUZ.
+            EL CINE Y LAS SERIES EN SU ESTADO MÁS PURO
           </h1>
-          <p class="landing-hero-description">
-            Recuperamos el ritual del videoclub: carátulas de colección y descubrimiento sin algoritmos.
-          </p>
-          <p class="landing-hero-description">
-            Tu oráculo inteligente, libre de ruido y construido sobre la web más rápida y minimalista de la red.
-          </p>
+          <div class="landing-hero-taglines" aria-live="off">
+            <p class="landing-hero-description">
+              Recuperamos el ritual del videoclub: carátulas de colección y descubrimiento sin algoritmos.
+            </p>
+            <p class="landing-hero-description">
+              Tu oráculo inteligente, libre de ruido y construido sobre la web más rápida y minimalista de la red.
+            </p>
+          </div>
         </header>
         <div id="grid-container" class="grid-container" aria-live="polite">
           <div class="skeleton-card"></div>
@@ -1714,8 +1710,8 @@
             </div>
           </div>
           <div class="scrollable-content">
-            <div class="plot-summary-final" title="Sinopsis">
-              <span class="detail-label" title="Sinopsis"><svg class="detail-icon" width="14" height="14"
+            <div class="plot-summary-final">
+              <span class="detail-label"><svg class="detail-icon" width="14" height="14"
                   viewBox="0 0 24 24" aria-hidden="true">
                   <use href="#icon-synopsis"></use>
                 </svg></span><span data-template="synopsis"></span>
@@ -1925,7 +1921,7 @@
             </div>
           </div>
           <div class="scrollable-content">
-            <div class="plot-summary-final" title="Sinopsis">
+            <div class="plot-summary-final">
               <span class="detail-label"><svg class="detail-icon" width="18" height="18" viewBox="0 0 24 24"
                   aria-hidden="true">
                   <use href="#icon-synopsis"></use>

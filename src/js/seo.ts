@@ -226,7 +226,17 @@ export function buildBreadcrumbSchema(filters: ActiveFilters = {} as ActiveFilte
 // =================================================================
 
 const setMeta = (selector: string, content: string): void => {
-  const el = document.querySelector(selector);
+  let el = document.querySelector(selector);
+  if (!el) {
+    const matchName = selector.match(/name="([^"]+)"/);
+    const matchProp = selector.match(/property="([^"]+)"/);
+    if (matchName || matchProp) {
+      el = document.createElement("meta");
+      if (matchName) el.setAttribute("name", matchName[1]);
+      if (matchProp) el.setAttribute("property", matchProp[1]);
+      document.head.appendChild(el);
+    }
+  }
   if (el && el.getAttribute("content") !== content) {
     el.setAttribute("content", content);
   }
@@ -253,12 +263,14 @@ import { getCurrentPage } from "./state.js";
 //          3. ORQUESTADORES PÚBLICOS
 // =================================================================
 
-export function getCanonicalUrl(filters: ActiveFilters = getActiveFilters(), page: number = getCurrentPage()): string {
-  if (typeof window === "undefined") return "https://videoclub.digital/";
-  const { pathname, search } = stateToPrettyUrl(filters, page);
+export function getCanonicalUrl(filters: ActiveFilters = getActiveFilters(), _page: number = 1): string {
+  const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "https://videoclub.digital";
+  // Consolidación Canónica: colapsar parámetros efímeros/secundarios (p=2, sort, year) hacia la ruta base limpia
+  const { pathname } = stateToPrettyUrl(filters, 1);
   const basePrefix = getAppBasePath();
-  const cleanPath = search ? `${pathname}?${search}` : pathname;
-  return `${window.location.origin}${basePrefix}${cleanPath}`;
+  const cleanBase = basePrefix.endsWith("/") ? basePrefix.slice(0, -1) : basePrefix;
+  const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  return `${origin}${cleanBase}${normalizedPath}`;
 }
 
 export function updatePageTitle(movies: Movie[] = []): void {
@@ -273,6 +285,10 @@ export function updatePageTitle(movies: Movie[] = []): void {
   setMeta('meta[property="og:title"]', ogTitle);
   setMeta('meta[property="og:description"]', description);
   setMeta('meta[property="og:url"]', canonicalUrl);
+
+  // Directiva de indexación: noindex, follow para búsquedas libres y listas privadas; index para catálogo público
+  const isNoIndex = Boolean((filters.searchTerm && filters.searchTerm.trim()) || filters.myList);
+  setMeta('meta[name="robots"]', isNoIndex ? "noindex, follow" : "index, follow, max-image-preview:large");
   
   let canonical = document.querySelector("link[rel='canonical']") as HTMLLinkElement | null;
   if (!canonical) {

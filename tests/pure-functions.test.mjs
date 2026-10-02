@@ -192,6 +192,20 @@ describe("seo.ts (Metadatos SEO y Esquemas JSON-LD)", () => {
     assert.ok(desc.length <= 160);
     assert.ok(desc.includes("Catálogo de películas"));
   });
+
+  test("getCanonicalUrl colapsa facetas y parámetros efímeros hacia la categoría base limpia", () => {
+    // 1. Taxonomía con año, orden y página 2: colapsa a la categoría limpia
+    const canonicalGenre = seoModule.getCanonicalUrl({ genre: "sci-fi", year: "1999", sort: "year,desc" }, 2);
+    assert.equal(canonicalGenre, "https://videoclub.digital/sci-fi/");
+
+    // 2. Director con sort: colapsa a la ruta limpia del director
+    const canonicalDirector = seoModule.getCanonicalUrl({ director: "Christopher Nolan", sort: "nota-fa" }, 1);
+    assert.equal(canonicalDirector, "https://videoclub.digital/director/christopher-nolan/");
+
+    // 3. Catálogo base con filtros secundarios: colapsa a la raíz
+    const canonicalHome = seoModule.getCanonicalUrl({ sort: "year,desc", mediaType: "movies" }, 3);
+    assert.equal(canonicalHome, "https://videoclub.digital/");
+  });
 });
 
 describe("rating.ts (Cálculo Visual y Estados de Valoración)", () => {
