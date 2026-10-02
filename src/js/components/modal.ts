@@ -54,6 +54,7 @@ const resetModalTransform = (): void => {
 // Estado para la transición Hero (Card -> Modal)
 let activeHeroCard: HTMLElement | null = null;
 const MODAL_TRANSITION_MS = 400;
+const OVERLAY_FADE_IN_DELAY_MS = 200;
 
 // Contador para evitar race conditions al modificar el view-transition del header
 let modalTransitionCount = 0;
@@ -303,16 +304,16 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   unflipAllCards();
   populateModal(cardElement, contextCards);
 
-  const performOpen = (): void => {
+  const performOpen = (showOverlay = true): void => {
     document.body.classList.add(CSS_CLASSES.MODAL_OPEN);
-    scheduleModalRAF(() => {
-      modal.classList.add("is-visible");
+    modal.classList.add("is-visible");
+    if (showOverlay) {
       overlay.classList.add("is-visible");
-      openAccessibleModal(modal, overlay, false);
-      if (content) content.scrollTop = 0;
-      scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 350);
-      prefetchAdjacentModalImages(cardElement, contextCards);
-    });
+    }
+    openAccessibleModal(modal, overlay, false);
+    if (content) content.scrollTop = 0;
+    scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 350);
+    prefetchAdjacentModalImages(cardElement, contextCards);
   };
 
   if (hasHeroCard) {
@@ -320,22 +321,31 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
     cardElement.style.viewTransitionName = "hero-expansion";
 
     const transition = executeViewTransition(() => {
-      performOpen();
+      performOpen(false);
       modal.style.viewTransitionName = "hero-expansion";
       cardElement.style.viewTransitionName = "";
     });
+
+    scheduleModalTimeout(() => {
+      if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+        overlay.classList.add("is-visible");
+      }
+    }, OVERLAY_FADE_IN_DELAY_MS);
 
     transition.finished.catch(() => {}).finally(() => {
       modal.style.viewTransitionName = "";
       cardElement.style.viewTransitionName = "";
       modalTransitionCount--;
+      if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+        overlay.classList.add("is-visible");
+      }
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
         header.style.viewTransitionName = "";
       }
     });
   } else {
     modal.style.viewTransitionName = "";
-    executeViewTransition(performOpen).finished.catch(() => {}).finally(() => {
+    executeViewTransition(() => performOpen(true)).finished.catch(() => {}).finally(() => {
       modal.style.viewTransitionName = "";
       modalTransitionCount--;
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {

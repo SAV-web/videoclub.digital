@@ -21,6 +21,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql 
 STABLE
 SET search_path = pg_catalog, public, extensions, pg_temp
+SET statement_timeout = '120s'
 AS $$
 DECLARE
     v_count BIGINT;
@@ -143,15 +144,15 @@ BEGIN
     -- 3.1. Países de Películas inexistentes
     SELECT count(*) INTO v_count 
     FROM public.movies m
-    LEFT JOIN public.countries c ON m.country_id = c.id
-    WHERE m.country_id IS NOT NULL AND c.id IS NULL;
+    WHERE m.country_id IS NOT NULL 
+      AND NOT EXISTS (SELECT 1 FROM public.countries c WHERE c.id = m.country_id);
     
     test_name := 'movies_country_id_fk_countries'; 
     category := 'relationships'; 
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT m.id, m.country_id FROM public.movies m LEFT JOIN public.countries c ON m.country_id = c.id WHERE m.country_id IS NOT NULL AND c.id IS NULL;';
+    sample_query := 'SELECT m.id, m.country_id FROM public.movies m WHERE m.country_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.countries c WHERE c.id = m.country_id);';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
@@ -161,16 +162,15 @@ BEGIN
     -- 3.2. Tabla de unión movie_directors sin película o sin persona en people
     SELECT count(*) INTO v_count 
     FROM public.movie_directors md
-    LEFT JOIN public.movies m ON md.movie_id = m.id
-    LEFT JOIN public.people d ON md.director_id = d.id
-    WHERE m.id IS NULL OR d.id IS NULL;
+    WHERE NOT EXISTS (SELECT 1 FROM public.movies m WHERE m.id = md.movie_id)
+       OR NOT EXISTS (SELECT 1 FROM public.people d WHERE d.id = md.director_id);
     
     test_name := 'movie_directors_orphans'; 
     category := 'relationships'; 
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT md.* FROM public.movie_directors md LEFT JOIN public.movies m ON md.movie_id = m.id LEFT JOIN public.people d ON md.director_id = d.id WHERE m.id IS NULL OR d.id IS NULL;';
+    sample_query := 'SELECT md.* FROM public.movie_directors md WHERE NOT EXISTS (SELECT 1 FROM public.movies m WHERE m.id = md.movie_id) OR NOT EXISTS (SELECT 1 FROM public.people d WHERE d.id = md.director_id);';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
@@ -180,16 +180,15 @@ BEGIN
     -- 3.3. Tabla de unión movie_actors sin película o sin persona en people
     SELECT count(*) INTO v_count 
     FROM public.movie_actors ma
-    LEFT JOIN public.movies m ON ma.movie_id = m.id
-    LEFT JOIN public.people a ON ma.actor_id = a.id
-    WHERE m.id IS NULL OR a.id IS NULL;
+    WHERE NOT EXISTS (SELECT 1 FROM public.movies m WHERE m.id = ma.movie_id)
+       OR NOT EXISTS (SELECT 1 FROM public.people a WHERE a.id = ma.actor_id);
     
     test_name := 'movie_actors_orphans'; 
     category := 'relationships'; 
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT ma.* FROM public.movie_actors ma LEFT JOIN public.movies m ON ma.movie_id = m.id LEFT JOIN public.people a ON ma.actor_id = a.id WHERE m.id IS NULL OR a.id IS NULL;';
+    sample_query := 'SELECT ma.* FROM public.movie_actors ma WHERE NOT EXISTS (SELECT 1 FROM public.movies m WHERE m.id = ma.movie_id) OR NOT EXISTS (SELECT 1 FROM public.people a WHERE a.id = ma.actor_id);';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 
@@ -199,16 +198,15 @@ BEGIN
     -- 3.4. Tabla de unión movie_genres sin película o sin género
     SELECT count(*) INTO v_count 
     FROM public.movie_genres mg
-    LEFT JOIN public.movies m ON mg.movie_id = m.id
-    LEFT JOIN public.genres g ON mg.genre_id = g.id
-    WHERE m.id IS NULL OR g.id IS NULL;
+    WHERE NOT EXISTS (SELECT 1 FROM public.movies m WHERE m.id = mg.movie_id)
+       OR NOT EXISTS (SELECT 1 FROM public.genres g WHERE g.id = mg.genre_id);
     
     test_name := 'movie_genres_orphans'; 
     category := 'relationships'; 
     severity := 'ERROR';
     failed_records := v_count;
     status := CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END;
-    sample_query := 'SELECT mg.* FROM public.movie_genres mg LEFT JOIN public.movies m ON mg.movie_id = m.id LEFT JOIN public.genres g ON mg.genre_id = g.id WHERE m.id IS NULL OR g.id IS NULL;';
+    sample_query := 'SELECT mg.* FROM public.movie_genres mg WHERE NOT EXISTS (SELECT 1 FROM public.movies m WHERE m.id = mg.movie_id) OR NOT EXISTS (SELECT 1 FROM public.genres g WHERE g.id = mg.genre_id);';
     IF v_count > 0 THEN v_critical_failures := v_critical_failures + 1; END IF;
     RETURN NEXT;
     IF p_fail_fast AND v_count > 0 THEN 

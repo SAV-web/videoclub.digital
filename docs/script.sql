@@ -1063,7 +1063,7 @@ BEGIN
             genres_list, directors_list, actors_list, selections_list, studios_list
         )
         SELECT
-            public.to_integer_safe(s.id::TEXT), public.to_integer_safe(s.relevance::TEXT), s.title, public.to_integer_safe(s.year::TEXT),
+            public.to_integer_safe(s.id::TEXT), COALESCE(public.to_integer_safe(s.relevance::TEXT), 99999), s.title, public.to_integer_safe(s.year::TEXT),
             public.to_integer_safe(s.year_end::TEXT), s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
@@ -1073,7 +1073,7 @@ BEGIN
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
         WHERE public.to_integer_safe(s.id::TEXT) IS NOT NULL AND s.show IS TRUE
         ON CONFLICT (id) DO UPDATE SET
-            relevance = EXCLUDED.relevance, title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
+            relevance = COALESCE(EXCLUDED.relevance, movies.relevance), title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
             fa_id = EXCLUDED.fa_id, imdb_id = EXCLUDED.imdb_id, last_synced_at = sync_timestamp,

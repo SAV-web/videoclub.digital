@@ -537,7 +537,7 @@
   align-items: center;
   gap: var(--space-lg);
 
-  & > * {
+  &>* {
     transition: filter 80ms ease-out, transform 80ms ease-out;
   }
 }
@@ -592,7 +592,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px; /* Separación armónica entre grupo de estudios y grupo año/país */
+  gap: 16px;
+  /* Separación armónica entre grupo de estudios y grupo año/país */
   width: 100%;
   margin-top: auto;
   margin-inline: auto;
@@ -642,7 +643,8 @@
   font-weight: var(--font-weight-bold, 700);
   letter-spacing: -0.02em;
   line-height: 1;
-  gap: 16px; /* Separación simétrica entre año y bandera */
+  gap: 16px;
+  /* Separación simétrica entre año y bandera */
   overflow: visible;
   margin: 0;
 
@@ -825,6 +827,7 @@
   text-decoration: none;
 
   @media (hover: hover) and (pointer: fine) {
+
     &:hover .rating-icon,
     &:hover :is([data-template="fa-rating"], [data-template="imdb-rating"]) {
       opacity: 0.8;
@@ -1300,7 +1303,7 @@
  * ================================================================= */
 
 @media (orientation: landscape) and (max-height: 550px),
-       (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+(orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
   .quick-view-modal {
     top: 50%;
     bottom: auto;
@@ -1435,7 +1438,7 @@
     margin-bottom: var(--space-sm);
     flex-shrink: 0;
     transition: max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-                margin-bottom 0.45s ease;
+      margin-bottom 0.45s ease;
     will-change: max-width;
   }
 
@@ -1483,6 +1486,13 @@
   animation-timing-function: var(--ease-smooth-out);
 }
 
+::view-transition-old(hero-expansion),
+::view-transition-new(hero-expansion) {
+  animation-duration: 0.4s;
+  animation-timing-function: var(--ease-smooth-out);
+  overflow: clip;
+}
+
 @media (hover: none) and (pointer: coarse) {
   .quick-view-overlay {
     backdrop-filter: blur(3px);
@@ -1493,6 +1503,7 @@
 
 @media (prefers-reduced-transparency: reduce),
 (prefers-reduced-motion: reduce) {
+
   .quick-view-overlay,
   .auth-overlay {
     backdrop-filter: none;
@@ -1601,6 +1612,7 @@
   & span:first-child {
     color: var(--color-text-primary);
   }
+
   & span:last-child {
     color: var(--color-accent);
   }
