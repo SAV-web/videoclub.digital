@@ -123,20 +123,56 @@ export async function loadAndRenderMovies(
 
   try {
     let vipData: VipData | null = null;
+    let hasVip = false;
 
-    // --- PREDICCIÓN OPTIMISTA DE hasVip (antes de cualquier fetch) ---
-    // Determinamos si este request tendrá tarjeta VIP en el grid de forma estática,
-    // sin esperar al resultado de la red. Esto permite calcular fetchLimit/fetchOffset
-    // y lanzar fetchMovies en paralelo con la consulta de detalles VIP.
-    // Caso borde: si fetchPersonDetails revela que la persona NO es VIP (sin foto ni birthday),
-    // habremos pedido 1 película de menos (firstPageLimit - 1 vs firstPageLimit),
-    // pero updateDomWithResults recalcula el presupuesto de slots y trunca/rellena correctamente.
     const vipType = (!activeFilters.myList && !activeFilters.searchTerm)
       ? (activeFilters.director ? "director" as const : (activeFilters.actor ? "actor" as const : null))
       : null;
     const vipName = vipType ? (activeFilters.director || activeFilters.actor) : null;
     const hasGroupVip = !activeFilters.myList && !activeFilters.searchTerm && (!!activeFilters.selection || !!activeFilters.studio);
-    const hasVip = !!(vipType && vipName) || hasGroupVip;
+
+    // Promesa para grupos (colección o estudio), que permite paralelizar su obtención con el catálogo
+    let groupPromise: Promise<{ type: "collection" | "studio"; code: string; thumbhash_st: string | null }> | null = null;
+
+    if (hasGroupVip) {
+      // 1. Grupos (Colecciones y Estudios): El VIP es determinista y estático (siempre hay tarjeta VIP en pág 1).
+      // hasVip es true con 100% de certeza, permitiendo paralelizar fetchGroupDetails con el catálogo.
+      hasVip = true;
+      const groupType = activeFilters.selection ? "selection" : "studio";
+      const groupCode = (activeFilters.selection || activeFilters.studio) as string;
+      groupPromise = fetchGroupDetails(groupType, groupCode).then(data => ({
+        type: groupType === "selection" ? "collection" as const : "studio" as const,
+        code: groupCode,
+        thumbhash_st: data?.thumbhash_st || null
+      }));
+    } else if (vipType && vipName) {
+      // 2. Personas (Directores y Actores): La condición VIP (vip === 1 o birthday) depende de la base de datos.
+      // Debe determinarse con certeza ANTES de calcular fetchLimit y fetchOffset para evitar:
+      // - Pedir 1 película de menos en pág 1 si la persona no es VIP.
+      // - Desfasar el offset (-1) y duplicar la última película de la pág 1 en la pág 2+ si la persona no es VIP.
+      // - Distorsionar el cálculo de orfandad al final del catálogo.
+      // Nota de rendimiento: Si la persona ya está en memoria, personCache responde síncronamente en 0 ms.
+      const personData = await fetchPersonDetails(vipType, vipName);
+      if (personData) {
+        if (personData.name && personData.name !== vipName) {
+          if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
+            setFilter(vipType, personData.name, true);
+            activeFilters = getActiveFilters();
+            updatePageTitle();
+            updateBreadcrumbData(activeFilters);
+          }
+        }
+        const isVip = personData.vip === 1 || Boolean(personData.birthday);
+        if (isVip) {
+          hasVip = true;
+          const personSlug = personData.slug || toSlug(personData.name);
+          preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
+          if (page === 1) vipData = { type: "person", data: personData };
+        }
+      }
+    }
+
+    const confirmedHasVip = hasVip;
 
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
     const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
@@ -145,7 +181,7 @@ export async function loadAndRenderMovies(
     let fetchLimit: number = basePageSize;
     let fetchOffset = (page - 1) * basePageSize;
 
-    if (hasVip) {
+    if (confirmedHasVip) {
       if (page === 1) {
         fetchLimit = firstPageLimit - 1;
         fetchOffset = 0;
@@ -166,33 +202,6 @@ export async function loadAndRenderMovies(
     const isCriticalCountNeeded = isYearFilter && page > 1;
     const shouldRequestCount = isCriticalCountNeeded;
 
-    // --- LANZAMIENTO PARALELO: VIP + CATÁLOGO ---
-    // Ambas consultas avanzan simultáneamente. La consulta de catálogo NO depende
-    // del nombre canónico devuelto por fetchPersonDetails, ya que la RPC search_movies_offset
-    // resuelve internamente variaciones de nombre (Fases 3.6/3.7: slug, name_norm, alfanumérico).
-    type VipResult =
-      | { kind: "person"; data: Awaited<ReturnType<typeof fetchPersonDetails>> }
-      | { kind: "group"; type: "collection" | "studio"; data: Awaited<ReturnType<typeof fetchGroupDetails>> }
-      | { kind: "none" };
-
-    const vipPromise: Promise<VipResult> = (async (): Promise<VipResult> => {
-      if (vipType && vipName) {
-        const data = await fetchPersonDetails(vipType, vipName);
-        return { kind: "person", data };
-      }
-      if (hasGroupVip) {
-        if (activeFilters.selection) {
-          const data = await fetchGroupDetails("selection", activeFilters.selection);
-          return { kind: "group", type: "collection", data };
-        }
-        if (activeFilters.studio) {
-          const data = await fetchGroupDetails("studio", activeFilters.studio);
-          return { kind: "group", type: "studio", data };
-        }
-      }
-      return { kind: "none" };
-    })();
-
     const catalogPromise = fetchMovies(
       activeFilters,
       page,
@@ -202,47 +211,17 @@ export async function loadAndRenderMovies(
       fetchOffset
     );
 
-    const [vipResult, catalogResult] = await Promise.all([vipPromise, catalogPromise]);
+    const [groupResult, catalogResult] = await Promise.all([
+      groupPromise,
+      catalogPromise
+    ]);
 
-    // --- POST-RESOLVE: Construir vipData y aplicar corrección de nombre canónico ---
-    let confirmedHasVip = hasVip;
-
-    if (vipResult.kind === "person") {
-      const personData = vipResult.data;
-      if (personData && vipType && vipName) {
-        // Corrección cosmética: si el nombre canónico de la BD difiere del filtro reconstruido desde URL,
-        // restauramos el nombre canónico en el estado activo (título, breadcrumbs) sin afectar al catálogo.
-        if (personData.name && personData.name !== vipName) {
-          if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
-            setFilter(vipType, personData.name, true);
-            activeFilters = getActiveFilters();
-            updatePageTitle();
-            updateBreadcrumbData(activeFilters);
-          }
-        }
-
-        const isVip = personData.vip === 1 || Boolean(personData.birthday);
-        if (isVip) {
-          const personSlug = personData.slug || toSlug(personData.name);
-          preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
-          if (page === 1) vipData = { type: "person", data: personData };
-        } else {
-          confirmedHasVip = false;
-        }
-      } else {
-        confirmedHasVip = false;
-      }
-    } else if (vipResult.kind === "group") {
-      if (page === 1) {
-        vipData = {
-          type: vipResult.type,
-          code: (vipResult.type === "collection" ? activeFilters.selection : activeFilters.studio) as string,
-          thumbhash_st: vipResult.data?.thumbhash_st || null
-        };
-      }
-      // confirmedHasVip permanece true
-    } else {
-      confirmedHasVip = false;
+    if (groupResult && page === 1) {
+      vipData = {
+        type: groupResult.type,
+        code: groupResult.code,
+        thumbhash_st: groupResult.thumbhash_st
+      };
     }
 
     let result = catalogResult;
@@ -354,28 +333,27 @@ export async function loadAndRenderMovies(
     const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
     window.scrollTo({ top: targetScroll, behavior: "auto" });
 
-    // --- CAMINO SECUNDARIO: Conteo en segundo plano (Post-Render) ---
+    // --- CAMINO SECUNDARIO: Conteo en segundo plano (Post-Render Asíncrono no bloqueante) ---
     // Si el total aún no ha sido resuelto (effectiveTotal < 0), lanzamos la consulta de conteo
-    // una vez que el grid ya está completamente pintado en pantalla sin bloquear al usuario.
+    // en segundo plano sin await, permitiendo que loadAndRenderMovies termine de inmediato
+    // y el bloque finally retire .is-fetching y aria-busy, liberando la interactividad del grid.
     if (effectiveTotal < 0 && !signal.aborted) {
-      try {
-        const countResult = await fetchMovies(
-          activeFilters,
-          page,
-          fetchLimit,
-          signal,
-          true, // get_count = true
-          fetchOffset
-        );
-
+      fetchMovies(
+        activeFilters,
+        page,
+        fetchLimit,
+        signal,
+        true, // get_count = true
+        fetchOffset
+      ).then((countResult) => {
         if (!signal.aborted && countResult.total >= 0) {
           applyResolvedTotal(countResult.total, movies, confirmedHasVip, vipData);
         }
-      } catch (countError: unknown) {
+      }).catch((countError: unknown) => {
         if (!isAbortError(countError, signal)) {
           if (import.meta.env.DEV) console.error("Error en camino secundario de conteo:", countError);
         }
-      }
+      });
     }
 
   } catch (error: unknown) {
@@ -416,7 +394,9 @@ function applyResolvedTotal(
   }
 
   const currentPage = getCurrentPage();
-  const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+  const isWallMode = typeof document !== "undefined" && document.body?.classList
+    ? document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)
+    : false;
   const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
 
   const gridTotalItems = hasVip ? exactTotal + 1 : exactTotal;
