@@ -115,8 +115,8 @@ export function renderVipPersonCard(person, options = {}) {
             <img
               src="${escapeAttr(photoUrl)}"
               alt="Foto de ${escapeAttr(person.name)}"
-              width="400"
-              height="496"
+              width="428"
+              height="535"
               loading="eager"
               fetchpriority="high"
               class="${person.thumbhash_st ? 'lazy-lqip' : 'loaded'}"

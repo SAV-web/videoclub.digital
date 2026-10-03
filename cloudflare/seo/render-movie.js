@@ -278,15 +278,15 @@ export function renderMovieHtml(movie, options = {}) {
                   <img 
                     src="${escapeAttr(posterPath)}" 
                     alt="Póster de ${escapeAttr(movie.title)}" 
-                    width="400" 
-                    height="496" 
+                    width="428" 
+                    height="535" 
                     loading="eager" 
                     fetchpriority="high"
                     class="${movie.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
                     ${movie.thumbhash_st ? `style="background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
                   />
                 ` : `
-                  <div class="poster-fallback" style="aspect-ratio:2/3; display:flex; align-items:center; justify-content:center; font-size:3rem; background:var(--color-surface);">🎬</div>
+                  <div class="poster-fallback" style="aspect-ratio:4/5; display:flex; align-items:center; justify-content:center; font-size:3rem; background:var(--color-surface);">🎬</div>
                 `}
                 <div class="poster-overlay-guard"></div>
               </a>

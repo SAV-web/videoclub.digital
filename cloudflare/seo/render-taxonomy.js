@@ -109,8 +109,8 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             <img
               src="${escapeAttr(posterUrl)}"
               alt="Póster de ${escapeAttr(title)}"
-              width="400"
-              height="496"
+              width="428"
+              height="535"
               loading="${index < 6 ? 'eager' : 'lazy'}"
               ${index === 0 ? 'fetchpriority="high"' : ''}
               class="${movie.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
