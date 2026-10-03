@@ -28,6 +28,10 @@ before(async () => {
   const cardNode = createMockDomElement("div", { className: "movie-card" });
   cardTemplate.content.appendChild(cardNode);
 
+  const personCardTemplate = createMockDomElement("template", { id: "person-card-template" });
+  const personCardNode = createMockDomElement("div", { className: "person-card" });
+  personCardTemplate.content.appendChild(personCardNode);
+
   const domSetup = setupGlobalDom({
     elementMap: {
       "grid-container": gridContainer,
@@ -40,6 +44,8 @@ before(async () => {
       "#header-next-btn": headerNextBtn,
       "movie-card-template": cardTemplate,
       "#movie-card-template": cardTemplate,
+      "person-card-template": personCardTemplate,
+      "#person-card-template": personCardTemplate,
     },
     fallbackCreate: true,
   });
@@ -577,3 +583,135 @@ describe("RenderEngine & API: Concurrencia, In-Flight y AbortSignal", () => {
     assert.equal(stateModule.getTotalMovies(), 42, "El total del estado legítimo debe preservarse");
   });
 });
+
+describe("RenderEngine: Cuota y Renderizado Exacto de Página 1 (Regla 42 Fichas)", () => {
+  test("catálogo grande en página 1: recibe 44 items pero pinta exactamente 42 fichas (sin fila residual)", async () => {
+    const supabase = await apiModule.getSupabase();
+
+    supabase.from = () => ({
+      select: () => ({ in: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }),
+    });
+
+    supabase.rpc = (name, params) => {
+      return createRpcPromise({
+        data: {
+          total: -1,
+          items: Array.from({ length: constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT }, (_, i) => ({
+            id: 900 + i,
+            title: `Película Cuota ${i + 1}`,
+            slug: `pelicula-cuota-${i + 1}`,
+          })),
+        },
+        error: null,
+      });
+    };
+
+    stateModule.setFilter("genre", "drama");
+
+    await renderEngineModule.loadAndRenderMovies(1);
+
+    const baseLimit = constantsModule.CONFIG.ITEMS_PER_PAGE; // 42
+    const renderedCardsCount = gridContainer.children[0]?.children?.length ?? gridContainer.children.length;
+    assert.equal(
+      renderedCardsCount,
+      baseLimit,
+      `La Página 1 debe pintar exactamente ${baseLimit} fichas aunque la API devuelva 44 para anticipar orfandad`
+    );
+  });
+
+  test("persona VIP + catálogo grande en página 1: pinta exactamente 42 fichas en total (1 VIP + 41 películas)", async () => {
+    const supabase = await apiModule.getSupabase();
+
+    supabase.from = (table) => {
+      if (table === "people") {
+        const queryObj = {
+          select: () => queryObj,
+          in: () => queryObj,
+          or: () => queryObj,
+          ilike: () => queryObj,
+          limit: () =>
+            Promise.resolve({
+              data: [
+                {
+                  id: 999,
+                  name: "Martin Scorsese",
+                  name_norm: "martin scorsese",
+                  slug: "martin-scorsese",
+                  type: "D",
+                  vip: 1,
+                  birthday: "1942-11-17",
+                },
+              ],
+              error: null,
+            }),
+        };
+        return queryObj;
+      }
+      return { select: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) };
+    };
+
+    supabase.rpc = (name, params) => {
+      // Para VIP se solicitan firstPageLimit - 1 = 43 películas
+      return createRpcPromise({
+        data: {
+          total: -1,
+          items: Array.from({ length: constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT - 1 }, (_, i) => ({
+            id: 1200 + i,
+            title: `Scorsese Movie ${i + 1}`,
+            slug: `scorsese-movie-${i + 1}`,
+            directors: "Martin Scorsese",
+            directors_list: "Martin Scorsese",
+          })),
+        },
+        error: null,
+      });
+    };
+
+    stateModule.setFilter("director", "Martin Scorsese");
+
+    await renderEngineModule.loadAndRenderMovies(1);
+
+    const baseLimit = constantsModule.CONFIG.ITEMS_PER_PAGE; // 42
+    const renderedCardsCount = gridContainer.children[0]?.children?.length ?? gridContainer.children.length;
+    assert.equal(
+      renderedCardsCount,
+      baseLimit,
+      `Con VIP, la Página 1 debe pintar exactamente ${baseLimit} fichas en total (1 VIP + 41 películas)`
+    );
+  });
+
+  test("catálogo de exactamente 43 elementos en página 1: absorbe orfandad y pinta 43 fichas", async () => {
+    const supabase = await apiModule.getSupabase();
+
+    supabase.from = () => ({
+      select: () => ({ in: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }),
+    });
+
+    supabase.rpc = (name, params) => {
+      // Devuelve exactamente 43 elementos (< firstPageLimit = 44)
+      return createRpcPromise({
+        data: {
+          total: -1,
+          items: Array.from({ length: 43 }, (_, i) => ({
+            id: 2000 + i,
+            title: `Película Huérfana ${i + 1}`,
+            slug: `pelicula-huerfana-${i + 1}`,
+          })),
+        },
+        error: null,
+      });
+    };
+
+    stateModule.setFilter("genre", "comedia");
+
+    await renderEngineModule.loadAndRenderMovies(1);
+
+    const renderedCardsCount = gridContainer.children[0]?.children?.length ?? gridContainer.children.length;
+    assert.equal(
+      renderedCardsCount,
+      43,
+      "Si el catálogo finaliza en 43 elementos (< firstPageLimit), debe absorberlos todos en la única página"
+    );
+  });
+});
+

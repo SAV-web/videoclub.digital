@@ -451,7 +451,8 @@ async function updateDomWithResults(
       slotBudget = isOrphanPage ? baseLimit + lastPageSlots : lastPageSlots;
     }
   } else if (currentPage === 1) {
-    slotBudget = firstPageLimit;
+    const returnedItemsCount = hasVip ? movies.length + 1 : movies.length;
+    slotBudget = returnedItemsCount < firstPageLimit ? returnedItemsCount : baseLimit;
   }
 
   // Convertimos el presupuesto de slots en número de películas a renderizar
