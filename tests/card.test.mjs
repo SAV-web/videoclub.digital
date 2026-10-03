@@ -336,7 +336,7 @@ function createMockMovie(overrides = {}) {
     minutes: 148,
     type: "movie",
     isSeries: false,
-    posterUrl: "/posters/origen-inception-2010.webp",
+    posterUrl: "/posters/origen-inception-2010.avif",
     thumbhash_st: "data:image/webp;base64,mockthumb",
     genres: "Ciencia ficción, Acción, Intriga",
     parsedDirectors: ["Christopher Nolan"],

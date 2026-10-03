@@ -286,7 +286,7 @@ export function renderPersonHtml(person, options = {}) {
           "@type": (m.type && String(m.type).toLowerCase().startsWith('s')) ? "TVSeries" : "Movie",
           "name": m.title || m.original_title,
           "url": `${siteOrigin}/titulo/${m.slug}/`,
-          "image": `${siteOrigin}/posters/${m.slug}.webp`,
+          "image": `${siteOrigin}/posters/${m.slug}.avif`,
           ...(m.year ? { "datePublished": String(m.year) } : {}),
           ...(m.fa_rating ? {
             "aggregateRating": {

@@ -47,7 +47,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
   const displayOriginalTitle = movie.original_title?.trim() || title;
   const slug = movie.slug || '';
   const movieUrl = `${siteOrigin}/titulo/${slug}/`;
-  const posterUrl = `${siteOrigin}/posters/${slug}.webp`;
+  const posterUrl = `${siteOrigin}/posters/${slug}.avif`;
 
   // Estrellas continuas (0-3) y cálculo de clip-path
   const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= 5.5;
@@ -293,7 +293,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
 
   const topMovie = items && items.length > 0 ? items[0] : null;
   const ogImageUrl = topMovie && topMovie.slug 
-    ? `${siteOrigin}/posters/${topMovie.slug}.webp` 
+    ? `${siteOrigin}/posters/${topMovie.slug}.avif` 
     : `${storageUrl}/assets/og-default.jpg`;
 
   // 1. Schema.org CollectionPage + ItemList
@@ -314,7 +314,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
           "@type": (m.type && String(m.type).toLowerCase().startsWith('s')) ? "TVSeries" : "Movie",
           "name": m.title || m.original_title,
           "url": `${siteOrigin}/titulo/${m.slug}/`,
-          "image": `${siteOrigin}/posters/${m.slug}.webp`,
+          "image": `${siteOrigin}/posters/${m.slug}.avif`,
           ...(m.year ? { "datePublished": String(m.year) } : {}),
           ...(m.fa_rating ? {
             "aggregateRating": {

@@ -63,7 +63,7 @@ describe("utils.js", () => {
     assert.deepEqual(movie.parsedActors, ["Lisa Vicari", "Louis Hofmann"]);
     assert.deepEqual(movie.parsedDirectors, ["Baran bo Odar"]);
     assert.deepEqual(movie.studioList, ["N", "D"]);
-    assert.equal(movie.posterUrl.endsWith("/dark-2017.webp"), true);
+    assert.equal(movie.posterUrl.endsWith("/dark-2017.avif"), true);
   });
 
   test("traduce AppError a mensajes accionables", () => {

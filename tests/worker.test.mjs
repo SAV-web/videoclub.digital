@@ -399,7 +399,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
   });
 
   test("Proxy de pósters (/posters/*) reescribe hacia Supabase Storage e inyecta cabecera inmutable", async () => {
-    const request = new Request("https://videoclub.digital/posters/matrix-1999.webp");
+    const request = new Request("https://videoclub.digital/posters/matrix-1999.avif");
     const response = await worker.fetch(request, {}, defaultCtx);
 
     assert.equal(response.status, 200);
@@ -409,7 +409,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(fetchCalls.length, 1);
     assert.equal(
       fetchCalls[0].url,
-      `${SUPABASE_STORAGE_URL}/posters/matrix-1999.webp`
+      `${SUPABASE_STORAGE_URL}/posters/matrix-1999.avif`
     );
     assert.equal(fetchCalls[0].init?.cf?.cacheTtl, 31536000);
     assert.equal(fetchCalls[0].init?.cf?.cacheEverything, true);
@@ -432,7 +432,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
   });
 
   test("Error 404 en Supabase Storage no almacena cabeceras erróneas de caché inmutable", async () => {
-    const request = new Request("https://videoclub.digital/posters/not-found.webp");
+    const request = new Request("https://videoclub.digital/posters/not-found.avif");
     const response = await worker.fetch(request, {}, defaultCtx);
 
     assert.equal(response.status, 404);
@@ -1134,9 +1134,9 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(called.init.headers.Authorization, "Bearer custom-anon-key-123", "Debe usar el Bearer inyectado por ENVIRONMENT");
 
     // Verificar deducción de storageUrl cuando no se especifica
-    const posterReq = new Request("https://videoclub.digital/posters/sample.webp");
+    const posterReq = new Request("https://videoclub.digital/posters/sample.avif");
     await worker.fetch(posterReq, customEnv, defaultCtx);
-    const posterCall = fetchCalls.find(c => c.url.includes("custom-project.supabase.co/storage/v1/object/public/posters/sample.webp"));
+    const posterCall = fetchCalls.find(c => c.url.includes("custom-project.supabase.co/storage/v1/object/public/posters/sample.avif"));
     assert.ok(posterCall, "Debe deducir automáticamente SUPABASE_STORAGE_URL a partir de SUPABASE_URL");
   });
 

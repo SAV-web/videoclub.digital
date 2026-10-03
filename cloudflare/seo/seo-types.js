@@ -302,7 +302,7 @@ export function preserveHyphenatedWords(text) {
 
 export function getPosterUrl(movie) {
   if (!movie || !movie.slug) return '';
-  return `${POSTER_BASE_URL}${movie.slug}.webp`;
+  return `${POSTER_BASE_URL}${movie.slug}.avif`;
 }
 
 /**

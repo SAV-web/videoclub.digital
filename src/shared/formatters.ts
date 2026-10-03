@@ -11,7 +11,7 @@ import { POSTER_BASE_URL } from "./constants.js";
  */
 export function getPosterUrl(slug: string | null | undefined): string {
   if (!slug) return "";
-  return `${POSTER_BASE_URL}${slug}.webp`;
+  return `${POSTER_BASE_URL}${slug}.avif`;
 }
 
 /**
