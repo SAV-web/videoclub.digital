@@ -69,7 +69,7 @@ Reglas:
 
 ## 2.1. Contrato Canónico de URLs (*URL Contract Specification*)
 
-El sistema de enrutamiento y serialización de filtros (blindado de forma automatizada en [`tests/url-contract.test.mjs`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/tests/url-contract.test.mjs)) sigue una estricta separación entre segmentos de ruta semánticos (*pathname*) y parámetros de consulta técnicos (*query string*).
+El sistema de enrutamiento y serialización de filtros (blindado de forma automatizada en [`tests/url-contract.test.mjs`](../tests/url-contract.test.mjs)) sigue una estricta separación entre segmentos de ruta semánticos (*pathname*) y parámetros de consulta técnicos (*query string*).
 
 ### A. Segmentos de Ruta (*Pathname*) — Jerarquía Posicional y Lectura Agnóstica
 
@@ -127,7 +127,7 @@ Esta matriz está verificada por pruebas automatizadas de regresión en CI:
 
 ## 2.2. Contrato de Producto Editorial: Daily Showcase y Barajado Determinista (*Editorial Showcase Contract Specification*)
 
-Este apartado formaliza la lógica de negocio y producto que gobierna el orden de presentación predeterminado del catálogo en **VIDEOCLUB.DIGITAL**. Aunque por estrictos motivos de rendimiento y eficiencia de costes (*zero-egress, stateless pagination*) su ejecución reside en la función PL/pgSQL `public.search_movies_offset` ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)), sus especificaciones son un **contrato formal de producto inmutable** para cualquier capa cliente, middleware o rastreador.
+Este apartado formaliza la lógica de negocio y producto que gobierna el orden de presentación predeterminado del catálogo en **VIDEOCLUB.DIGITAL**. Aunque por estrictos motivos de rendimiento y eficiencia de costes (*zero-egress, stateless pagination*) su ejecución reside en la función PL/pgSQL `public.search_movies_offset` ([`docs/script.sql`](./script.sql)), sus especificaciones son un **contrato formal de producto inmutable** para cualquier capa cliente, middleware o rastreador.
 
 ### A. Racional de Producto: Serendipia Controlada vs. Canon Cinematográfico
 
@@ -272,8 +272,8 @@ Reglas:
 - **Principio Arquitectónico: VIP = Fuente Editorial (SSOT en Supabase)**:
   `VIP_SLUGS` actúa exclusivamente como filtro de enrutamiento perimetral para decidir en tiempo constante $O(1)$ si una ruta raíz debe intentar resolverse como ficha SEO VIP. Toda la información editorial (nombre, biografía, foto, fechas cronológicas, rol cruzado y filmografía) reside y procede **siempre de Supabase** (`public.people`). El manifiesto no sustituye a la base de datos ni almacena fichas, preservando la ligereza del bundle perimetral y la frescura editorial de los contenidos.
 - **Principio Arquitectónico: Artefacto de Enrutamiento Versionado en Git (*Checked-in Routing Manifest*)**:
-  Aunque `cloudflare/seo/vip-manifest.js` es un archivo derivado generado mediante el script [`scripts/generate-vip-manifest.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/scripts/generate-vip-manifest.mjs), **se versiona deliberadamente en el repositorio de Git** en lugar de ser ignorado en `.gitignore`. Esta decisión de ingeniería garantiza tres propiedades críticas:
-  1. *Compilaciones herméticas y pruebas offline*: Permite que la suite de pruebas del Worker ([`tests/worker.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/worker.test.mjs)), el chequeo de tipos (`tsc --noEmit`) y los entornos de CI se ejecuten de forma determinista y desconectada de la red, sin requerir conexión a internet ni variables de entorno secretas de Supabase en cada clon del repositorio.
+  Aunque `cloudflare/seo/vip-manifest.js` es un archivo derivado generado mediante el script [`scripts/generate-vip-manifest.mjs`](../scripts/generate-vip-manifest.mjs), **se versiona deliberadamente en el repositorio de Git** en lugar de ser ignorado en `.gitignore`. Esta decisión de ingeniería garantiza tres propiedades críticas:
+  1. *Compilaciones herméticas y pruebas offline*: Permite que la suite de pruebas del Worker ([`tests/worker.test.mjs`](../tests/worker.test.mjs)), el chequeo de tipos (`tsc --noEmit`) y los entornos de CI se ejecuten de forma determinista y desconectada de la red, sin requerir conexión a internet ni variables de entorno secretas de Supabase en cada clon del repositorio.
   2. *Resiliencia perimetral durante el despliegue*: Elimina el riesgo de que una caída transitoria de red hacia Supabase durante `wrangler deploy` genere un manifiesto vacío o aborte la publicación del Cloudflare Worker en producción.
   3. *Auditoría de superficie de enrutamiento*: Cada adición, modificación o baja de una personalidad VIP genera un `diff` explícito en Git (`+ "denis-villeneuve"`), posibilitando la revisión por pares (*Code Review*) del impacto SEO antes de pasar a producción.
   *Garantía de frescura*: Para evitar artefactos obsoletos (*stale artifacts*), el ciclo de vida del proyecto en `package.json` enlaza automáticamente el paso `prepare:worker` dentro de `npm run build`, `npm run build:worker` y `npm run deploy:worker`.

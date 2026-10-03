@@ -15,7 +15,7 @@ La consulta de cada test está diseñada para **aislar únicamente los registros
 
 ## 2. Modos de Ejecución de `public.run_data_tests()`
 
-La función [`docs/data_tests.sql`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/docs/data_tests.sql) admite un parámetro booleano de control de fallos:
+La función [`docs/data_tests.sql`](./data_tests.sql) admite un parámetro booleano de control de fallos:
 
 ### Modo Auditoría / Diagnóstico (`p_fail_fast = false`, Por Defecto)
 Ejecuta la suite completa, no aborta transacciones y genera un informe tabular con el estado de salud del catálogo:
@@ -99,10 +99,10 @@ Audita la coherencia lógica de las métricas numéricas y temporales cinematogr
 ## 4. Integración en el Flujo de Trabajo
 
 ### Paso 1: Instalación de la Suite
-Copia y ejecuta una sola vez el contenido de [`docs/data_tests.sql`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/docs/data_tests.sql) en el SQL Editor de Supabase.
+Copia y ejecuta una sola vez el contenido de [`docs/data_tests.sql`](./data_tests.sql) en el SQL Editor de Supabase.
 
 ### Paso 2: Protocolo Post-Ingesta
-En [`docs/ingest.sql`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/docs/ingest.sql), tras procesar el staging y refrescar las vistas materializadas, se ejecuta la suite completa para certificar el estado del catálogo:
+En [`docs/ingest.sql`](./ingest.sql), tras procesar el staging y refrescar las vistas materializadas, se ejecuta la suite completa para certificar el estado del catálogo:
 
 ```sql
 -- 4. Certificación de Calidad de Datos (DataOps Tests)
@@ -110,11 +110,11 @@ SELECT * FROM public.run_data_tests();
 ```
 
 ### Paso 3: Integración Continua en GitHub Actions (DataOps Runner)
-Para garantizar que ninguna mutación en la base de datos quede sin auditar y que ningún despliegue suba datos corruptos, el script [`scripts/run-data-tests.mjs`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/scripts/run-data-tests.mjs) invoca `run_data_tests()` de forma desatendida mediante Supabase RPC:
+Para garantizar que ninguna mutación en la base de datos quede sin auditar y que ningún despliegue suba datos corruptos, el script [`scripts/run-data-tests.mjs`](../scripts/run-data-tests.mjs) invoca `run_data_tests()` de forma desatendida mediante Supabase RPC:
 
-1. **Puerta de Calidad en Despliegue ([`.github/workflows/deploy.yml`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/.github/workflows/deploy.yml))**:
+1. **Puerta de Calidad en Despliegue ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml))**:
    Se ejecuta antes de publicar el despliegue atómico a Cloudflare Edge (Worker & Static Assets). Si un test con severidad `ERROR` falla, el build se detiene.
-2. **Auditoría Programada Diaria ([`.github/workflows/data-audit.yml`](file:///c:/Users/sigfr/Desktop/AI/VIDEOCLUB.DIGITAL/.github/workflows/data-audit.yml))**:
+2. **Auditoría Programada Diaria ([`.github/workflows/data-audit.yml`](../.github/workflows/data-audit.yml))**:
    Se dispara cada madrugada a las 03:00 UTC en modo `--strict`, generando alertas en el repositorio si se detecta cualquier anomalía o huérfano.
 
 ```bash

@@ -194,7 +194,7 @@ self.addEventListener("fetch", (event) => {
 // --- 7. BACKGROUND SYNC (Sincronización en segundo plano) ---
 
 self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-ratings") {
+  if (event.tag === "sync-user-entries" || event.tag === "sync-ratings") {
     event.waitUntil(
       self.clients.matchAll({ type: "window" }).then((clients) => {
         clients.forEach((client) => client.postMessage({ type: "SYNC_PENDING_ENTRIES" }));

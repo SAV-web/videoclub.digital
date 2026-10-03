@@ -88,12 +88,11 @@ export async function syncWithServer(): Promise<void> {
       on_watchlist: boolean;
       updated_at: string;
     }> = [];
-    const processedIds: number[] = [];
+    const toUpsertIds: number[] = [];
 
     for (const entry of pending) {
       if (entry.syncStatus === "deleted") {
         toDeleteIds.push(entry.movieId);
-        processedIds.push(entry.movieId);
       } else if (entry.syncStatus === "dirty") {
         toUpsert.push({
           user_id: userId,
@@ -102,9 +101,11 @@ export async function syncWithServer(): Promise<void> {
           on_watchlist: entry.onWatchlist,
           updated_at: new Date(entry.updatedAt).toISOString()
         });
-        processedIds.push(entry.movieId);
+        toUpsertIds.push(entry.movieId);
       }
     }
+
+    const successfullySyncedIds: number[] = [];
 
     // 1. Ejecutar eliminaciones en lote si las hay
     if (toDeleteIds.length > 0) {
@@ -114,8 +115,12 @@ export async function syncWithServer(): Promise<void> {
         .eq("user_id", userId)
         .in("movie_id", toDeleteIds);
 
-      if (delError && import.meta.env.DEV) {
-        console.warn("[SyncManager] Error al eliminar en Supabase:", delError);
+      if (delError) {
+        if (import.meta.env.DEV) {
+          console.warn("[SyncManager] Error al eliminar en Supabase:", delError);
+        }
+      } else {
+        successfullySyncedIds.push(...toDeleteIds);
       }
     }
 
@@ -125,13 +130,19 @@ export async function syncWithServer(): Promise<void> {
         .from("user_movie_entries")
         .upsert(toUpsert, { onConflict: "user_id, movie_id" });
 
-      if (upsertError && import.meta.env.DEV) {
-        console.warn("[SyncManager] Error al hacer upsert en Supabase:", upsertError);
+      if (upsertError) {
+        if (import.meta.env.DEV) {
+          console.warn("[SyncManager] Error al hacer upsert en Supabase:", upsertError);
+        }
+      } else {
+        successfullySyncedIds.push(...toUpsertIds);
       }
     }
 
-    // 3. Confirmar sincronización en IndexedDB
-    await markEntriesAsSynced(processedIds, syncTimestamp);
+    // 3. Confirmar sincronización en IndexedDB solo para los registros que el servidor aceptó con éxito
+    if (successfullySyncedIds.length > 0) {
+      await markEntriesAsSynced(successfullySyncedIds, syncTimestamp);
+    }
   } catch (error) {
     if (import.meta.env.DEV) {
       console.warn("[SyncManager] Error durante la sincronización de red:", error);

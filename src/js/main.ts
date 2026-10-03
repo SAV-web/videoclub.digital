@@ -503,7 +503,7 @@ function setupGlobalListeners(): void {
     }),
 
     appEvents.on("userMovieDataChanged", () => {
-      handleDataRefresh();
+      updateAppBadge();
       if (getActiveFilters().myList) {
         loadAndRenderMovies(getCurrentPage());
       }

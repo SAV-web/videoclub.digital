@@ -50,9 +50,7 @@ import {
   setCurrentPage,
   getTotalMovies,
   setTotalMovies,
-  setFilter,
-  updateUserDataForMovie,
-  appEvents
+  setFilter
 } from "./state.js";
 
 import { updateUrl } from "./router.js";
@@ -315,14 +313,7 @@ export async function loadAndRenderMovies(
     if (movies && movies.length > 0) {
       if (document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
         const movieIds = movies.map((m) => m.id);
-        fetchUserMovieDataForIds(movieIds).then((userEntries) => {
-          if (Object.keys(userEntries).length > 0) {
-            for (const [id, entry] of Object.entries(userEntries)) {
-              updateUserDataForMovie(id, entry);
-            }
-            appEvents.emit("userDataUpdated");
-          }
-        }).catch((err) => {
+        fetchUserMovieDataForIds(movieIds).catch((err) => {
           if (import.meta.env.DEV) console.error("Error syncing page user data", err);
         });
       }

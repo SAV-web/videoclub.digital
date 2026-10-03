@@ -54,7 +54,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
   Al omitir la bandera `allow-top-navigation`, el navegador bloqueaba la asignación a `top.location` levantando una excepción silenciosa de seguridad, permitiendo ataques de *UI Redressing* sobre formularios y botones interactivos. Adicionalmente, las páginas Edge SSR carecían por completo de este script.
 
 * **Solución Arquitectónica:**
-  Se trasladó la defensa de forma autoritativa a nivel de cabeceras HTTP inyectadas por Cloudflare Worker ([`cloudflare/worker.js`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/cloudflare/worker.js)):
+  Se trasladó la defensa de forma autoritativa a nivel de cabeceras HTTP inyectadas por Cloudflare Worker ([`cloudflare/worker.js`](../cloudflare/worker.js)):
   - `X-Frame-Options: DENY`: Bloqueo inmediato en motores de renderizado.
   - `Content-Security-Policy: ... frame-ancestors 'none'`: Estándar W3C moderno que actúa antes del parseo del DOM, impidiendo que el documento sea incrustado en cualquier marco (`<iframe>`, `<frame>`, `<embed>`, `<object>`).
   - El script cliente en `index.html` se mantiene exclusivamente como mecanismo de defensa en profundidad de contingencia para entornos locales sin Worker.
@@ -67,7 +67,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
   Existía una asimetría defensiva: la SPA disponía de una meta-etiqueta CSP parcial, mientras que las respuestas HTML servidas mediante Edge SSR (`/titulo/:slug/`, `/genero/:slug/`, `/pais/:slug/`, `/:vip-slug/` y páginas semánticas de error) no contenían cabeceras de seguridad.
 
 * **Solución Arquitectónica:**
-  Se introdujo la función centralizada [`applySecurityHeaders(headers)`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/cloudflare/worker.js) en el Worker perimetral:
+  Se introdujo la función centralizada [`applySecurityHeaders(headers)`](../cloudflare/worker.js) en el Worker perimetral:
 
   ```javascript
   export function applySecurityHeaders(headers) {
@@ -111,7 +111,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
 
 ### 3.1. Endurecimiento de PostgreSQL (Principio de Menor Privilegio)
 
-* **Vulnerabilidad 1 — Vistas de Telemetría Expuestas ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)):**
+* **Vulnerabilidad 1 — Vistas de Telemetría Expuestas ([`docs/script.sql`](./script.sql)):**
   - *Diagnóstico:* Las vistas `public.view_slow_queries` y `public.view_top_cpu_queries` otorgaban `SELECT` a `service_role` pero no revocaban los privilegios por defecto concedidos a `PUBLIC`. PostgREST exponía estas vistas públicamente en `/rest/v1/view_slow_queries`.
   - *Remediación:*
     ```sql
@@ -121,7 +121,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     GRANT SELECT ON public.view_top_cpu_queries TO service_role;
     ```
 
-* **Vulnerabilidad 2 — Función de Auditoría Invocable Anónimamente ([`docs/data_tests.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/data_tests.sql)):**
+* **Vulnerabilidad 2 — Función de Auditoría Invocable Anónimamente ([`docs/data_tests.sql`](./data_tests.sql)):**
   - *Diagnóstico:* La función `public.run_data_tests(BOOLEAN)` otorgaba permisos a `authenticated` y `service_role` sin revocar el `EXECUTE` implícito de `PUBLIC`. Cualquier cliente anónimo podía ejecutar `POST /rest/v1/rpc/run_data_tests`, escaneando tablas completas y causando denegación de servicio por agotamiento de CPU.
   - *Remediación:*
     ```sql
@@ -129,7 +129,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     GRANT EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) TO authenticated, service_role;
     ```
 
-* **Vulnerabilidad 3 — Agotamiento de Recursos por Paginación Profunda (Deep Pagination DoS / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)):**
+* **Vulnerabilidad 3 — Agotamiento de Recursos por Paginación Profunda (Deep Pagination DoS / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](./script.sql)):**
   - *Diagnóstico:* La RPC pública `public.search_movies_offset` acotaba el parámetro `page_limit` entre 1 y 100 (`LEAST(GREATEST(COALESCE(page_limit, 50), 1), 100)`), pero `page_offset` carecía de cota superior (`v_offset := GREATEST(COALESCE(page_offset, 0), 0);`), admitiendo valores hasta `2.147.483.647` (máximo de entero con signo en PostgreSQL). Al ser invocable directamente por el rol público `anon` vía PostgREST, un actor malicioso podía forzar la materialización, ordenación y descarte secuencial de millones de filas en memoria (`work_mem`) y disco, agravado por la ejecución de `count(*)` si se adjuntaba `get_count = true`. Esto creaba un vector severo de denegación de servicio (DoS) por agotamiento de CPU e IOPS.
   - *Remediación (Cortocircuito Preventivo de Fase 1.4):*
     Dado que el catálogo completo comprende ~15.000 títulos, cualquier offset superior a 15.000 excede la totalidad de la plataforma. Se añadió una cláusula de cortocircuito inmediata previa al preprocesamiento de países, resolución de *tsqueries* y ejecución de CTEs:
@@ -141,7 +141,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     ```
     Si el offset supera la cota física de la plataforma, la función responde de forma instantánea un objeto JSON vacío (`{ "total": 0, "items": [] }`), garantizando complejidad temporal $O(1)$ y consumo nulo de CPU/IOPS en el motor de base de datos.
 
-* **Vulnerabilidad 4 — Inflación de Arrays y Parámetros (Input Size Inflation / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/docs/script.sql)):**
+* **Vulnerabilidad 4 — Inflación de Arrays y Parámetros (Input Size Inflation / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](./script.sql)):**
   - *Diagnóstico:* Los parámetros vectoriales `p_country_codes text[]`, `excluded_genres text[]` y `excluded_countries text[]` no poseían restricción de cardinalidad. Un cliente anónimo podía transmitir payloads JSON con miles de elementos, forzando a PostgreSQL a ejecutar bucles masivos de `unnest` y funciones de coste no despreciable (`plainto_tsquery('spanish', ...)`, `public.unaccent_immutable(...)`) por cada elemento, provocando saturación computacional. De igual modo, `search_term` carecía de cota de longitud máxima.
   - *Remediación (Cortocircuito Preventivo de Fase 1.3):*
     Considerando que la interfaz y el dominio de negocio manejan selecciones acotadas (un usuario rara vez excluye más de 2-4 taxonomías simultáneas), se definió un umbral estricto de 10 elementos por array y 100 caracteres para la búsqueda:
@@ -168,7 +168,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
 * **Problema:**
   Los enlaces a plataformas externas (JustWatch, Wikipedia, FilmAffinity, IMDb) procedentes de la base de datos se asignaban sin validación previa de protocolo a la propiedad `el.href` o a atributos HTML en plantillas SSR. Si un valor almacenado contenía un URI malicioso (`javascript:`, `data:`), al hacer clic el usuario se disparaba la ejecución de scripts arbitrarios en el contexto del origen (*Stored DOM XSS*).
 
-* **Implementación en la Fuente Única de Verdad ([`src/shared/formatters.ts`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/src/shared/formatters.ts) y [`cloudflare/seo/seo-types.js`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/cloudflare/seo/seo-types.js)):**
+* **Implementación en la Fuente Única de Verdad ([`src/shared/formatters.ts`](../src/shared/formatters.ts) y [`cloudflare/seo/seo-types.js`](../cloudflare/seo/seo-types.js)):**
   ```typescript
   export function sanitizeExternalUrl(url: string | null | undefined): string | null {
     if (!url || typeof url !== "string") return null;
@@ -189,9 +189,9 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
   ```
 
 * **Puntos de Aplicación:**
-  1. **Tarjeta SPA ([`src/js/components/card/cardElement.ts`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/src/js/components/card/cardElement.ts)):** Si la URL no es segura, se elimina el atributo `href` y se añade la clase `.disabled`.
-  2. **Modal de Película ([`src/js/components/modal/renderer.ts`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/src/js/components/modal/renderer.ts)):** Validación idéntica en la apertura de fichas interactivas.
-  3. **Edge SSR ([`cloudflare/seo/render-movie.js`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/cloudflare/seo/render-movie.js)):** Validación estricta previa a la interpolación en cadenas HTML de JustWatch, Wikipedia, FilmAffinity e IMDb.
+  1. **Tarjeta SPA ([`src/js/components/card/cardElement.ts`](../src/js/components/card/cardElement.ts)):** Si la URL no es segura, se elimina el atributo `href` y se añade la clase `.disabled`.
+  2. **Modal de Película ([`src/js/components/modal/renderer.ts`](../src/js/components/modal/renderer.ts)):** Validación idéntica en la apertura de fichas interactivas.
+  3. **Edge SSR ([`cloudflare/seo/render-movie.js`](../cloudflare/seo/render-movie.js)):** Validación estricta previa a la interpolación en cadenas HTML de JustWatch, Wikipedia, FilmAffinity e IMDb.
 
 ---
 
@@ -216,6 +216,6 @@ La cobertura de las mitigaciones se encuentra integrada en la suite de pruebas u
 
 | Suite de Pruebas | Archivo | Casos Clave Verificados |
 | :--- | :--- | :--- |
-| **Edge Worker & Proxy** | [`tests/worker.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/worker.test.mjs) | - Inyección de `X-Frame-Options: DENY` y CSP `frame-ancestors 'none'` en SPA, SSR y errores.<br>- Inyección de `nosniff`, `Referrer-Policy`, `Permissions-Policy` y `HSTS`.<br>- Directiva `nosniff` en assets estáticos. |
-| **Shared & Formateadores** | [`tests/shared-and-events.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/shared-and-events.test.mjs) | - Aceptación exclusiva del protocolo HTTPS (`https://`).<br>- Rechazo explícito de HTTP (`http://`), vectores XSS (`javascript:`, `data:`, `vbscript:`, `file:`) y esquemas no seguros.<br>- Bloqueo de URLs relativas y esquemas sin protocolo.<br>- Paridad de exportación entre SPA (`utilsModule`) y Edge SSR (`edgeSeoModule`). |
-| **Ficha de Tarjeta** | [`tests/card.test.mjs`](file:///c:/Users/sigfr/Documents/AI/VIDEOCLUB.DIGITAL/tests/card.test.mjs) | - Comportamiento de enlaces externos e inhabilitación con clase `.disabled`. |
+| **Edge Worker & Proxy** | [`tests/worker.test.mjs`](../tests/worker.test.mjs) | - Inyección de `X-Frame-Options: DENY` y CSP `frame-ancestors 'none'` en SPA, SSR y errores.<br>- Inyección de `nosniff`, `Referrer-Policy`, `Permissions-Policy` y `HSTS`.<br>- Directiva `nosniff` en assets estáticos. |
+| **Shared & Formateadores** | [`tests/shared-and-events.test.mjs`](../tests/shared-and-events.test.mjs) | - Aceptación exclusiva del protocolo HTTPS (`https://`).<br>- Rechazo explícito de HTTP (`http://`), vectores XSS (`javascript:`, `data:`, `vbscript:`, `file:`) y esquemas no seguros.<br>- Bloqueo de URLs relativas y esquemas sin protocolo.<br>- Paridad de exportación entre SPA (`utilsModule`) y Edge SSR (`edgeSeoModule`). |
+| **Ficha de Tarjeta** | [`tests/card.test.mjs`](../tests/card.test.mjs) | - Comportamiento de enlaces externos e inhabilitación con clase `.disabled`. |
