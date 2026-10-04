@@ -634,39 +634,15 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Sugerencias de Títulos de Películas (Verifica best_relevance)
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_title_suggestions'
-    ) AND NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_schema = 'public' AND table_name = 'mv_title_suggestions' AND column_name = 'best_relevance'
-    ) THEN
-        RAISE NOTICE 'Definición obsoleta detectada en mv_title_suggestions. Recreando...';
-        DROP MATERIALIZED VIEW public.mv_title_suggestions RESTRICT;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'mv_title_suggestions'
-    ) THEN
-        CREATE MATERIALIZED VIEW public.mv_title_suggestions AS
-        SELECT title, title_norm, min(relevance) as best_relevance
-        FROM public.movies
-        GROUP BY title, title_norm;
-
-        CREATE UNIQUE INDEX mv_title_suggestions_title_idx ON public.mv_title_suggestions(title);
-        CREATE INDEX mv_title_suggestions_title_norm_trgm_idx ON public.mv_title_suggestions USING gin(title_norm extensions.gin_trgm_ops);
-        CREATE INDEX mv_title_suggestions_relevance_idx ON public.mv_title_suggestions(best_relevance ASC);
-    END IF;
-END $$;
+-- 3. Limpieza de vistas obsoletas de autocompletado
+DROP MATERIALIZED VIEW IF EXISTS public.mv_title_suggestions CASCADE;
 
 -- 5.3. Revocación incondicional de acceso público directo a las vistas materializadas
 -- (El acceso se realiza exclusivamente a través de las funciones RPC SECURITY DEFINER)
 DO $$
 DECLARE
     mv_name TEXT;
-    matviews TEXT[] := ARRAY['mv_actor_suggestions', 'mv_director_suggestions', 'mv_title_suggestions'];
+    matviews TEXT[] := ARRAY['mv_actor_suggestions', 'mv_director_suggestions'];
 BEGIN
     FOREACH mv_name IN ARRAY matviews LOOP
         IF EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = mv_name) THEN
@@ -756,16 +732,6 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     LIMIT 10;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_title_suggestions(search_term text)
-RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp AS $$
-    SELECT title FROM public.mv_title_suggestions
-    WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
-      AND title_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-    ORDER BY best_relevance ASC
-    LIMIT 10;
-$$;
-
 CREATE OR REPLACE FUNCTION public.get_genre_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$
@@ -820,9 +786,6 @@ GRANT EXECUTE ON FUNCTION public.get_actor_suggestions(text) TO anon, authentica
 
 REVOKE ALL ON FUNCTION public.get_director_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_director_suggestions(text) TO anon, authenticated, service_role;
-
-REVOKE ALL ON FUNCTION public.get_title_suggestions(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_title_suggestions(text) TO anon, authenticated, service_role;
 
 REVOKE ALL ON FUNCTION public.get_genre_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_genre_suggestions(text) TO anon, authenticated, service_role;
@@ -942,6 +905,7 @@ DECLARE
     directors_modified_count INT := 0;
     actors_modified_count INT := 0;
     people_modified_count INT := 0;
+    people_purged_count INT := 0;
     v_rows_count INT := 0;
 BEGIN
     -- 1. BLOQUEO TRANSACCIONAL DE EXCLUSIÓN MUTUA
@@ -1270,12 +1234,25 @@ BEGIN
     END IF;
 
     -- =================================================================
-    -- FASE 4: RETORNO INFORMATIVO DE LA INGESTA DIFERENCIAL
+    -- FASE 4: PURGA AUTOMÁTICA DE PERSONAS HUÉRFANAS NO VIP
+    -- =================================================================
+    -- Elimina registros de personas (actores/directores) que hayan quedado sin películas asociadas
+    -- tras correcciones o bajas en el catálogo, preservando siempre entidades VIP o editoriales.
+    DELETE FROM public.people p
+    WHERE p.vip = 0
+      AND (p.biography IS NULL OR TRIM(p.biography) = '')
+      AND NOT EXISTS (SELECT 1 FROM public.movie_actors ma WHERE ma.actor_id = p.id)
+      AND NOT EXISTS (SELECT 1 FROM public.movie_directors md WHERE md.director_id = p.id);
+    GET DIAGNOSTICS people_purged_count = ROW_COUNT;
+
+    -- =================================================================
+    -- FASE 5: RETORNO INFORMATIVO DE LA INGESTA DIFERENCIAL
     -- =================================================================
     RETURN json_build_object(
         'movies_affected', COALESCE(array_length(affected_movie_ids, 1), 0),
         'people_affected', people_modified_count,
-        'has_changes', (COALESCE(array_length(affected_movie_ids, 1), 0) > 0 OR people_modified_count > 0),
+        'people_purged', people_purged_count,
+        'has_changes', (COALESCE(array_length(affected_movie_ids, 1), 0) > 0 OR people_modified_count > 0 OR people_purged_count > 0),
         'synced_at', sync_timestamp
     );
 END;

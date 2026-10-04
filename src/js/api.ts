@@ -142,7 +142,10 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
   if (m.id && m.user_movie_entries) {
     const rawEntry = Array.isArray(m.user_movie_entries) ? m.user_movie_entries[0] : m.user_movie_entries;
     if (rawEntry && typeof rawEntry === "object") {
-      updateUserDataForMovie(m.id, { rating: rawEntry.rating, onWatchlist: rawEntry.on_watchlist });
+      const existing = getUserDataForMovie(m.id);
+      if (!existing) {
+        updateUserDataForMovie(m.id, { rating: rawEntry.rating, onWatchlist: rawEntry.on_watchlist });
+      }
     }
   }
 

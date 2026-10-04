@@ -195,7 +195,7 @@ html:not(.dark-mode) .landing-hero-title {
   text-wrap: pretty;
   opacity: 0;
   visibility: hidden;
-  animation: heroTaglineCrossfade 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: heroTaglineCrossfade 30s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   will-change: opacity;
 }
 
@@ -208,15 +208,39 @@ html:not(.dark-mode) .landing-hero-title {
 .landing-hero-description:nth-child(2) {
   opacity: 0;
   visibility: hidden;
-  animation-delay: -6s;
+  animation-delay: -25s;
+}
+
+.landing-hero-description:nth-child(3) {
+  opacity: 0;
+  visibility: hidden;
+  animation-delay: -20s;
+}
+
+.landing-hero-description:nth-child(4) {
+  opacity: 0;
+  visibility: hidden;
+  animation-delay: -15s;
+}
+
+.landing-hero-description:nth-child(5) {
+  opacity: 0;
+  visibility: hidden;
+  animation-delay: -10s;
+}
+
+.landing-hero-description:nth-child(6) {
+  opacity: 0;
+  visibility: hidden;
+  animation-delay: -5s;
 }
 
 @keyframes heroTaglineCrossfade {
-  0%, 43% {
+  0%, 13.5% {
     opacity: 1;
     visibility: visible;
   }
-  48%, 95% {
+  16.66%, 96.8% {
     opacity: 0;
     visibility: hidden;
   }
@@ -240,7 +264,7 @@ html:not(.dark-mode) .landing-hero-title {
     opacity: 1;
     visibility: visible;
   }
-  .landing-hero-description:nth-child(2) {
+  .landing-hero-description:not(:first-child) {
     display: none;
   }
 }

@@ -74,20 +74,27 @@ export function setupModalHeader(
     nodes.img.alt = `Póster de ${movie.title}`;
 
     if (movie.thumbhash_st && posterUrl) {
-      // Si la imagen ya está en memoria caché del navegador, mostrar directamente en alta resolución
+      const currentGen = getLifecycleGen ? getLifecycleGen() : 0;
       const tempImg = new Image();
       tempImg.src = posterUrl;
 
       if (tempImg.complete && tempImg.naturalWidth > 0) {
         nodes.img.src = posterUrl;
-        nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
-        nodes.img.classList.add(CSS_CLASSES.LOADED);
+        nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
+        nodes.img.classList.remove(CSS_CLASSES.LOADED);
+        const applyLoaded = () => {
+          if (getLifecycleGen && currentGen !== getLifecycleGen()) return;
+          nodes.img?.classList.add(CSS_CLASSES.LOADED);
+        };
+        if (scheduleModalRAF) {
+          scheduleModalRAF(applyLoaded);
+        } else {
+          requestAnimationFrame(applyLoaded);
+        }
       } else {
         nodes.img.classList.remove(CSS_CLASSES.LOADED);
         nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
         nodes.img.src = movie.thumbhash_st;
-
-        const currentGen = getLifecycleGen ? getLifecycleGen() : 0;
         tempImg.onload = () => {
           if (getLifecycleGen && currentGen !== getLifecycleGen()) return;
           if (nodes.img) {

@@ -522,10 +522,12 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
     img.style.backgroundImage = `url('${movie.thumbhash_st}')`;
     img.style.backgroundSize = "cover";
     img.style.backgroundPosition = "center";
+    img.classList.remove(CSS_CLASSES.LOADED);
     img.classList.add(CSS_CLASSES.LAZY_LQIP);
   } else {
     img.style.backgroundImage = "";
     img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+    img.classList.add(CSS_CLASSES.LOADED);
   }
 
   // Prioridad de red para el elemento principal del viewport (LCP)
@@ -550,7 +552,7 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
     img.onerror = handleLoad;
     img.src = posterUrl;
     if (img.complete) {
-      handleLoad();
+      requestAnimationFrame(handleLoad);
     }
   } else if (lazyLoadObserver) {
     img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
@@ -566,7 +568,7 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
     img.onerror = handleLoad;
     img.src = posterUrl;
     if (img.complete) {
-      handleLoad();
+      requestAnimationFrame(handleLoad);
     }
   }
 
@@ -812,7 +814,7 @@ export function applyLqipImage(img: HTMLImageElement, thumbhashSrc: string | nul
   img.src = fullUrl;
 
   if (img.complete) {
-    handleLoad();
+    requestAnimationFrame(handleLoad);
   }
 }
 

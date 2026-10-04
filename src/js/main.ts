@@ -502,10 +502,13 @@ function setupGlobalListeners(): void {
       }
     }),
 
-    appEvents.on("userMovieDataChanged", () => {
+    appEvents.on("userMovieDataChanged", (data: { movieId?: number }) => {
       updateAppBadge();
-      if (getActiveFilters().myList) {
-        loadAndRenderMovies(getCurrentPage());
+      const movieId = data?.movieId;
+      if (movieId) {
+        document.querySelectorAll<HTMLElement>(`.movie-card[data-movie-id="${movieId}"]`).forEach((el) => {
+          updateCardUI(el);
+        });
       }
     }),
 

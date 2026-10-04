@@ -235,12 +235,13 @@
   }
 }
 
-/* Efecto de carga LQIP (Blur) - 200ms */
+/* Efecto de carga LQIP (Blur suave y progresivo) - 380ms */
 .movie-card:not(.is-quick-view) :is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.05);
-  transition: filter var(--duration-quick, 200ms) ease-in-out,
-              transform var(--duration-quick, 200ms) ease-in-out;
+  will-change: filter, transform;
+  transition: filter 380ms cubic-bezier(0.25, 0.1, 0.25, 1),
+              transform 380ms cubic-bezier(0.25, 0.1, 0.25, 1);
 
   &.loaded {
     filter: blur(0);
@@ -520,23 +521,20 @@ html.dark-mode {
 }
 
 .back-original-title-wrapper {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  margin-top: 9px;
-  margin-bottom: 7px;
+  display: block;
+  margin-top: 8px;
+  margin-bottom: 14px;
   padding-inline: 0;
   width: 100%;
   min-height: 0;
   animation: fade-in-subtle 0.5s var(--ease-smooth-out) 0.2s backwards;
 
   & span {
-    font-family: var(--font-title);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text-primary);
-    line-height: 1.25;
-    letter-spacing: -0.01em;
+    font-size: 0.88rem;
+    font-weight: var(--font-weight-normal, 400);
+    font-style: italic;
+    color: var(--color-text-secondary);
+    line-height: 1.35;
     text-align: left;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -544,19 +542,21 @@ html.dark-mode {
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-right: 0.25em;
+    padding-bottom: 2px;
 
     &.title-medium {
-      font-size: 0.88rem;
+      font-size: 0.85rem;
     }
 
     &.title-long {
-      font-size: 0.85rem;
+      font-size: 0.82rem;
     }
 
     &.title-xl-long,
     &.title-xxl-long,
     &.title-xxxl-long {
-      font-size: 0.82rem;
+      font-size: 0.80rem;
     }
   }
 }
@@ -635,8 +635,9 @@ html.dark-mode {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 7px 0;
-  padding-top: 7px;
+  margin-top: 14px;
+  margin-bottom: 7px;
+  padding-top: 10px;
   border-top: 1px solid var(--color-border);
   font-size: var(--font-size-xs);
   line-height: 1.35;

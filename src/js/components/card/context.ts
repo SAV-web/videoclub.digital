@@ -23,7 +23,7 @@ export const lazyLoadObserver: IntersectionObserver | null =
                 img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
                 img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
                 if (img.complete) {
-                  img.classList.add(CSS_CLASSES.LOADED);
+                  requestAnimationFrame(() => img.classList.add(CSS_CLASSES.LOADED));
                 }
               }
               obs.unobserve(img);
