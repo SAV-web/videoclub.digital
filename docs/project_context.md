@@ -8,18 +8,18 @@
 
 - **Frontend:** TypeScript (ES2022+), HTML5 Semántico, CSS3 (Variables, Grid, Flexbox, Container Queries).
 - **Build Tool:** Vite (con esbuild y TypeScript para minificación y type-checking estricto).
-- **Backend/Database:** Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes), Supabase Auth, Supabase Storage.
-- **Edge SSR & CDN:** Cloudflare Worker (`cloudflare/worker.js`) con ESM bundle vía esbuild, proxy inmutable de imágenes (`/posters/*`, `/vips/*`), Edge SSR para SEO y negociación Markdown para agentes de IA.
+- **Backend/Database:** Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset` optimizado sin sobrecoste de conteo ni ventanas en portada limpia, precomputación vectorizada de `genre_tsquery` $O(1)$ en `public.genres`, RLS, Trigram Indexes), Supabase Auth, Supabase Storage.
+- **Edge SSR & CDN:** Cloudflare Worker (`cloudflare/worker.js`) con ESM bundle vía esbuild, proxy inmutable de imágenes (`/posters/*`, `/vips/*`), Edge SSR para SEO, negociación Markdown para agentes de IA y endpoint perimetral `/api/rpc/search_movies_offset` con Edge Caching público canónico (`s-maxage=300, stale-while-revalidate=3600`) y bypass directo para usuarios autenticados.
 - **PWA & Offline:** Service Worker propio (`sw.js`) inyectado dinámicamente con versión por timestamp en build time vía Vite, con estrategias de caché `CACHE_STATIC` y `CACHE_DYNAMIC` y `manifest.webmanifest`.
-- **Arquitectura Local-First:** `localStore.ts` y `syncManager.ts` con estado de sincronización (`dirty`, `synced`, `deleted`), cola offline y resolución determinista *Last-Write-Wins* (LWW).
+- **Arquitectura Local-First:** `localStore.ts` (IndexedDB v2 con almacén de fichas `cached_movies` y retención LRU), `syncManager.ts` con estado de sincronización (`dirty`, `synced`, `deleted`), cola offline, renderizado instantáneo en 0 ms para *Mi Lista* y resolución determinista *Last-Write-Wins* (LWW).
 - **Dependencias Externas Clave:** `@supabase/supabase-js`, `lru-cache` (caché en memoria para búsquedas/filtros).
 
 ## 📂 Estructura del Proyecto
 
 ### 1. Archivos Raíz y Configuración
 
-- `index.html`: Punto de entrada. Contiene el CSS crítico (_Above the Fold_), preloads, meta tags SEO, política CSP ajustada (sin directivas exclusivas de cabecera como `frame-ancestors`) y los `<template>` de los componentes para instanciación rápida.
-- `vite.config.js`: Configurado con `base: '/'` (ruta absoluta raíz estricta para garantizar la resolución correcta de bundles en rutas SEO anidadas como `/titulo/:slug/` o `/genero/:slug/`), código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase) e inyección automática de versión de Service Worker (`injectSwVersion`).
+- `index.html`: Punto de entrada. Contiene el CSS crítico (_Above the Fold_), script temprano en `<head>` para neutralizar de raíz el destello (Anti-FOUC) del Hero de bienvenida en recargas con parámetros de listas (`?list=watchlist`, `?list=rated`, `?list=mixed`), preloads, meta tags SEO, política CSP ajustada (sin directivas exclusivas de cabecera como `frame-ancestors`) y los `<template>` de los componentes para instanciación rápida.
+- `vite.config.js`: Configurado con `base: '/'` (ruta absoluta raíz estricta para garantizar la resolución correcta de bundles en rutas SEO anidadas como `/titulo/:slug/` o `/genero/:slug/`), código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase), proxy de desarrollo para `/api/rpc` e inyección automática de versión de Service Worker (`injectSwVersion`).
 - `public/404.html`: Fallback SPA histórico de contingencia. En la arquitectura actual, Cloudflare Workers gestiona el enrutamiento SPA de forma nativa a través de `not_found_handling = "single-page-application"`.
 - `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`), aislamiento estricto por origen (`url.origin === self.location.origin`) y estrategias:
   - _Network First_ (`CACHE_STATIC` para navegación HTML y App Shell, con bypass explícito para rutas SEO perimetrales `/titulo/*`, `/genero/*`, `/pais/*`, `/estudio/*`, `/seleccion/*`, `/actor/*`, `/director/*` y slugs VIP para evitar colisiones con el App Shell).
@@ -31,6 +31,7 @@
 - `cloudflare/worker.js`: Origen de producción y capa perimetral (*Edge SSR, Reverse Proxy & Static Assets serving*):
   - Inyección dinámica y **fail-closed** de entorno (`env.SUPABASE_URL`, `env.SUPABASE_ANON_KEY`), habiéndose eliminado por completo cualquier credencial hardcodeada o transitoria (`TRANSITIONAL_CONFIG`). Si falta la configuración en el entorno de Cloudflare, las rutas SEO devuelven inmediatamente un error explícito `500 Server misconfigured (missing Supabase credentials)` con `Cache-Control: no-store`.
   - Inyección de `Cache-Control: public, max-age=31536000, immutable` en bundles de Vite (`/assets/*`).
+  - Endpoint de catálogo perimetral `/api/rpc/search_movies_offset`: Clave de caché canónica determinista (`canonicalizeRpcParams`), almacenamiento en Cloudflare Cache API para peticiones anónimas (`s-maxage=300, stale-while-revalidate=3600`) y bypass directo para peticiones con JWT de usuario autenticado.
   - Proxy perimetral de imágenes (`/posters/*` y `/vips/*`) con reescritura hacia Supabase Storage para evitar consumo de egress.
   - Negociación de contenido Markdown (`Accept: text/markdown` $\to$ `/llms.txt`) y cabeceras de descubrimiento para agentes de IA (`Link: </llms.txt>; rel="alternate"`). Documentado en `cloudflare/README.md`.
   - Endpoint de purga selectiva perimetral (`POST /internal/purge`) protegido estrictamente mediante variable de entorno secreta `PURGE_SECRET` (sin fallbacks hardcodeados en código; devuelve `500 Server misconfigured` si el secreto no está configurado).
@@ -53,8 +54,8 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 - **`scrollWatcher.ts`**: Monitorización de scroll de alto rendimiento mediante `requestAnimationFrame` desacoplado del hilo principal (*passive scroll*). Gestiona la visibilidad del header móvil (*hide/show on scroll* preservando foco y teclado virtual), prefetch predictivo de la página siguiente (>70% de scroll) y guardado debounced de posición.
 - **`state.ts`**: Gestor de estado global inmutable. Sincroniza la URL (_Pretty Paths_ y QueryParams) con el estado de la aplicación (`activeFilters`, `currentPage`, `userMovieData`), y ejecuta `canonicalizeCurrentUrl()` para garantizar URLs canónicas estrictas.
 - **`contracts.ts`**: Definición central de contratos de datos, códigos de error (`ERROR_CODES`), detección unificada del base path (`getAppBasePath()`), generación de URLs canónicas de filtros (`buildFilterUrl`), guardas de tipos y normalizadores puros de bajo nivel (`parseYearRangeRaw`, `normalizeMovieId`).
-- **`api.ts`**: Capa de acceso a datos. Implementa deduplicación de peticiones (_In-flight requests_), `AbortController` para cancelar consultas obsoletas, memoria LRU (`queryCache`, `suggestionsCache`, `personCache`) y normalización de parámetros para el RPC `search_movies_offset`.
-- **`localStore.ts`**: Almacenamiento local-first para notas y watchlist con marcas de estado (`dirty`, `synced`, `deleted`) y resolución determinista *Last-Write-Wins* (LWW) en reconciliación.
+- **`api.ts`**: Capa de acceso a datos. Implementa deduplicación de peticiones (_In-flight requests_), cliente perimetral `executeCatalogRpc` con fallback a Supabase RPC, resolución local instantánea de *Mi Lista* (`getLocalMyListResponse`), Stale-While-Revalidate hacia Supabase, `AbortController` para cancelar consultas obsoletas y memoria LRU (`queryCache`, `suggestionsCache`, `personCache`).
+- **`localStore.ts`**: Almacenamiento local-first en IndexedDB v2. Incluye `user_entries` (con índices `by_watchlist`, `by_rating`, `by_syncStatus`), `cached_movies` (con índice temporal `by_cachedAt` y purgado LRU `MAX_CACHED_MOVIES = 1000`), escrituras atómicas transaccionales (`saveLocalEntryWithMovie`) y reconciliación determinista *Last-Write-Wins* (LWW).
 - **`syncManager.ts`**: Gestor de sincronización bidireccional en segundo plano entre el almacenamiento local y Supabase (`user_movie_entries`), con soporte offline y reintentos ante reconexión.
 - **`offlineQueue.ts` / `checkedIds.ts`**: Cola persistente de mutaciones pendientes sin conexión y control de deduplicación de IDs sincronizados.
 - **`ui.ts`**: Controladores genéricos del DOM. Maneja Toasts, esqueletos de carga (_Skeletons_), paginación y las trampas de foco (_Focus Trap_) para modales.

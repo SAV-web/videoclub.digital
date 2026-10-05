@@ -15,6 +15,7 @@ CREATE TABLE public.genres (
   name text NOT NULL UNIQUE,
   synonyms text[] DEFAULT '{}'::text[],
   name_norm text DEFAULT replace(unaccent_immutable(lower(name)), 'sci-fi'::text, 'scifi'::text),
+  genre_tsquery tsquery,
   CONSTRAINT genres_pkey PRIMARY KEY (id)
 );
 
@@ -164,7 +165,6 @@ CREATE TABLE public.user_movie_entries (
   movie_id integer NOT NULL,
   on_watchlist boolean NOT NULL DEFAULT false,
   rating smallint CHECK (rating >= 1 AND rating <= 10),
-  watchlist_position integer,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT user_movie_entries_pkey PRIMARY KEY (id),

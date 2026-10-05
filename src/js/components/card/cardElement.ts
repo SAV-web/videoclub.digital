@@ -1,7 +1,7 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, FILTER_CONFIG } from "../../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, getPosterUrl, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug, sanitizeExternalUrl } from "../../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../../state.js";
-import { saveLocalEntry } from "../../localStore.js";
+import { saveLocalEntryWithMovie } from "../../localStore.js";
 import { scheduleSync } from "../../syncManager.js";
 import { showToast, areInteractionsLocked, lockGlobalInteractions } from "../../ui.js";
 import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "../rating.js";
@@ -290,7 +290,7 @@ export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: M
   updateCardUI(card);
 
   // 2. Persistencia local inmediata (Local-First: nunca falla, nunca hace rollback)
-  await saveLocalEntry(movieId, newState);
+  await saveLocalEntryWithMovie(movieId, newState, card.movieData as MappedMovie);
   triggerHapticFeedback("success");
 
   // 3. Sincronización en segundo plano hacia Supabase

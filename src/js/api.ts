@@ -12,7 +12,7 @@ import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
 export { clearCheckedUserMovieIds, markMovieIdAsChecked };
-import { getUserDataForMovie, updateUserDataForMovie, setUserMovieData, appEvents } from "./state.js";
+import { getUserDataForMovie, updateUserDataForMovie, setUserMovieData, getAllUserMovieData, appEvents } from "./state.js";
 import {
   ERROR_CODES,
   createAppError,
@@ -28,6 +28,7 @@ import {
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import { getSupabase } from "./supabaseClient.js";
 import { getCurrentSession } from "./auth.js";
+import { saveCachedMovies, getCachedMoviesByIds } from "./localStore.js";
 
 // Re-exportamos getSupabase para preservar compatibilidad con tests y módulos externos
 export { getSupabase };
@@ -178,6 +179,131 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
 }
 
 
+/**
+ * Invoca el motor de búsqueda del catálogo público utilizando el endpoint perimetral
+ * optimizado con Edge Caching (/api/rpc/search_movies_offset) cuando se ejecuta en el navegador.
+ * Dispone de fallback resiliente transparente hacia Supabase SDK directo en caso de error o tests.
+ */
+async function executeCatalogRpc(
+  supabase: any,
+  rpcParams: Record<string, unknown>,
+  signal?: AbortSignal | null
+): Promise<{ data: any; error: any }> {
+  const globalProc = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })?.process;
+  const isBrowser = typeof window !== "undefined" && typeof window.fetch === "function";
+  const isTest = Boolean(globalProc?.env?.NODE_ENV === "test") || Boolean((globalThis as unknown as Record<string, unknown>)?._isTestEnv);
+
+  if (isBrowser && !isTest) {
+    try {
+      const response = await fetch("/api/rpc/search_movies_offset", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": CONFIG.SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify(rpcParams),
+        signal: signal ?? undefined,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return { data, error: null };
+      }
+    } catch (e: any) {
+      if (signal?.aborted || e?.name === "AbortError") {
+        throw { name: "AbortError" };
+      }
+    }
+  }
+
+  let query = supabase.rpc("search_movies_offset", rpcParams);
+  if (signal) query = query.abortSignal(signal);
+  return await query;
+}
+
+/**
+ * Construye la respuesta de Mi Lista directamente desde IndexedDB y memoria (Local-First),
+ * permitiendo render instantáneo (0 ms) en modo offline, degradación de red o precarga.
+ */
+export async function getLocalMyListResponse(
+  filters: ActiveFilters,
+  page: number,
+  pageSize: number,
+  requestCount: boolean
+): Promise<ApiResponse | null> {
+  try {
+    const userEntries = getAllUserMovieData();
+    const targetIds: number[] = [];
+
+    for (const [idStr, entry] of Object.entries(userEntries)) {
+      if (!entry) continue;
+      const id = Number(idStr);
+      if (!Number.isFinite(id)) continue;
+
+      if (filters.myList === "watchlist" && entry.onWatchlist) {
+        targetIds.push(id);
+      } else if (filters.myList === "rated" && entry.rating !== null) {
+        targetIds.push(id);
+      } else if (filters.myList === "mixed" && (entry.onWatchlist || entry.rating !== null)) {
+        targetIds.push(id);
+      }
+    }
+
+    if (targetIds.length === 0) {
+      return { total: 0, items: [] };
+    }
+
+    // Recuperar las fichas disponibles en cached_movies
+    const cachedMap = await getCachedMoviesByIds(targetIds);
+    if (cachedMap.size === 0) return null;
+
+    // Mapear a MappedMovie
+    const availableMovies: MappedMovie[] = [];
+    for (const id of targetIds) {
+      const rawMovie = cachedMap.get(id);
+      if (rawMovie) {
+        availableMovies.push(mapMoviePayload(shapeRawMovieRow(rawMovie)));
+      }
+    }
+
+    if (availableMovies.length === 0) return null;
+
+    // Filtrar por tipo de medio (mediaType)
+    let filtered = availableMovies;
+    if (filters.mediaType === "movies") {
+      filtered = filtered.filter(m => !m.isSeries && (!m.type || !m.type.toLowerCase().startsWith("s")));
+    } else if (filters.mediaType === "series") {
+      filtered = filtered.filter(m => m.isSeries || (m.type && m.type.toLowerCase().startsWith("s")));
+    }
+
+    // Ordenar según filters.sort
+    const [sortField, sortDirection] = (filters.sort || "relevance,asc").split(",");
+    const isAsc = sortDirection === "asc";
+
+    filtered.sort((a, b) => {
+      const valA: any = (a as any)[sortField];
+      const valB: any = (b as any)[sortField];
+
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
+
+      if (typeof valA === "string") {
+        const cmp = valA.localeCompare(valB, "es", { sensitivity: "base" });
+        return isAsc ? cmp : -cmp;
+      }
+      return isAsc ? valA - valB : valB - valA;
+    });
+
+    const total = requestCount ? filtered.length : -1;
+    const start = (page - 1) * pageSize;
+    const items = filtered.slice(start, start + pageSize);
+
+    return normalizeMoviesResponse({ total, items });
+  } catch {
+    return null;
+  }
+}
+
 // Trae las películas principales para pintar el muro
 export function fetchMovies(
   activeFilters: Partial<ActiveFilters>,
@@ -229,44 +355,75 @@ export function fetchMovies(
     try {
       // MODO A: MI LISTA (Películas privadas del usuario)
       if (normFilters.myList) {
+        const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+
+        // 1. Fallback offline estricto: si no hay conexión, servir desde almacenamiento local
+        if (isOffline) {
+          const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+          if (localRes) return localRes;
+          return { total: 0, items: [] };
+        }
+
         const session = await getCurrentSession();
-        if (!session?.user) return { total: 0, items: [] };
+        if (!session?.user) {
+          // Si no hay sesión remota activa, intentar servir las entradas locales existentes
+          const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+          if (localRes) return localRes;
+          return { total: 0, items: [] };
+        }
 
-        let query = supabase
-          .from('movies')
-          .select(`
-            id, title, original_title, year, year_end, type, 
-            genres:genres_list, directors:directors_list, actors:actors_list, 
-            minutes, slug, fa_id, fa_rating, fa_votes, 
-            imdb_id, imdb_rating, imdb_votes, avg_rating, 
-            synopsis, thumbhash_st, last_synced_at, 
-            episodes, wikipedia, selections_list, studios_list, justwatch,
-            countries(name, code),
-            user_movie_entries!inner(user_id, rating, on_watchlist)
-          `, normRequestCount ? { count: 'exact' } : {})
-          .eq('user_movie_entries.user_id', session.user.id);
+        try {
+          let query = supabase
+            .from('movies')
+            .select(`
+              id, title, original_title, year, year_end, type, 
+              genres:genres_list, directors:directors_list, actors:actors_list, 
+              minutes, slug, fa_id, fa_rating, fa_votes, 
+              imdb_id, imdb_rating, imdb_votes, avg_rating, 
+              synopsis, thumbhash_st, last_synced_at, 
+              episodes, wikipedia, selections_list, studios_list, justwatch,
+              countries(name, code),
+              user_movie_entries!inner(user_id, rating, on_watchlist)
+            `, normRequestCount ? { count: 'exact' } : {})
+            .eq('user_movie_entries.user_id', session.user.id);
 
-        if (signal) query = query.abortSignal(signal);
+          if (signal) query = query.abortSignal(signal);
 
-        if (normFilters.myList === 'rated') query = query.not('user_movie_entries.rating', 'is', null);
-        else if (normFilters.myList === 'watchlist') query = query.eq('user_movie_entries.on_watchlist', true);
-        else query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
+          if (normFilters.myList === 'rated') query = query.not('user_movie_entries.rating', 'is', null);
+          else if (normFilters.myList === 'watchlist') query = query.eq('user_movie_entries.on_watchlist', true);
+          else query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
 
-        if (normFilters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
-        else if (normFilters.mediaType === 'series') query = query.ilike('type', 'S%');
+          if (normFilters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
+          else if (normFilters.mediaType === 'series') query = query.ilike('type', 'S%');
 
-        const [sortField, sortDirection] = (normFilters.sort || "relevance,asc").split(",");
-        if (sortField === 'relevance') query = query.order('relevance', { ascending: true });
-        else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
+          const [sortField, sortDirection] = (normFilters.sort || "relevance,asc").split(",");
+          if (sortField === 'relevance') query = query.order('relevance', { ascending: true });
+          else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
 
-        const start = (normPage - 1) * normPageSize;
-        const { data, error, count } = await query.range(start, start + normPageSize - 1);
+          const start = (normPage - 1) * normPageSize;
+          const { data, error, count } = await query.range(start, start + normPageSize - 1);
 
-        if (error) throw (isAbortError(error, signal) ? { name: "AbortError" } : toAppError(error, ERROR_CODES.DATABASE, "No se pudo cargar tu lista."));
+          if (error) {
+            if (isAbortError(error, signal)) throw { name: "AbortError" };
+            // Resiliencia: si Supabase devuelve error de red/timeout, recurrir a la caché local
+            const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+            if (fallbackRes && fallbackRes.items.length > 0) return fallbackRes;
+            throw toAppError(error, ERROR_CODES.DATABASE, "No se pudo cargar tu lista.");
+          }
 
-        const items = (data || []).map(mRaw => mapMoviePayload(shapeRawMovieRow(mRaw)));
+          const items = (data || []).map(mRaw => mapMoviePayload(shapeRawMovieRow(mRaw)));
 
-        return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
+          if (items.length > 0) {
+            saveCachedMovies(items).catch(() => {});
+          }
+
+          return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
+        } catch (err: any) {
+          if (isAbortError(err, signal)) throw err;
+          const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+          if (fallbackRes && fallbackRes.items.length > 0) return fallbackRes;
+          throw err;
+        }
       }
 
       // MODO B: CATÁLOGO PÚBLICO (Motor potente con reintento resiliente para cold-starts)
@@ -278,10 +435,7 @@ export function fetchMovies(
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         if (signal?.aborted) throw { name: "AbortError" };
 
-        let query = supabase.rpc("search_movies_offset", rpcParams);
-        if (signal) query = query.abortSignal(signal);
-
-        const response = await query;
+        const response = await executeCatalogRpc(supabase, rpcParams, signal);
         data = response.data;
         error = response.error;
 

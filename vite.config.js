@@ -87,6 +87,11 @@ export default defineConfig({
         target: 'https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public',
         changeOrigin: true,
       },
+      '/api/rpc': {
+        target: 'https://wibygecgfczcvaqewleq.supabase.co/rest/v1/rpc',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/rpc/, ''),
+      },
     },
     watch: {
       ignored: ['**/dist/**']

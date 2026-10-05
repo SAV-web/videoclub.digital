@@ -6,12 +6,14 @@
 // rollbacks). Supabase actúa como espejo secundario de sincronización.
 // =================================================================
 
-import { UserMovieEntry } from "./types.js";
+import { UserMovieEntry, Movie, MappedMovie } from "./types.js";
 import { normalizeUserMovieEntry } from "./contracts.js";
 
 export const LOCAL_DB_NAME = "videoclub_local_db";
-export const LOCAL_DB_VERSION = 1;
+export const LOCAL_DB_VERSION = 2;
 export const STORE_USER_ENTRIES = "user_entries";
+export const STORE_CACHED_MOVIES = "cached_movies";
+export const MAX_CACHED_MOVIES = 1000;
 
 export interface LocalUserEntry {
   movieId: number;
@@ -20,6 +22,8 @@ export interface LocalUserEntry {
   updatedAt: number; // timestamp UTC en milisegundos
   syncStatus: "synced" | "dirty" | "deleted";
 }
+
+export type CachedMovie = (Movie | MappedMovie) & { cachedAt: number };
 
 let dbInstance: IDBDatabase | null = null;
 let isClosing = false;
@@ -41,9 +45,40 @@ export function openLocalDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
+      const tx = (event.target as IDBOpenDBRequest).transaction;
+
+      // 1. Almacén de entradas de usuario (user_entries)
+      let userStore: IDBObjectStore | null = null;
       if (!db.objectStoreNames.contains(STORE_USER_ENTRIES)) {
-        const store = db.createObjectStore(STORE_USER_ENTRIES, { keyPath: "movieId" });
-        store.createIndex("by_syncStatus", "syncStatus", { unique: false });
+        userStore = db.createObjectStore(STORE_USER_ENTRIES, { keyPath: "movieId" });
+      } else if (tx && typeof tx.objectStore === "function") {
+        userStore = tx.objectStore(STORE_USER_ENTRIES);
+      }
+
+      if (userStore && userStore.indexNames && typeof userStore.indexNames.contains === "function") {
+        if (!userStore.indexNames.contains("by_syncStatus")) {
+          userStore.createIndex("by_syncStatus", "syncStatus", { unique: false });
+        }
+        if (!userStore.indexNames.contains("by_watchlist")) {
+          userStore.createIndex("by_watchlist", "onWatchlist", { unique: false });
+        }
+        if (!userStore.indexNames.contains("by_rating")) {
+          userStore.createIndex("by_rating", "rating", { unique: false });
+        }
+      }
+
+      // 2. Almacén de fichas de películas cacheadas (cached_movies)
+      let movieStore: IDBObjectStore | null = null;
+      if (!db.objectStoreNames.contains(STORE_CACHED_MOVIES)) {
+        movieStore = db.createObjectStore(STORE_CACHED_MOVIES, { keyPath: "id" });
+      } else if (tx && typeof tx.objectStore === "function") {
+        movieStore = tx.objectStore(STORE_CACHED_MOVIES);
+      }
+
+      if (movieStore && movieStore.indexNames && typeof movieStore.indexNames.contains === "function") {
+        if (!movieStore.indexNames.contains("by_cachedAt")) {
+          movieStore.createIndex("by_cachedAt", "cachedAt", { unique: false });
+        }
       }
     };
 
@@ -96,12 +131,13 @@ export async function getLocalEntry(movieId: number): Promise<LocalUserEntry | n
 }
 
 /**
- * Guarda o actualiza una entrada en IndexedDB con estado 'dirty' o 'deleted'.
- * Se ejecuta síncronamente al gesto del usuario en 0 ms.
+ * Guarda o actualiza atómicamente la entrada de usuario en user_entries y opcionalmente
+ * la ficha de la película en cached_movies dentro de una única transacción ACID de IndexedDB.
  */
-export async function saveLocalEntry(
+export async function saveLocalEntryWithMovie(
   movieId: number,
   partialData: Partial<UserMovieEntry>,
+  movieData?: Movie | MappedMovie | null,
   customTimestamp?: number
 ): Promise<LocalUserEntry> {
   const current = await getLocalEntry(movieId);
@@ -126,12 +162,56 @@ export async function saveLocalEntry(
 
   const db = await openLocalDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_USER_ENTRIES, "readwrite");
-    const store = tx.objectStore(STORE_USER_ENTRIES);
-    const req = store.put(entry);
-    req.onsuccess = () => resolve(entry);
-    req.onerror = () => reject(req.error);
+    const shouldCacheMovie = Boolean(movieData && movieData.id === movieId);
+    const storeNames = shouldCacheMovie
+      ? [STORE_USER_ENTRIES, STORE_CACHED_MOVIES]
+      : [STORE_USER_ENTRIES];
+
+    let isResolved = false;
+    const safeResolve = () => {
+      if (!isResolved) {
+        isResolved = true;
+        resolve(entry);
+      }
+    };
+
+    const tx = db.transaction(storeNames, "readwrite");
+    const userStore = tx.objectStore(STORE_USER_ENTRIES);
+    const userReq = userStore.put(entry);
+    if (userReq) {
+      userReq.onsuccess = () => {
+        if (!shouldCacheMovie) safeResolve();
+      };
+    }
+
+    if (shouldCacheMovie && movieData) {
+      const movieStore = tx.objectStore(STORE_CACHED_MOVIES);
+      const cachedRecord: CachedMovie = {
+        ...movieData,
+        cachedAt: now
+      };
+      const movieReq = movieStore.put(cachedRecord);
+      if (movieReq) {
+        movieReq.onsuccess = safeResolve;
+      }
+    }
+
+    tx.oncomplete = safeResolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("Transacción atómica en IndexedDB abortada."));
   });
+}
+
+/**
+ * Guarda o actualiza una entrada en IndexedDB con estado 'dirty' o 'deleted'.
+ * Se ejecuta síncronamente al gesto del usuario en 0 ms.
+ */
+export async function saveLocalEntry(
+  movieId: number,
+  partialData: Partial<UserMovieEntry>,
+  customTimestamp?: number
+): Promise<LocalUserEntry> {
+  return saveLocalEntryWithMovie(movieId, partialData, null, customTimestamp);
 }
 
 /**
@@ -353,17 +433,224 @@ export async function mergeRemoteEntries(
 }
 
 /**
+ * Guarda un lote de fichas de películas en cached_movies.
+ * Si el almacén excede MAX_CACHED_MOVIES, purga los registros más antiguos (política LRU).
+ */
+export async function saveCachedMovies(movies: Array<Movie | MappedMovie>): Promise<void> {
+  if (!movies || movies.length === 0) return;
+
+  try {
+    const db = await openLocalDB();
+    if (!db.objectStoreNames.contains(STORE_CACHED_MOVIES)) return;
+
+    const now = Date.now();
+
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_CACHED_MOVIES, "readwrite");
+      const store = tx.objectStore(STORE_CACHED_MOVIES);
+
+      for (const m of movies) {
+        if (!m || typeof m.id !== "number") continue;
+        const entry: CachedMovie = {
+          ...m,
+          cachedAt: now
+        };
+        store.put(entry);
+      }
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+
+    // Purgado prudente de retención LRU si se supera MAX_CACHED_MOVIES
+    await pruneOldCachedMovies();
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn("[LocalStore] Error al guardar películas en caché local:", error);
+    }
+  }
+}
+
+/**
+ * Purgado LRU para mantener cached_movies por debajo del límite prudente.
+ */
+async function pruneOldCachedMovies(): Promise<void> {
+  try {
+    const db = await openLocalDB();
+    if (!db.objectStoreNames.contains(STORE_CACHED_MOVIES)) return;
+
+    const count = await new Promise<number>((resolve) => {
+      const tx = db.transaction(STORE_CACHED_MOVIES, "readonly");
+      const req = tx.objectStore(STORE_CACHED_MOVIES).count();
+      req.onsuccess = () => resolve(req.result || 0);
+      req.onerror = () => resolve(0);
+    });
+
+    if (count <= MAX_CACHED_MOVIES) return;
+
+    const excess = count - MAX_CACHED_MOVIES;
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(STORE_CACHED_MOVIES, "readwrite");
+      const store = tx.objectStore(STORE_CACHED_MOVIES);
+      const index = store.index("by_cachedAt");
+      const req = index.openKeyCursor(); // Orden ascendente: los más antiguos primero
+      let deleted = 0;
+
+      req.onsuccess = (e) => {
+        const cursor = (e.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor && deleted < excess) {
+          store.delete(cursor.primaryKey);
+          deleted++;
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      req.onerror = () => resolve();
+    });
+  } catch {
+    // Si falla el purgado, no interrumpir
+  }
+}
+
+/**
+ * Recupera una ficha individual desde cached_movies.
+ */
+export async function getCachedMovie(id: number): Promise<CachedMovie | null> {
+  try {
+    const db = await openLocalDB();
+    if (!db.objectStoreNames.contains(STORE_CACHED_MOVIES)) return null;
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_CACHED_MOVIES, "readonly");
+      const req = tx.objectStore(STORE_CACHED_MOVIES).get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Recupera un conjunto de fichas desde cached_movies dados sus IDs.
+ */
+export async function getCachedMoviesByIds(ids: number[]): Promise<Map<number, CachedMovie>> {
+  const result = new Map<number, CachedMovie>();
+  if (!ids || ids.length === 0) return result;
+
+  try {
+    const db = await openLocalDB();
+    if (!db.objectStoreNames.contains(STORE_CACHED_MOVIES)) return result;
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_CACHED_MOVIES, "readonly");
+      const store = tx.objectStore(STORE_CACHED_MOVIES);
+
+      let pending = ids.length;
+      const checkDone = () => {
+        pending--;
+        if (pending <= 0) resolve(result);
+      };
+
+      for (const id of ids) {
+        const req = store.get(id);
+        req.onsuccess = () => {
+          if (req.result) {
+            result.set(id, req.result);
+          }
+          checkDone();
+        };
+        req.onerror = () => checkDone();
+      }
+    });
+  } catch {
+    return result;
+  }
+}
+
+/**
+ * Obtiene los IDs de películas en la Watchlist utilizando el índice 'by_watchlist'.
+ */
+export async function getLocalWatchlistMovieIds(): Promise<number[]> {
+  try {
+    const db = await openLocalDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_USER_ENTRIES, "readonly");
+      const store = tx.objectStore(STORE_USER_ENTRIES);
+      const index = store.index("by_watchlist");
+      const req = index.getAll(IDBKeyRange.only(true));
+
+      req.onsuccess = () => {
+        const rows: LocalUserEntry[] = req.result || [];
+        const activeIds = rows
+          .filter(r => r.syncStatus !== "deleted" && r.onWatchlist)
+          .map(r => r.movieId);
+        resolve(activeIds);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Obtiene los IDs de películas puntuadas utilizando el índice 'by_rating'.
+ */
+export async function getLocalRatedMovieIds(): Promise<number[]> {
+  try {
+    const db = await openLocalDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_USER_ENTRIES, "readonly");
+      const store = tx.objectStore(STORE_USER_ENTRIES);
+      const index = store.index("by_rating");
+      // En IndexedDB, los números >= 1 son claves válidas
+      const req = index.getAll(IDBKeyRange.lowerBound(1));
+
+      req.onsuccess = () => {
+        const rows: LocalUserEntry[] = req.result || [];
+        const activeIds = rows
+          .filter(r => r.syncStatus !== "deleted" && r.rating !== null)
+          .map(r => r.movieId);
+        resolve(activeIds);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Vacía completamente el almacén local (usado al cerrar sesión o en tests).
  */
 export async function clearLocalStore(): Promise<void> {
   try {
     const db = await openLocalDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_USER_ENTRIES, "readwrite");
-      const store = tx.objectStore(STORE_USER_ENTRIES);
-      const req = store.clear();
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
+      let isResolved = false;
+      const safeResolve = () => {
+        if (!isResolved) {
+          isResolved = true;
+          resolve();
+        }
+      };
+
+      const storeNames = [STORE_USER_ENTRIES];
+      if (db.objectStoreNames.contains(STORE_CACHED_MOVIES)) {
+        storeNames.push(STORE_CACHED_MOVIES);
+      }
+      const tx = db.transaction(storeNames, "readwrite");
+      const userClear = tx.objectStore(STORE_USER_ENTRIES).clear();
+      if (userClear) {
+        userClear.onsuccess = safeResolve;
+      }
+      if (db.objectStoreNames.contains(STORE_CACHED_MOVIES)) {
+        tx.objectStore(STORE_CACHED_MOVIES).clear();
+      }
+      tx.oncomplete = safeResolve;
+      tx.onerror = () => reject(tx.error);
     });
   } catch {
     // Ignorar si la base de datos no está disponible

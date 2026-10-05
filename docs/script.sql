@@ -85,22 +85,7 @@ END; $$;
 -- PASO 3: FUNCIÓN DE BÚSQUEDA PRINCIPAL (SEARCH_MOVIES_OFFSET)
 -- =================================================================
 
--- 3.1. Limpieza preventiva de sobrecargas previas de search_movies_offset
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    FOR r IN (
-        SELECT oid::regprocedure AS func_signature
-        FROM pg_proc
-        WHERE proname = 'search_movies_offset'
-          AND pronamespace = 'public'::regnamespace
-    ) LOOP
-        EXECUTE 'DROP FUNCTION IF EXISTS ' || r.func_signature || ' CASCADE;';
-    END LOOP;
-END $$;
-
--- 3.2. Definición de la función RPC search_movies_offset
+-- 3.1. Definición de la función RPC search_movies_offset
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
     search_term text DEFAULT NULL::text,
     genre_name text DEFAULT NULL::text,
@@ -143,11 +128,15 @@ DECLARE
     v_director_tsquery tsquery;
     v_director_names text[];
     v_actor_tsquery tsquery;
+    v_selection_tsquery tsquery;
+    v_studio_tsquery tsquery;
+    v_excluded_genres_tsquery tsquery;
     v_enable_daily_showcase BOOLEAN := FALSE;
     v_has_filters BOOLEAN := FALSE;
     v_showcase_limit INT := 378;
     v_threshold_expr TEXT := '';
     v_outer_threshold_expr TEXT := '';
+    v_include_total_matches BOOLEAN := FALSE;
 BEGIN
     -- FASE 1: VALIDACIÓN Y ORDENACIÓN
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
@@ -210,9 +199,11 @@ BEGIN
         IF v_has_filters THEN
             v_threshold_expr := 'CASE WHEN m.total_matches < 50 THEN 12 WHEN m.total_matches <= 200 THEN 24 ELSE 42 END';
             v_outer_threshold_expr := 'CASE WHEN fm.total_matches < 50 THEN 12 WHEN fm.total_matches <= 200 THEN 24 ELSE 42 END';
+            v_include_total_matches := TRUE;
         ELSE
             v_threshold_expr := v_showcase_limit::text;
             v_outer_threshold_expr := v_showcase_limit::text;
+            v_include_total_matches := get_count;
         END IF;
 
         v_order_clause := format('
@@ -286,33 +277,34 @@ BEGIN
 
     -- FASE 3: LÓGICA CONDICIONAL DE CONTEO
     IF get_count THEN
-        v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
-        v_count_select := '(SELECT value FROM total)';
+        IF v_include_total_matches THEN
+            -- Reutiliza el total calculado por la función de ventana sin re-escanear la tabla
+            v_count_cte := '';
+            v_count_select := 'COALESCE((SELECT total_matches FROM paged_ids LIMIT 1), (SELECT count(*) AS value FROM filtered_movies))';
+        ELSE
+            v_count_cte := ', total AS (SELECT count(*) AS value FROM filtered_movies)';
+            v_count_select := '(SELECT value FROM total)';
+        END IF;
     ELSE
         v_count_cte := '';
         v_count_select := '-1';
     END IF;
 
     -- =========================================================================================
-    -- FASE 3.5: RESOLUCIÓN DE GÉNEROS Y SINÓNIMOS A TSQUERY
+    -- FASE 3.5: RESOLUCIÓN DE GÉNEROS Y SINÓNIMOS A TSQUERY (PRECOMPUTADO O(1))
     -- =========================================================================================
-    -- Expande dinámicamente el género recibido contra la tabla `public.genres` y sus sinónimos (`genres.synonyms`).
-    IF genre_name IS NOT NULL AND TRIM(genre_name) != '' THEN
-        SELECT string_agg(plainto_tsquery('spanish', replace(public.unaccent_immutable(lower(g_term)), 'sci-fi', 'scifi'))::text, ' | ')::tsquery
+    -- Cruza directamente contra `genres.genre_tsquery` precompilado, evitando lematizaciones en caliente
+    IF genre_name IS NOT NULL AND TRIM(genre_name) <> '' THEN
+        SELECT string_agg(COALESCE(g.genre_tsquery, plainto_tsquery('spanish', terms.g_term))::text, ' | ')::tsquery
         INTO v_genre_tsquery
         FROM (
-            SELECT DISTINCT g.name_norm AS g_term
-            FROM public.genres g
-            WHERE g.name_norm = ANY(SELECT replace(public.unaccent_immutable(lower(trim(x))), 'sci-fi', 'scifi') FROM unnest(string_to_array(genre_name, ',')) x)
-               OR EXISTS (
-                   SELECT 1 FROM unnest(g.synonyms) syn
-                   WHERE public.unaccent_immutable(lower(syn)) = ANY(SELECT replace(public.unaccent_immutable(lower(trim(x))), 'sci-fi', 'scifi') FROM unnest(string_to_array(genre_name, ',')) x)
-               )
-            UNION
-            SELECT replace(public.unaccent_immutable(lower(trim(x))), 'sci-fi', 'scifi')
+            SELECT replace(public.unaccent_immutable(lower(trim(x))), 'sci-fi', 'scifi') AS g_term
             FROM unnest(string_to_array(genre_name, ',')) x
             WHERE trim(x) <> ''
-        ) terms;
+        ) terms
+        LEFT JOIN public.genres g 
+          ON g.name_norm = terms.g_term 
+          OR terms.g_term = ANY(g.synonyms);
     END IF;
 
     -- =========================================================================================
@@ -375,6 +367,31 @@ BEGIN
         ) alias_acts;
     END IF;
 
+    -- =========================================================================================
+    -- FASE 3.8: PREPARACIÓN DE SELECCIÓN, ESTUDIO Y GÉNEROS EXCLUIDOS A TSQUERY
+    -- =========================================================================================
+    -- Precalcula los objetos tsquery para evitar evaluaciones lingüísticas repetidas en la cláusula WHERE
+    IF p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '' THEN
+        v_selection_tsquery := plainto_tsquery('simple', p_selection_code);
+    END IF;
+
+    IF p_studio_code IS NOT NULL AND TRIM(p_studio_code) <> '' THEN
+        v_studio_tsquery := plainto_tsquery('simple', p_studio_code);
+    END IF;
+
+    IF excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 0 THEN
+        SELECT string_agg(COALESCE(g.genre_tsquery, plainto_tsquery('spanish', terms.g_term))::text, ' | ')::tsquery
+        INTO v_excluded_genres_tsquery
+        FROM (
+            SELECT replace(public.unaccent_immutable(lower(trim(g))), 'sci-fi', 'scifi') AS g_term
+            FROM unnest(excluded_genres) g
+            WHERE trim(g) <> ''
+        ) terms
+        LEFT JOIN public.genres g 
+          ON g.name_norm = terms.g_term 
+          OR terms.g_term = ANY(g.synonyms);
+    END IF;
+
     -- FASE 4: CONSTRUCCIÓN DINÁMICA DE LA CONSULTA SQL
     v_query := '
         WITH base_movies AS (
@@ -396,16 +413,18 @@ BEGIN
                     )
                 ))
                 AND ($7 IS NULL OR m.actors_tsv @@ $7)
-                AND ($9 IS NULL OR m.selections_tsv @@ plainto_tsquery(''simple'', $9))
-                AND ($10 IS NULL OR m.studios_tsv @@ plainto_tsquery(''simple'', $10))
-                AND ($11 IS NULL OR NOT m.genres_tsv @@ (
-                    SELECT string_agg(plainto_tsquery(''spanish'', public.unaccent_immutable(g))::text, '' | '')::tsquery FROM unnest($11) g
-                ))
+                AND ($9 IS NULL OR m.selections_tsv @@ $9)
+                AND ($10 IS NULL OR m.studios_tsv @@ $10)
+                AND ($11 IS NULL OR NOT (m.genres_tsv @@ $11))
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         ),
         filtered_movies AS (
             SELECT bm.id, bm.year, bm.fa_rating, bm.imdb_rating, bm.fa_votes, bm.imdb_votes, bm.avg_rating, bm.relevance' || 
-            CASE WHEN v_enable_daily_showcase THEN ', ROW_NUMBER() OVER (ORDER BY bm.relevance ASC, bm.id ASC) AS natural_rank, COUNT(*) OVER () AS total_matches' ELSE '' END || '
+            CASE 
+                WHEN v_enable_daily_showcase AND v_include_total_matches THEN ', ROW_NUMBER() OVER (ORDER BY bm.relevance ASC, bm.id ASC) AS natural_rank, COUNT(*) OVER () AS total_matches'
+                WHEN v_enable_daily_showcase THEN ', ROW_NUMBER() OVER (ORDER BY bm.relevance ASC, bm.id ASC) AS natural_rank'
+                ELSE '' 
+            END || '
             FROM base_movies bm
             WHERE
                 ($8 IS NULL OR $8 = ''all''
@@ -413,7 +432,12 @@ BEGIN
                  OR ($8 = ''series'' AND bm.type ILIKE ''S%''))
         )' || v_count_cte || ',
         paged_ids AS (
-            SELECT m.id' || CASE WHEN v_enable_daily_showcase THEN ', m.natural_rank, m.total_matches' ELSE '' END || ' 
+            SELECT m.id' || 
+            CASE 
+                WHEN v_enable_daily_showcase AND v_include_total_matches THEN ', m.natural_rank, m.total_matches'
+                WHEN v_enable_daily_showcase THEN ', m.natural_rank'
+                ELSE '' 
+            END || ' 
             FROM filtered_movies m
             ' || v_order_clause || '
             LIMIT ' || v_limit || ' OFFSET ' || v_offset || '
@@ -460,8 +484,8 @@ BEGIN
     INTO v_json_result
     USING
         search_term, v_genre_tsquery, p_year_start, p_year_end, v_country_ids, -- $1..$5
-        v_director_tsquery, v_actor_tsquery, media_type, p_selection_code, p_studio_code, -- $6..$10
-        excluded_genres, v_excluded_country_ids, v_director_names; -- $11..$13
+        v_director_tsquery, v_actor_tsquery, media_type, v_selection_tsquery, v_studio_tsquery, -- $6..$10
+        v_excluded_genres_tsquery, v_excluded_country_ids, v_director_names; -- $11..$13
         
     RETURN v_json_result;
 END;
@@ -483,7 +507,6 @@ CREATE TABLE IF NOT EXISTS public.user_movie_entries (
     
     on_watchlist BOOLEAN NOT NULL DEFAULT false,
     rating SMALLINT CHECK (rating >= 1 AND rating <= 10),
-    watchlist_position INTEGER,
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -495,7 +518,7 @@ CREATE TABLE IF NOT EXISTS public.user_movie_entries (
 
 -- 4.2. Índices para optimizar consultas de usuario y ordenación de Watchlist
 CREATE INDEX IF NOT EXISTS user_movie_entries_movie_id_idx ON public.user_movie_entries(movie_id);
-CREATE INDEX IF NOT EXISTS user_movie_entries_watchlist_pos_idx ON public.user_movie_entries (user_id, watchlist_position ASC NULLS LAST) WHERE on_watchlist = true;
+CREATE INDEX IF NOT EXISTS user_movie_entries_user_watchlist_idx ON public.user_movie_entries (user_id, updated_at DESC) WHERE on_watchlist = true;
 
 -- 4.3. Función y trigger para actualización automática de 'updated_at'
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
@@ -533,8 +556,7 @@ CREATE INDEX IF NOT EXISTS movie_studios_studio_id_idx ON public.movie_studios(s
 
 -- 5.0. Índices para la tabla canónica 'public.people'
 CREATE INDEX IF NOT EXISTS idx_people_slug ON public.people(slug);
-CREATE INDEX IF NOT EXISTS idx_people_type ON public.people(type);
-CREATE INDEX IF NOT EXISTS idx_people_vip ON public.people(vip);
+CREATE INDEX IF NOT EXISTS idx_people_name_norm ON public.people(name_norm);
 CREATE INDEX IF NOT EXISTS idx_people_name_norm_trgm ON public.people USING gin(name_norm extensions.gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_people_components_trgm ON public.people USING gin(public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
 
@@ -544,7 +566,6 @@ CREATE INDEX IF NOT EXISTS movies_actors_tsv_idx ON public.movies USING GIN(acto
 CREATE INDEX IF NOT EXISTS movies_selections_tsv_idx ON public.movies USING GIN(selections_tsv);
 CREATE INDEX IF NOT EXISTS movies_studios_tsv_idx ON public.movies USING GIN(studios_tsv);
 
-CREATE INDEX IF NOT EXISTS movies_country_covering_idx ON public.movies(country_id) INCLUDE (year, avg_rating, fa_rating, imdb_rating, fa_votes, imdb_votes, relevance, type);
 CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx ON public.movies(country_id, year DESC);
 CREATE INDEX IF NOT EXISTS movies_country_relevance_idx ON public.movies(country_id, relevance ASC);
 CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_id, fa_votes DESC NULLS LAST);
@@ -634,9 +655,6 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Limpieza de vistas obsoletas de autocompletado
-DROP MATERIALIZED VIEW IF EXISTS public.mv_title_suggestions CASCADE;
-
 -- 5.3. Revocación incondicional de acceso público directo a las vistas materializadas
 -- (El acceso se realiza exclusivamente a través de las funciones RPC SECURITY DEFINER)
 DO $$
@@ -652,10 +670,6 @@ BEGIN
 END $$;
 
 -- 5.4. Funciones RPC de Sugerencias y Autocompletado (SECURITY DEFINER)
-DROP FUNCTION IF EXISTS public.get_actor_suggestions(text);
-DROP FUNCTION IF EXISTS public.get_director_suggestions(text);
-DROP FUNCTION IF EXISTS public.get_title_suggestions(text);
-
 CREATE OR REPLACE FUNCTION public.get_actor_suggestions(search_term text)
 RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINER
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$
@@ -803,17 +817,30 @@ GRANT EXECUTE ON FUNCTION public.get_random_top_directors(int) TO anon, authenti
 -- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY & PERMISOS)
 -- =================================================================
 
--- 6.1. Habilitación de RLS y lectura pública para tablas de catálogo
+-- 6.1. Habilitación de RLS idempotente (evita bloqueos AccessExclusiveLock si ya está activo)
 DO $$ 
 DECLARE 
     t_name TEXT; 
-    public_tables TEXT[] := ARRAY[
+    all_tables TEXT[] := ARRAY[
+        'movies', 'people', 'genres', 'countries', 'selections', 'studios',
+        'movie_actors', 'movie_directors', 'movie_genres', 'movie_selections', 'movie_studios',
+        'movies_staging', 'people_staging', 'user_movie_entries'
+    ];
+    catalog_tables TEXT[] := ARRAY[
         'movies', 'people', 'genres', 'countries', 'selections', 'studios',
         'movie_actors', 'movie_directors', 'movie_genres', 'movie_selections', 'movie_studios'
     ];
 BEGIN
-    FOREACH t_name IN ARRAY public_tables LOOP
-        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', t_name);
+    FOREACH t_name IN ARRAY all_tables LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relname = t_name AND c.relrowsecurity = true
+        ) THEN
+            EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', t_name);
+        END IF;
+    END LOOP;
+
+    FOREACH t_name IN ARRAY catalog_tables LOOP
         IF NOT EXISTS (
             SELECT 1 FROM pg_policies 
             WHERE schemaname = 'public' AND tablename = t_name AND policyname = 'Enable read access for all users'
@@ -824,10 +851,6 @@ BEGIN
 END; $$;
 
 -- 6.2. Seguridad estricta para tablas de staging (Acceso exclusivo a service_role)
-ALTER TABLE public.movies_staging ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.people_staging ENABLE ROW LEVEL SECURITY;
-
--- Asegurar que las tablas de staging admitan ingesta masiva sin restricciones rígidas de clave
 ALTER TABLE public.people_staging DROP CONSTRAINT IF EXISTS people_staging_pkey;
 ALTER TABLE public.people_staging ALTER COLUMN id DROP NOT NULL;
 ALTER TABLE public.people_staging ALTER COLUMN name DROP NOT NULL;
@@ -843,11 +866,7 @@ DROP POLICY IF EXISTS "People staging access restricted to service_role" ON publ
 CREATE POLICY "People staging access restricted to service_role" ON public.people_staging FOR ALL TO service_role USING (true);
 
 -- 6.3. Políticas RLS consolidadas para la tabla 'user_movie_entries'
--- Optimización de Rendimiento: Se utiliza `(select auth.uid())` en lugar de `auth.uid()` directo.
--- Esto permite que PostgreSQL trate la llamada como un `InitPlan` (evaluado 1 sola vez por consulta)
--- en lugar de reevaluar la función por cada fila escaneada, maximizando el uso de índices.
-ALTER TABLE public.user_movie_entries ENABLE ROW LEVEL SECURITY;
-
+-- Optimización: (select auth.uid()) se evalúa como InitPlan (1 sola vez por consulta)
 DROP POLICY IF EXISTS "Los usuarios pueden gestionar sus propias entradas" ON public.user_movie_entries;
 
 CREATE POLICY "Los usuarios pueden gestionar sus propias entradas"
@@ -910,7 +929,7 @@ DECLARE
 BEGIN
     -- 1. BLOQUEO TRANSACCIONAL DE EXCLUSIÓN MUTUA
     -- Evita que dos sincronizaciones de staging se ejecuten concurrentemente
-    PERFORM pg_advisory_xact_lock(hashtext('cinelog_staging_sync'));
+    PERFORM pg_advisory_xact_lock(hashtext('videoclub_staging_sync'));
 
     -- 2. POBLAR Y ENRIQUECER CATÁLOGOS BASE DESDE STAGING
     -- Solo se extraen entidades de películas formalmente admitidas en el catálogo (show IS TRUE)
@@ -1263,30 +1282,53 @@ REVOKE ALL ON FUNCTION public.process_staging_data() FROM PUBLIC, anon, authenti
 GRANT EXECUTE ON FUNCTION public.process_staging_data() TO service_role;
 
 -- =================================================================
--- PASO 8: POBLADO DE SINÓNIMOS DE GÉNEROS (AUTOCOMPLETADO Y BÚSQUEDA)
+-- PASO 8: POBLADO DE SINÓNIMOS Y PRECOMPUTACIÓN DE TSQUERY (GÉNEROS)
 -- =================================================================
--- Poblado determinista e idempotente del array `genres.synonyms` para los 21 géneros oficiales.
-UPDATE public.genres SET synonyms = ARRAY['action', 'adrenalina'] WHERE name = 'Acción' AND synonyms IS DISTINCT FROM ARRAY['action', 'adrenalina'];
-UPDATE public.genres SET synonyms = ARRAY['animation', 'animado', 'dibujos', 'cgi'] WHERE name = 'Animación' AND synonyms IS DISTINCT FROM ARRAY['animation', 'animado', 'dibujos', 'cgi'];
-UPDATE public.genres SET synonyms = ARRAY['adventure', 'epico'] WHERE name = 'Aventuras' AND synonyms IS DISTINCT FROM ARRAY['adventure', 'epico'];
-UPDATE public.genres SET synonyms = ARRAY['war', 'guerra'] WHERE name = 'Bélico' AND synonyms IS DISTINCT FROM ARRAY['war', 'guerra'];
-UPDATE public.genres SET synonyms = ARRAY['biography', 'biografico', 'biopic'] WHERE name = 'Biografía' AND synonyms IS DISTINCT FROM ARRAY['biography', 'biografico', 'biopic'];
-UPDATE public.genres SET synonyms = ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro'] WHERE name = 'Noir' AND synonyms IS DISTINCT FROM ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro'];
-UPDATE public.genres SET synonyms = ARRAY['comedy', 'humor', 'comico'] WHERE name = 'Comedia' AND synonyms IS DISTINCT FROM ARRAY['comedy', 'humor', 'comico'];
-UPDATE public.genres SET synonyms = ARRAY['crime', 'policiaco', 'policial', 'criminal', 'delito', 'mafia'] WHERE name = 'Crimen' AND synonyms IS DISTINCT FROM ARRAY['crime', 'policiaco', 'policial', 'criminal', 'delito', 'mafia'];
-UPDATE public.genres SET synonyms = ARRAY['sport', 'deportes'] WHERE name = 'Deporte' AND synonyms IS DISTINCT FROM ARRAY['sport', 'deportes'];
-UPDATE public.genres SET synonyms = ARRAY['documentary'] WHERE name = 'Documental' AND synonyms IS DISTINCT FROM ARRAY['documentary'];
-UPDATE public.genres SET synonyms = ARRAY['dramatico'] WHERE name = 'Drama' AND synonyms IS DISTINCT FROM ARRAY['dramatico'];
-UPDATE public.genres SET synonyms = ARRAY['family', 'infantil'] WHERE name = 'Familiar' AND synonyms IS DISTINCT FROM ARRAY['family', 'infantil'];
-UPDATE public.genres SET synonyms = ARRAY['fantasy', 'fantastico'] WHERE name = 'Fantasía' AND synonyms IS DISTINCT FROM ARRAY['fantasy', 'fantastico'];
-UPDATE public.genres SET synonyms = ARRAY['history', 'epoca'] WHERE name = 'Histórico' AND synonyms IS DISTINCT FROM ARRAY['history', 'epoca'];
-UPDATE public.genres SET synonyms = ARRAY['mystery', 'misterio', 'enigma', 'investigacion'] WHERE name = 'Intriga' AND synonyms IS DISTINCT FROM ARRAY['mystery', 'misterio', 'enigma', 'investigacion'];
-UPDATE public.genres SET synonyms = ARRAY['music', 'musical', 'canciones'] WHERE name = 'Música' AND synonyms IS DISTINCT FROM ARRAY['music', 'musical', 'canciones'];
-UPDATE public.genres SET synonyms = ARRAY['romance', 'love', 'romantico', 'amor'] WHERE name = 'Romance' AND synonyms IS DISTINCT FROM ARRAY['romance', 'love', 'romantico', 'amor'];
-UPDATE public.genres SET synonyms = ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'] WHERE name = 'Sci-Fi' AND synonyms IS DISTINCT FROM ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia'];
-UPDATE public.genres SET synonyms = ARRAY['horror', 'miedo'] WHERE name = 'Terror' AND synonyms IS DISTINCT FROM ARRAY['horror', 'miedo'];
-UPDATE public.genres SET synonyms = ARRAY['suspense', 'psicologico', 'tension'] WHERE name = 'Thriller' AND synonyms IS DISTINCT FROM ARRAY['suspense', 'psicologico', 'tension'];
-UPDATE public.genres SET synonyms = ARRAY['western', 'oeste', 'vaqueros'] WHERE name = 'Western' AND synonyms IS DISTINCT FROM ARRAY['western', 'oeste', 'vaqueros'];
+-- 8.1. Columna de TSQuery precomputada para aceleración O(1) de búsquedas y exclusiones
+ALTER TABLE public.genres ADD COLUMN IF NOT EXISTS genre_tsquery tsquery;
+
+-- 8.2. Poblado determinista, atómico e idempotente de `genres.synonyms` para los 21 géneros oficiales.
+UPDATE public.genres AS g
+SET synonyms = v.synonyms
+FROM (
+    VALUES
+        ('Acción', ARRAY['action', 'adrenalina']),
+        ('Animación', ARRAY['animation', 'animado', 'dibujos', 'cgi']),
+        ('Aventuras', ARRAY['adventure', 'epico']),
+        ('Bélico', ARRAY['war', 'guerra']),
+        ('Biografía', ARRAY['biography', 'biografico', 'biopic']),
+        ('Noir', ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro']),
+        ('Comedia', ARRAY['comedy', 'humor', 'comico']),
+        ('Crimen', ARRAY['crime', 'policiaco', 'policial', 'criminal', 'delito', 'mafia']),
+        ('Deporte', ARRAY['sport', 'deportes']),
+        ('Documental', ARRAY['documentary']),
+        ('Drama', ARRAY['dramatico']),
+        ('Familiar', ARRAY['family', 'infantil']),
+        ('Fantasía', ARRAY['fantasy', 'fantastico']),
+        ('Histórico', ARRAY['history', 'epoca']),
+        ('Intriga', ARRAY['mystery', 'misterio', 'enigma', 'investigacion']),
+        ('Música', ARRAY['music', 'musical', 'canciones']),
+        ('Romance', ARRAY['romance', 'love', 'romantico', 'amor']),
+        ('Sci-Fi', ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia']),
+        ('Terror', ARRAY['horror', 'miedo']),
+        ('Thriller', ARRAY['suspense', 'psicologico', 'tension']),
+        ('Western', ARRAY['western', 'oeste', 'vaqueros'])
+) AS v(name, synonyms)
+WHERE g.name = v.name AND g.synonyms IS DISTINCT FROM v.synonyms;
+
+-- 8.3. Precomputación y compilación atómica de `genre_tsquery` (OR de nombre canónico + sinónimos)
+UPDATE public.genres
+SET genre_tsquery = (
+    SELECT string_agg(plainto_tsquery('spanish', replace(public.unaccent_immutable(lower(t)), 'sci-fi', 'scifi'))::text, ' | ')::tsquery
+    FROM unnest(array_append(synonyms, name)) t
+    WHERE t IS NOT NULL AND trim(t) <> ''
+)
+WHERE genre_tsquery IS NULL 
+   OR genre_tsquery IS DISTINCT FROM (
+       SELECT string_agg(plainto_tsquery('spanish', replace(public.unaccent_immutable(lower(t)), 'sci-fi', 'scifi'))::text, ' | ')::tsquery
+       FROM unnest(array_append(synonyms, name)) t
+       WHERE t IS NOT NULL AND trim(t) <> ''
+   );
 
 -- =================================================================
 -- PASO 9: OBSERVABILIDAD Y TELEMETRÍA (pg_stat_statements)

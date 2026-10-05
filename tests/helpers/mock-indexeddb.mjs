@@ -30,59 +30,68 @@ export function createMockIndexedDB() {
           },
           createObjectStore: (s) => {
             getStore(s);
+            const indexNames = new Set();
             return {
-              createIndex: () => {},
+              indexNames: {
+                contains: (idx) => indexNames.has(idx),
+              },
+              createIndex: (idx) => {
+                indexNames.add(idx);
+              },
             };
           },
           transaction: (storeNames) => {
-            const storeName = Array.isArray(storeNames) ? storeNames[0] : storeNames;
-            const targetMap = getStore(storeName);
+            const defaultStoreName = Array.isArray(storeNames) ? storeNames[0] : storeNames;
 
             const tx = {
               oncomplete: null,
               onerror: null,
-              objectStore: () => ({
-                get: (key) => {
-                  const req = { result: undefined, onsuccess: null, onerror: null };
-                  setTimeout(() => {
-                    req.result = targetMap.get(key);
-                    if (req.onsuccess) req.onsuccess();
-                  }, 0);
-                  return req;
-                },
-                getAll: () => {
-                  const req = { result: [], onsuccess: null, onerror: null };
-                  setTimeout(() => {
-                    req.result = Array.from(targetMap.values());
-                    if (req.onsuccess) req.onsuccess();
-                  }, 0);
-                  return req;
-                },
-                put: (val) => {
-                  const req = { result: val.movieId, onsuccess: null, onerror: null };
-                  targetMap.set(val.movieId, { ...val });
-                  setTimeout(() => {
-                    if (req.onsuccess) req.onsuccess();
-                  }, 0);
-                  return req;
-                },
-                delete: (key) => {
-                  const req = { result: undefined, onsuccess: null, onerror: null };
-                  targetMap.delete(key);
-                  setTimeout(() => {
-                    if (req.onsuccess) req.onsuccess();
-                  }, 0);
-                  return req;
-                },
-                clear: () => {
-                  const req = { result: undefined, onsuccess: null, onerror: null };
-                  targetMap.clear();
-                  setTimeout(() => {
-                    if (req.onsuccess) req.onsuccess();
-                  }, 0);
-                  return req;
-                },
-              }),
+              objectStore: (name) => {
+                const targetMap = getStore(name || defaultStoreName);
+                return {
+                  get: (key) => {
+                    const req = { result: undefined, onsuccess: null, onerror: null };
+                    setTimeout(() => {
+                      req.result = targetMap.get(key);
+                      if (req.onsuccess) req.onsuccess();
+                    }, 0);
+                    return req;
+                  },
+                  getAll: () => {
+                    const req = { result: [], onsuccess: null, onerror: null };
+                    setTimeout(() => {
+                      req.result = Array.from(targetMap.values());
+                      if (req.onsuccess) req.onsuccess();
+                    }, 0);
+                    return req;
+                  },
+                  put: (val) => {
+                    const key = val.movieId !== undefined ? val.movieId : val.id;
+                    const req = { result: key, onsuccess: null, onerror: null };
+                    targetMap.set(key, { ...val });
+                    setTimeout(() => {
+                      if (req.onsuccess) req.onsuccess();
+                    }, 0);
+                    return req;
+                  },
+                  delete: (key) => {
+                    const req = { result: undefined, onsuccess: null, onerror: null };
+                    targetMap.delete(key);
+                    setTimeout(() => {
+                      if (req.onsuccess) req.onsuccess();
+                    }, 0);
+                    return req;
+                  },
+                  clear: () => {
+                    const req = { result: undefined, onsuccess: null, onerror: null };
+                    targetMap.clear();
+                    setTimeout(() => {
+                      if (req.onsuccess) req.onsuccess();
+                    }, 0);
+                    return req;
+                  },
+                };
+              },
             };
 
             setTimeout(() => {

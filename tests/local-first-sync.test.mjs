@@ -8,15 +8,19 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
   let viteEnv;
   let localStore;
   let mockIDB;
+  let apiModule;
+  let stateModule;
 
   before(async () => {
     mockIDB = createMockIndexedDB();
     globalThis.indexedDB = mockIDB;
 
     viteEnv = await startViteSsrServer([
-      "/src/js/localStore.ts"
+      "/src/js/localStore.ts",
+      "/src/js/api.ts",
+      "/src/js/state.ts"
     ]);
-    [localStore] = viteEnv.modules;
+    [localStore, apiModule, stateModule] = viteEnv.modules;
   });
 
   beforeEach(async () => {
@@ -109,5 +113,82 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
 
     const stored = await localStore.getLocalEntry(300);
     assert.equal(stored.syncStatus, "synced");
+  });
+
+  test("saveLocalEntryWithMovie persiste atómicamente la entrada y la ficha de la película", async () => {
+    const mockMovie = {
+      id: 501,
+      title: "Interstellar",
+      year: 2014,
+      synopsis: "Un viaje a través de un agujero de gusano."
+    };
+
+    const entry = await localStore.saveLocalEntryWithMovie(
+      501,
+      { onWatchlist: true, rating: 9 },
+      mockMovie
+    );
+
+    assert.equal(entry.movieId, 501);
+    assert.equal(entry.onWatchlist, true);
+    assert.equal(entry.rating, 9);
+
+    const cached = await localStore.getCachedMovie(501);
+    assert.ok(cached, "La película debe existir en cached_movies");
+    assert.equal(cached.title, "Interstellar");
+    assert.equal(cached.year, 2014);
+    assert.ok(cached.cachedAt > 0);
+  });
+
+  test("saveCachedMovies guarda en lote y getCachedMoviesByIds recupera por ID", async () => {
+    const movies = [
+      { id: 601, title: "Alien", year: 1979 },
+      { id: 602, title: "Blade Runner", year: 1982 }
+    ];
+
+    await localStore.saveCachedMovies(movies);
+
+    const map = await localStore.getCachedMoviesByIds([601, 602, 999]);
+    assert.equal(map.size, 2);
+    assert.equal(map.get(601)?.title, "Alien");
+    assert.equal(map.get(602)?.title, "Blade Runner");
+    assert.equal(map.has(999), false);
+  });
+
+  test("getLocalMyListResponse sirve instantáneamente películas desde cached_movies", async () => {
+    stateModule.setUserMovieData({
+      "701": { onWatchlist: true, rating: null },
+      "702": { onWatchlist: false, rating: 8 }
+    });
+
+    await localStore.saveCachedMovies([
+      { id: 701, title: "Dune", year: 2021, type: "movie" },
+      { id: 702, title: "Arrival", year: 2016, type: "movie" }
+    ]);
+
+    const resWatchlist = await apiModule.getLocalMyListResponse(
+      { myList: "watchlist" },
+      1,
+      10,
+      true
+    );
+
+    assert.ok(resWatchlist);
+    assert.equal(resWatchlist.total, 1);
+    assert.equal(resWatchlist.items.length, 1);
+    assert.equal(resWatchlist.items[0].id, 701);
+    assert.equal(resWatchlist.items[0].title, "Dune");
+
+    const resRated = await apiModule.getLocalMyListResponse(
+      { myList: "rated" },
+      1,
+      10,
+      true
+    );
+
+    assert.ok(resRated);
+    assert.equal(resRated.total, 1);
+    assert.equal(resRated.items[0].id, 702);
+    assert.equal(resRated.items[0].title, "Arrival");
   });
 });

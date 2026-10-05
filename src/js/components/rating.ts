@@ -9,7 +9,7 @@
 // =================================================================
 
 import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../state.js";
-import { saveLocalEntry } from "../localStore.js";
+import { saveLocalEntryWithMovie } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
@@ -304,7 +304,7 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
   updateRatingUI(card);
 
   // 2. Persistencia local inmediata (Local-First: nunca falla, nunca hace rollback)
-  await saveLocalEntry(movieId, newState);
+  await saveLocalEntryWithMovie(movieId, newState, (card?.movieData as MappedMovie) || null);
   if (value !== null) triggerHapticFeedback("success");
 
   // 3. Sincronización en segundo plano hacia Supabase

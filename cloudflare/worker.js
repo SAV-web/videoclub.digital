@@ -41,6 +41,23 @@ function resolveEnvironment(env) {
 }
 
 /**
+ * Serializa canónicamente los parámetros de RPC ordenando sus claves alfabéticamente
+ * para garantizar que peticiones semánticamente idénticas compartan la misma clave de Edge Cache.
+ */
+function canonicalizeRpcParams(obj) {
+  if (!obj || typeof obj !== "object") return "";
+  const sortedKeys = Object.keys(obj).sort();
+  const normalized = {};
+  for (const key of sortedKeys) {
+    const val = obj[key];
+    if (val !== null && val !== undefined) {
+      normalized[key] = val;
+    }
+  }
+  return JSON.stringify(normalized);
+}
+
+/**
  * Inyecta un conjunto simétrico y estricto de cabeceras HTTP de seguridad
  * en todas las respuestas HTML navegables (tanto SPA como SSR en el Edge).
  * 
@@ -180,6 +197,110 @@ export default {
           "Content-Type": "application/xml; charset=utf-8",
           "Cache-Control": "public, max-age=86400, s-maxage=604800"
         }
+      });
+    }
+
+    // 1.D EDGE CACHING PARA EL CATÁLOGO RPC (/api/rpc/search_movies_offset)
+    if (url.pathname === "/api/rpc/search_movies_offset") {
+      if (request.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization, x-client-info",
+            "Access-Control-Max-Age": "86400"
+          }
+        });
+      }
+
+      if (request.method === "POST") {
+        if (!supabaseUrl || !supabaseAnonKey) {
+          return new Response(JSON.stringify({ error: "Missing Supabase configuration in worker environment" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const authHeader = request.headers.get("Authorization");
+        const isUserAuth = Boolean(authHeader && authHeader !== `Bearer ${supabaseAnonKey}`);
+
+        // A. Peticiones autenticadas de usuario (JWT privado): Bypass directo sin cachear jamás
+        if (isUserAuth) {
+          const upstream = await fetch(`${supabaseUrl}/rest/v1/rpc/search_movies_offset`, {
+            method: "POST",
+            headers: request.headers,
+            body: request.body
+          });
+          const passHeaders = new Headers(upstream.headers);
+          passHeaders.set("Access-Control-Allow-Origin", "*");
+          passHeaders.set("Cache-Control", "no-store, private");
+          return new Response(upstream.body, { status: upstream.status, headers: passHeaders });
+        }
+
+        // B. Peticiones de catálogo público anónimo: Edge Cache perimetral en PoP local (TTL 300s + SWR 3600s)
+        const bodyText = await request.text();
+        let rpcParams = {};
+        try {
+          rpcParams = bodyText ? JSON.parse(bodyText) : {};
+        } catch (_) {}
+
+        const cache = caches.default;
+        const canonicalKeyParam = canonicalizeRpcParams(rpcParams);
+        const cacheKeyUrl = new URL("/_edge_cache/rpc/search_movies_offset", url.origin);
+        cacheKeyUrl.searchParams.set("q", canonicalKeyParam);
+        const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
+
+        const cached = await cache.match(cacheKey);
+        if (cached) {
+          const hitHeaders = new Headers(cached.headers);
+          hitHeaders.set("X-Edge-Cache", "HIT");
+          hitHeaders.set("Access-Control-Allow-Origin", "*");
+          return new Response(cached.body, {
+            status: cached.status,
+            statusText: cached.statusText,
+            headers: hitHeaders
+          });
+        }
+
+        // Cache MISS: Consulta upstream a Supabase
+        const targetUrl = `${supabaseUrl}/rest/v1/rpc/search_movies_offset`;
+        const upstream = await fetch(targetUrl, {
+          method: "POST",
+          headers: {
+            "apikey": supabaseAnonKey,
+            "Authorization": `Bearer ${supabaseAnonKey}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(rpcParams)
+        });
+
+        if (upstream.ok) {
+          const upstreamBody = await upstream.text();
+          const responseHeaders = new Headers({
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
+            "X-Edge-Cache": "MISS",
+            "Access-Control-Allow-Origin": "*"
+          });
+          const responseToClient = new Response(upstreamBody, {
+            status: 200,
+            headers: responseHeaders
+          });
+          ctx?.waitUntil?.(cache.put(cacheKey, responseToClient.clone()));
+          return responseToClient;
+        }
+
+        const errHeaders = new Headers(upstream.headers);
+        errHeaders.set("Access-Control-Allow-Origin", "*");
+        errHeaders.set("Cache-Control", "no-store, no-cache");
+        return new Response(upstream.body, { status: upstream.status, headers: errHeaders });
+      }
+
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
       });
     }
 

@@ -475,7 +475,22 @@
           var p = searchParams.get("p") || searchParams.get("page");
           if (p && p !== "1") hasSearchOrFilter = true;
           if (searchParams.get("q") || searchParams.get("buscar") || searchParams.get("search")) hasSearchOrFilter = true;
-          if (searchParams.get("genre") || searchParams.get("country") || searchParams.get("director") || searchParams.get("actor") || searchParams.get("type")) hasSearchOrFilter = true;
+          if (
+            searchParams.get("genre") ||
+            searchParams.get("country") ||
+            searchParams.get("director") ||
+            searchParams.get("actor") ||
+            searchParams.get("selection") ||
+            searchParams.get("studio") ||
+            searchParams.get("year") ||
+            searchParams.get("list") ||
+            searchParams.get("myList") ||
+            searchParams.get("exg") ||
+            searchParams.get("exc") ||
+            (searchParams.get("type") && searchParams.get("type") !== "all")
+          ) {
+            hasSearchOrFilter = true;
+          }
           var routeParam = searchParams.get("_p");
           if (routeParam && routeParam !== "/") hasSearchOrFilter = true;
         }

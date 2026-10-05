@@ -1223,6 +1223,101 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     const assetRes = await worker.fetch(new Request("https://videoclub.digital/assets/test.css"), {}, defaultCtx);
     assert.equal(assetRes.headers.get("X-Content-Type-Options"), "nosniff", "Assets estáticos deben portar nosniff");
   });
+
+  // =================================================================
+  //       PRUEBAS DE LA MEJORA 2: EDGE CACHING PARA EL CATÁLOGO RPC
+  // =================================================================
+
+  test("Edge Caching RPC: Preflight OPTIONS en /api/rpc/search_movies_offset responde 204 con CORS", async () => {
+    const request = new Request("https://videoclub.digital/api/rpc/search_movies_offset", {
+      method: "OPTIONS"
+    });
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+    assert.ok(response.headers.get("Access-Control-Allow-Methods")?.includes("POST"));
+    assert.ok(response.headers.get("Access-Control-Allow-Headers")?.includes("Content-Type"));
+  });
+
+  test("Edge Caching RPC: Cache MISS consulta a Supabase, inyecta Cache-Control y almacena en Edge Cache", async () => {
+    const initialFetchCalls = fetchCalls.length;
+    const body = { page_limit: 42, page_offset: 0, sort_field: "relevance" };
+    const request = new Request("https://videoclub.digital/api/rpc/search_movies_offset", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": "test-anon-key-abc"
+      },
+      body: JSON.stringify(body)
+    });
+
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("X-Edge-Cache"), "MISS");
+    assert.equal(
+      response.headers.get("Cache-Control"),
+      "public, s-maxage=300, stale-while-revalidate=3600"
+    );
+    assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
+    assert.equal(fetchCalls.length, initialFetchCalls + 1, "Debe invocar Supabase en Cache MISS");
+
+    const data = await response.json();
+    assert.ok(data.items);
+  });
+
+  test("Edge Caching RPC: Cache HIT posterior responde desde la caché perimetral sin invocar a Supabase", async () => {
+    // 1. Primera petición (genera el MISS y puebla la caché)
+    const body = { page_limit: 42, page_offset: 0, genre_name: "Acción" };
+    const req1 = new Request("https://videoclub.digital/api/rpc/search_movies_offset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const res1 = await worker.fetch(req1, {}, defaultCtx);
+    assert.equal(res1.status, 200);
+    assert.equal(res1.headers.get("X-Edge-Cache"), "MISS");
+    await res1.json();
+
+    const fetchCountAfterMiss = fetchCalls.length;
+
+    // 2. Segunda petición con exactamente los mismos parámetros pero claves en distinto orden (debe canonizarse al mismo HIT)
+    const disorderedBody = { genre_name: "Acción", page_offset: 0, page_limit: 42 };
+    const req2 = new Request("https://videoclub.digital/api/rpc/search_movies_offset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(disorderedBody)
+    });
+    const res2 = await worker.fetch(req2, {}, defaultCtx);
+
+    assert.equal(res2.status, 200);
+    assert.equal(res2.headers.get("X-Edge-Cache"), "HIT", "Debe marcar HIT perimetral");
+    assert.equal(
+      fetchCalls.length,
+      fetchCountAfterMiss,
+      "No debe generar peticiones a Supabase en Cache HIT"
+    );
+  });
+
+  test("Edge Caching RPC: Petición con JWT de usuario autenticado hace bypass directo sin almacenar en caché", async () => {
+    const userJwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.user-token";
+    const body = { page_limit: 42, page_offset: 0 };
+    const request = new Request("https://videoclub.digital/api/rpc/search_movies_offset", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${userJwt}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    const response = await worker.fetch(request, {}, defaultCtx);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Cache-Control"), "no-store, private");
+    assert.equal(response.headers.get("X-Edge-Cache"), null, "Petición autenticada no debe portar X-Edge-Cache");
+  });
 });
 
 
