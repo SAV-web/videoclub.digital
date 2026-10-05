@@ -237,5 +237,5 @@ Para optimizar el uso de recursos, reducir tiempos de ciclo y minimizar costes o
 3. **Validación Mínima Suficiente (*Targeted Testing & Builds*):**
    - **Pruebas Focalizadas:** Ejecutar únicamente el archivo de pruebas correspondiente al módulo modificado (`node --test tests/<modulo>.test.mjs`), evitando suites globales innecesarias durante la iteración activa.
    - **Compilaciones Desacopladas:** Construir únicamente los artefactos alterados (ej. compilar CSS sin regenerar manifiestos pesados de base de datos).
-   - **Suite Global como Gatekeeper:** Reservar `npm run test` completo exclusivamente para el paso previo al *commit* o cambios en el SSOT (`src/shared/`).
+   - **Fast-Path Commit (3 segundos):** Para commits y pushes estándar, PROHIBIDO ejecutar `prepare:worker` (que consulta la BD remota de Supabase) o la suite completa local de 205 tests (que toma ~13s levantando SSR en Node). La validación local inmediata se limita a `npx tsc --noEmit` (~1s) o test focalizado si aplica. La suite exhaustiva queda delegada al CI remoto en GitHub Actions tras el push.
 

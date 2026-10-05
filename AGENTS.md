@@ -82,7 +82,11 @@ Para optimizar el uso de tokens y tiempos de respuesta, se debe seguir estrictam
 ·   Zero Chrome DevTools proactivo: PROHIBIDO abrir el navegador, tomar capturas o ejecutar scripts en Chrome de forma automática tras cada cambio ordinario. La inspección en Chrome se reserva ÚNICA Y EXCLUSIVAMENTE para cuando el usuario solicite explícitamente auditar o depurar el navegador (ej. "revisa el FOUC", "inspecciona el layout en Chrome"). Para todo lo demás, el servidor local de Vite actualiza la pantalla del usuario en tiempo real vía HMR sin requerir intervención de la IA.
 ·   Tests focalizados: NUNCA ejecutes la suite completa de pruebas (`npm run test`) para validar cambios específicos. Si se modifica lógica pura o contratos, ejecuta como máximo el archivo de prueba unitaria del módulo afectado (ej. `node --test tests/shared-and-events.test.mjs`).
 ·   Compilaciones desacopladas: Evita disparar scripts pesados no relacionados (ej. no ejecutar generadores de manifiestos VIP de base de datos para validar un ajuste de CSS/SSR).
-·   Suite global y compilaciones perimetrales diferidas: Reserva la ejecución de la suite completa (`npm run test`) y la compilación perimetral (`npm run prepare:worker`) ÚNICA Y EXCLUSIVAMENTE para cuando el usuario ordene "sube los cambios" o inmediatamente antes de formalizar un commit hacia el repositorio.
+·   Fast-Path Commit (3 segundos): Cuando el usuario ordene "sube los cambios" o "commit":
+    1. Cero scripts pesados de red (`prepare:worker`): Se reserva exclusivamente para despliegues a producción en Cloudflare (`npm run deploy:worker`) o cuando se modifiquen expresamente las entidades VIP.
+    2. Cero suite completa (`npm run test`): Los 205 tests se delegan a GitHub Actions (CI) en la nube. En local solo se ejecuta el chequeo ultrarrápido de tipos (`npx tsc --noEmit`, 1 segundo) y, si aplica, el test unitario específico del archivo modificado.
+    3. Encadenamiento atómico: Ejecutar `git add -A && git commit -m "..." && git push` en un solo comando rápido.
+    4. Respuesta ultra-concisa: Confirmar hash de commit y rama en pocas líneas sin resúmenes redundantes.
 
 ### PROTOCOLO SEGÚN IMPACTO
 ·   UI / CSS / Textos: Edición exclusiva en los archivos fuente originales (`src/css/components/`, etc.). CERO tests y CERO inspecciones de Chrome. En desarrollo local (`npm run dev`), Vite consume directamente `src/css/main.css` vía HMR instantáneo. PROHIBIDO editar manualmente o recompilar en cada cambio los artefactos generados para SEO (`public/seo-card-v7.*`, `cloudflare/seo/seo-card-css.js`).
