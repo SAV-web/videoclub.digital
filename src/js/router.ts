@@ -20,7 +20,8 @@ import {
 import {
   dom,
   updateTypeFilterUI,
-  updateMobileStatusBar
+  updateMobileStatusBar,
+  updateSortUI
 } from "./ui.js";
 
 const scrollPositionsCache = new Map<string, number>();
@@ -63,7 +64,7 @@ export function readUrlAndSetState(): void {
 
   const activeFilters = getActiveFilters();
   if (dom.searchInput) dom.searchInput.value = activeFilters.searchTerm || "";
-  if (dom.sortSelect) dom.sortSelect.value = activeFilters.sort;
+  updateSortUI(activeFilters.sort);
   updateTypeFilterUI(activeFilters.mediaType as "movies" | "series" | "all");
   updateMobileStatusBar();
 }

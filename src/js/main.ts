@@ -39,7 +39,8 @@ import {
   closeLegalModal,
   consumeIsClosingModalViaHistory,
   updateAppBadge,
-  clearAppBadge
+  clearAppBadge,
+  updateSortUI
 } from "./ui.js";
 
 
@@ -124,6 +125,7 @@ async function handleSortChange(event: Event): Promise<void> {
       localStorage.setItem("preferred_sort", select.value);
     }
   } catch (e) {}
+  updateSortUI(select.value);
   updateMobileStatusBar();
   await loadAndRenderMovies(1);
 }
@@ -185,7 +187,7 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
   if (newFilter) setFilter(newFilter.type, newFilter.value);
 
   if (dom.searchInput) dom.searchInput.value = "";
-  if (dom.sortSelect) dom.sortSelect.value = currentSort;
+  updateSortUI(currentSort);
   updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");
@@ -272,6 +274,78 @@ function setupHeaderListeners(): void {
   if (dom.sortSelect) {
     dom.sortSelect.addEventListener("change", handleSortChange);
     mainUnsubscribers.push(() => dom.sortSelect?.removeEventListener("change", handleSortChange));
+  }
+
+  const sortTrigger = dom.sortDropdownTrigger;
+  const sortMenu = dom.sortDropdownMenu;
+
+  if (sortTrigger && sortMenu) {
+    const toggleSortMenu = (open?: boolean) => {
+      const isExpanded = sortTrigger.getAttribute("aria-expanded") === "true";
+      const nextState = open ?? !isExpanded;
+      sortTrigger.setAttribute("aria-expanded", String(nextState));
+      sortMenu.hidden = !nextState;
+      if (nextState) {
+        triggerHapticFeedback("light");
+      }
+    };
+
+    const closeSortMenu = () => {
+      if (sortTrigger.getAttribute("aria-expanded") === "true") {
+        sortTrigger.setAttribute("aria-expanded", "false");
+        sortMenu.hidden = true;
+      }
+    };
+
+    const onTriggerClick = (e: MouseEvent) => {
+      e.stopPropagation();
+      toggleSortMenu();
+    };
+
+    const onOptionClick = async (e: MouseEvent) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".sort-option-btn");
+      if (!btn) return;
+      const sortVal = btn.dataset.sort;
+      if (!sortVal) return;
+
+      closeSortMenu();
+      triggerPopAnimation(btn);
+
+      setSort(sortVal);
+      try {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("preferred_sort", sortVal);
+        }
+      } catch (e) {}
+      updateSortUI(sortVal);
+      updateMobileStatusBar();
+      await loadAndRenderMovies(1);
+    };
+
+    const onDocumentClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (!sortTrigger.contains(target) && !sortMenu.contains(target)) {
+        closeSortMenu();
+      }
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeSortMenu();
+      }
+    };
+
+    sortTrigger.addEventListener("click", onTriggerClick);
+    sortMenu.addEventListener("click", onOptionClick);
+    document.addEventListener("click", onDocumentClick);
+    document.addEventListener("keydown", onKeyDown);
+
+    mainUnsubscribers.push(() => {
+      sortTrigger.removeEventListener("click", onTriggerClick);
+      sortMenu.removeEventListener("click", onOptionClick);
+      document.removeEventListener("click", onDocumentClick);
+      document.removeEventListener("keydown", onKeyDown);
+    });
   }
 
   if (dom.typeFilterToggle) {

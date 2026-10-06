@@ -268,18 +268,6 @@
       font-size: 0.9rem;
     }
 
-    .sort-control::after {
-      content: "";
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      width: 0.6em;
-      height: 0.4em;
-      background-color: var(--color-text-primary);
-      clip-path: polygon(100% 0%, 0 0%, 50% 100%);
-      transform: translateY(-50%);
-      pointer-events: none;
-    }
 
     .type-filter-toggle {
       padding: 0 var(--space-md);
@@ -786,20 +774,58 @@
             </svg>
           </button>
           <div class="sort-control">
-            <select id="sort-select" aria-label="Criterio de ordenación">
+            <select id="sort-select" class="sr-only" aria-hidden="true" tabindex="-1">
               <option value="relevance,asc">Orden</option>
               <option value="year,desc">Recientes</option>
               <option value="year,asc">Antiguas</option>
-              <option value="fa_rating,desc">Nota FA</option>
-              <option value="imdb_rating,desc">Nota IMDb</option>
-              <option value="fa_votes,desc">Votos FA</option>
-              <option value="imdb_votes,desc">Votos IMDb</option>
+              <option value="fa_rating,desc">FA Nota</option>
+              <option value="fa_votes,desc">FA Votos</option>
+              <option value="imdb_rating,desc">IMDb Nota</option>
+              <option value="imdb_votes,desc">IMDb Votos</option>
             </select>
-            <svg class="sort-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-              aria-hidden="true">
-              <path d="m3 16 4 4 4-4m-4 4V4m14 4-4-4-4 4m4-4v16" />
-            </svg>
+            <button id="sort-dropdown-trigger" type="button" class="sort-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Criterio de ordenación: Orden">
+              <span class="desktop-text sort-current-label">Orden</span>
+              <span class="mobile-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m3 16 4 4 4-4m-4 4V4m14 4-4-4-4 4m4-4v16" />
+                </svg>
+              </span>
+            </button>
+            <div id="sort-dropdown-menu" class="sort-dropdown-menu" role="menu" aria-orientation="vertical" hidden>
+              <button type="button" class="sort-option-btn sort-btn--full is-active" data-sort="relevance,asc" role="menuitem">
+                <span>Orden</span>
+              </button>
+              <div class="sort-menu-divider" role="separator"></div>
+              <div class="sort-menu-row" role="group" aria-label="Año">
+                <span class="sort-row-label">Año:</span>
+                <div class="sort-row-actions">
+                  <button type="button" class="sort-option-btn sort-btn--compact" data-sort="year,desc" title="Más recientes" aria-label="Año: más recientes" role="menuitem">↓</button>
+                  <button type="button" class="sort-option-btn sort-btn--compact" data-sort="year,asc" title="Más antiguas" aria-label="Año: más antiguas" role="menuitem">↑</button>
+                </div>
+              </div>
+              <div class="sort-menu-row" role="group" aria-label="FilmAffinity">
+                <span class="sort-row-brand" title="FilmAffinity">
+                  <svg class="sort-brand-icon" aria-hidden="true">
+                    <use href="#icon-filmaffinity"></use>
+                  </svg>
+                </span>
+                <div class="sort-row-actions">
+                  <button type="button" class="sort-option-btn sort-btn--compact" data-sort="fa_rating,desc" title="Nota FilmAffinity" aria-label="FilmAffinity por nota" role="menuitem">Nota</button>
+                  <button type="button" class="sort-option-btn sort-btn--compact" data-sort="fa_votes,desc" title="Votos FilmAffinity" aria-label="FilmAffinity por votos" role="menuitem">Votos</button>
+                </div>
+              </div>
+              <div class="sort-menu-row" role="group" aria-label="IMDb">
+                <span class="sort-row-brand" title="IMDb">
+                  <svg class="sort-brand-icon" aria-hidden="true" fill="#F5C618">
+                    <use href="#icon-imdb"></use>
+                  </svg>
+                </span>
+                <div class="sort-row-actions">
+                  <button type="button" class="sort-option-btn sort-btn--compact" data-sort="imdb_rating,desc" title="Nota IMDb" aria-label="IMDb por nota" role="menuitem">Nota</button>
+                  <button type="button" class="sort-option-btn sort-btn--compact" data-sort="imdb_votes,desc" title="Votos IMDb" aria-label="IMDb por votos" role="menuitem">Votos</button>
+                </div>
+              </div>
+            </div>
           </div>
           <button id="type-filter-toggle" type="button" class="type-filter-toggle" aria-label="Filtrar por tipo: Todo">
             <span class="desktop-text">Todo</span>

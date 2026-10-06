@@ -110,6 +110,8 @@ export const SELECTORS = {
   SEARCH_FORM: "#search-form",
   SEARCH_INPUT: "#search-input",
   SORT_SELECT: "#sort-select",
+  SORT_DROPDOWN_TRIGGER: "#sort-dropdown-trigger",
+  SORT_DROPDOWN_MENU: "#sort-dropdown-menu",
   THEME_TOGGLE: "#theme-toggle",
   SIDEBAR_TOGGLE_BTN: "#sidebar-toggle-btn",
   SIDEBAR_OVERLAY: "#sidebar-overlay",

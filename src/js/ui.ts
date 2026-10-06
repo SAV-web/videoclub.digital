@@ -20,6 +20,8 @@ export interface DomElements {
   searchForm: HTMLFormElement | null;
   searchInput: HTMLInputElement | null;
   sortSelect: HTMLSelectElement | null;
+  sortDropdownTrigger: HTMLButtonElement | null;
+  sortDropdownMenu: HTMLElement | null;
   themeToggleButton: HTMLButtonElement | null;
   sidebarOverlay: HTMLElement | null;
   sidebar: HTMLElement | null;
@@ -50,6 +52,8 @@ const domSelectors: Record<keyof DomElements, string> = {
   searchForm: SELECTORS.SEARCH_FORM,
   searchInput: SELECTORS.SEARCH_INPUT,
   sortSelect: SELECTORS.SORT_SELECT,
+  sortDropdownTrigger: SELECTORS.SORT_DROPDOWN_TRIGGER,
+  sortDropdownMenu: SELECTORS.SORT_DROPDOWN_MENU,
   themeToggleButton: SELECTORS.THEME_TOGGLE,
   sidebarOverlay: SELECTORS.SIDEBAR_OVERLAY,
   sidebar: "#sidebar",
@@ -363,6 +367,41 @@ export function renderPagination(
   }
 
   paginationContainer.appendChild(fragment);
+}
+
+const SORT_LABEL_MAP: Record<string, string> = {
+  "relevance,asc": "Orden",
+  "year,desc": "Recientes",
+  "year,asc": "Antiguas",
+  "fa_rating,desc": "FA Nota",
+  "fa_votes,desc": "FA Votos",
+  "imdb_rating,desc": "IMDb Nota",
+  "imdb_votes,desc": "IMDb Votos"
+};
+
+export function updateSortUI(currentSort: string): void {
+  const { sortSelect, sortDropdownTrigger, sortDropdownMenu } = dom;
+  if (sortSelect && sortSelect.value !== currentSort) {
+    sortSelect.value = currentSort;
+  }
+
+  const label = SORT_LABEL_MAP[currentSort] || "Orden";
+
+  if (sortDropdownTrigger) {
+    const labelEl = sortDropdownTrigger.querySelector(".sort-current-label");
+    if (labelEl) labelEl.textContent = label;
+    sortDropdownTrigger.setAttribute("aria-label", `Criterio de ordenación: ${label}`);
+    sortDropdownTrigger.classList.toggle("has-active-sort", currentSort !== DEFAULTS.SORT);
+  }
+
+  if (sortDropdownMenu) {
+    const buttons = sortDropdownMenu.querySelectorAll<HTMLButtonElement>(".sort-option-btn");
+    buttons.forEach((btn) => {
+      const isActive = btn.dataset.sort === currentSort;
+      btn.classList.toggle("is-active", isActive);
+      btn.setAttribute("aria-selected", String(isActive));
+    });
+  }
 }
 
 export function updateHeaderPaginationState(currentPage: number, totalMovies: number): void {
