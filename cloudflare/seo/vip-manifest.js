@@ -3,8 +3,8 @@
 //                (cloudflare/seo/vip-manifest.js)
 // =================================================================
 // Generado automáticamente mediante: node scripts/generate-vip-manifest.mjs
-// Fecha de generación: 2026-10-04T17:18:09.427Z
-// Total entidades VIP: 1379
+// Fecha de generación: 2026-10-07T16:00:37.610Z
+// Total entidades VIP: 1380
 //
 // PRINCIPIO ARQUITECTÓNICO (FILOSOFÍA "VIP = FUENTE EDITORIAL"):
 // 1. VIP_SLUGS es exclusivamente un índice de pertenencia en memoria para
@@ -191,6 +191,7 @@ export const VIP_SLUGS = new Set([
   "burt-reynolds",
   "burt-young",
   "buster-keaton",
+  "bustillo-maury",
   "byron-howard",
   "caleb-landry-jones",
   "cameron-crowe",

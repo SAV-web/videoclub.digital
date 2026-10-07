@@ -57,12 +57,13 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 - **`api.ts`**: Capa de acceso a datos. Implementa deduplicación de peticiones (_In-flight requests_), cliente perimetral `executeCatalogRpc` con fallback a Supabase RPC, resolución local instantánea de *Mi Lista* (`getLocalMyListResponse`), Stale-While-Revalidate hacia Supabase, `AbortController` para cancelar consultas obsoletas y memoria LRU (`queryCache`, `suggestionsCache`, `personCache`).
 - **`localStore.ts`**: Almacenamiento local-first en IndexedDB v2. Incluye `user_entries` (con índices `by_watchlist`, `by_rating`, `by_syncStatus`), `cached_movies` (con índice temporal `by_cachedAt` y purgado LRU `MAX_CACHED_MOVIES = 1000`), escrituras atómicas transaccionales (`saveLocalEntryWithMovie`) y reconciliación determinista *Last-Write-Wins* (LWW).
 - **`syncManager.ts`**: Gestor de sincronización bidireccional en segundo plano entre el almacenamiento local y Supabase (`user_movie_entries`), con soporte offline y reintentos ante reconexión.
-- **`offlineQueue.ts` / `checkedIds.ts`**: Cola persistente de mutaciones pendientes sin conexión y control de deduplicación de IDs sincronizados.
+- **`checkedIds.ts`**: Control de deduplicación de IDs de películas sincronizadas en memoria para romper dependencias circulares.
 - **`ui.ts`**: Controladores genéricos del DOM. Maneja Toasts, esqueletos de carga (_Skeletons_), paginación y las trampas de foco (_Focus Trap_) para modales.
 - **`seo.ts`**: Generador dinámico de `JSON-LD` (Schema.org), títulos, breadcrumbs, `og:url` y canonical tags siempre referenciados a la URL canónica pura vía `getCanonicalUrl()`.
 - **`utils.ts`**: Herramientas puras de alto rendimiento. Incluye creadores de nodos DOM veloces (`createElement` vía `Object.assign`), normalización de texto (eliminación de acentos), formateadores y gestión segura de `localStorage`.
 - **`constants.ts`**: Fuente única de la verdad. Almacena mapeos de clases CSS, selectores del DOM, SVG sprites integrados (`ICONS`), límites de paginación y mapeos de plataformas (Netflix, HBO, etc).
 - **`auth.ts`**: Lógica de registro y login delegada a Supabase Auth.
+- **`templates/` (`src/js/templates/`)**: Plantillas diferidas (*Lazy Templates*) para vistas modales secundarias (`authModal.ts`, `legalModal.ts`, `profileModal.ts`). Inyectan el marcado bajo demanda en el DOM solo cuando el usuario interactúa, reduciendo ~35 KB del documento HTML inicial.
 - **`types.ts`**: Interfaces TypeScript centralizadas (`MappedMovie`, `ActiveFilters`, `UserMovieEntry`, `PersonDetails`, `VipData`).
 
 ### 4. Componentes TS (`src/js/components/`)
@@ -103,7 +104,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 
 ### 6. Scripts de Automatización y Generación (`scripts/`)
 
-- **`build-seo-css.mjs`**: Compila y minifica el CSS perimetral unificado (`public/seo-card-v7.min.css` y `cloudflare/seo/seo-card-css.js`).
+- **`build-seo-css.mjs`**: Compila y minifica el CSS perimetral unificado (`public/seo-card-v7.css` minificado directamente y `cloudflare/seo/seo-card-css.js`).
 - **`generate-vip-manifest.mjs`**: Genera el índice en memoria de personas VIP (`cloudflare/seo/vip-manifest.js`) a partir de `people.vip = 1` en Supabase. Carga credenciales con `process.loadEnvFile()` de Node.js de forma determinista y fail-closed (sin credenciales hardcodeadas).
 - **`generate-sitemap.mjs`**: Genera sitemaps canónicos (`public/sitemap.xml` y `public/sitemap-index.xml`) con más de 15.000 URLs indexables, resolviendo entorno mediante `process.loadEnvFile()`.
 - **`generate-llms.mjs`**: Genera especificaciones canónicas para agentes de IA (`public/llms.txt` y `public/llms-full.txt`).

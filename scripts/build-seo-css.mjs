@@ -1,5 +1,5 @@
 import fs from "fs";
-import { execSync } from "child_process";
+import { transformSync } from "esbuild";
 
 const files = [
   "src/css/variables.css",
@@ -450,19 +450,93 @@ combined += `
 .is-quick-view [data-template="imdb-votes-bar"] {
   background-color: #f5c518 !important;
 }
+
+/* Backdrop decorativo del videoclub para fichas SEO */
+.seo-backdrop {
+  position: fixed;
+  inset: -15px;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  user-select: none;
+}
+
+.seo-backdrop-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  filter: blur(8px);
+  transform: scale(1.04);
+}
+
+.seo-backdrop-dark {
+  display: none;
+  opacity: 0.65;
+}
+
+.seo-backdrop-light {
+  display: block;
+  opacity: 0.75;
+}
+
+@media (prefers-color-scheme: dark) {
+  .seo-backdrop-light {
+    display: none;
+  }
+  .seo-backdrop-dark {
+    display: block;
+  }
+}
+
+html.dark-mode .seo-backdrop-light {
+  display: none !important;
+}
+html.dark-mode .seo-backdrop-dark {
+  display: block !important;
+}
+
+html.light-mode .seo-backdrop-light {
+  display: block !important;
+}
+html.light-mode .seo-backdrop-dark {
+  display: none !important;
+}
+
+/* Overlay semitransparente para resaltar la modal sobre el backdrop */
+.movie-seo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-index-overlay, 1999);
+  background-color: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+html.dark-mode .movie-seo-overlay {
+  background-color: rgba(0, 0, 0, 0.55);
+}
 `;
 
-fs.writeFileSync("public/seo-card-v7.css", combined);
-execSync("npx esbuild public/seo-card-v7.css --minify --outfile=public/seo-card-v7.min.css");
-const minified = fs.readFileSync("public/seo-card-v7.min.css", "utf8");
+const { code: minified } = transformSync(combined, { loader: "css", minify: true });
 
+// Escribir directamente el CSS minificado en public/seo-card-v7.css
+fs.writeFileSync("public/seo-card-v7.css", minified);
 
+// Purgar artefacto huérfano .min.css si existiera en disco
+if (fs.existsSync("public/seo-card-v7.min.css")) {
+  fs.unlinkSync("public/seo-card-v7.min.css");
+}
 
-// Also update cloudflare/seo/seo-card-css.js to export the minified string
-const jsContent = `// Generado automáticamente a partir de public/seo-card-v7.min.css\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
+// Actualizar cloudflare/seo/seo-card-css.js para exportar el string minificado
+const jsContent = `// Generado automáticamente a partir de public/seo-card-v7.css (minificado)\nexport const SEO_CARD_CSS = ${JSON.stringify(minified)};\n`;
 fs.writeFileSync("cloudflare/seo/seo-card-css.js", jsContent);
 
-console.log("Successfully generated public/seo-card-v7.css and cloudflare/seo/seo-card-css.js");
-console.log("Unminified size:", combined.length, "Minified size:", minified.length);
+console.log("Successfully generated public/seo-card-v7.css (minified) and cloudflare/seo/seo-card-css.js");
+console.log("Original combined size:", combined.length, "Final minified size:", minified.length);
 
 

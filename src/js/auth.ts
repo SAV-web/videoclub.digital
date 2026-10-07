@@ -11,6 +11,7 @@ import type { AuthError, Session, AuthChangeEvent } from "@supabase/supabase-js"
 import { getSupabase } from "./supabaseClient.js";
 import { openAuthModal, closeAuthModal, showToast } from "./ui.js";
 import { getAppBasePath } from "./contracts.js";
+import { ensureAuthModalMounted } from "./templates/authModal.js";
 
 /**
  * Obtiene la sesión actual de autenticación en Supabase.
@@ -66,7 +67,9 @@ interface AuthDom {
 
 // Caché de elementos HTML para no buscarlos todo el rato
 let domCache: AuthDom | null = null;
-const getDom = (): AuthDom => domCache || (domCache = {
+const getDom = (): AuthDom => {
+  ensureAuthModalMounted();
+  return domCache || (domCache = {
   vLogin: document.getElementById("login-view"),
   vReg: document.getElementById("register-view"),
   vRecover: document.getElementById("recover-view"),
@@ -81,7 +84,8 @@ const getDom = (): AuthDom => domCache || (domCache = {
   btnRecoverBack: document.getElementById("recover-back-to-login"),
   btnMagic: document.getElementById("login-magic-link-btn"),
   msg: document.getElementById("auth-message"),
-});
+  });
+};
 
 // Muestra u oculta mensajes de texto (Ej: "Contraseña incorrecta")
 function setFeedback(text: string | null, type: "error" | "success" = "error"): void {

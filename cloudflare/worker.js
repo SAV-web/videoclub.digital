@@ -112,6 +112,7 @@ const RESERVED_EXACT = new Set([
   "/",
   "",
   "/sitemap.xml",
+  "/sitemap.xml.gz",
   "/sitemap-index.xml",
   "/llms.txt",
   "/favicon.ico",

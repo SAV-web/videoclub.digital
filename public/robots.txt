@@ -5,4 +5,5 @@ Allow: /
 Content-Signal: search=yes, ai-train=no, ai-input=yes
 
 Sitemap: https://videoclub.digital/sitemap.xml
+Sitemap: https://videoclub.digital/sitemap.xml.gz
 Sitemap: https://videoclub.digital/sitemap-index.xml

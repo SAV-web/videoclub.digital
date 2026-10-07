@@ -6,7 +6,7 @@ let viteEnv;
 let checkedIdsModule;
 let ratingModule;
 let stateModule;
-let offlineQueueModule;
+let syncManagerModule;
 let uiModule;
 
 before(async () => {
@@ -14,10 +14,10 @@ before(async () => {
     "/src/js/checkedIds.ts",
     "/src/js/components/rating.ts",
     "/src/js/state.ts",
-    "/src/js/offlineQueue.ts",
+    "/src/js/syncManager.ts",
     "/src/js/ui.ts"
   ]);
-  [checkedIdsModule, ratingModule, stateModule, offlineQueueModule, uiModule] = viteEnv.modules;
+  [checkedIdsModule, ratingModule, stateModule, syncManagerModule, uiModule] = viteEnv.modules;
 });
 
 
@@ -122,9 +122,9 @@ describe("rating.ts (Lógica de Valoración y Exclusividad Watchlist)", () => {
   });
 });
 
-describe("offlineQueue.ts (Background Sync y Cola Offline)", () => {
-  test("initOfflineSync registra y devuelve cleanup idempotentemente", () => {
-    const cleanup = offlineQueueModule.initOfflineSync();
+describe("syncManager.ts (Background Sync y Eventos de Conectividad)", () => {
+  test("initSyncListeners registra y devuelve cleanup idempotentemente", () => {
+    const cleanup = syncManagerModule.initSyncListeners();
     assert.equal(typeof cleanup, "function");
     cleanup();
   });

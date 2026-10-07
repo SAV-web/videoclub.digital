@@ -10,6 +10,8 @@ import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
 import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents, getWatchlistCount, getCurrentPage } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
+import { ensureAuthModalMounted } from "./templates/authModal.js";
+import { ensureLegalModalMounted } from "./templates/legalModal.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
 const domCache: Record<string, HTMLElement> = {};
@@ -554,25 +556,13 @@ export const closeAuthModal = (options?: { fromPopstate?: boolean } | Event): vo
 };
 
 
-export const openAuthModal = (): void => {
-  if (!window.history.state?.modalOpen) {
-    window.history.pushState({ modalOpen: true }, "", window.location.href);
-  }
-  if (dom.authModal) {
-    dom.authModal.style.transform = "";
-    dom.authModal.classList.remove("is-dragging");
-  }
-  openAccessibleModal(dom.authModal, dom.authOverlay);
-};
+let authModalListenersInitialized = false;
 
-let authModalInitialized = false;
+function initAuthModalListeners(): void {
+  if (authModalListenersInitialized) return;
+  const { authModal, authOverlay } = dom;
+  if (!authModal) return;
 
-export function setupAuthModal(): void {
-  if (authModalInitialized) return;
-  const { loginButton, authModal, authOverlay } = dom;
-  if (!loginButton || !authModal) return;
-
-  loginButton.addEventListener("click", openAuthModal);
   authOverlay?.addEventListener("click", () => closeAuthModal());
 
   document.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -637,7 +627,31 @@ export function setupAuthModal(): void {
   authModal.addEventListener("touchend", endDrag, { passive: true });
   authModal.addEventListener("touchcancel", endDrag, { passive: true });
 
-  authModalInitialized = true;
+  authModalListenersInitialized = true;
+}
+
+export const openAuthModal = (): void => {
+  ensureAuthModalMounted();
+  initAuthModalListeners();
+  if (!window.history.state?.modalOpen) {
+    window.history.pushState({ modalOpen: true }, "", window.location.href);
+  }
+  if (dom.authModal) {
+    dom.authModal.style.transform = "";
+    dom.authModal.classList.remove("is-dragging");
+  }
+  openAccessibleModal(dom.authModal, dom.authOverlay);
+};
+
+let authTriggerBound = false;
+
+export function setupAuthModal(): void {
+  if (authTriggerBound) return;
+  const { loginButton } = dom;
+  if (!loginButton) return;
+
+  loginButton.addEventListener("click", openAuthModal);
+  authTriggerBound = true;
 }
 
 // =================================================================
@@ -724,7 +738,36 @@ export const closeLegalModal = (options?: { fromPopstate?: boolean } | Event): v
   }
 };
 
+let legalModalListenersInitialized = false;
+
+function initLegalModalListeners(): void {
+  if (legalModalListenersInitialized) return;
+  const { legalModal, legalOverlay } = dom;
+  if (!legalModal) return;
+
+  const closeBtn = document.getElementById("legal-close-btn");
+  closeBtn?.addEventListener("click", () => closeLegalModal());
+  legalOverlay?.addEventListener("click", () => closeLegalModal());
+
+  document.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Escape" && isLegalModalOpen()) {
+      closeLegalModal();
+    }
+  });
+
+  legalModal.querySelectorAll<HTMLButtonElement>(".legal-tab-btn").forEach((tabBtn) => {
+    tabBtn.addEventListener("click", () => {
+      const tab = tabBtn.getAttribute("data-tab");
+      if (tab) switchLegalTab(tab);
+    });
+  });
+
+  legalModalListenersInitialized = true;
+}
+
 export const openLegalModal = (tabName = "about"): void => {
+  ensureLegalModalMounted();
+  initLegalModalListeners();
   if (!window.history.state?.modalOpen) {
     window.history.pushState({ modalOpen: true }, "", window.location.href);
   }
@@ -740,12 +783,10 @@ export const openLegalModal = (tabName = "about"): void => {
   });
 };
 
-let legalModalInitialized = false;
+let legalTriggerBound = false;
 
 export function setupLegalModal(): void {
-  if (legalModalInitialized) return;
-  const { legalModal, legalOverlay } = dom;
-  if (!legalModal) return;
+  if (legalTriggerBound) return;
 
   // 1. Escuchar botones del pie de página (footer)
   document.querySelectorAll<HTMLButtonElement>(".footer-legal-btn").forEach((btn) => {
@@ -755,31 +796,9 @@ export function setupLegalModal(): void {
     });
   });
 
-  // 2. Escuchar botón de cierre
-  const closeBtn = document.getElementById("legal-close-btn");
-  closeBtn?.addEventListener("click", () => closeLegalModal());
+  legalTriggerBound = true;
 
-  // 3. Clic fuera (overlay)
-  legalOverlay?.addEventListener("click", () => closeLegalModal());
-
-  // 4. Tecla Escape
-  document.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Escape" && isLegalModalOpen()) {
-      closeLegalModal();
-    }
-  });
-
-  // 5. Cambio de pestañas dentro del modal
-  legalModal.querySelectorAll<HTMLButtonElement>(".legal-tab-btn").forEach((tabBtn) => {
-    tabBtn.addEventListener("click", () => {
-      const tab = tabBtn.getAttribute("data-tab");
-      if (tab) switchLegalTab(tab);
-    });
-  });
-
-  legalModalInitialized = true;
-
-  // 6. Apertura directa si la URL contiene parámetro legal (ej. /?legal=about, /?legal=cookies)
+  // 2. Apertura directa si la URL contiene parámetro legal (ej. /?legal=about, /?legal=cookies)
   if (typeof window !== "undefined") {
     try {
       const urlParams = new URLSearchParams(window.location.search);

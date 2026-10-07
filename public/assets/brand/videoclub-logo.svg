@@ -13,8 +13,8 @@
   <text x="100" y="38" text-anchor="middle" class="brand-text" font-size="34" letter-spacing="-0.03em">videoclub</text>
   
   <!-- Línea 2: .digital (centrado horizontalmente, punto dorado + palabra) -->
-  <g transform="translate(46.5, 0)">
-    <circle cx="5" cy="73" r="5" class="brand-dot" />
-    <text x="15" y="80" class="brand-text" font-size="34" letter-spacing="-0.03em">digital</text>
+  <g transform="translate(44, 0)">
+    <circle cx="5" cy="70" r="10" class="brand-dot" />
+    <text x="19" y="80" class="brand-text" font-size="34" letter-spacing="-0.03em">digital</text>
   </g>
 </svg>

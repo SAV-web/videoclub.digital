@@ -245,20 +245,26 @@ export function renderMovieHtml(movie, options = {}) {
   <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
 </head>
 <body>
+  <!-- Fondo Decorativo Desenfocado del Videoclub (Dual Adaptativo: Light / Dark) -->
+  <div class="seo-backdrop" aria-hidden="true" role="presentation">
+    <img src="${baseUrl}assets/seo/backdrop-light.webp" alt="" class="seo-backdrop-img seo-backdrop-light" width="1440" height="900" loading="eager" decoding="async" />
+    <img src="${baseUrl}assets/seo/backdrop-dark.webp" alt="" class="seo-backdrop-img seo-backdrop-dark" width="1440" height="900" loading="eager" decoding="async" />
+  </div>
+
   <!-- Header Superior de Marca (Logo V• a la izquierda de la ficha) -->
   <header class="main-header movie-seo-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
     <div class="header-content movie-header-content">
       <a href="${baseUrl}" class="brand-logo-text" aria-label="videoclub.digital - Inicio">
         <svg class="brand-logo-mark" viewBox="0 0 100 100" fill="none" role="img" aria-label="V•" width="34" height="34">
           <path d="M 10 10 L 34 10 L 52 64 L 70 10 L 94 10 L 63 88 L 41 88 Z" fill="currentColor" />
-          <circle cx="82" cy="76" r="8" fill="#d4a347" />
+          <circle cx="82" cy="72" r="16" fill="#d4a347" />
         </svg>
       </a>
     </div>
   </header>
 
-  <!-- Cortina Oscura (Overlay sin desenfoque/blur en vista SEO para preservar nitidez del fondo y clics en header) -->
-  <a href="${baseUrl}" class="quick-view-overlay is-visible" style="backdrop-filter: none; -webkit-backdrop-filter: none; background-color: rgba(0, 0, 0, 0.05); text-decoration: none;" aria-label="Volver al videoclub"></a>
+  <!-- Cortina Oscura (Overlay con clic para volver al catálogo del videoclub) -->
+  <a href="${baseUrl}" class="quick-view-overlay is-visible movie-seo-overlay" aria-label="Volver al videoclub"></a>
 
   <!-- Contenedor Ventana Modal (Quick View con z-index superior al header para evitar solapamientos con zoom) -->
   <div id="quick-view-modal" class="quick-view-modal is-visible" role="dialog" aria-modal="true" style="z-index: calc(var(--z-index-overlay, 1999) + 10);">

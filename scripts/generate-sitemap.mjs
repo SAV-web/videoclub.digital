@@ -12,6 +12,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -147,37 +148,19 @@ async function generateSitemap() {
   console.log(`[sitemap] Se recuperaron ${vipSlugs.length} personas VIP indexables.`);
 
   // Ensamblar XML estándar
-  const urlEntries = [
-    `  <url>
-    <loc>${SITE_ORIGIN}/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>`
-  ];
+  const urlEntries = [`<url><loc>${SITE_ORIGIN}/</loc></url>`];
 
   // Landings Canónicas de Taxonomías Cerradas prefijadas (/genero/, /estudio/, /seleccion/, /pais/)
   for (const slug of Object.keys(GENRE_MAP)) {
-    urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/genero/${slug}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`);
+    urlEntries.push(`<url><loc>${SITE_ORIGIN}/genero/${slug}/</loc></url>`);
   }
 
   for (const slug of Object.keys(STUDIO_MAP)) {
-    urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/estudio/${slug}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`);
+    urlEntries.push(`<url><loc>${SITE_ORIGIN}/estudio/${slug}/</loc></url>`);
   }
 
   for (const slug of Object.keys(SELECTION_MAP)) {
-    urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/seleccion/${slug}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`);
+    urlEntries.push(`<url><loc>${SITE_ORIGIN}/seleccion/${slug}/</loc></url>`);
   }
 
   const countrySlugs = new Set([
@@ -185,29 +168,17 @@ async function generateSitemap() {
     ...Object.keys(ACTIVE_COUNTRIES_MAP)
   ]);
   for (const slug of countrySlugs) {
-    urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/pais/${slug}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`);
+    urlEntries.push(`<url><loc>${SITE_ORIGIN}/pais/${slug}/</loc></url>`);
   }
 
   // Fichas de Personas VIP en la raíz canónica (/:slug/)
   for (const slug of vipSlugs) {
-    urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/${slug}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`);
+    urlEntries.push(`<url><loc>${SITE_ORIGIN}/${slug}/</loc></url>`);
   }
 
   // Fichas de Películas en el espacio exclusivo /titulo/
   for (const slug of slugs) {
-    urlEntries.push(`  <url>
-    <loc>${SITE_ORIGIN}/titulo/${slug}/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`);
+    urlEntries.push(`<url><loc>${SITE_ORIGIN}/titulo/${slug}/</loc></url>`);
   }
 
   const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -216,10 +187,15 @@ ${urlEntries.join("\n")}
 </urlset>
 `;
 
+  const sitemapGz = zlib.gzipSync(Buffer.from(sitemapXml, "utf8"), { level: 9 });
+
   const sitemapIndexXml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
     <loc>${SITE_ORIGIN}/sitemap.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>${SITE_ORIGIN}/sitemap.xml.gz</loc>
   </sitemap>
 </sitemapindex>
 `;
@@ -230,17 +206,22 @@ ${urlEntries.join("\n")}
 
   const publicSitemapPath = path.join(publicDir, "sitemap.xml");
   fs.writeFileSync(publicSitemapPath, sitemapXml, "utf8");
+  const publicSitemapGzPath = path.join(publicDir, "sitemap.xml.gz");
+  fs.writeFileSync(publicSitemapGzPath, sitemapGz);
   const publicSitemapIndexPath = path.join(publicDir, "sitemap-index.xml");
   fs.writeFileSync(publicSitemapIndexPath, sitemapIndexXml, "utf8");
-  console.log(`✓ Sitemap generado con éxito en: ${publicSitemapPath} (${urlEntries.length} URLs totales)`);
+  console.log(`✓ Sitemap generado con éxito en: ${publicSitemapPath} (${Math.round(Buffer.byteLength(sitemapXml) / 1024)} KB)`);
+  console.log(`✓ Sitemap comprimido (Gzip) generado en: ${publicSitemapGzPath} (${Math.round(sitemapGz.length / 1024)} KB)`);
   console.log(`✓ Sitemap Index generado con éxito en: ${publicSitemapIndexPath}`);
 
   if (fs.existsSync(distDir)) {
     const distSitemapPath = path.join(distDir, "sitemap.xml");
     fs.writeFileSync(distSitemapPath, sitemapXml, "utf8");
+    const distSitemapGzPath = path.join(distDir, "sitemap.xml.gz");
+    fs.writeFileSync(distSitemapGzPath, sitemapGz);
     const distSitemapIndexPath = path.join(distDir, "sitemap-index.xml");
     fs.writeFileSync(distSitemapIndexPath, sitemapIndexXml, "utf8");
-    console.log(`✓ Sitemap sincronizado en dist/`);
+    console.log(`✓ Sitemaps sincronizados en dist/`);
   }
 }
 
@@ -254,6 +235,10 @@ generateSitemap().catch((err) => {
     if (fs.existsSync(distDir)) {
       const distSitemapPath = path.join(distDir, "sitemap.xml");
       fs.copyFileSync(publicSitemapPath, distSitemapPath);
+      const publicSitemapGzPath = path.join(publicDir, "sitemap.xml.gz");
+      if (fs.existsSync(publicSitemapGzPath)) {
+        fs.copyFileSync(publicSitemapGzPath, path.join(distDir, "sitemap.xml.gz"));
+      }
       const publicSitemapIndexPath = path.join(publicDir, "sitemap-index.xml");
       if (fs.existsSync(publicSitemapIndexPath)) {
         fs.copyFileSync(publicSitemapIndexPath, path.join(distDir, "sitemap-index.xml"));

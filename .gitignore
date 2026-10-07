@@ -29,7 +29,8 @@ cloudflare/dist
 .env
 .env.*
 
-# Agentes locales y skills
-.agents/
-skills-lock.json
+# Cloudflare y despliegue
+.wrangler/
+
+# Entorno de desarrollo / memoria MCP
 .codebase-memory/

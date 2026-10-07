@@ -14,6 +14,7 @@ import { UserMovieEntry } from "../types.js";
 import { getPendingSyncEntries, clearLocalStore } from "../localStore.js";
 import { syncWithServer, mergeOnLogin } from "../syncManager.js";
 import { calculateUserStars } from "../../shared/formatters.js";
+import { ensureProfileModalMounted } from "../templates/profileModal.js";
 
 export interface UserMovieStats {
   watchlistCount: number;
@@ -213,7 +214,8 @@ function getProfileDom(): ProfileDom {
     };
   }
 
-  if (!profileDomCache) {
+  if (!profileDomCache || !profileDomCache.modal?.isConnected) {
+    ensureProfileModalMounted();
     profileDomCache = {
       overlay: document.getElementById("profile-overlay"),
       modal: document.getElementById("profile-modal"),
