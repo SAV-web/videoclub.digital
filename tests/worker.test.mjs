@@ -614,19 +614,17 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(!html.includes("5 ep"), "NO debe contener el formato '5 ep'");
   });
 
-  test("Ficha SEO de título: fondo sin desenfoque (backdrop-filter: none) y enlaces del header accesibles por encima del overlay", async () => {
+  test("Ficha SEO de título: fondo estático (.seo-backdrop), overlay sin desenfoque y sin cabecera flotante redundante", async () => {
     const request = new Request("https://videoclub.digital/titulo/chernobyl-2019/");
     const response = await worker.fetch(request, {}, defaultCtx);
 
     assert.equal(response.status, 200);
     const html = await response.text();
 
-    // Verificación de marca en el header (logo reducido V• a la izquierda de la ficha)
-    assert.ok(html.includes('class="main-header movie-seo-header"'), "Debe incluir clase movie-seo-header");
-    assert.ok(html.includes('class="header-content movie-header-content"'), "Debe incluir contenedor acotado al ancho de la ficha");
-    assert.ok(html.includes('class="brand-logo-text"'), "Debe incluir el enlace de marca a la home");
-    assert.ok(html.includes('class="brand-logo-mark"'), "Debe incluir el logo reducido V•");
-    assert.ok(html.includes('aria-label="V•"'), "Debe incluir aria-label V•");
+    // Verificación de fondo estático del videoclub y ausencia de cabecera flotante redundante
+    assert.ok(html.includes('class="seo-backdrop"'), "Debe incluir contenedor de fondo .seo-backdrop");
+    assert.ok(!html.includes('class="brand-logo-mark"'), "NO debe incluir el logo flotante redundante V•");
+    assert.ok(!html.includes('class="main-header movie-seo-header"'), "NO debe incluir cabecera flotante movie-seo-header");
     assert.ok(!html.includes('class="btn-header-cta"'), "NO debe incluir el botón de rayo CTA");
     assert.ok(!html.includes('id="theme-toggle"'), "NO debe incluir el botón de modo claro/oscuro");
 
@@ -635,7 +633,6 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(html.includes('class="movie-title-link"'), "El título debe enlazar al modal SPA");
     assert.ok(html.includes('class="back-original-title-link"'), "El título original debe enlazar al modal SPA");
     assert.ok(html.includes('movie=200'), "Debe enlazar al modal interactivo con movie=200");
-    assert.ok(html.includes('z-index: calc(var(--z-index-overlay, 1999) + 2)'), "El header debe tener z-index superior al overlay");
 
     // Overlay sin desenfoque
     assert.ok(html.includes('backdrop-filter: none'), "El overlay no debe aplicar desenfoque al fondo");

@@ -464,17 +464,21 @@ body.movie-seo-body {
 
 /* Backdrop decorativo estático del videoclub para fichas SEO */
 .seo-backdrop {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-  user-select: none;
-  background-size: cover;
-  background-position: top center;
-  background-repeat: no-repeat;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  user-select: none !important;
+  background-size: cover !important;
+  background-position: center top !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
   background-image: url('/assets/seo/backdrop-light.webp');
 }
 

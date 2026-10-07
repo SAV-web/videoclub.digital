@@ -252,18 +252,21 @@ export function renderMovieHtml(movie, options = {}) {
       width: 100% !important;
       height: 100% !important;
       overflow: hidden !important;
-      position: fixed !important;
     }
     .seo-backdrop {
       position: fixed !important;
-      inset: 0 !important;
-      width: 100vw !important;
-      height: 100vh !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
       z-index: 0 !important;
       pointer-events: none !important;
       background-size: cover !important;
-      background-position: top center !important;
+      background-position: center top !important;
       background-repeat: no-repeat !important;
+      background-attachment: fixed !important;
       background-image: url('${baseUrl}assets/seo/backdrop-light.webp');
     }
     @media (prefers-color-scheme: dark) {
@@ -282,18 +285,6 @@ export function renderMovieHtml(movie, options = {}) {
 <body class="movie-seo-body">
   <!-- Fondo Decorativo Estático del Videoclub (Dual Adaptativo: Light / Dark) -->
   <div class="seo-backdrop" aria-hidden="true" role="presentation"></div>
-
-  <!-- Header Superior de Marca (Logo V• a la izquierda de la ficha) -->
-  <header class="main-header movie-seo-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
-    <div class="header-content movie-header-content">
-      <a href="${baseUrl}" class="brand-logo-text" aria-label="videoclub.digital - Inicio">
-        <svg class="brand-logo-mark" viewBox="0 0 100 100" fill="none" role="img" aria-label="V•" width="34" height="34">
-          <path d="M 10 10 L 34 10 L 52 64 L 70 10 L 94 10 L 63 88 L 41 88 Z" fill="currentColor" />
-          <circle cx="82" cy="72" r="16" fill="#d4a347" />
-        </svg>
-      </a>
-    </div>
-  </header>
 
   <!-- Cortina Oscura (Overlay con clic para volver al catálogo del videoclub) -->
   <a href="${baseUrl}" class="quick-view-overlay is-visible movie-seo-overlay" style="backdrop-filter: none; -webkit-backdrop-filter: none; text-decoration: none;" aria-label="Volver al videoclub"></a>
