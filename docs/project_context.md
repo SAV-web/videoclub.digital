@@ -94,7 +94,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 - **Propósito**: Renderizado en el servidor perimetral (*Edge SSR*) y optimización de entrega sin latencia de origen ni consumo de egress.
 - **Tecnología**: Cloudflare Workers (ESM bundle vía esbuild).
 - **Rutas Servidas en Edge SSR**:
-  - `/titulo/:slug/`: Ficha completa accesible con modal nativo, enlaces canónicos en géneros (`/genero/:slug/`), directores y reparto, Schema.org Movie/TVSeries, Breadcrumbs y normalización case-insensitive 301.
+  - `/titulo/:slug/`: Ficha completa accesible con modal nativo, Backdrop Dual Adaptativo Estático (`public/assets/seo/backdrop-light.webp` y `backdrop-dark.webp`) sin scroll global (`overflow: hidden; position: fixed;`), conmutación por CSS `background-image` y anti-flicker, enlaces canónicos en géneros (`/genero/:slug/`), directores y reparto, Schema.org Movie/TVSeries, Breadcrumbs y normalización case-insensitive 301.
   - `/:vip-slug/`: Ficha VIP oficial de director o actor con tarjeta dedicada `#0`, foto `/vips/:slug.webp`, biografía con giro 3D y filmografía destacada en cuadrícula (evaluación perezosa *lazy* de tarjetas por rol).
   - `/genero/:slug/`, `/pais/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/`: Muros de taxonomía cerrada con 42 tarjetas oficiales.
   - Reverso de tarjeta en Edge SSR: idéntico visualmente a la SPA; el título original se ubica bajo las puntuaciones y actúa como enlace a la ficha (`.back-original-title-link`), la sinopsis fluye con degradado hasta la base, los botones `+` se alinean milimétricamente a 8px del margen derecho y el botón `−` permite cerrar tanto el panel de reparto como la sinopsis expandida elevándose a `z-index: 60`.

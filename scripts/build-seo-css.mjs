@@ -451,58 +451,45 @@ combined += `
   background-color: #f5c518 !important;
 }
 
-/* Backdrop decorativo del videoclub para fichas SEO */
+/* Bloqueo estricto de scroll en la vista SEO de título para fondo estático */
+html.movie-seo-page,
+body.movie-seo-body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  position: fixed !important;
+}
+
+/* Backdrop decorativo estático del videoclub para fichas SEO */
 .seo-backdrop {
   position: fixed;
-  inset: -15px;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
   user-select: none;
-}
-
-.seo-backdrop-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top left;
-  filter: blur(8px);
-  transform: scale(1.04);
-}
-
-.seo-backdrop-dark {
-  display: none;
-  opacity: 0.65;
-}
-
-.seo-backdrop-light {
-  display: block;
-  opacity: 0.75;
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+  background-image: url('/assets/seo/backdrop-light.webp');
 }
 
 @media (prefers-color-scheme: dark) {
-  .seo-backdrop-light {
-    display: none;
-  }
-  .seo-backdrop-dark {
-    display: block;
+  .seo-backdrop {
+    background-image: url('/assets/seo/backdrop-dark.webp');
   }
 }
 
-html.dark-mode .seo-backdrop-light {
-  display: none !important;
-}
-html.dark-mode .seo-backdrop-dark {
-  display: block !important;
+html.dark-mode .seo-backdrop {
+  background-image: url('/assets/seo/backdrop-dark.webp') !important;
 }
 
-html.light-mode .seo-backdrop-light {
-  display: block !important;
-}
-html.light-mode .seo-backdrop-dark {
-  display: none !important;
+html.light-mode .seo-backdrop {
+  background-image: url('/assets/seo/backdrop-light.webp') !important;
 }
 
 /* Overlay semitransparente para resaltar la modal sobre el backdrop */

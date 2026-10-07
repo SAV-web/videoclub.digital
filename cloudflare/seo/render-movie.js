@@ -243,13 +243,45 @@ export function renderMovieHtml(movie, options = {}) {
 
   <!-- Speculation Rules API: Prerender nativo instantáneo en rutas de navegación frecuente (Chromium) -->
   <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
+
+  <!-- Bloqueo estricto de scroll y fondo estático instantáneo sin FOUC -->
+  <style>
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      position: fixed !important;
+    }
+    .seo-backdrop {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 0 !important;
+      pointer-events: none !important;
+      background-size: cover !important;
+      background-position: top center !important;
+      background-repeat: no-repeat !important;
+      background-image: url('${baseUrl}assets/seo/backdrop-light.webp');
+    }
+    @media (prefers-color-scheme: dark) {
+      .seo-backdrop {
+        background-image: url('${baseUrl}assets/seo/backdrop-dark.webp');
+      }
+    }
+    html.dark-mode .seo-backdrop {
+      background-image: url('${baseUrl}assets/seo/backdrop-dark.webp') !important;
+    }
+    html.light-mode .seo-backdrop {
+      background-image: url('${baseUrl}assets/seo/backdrop-light.webp') !important;
+    }
+  </style>
 </head>
-<body>
-  <!-- Fondo Decorativo Desenfocado del Videoclub (Dual Adaptativo: Light / Dark) -->
-  <div class="seo-backdrop" aria-hidden="true" role="presentation">
-    <img src="${baseUrl}assets/seo/backdrop-light.webp" alt="" class="seo-backdrop-img seo-backdrop-light" width="1440" height="900" loading="eager" decoding="async" />
-    <img src="${baseUrl}assets/seo/backdrop-dark.webp" alt="" class="seo-backdrop-img seo-backdrop-dark" width="1440" height="900" loading="eager" decoding="async" />
-  </div>
+<body class="movie-seo-body">
+  <!-- Fondo Decorativo Estático del Videoclub (Dual Adaptativo: Light / Dark) -->
+  <div class="seo-backdrop" aria-hidden="true" role="presentation"></div>
 
   <!-- Header Superior de Marca (Logo V• a la izquierda de la ficha) -->
   <header class="main-header movie-seo-header" style="position: relative; z-index: calc(var(--z-index-overlay, 1999) + 2);">
