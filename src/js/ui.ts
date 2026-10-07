@@ -393,7 +393,34 @@ export function updateSortUI(currentSort: string): void {
     const labelEl = sortDropdownTrigger.querySelector(".sort-current-label");
     if (labelEl) labelEl.textContent = label;
     sortDropdownTrigger.setAttribute("aria-label", `Criterio de ordenación: ${label}`);
-    sortDropdownTrigger.classList.toggle("has-active-sort", currentSort !== DEFAULTS.SORT);
+    const isSortActive = currentSort !== DEFAULTS.SORT;
+    sortDropdownTrigger.classList.toggle("has-active-sort", isSortActive);
+
+    const sortControl = sortDropdownTrigger.closest(".sort-control");
+    const SORT_CLASSES = ["sort--year", "sort--rating", "sort--votes"] as const;
+    sortDropdownTrigger.classList.remove(...SORT_CLASSES);
+    if (sortControl) {
+      sortControl.classList.toggle("has-active-sort", isSortActive);
+      sortControl.classList.remove(...SORT_CLASSES);
+    }
+
+    if (isSortActive) {
+      let sortCategory = "";
+      if (currentSort.startsWith("year")) {
+        sortCategory = "sort--year";
+      } else if (currentSort.includes("rating")) {
+        sortCategory = "sort--rating";
+      } else if (currentSort.includes("votes")) {
+        sortCategory = "sort--votes";
+      }
+
+      if (sortCategory) {
+        sortDropdownTrigger.classList.add(sortCategory);
+        if (sortControl) {
+          sortControl.classList.add(sortCategory);
+        }
+      }
+    }
   }
 
   if (sortDropdownMenu) {
