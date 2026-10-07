@@ -264,7 +264,7 @@ export function renderMovieHtml(movie, options = {}) {
   </header>
 
   <!-- Cortina Oscura (Overlay con clic para volver al catálogo del videoclub) -->
-  <a href="${baseUrl}" class="quick-view-overlay is-visible movie-seo-overlay" aria-label="Volver al videoclub"></a>
+  <a href="${baseUrl}" class="quick-view-overlay is-visible movie-seo-overlay" style="backdrop-filter: none; -webkit-backdrop-filter: none; text-decoration: none;" aria-label="Volver al videoclub"></a>
 
   <!-- Contenedor Ventana Modal (Quick View con z-index superior al header para evitar solapamientos con zoom) -->
   <div id="quick-view-modal" class="quick-view-modal is-visible" role="dialog" aria-modal="true" style="z-index: calc(var(--z-index-overlay, 1999) + 10);">

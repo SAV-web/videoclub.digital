@@ -511,8 +511,6 @@ html.light-mode .seo-backdrop-dark {
   inset: 0;
   z-index: var(--z-index-overlay, 1999);
   background-color: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   cursor: pointer;
   text-decoration: none;
 }
