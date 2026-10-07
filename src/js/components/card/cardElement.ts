@@ -655,16 +655,16 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
     movie.country || undefined
   );
 
-  // Iconos
+  // Iconos (máximo 2 estudios en ficha del grid)
   const iconCont = front.querySelector<HTMLElement>('.card-icons-line');
   if (iconCont) {
     iconCont.innerHTML = "";
-    const codes = movie.studios_list?.split(",") || [];
-
-    iconCont.classList.toggle('compact', codes.filter(c => STUDIO_DATA[c as keyof typeof STUDIO_DATA]).length >= 3);
+    const validCodes = (movie.studios_list?.split(",") || [])
+      .filter(c => STUDIO_DATA[c as keyof typeof STUDIO_DATA])
+      .slice(0, 2);
 
     let iconsHtml = "";
-    codes.forEach(code => {
+    validCodes.forEach(code => {
       const conf = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
       if (conf) {
         iconsHtml += `<span class="platform-icon ${conf.class || ''}" title="${conf.title}">

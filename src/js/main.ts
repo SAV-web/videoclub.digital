@@ -76,7 +76,8 @@ import {
   handleCardClick,
   initCardInteractions,
   updateCardUI,
-  disposeCardEvents
+  disposeCardEvents,
+  unflipAllCards
 } from "./components/card/index.js";
 
 
@@ -287,6 +288,7 @@ function setupHeaderListeners(): void {
       sortMenu.hidden = !nextState;
       if (nextState) {
         triggerHapticFeedback("light");
+        unflipAllCards();
       }
     };
 
