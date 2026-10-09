@@ -954,7 +954,7 @@ export function initThemeToggle(): void {
 
     const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
     metas.forEach((meta) => {
-      meta.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5");
+      meta.setAttribute("content", isDark ? "#0d0d0d" : "#eceff2");
     });
   };
 

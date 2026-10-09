@@ -1191,6 +1191,7 @@
 .is-quick-view.person-card {
   & .poster-container {
     position: relative;
+    margin-bottom: calc(var(--space-sm) * 2.5);
   }
 
   & .title-director-block {
@@ -1203,6 +1204,10 @@
     margin-bottom: 0;
   }
 
+  & :is(h1, h3)[data-template="title"] {
+    margin-bottom: 0;
+  }
+
   & .front-director-info {
     text-align: center;
     padding: 0;
@@ -1210,18 +1215,29 @@
     padding-right: 0;
     padding-inline: 0;
     margin-inline: auto;
-    margin-top: 2px;
-    margin-bottom: 4px;
+    margin-top: 12px;
+    margin-bottom: 12px;
     width: 100%;
     display: block;
   }
 
   & .movie-meta {
-    margin-top: 2px;
+    margin-top: 0;
     padding-top: 0;
     flex-grow: 0;
     width: 100%;
     justify-content: center;
+  }
+
+  & .year-flag-group {
+    font-size: 1.92rem;
+    gap: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  & :is(.person-age, .person-dates) {
+    font-size: 1.92rem;
+    line-height: 1;
   }
 
   & .poster-container img {
