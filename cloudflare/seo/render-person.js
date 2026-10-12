@@ -95,7 +95,6 @@ export function renderVipPersonCard(person, options = {}) {
 
   const countryCode = person.countries?.code || null;
   const countryName = person.countries?.name || '';
-  const countrySlug = countryCode ? toSlug(countryName) : null;
 
   const currentRole = activeRole === 'actor' ? 'actor' : 'director';
   const isDirector = currentRole === 'director';

@@ -23,7 +23,6 @@ import { getAllLocalEntries, clearLocalStore } from "./localStore.js";
 import { mergeOnLogin, initSyncListeners, scheduleSync } from "./syncManager.js";
 import {
   dom,
-  prefetchNextPage,
   setupAuthModal,
   setupLegalModal,
   updateTypeFilterUI,
@@ -62,7 +61,6 @@ import {
   saveCurrentScrollPosition,
   getSavedScrollPosition,
   readUrlAndSetState,
-  updateUrl,
   normalizeUrl
 } from "./router.js";
 export { saveCurrentScrollPosition };

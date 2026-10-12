@@ -242,7 +242,7 @@ export const LEGAL_MODAL_HTML = `
                   <td>Persistente hasta que la cambies</td>
                 </tr>
                 <tr>
-                  <td><code>videoclub_offline_db</code></td>
+                  <td><code>videoclub_local_db</code></td>
                   <td>IndexedDB</td>
                   <td>
                     Guardar temporalmente tus valoraciones o cambios en la

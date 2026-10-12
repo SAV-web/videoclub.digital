@@ -10,8 +10,7 @@ import { getCurrentSession } from "./auth.js";
 import {
   getPendingSyncEntries,
   markEntriesAsSynced,
-  mergeRemoteEntries,
-  LocalUserEntry
+  mergeRemoteEntries
 } from "./localStore.js";
 import { setUserMovieData, appEvents } from "./state.js";
 

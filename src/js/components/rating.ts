@@ -13,7 +13,7 @@ import { saveLocalEntryWithMovie } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
-import { triggerHapticFeedback, formatVotesUnified, getFriendlyErrorMessage } from "../utils.js";
+import { triggerHapticFeedback, formatVotesUnified } from "../utils.js";
 import { normalizeMovieId } from "../contracts.js";
 import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.js";
 

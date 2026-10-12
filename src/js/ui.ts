@@ -8,7 +8,7 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS, FILTER_CONFIG, STUDIO_DATA, REGIONAL_GROUPS } from "./constants.js";
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
-import { getActiveFilters, getTotalMovies, getState, hasActiveMeaningfulFilters, appEvents, getWatchlistCount, getCurrentPage } from "./state.js";
+import { getActiveFilters, getTotalMovies, hasActiveMeaningfulFilters, appEvents, getWatchlistCount, getCurrentPage } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
 import { ensureAuthModalMounted } from "./templates/authModal.js";
 import { ensureLegalModalMounted } from "./templates/legalModal.js";
