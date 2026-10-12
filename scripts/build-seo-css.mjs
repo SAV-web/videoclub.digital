@@ -496,6 +496,13 @@ html.light-mode .seo-backdrop {
   background-image: url('/assets/seo/backdrop-light.webp') !important;
 }
 
+@media (max-width: 768px), (orientation: landscape) and (max-height: 600px) {
+  .seo-backdrop {
+    display: none !important;
+    background-image: none !important;
+  }
+}
+
 /* Overlay semitransparente para resaltar la modal sobre el backdrop */
 .movie-seo-overlay {
   position: fixed;

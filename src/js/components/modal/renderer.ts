@@ -435,12 +435,12 @@ export function populateModalContent(options: PopulateModalOptions): void {
     // Biografía
     const headlineEl = cardClone.querySelector('[data-template="bio-headline"]');
     if (headlineEl) {
-      headlineEl.textContent = movie.titulo_bio || "";
+      headlineEl.textContent = preserveHyphenatedWords(movie.titulo_bio) || "";
     }
 
     const biographyEl = cardClone.querySelector('[data-template="biography"]');
     if (biographyEl) {
-      biographyEl.textContent = movie.biography || "Biografía no disponible en el catálogo.";
+      biographyEl.textContent = preserveHyphenatedWords(movie.biography) || "Biografía no disponible en el catálogo.";
     }
 
     // Botón de alternancia de rol (Director <-> Actor)

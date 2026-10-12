@@ -934,12 +934,12 @@ export function createPersonCardElement(person: PersonDetails): DocumentFragment
 
   const headlineEl = card.querySelector('[data-template="bio-headline"]');
   if (headlineEl) {
-    headlineEl.textContent = person.titulo_bio || "";
+    headlineEl.textContent = preserveHyphenatedWords(person.titulo_bio) || "";
   }
 
   const biographyEl = card.querySelector('[data-template="biography"]');
   if (biographyEl) {
-    biographyEl.textContent = person.biography || "Biografía no disponible en el catálogo.";
+    biographyEl.textContent = preserveHyphenatedWords(person.biography) || "Biografía no disponible en el catálogo.";
   }
 
   // Botón de alternancia de rol (Director <-> Actor)

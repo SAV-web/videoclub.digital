@@ -405,6 +405,12 @@
   border-top: none;
 }
 
+.is-quick-view .bio-headline {
+  text-wrap: wrap !important;
+  hyphens: auto !important;
+  -webkit-hyphens: auto !important;
+}
+
 .is-quick-view .detail-data {
   color: var(--color-text-primary);
 }

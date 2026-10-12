@@ -280,6 +280,12 @@ export function renderMovieHtml(movie, options = {}) {
     html.light-mode .seo-backdrop {
       background-image: url('${baseUrl}assets/seo/backdrop-light.webp') !important;
     }
+    @media (max-width: 768px), (orientation: landscape) and (max-height: 600px) {
+      .seo-backdrop {
+        display: none !important;
+        background-image: none !important;
+      }
+    }
   </style>
 </head>
 <body class="movie-seo-body">

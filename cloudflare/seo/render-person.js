@@ -172,7 +172,7 @@ export function renderVipPersonCard(person, options = {}) {
         <!-- Cara trasera -->
         <div class="flip-card-back">
           <div class="scrollable-content" style="flex-grow: 1; margin-top: var(--space-xs, 6px); margin-bottom: 24px;">
-            ${person.titulo_bio ? `<h4 class="bio-headline">${escapeHtml(person.titulo_bio)}</h4>` : ''}
+            ${person.titulo_bio ? `<h4 class="bio-headline">${escapeHtml(preserveHyphenatedWords(person.titulo_bio))}</h4>` : ''}
             <div
               class="plot-summary-final"
               style="border-top: none; padding-top: 0; font-size: calc(var(--font-size-sm, 0.85rem) * 1.15); line-height: 1.5;"
