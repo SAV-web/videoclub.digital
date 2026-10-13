@@ -236,6 +236,73 @@ BEGIN
         RETURN json_build_object('total', 0, 'items', '[]'::json);
     END IF;
 
+    -- FASE 1.6: FAST-PATH QUIRÚRGICO DE PORTADA LIMPIA (DAILY SHOWCASE)
+    -- Si la consulta es para el escaparate limpio de portada, dentro de los 378 títulos del pool
+    -- y no requiere conteo, cortocircuitamos con Index-Only Scan sobre idx_movies_relevance_id (~1.5 ms).
+    IF v_enable_daily_showcase 
+       AND NOT v_has_filters 
+       AND v_showcase_limit = 378 
+       AND (v_offset + v_limit <= 378) 
+       AND NOT get_count THEN
+
+        WITH raw_showcase AS (
+            SELECT id
+            FROM public.movies
+            ORDER BY relevance ASC, id ASC
+            LIMIT 378
+        ),
+        showcase_pool AS (
+            SELECT id,
+                   ROW_NUMBER() OVER () AS natural_rank
+            FROM raw_showcase
+        ),
+        paged_ids AS (
+            SELECT sp.id, sp.natural_rank,
+                   hashtext(sp.id::text || (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Madrid')::date::text) AS hash_val
+            FROM showcase_pool sp
+            ORDER BY hash_val ASC, sp.natural_rank ASC
+            LIMIT v_limit OFFSET v_offset
+        )
+        SELECT json_build_object(
+            'total', -1,
+            'items', COALESCE(
+                (
+                    SELECT json_agg(rows)
+                    FROM (
+                        SELECT
+                            m.id, m.title, 
+                            CASE WHEN lower(m.original_title) = lower(m.title) THEN NULL ELSE m.original_title END as original_title,
+                            m.year, 
+                            CASE WHEN m.type ILIKE 'S%' THEN m.year_end ELSE NULL END as year_end,
+                            m.type, 
+                            m.genres_list AS genres,
+                            m.directors_list AS directors, 
+                            m.actors_list AS actors, 
+                            c.name AS country,
+                            c.code AS country_code, 
+                            m.minutes, m.fa_id, 
+                            m.fa_rating, m.fa_votes,
+                            m.imdb_id, m.imdb_rating, m.imdb_votes, 
+                            m.avg_rating,
+                            m.synopsis, m.thumbhash_st,
+                            EXTRACT(EPOCH FROM m.last_synced_at)::INT as last_synced_at,
+                            CASE WHEN m.type ILIKE 'S%' THEN m.episodes ELSE NULL END as episodes,
+                            m.wikipedia,
+                            m.selections_list, m.studios_list, m.justwatch, m.slug
+                        FROM paged_ids fm
+                        JOIN public.movies m ON fm.id = m.id
+                        LEFT JOIN public.countries c ON m.country_id = c.id
+                        ORDER BY fm.hash_val ASC, fm.natural_rank ASC
+                    ) as rows
+                ),
+                '[]'::json
+            )
+        )
+        INTO v_json_result;
+
+        RETURN v_json_result;
+    END IF;
+
     -- FASE 2: PRE-PROCESAMIENTO DE PAÍSES Y GRUPOS REGIONALES
     IF p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0 THEN
         SELECT array_agg(c.id) INTO v_country_ids FROM public.countries c WHERE lower(c.code) = ANY(SELECT lower(x) FROM unnest(p_country_codes) x);

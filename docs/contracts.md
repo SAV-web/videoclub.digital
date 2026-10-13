@@ -197,6 +197,7 @@ Cualquier consumidor del backend (pruebas en `tests/`, Edge Worker o componentes
    $$\forall\ t_1, t_2 \in \text{mismo día Madrid} \implies \operatorname{RPC}(P, t_1) \equiv \operatorname{RPC}(P, t_2)$$
 2. **Cero Duplicados en Paginación**: Un ítem retornado en la página $N$ jamás aparecerá en la página $N+1$, incluso si coincide con el límite exacto del umbral de corte del Showcase.
 3. **Preservación del Desempate Determinista**: Si dos películas empatan en nota, año o relevancia, el desempate final siempre lo dicta `m.id ASC`, eliminando cualquier indeterminación aleatoria del motor relacional.
+4. **Fast-Path Quirúrgico de Portada Limpia**: Cuando `sort_field = 'relevance'` sin filtros ni búsquedas (`v_has_filters = false`), `get_count = false` y `offset + limit <= 378`, la RPC ejecuta un atajo optimizado (*Fast-Path*) que extrae exclusivamente el pool de 378 títulos mediante Index-Only Scan sobre `idx_movies_relevance_id`. El orden relativo, la función hash de fecha y el desempate por `natural_rank ASC` son estrictamente idénticos al camino general, respondiendo con `total: -1` y una latencia de base de datos de $\sim 1.5\text{ ms}$.
 
 ---
 
