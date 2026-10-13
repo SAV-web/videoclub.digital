@@ -172,7 +172,7 @@ export const SELECTION_SLUGS: ReadonlySet<string> = new Set([
  *    En Full Text Search de PostgreSQL (`websearch_to_tsquery`), los guiones pueden actuar como
  *    operadores de negación o generar tokenización rígida. Separar por espacios permite evaluar
  *    las palabras de forma neutra y segura.
- * 3. Blindaje y Compensación en Backend (`search_movies_offset` en docs/script.sql):
+ * 3. Blindaje y Compensación en Backend (`search_movies_offset` en database/functions/search_movies_offset.sql):
  *    Para que nombres compuestos como "Daniel Day-Lewis" o "Jean-Luc Godard" nunca fallen,
  *    el backend (Fases 3.6 y 3.7) implementa una triple red de seguridad:
  *    - Reconstrucción de slug: reconvierte espacios a guiones (`regexp_replace(..., '[^a-zA-Z0-9]+', '-', 'g')`)

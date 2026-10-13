@@ -1,5 +1,5 @@
 -- =================================================================
--- SUITE DECLARATIVA DE TESTS DE CALIDAD DE DATOS (docs/data_tests.sql)
+-- SUITE DECLARATIVA DE TESTS DE CALIDAD DE DATOS (database/tests/data_tests.sql)
 -- =================================================================
 -- Inspirada en los principios de dbt (Data Build Tool):
 -- 1. Pruebas declarativas: not_null, unique, relationships, accepted_values.

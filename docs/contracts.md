@@ -127,7 +127,7 @@ Esta matriz está verificada por pruebas automatizadas de regresión en CI:
 
 ## 2.2. Contrato de Producto Editorial: Daily Showcase y Barajado Determinista (*Editorial Showcase Contract Specification*)
 
-Este apartado formaliza la lógica de negocio y producto que gobierna el orden de presentación predeterminado del catálogo en **VIDEOCLUB.DIGITAL**. Aunque por estrictos motivos de rendimiento y eficiencia de costes (*zero-egress, stateless pagination*) su ejecución reside en la función PL/pgSQL `public.search_movies_offset` ([`docs/script.sql`](./script.sql)), sus especificaciones son un **contrato formal de producto inmutable** para cualquier capa cliente, middleware o rastreador.
+Este apartado formaliza la lógica de negocio y producto que gobierna el orden de presentación predeterminado del catálogo en **VIDEOCLUB.DIGITAL**. Aunque por estrictos motivos de rendimiento y eficiencia de costes (*zero-egress, stateless pagination*) su ejecución reside en la función PL/pgSQL `public.search_movies_offset` ([`database/functions/search_movies_offset.sql`](../database/functions/search_movies_offset.sql)), sus especificaciones son un **contrato formal de producto inmutable** para cualquier capa cliente, middleware o rastreador.
 
 ### A. Racional de Producto: Serendipia Controlada vs. Canon Cinematográfico
 

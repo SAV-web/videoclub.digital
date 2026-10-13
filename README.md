@@ -113,17 +113,19 @@ VIDEOCLUB.DIGITAL/
 │   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (Edge SSR, proxy y headers)
 │   ├── profile-stats.test.mjs   # Estadísticas de usuario y reconciliación de login
 │   └── *.test.mjs               # Pruebas de api, state, rating, seo, utils, formatters
+├── database/                    # Lógica de base de datos y backend (PostgreSQL / Supabase)
+│   ├── schema.sql               # Esquema DDL de tablas y restricciones relacionales
+│   ├── script.sql               # Esquema SQL completo, funciones RPC e índices
+│   ├── functions/               # Funciones RPC especializadas (search_movies_offset.sql)
+│   ├── etl/                     # Procedimientos de ingesta (ingest.sql)
+│   └── tests/                   # Suite declarativa de pruebas DataOps (data_tests.sql)
 └── docs/                        # Documentación técnica y de arquitectura
     ├── architecture/            # Diagramas interactivos Archify (Global, DataOps, Local-First, SPA Modular)
     ├── project_context.md       # Contexto global y mapa del proyecto
     ├── contracts.md             # Especificación de contratos de datos, URLs y temas
     ├── data_contracts.md        # Disciplina DataOps y catálogo de aserciones PostgreSQL
-    ├── data_tests.sql           # Suite nativa de pruebas de base de datos (run_data_tests)
     ├── security.md              # Auditoría forense de seguridad, hardening perimetral y mitigaciones
-    ├── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
-    ├── script.sql               # Esquema SQL completo, funciones RPC e índices
-    ├── schema.sql               # Esquema DDL de tablas y restricciones relacionales
-    └── ingest.sql               # Script post-CSV: ETL diferencial, vistas y estadísticas
+    └── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
 ```
 
 ---
@@ -189,5 +191,5 @@ Para más detalles sobre la arquitectura interna y decisiones de diseño técnic
 - 🛡️ [**Contratos de Calidad de Datos (DataOps)**](docs/data_contracts.md): Framework declarativo de pruebas nativas en PostgreSQL y automatización en CI.
 - 🔄 [**Estrategia de Invalidación del Service Worker**](docs/service_worker_invalidation.md): Explicación de políticas de caché, aislamiento de origen y despliegue.
 - ☁️ [**Configuración de Cloudflare Edge**](cloudflare/README.md): Guía de configuración perimetral de proxy de imágenes y negociación Markdown.
-- 🗄️ [**Script SQL & Backend Schema**](docs/script.sql): Código de la función RPC `search_movies_offset`, ETL diferencial e índices trigrama.
-- 🗃️ [**Contexto SQL & DDL Schema**](docs/schema.sql): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.
+- 🗄️ [**Script SQL & Backend Schema**](database/script.sql): Código de la función RPC `search_movies_offset`, ETL diferencial e índices trigrama.
+- 🗃️ [**Contexto SQL & DDL Schema**](database/schema.sql): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.

@@ -183,7 +183,7 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 - `user_movie_entries`: Almacena las valoraciones (1-10) y la Watchlist (boolean) por usuario con exclusividad mutua.
 - Tablas `_staging`: Usadas para el proceso ETL (ingesta masiva desde CSV con datos consolidados completos) mediante la función diferencial `process_staging_data()`. La columna `show IS TRUE` actúa como filtro de admisión (gatekeeper) para la carga al catálogo consolidado cruzando por clave primaria inmutable `id`.
 
-### Lógica Avanzada SQL (`docs/script.sql`, `docs/schema.sql` y `docs/data_tests.sql`)
+### Lógica Avanzada SQL (`database/script.sql`, `database/schema.sql` y `database/tests/data_tests.sql`)
 
 - **Columnas Generadas (`GENERATED ALWAYS AS ... STORED`)**: Usadas para calcular campos `tsvector` de búsqueda en tiempo de inserción, descargando al procesador durante las consultas `SELECT`. También se usa para normalizar textos (`unaccent`).
 - **Índices y Operadores Cualificados**:

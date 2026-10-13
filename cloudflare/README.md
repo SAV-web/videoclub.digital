@@ -54,26 +54,31 @@ run_worker_first = true
 3. Gestiona cabeceras `immutable` y negociación Markdown (`/llms.txt`).
 4. Delega a `env.ASSETS.fetch(request)` **únicamente** cuando se trata de assets estáticos reales o rutas reservadas de la SPA.
 
-### Opción A: Mediante Wrangler CLI (Recomendado)
-El proyecto incluye [`wrangler.toml`](../wrangler.toml) preconfigurado. Para desplegar directamente:
+### 2.1 Método Oficial: Despliegue Continuo (CI/CD) vía GitHub Actions
+El método principal, automatizado y autoritativo de despliegue para **VIDEOCLUB.DIGITAL** reside en el flujo de trabajo [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml):
+1. Se dispara automáticamente con cada `git push` a la rama `main` (o manualmente vía `workflow_dispatch`).
+2. Ejecuta chequeo de tipos estricto (`npm run check`) y suite de pruebas (`npm run test`).
+3. Construye los artefactos y el App Shell (`npm run build`, que incluye `prepare:worker`).
+4. Despliega el Cloudflare Worker e inyecta dinámicamente las variables de entorno de producción:
+   ```bash
+   npx wrangler deploy --var "SUPABASE_URL:$SUPA_URL" --var "SUPABASE_ANON_KEY:$SUPA_KEY"
+   ```
+
+### 2.2 Método Secundario / Emergencia: Despliegue Local mediante Wrangler CLI
+Para despliegues manuales de contingencia desde la terminal local:
 ```bash
-npx wrangler login     # Solo la primera vez si no has iniciado sesión
-npm run deploy:worker  # Ejecuta prepare:worker (regenera VIP manifest y CSS) y despliega con Wrangler
+npx wrangler login     # Solo si no has iniciado sesión previa
+npm run deploy:worker  # Ejecuta prepare:worker (VIP manifest + CSS perimetral) y despliega con Wrangler
 ```
 
-### Opción B: Desde el Panel Web de Cloudflare (Sin CLI)
-Dado que el worker modular utiliza submódulos (`./seo/render-movie.js`), disponemos de un comando para generar un bundle único consolidado:
-1. Ejecuta:
-   ```bash
-   npm run build:worker # Ejecuta prepare:worker y empaqueta en cloudflare/dist/worker.bundle.js
-   ```
-2. Abre el archivo generado: [`cloudflare/dist/worker.bundle.js`](dist/worker.bundle.js).
-3. En el panel de Cloudflare, ve a **Workers & Pages** $\rightarrow$ tu Worker (`videoclub-edge-optimizer`) $\rightarrow$ **Edit code / Quick Edit**.
-4. Pega todo el contenido de `worker.bundle.js` reemplazando lo anterior.
-5. Haz clic en **Save and Deploy**.
-6. Asegúrate de que la ruta en **Settings $\rightarrow$ Domains & Routes** siga asignada a `videoclub.digital/*`.
+### 2.3 Método Desaconsejado: Copiado Manual de Bundle en el Panel Web
+> [!WARNING]
+> La compilación y copiado manual de `cloudflare/dist/worker.bundle.js` hacia el editor web de Cloudflare está **desaconsejada**. El Worker está modularizado en ESM (`./seo/render-movie.js`, `./seo/render-person.js`, etc.) y el copiado manual es propenso a desincronizaciones frente al pipeline automatizado de CI/CD. Si necesitas regenerar el bundle unificado para inspección:
+> ```bash
+> npm run build:worker # Empaqueta cloudflare/dist/worker.bundle.js vía esbuild
+> ```
 
-### 2.1 Modelo de Configuración Perimetral (ENVIRONMENT)
+### 2.4 Modelo de Configuración Perimetral (ENVIRONMENT)
 
 El Worker adopta el principio de configuración desacoplada y estricta (**fail-closed**) basado en el objeto de entorno `env`:
 ```

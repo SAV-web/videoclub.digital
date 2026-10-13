@@ -1,5 +1,5 @@
 -- =================================================================
--- PROTOCOLO DE INGESTA Y MANTENIMIENTO POST-CSV (docs/ingest.sql)
+-- PROTOCOLO DE INGESTA Y MANTENIMIENTO POST-CSV (database/etl/ingest.sql)
 -- =================================================================
 -- Ejecuta este script completo en el SQL Editor de Supabase justo
 -- después de importar los archivos CSV en 'movies_staging' y 'people_staging'.

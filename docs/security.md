@@ -111,7 +111,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
 
 ### 3.1. Endurecimiento de PostgreSQL (Principio de Menor Privilegio)
 
-* **Vulnerabilidad 1 — Vistas de Telemetría Expuestas ([`docs/script.sql`](./script.sql)):**
+* **Vulnerabilidad 1 — Vistas de Telemetría Expuestas ([`database/script.sql`](../database/script.sql)):**
   - *Diagnóstico:* Las vistas `public.view_slow_queries` y `public.view_top_cpu_queries` otorgaban `SELECT` a `service_role` pero no revocaban los privilegios por defecto concedidos a `PUBLIC`. PostgREST exponía estas vistas públicamente en `/rest/v1/view_slow_queries`.
   - *Remediación:*
     ```sql
@@ -121,7 +121,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     GRANT SELECT ON public.view_top_cpu_queries TO service_role;
     ```
 
-* **Vulnerabilidad 2 — Función de Auditoría Invocable Anónimamente ([`docs/data_tests.sql`](./data_tests.sql)):**
+* **Vulnerabilidad 2 — Función de Auditoría Invocable Anónimamente ([`database/tests/data_tests.sql`](../database/tests/data_tests.sql)):**
   - *Diagnóstico:* La función `public.run_data_tests(BOOLEAN)` otorgaba permisos a `authenticated` y `service_role` sin revocar el `EXECUTE` implícito de `PUBLIC`. Cualquier cliente anónimo podía ejecutar `POST /rest/v1/rpc/run_data_tests`, escaneando tablas completas y causando denegación de servicio por agotamiento de CPU.
   - *Remediación:*
     ```sql
@@ -129,7 +129,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     GRANT EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) TO authenticated, service_role;
     ```
 
-* **Vulnerabilidad 3 — Agotamiento de Recursos por Paginación Profunda (Deep Pagination DoS / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](./script.sql)):**
+* **Vulnerabilidad 3 — Agotamiento de Recursos por Paginación Profunda (Deep Pagination DoS / CWE-400) en `public.search_movies_offset` ([`database/functions/search_movies_offset.sql`](../database/functions/search_movies_offset.sql)):**
   - *Diagnóstico:* La RPC pública `public.search_movies_offset` acotaba el parámetro `page_limit` entre 1 y 100 (`LEAST(GREATEST(COALESCE(page_limit, 50), 1), 100)`), pero `page_offset` carecía de cota superior (`v_offset := GREATEST(COALESCE(page_offset, 0), 0);`), admitiendo valores hasta `2.147.483.647` (máximo de entero con signo en PostgreSQL). Al ser invocable directamente por el rol público `anon` vía PostgREST, un actor malicioso podía forzar la materialización, ordenación y descarte secuencial de millones de filas en memoria (`work_mem`) y disco, agravado por la ejecución de `count(*)` si se adjuntaba `get_count = true`. Esto creaba un vector severo de denegación de servicio (DoS) por agotamiento de CPU e IOPS.
   - *Remediación (Cortocircuito Preventivo de Fase 1.4):*
     Dado que el catálogo completo comprende ~15.000 títulos, cualquier offset superior a 15.000 excede la totalidad de la plataforma. Se añadió una cláusula de cortocircuito inmediata previa al preprocesamiento de países, resolución de *tsqueries* y ejecución de CTEs:
@@ -141,7 +141,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     ```
     Si el offset supera la cota física de la plataforma, la función responde de forma instantánea un objeto JSON vacío (`{ "total": 0, "items": [] }`), garantizando complejidad temporal $O(1)$ y consumo nulo de CPU/IOPS en el motor de base de datos.
 
-* **Vulnerabilidad 4 — Inflación de Arrays y Parámetros (Input Size Inflation / CWE-400) en `public.search_movies_offset` ([`docs/script.sql`](./script.sql)):**
+* **Vulnerabilidad 4 — Inflación de Arrays y Parámetros (Input Size Inflation / CWE-400) en `public.search_movies_offset` ([`database/functions/search_movies_offset.sql`](../database/functions/search_movies_offset.sql)):**
   - *Diagnóstico:* Los parámetros vectoriales `p_country_codes text[]`, `excluded_genres text[]` y `excluded_countries text[]` no poseían restricción de cardinalidad. Un cliente anónimo podía transmitir payloads JSON con miles de elementos, forzando a PostgreSQL a ejecutar bucles masivos de `unnest` y funciones de coste no despreciable (`plainto_tsquery('spanish', ...)`, `public.unaccent_immutable(...)`) por cada elemento, provocando saturación computacional. De igual modo, `search_term` carecía de cota de longitud máxima.
   - *Remediación (Cortocircuito Preventivo de Fase 1.3):*
     Considerando que la interfaz y el dominio de negocio manejan selecciones acotadas (un usuario rara vez excluye más de 2-4 taxonomías simultáneas), se definió un umbral estricto de 10 elementos por array y 100 caracteres para la búsqueda:

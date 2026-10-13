@@ -15,7 +15,7 @@ La consulta de cada test está diseñada para **aislar únicamente los registros
 
 ## 2. Modos de Ejecución de `public.run_data_tests()`
 
-La función [`docs/data_tests.sql`](./data_tests.sql) admite un parámetro booleano de control de fallos:
+La función [`database/tests/data_tests.sql`](../database/tests/data_tests.sql) admite un parámetro booleano de control de fallos:
 
 ### Modo Auditoría / Diagnóstico (`p_fail_fast = false`, Por Defecto)
 Ejecuta la suite completa, no aborta transacciones y genera un informe tabular con el estado de salud del catálogo:
@@ -99,10 +99,10 @@ Audita la coherencia lógica de las métricas numéricas y temporales cinematogr
 ## 4. Integración en el Flujo de Trabajo
 
 ### Paso 1: Instalación de la Suite
-Copia y ejecuta una sola vez el contenido de [`docs/data_tests.sql`](./data_tests.sql) en el SQL Editor de Supabase.
+Copia y ejecuta una sola vez el contenido de [`database/tests/data_tests.sql`](../database/tests/data_tests.sql) en el SQL Editor de Supabase.
 
 ### Paso 2: Protocolo Post-Ingesta
-En [`docs/ingest.sql`](./ingest.sql), tras procesar el staging y refrescar las vistas materializadas, se ejecuta la suite completa para certificar el estado del catálogo:
+En [`database/etl/ingest.sql`](../database/etl/ingest.sql), tras procesar el staging y refrescar las vistas materializadas, se ejecuta la suite completa para certificar el estado del catálogo:
 
 ```sql
 -- 4. Certificación de Calidad de Datos (DataOps Tests)

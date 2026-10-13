@@ -5,7 +5,7 @@
 -- Estructura de ejecución secuencial:
 -- 1. Habilitación de Extensiones y Espacio de Búsqueda
 -- 2. Funciones Auxiliares Inmutables y Casts Seguros
--- 3. Función de Búsqueda Principal (search_movies_offset -> Ver docs/search_movies_offset.sql)
+-- 3. Función de Búsqueda Principal (search_movies_offset -> Ver database/functions/search_movies_offset.sql)
 -- 4. Tablas de Usuario y Triggers (user_movie_entries)
 -- 5. Rendimiento: Índices, Vistas Materializadas y Funciones RPC de Sugerencias
 -- 6. Configuración de Seguridad (Row Level Security & Permisos)
@@ -87,7 +87,7 @@ END; $$;
 -- NOTA ARQUITECTÓNICA (Single Source of Truth):
 -- La función `search_movies_offset` se gestiona en su propio archivo
 -- autocontenido e idempotente para despliegues ágiles e iteración aislada:
--- -> docs/search_movies_offset.sql
+-- -> database/functions/search_movies_offset.sql
 --
 -- Para nuevas instancias o entornos restaurados, ejecuta dicho archivo
 -- tras completar la ejecución de este script maestro.
