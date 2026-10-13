@@ -50,7 +50,7 @@
 | **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
 | **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
 | **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing & Calidad** | Node.js Test Runner nativo (184 tests en 32 suites) + DataOps nativo en PostgreSQL (`run_data_tests`) |
+| **Testing & Calidad** | Node.js Test Runner nativo (13 suites activas, ejecución paralela concurrente) + DataOps nativo en PostgreSQL (`run_data_tests`) |
 
 ---
 
@@ -105,7 +105,7 @@ VIDEOCLUB.DIGITAL/
 │       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
 │       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
 │       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
-├── tests/                       # Suite de 184 pruebas unitarias y de integración (32 suites)
+├── tests/                       # Suite de pruebas unitarias y de integración (13 suites)
 │   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
 │   ├── card.test.mjs            # Tests de caracterización de tarjeta y renderizado
 │   ├── lifecycle-dispose.test.mjs # Ciclo de vida y desmontaje de Card, Modal, Sidebar y App
@@ -150,7 +150,7 @@ Abre `http://localhost:5173` en tu navegador.
 npm run check
 ```
 
-### 4. Ejecución de la suite completa de tests (184 pruebas en 32 suites)
+### 4. Ejecución de la suite completa de tests
 ```bash
 npm run test
 ```

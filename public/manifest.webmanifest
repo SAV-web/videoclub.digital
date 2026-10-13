@@ -1,7 +1,7 @@
 {
   "name": "videoclub.digital",
   "short_name": "videoclub",
-  "description": "Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente para explotar tus gustos y encontrar tu próxima obra maestra.",
+  "description": "El ritual del videoclub: carátulas de colección y cine sin algoritmos. Cruza directores, décadas y géneros al vuelo. Encuentra tu próxima obra maestra.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#eceff2",

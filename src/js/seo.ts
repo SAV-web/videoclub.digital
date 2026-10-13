@@ -32,6 +32,8 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
   const isCustomYear = !!(year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`);
   const yearSuffix = isCustomYear ? ` (${formatYearPeriod(year)})` : "";
 
+  const isCleanHome = !myList && !searchTerm && !selection && !studio && !genre && !director && !actor && !country && !isCustomYear;
+
   if (myList === "watchlist") {
     title = `Pendientes`;
   } else if (myList === "rated") {
@@ -57,17 +59,24 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
     title = `${baseNoun} de ${formatYearPeriod(year)}`;
   } else if (country) {
     title = `${baseNoun} de ${capitalizeWords(country)}`;
+  } else if (isCleanHome && mediaType === "all") {
+    title = "El cine y las series en su estado más puro";
   }
   
+  const pageTitle = (isCleanHome && mediaType === "all")
+    ? `videoclub.digital · ${title}`
+    : `${title} | videoclub.digital`;
+
   return {
-    pageTitle: `${title} | videoclub.digital`,
-    ogTitle: title,
+    pageTitle,
+    ogTitle: (isCleanHome && mediaType === "all") ? `videoclub.digital · ${title}` : title,
     baseNoun
   };
 }
 
 export function buildSeoDescription(noun: string, filters: ActiveFilters, movies: Movie[] = []): string {
   let desc = `Explora y descubre ${noun.toLowerCase()} en videoclub.digital.`;
+  const isCleanHome = !filters.myList && !filters.searchTerm && !filters.selection && !filters.studio && !filters.genre && !filters.director && !filters.actor && !filters.country && !(filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) && (!filters.mediaType || filters.mediaType === "all");
   
   if (filters.myList) {
     desc = "Gestiona tu lista personal de películas y series favoritas, puntuaciones y pendientes.";
@@ -86,11 +95,12 @@ export function buildSeoDescription(noun: string, filters: ActiveFilters, movies
     if (parts.length > 0) {
       desc = `Catálogo de ${noun.toLowerCase()} ${parts.join(", ")}. Descubre las mejores obras según tus gustos.`;
     } else {
-      desc = `Tu oráculo cinéfilo. Explora miles de ${noun.toLowerCase()}, filtra por género, año, país, director y más para encontrar tu próxima obra maestra.`;
+      desc = `El ritual del videoclub: carátulas de colección y cine sin algoritmos. Cruza directores, décadas y géneros al vuelo. Encuentra tu próxima obra maestra.`;
     }
   }
 
-  if (movies && movies.length > 0 && !filters.myList) {
+  // En la portada principal limpia no añadimos "Destacadas:" para preservar el mensaje editorial exacto sin truncar en Google
+  if (movies && movies.length > 0 && !filters.myList && !isCleanHome) {
     const titles = movies.slice(0, 3).map(m => m.title).join(", ");
     desc += ` Destacadas: ${titles}.`;
   }

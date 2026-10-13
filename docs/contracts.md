@@ -440,4 +440,13 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
      - Cuando una serie tiene un año inicial anterior al 2000 (ej. `1990`) y un año final igual o posterior a 2000 (ej. `2010`), se inserta un apóstrofe al año abreviado final: `1990-'10`.
      - Si ambos años pertenecen al mismo siglo, se mantiene el formato canónico sin apóstrofe (ej. `1990-95`, `2010-15`).
 
-
+4. **Contrato Tipográfico de Biografías VIP (Titulares y Cuerpos de Texto)**:
+   - **Partición Silábica Automática (`hyphens: auto`)**:
+     - Tanto el titular biográfico (`.bio-headline` / `data-template="bio-headline"`) como el cuerpo de la biografía (`.plot-summary-final` / `data-template="biography"`) implementan `hyphens: auto; -webkit-hyphens: auto;`.
+     - Esto garantiza una maquetación equilibrada y sin saltos bruscos ni huecos antiestéticos en el titular cuando se visualiza en anchos reducidos (columnas compactas de la modal, móviles o tarjetas del catálogo).
+   - **Conservación de Guiones Léxicos (`preserveHyphenatedWords`)**:
+     - El texto de `titulo_bio` y `biography` se procesa sistemáticamente mediante `preserveHyphenatedWords` en la modal SPA (`modal/renderer.ts`), en el reverso de la tarjeta (`cardElement.ts`) y en el SSR perimetral (`render-person.js`).
+     - Esto sustituye guiones internos de palabras ("Sci-Fi", "Day-Lewis", "co-fundador") por guiones no divisibles (`U+2011`), impidiendo que el motor tipográfico rompa por la mitad términos con guion propio.
+   - **Compatibilidad con `text-wrap: wrap` frente a `text-wrap: balance`**:
+     - Por especificación W3C, la regla global `text-wrap: balance` (aplicada a encabezados `h1..h6` en `globals.css`) inhibe la partición silábica para priorizar el equilibrio métrico entre líneas completas.
+     - Para que `hyphens: auto` opere eficazmente, `.bio-headline` se excluye de la regla balanceada (`h4:not(.bio-headline)`) y se fija explícitamente a `text-wrap: wrap`, liberando al motor tipográfico del navegador para insertar guiones en saltos de línea.

@@ -13,19 +13,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#eceff2" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
-  <title>
-    videoclub.digital - tu oráculo cinéfilo y seriéfilo inteligente
-  </title>
+  <title>videoclub.digital · El cine y las series en su estado más puro</title>
 
   <!-- === 2. SEO Y SOCIAL === -->
   <meta name="description"
-    content="Explora, filtra y descubre miles de películas y series. Tu oráculo cinéfilo y seriéfilo inteligente." />
-  <meta property="og:title" content="videoclub.digital" />
-  <meta property="og:description" content="Explora, filtra y descubre miles de películas y series." />
+    content="El ritual del videoclub: carátulas de colección y cine sin algoritmos. Cruza directores, décadas y géneros al vuelo. Encuentra tu próxima obra maestra." />
+  <meta property="og:title" content="videoclub.digital · El cine y las series en su estado más puro" />
+  <meta property="og:description"
+    content="El ritual del videoclub: carátulas de colección y cine sin algoritmos. Cruza directores, décadas y géneros al vuelo. Encuentra tu próxima obra maestra." />
   <meta property="og:image" content="https://videoclub.digital/og-image.png" />
   <meta property="og:url" content="https://videoclub.digital" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="videoclub.digital · El cine y las series en su estado más puro" />
+  <meta name="twitter:description"
+    content="El ritual del videoclub: carátulas de colección y cine sin algoritmos. Cruza directores, décadas y géneros al vuelo. Encuentra tu próxima obra maestra." />
   <meta name="twitter:image" content="https://videoclub.digital/og-image.png" />
   <link rel="canonical" href="https://videoclub.digital/" />
   <link rel="icon" type="image/svg+xml" href="/assets/brand/videoclub-mark.svg" />
@@ -38,10 +40,14 @@
         "@type": "WebSite",
         "url": "https://videoclub.digital/",
         "name": "videoclub.digital",
-        "description": "Explora, filtra y descubre miles de películas y series...",
+        "alternateName": ["Videoclub Digital", "Videoclub", "videoclub"],
+        "description": "El ritual del videoclub: carátulas de colección y cine sin algoritmos. Cruza directores, décadas y géneros al vuelo. Encuentra tu próxima obra maestra.",
         "potentialAction": {
           "@type": "SearchAction",
-          "target": "https://videoclub.digital/?search={search_term_string}",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://videoclub.digital/?search={search_term_string}"
+          },
           "query-input": "required name=search_term_string"
         }
       }
