@@ -9,7 +9,8 @@ const CACHE_DYNAMIC = `videoclub-dynamic-${VERSION}`;
 // --- 1. ACTIVOS CRÍTICOS (Instalación) ---
 const CRITICAL_ASSETS = [
   "/",
-  "/manifest.webmanifest"
+  "/manifest.webmanifest",
+  "/assets/fonts/Inter-Variable-v41.woff2"
 ];
 
 // --- 2. HELPERS DE ESTRATEGIAS ---
@@ -132,9 +133,8 @@ self.addEventListener("fetch", (event) => {
   // 2. EXCEPCIONES: Datos dinámicos y assets remotos de Supabase (Auth, REST, Storage)
   // NOTA DE ARQUITECTURA:
   // - Supabase Auth (/auth/v1/) y tablas REST (/rest/v1/) manejan datos vivos de sesión y usuario.
-  // - Las fuentes y assets remotos alojados en Supabase Storage deben ser gestionados nativamente
-  //   por el navegador para no colisionar con <link rel="preload"> (evita 'cross-world mismatch').
-  // - Por tanto, cualquier petición cross-origin hacia el dominio de Supabase hace bypass inmediato.
+  // - La fuente principal Inter se autoaloja localmente (/assets/fonts/) en el mismo origen.
+  // - Por tanto, cualquier petición cross-origin residual hacia el dominio de Supabase hace bypass inmediato.
   if (url.hostname.includes("supabase.co")) {
     return;
   }

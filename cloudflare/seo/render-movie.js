@@ -231,8 +231,7 @@ export function renderMovieHtml(movie, options = {}) {
   ${absolutePosterUrl ? `<meta name="twitter:image" content="${escapeAttr(absolutePosterUrl)}" />` : ''}
 
   <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
-  <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
-  <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="${baseUrl}assets/fonts/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
   <!-- Hoja de Estilos Externa Cacheable (SSOT con versionado perimetral) -->
   <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />

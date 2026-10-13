@@ -436,8 +436,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   <meta name="twitter:image" content="${escapeAttr(ogImageUrl)}" />
 
   <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
-  <link rel="preconnect" href="https://wibygecgfczcvaqewleq.supabase.co" crossorigin />
-  <link rel="preload" href="https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public/assets/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="${baseUrl}assets/fonts/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
 
   <!-- Structured Data: CollectionPage & Breadcrumbs -->
   <script type="application/ld+json">${safeJsonLd(collectionSchema)}</script>
