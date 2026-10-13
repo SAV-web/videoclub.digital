@@ -74,6 +74,11 @@ DECLARE
     v_threshold_expr TEXT := '';
     v_outer_threshold_expr TEXT := '';
     v_include_total_matches BOOLEAN := FALSE;
+    v_sort_col_select TEXT := '';
+    v_bm_sort_col_select TEXT := '';
+    v_type_col_select TEXT := '';
+    v_bm_type_col_select TEXT := '';
+    v_media_type_filter TEXT := 'TRUE';
 BEGIN
     -- FASE 1: VALIDACIÓN Y ORDENACIÓN
     IF sort_direction IS NULL OR lower(sort_direction) NOT IN ('asc', 'desc') THEN
@@ -96,6 +101,46 @@ BEGIN
         WHEN 'avg_rating' THEN format('ORDER BY m.avg_rating %s NULLS LAST, m.relevance ASC, m.id ASC', v_safe_sort_direction)
         ELSE 'ORDER BY m.relevance ASC, m.id ASC'
     END;
+
+    -- Optimización de Proyección: Solo incluir columnas de ordenación secundaria si son necesarias en CTEs intermedias
+    -- En portada limpia (relevance y media_type 'all'), permite que PostgreSQL realice un Index Only Scan sobre idx_movies_relevance_id
+    IF v_safe_sort_field = 'year' THEN
+        v_sort_col_select := ', m.year';
+        v_bm_sort_col_select := ', bm.year';
+    ELSIF v_safe_sort_field = 'fa_rating' THEN
+        v_sort_col_select := ', m.fa_rating';
+        v_bm_sort_col_select := ', bm.fa_rating';
+    ELSIF v_safe_sort_field = 'imdb_rating' THEN
+        v_sort_col_select := ', m.imdb_rating';
+        v_bm_sort_col_select := ', bm.imdb_rating';
+    ELSIF v_safe_sort_field = 'fa_votes' THEN
+        v_sort_col_select := ', m.fa_votes';
+        v_bm_sort_col_select := ', bm.fa_votes';
+    ELSIF v_safe_sort_field = 'imdb_votes' THEN
+        v_sort_col_select := ', m.imdb_votes';
+        v_bm_sort_col_select := ', bm.imdb_votes';
+    ELSIF v_safe_sort_field = 'avg_rating' THEN
+        v_sort_col_select := ', m.avg_rating';
+        v_bm_sort_col_select := ', bm.avg_rating';
+    ELSE
+        v_sort_col_select := '';
+        v_bm_sort_col_select := '';
+    END IF;
+
+    -- Incluir columna type solo si se filtra explícitamente por 'movies' o 'series'
+    IF lower(coalesce(media_type, 'all')) = 'movies' THEN
+        v_type_col_select := ', m.type';
+        v_bm_type_col_select := ', bm.type';
+        v_media_type_filter := '(bm.type IS NULL OR bm.type NOT ILIKE ''S%'')';
+    ELSIF lower(coalesce(media_type, 'all')) = 'series' THEN
+        v_type_col_select := ', m.type';
+        v_bm_type_col_select := ', bm.type';
+        v_media_type_filter := 'bm.type ILIKE ''S%''';
+    ELSE
+        v_type_col_select := '';
+        v_bm_type_col_select := '';
+        v_media_type_filter := 'TRUE';
+    END IF;
 
     -- FASE 1.2: EVALUACIÓN DE DAILY SHOWCASE (Escaparate Diario Dinámico Adaptativo)
     -- Aplica en relevancia por defecto si no hay búsqueda por texto ni filtro de personas VIP (director/actor)
@@ -312,7 +357,7 @@ BEGIN
     -- FASE 4: CONSTRUCCIÓN DINÁMICA DE LA CONSULTA SQL
     v_query := '
         WITH base_movies AS (
-            SELECT m.id, m.year, m.fa_rating, m.imdb_rating, m.fa_votes, m.imdb_votes, m.avg_rating, m.relevance, m.type
+            SELECT m.id, m.relevance' || v_sort_col_select || v_type_col_select || '
             FROM public.movies m
             WHERE
                 ($1 IS NULL OR $1 = '''' OR m.title_norm LIKE ''%'' || public.unaccent_immutable(lower($1)) || ''%'')
@@ -336,17 +381,14 @@ BEGIN
                 AND ($12 IS NULL OR NOT (m.country_id = ANY($12)))
         ),
         filtered_movies AS (
-            SELECT bm.id, bm.year, bm.fa_rating, bm.imdb_rating, bm.fa_votes, bm.imdb_votes, bm.avg_rating, bm.relevance' || 
+            SELECT bm.id, bm.relevance' || v_bm_sort_col_select || v_bm_type_col_select || 
             CASE 
                 WHEN v_enable_daily_showcase AND v_include_total_matches THEN ', ROW_NUMBER() OVER (ORDER BY bm.relevance ASC, bm.id ASC) AS natural_rank, COUNT(*) OVER () AS total_matches'
                 WHEN v_enable_daily_showcase THEN ', ROW_NUMBER() OVER (ORDER BY bm.relevance ASC, bm.id ASC) AS natural_rank'
                 ELSE '' 
             END || '
             FROM base_movies bm
-            WHERE
-                ($8 IS NULL OR $8 = ''all''
-                 OR ($8 = ''movies'' AND (bm.type IS NULL OR bm.type NOT ILIKE ''S%''))
-                 OR ($8 = ''series'' AND bm.type ILIKE ''S%''))
+            WHERE ' || v_media_type_filter || '
         )' || v_count_cte || ',
         paged_ids AS (
             SELECT m.id' || 

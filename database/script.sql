@@ -143,6 +143,7 @@ FOR EACH ROW EXECUTE PROCEDURE public.handle_updated_at();
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm extensions.gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS movies_slug_idx ON public.movies(slug);
 CREATE INDEX IF NOT EXISTS movies_relevance_idx ON public.movies(relevance ASC);
+CREATE INDEX IF NOT EXISTS idx_movies_relevance_id ON public.movies(relevance ASC, id ASC);
 CREATE INDEX IF NOT EXISTS movies_year_idx ON public.movies(year DESC);
 CREATE INDEX IF NOT EXISTS movies_avg_rating_idx ON public.movies(avg_rating DESC NULLS LAST, relevance ASC);
 CREATE INDEX IF NOT EXISTS movies_fa_votes_idx ON public.movies(fa_votes DESC NULLS LAST);
