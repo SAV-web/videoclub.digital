@@ -230,7 +230,7 @@ body.sidebar-is-open .sidebar-overlay {
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition: opacity var(--duration-fast), transform var(--duration-fast);
 }
 
 .toast-action-btn:hover {

@@ -161,10 +161,6 @@
   flex-direction: column;
   gap: 3px;
   animation: sortMenuFadeIn 0.12s ease-out;
-
-  &[hidden] {
-    display: none;
-  }
 }
 
 @keyframes sortMenuFadeIn {
@@ -536,7 +532,7 @@
 /* --- 4. ACCESIBILIDAD Y ADAPTACIÓN MÓVIL (Magia Elástica) --- */
 
 @media (hover: none) and (pointer: coarse) {
-  :is(.search-form input, #sort-select, .type-filter-toggle) {
+  :is(.search-form input, .type-filter-toggle) {
     height: var(--tap-target-size);
     font-size: 1rem;
   }

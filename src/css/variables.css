@@ -87,19 +87,33 @@
   --color-star-gold: var(--color-brand-gold);
   --color-star-gold-rgb: var(--color-brand-gold-rgb);
 
-  /* ---- Panel de Perfil (Superficie y Contraste Dedicado) ---- */
-  --profile-surface: #161922;
-  --profile-text-primary: #ffffff;
-  --profile-text-secondary: rgba(255, 255, 255, 0.7);
-  --profile-text-muted: rgba(255, 255, 255, 0.5);
-  --profile-border: rgba(255, 255, 255, 0.12);
+  /* ---- Panel de Perfil (Tema Claro por defecto) ---- */
+  --profile-surface: #ffffff;
+  --profile-surface-subtle: #f4f6f8;
+  --profile-text-primary: #1a1a1a;
+  --profile-text-secondary: #4a4a4a;
+  --profile-text-muted: #757575;
+  --profile-border: #e0e0e0;
+  --profile-border-subtle: rgba(0, 0, 0, 0.08);
+  --profile-header-bg: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, transparent 100%);
+  --profile-footer-bg: #f8f9fa;
+  --profile-bar-bg: #e2e8f0;
+  --profile-hover: rgba(0, 0, 0, 0.05);
+  --profile-btn-bg: #ffffff;
+  --profile-btn-border: #d0d7de;
+  --profile-btn-hover: #f3f4f6;
+  --profile-btn-border-hover: #b0bec5;
+  --profile-shadow: 0 20px 50px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+
+  --profile-accent: #9e7123; /* Dorado bronce profundo (ratio 4.58:1 WCAG AA sobre blanco) */
+  --profile-accent-rgb: 158, 113, 35;
   --profile-success: #10b981;
   --profile-warning: #f59e0b;
 
   --profile-danger: #dc2626;
   --profile-danger-border: #ef4444;
   --profile-danger-hover: #b91c1c;
-  --profile-danger-text: #fca5a5;
+  --profile-danger-text: #b91c1c;
 
   /* ---- Espaciado y Layout ---- */
   --sidebar-width-mobile: 300px;
@@ -143,6 +157,7 @@
   /* Alias semánticos */
   --transition-duration-fast: var(--duration-fast);
   --transition-duration-normal: var(--duration-normal);
+  --transition-fast: var(--duration-fast);
   --transition-timing-function: var(--ease-smooth);
 
   /* ---- Capas (Z-Index) ---- */
@@ -202,4 +217,25 @@ html.dark-mode {
   --color-success: #66bb6a;
   --color-success-rgb: 102, 187, 106;
   --color-success-bg: rgba(102, 187, 106, 0.15);
+
+  /* Overrides Perfil en Modo Oscuro */
+  --profile-surface: #161922;
+  --profile-surface-subtle: rgba(255, 255, 255, 0.03);
+  --profile-text-primary: #ffffff;
+  --profile-text-secondary: rgba(255, 255, 255, 0.7);
+  --profile-text-muted: rgba(255, 255, 255, 0.5);
+  --profile-border: rgba(255, 255, 255, 0.12);
+  --profile-border-subtle: rgba(255, 255, 255, 0.07);
+  --profile-header-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  --profile-footer-bg: rgba(0, 0, 0, 0.25);
+  --profile-bar-bg: rgba(255, 255, 255, 0.08);
+  --profile-hover: rgba(255, 255, 255, 0.08);
+  --profile-btn-bg: rgba(255, 255, 255, 0.06);
+  --profile-btn-border: rgba(255, 255, 255, 0.12);
+  --profile-btn-hover: rgba(255, 255, 255, 0.12);
+  --profile-btn-border-hover: rgba(255, 255, 255, 0.25);
+  --profile-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --profile-danger-text: #fca5a5;
+  --profile-accent: var(--color-brand-gold, #d4a347);
+  --profile-accent-rgb: var(--color-brand-gold-rgb, 212, 163, 71);
 }

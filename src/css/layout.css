@@ -60,7 +60,7 @@ body.sidebar-is-open .sidebar {
 @media (min-width: 769px) and (min-height: 501px) {
   .sidebar {
     position: sticky; transform: none; width: 200px; flex-basis: 200px; overflow: hidden;
-    will-change: width, flex-basis; transition: width 0.5s var(--ease-smooth-out), flex-basis 0.5s var(--ease-smooth-out), background-color var(--duration-normal), border-color var(--duration-normal);
+    transition: width 0.5s var(--ease-smooth-out), flex-basis 0.5s var(--ease-smooth-out), background-color var(--duration-normal), border-color var(--duration-normal);
     
     & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters, & .profile-container { opacity: 1; visibility: visible; transition: none; }
     & .play-button-container { display: flex; flex-direction: row; gap: var(--space-xxs); margin-top: 0; margin-bottom: var(--space-lg); }
@@ -69,8 +69,6 @@ body.sidebar-is-open .sidebar {
   /* Menú Contraído (Solo iconos) */
   :is(html.sidebar-collapsed, body.sidebar-collapsed) .sidebar {
     flex-basis: 65px; width: 65px; 
-    & .logo-area, & .sidebar-static-filters, & .sidebar-scrollable-filters { display: none; }
-    & .play-button-container { flex-direction: column; gap: var(--space-lg); margin-top: var(--space-md); }
   }
 }
 
@@ -205,42 +203,18 @@ html:not(.dark-mode) .landing-hero-title {
   animation-delay: 0s;
 }
 
-.landing-hero-description:nth-child(2) {
-  opacity: 0;
-  visibility: hidden;
-  animation-delay: -25s;
-}
-
-.landing-hero-description:nth-child(3) {
-  opacity: 0;
-  visibility: hidden;
-  animation-delay: -20s;
-}
-
-.landing-hero-description:nth-child(4) {
-  opacity: 0;
-  visibility: hidden;
-  animation-delay: -15s;
-}
-
-.landing-hero-description:nth-child(5) {
-  opacity: 0;
-  visibility: hidden;
-  animation-delay: -10s;
-}
-
-.landing-hero-description:nth-child(6) {
-  opacity: 0;
-  visibility: hidden;
-  animation-delay: -5s;
-}
+.landing-hero-description:nth-child(2) { animation-delay: -25s; }
+.landing-hero-description:nth-child(3) { animation-delay: -20s; }
+.landing-hero-description:nth-child(4) { animation-delay: -15s; }
+.landing-hero-description:nth-child(5) { animation-delay: -10s; }
+.landing-hero-description:nth-child(6) { animation-delay: -5s; }
 
 @keyframes heroTaglineCrossfade {
-  0%, 13.5% {
+  0%, 12.5% {
     opacity: 1;
     visibility: visible;
   }
-  16.66%, 96.8% {
+  14.5%, 98% {
     opacity: 0;
     visibility: hidden;
   }
@@ -313,9 +287,6 @@ html:not(.dark-mode) .landing-hero-title {
 
 /* Ajustes para ordenador: No dejar huecos "huérfanos" forzando un número fijo de columnas */
 @media (min-width: 769px) and (min-height: 501px) {
-  .content { 
-    padding: var(--space-md) var(--space-lg) var(--space-xs);
-  }
   .grid-container { gap: var(--space-lg) var(--space-md); }
 
   /* Divisores de 72 (Modo Muro) */
@@ -331,23 +302,10 @@ html:not(.dark-mode) .landing-hero-title {
   @container (min-width: 1080px) { :where(:not(.rotation-disabled)) .grid-container { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 }
 
-/* --- 5. ACCESIBILIDAD TÁCTIL --- */
-
-/* Hacemos los botones más altos en móviles para no fallar con el dedo gordo */
-@media (hover: none) and (pointer: coarse) {
-  #sort-select, .search-form input {
-    height: 44px;
-    font-size: 1rem; /* Importante: 1rem evita que Safari iOS haga zoom automático al tocar */
-  }
-  
-  .pagination-container > .btn, .pagination-container > .pagination-current { --btn-height: 36px; }
-}
 
 /* --- 6. ANIMACIONES DE PANTALLA (Magia de Hollywood) --- */
 
 @keyframes card-enter-animation { from { opacity: 0; transform: translateY(20px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
 
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.25s; animation-timing-function: ease-in-out; }
 ::view-transition-old(root) { animation-name: fade-out; }
