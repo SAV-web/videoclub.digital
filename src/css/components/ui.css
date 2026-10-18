@@ -58,23 +58,7 @@ html.dark-mode .skeleton::after {
   }
 }
 
-/* --- 2. Skeletons Sidebar --- */
-.skeleton-sidebar-header { 
-  width: 60%; height: 24px; 
-  margin: var(--space-sm) var(--space-xs); 
-  border-radius: var(--radius-sm); 
-}
-.skeleton-sidebar-line { 
-  height: 16px; 
-  margin-bottom: var(--space-xs); 
-  margin-inline-start: var(--space-sm); 
-  border-radius: var(--radius-sm); 
-}
-.skeleton-sidebar-line:nth-of-type(1) { width: 70%; }
-.skeleton-sidebar-line:nth-of-type(2) { width: 85%; }
-.skeleton-sidebar-line:nth-of-type(3) { width: 60%; }
-
-/* --- 3. Paginación --- */
+/* --- 2. Paginación --- */
 .pagination-container {
   display: flex;
   justify-content: center;

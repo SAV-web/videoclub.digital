@@ -5,7 +5,7 @@ import { unflipAllCards } from "../card/index.js";
 import { closeModal } from "../modal.js";
 import { lockGlobalInteractions, areInteractionsLocked } from "../../ui.js";
 import { loadAndRenderMovies } from "../../renderEngine.js";
-import { dom, isMobileLayout, sidebarUnsubscribers } from "./context.js";
+import { dom, isMobileLayout, isSidebarCollapsed, setSidebarCollapsed, sidebarUnsubscribers } from "./context.js";
 
 declare module "../../state.js" {
   interface AppEventPayloads {
@@ -66,9 +66,9 @@ export function syncSidebarResponsiveState(): void {
     if (dom.sidebar) dom.sidebar.style.transform = '';
     touchState.currentTranslate = -DRAWER_WIDTH;
     if (wasMobileOpen) {
-      document.body.classList.remove(CSS_CLASSES.SIDEBAR_COLLAPSED);
+      setSidebarCollapsed(false);
     }
-    const isDesktopOpen = !document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
+    const isDesktopOpen = !isSidebarCollapsed();
     updateRewindButtonState(isDesktopOpen);
   }
 }

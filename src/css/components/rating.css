@@ -11,7 +11,8 @@
   
   &.is-interactive { cursor: pointer; }
 
-  &.has-user-rating {
+  &.has-user-rating,
+  body.user-logged-in &.is-interactive:hover {
     & .star-icon-path { stroke: var(--color-star-gold); }
     & .star-icon-path--filled { fill: var(--color-star-gold); }
   }
@@ -23,6 +24,10 @@
   transform-origin: center center;
   outline: none !important;
   -webkit-tap-highlight-color: transparent;
+
+  & * {
+    pointer-events: none;
+  }
 }
 
 .star-icon:focus,
@@ -40,13 +45,20 @@
 .star-icon-path--filled {
   fill: var(--color-accent);
   clip-path: inset(0 100% 0 0);
-  transition: clip-path 0.4s var(--ease-smooth-out);
+  transition: clip-path 0.15s var(--ease-smooth-out);
 }
 
 /* --- Interacciones (Hover) --- */
 @media (hover: hover) and (pointer: fine) {
   body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:hover {
     transform: scale(1.35); 
+    z-index: 20;
+    filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
+    transition: transform 100ms ease-out;
+  }
+
+  body.user-logged-in .is-quick-view :is(.star-rating-container.is-interactive, .card-rating-block) .star-icon:hover {
+    transform: scale(1.22);
     z-index: 20;
     filter: drop-shadow(0 0 4px rgba(var(--color-star-gold-rgb), 0.6));
     transition: transform 100ms ease-out;

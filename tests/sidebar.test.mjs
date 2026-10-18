@@ -360,4 +360,24 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
       sidebarModule.disposeSidebarEvents();
     }
   });
+
+  test("toggleDesktopSidebar: alterna clases en documentElement y body de forma simétrica", () => {
+    // 1. Simular inicio colapsado
+    globalThis.document.documentElement.classList.add("sidebar-collapsed");
+    globalThis.document.body.classList.remove("sidebar-collapsed");
+
+    // 2. toggleDesktopSidebar debe descolapsar ambos
+    sidebarModule.toggleDesktopSidebar();
+    assert.equal(globalThis.document.documentElement.classList.contains("sidebar-collapsed"), false);
+    assert.equal(globalThis.document.body.classList.contains("sidebar-collapsed"), false);
+
+    // 3. toggleDesktopSidebar debe volver a colapsar ambos
+    sidebarModule.toggleDesktopSidebar();
+    assert.equal(globalThis.document.documentElement.classList.contains("sidebar-collapsed"), true);
+    assert.equal(globalThis.document.body.classList.contains("sidebar-collapsed"), true);
+
+    // Cleanup
+    globalThis.document.documentElement.classList.remove("sidebar-collapsed");
+    globalThis.document.body.classList.remove("sidebar-collapsed");
+  });
 });

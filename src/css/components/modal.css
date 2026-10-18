@@ -526,13 +526,9 @@
   justify-content: center;
   align-items: center;
   gap: var(--space-lg);
-
-  &>* {
-    transition: filter 80ms ease-out, transform 80ms ease-out;
-  }
 }
 
-.is-quick-view .card-rating-block * {
+.is-quick-view :is(.star-rating-container, .card-action-btn, .star-icon) {
   pointer-events: auto;
 }
 
@@ -546,7 +542,6 @@
   width: 42px;
   height: 42px;
   margin-right: 0;
-  transition: transform 80ms ease-out, filter 80ms ease-out;
 }
 
 .is-quick-view .low-rating-star {

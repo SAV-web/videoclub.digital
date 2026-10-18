@@ -1,4 +1,4 @@
-import { SELECTORS } from "../../constants.js";
+import { SELECTORS, CSS_CLASSES } from "../../constants.js";
 
 export const MOBILE_BREAKPOINT = 768;
 export const MOBILE_HEIGHT_LIMIT = 500;
@@ -58,6 +58,20 @@ export const isMobileLayout = (): boolean => {
   const { width, height } = getEffectiveViewportDimensions();
   return width <= MOBILE_BREAKPOINT || height <= MOBILE_HEIGHT_LIMIT;
 };
+
+export function isSidebarCollapsed(): boolean {
+  if (typeof document === "undefined") return false;
+  return (
+    document.documentElement.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED) ||
+    document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED)
+  );
+}
+
+export function setSidebarCollapsed(collapsed: boolean): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.toggle(CSS_CLASSES.SIDEBAR_COLLAPSED, collapsed);
+  document.body.classList.toggle(CSS_CLASSES.SIDEBAR_COLLAPSED, collapsed);
+}
 
 // --- Registro de ciclo de vida compartido ---
 // Los arrays se exportan como const y se vacían con .length = 0 

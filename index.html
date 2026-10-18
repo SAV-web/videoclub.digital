@@ -87,7 +87,9 @@
       --color-accent-exclude: #90a4ae;
       --color-border: #e0e0e0;
       --radius-md: 6px;
-      --radius-xl: 16px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      --radius-xxl: 16px;
       --radius-round: 50%;
       --tap-target-size: 48px;
       --shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
@@ -201,12 +203,12 @@
         right: 0;
         border-radius: 0;
         border: none;
-        padding: var(--space-lg) var(--space-xxl) var(--space-md);
+        padding: var(--space-lg);
         gap: var(--space-md) var(--space-lg);
       }
 
       .content {
-        padding: var(--space-md) var(--space-xxl) var(--space-xs);
+        padding: var(--space-md) var(--space-lg) var(--space-xs);
       }
 
       .sidebar {
@@ -228,6 +230,15 @@
       }
     }
 
+    @media (min-width: 1200px) {
+      .main-header {
+        padding-inline: var(--space-xxl);
+      }
+      .content {
+        padding-inline: var(--space-xxl);
+      }
+    }
+
     /* Ocultar de inmediato el hero de portada en cargas de páginas internas (Anti-FOUC) */
     html.not-landing #landing-hero {
       display: none !important;
@@ -235,9 +246,18 @@
 
     .grid-container {
       display: grid;
-      gap: var(--space-md);
-      grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-      justify-content: start;
+      justify-content: center;
+      gap: var(--space-sm);
+      width: 100%;
+      contain: layout;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (min-width: 400px) {
+      .grid-container {
+        grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+        gap: var(--space-md);
+      }
     }
 
     .main-header-primary-controls,
@@ -543,7 +563,6 @@
         </nav>
 
         <div class="sidebar-static-filters">
-          <div id="active-filters-container"></div>
           <div id="year-slider-container">
             <div id="year-slider-wrapper">
               <div id="year-slider"></div>
@@ -572,10 +591,6 @@
                 </button>
               </div>
             </div>
-          </div>
-
-          <div id="total-results-sidebar" class="total-results-container" hidden role="status" aria-live="polite">
-            <span class="total-results-label">Total: </span><span class="total-results-count">0</span>
           </div>
         </div>
 
@@ -733,15 +748,6 @@
             </svg>
           </button>
           <div class="sort-control">
-            <select id="sort-select" class="sr-only" aria-hidden="true" tabindex="-1">
-              <option value="relevance,asc">Orden</option>
-              <option value="year,desc">Recientes</option>
-              <option value="year,asc">Antiguas</option>
-              <option value="fa_rating,desc">FA Nota</option>
-              <option value="fa_votes,desc">FA Votos</option>
-              <option value="imdb_rating,desc">IMDb Nota</option>
-              <option value="imdb_votes,desc">IMDb Votos</option>
-            </select>
             <button id="sort-dropdown-trigger" type="button" class="sort-dropdown-trigger" aria-haspopup="true" aria-expanded="false" aria-label="Criterio de ordenación: Orden">
               <span class="desktop-text sort-current-label">Orden</span>
               <span class="mobile-icon">
@@ -1139,7 +1145,7 @@
         </div>
         <div class="flip-card-back">
           <div class="scrollable-content" style="flex-grow: 1; margin-top: var(--space-xs)">
-            <h4 class="bio-headline" data-template="bio-headline" style="text-wrap: wrap; hyphens: auto; -webkit-hyphens: auto;"></h4>
+            <h4 class="bio-headline" data-template="bio-headline"></h4>
             <div class="plot-summary-final" data-template="biography" style="
                   border-top: none;
                   padding-top: 0;
@@ -1174,17 +1180,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </template>
-
-  <template id="sidebar-skeleton-template">
-    <div class="collapsible-section">
-      <div class="skeleton skeleton-sidebar-header"></div>
-      <div class="section-content">
-        <div class="skeleton skeleton-sidebar-line"></div>
-        <div class="skeleton skeleton-sidebar-line"></div>
-        <div class="skeleton skeleton-sidebar-line"></div>
       </div>
     </div>
   </template>
@@ -1329,7 +1324,7 @@
 
           <div class="movie-info movie-summary">
             <div class="title-director-block">
-              <h3 data-template="title"></h3>
+              <h3 id="quick-view-title" data-template="title"></h3>
               <div class="front-director-info" data-template="birthplace"></div>
             </div>
             <div class="movie-meta">
@@ -1346,7 +1341,7 @@
         </div>
         <div class="quick-view-details">
           <div class="scrollable-content" style="flex-grow: 1; margin-top: var(--space-xs)">
-            <h4 class="bio-headline" data-template="bio-headline" style="text-wrap: wrap; hyphens: auto; -webkit-hyphens: auto;"></h4>
+            <h4 class="bio-headline" data-template="bio-headline"></h4>
             <div class="plot-summary-final" data-template="biography" style="
                   border-top: none;
                   padding-top: 0;

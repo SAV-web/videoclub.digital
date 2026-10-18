@@ -501,8 +501,6 @@
   .year-input-wrapper:focus-within .stepper-btn { opacity: 1; visibility: visible; }
 }
 
-#total-results-sidebar { display: none !important; }
-
 /* --- 9. INDICADOR DE PROGRESO DE CARGA --- */
 .sidebar::before {
   content: '';

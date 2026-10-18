@@ -14,6 +14,7 @@ import { appEvents } from "../../state.js";
 
 import {
   dom, sectionContainers, isMobileLayout, MOBILE_HEIGHT_LIMIT,
+  isSidebarCollapsed, setSidebarCollapsed,
   sidebarUnsubscribers, sidebarTimeouts,
   isInitialized, setInitialized,
   bumpGeneration, getGeneration,
@@ -62,6 +63,13 @@ export function disposeSidebarEvents(): void {
   setInitialized(false);
 }
 
+export function toggleDesktopSidebar(): void {
+  triggerHapticFeedback('light');
+  const nextCollapsed = !isSidebarCollapsed();
+  setSidebarCollapsed(nextCollapsed);
+  setSidebarState(!nextCollapsed);
+}
+
 function setupEventListeners(): void {
   document.querySelectorAll<HTMLElement>(".collapsible-section .section-header").forEach((header) => {
     if (!header.querySelector(".chevron-icon")) {
@@ -84,15 +92,13 @@ function setupEventListeners(): void {
 
   if (dom.rewindButton) {
     const handleRewind = () => {
-      triggerHapticFeedback('light');
       const isMobile = isMobileLayout();
       if (isMobile) {
+        triggerHapticFeedback('light');
         const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
         isOpen ? closeMobileDrawer() : openMobileDrawer();
       } else {
-        document.body.classList.toggle(CSS_CLASSES.SIDEBAR_COLLAPSED);
-        const isNowCollapsed = document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED);
-        setSidebarState(!isNowCollapsed);
+        toggleDesktopSidebar();
       }
     };
     dom.rewindButton.addEventListener("click", handleRewind);
@@ -266,7 +272,7 @@ export function initSidebar(): void {
   if (isMobileLayout()) {
     setSidebarState(false);
   } else if (window.innerWidth <= 1024 && window.innerHeight > MOBILE_HEIGHT_LIMIT) {
-    document.body.classList.add(CSS_CLASSES.SIDEBAR_COLLAPSED);
+    setSidebarCollapsed(true);
     setSidebarState(false);
   } else {
     syncSidebarResponsiveState();

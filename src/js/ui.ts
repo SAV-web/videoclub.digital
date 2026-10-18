@@ -21,7 +21,6 @@ export interface DomElements {
   paginationContainer: HTMLElement | null;
   searchForm: HTMLFormElement | null;
   searchInput: HTMLInputElement | null;
-  sortSelect: HTMLSelectElement | null;
   sortDropdownTrigger: HTMLButtonElement | null;
   sortDropdownMenu: HTMLElement | null;
   themeToggleButton: HTMLButtonElement | null;
@@ -51,7 +50,6 @@ const domSelectors: Record<keyof DomElements, string> = {
   paginationContainer: SELECTORS.PAGINATION_CONTAINER,
   searchForm: SELECTORS.SEARCH_FORM,
   searchInput: SELECTORS.SEARCH_INPUT,
-  sortSelect: SELECTORS.SORT_SELECT,
   sortDropdownTrigger: SELECTORS.SORT_DROPDOWN_TRIGGER,
   sortDropdownMenu: SELECTORS.SORT_DROPDOWN_MENU,
   themeToggleButton: SELECTORS.THEME_TOGGLE,
@@ -378,10 +376,7 @@ const SORT_LABEL_MAP: Record<string, string> = {
 };
 
 export function updateSortUI(currentSort: string): void {
-  const { sortSelect, sortDropdownTrigger, sortDropdownMenu } = dom;
-  if (sortSelect && sortSelect.value !== currentSort) {
-    sortSelect.value = currentSort;
-  }
+  const { sortDropdownTrigger, sortDropdownMenu } = dom;
 
   const label = SORT_LABEL_MAP[currentSort] || "Orden";
 

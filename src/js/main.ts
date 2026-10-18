@@ -6,7 +6,7 @@
 // integración del sistema de autenticación y carga bajo demanda.
 // =================================================================
 import "../css/main.css";
-import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS } from "./constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, DEFAULTS, ICONS } from "./constants.js";
 import {
   debounce,
   triggerPopAnimation,
@@ -85,6 +85,7 @@ interface SidebarModule {
   closeMobileDrawer(): void;
   openMobileDrawer(): void;
   collapseAllSections(): void;
+  toggleDesktopSidebar(): void;
 }
 
 // Módulos que cargamos más tarde para que la web arranque al instante
@@ -113,21 +114,6 @@ async function loadSidebar(): Promise<SidebarModule | null> {
 
 
 // --- 2. MANEJADORES DE UI (Clícs, Teclado) ---
-
-async function handleSortChange(event: Event): Promise<void> {
-  clearToast();
-  const select = event.target as HTMLSelectElement;
-  triggerPopAnimation(select);
-  setSort(select.value);
-  try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("preferred_sort", select.value);
-    }
-  } catch (e) {}
-  updateSortUI(select.value);
-  updateMobileStatusBar();
-  await loadAndRenderMovies(1);
-}
 
 async function handleMediaTypeToggle(event: Event): Promise<void> {
   clearToast();
@@ -270,11 +256,6 @@ function setupHeaderListeners(): void {
     mainUnsubscribers.push(() => dom.searchForm?.removeEventListener("submit", onSearchSubmit));
   }
 
-  if (dom.sortSelect) {
-    dom.sortSelect.addEventListener("change", handleSortChange);
-    mainUnsubscribers.push(() => dom.sortSelect?.removeEventListener("change", handleSortChange));
-  }
-
   const sortTrigger = dom.sortDropdownTrigger;
   const sortMenu = dom.sortDropdownMenu;
 
@@ -363,6 +344,35 @@ function setupHeaderListeners(): void {
     };
     dom.mobileSidebarToggle.addEventListener("click", onToggleClick);
     mainUnsubscribers.push(() => dom.mobileSidebarToggle?.removeEventListener("click", onToggleClick));
+  }
+
+  const rewindButton = document.getElementById("rewind-button");
+  if (rewindButton) {
+    if (
+      document.documentElement.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED) ||
+      document.body.classList.contains(CSS_CLASSES.SIDEBAR_COLLAPSED)
+    ) {
+      rewindButton.innerHTML = ICONS.FORWARD;
+      rewindButton.setAttribute("title", "Abrir menú");
+      rewindButton.setAttribute("aria-label", "Abrir menú");
+      rewindButton.setAttribute("aria-expanded", "false");
+    }
+
+    const onRewindClick = async () => {
+      if (!sidebarModule) {
+        const mod = await loadSidebar();
+        if (!mod) return;
+        const isMobile = window.innerWidth <= 768 || window.innerHeight <= 500;
+        if (isMobile) {
+          const isOpen = document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN);
+          isOpen ? mod.closeMobileDrawer() : mod.openMobileDrawer();
+        } else {
+          mod.toggleDesktopSidebar();
+        }
+      }
+    };
+    rewindButton.addEventListener("click", onRewindClick);
+    mainUnsubscribers.push(() => rewindButton.removeEventListener("click", onRewindClick));
   }
 
   const navigatePage = async (direction: number) => {
