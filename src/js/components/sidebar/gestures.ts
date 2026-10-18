@@ -273,6 +273,17 @@ export function initTouchGestures(): void {
 //          PELLIZCO MÁGICO (Pinch to zoom para el Modo Muro)
 // =================================================================
 
+export function updateRotationButtonUI(isDisabled?: boolean): void {
+  const button = dom.toggleRotationBtn;
+  if (!button) return;
+
+  const disabled = isDisabled ?? (typeof document !== "undefined" && document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED));
+  button.innerHTML = disabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
+  button.setAttribute("aria-label", disabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
+  button.title = disabled ? "Giro automático" : "Vista Rápida";
+  button.setAttribute("aria-pressed", String(disabled));
+}
+
 export function toggleRotationMode(forceState: boolean | null = null): void {
   const button = dom.toggleRotationBtn;
   if (!button) return;
@@ -295,10 +306,7 @@ export function toggleRotationMode(forceState: boolean | null = null): void {
     const newPage = Math.floor(firstItemIndex / newPageSize) + 1;
 
     document.body.classList.toggle(CSS_CLASSES.ROTATION_DISABLED, shouldDisable);
-    button.innerHTML = shouldDisable ? ICONS.SQUARE_STOP : ICONS.PAUSE;
-    button.setAttribute("aria-label", shouldDisable ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
-    button.title = shouldDisable ? "Giro automático" : "Vista Rápida";
-    button.setAttribute("aria-pressed", String(shouldDisable));
+    updateRotationButtonUI(shouldDisable);
     LocalStore.set("rotationState", shouldDisable ? "disabled" : "enabled");
 
     loadAndRenderMovies(newPage, { forceSkeleton: true });

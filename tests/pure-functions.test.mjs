@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
+import { createMockDomElement } from "./helpers/mock-dom.mjs";
 
 let viteEnv;
 let apiModule;
@@ -242,6 +243,48 @@ describe("rating.ts (Cálculo Visual y Estados de Valoración)", () => {
     assert.strictEqual(suspensoAverageState.showUserRating, false);
     assert.strictEqual(suspensoAverageState.showAverageRating, false);
     assert.strictEqual(suspensoAverageState.showEmptyAverage, true);
+  });
+
+  test("setupCardRatings valida enlaces externos con sanitizeExternalUrl (acepta https:// y rechaza http:// o inseguros)", () => {
+    const container = createMockDomElement("div");
+    const faLink = createMockDomElement("a");
+    faLink.setAttribute("data-template", "fa-link");
+    const imdbLink = createMockDomElement("a");
+    imdbLink.setAttribute("data-template", "imdb-link");
+    container.appendChild(faLink);
+    container.appendChild(imdbLink);
+
+    container.querySelector = (sel) => {
+      if (sel.includes("fa-link")) return faLink;
+      if (sel.includes("imdb-link")) return imdbLink;
+      return null;
+    };
+
+    // 1. URLs seguras https://
+    ratingModule.setupCardRatings(container, {
+      fa_id: "https://www.filmaffinity.com/es/film123.html",
+      fa_rating: 8.5,
+      imdb_id: "https://www.imdb.com/title/tt1234567/",
+      imdb_rating: 9.0
+    });
+    assert.equal(faLink.href, "https://www.filmaffinity.com/es/film123.html");
+    assert.equal(faLink.classList.contains("disabled"), false);
+    assert.equal(imdbLink.href, "https://www.imdb.com/title/tt1234567/");
+    assert.equal(imdbLink.classList.contains("disabled"), false);
+
+    // 2. URLs inseguras http:// o malformadas (deben quedar deshabilitadas sin href ni aria-label)
+    ratingModule.setupCardRatings(container, {
+      fa_id: "http://insecure-filmaffinity.com/film123.html",
+      fa_rating: 8.5,
+      imdb_id: "javascript:alert(1)",
+      imdb_rating: 9.0
+    });
+    assert.equal(faLink.getAttribute("href"), null);
+    assert.equal(faLink.classList.contains("disabled"), true);
+    assert.equal(faLink.hasAttribute("aria-label"), false);
+    assert.equal(imdbLink.getAttribute("href"), null);
+    assert.equal(imdbLink.classList.contains("disabled"), true);
+    assert.equal(imdbLink.hasAttribute("aria-label"), false);
   });
 });
 

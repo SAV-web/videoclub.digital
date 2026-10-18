@@ -7,14 +7,15 @@
 // =================================================================
 
 import { getSupabase } from "../supabaseClient.js";
-import { getCurrentSession, signOutCurrentUser, updatePassword } from "../auth.js";
+import { getCurrentSession, signOutCurrentUser, updatePassword, evaluatePasswordStrength } from "../auth.js";
 import { getAllUserMovieData, clearUserMovieData, appEvents } from "../state.js";
-import { openAccessibleModal, closeAccessibleModal, showToast } from "../ui.js";
+import { openAccessibleModal, closeAccessibleModal, showToast, bindBottomSheetSwipeToDismiss } from "../ui.js";
 import { UserMovieEntry } from "../types.js";
-import { getPendingSyncEntries, clearLocalStore } from "../localStore.js";
+import { getPendingSyncEntries, clearLocalStore, getCachedMoviesByIds } from "../localStore.js";
 import { syncWithServer, mergeOnLogin } from "../syncManager.js";
 import { calculateUserStars } from "../../shared/formatters.js";
 import { ensureProfileModalMounted } from "../templates/profileModal.js";
+import { renderStars } from "./rating.js";
 
 export interface UserMovieStats {
   watchlistCount: number;
@@ -68,19 +69,8 @@ export function formatStarFraction(stars: number | null | undefined): string {
 /**
  * Renderiza el llenado visual continuo/fraccionario de las 3 estrellas en el contenedor.
  */
-export function renderFractionalStars(container: HTMLElement, filledAmount: number): void {
-  const stars = container.children;
-  for (let i = 0; i < stars.length; i++) {
-    const star = stars[i] as HTMLElement;
-    const fillValue = Math.max(0, Math.min(1, filledAmount - i));
-    const filledPath = star.lastElementChild as HTMLElement | null;
-    if (filledPath) {
-      if (star.style.opacity !== "1") star.style.opacity = "1";
-      const clipPercentage = (1 - fillValue) * 100;
-      filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
-    }
-  }
-}
+export const renderFractionalStars = (container: HTMLElement, filledAmount: number): void =>
+  renderStars(container, filledAmount);
 
 /**
  * Calcula de forma pura y determinista las estadísticas cinematográficas del usuario.
@@ -300,7 +290,10 @@ export async function openProfileModal(): Promise<void> {
     dom.securityMessage.hidden = true;
     dom.securityMessage.textContent = "";
   }
-  if (dom.passwordStrength) dom.passwordStrength.hidden = true;
+  if (dom.passwordStrength) {
+    dom.passwordStrength.hidden = true;
+    dom.passwordStrength.removeAttribute("data-strength");
+  }
 
   // Resetear zona de peligro / baja de usuario
   if (dom.dangerZone) dom.dangerZone.hidden = true;
@@ -410,21 +403,6 @@ async function updateSyncStatusUI(): Promise<void> {
 }
 
 /**
- * Evalúa la seguridad de una contraseña según estándar NIST (mínimo 8 caracteres).
- */
-function evaluatePasswordScore(pwd: string): { score: number; label: string } {
-  if (!pwd) return { score: 0, label: "" };
-  let score = 0;
-  if (pwd.length >= 8) score++;
-  if (pwd.length >= 12) score++;
-  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
-  if (/[0-9]/.test(pwd) || /[^A-Za-z0-9]/.test(pwd)) score++;
-
-  const labels = ["Muy débil", "Débil", "Aceptable", "Buena", "Excelente"];
-  return { score, label: labels[score] || "" };
-}
-
-/**
  * Exporta la colección del usuario en formato CSV (Comma-Separated Values).
  * Incluye cabeceras legibles, enriquecimiento con títulos desde la base de datos
  * y codificación UTF-8 con BOM para compatibilidad total con Excel/Numbers/Sheets.
@@ -484,6 +462,26 @@ export async function exportUserDataCsv(): Promise<void> {
       }
     } catch {
       // Si la red falla o estamos offline, continuamos con los datos locales disponibles
+    }
+
+    // Fallback offline: enriquecer películas restantes desde la caché IndexedDB (cached_movies)
+    const missingIds = movieIds.filter(id => !movieMetaMap.has(id));
+    if (missingIds.length > 0) {
+      try {
+        const localCached = await getCachedMoviesByIds(missingIds);
+        for (const [id, m] of localCached.entries()) {
+          movieMetaMap.set(id, {
+            title: m.title || "",
+            original_title: m.original_title || null,
+            year: m.year ?? null,
+            type: m.type && String(m.type).toLowerCase().startsWith("s") ? "Serie" : "Película",
+            directors: (m as any).directors_list || (Array.isArray((m as any).directors) ? (m as any).directors.join(", ") : ""),
+            genres: (m as any).genres_list || (Array.isArray((m as any).genres) ? (m as any).genres.join(", ") : "")
+          });
+        }
+      } catch {
+        // Fallback silencioso si IndexedDB no está disponible en el entorno
+      }
     }
 
     const escapeCsv = (val: unknown): string => {
@@ -661,16 +659,21 @@ export function setupProfileModal(): () => void {
       const val = dom.newPasswordInput?.value || "";
       if (!val) {
         strengthMeter.hidden = true;
+        strengthMeter.removeAttribute("data-strength");
+        const labelEl = strengthMeter.querySelector(".strength-label");
+        if (labelEl) labelEl.textContent = "";
+        const progress = strengthMeter.querySelector(".strength-bars");
+        if (progress) progress.setAttribute("aria-valuenow", "0");
         return;
       }
 
       strengthMeter.hidden = false;
-      const { score, label } = evaluatePasswordScore(val);
+      const { score, label } = evaluatePasswordStrength(val);
+      strengthMeter.setAttribute("data-strength", String(score));
       const labelEl = strengthMeter.querySelector(".strength-label");
       if (labelEl) labelEl.textContent = label;
-      strengthMeter.querySelectorAll(".strength-bar").forEach((bar, idx) => {
-        bar.classList.toggle("active", idx < score);
-      });
+      const progress = strengthMeter.querySelector(".strength-bars");
+      if (progress) progress.setAttribute("aria-valuenow", String(score));
     };
     dom.newPasswordInput.addEventListener("input", onPasswordInput);
     unsubscribers.push(() => dom.newPasswordInput?.removeEventListener("input", onPasswordInput));
@@ -709,7 +712,10 @@ export function setupProfileModal(): () => void {
           dom.securityMessage.textContent = "¡Contraseña actualizada con éxito!";
         }
         dom.passwordForm?.reset();
-        if (dom.passwordStrength) dom.passwordStrength.hidden = true;
+        if (dom.passwordStrength) {
+          dom.passwordStrength.hidden = true;
+          dom.passwordStrength.removeAttribute("data-strength");
+        }
         showToast("Contraseña actualizada con éxito.", "success");
       } catch (err: unknown) {
         const msg = (err as Error)?.message || "No se pudo actualizar la contraseña.";
@@ -873,70 +879,7 @@ export function setupProfileModal(): () => void {
   if (dom.modal) {
     const modalEl = dom.modal;
     const scrollContent = modalEl.querySelector<HTMLElement>(".profile-content-scroll") || modalEl;
-    let startY = 0;
-    let startX = 0;
-    let isDragging = false;
-    let startTime = 0;
-    let currentY = 0;
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (window.innerWidth > 768) return;
-      startY = e.touches[0].clientY;
-      startX = e.touches[0].clientX;
-      isDragging = false;
-      startTime = Date.now();
-      modalEl.classList.remove("is-dragging");
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (window.innerWidth > 768) return;
-      const clientY = e.touches[0].clientY;
-      const clientX = e.touches[0].clientX;
-      const deltaY = clientY - startY;
-      const deltaX = clientX - startX;
-
-      if (!isDragging) {
-        if (Math.abs(deltaY) < 5 && Math.abs(deltaX) < 5) return;
-        // Solo iniciar arrastre hacia abajo si el scroll interno está en el tope
-        if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && scrollContent.scrollTop <= 5) {
-          isDragging = true;
-          modalEl.classList.add("is-dragging");
-        }
-      }
-
-      if (isDragging) {
-        if (e.cancelable) e.preventDefault();
-        currentY = Math.max(0, deltaY);
-        modalEl.style.transform = `translate(-50%, ${currentY}px)`;
-      }
-    };
-
-    const onTouchEnd = () => {
-      if (!isDragging) return;
-      modalEl.classList.remove("is-dragging");
-      const duration = Date.now() - startTime;
-      const velocityY = currentY / (duration || 1);
-
-      if (currentY > 100 || velocityY > 0.5) {
-        closeProfileModal();
-      } else {
-        modalEl.style.transform = "";
-      }
-      isDragging = false;
-      currentY = 0;
-    };
-
-    modalEl.addEventListener("touchstart", onTouchStart, { passive: true });
-    modalEl.addEventListener("touchmove", onTouchMove, { passive: false });
-    modalEl.addEventListener("touchend", onTouchEnd, { passive: true });
-    modalEl.addEventListener("touchcancel", onTouchEnd, { passive: true });
-
-    unsubscribers.push(() => {
-      modalEl.removeEventListener("touchstart", onTouchStart);
-      modalEl.removeEventListener("touchmove", onTouchMove);
-      modalEl.removeEventListener("touchend", onTouchEnd);
-      modalEl.removeEventListener("touchcancel", onTouchEnd);
-    });
+    unsubscribers.push(bindBottomSheetSwipeToDismiss(modalEl, scrollContent, closeProfileModal));
   }
 
   return () => {

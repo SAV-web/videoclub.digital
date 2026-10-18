@@ -196,18 +196,17 @@ export class DualRangeSlider {
 
       if (changed) {
         this.updateUI();
-        this.emitUpdate(activeHandleIndex);
+        this.emitUpdate();
       }
     };
 
     const onPointerUp = (e: PointerEvent) => {
       if (activeHandleIndex === null) return;
-      const handleIndex = activeHandleIndex;
       activeHandleIndex = null;
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
-      this.emitSet(handleIndex);
+      this.emitSet();
     };
 
     const startDrag = (handleIndex: number, e: PointerEvent) => {
@@ -265,8 +264,8 @@ export class DualRangeSlider {
       this.updateValuesForHandle(chosenHandle, year);
 
       this.updateUI();
-      this.emitUpdate(chosenHandle);
-      this.emitSet(chosenHandle);
+      this.emitUpdate();
+      this.emitSet();
       startDrag(chosenHandle, e);
     }, { signal: this.abortController.signal });
 
@@ -291,8 +290,8 @@ export class DualRangeSlider {
       }
 
       this.updateUI();
-      this.emitUpdate(handleIndex);
-      this.emitSet(handleIndex);
+      this.emitUpdate();
+      this.emitSet();
     };
 
     this.handleStartEl.addEventListener("keydown", (e) => handleKey(0, e), { signal: this.abortController.signal });
@@ -390,22 +389,20 @@ export class DualRangeSlider {
     }
 
     this.updateUI();
-    this.emitUpdate(0);
-    this.emitUpdate(1);
+    this.emitUpdate();
     if (fireSet) {
-      this.emitSet(0);
-      this.emitSet(1);
+      this.emitSet();
     }
   }
 
-  private emitUpdate(handleIndex: number): void {
+  private emitUpdate(): void {
     this.updateCallbacks.forEach((cb) => {
       cb([...this.values], 0);
       cb([...this.values], 1);
     });
   }
 
-  private emitSet(handleIndex: number): void {
+  private emitSet(): void {
     this.setCallbacks.forEach((cb) => {
       cb([...this.values], 0);
       cb([...this.values], 1);

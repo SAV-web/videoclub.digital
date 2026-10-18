@@ -21,6 +21,7 @@ Reglas:
 - `totalMovies` siempre es un entero mayor o igual que `-1`. El valor `-1` significa "total desconocido".
 - `activeFilters` siempre contiene todas sus claves; ningún consumidor debe asumir filtros parciales.
 - `userMovieData` se indexa por `movieId` numérico convertido a clave de objeto.
+- `UserMovieEntry` se normaliza mediante `normalizeUserMovieEntry`, devolviendo objetos congelados (`Object.freeze`) con `{ rating: number | null, onWatchlist: boolean }`. Esta inmutabilidad estructural garantiza que el motor reactivo (`makeReactive` en `state.ts`) no genere envolturas Proxy al iterar el catálogo de usuario (ej: `getWatchlistCount()`, `getAllUserMovieData()`), ahorrando miles de instanciaciones temporales y garantizando estabilidad referencial mediante caché `WeakMap`.
 
 ## 2. Filtros
 
@@ -238,7 +239,7 @@ Reglas:
 - Las mutaciones optimistas deben pasar por `updateUserDataForMovie`.
 - Las escrituras remotas deben pasar por `setUserMovieDataAPI`.
 - Al puntuar una película, la mutación elimina la película de la Watchlist (`resolveWatchlistMutationOnRate`). De forma recíproca, al añadir una película a la Watchlist, se borra la puntuación existente (`resolveRatingMutationOnWatchlist`).
-- **Autenticación Obligatoria para Interacción**: Las estrellas de puntuación (`rating`), el botón de nota en el muro (`wall-rating`) y el botón de añadir/quitar de la lista (`watchlist`) requieren sesión activa del usuario (`body.user-logged-in`). Si un usuario no autenticado interactúa con estos controles por ratón o teclado, el sistema intercepta la acción de inmediato (sin voltear la tarjeta ni mutar el almacenamiento local), presenta una notificación toast informativa (`"Identifícate para votar o guardar en tu lista"`) y despliega la modal de inicio de sesión (`openAuthModal()`). Asimismo, los efectos de previsualización dorada y animaciones hover/active de estrellas se deshabilitan fuera de sesión.
+- **Autenticación Obligatoria para Interacción**: Las estrellas de puntuación (`rating`), el botón de nota en el muro (`wall-rating`) y el botón de añadir/quitar de la lista (`watchlist`) requieren sesión activa del usuario (`body.user-logged-in`). Si un usuario no autenticado interactúa con estos controles por ratón o teclado, el sistema intercepta la acción de inmediato (sin voltear la tarjeta ni mutar el almacenamiento local) y presenta una notificación toast informativa (`"Identifícate para votar"` en puntuación o `"Identifícate para añadir"` en lista). Asimismo, los efectos de previsualización dorada y animaciones hover/active de estrellas se deshabilitan fuera de sesión.
 
 ## 5. Entidades de Personas y Doble Rol (VIPs)
 

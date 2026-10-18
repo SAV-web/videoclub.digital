@@ -100,8 +100,13 @@ export const appEvents = {
 
 
 // 2. El Vigilante (Proxy Profundo): Envuelve un objeto y reacciona cuando cambia cualquier dato anidado.
+const proxyCache = new WeakMap<object, any>();
+
 function makeReactive<T extends object>(obj: T, path: string = ""): T {
-  return new Proxy(obj, {
+  const cached = proxyCache.get(obj);
+  if (cached) return cached as T;
+
+  const proxy = new Proxy(obj, {
     get(target, property) {
       const val = Reflect.get(target, property);
       if (typeof val === 'object' && val !== null && !Object.isFrozen(val)) {
@@ -129,6 +134,9 @@ function makeReactive<T extends object>(obj: T, path: string = ""): T {
       return success;
     }
   });
+
+  proxyCache.set(obj, proxy);
+  return proxy;
 }
 
 // Creamos nuestro estado global vigilado

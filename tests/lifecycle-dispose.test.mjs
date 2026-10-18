@@ -139,9 +139,8 @@ describe("Ciclo de Vida: Modal Component (init → dispose → init)", () => {
 });
 
 describe("Ciclo de Vida: Sidebar Component (init → dispose → init)", () => {
-  test("initSidebar arranca componentes y listeners; disposeSidebarEvents restablece la bandera única isSidebarInitialized y permite reinicializar", () => {
+  test("initSidebar arranca componentes y listeners; disposeSidebarEvents restablece la bandera única isSidebarInitialized, limpia sectionContainers y resetea lastPillState", () => {
     // 1. Primer init
-
     sidebarModule.initSidebar();
 
     // 2. Dispose
@@ -152,10 +151,22 @@ describe("Ciclo de Vida: Sidebar Component (init → dispose → init)", () => {
       sidebarModule.initSidebar();
     }, "initSidebar tras dispose no debe lanzar error ni quedar bloqueado");
 
-    // 4. Tercer ciclo de verificación
+    // 4. Verificar que resetFilterPillsCache está exportado y disponible para el ciclo de vida
+    assert.equal(typeof sidebarModule.resetFilterPillsCache, "function", "resetFilterPillsCache debe estar exportado");
+    assert.doesNotThrow(() => {
+      sidebarModule.resetFilterPillsCache();
+    });
+
+    // 5. Tercer ciclo de verificación: asegurar que no se duplican los iconos chevron
     sidebarModule.disposeSidebarEvents();
     assert.doesNotThrow(() => {
       sidebarModule.initSidebar();
+    });
+
+    const headers = globalThis.document.querySelectorAll(".collapsible-section .section-header");
+    headers.forEach((header) => {
+      const chevrons = header.querySelectorAll(".chevron-icon");
+      assert.ok(chevrons.length <= 1, "No deben acumularse iconos chevron duplicados en la cabecera del acordeón");
     });
   });
 });

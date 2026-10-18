@@ -13,7 +13,7 @@ import { saveLocalEntryWithMovie } from "../localStore.js";
 import { scheduleSync } from "../syncManager.js";
 import { CSS_CLASSES } from "../constants.js";
 import { showToast } from "../ui.js";
-import { triggerHapticFeedback, formatVotesUnified } from "../utils.js";
+import { triggerHapticFeedback, formatVotesUnified, setupExternalLink } from "../utils.js";
 import { normalizeMovieId } from "../contracts.js";
 import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.js";
 
@@ -112,7 +112,7 @@ interface RenderStarsOptions {
  * @param {number} filledAmount - Cantidad de estrellas a llenar (ej: 2.5).
  * @param {Object} options - Configuración.
  */
-function renderStars(
+export function renderStars(
   starContainer: HTMLElement,
   filledAmount: number,
   { hideUnfilled = false, snapToInteger = false }: RenderStarsOptions = {}
@@ -151,12 +151,12 @@ export const renderAverageStars = (container: HTMLElement, value: number): void 
   renderStars(container, value, { hideUnfilled: true, snapToInteger: false });
 
 export function renderUserStars(container: HTMLElement, value: number, hideHollow = false, isSuspenso = false): void {
-  const stars = container.children;
-  for (let i = 0; i < stars.length; i++) {
-    const star = stars[i] as HTMLElement;
-    const filledPath = star.lastElementChild as HTMLElement | null;
+  if (isSuspenso) {
+    const stars = container.children;
+    for (let i = 0; i < stars.length; i++) {
+      const star = stars[i] as HTMLElement;
+      const filledPath = star.lastElementChild as HTMLElement | null;
 
-    if (isSuspenso) {
       if (i === 0) {
         // La 1.ª estrella se muestra como hueca dorada
         if (star.style.opacity !== "1") star.style.opacity = "1";
@@ -165,19 +165,11 @@ export function renderUserStars(container: HTMLElement, value: number, hideHollo
         // Las estrellas 2 y 3 se ocultan
         if (star.style.opacity !== "0") star.style.opacity = "0";
       }
-    } else {
-      const fillValue = Math.max(0, Math.min(1, value - i));
-      if (filledPath) {
-        if (hideHollow && fillValue === 0) {
-          if (star.style.opacity !== "0") star.style.opacity = "0";
-        } else {
-          if (star.style.opacity !== "1") star.style.opacity = "1";
-          const clipPercentage = (1 - fillValue) * 100;
-          filledPath.style.clipPath = `inset(0 ${clipPercentage}% 0 0)`;
-        }
-      }
     }
+    return;
   }
+
+  renderStars(container, value, { hideUnfilled: hideHollow });
 }
 
 // =================================================================
@@ -185,9 +177,9 @@ export function renderUserStars(container: HTMLElement, value: number, hideHollo
 // =================================================================
 
 /**
- * Maneja el hover sobre las estrellas (Feedback visual inmediato).
+ * Maneja el hover y foco sobre las estrellas (Feedback visual inmediato).
  */
-function handleRatingMouseMove(event: MouseEvent): void {
+function handleRatingPreviewEnter(event: MouseEvent | FocusEvent): void {
   if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
   const target = event.target as HTMLElement;
   const starIcon = target.closest<HTMLElement>(".star-icon");
@@ -201,9 +193,9 @@ function handleRatingMouseMove(event: MouseEvent): void {
 }
 
 /**
- * Restaura el estado original al salir del contenedor.
+ * Restaura el estado original al salir del contenedor (blur o mouseleave).
  */
-function handleRatingMouseLeave(event: MouseEvent): void {
+function handleRatingPreviewLeave(event: MouseEvent | FocusEvent): void {
   const starContainer = event.currentTarget as HTMLElement;
   const cardElement = starContainer.closest<HTMLElement>(".movie-card");
   if (cardElement) {
@@ -242,39 +234,20 @@ function handleRatingKeyDown(event: KeyboardEvent): void {
   triggerRatingAnimation(card, newRating, starIcon);
 }
 
-/**
- * Feedback visual para navegación por teclado (FocusIn / FocusOut).
- */
-function handleRatingFocusIn(event: FocusEvent): void {
-  if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
-  const target = event.target as HTMLElement;
-  const starIcon = target.closest<HTMLElement>(".star-icon");
-  if (!starIcon) return;
-  
-  const starContainer = event.currentTarget as HTMLElement;
-  const hoverLevel = parseInt(starIcon.dataset.ratingLevel || "0", 10);
-  renderUserStars(starContainer, hoverLevel, false, false);
-}
-
-function handleRatingFocusOut(event: FocusEvent): void {
-  const starContainer = event.currentTarget as HTMLElement;
-  const cardElement = starContainer.closest<HTMLElement>(".movie-card");
-  if (cardElement) {
-    appEvents.emit("card:requestUpdate", { cardElement });
-  }
-}
-
-export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean): void {
+export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean = true): void {
   if (!isInteractive) return;
 
   const isLoggedIn = typeof document !== "undefined" && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
   starContainer.classList.toggle(CSS_CLASSES.IS_INTERACTIVE, isLoggedIn);
 
-  starContainer.addEventListener("mouseover", handleRatingMouseMove as EventListener, { passive: true });
-  starContainer.addEventListener("mouseleave", handleRatingMouseLeave as EventListener, { passive: true });
+  if (starContainer.dataset.ratingListeners === "true") return;
+  starContainer.dataset.ratingListeners = "true";
+
+  starContainer.addEventListener("mouseover", handleRatingPreviewEnter as EventListener, { passive: true });
+  starContainer.addEventListener("mouseleave", handleRatingPreviewLeave as EventListener, { passive: true });
   starContainer.addEventListener("keydown", handleRatingKeyDown as EventListener);
-  starContainer.addEventListener("focusin", handleRatingFocusIn as EventListener);
-  starContainer.addEventListener("focusout", handleRatingFocusOut as EventListener);
+  starContainer.addEventListener("focusin", handleRatingPreviewEnter as EventListener);
+  starContainer.addEventListener("focusout", handleRatingPreviewLeave as EventListener);
 }
 
 // =================================================================
@@ -444,15 +417,7 @@ export function setupCardRatings(container: HTMLElement, movie: Movie): void {
     const rating = movie[`${key}_rating` as keyof Movie] as number | null;
     const votes = (movie[`${key}_votes` as keyof Movie] as number | null) || 0;
 
-    // 8.1 Mejora: Validación estricta de URL (evita falsos positivos como "http-fake")
-    if (id && /^https?:\/\//.test(id)) {
-      link.href = id;
-      link.classList.remove("disabled");
-      link.setAttribute("aria-label", `Nota ${key.toUpperCase()}: ${rating}`);
-    } else {
-      link.removeAttribute("href");
-      link.classList.add("disabled");
-    }
+    setupExternalLink(link, key.toUpperCase(), id, `Nota ${key.toUpperCase()}: ${rating}`);
 
     if (ratingEl) {
       ratingEl.textContent = rating ? (String(rating).includes(".") ? String(rating) : `${rating}.0`) : "N/A";

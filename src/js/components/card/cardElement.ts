@@ -1,5 +1,5 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, FILTER_CONFIG } from "../../constants.js";
-import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, getPosterUrl, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug, sanitizeExternalUrl } from "../../utils.js";
+import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, renderStudioIcons, setupExternalLink, getPosterUrl, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../../state.js";
 import { saveLocalEntryWithMovie } from "../../localStore.js";
 import { scheduleSync } from "../../syncManager.js";
@@ -67,7 +67,6 @@ const isMobileViewport = (): boolean => mobileQuery ? mobileQuery.matches : fals
 export const MAX_PREFETCH_LINKS = 4;
 export const HOVER_DELAY = 1000;
 export const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
-export const QUICK_VIEW_INIT_FLAG = "_quickViewInitialized";
 
 export async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
   if (cardElement.classList.contains('collection-card') || cardElement.classList.contains('studio-card')) return;
@@ -76,12 +75,7 @@ export async function loadAndOpenModal(cardElement: MovieCardElement): Promise<v
     if (!personData?.biography || !personData.biography.trim()) return;
   }
   lockGlobalInteractions(500);
-  const { openModal, initQuickView } = await import("../modal.js");
-  const win = window as unknown as Record<string, unknown>;
-  if (!win[QUICK_VIEW_INIT_FLAG]) {
-    initQuickView();
-    win[QUICK_VIEW_INIT_FLAG] = true;
-  }
+  const { openModal } = await import("../modal.js");
   openModal(cardElement);
 }
 
@@ -271,6 +265,7 @@ export const handleSingleTap = (cardElement: MovieCardElement): void => {
 };
 
 export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: MovieCardElement): Promise<void> {
+  btn.blur();
   if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
     showToast("Identifícate para añadir", "info");
     return;
@@ -332,14 +327,8 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   if (watchlistBtn) {
     event.preventDefault(); event.stopPropagation();
     if (isPerson) return;
-    if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-      showToast("Identifícate para añadir", "info");
-      watchlistBtn.blur();
-      return;
-    }
     const movieId = normalizeMovieId(card.dataset.movieId);
     if (movieId) toggleWatchlist(movieId, watchlistBtn, card);
-    watchlistBtn.blur();
     return;
   }
 
@@ -500,6 +489,8 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
   const isInsideModal = card.classList.contains('is-quick-view') || !!card.closest('#quick-view-content');
   if (!isInsideModal) {
     if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) {
+      event.preventDefault();
+      event.stopPropagation();
       loadAndOpenModal(card);
     }
   }
@@ -542,19 +533,7 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
   const isPriority = index < priorityCount;
   img.loading = isPriority ? "eager" : "lazy";
 
-  if (isPriority) {
-    const handleLoad = () => {
-      img.classList.add(CSS_CLASSES.LOADED);
-      img.onload = null;
-      img.onerror = null;
-    };
-    img.onload = handleLoad;
-    img.onerror = handleLoad;
-    img.src = posterUrl;
-    if (img.complete) {
-      requestAnimationFrame(handleLoad);
-    }
-  } else if (lazyLoadObserver) {
+  if (!isPriority && lazyLoadObserver) {
     img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
     img.dataset.src = posterUrl;
     lazyLoadObserver.observe(img);
@@ -657,25 +636,7 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
 
   // Iconos (máximo 2 estudios en ficha del grid)
   const iconCont = front.querySelector<HTMLElement>('.card-icons-line');
-  if (iconCont) {
-    iconCont.innerHTML = "";
-    const validCodes = (movie.studios_list?.split(",") || [])
-      .filter(c => STUDIO_DATA[c as keyof typeof STUDIO_DATA])
-      .slice(0, 2);
-
-    let iconsHtml = "";
-    validCodes.forEach(code => {
-      const conf = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
-      if (conf) {
-        iconsHtml += `<span class="platform-icon ${conf.class || ''}" title="${conf.title}">
-          <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="${conf.vb || "0 0 24 24"}">
-            <use href="#${conf.id}"></use>
-          </svg>
-        </span>`;
-      }
-    });
-    iconCont.innerHTML = iconsHtml;
-  }
+  renderStudioIcons(iconCont, movie.studioList || movie.studios_list, 2);
 
   // Nota numérica para modo muro
   const wallRatingEl = card.querySelector<HTMLElement>('[data-template="wall-rating"]');
@@ -691,11 +652,11 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
       const origEl = origWrap.querySelector<HTMLElement>('[data-template="original-title"]');
       if (origEl) {
         origEl.textContent = origTitle;
-        origEl.className = "";
-        const oLen = origTitle.length;
-        if (oLen > 40) origEl.classList.add("title-xl-long");
-        else if (oLen > 30) origEl.classList.add("title-long");
-        else if (oLen > 20) origEl.classList.add("title-medium");
+        applyLengthBasedClass(origEl, origTitle, [
+          [40, "title-xl-long"],
+          [30, "title-long"],
+          [20, "title-medium"],
+        ], true);
       }
       origWrap.hidden = false;
     } else {
@@ -715,23 +676,8 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
   }
 
   // Links Externos
-  const setupLink = (key: string, rawUrl: string | null | undefined) => {
-    const el = back.querySelector(`[data-template="${key}-link"]`) as HTMLAnchorElement | null;
-    if (!el) return;
-    const safeUrl = sanitizeExternalUrl(rawUrl);
-    if (safeUrl) {
-      el.href = safeUrl;
-      el.classList.remove('disabled');
-      el.setAttribute("aria-label", `Ver en ${key}`);
-    } else {
-      el.removeAttribute('href');
-      el.classList.add('disabled');
-      el.removeAttribute("aria-label");
-    }
-    el.hidden = false;
-  };
-  setupLink('justwatch', movie.justwatch);
-  setupLink('wikipedia', movie.wikipedia);
+  setupExternalLink(back.querySelector<HTMLAnchorElement>('[data-template="justwatch-link"]'), "justwatch", movie.justwatch);
+  setupExternalLink(back.querySelector<HTMLAnchorElement>('[data-template="wikipedia-link"]'), "wikipedia", movie.wikipedia);
 
   // Textos Largos
   const genreEl = back.querySelector<HTMLElement>(SELECTORS.GENRE);
@@ -864,6 +810,98 @@ export function createCardElement(movie: MappedMovie, index: number): DocumentFr
   return clone;
 }
 
+export interface PopulatePersonOptions {
+  name?: string;
+  place_of_birth?: string | null;
+  birthday?: string | null;
+  deathday?: string | null;
+  titulo_bio?: string | null;
+  biography?: string | null;
+  countries?: { name: string; code: string } | null;
+  country_code?: string | null;
+  country?: string | null;
+  hasBothRoles?: boolean;
+  currentRole?: 'director' | 'actor';
+}
+
+/**
+ * Puebla los campos de datos comunes de una persona (título, lugar/fecha nacimiento, bandera, bio y botón dual).
+ */
+export function populatePersonFields(root: HTMLElement, person: PopulatePersonOptions): void {
+  const titleEl = root.querySelector<HTMLElement>('[data-template="title"]');
+  if (titleEl && person.name) {
+    titleEl.textContent = person.name;
+    applyLengthBasedClass(titleEl, person.name, CARD_TITLE_THRESHOLDS);
+  }
+
+  const birthplaceEl = root.querySelector('[data-template="birthplace"]');
+  if (birthplaceEl) birthplaceEl.textContent = person.place_of_birth || "";
+
+  const ageInfo = computePersonAgeInfo(person.birthday, person.deathday);
+
+  const ageEl = root.querySelector('[data-template="age"]');
+  if (ageEl) ageEl.textContent = ageInfo.ageStr;
+
+  const datesEl = root.querySelector('[data-template="dates"]');
+  if (datesEl) datesEl.textContent = ageInfo.datesStr;
+
+  if (person.name) {
+    let wallName = person.name;
+    if (wallName.length > 14) {
+      const parts = wallName.split(" ");
+      if (parts.length >= 2) {
+        wallName = `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
+      }
+    }
+    const wallNameEl = root.querySelector('[data-template="wall-name"]');
+    if (wallNameEl) wallNameEl.textContent = wallName;
+  }
+
+  const countryCode = person.countries?.code || person.country_code || undefined;
+  const countryName = person.countries?.name || person.country || undefined;
+  renderCountryFlag(
+    root.querySelector(SELECTORS.COUNTRY_CONTAINER),
+    root.querySelector(SELECTORS.COUNTRY_FLAG),
+    countryCode,
+    countryName,
+    false
+  );
+
+  const headlineEl = root.querySelector('[data-template="bio-headline"]');
+  if (headlineEl) {
+    headlineEl.textContent = preserveHyphenatedWords(person.titulo_bio) || "";
+  }
+
+  const biographyEl = root.querySelector('[data-template="biography"]');
+  if (biographyEl) {
+    biographyEl.textContent = preserveHyphenatedWords(person.biography) || "Biografía no disponible en el catálogo.";
+  }
+
+  // Botón de alternancia de rol (Director <-> Actor)
+  const roleToggleBtn = root.querySelector<HTMLButtonElement>('[data-template="role-toggle-btn"]');
+  const roleLetterEl = root.querySelector<HTMLElement>('[data-template="role-badge-letter"]');
+
+  if (roleToggleBtn && roleLetterEl) {
+    if (person.hasBothRoles && person.name) {
+      const isDirector = person.currentRole === "director";
+      const targetRole = isDirector ? "actor" : "director";
+      const currentLetter = isDirector ? "D" : "A";
+      const tooltipText = isDirector
+        ? `Ver películas de ${person.name} como Actor`
+        : `Ver películas de ${person.name} como Director`;
+
+      roleLetterEl.textContent = currentLetter;
+      roleToggleBtn.title = tooltipText;
+      roleToggleBtn.setAttribute("aria-label", tooltipText);
+      roleToggleBtn.style.display = "flex";
+      roleToggleBtn.dataset.targetRole = targetRole;
+      roleToggleBtn.dataset.personName = person.name;
+    } else {
+      roleToggleBtn.style.display = "none";
+    }
+  }
+}
+
 export function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const template = getPersonTemplate();
   if (!template) return document.createDocumentFragment();
@@ -896,75 +934,9 @@ export function createPersonCardElement(person: PersonDetails): DocumentFragment
     applyLqipImage(img, person.thumbhash_st, photoUrl);
   }
 
-  const titleEl = card.querySelector<HTMLElement>('[data-template="title"]');
-  if (titleEl) {
-    titleEl.textContent = person.name;
-    applyLengthBasedClass(titleEl, person.name, CARD_TITLE_THRESHOLDS);
-  }
+  populatePersonFields(card, person);
 
-  const birthplaceEl = card.querySelector('[data-template="birthplace"]');
-  if (birthplaceEl) birthplaceEl.textContent = person.place_of_birth || "";
-
-  const ageInfo = computePersonAgeInfo(person.birthday, person.deathday);
-
-  const ageEl = card.querySelector('[data-template="age"]');
-  if (ageEl) ageEl.textContent = ageInfo.ageStr;
-
-  const datesEl = card.querySelector('[data-template="dates"]');
-  if (datesEl) datesEl.textContent = ageInfo.datesStr;
-
-  let wallName = person.name;
-  if (wallName.length > 14) {
-    const parts = wallName.split(" ");
-    if (parts.length >= 2) {
-      wallName = `${parts[0][0]}. ${parts.slice(1).join(" ")}`;
-    }
-  }
-
-  const wallNameEl = card.querySelector('[data-template="wall-name"]');
-  if (wallNameEl) wallNameEl.textContent = wallName;
-
-  renderCountryFlag(
-    card.querySelector(SELECTORS.COUNTRY_CONTAINER),
-    card.querySelector(SELECTORS.COUNTRY_FLAG),
-    person.countries?.code ?? undefined,
-    person.countries?.name ?? undefined,
-    false
-  );
-
-  const headlineEl = card.querySelector('[data-template="bio-headline"]');
-  if (headlineEl) {
-    headlineEl.textContent = preserveHyphenatedWords(person.titulo_bio) || "";
-  }
-
-  const biographyEl = card.querySelector('[data-template="biography"]');
-  if (biographyEl) {
-    biographyEl.textContent = preserveHyphenatedWords(person.biography) || "Biografía no disponible en el catálogo.";
-  }
-
-  // Botón de alternancia de rol (Director <-> Actor)
-  const roleToggleBtn = card.querySelector<HTMLButtonElement>('[data-template="role-toggle-btn"]');
-  const roleLetterEl = card.querySelector<HTMLElement>('[data-template="role-badge-letter"]');
-
-  if (roleToggleBtn && roleLetterEl) {
-    if (person.hasBothRoles) {
-      const isDirector = person.currentRole === "director";
-      const targetRole = isDirector ? "actor" : "director";
-      const currentLetter = isDirector ? "D" : "A";
-      const tooltipText = isDirector
-        ? `Ver películas de ${person.name} como Actor`
-        : `Ver películas de ${person.name} como Director`;
-
-      roleLetterEl.textContent = currentLetter;
-      roleToggleBtn.title = tooltipText;
-      roleToggleBtn.setAttribute("aria-label", tooltipText);
-      roleToggleBtn.style.display = "flex";
-      roleToggleBtn.dataset.targetRole = targetRole;
-      roleToggleBtn.dataset.personName = person.name;
-    } else {
-      roleToggleBtn.style.display = "none";
-    }
-  }
+  card.addEventListener("click", handleCardClick);
 
   return clone;
 }

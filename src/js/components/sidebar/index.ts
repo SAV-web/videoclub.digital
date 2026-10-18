@@ -24,7 +24,7 @@ import {
   setSidebarState,
   syncSidebarResponsiveState, initTouchGestures, initPinchGestures,
   toggleRotationMode, openMobileDrawer, closeMobileDrawer,
-  tryCloseMobileDrawer
+  tryCloseMobileDrawer, updateRotationButtonUI
 } from "./gestures.js";
 
 import {
@@ -42,16 +42,19 @@ import {
   renderFilterPills,
   updatePillVisibility,
   setupAutocompleteHandlers,
-  handlePillClick
+  handlePillClick,
+  resetFilterPillsCache
 } from "./filters.js";
 
 export { openMobileDrawer, closeMobileDrawer } from "./gestures.js";
-export { collapseAllSections } from "./filters.js";
+export { collapseAllSections, resetFilterPillsCache } from "./filters.js";
 
 export function disposeSidebarEvents(): void {
   bumpGeneration();
   abortAndClear();
   destroyYearSlider();
+  resetFilterPillsCache();
+  for (const k in sectionContainers) delete sectionContainers[k];
   sidebarTimeouts.forEach(t => clearTimeout(t));
   sidebarTimeouts.length = 0;
   sidebarUnsubscribers.forEach(unsub => unsub());
@@ -61,9 +64,11 @@ export function disposeSidebarEvents(): void {
 
 function setupEventListeners(): void {
   document.querySelectorAll<HTMLElement>(".collapsible-section .section-header").forEach((header) => {
-    const iconWrapper = document.createElement('div');
-    iconWrapper.innerHTML = ICONS.CHEVRON_RIGHT;
-    if (iconWrapper.firstChild) header.appendChild(iconWrapper.firstChild);
+    if (!header.querySelector(".chevron-icon")) {
+      const iconWrapper = document.createElement('div');
+      iconWrapper.innerHTML = ICONS.CHEVRON_RIGHT;
+      if (iconWrapper.firstChild) header.appendChild(iconWrapper.firstChild);
+    }
   });
 
   const staticFilters = document.querySelector<HTMLElement>(".sidebar-static-filters");
@@ -381,13 +386,7 @@ export function initSidebar(): void {
     runWhenIdle(updateDynamicFilters, 500)
   );
 
-  if (dom.toggleRotationBtn) {
-    const isRotationDisabled = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    dom.toggleRotationBtn.innerHTML = isRotationDisabled ? ICONS.SQUARE_STOP : ICONS.PAUSE;
-    dom.toggleRotationBtn.setAttribute("aria-label", isRotationDisabled ? "Activar rotación de tarjetas" : "Pausar rotación de tarjetas");
-    dom.toggleRotationBtn.title = isRotationDisabled ? "Giro automático" : "Vista Rápida";
-    dom.toggleRotationBtn.setAttribute("aria-pressed", String(isRotationDisabled));
-  }
+  updateRotationButtonUI();
 
   initYearSlider();
   initTouchGestures();

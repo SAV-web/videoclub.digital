@@ -1,8 +1,21 @@
 import { prefetchImageUrl } from "../card/index.js";
 import { appEvents, getCurrentPage, getTotalMovies } from "../../state.js";
-import { getPosterUrl } from "../../utils.js";
+import { getPosterUrl, getAdjustedTotalPages } from "../../utils.js";
 import { CSS_CLASSES, CONFIG } from "../../constants.js";
 import type { MappedMovie, MovieCardElement } from "../../types.js";
+
+/**
+ * Calcula el total de páginas según la cantidad de películas y el modo de visualización.
+ * Si el total aún no se conoce (total === -1 durante el Fast-Path inicial según contracts.md),
+ * devuelve Infinity para permitir la navegación hacia adelante sin bloquear la interfaz.
+ */
+function calculateTotalPages(): number {
+  const total = getTotalMovies();
+  if (total < 0) return Infinity;
+  const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+  const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+  return getAdjustedTotalPages(total, pageSize);
+}
 
 /**
  * Obtiene la lista de tarjetas visibles en el grid principal.
@@ -40,9 +53,7 @@ export function navigateToSibling(direction: number, options: NavigateToSiblingO
     openModal(cards[nextIndex] as MovieCardElement, cards);
   } else {
     // Si sale de los límites, intentamos cambiar de página
-    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-    const totalPages = Math.ceil(getTotalMovies() / pageSize);
+    const totalPages = calculateTotalPages();
     const currentPage = getCurrentPage();
 
     if (direction === 1 && currentPage < totalPages) {
@@ -76,9 +87,7 @@ export function updateNavButtons(
     return;
   }
 
-  const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-  const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-  const totalPages = Math.ceil(getTotalMovies() / pageSize);
+  const totalPages = calculateTotalPages();
   const currentPage = getCurrentPage();
 
   const hasPrev = currentIndex > 0 || currentPage > 1;

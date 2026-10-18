@@ -16,8 +16,7 @@ import { getCurrentPage, getTotalMovies, getActiveFilters } from "./state.js";
 
 let isTicking = false;
 let lastScrollY = 0;
-let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-let scrollSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let scrollIdleTimer: ReturnType<typeof setTimeout> | null = null;
 let scrollRafId: number | null = null;
 let scrollLifecycleGen = 0;
 let isScrollWatcherActive = false;
@@ -26,20 +25,15 @@ let isScrollWatcherActive = false;
  * Manejador principal de scroll pasivo y desacoplado del hilo principal.
  */
 function handleGlobalScroll(): void {
-  if (scrollSaveTimer) {
-    clearTimeout(scrollSaveTimer);
-  }
-  scrollSaveTimer = setTimeout(() => {
-    saveCurrentScrollPosition();
-  }, 100);
-
-  if (scrollTimer) {
-    clearTimeout(scrollTimer);
-    scrollTimer = null;
+  if (scrollIdleTimer) {
+    clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = null;
   }
   const currentGen = scrollLifecycleGen;
-  scrollTimer = setTimeout(() => {
+  scrollIdleTimer = setTimeout(() => {
     if (currentGen !== scrollLifecycleGen) return;
+    saveCurrentScrollPosition();
+
     // Prefetch Predictivo: Si el usuario se detiene (mira) cerca del final (>70%)
     const scrollPos = window.scrollY + window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
@@ -47,7 +41,7 @@ function handleGlobalScroll(): void {
     if (docHeight > 0 && scrollPos / docHeight > 0.7) {
       prefetchNextPage(getCurrentPage(), getTotalMovies(), getActiveFilters());
     }
-  }, 250);
+  }, 200);
 
   if (!isTicking) {
     isTicking = true;
@@ -126,14 +120,9 @@ export function disposeScrollWatcher(): void {
     isScrollWatcherActive = false;
   }
 
-  if (scrollSaveTimer) {
-    clearTimeout(scrollSaveTimer);
-    scrollSaveTimer = null;
-  }
-
-  if (scrollTimer) {
-    clearTimeout(scrollTimer);
-    scrollTimer = null;
+  if (scrollIdleTimer) {
+    clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = null;
   }
 
   if (scrollRafId !== null && typeof cancelAnimationFrame === "function") {

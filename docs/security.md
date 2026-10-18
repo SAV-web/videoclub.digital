@@ -189,7 +189,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
   ```
 
 * **Puntos de Aplicación:**
-  1. **Tarjeta SPA ([`src/js/components/card/cardElement.ts`](../src/js/components/card/cardElement.ts)):** Si la URL no es segura, se elimina el atributo `href` y se añade la clase `.disabled`.
+  1. **Tarjeta SPA ([`src/js/components/card/cardElement.ts`](../src/js/components/card/cardElement.ts) y [`src/js/components/rating.ts`](../src/js/components/rating.ts)):** Si la URL no es segura, se elimina el atributo `href`, se remueve `aria-label` y se añade la clase `.disabled` tanto para JustWatch/Wikipedia como para FilmAffinity e IMDb en `setupCardRatings`.
   2. **Modal de Película ([`src/js/components/modal/renderer.ts`](../src/js/components/modal/renderer.ts)):** Validación idéntica en la apertura de fichas interactivas.
   3. **Edge SSR ([`cloudflare/seo/render-movie.js`](../cloudflare/seo/render-movie.js)):** Validación estricta previa a la interpolación en cadenas HTML de JustWatch, Wikipedia, FilmAffinity e IMDb.
 

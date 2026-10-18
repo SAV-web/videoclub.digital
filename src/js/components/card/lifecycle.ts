@@ -8,11 +8,7 @@ import {
   bumpCardGeneration,
   getHoveredCard,
   setHoveredCard,
-  getHoverTimeout,
-  getFlipOnboardingTimeout,
-  setFlipOnboardingTimeout,
-  getFlipBackTimeout,
-  setFlipBackTimeout
+  getHoverTimeout
 } from "./context.js";
 
 import {
@@ -36,20 +32,6 @@ export function disposeCardEvents(): void {
   cardUnsubscribers = [];
   initializedContainers.clear();
   unflipAllCards();
-  const hTimeout = getHoverTimeout();
-  if (hTimeout) {
-    clearTimeout(hTimeout);
-  }
-  const fOnboard = getFlipOnboardingTimeout();
-  if (fOnboard) {
-    clearTimeout(fOnboard);
-    setFlipOnboardingTimeout(null);
-  }
-  const fBack = getFlipBackTimeout();
-  if (fBack) {
-    clearTimeout(fBack);
-    setFlipBackTimeout(null);
-  }
   setHoveredCard(null);
   isCardEventsInitialized = false;
 }
@@ -106,7 +88,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
   // --- Actualizar tarjetas del grid cuando se descarguen datos de usuario ---
   cardUnsubscribers.push(
     appEvents.on("userDataUpdated", () => {
-      const grid = document.getElementById("grid-container");
+      const grid = document.getElementById("grid-container") || gridContainer;
       if (grid) {
         grid.querySelectorAll<MovieCardElement>(".movie-card[data-movie-id]").forEach(card => {
           updateCardUI(card);
@@ -115,7 +97,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     }),
 
     appEvents.on("userMovieDataChanged", ({ movieId }) => {
-      const grid = document.getElementById("grid-container");
+      const grid = document.getElementById("grid-container") || gridContainer;
       if (grid && movieId) {
         const card = grid.querySelector<MovieCardElement>(`.movie-card[data-movie-id="${movieId}"]`);
         if (card) updateCardUI(card);
@@ -228,24 +210,43 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 
 // Despertar de la hibernación: fuerza la carga de imágenes visibles en el viewport al volver a la pestaña
 export function handleCardVisibilityChange(): void {
-  if (document.visibilityState === "visible") {
-    const lazyImages = document.querySelectorAll<HTMLImageElement>("img[data-src]");
-    lazyImages.forEach(img => {
-      const rect = img.getBoundingClientRect();
-      const inViewport = (
-        rect.top >= -200 &&
-        rect.left >= -200 &&
-        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + 200 &&
-        rect.right <= (window.innerWidth || document.documentElement.clientWidth) + 200
-      );
-      if (inViewport && img.dataset.src) {
-        img.src = img.dataset.src;
-        img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
-        img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
-        lazyLoadObserver?.unobserve(img);
+  if (document.visibilityState !== "visible") return;
+
+  const lazyImages = document.querySelectorAll<HTMLImageElement>("img[data-src]");
+  if (lazyImages.length === 0) return;
+
+  // 1. Caché de dimensiones del viewport (fuera del bucle de lecturas)
+  const vHeight = (typeof window !== "undefined" && window.innerHeight ? window.innerHeight : document.documentElement?.clientHeight || 0) + 200;
+  const vWidth = (typeof window !== "undefined" && window.innerWidth ? window.innerWidth : document.documentElement?.clientWidth || 0) + 200;
+
+  // 2. FASE DE LECTURA PURA: Recopilar imágenes visibles sin mutar el DOM para evitar Layout Thrashing
+  const imagesToLoad: HTMLImageElement[] = [];
+  lazyImages.forEach((img) => {
+    const rect = img.getBoundingClientRect();
+    const inViewport = (
+      rect.bottom >= -200 &&
+      rect.top <= vHeight &&
+      rect.right >= -200 &&
+      rect.left <= vWidth
+    );
+    if (inViewport && img.dataset.src) {
+      imagesToLoad.push(img);
+    }
+  });
+
+  // 3. FASE DE ESCRITURA EN LOTE (Batch Writes): Aplicar cambios sin lecturas geométricas intercaladas
+  imagesToLoad.forEach((img) => {
+    const src = img.dataset.src;
+    if (src) {
+      img.src = src;
+      img.onload = () => img.classList.add(CSS_CLASSES.LOADED);
+      img.onerror = () => img.classList.add(CSS_CLASSES.LOADED);
+      if (img.complete) {
+        requestAnimationFrame(() => img.classList.add(CSS_CLASSES.LOADED));
       }
-    });
-  }
+      lazyLoadObserver?.unobserve(img);
+    }
+  });
 }
 
 export function cleanupLazyImages(container: HTMLElement): void {

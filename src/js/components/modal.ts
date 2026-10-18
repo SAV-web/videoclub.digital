@@ -291,8 +291,6 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   }
 
   // Apertura inicial (Transición Hero desde la tarjeta del Grid)
-  lockGlobalInteractions(300);
-
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
   modalTransitionCount++;
@@ -385,9 +383,6 @@ export function disposeModalEvents(): void {
 
   cachedModalDom = null;
   isQuickViewInitialized = false;
-  if (typeof window !== "undefined") {
-    delete (window as unknown as Record<string, unknown>)._quickViewInitialized;
-  }
 }
 
 export function initQuickView(): void {

@@ -12,7 +12,8 @@ import {
   triggerPopAnimation,
   triggerHapticFeedback,
   LocalStore,
-  runWhenIdle
+  runWhenIdle,
+  getAdjustedTotalPages
 } from "./utils.js";
 
 import { fetchMovieById } from "./api.js";
@@ -71,7 +72,6 @@ export { initScrollWatcher, disposeScrollWatcher };
 import type { MovieCardElement } from "./types.js";
 import type { User } from "@supabase/supabase-js";
 import {
-  handleCardClick,
   initCardInteractions,
   updateCardUI,
   disposeCardEvents,
@@ -367,8 +367,10 @@ function setupHeaderListeners(): void {
 
   const navigatePage = async (direction: number) => {
     const currentPage = getCurrentPage();
+    const totalMovies = getTotalMovies();
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const totalPages = Math.ceil(getTotalMovies() / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
+    const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+    const totalPages = totalMovies >= 0 ? getAdjustedTotalPages(totalMovies, pageSize) : Infinity;
     const newPage = currentPage + direction;
     if (newPage > 0 && newPage <= totalPages) {
       appEvents.emit("uiActionTriggered");
@@ -496,20 +498,8 @@ function setupGlobalListeners(): void {
   });
 
   if (dom.gridContainer) {
-    const handleGridClick = async function (e: Event) {
+    const handleGridClick = function (e: Event) {
       const target = e.target as HTMLElement;
-      const cardElement = target.closest(".movie-card") as HTMLElement | null;
-      if (cardElement) {
-        // Prevenir navegación nativa antes de cargar el módulo
-        const filterLink = target.closest("[data-director-name], [data-actor-name], [data-year-value]");
-        if (filterLink && !(e as MouseEvent).ctrlKey && !(e as MouseEvent).metaKey && !(e as MouseEvent).shiftKey && (e as MouseEvent).button !== 1) {
-          e.preventDefault();
-        }
-
-        handleCardClick.call(cardElement, e as MouseEvent);
-        return;
-      }
-
       if (target.closest("#clear-filters-from-empty")) {
         appEvents.emit("filtersReset");
       }
@@ -522,16 +512,6 @@ function setupGlobalListeners(): void {
   // Interacciones Card (Hover, Tap)
   if (dom.gridContainer) {
     initCardInteractions(dom.gridContainer);
-  }
-
-  const quickViewContent = document.getElementById("quick-view-content");
-  if (quickViewContent) {
-    const handleQuickViewClick = function (this: HTMLElement, e: Event) {
-      handleCardClick.call(this, e as MouseEvent);
-    };
-
-    quickViewContent.addEventListener("click", handleQuickViewClick);
-    mainUnsubscribers.push(() => quickViewContent.removeEventListener("click", handleQuickViewClick));
   }
 
   if (dom.paginationContainer) {
@@ -564,7 +544,6 @@ function setupGlobalListeners(): void {
   mainUnsubscribers.push(() => document.removeEventListener("keydown", handleEscKey));
 
   const handleDataRefresh = () => {
-    document.querySelectorAll(".movie-card").forEach((el) => updateCardUI(el as HTMLElement));
     updateAppBadge();
   };
 
@@ -576,14 +555,8 @@ function setupGlobalListeners(): void {
       }
     }),
 
-    appEvents.on("userMovieDataChanged", (data: { movieId?: number }) => {
+    appEvents.on("userMovieDataChanged", () => {
       updateAppBadge();
-      const movieId = data?.movieId;
-      if (movieId) {
-        document.querySelectorAll<HTMLElement>(`.movie-card[data-movie-id="${movieId}"]`).forEach((el) => {
-          updateCardUI(el);
-        });
-      }
     }),
 
     appEvents.on("userDataUpdated", () => {
@@ -597,8 +570,10 @@ function setupGlobalListeners(): void {
     appEvents.on("page:requestChange", async (data: { direction: number; target: 'first' | 'last' }) => {
       const { direction, target } = data;
       const currentPage = getCurrentPage();
+      const totalMovies = getTotalMovies();
       const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-      const totalPages = Math.ceil(getTotalMovies() / (isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE));
+      const pageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+      const totalPages = totalMovies >= 0 ? getAdjustedTotalPages(totalMovies, pageSize) : Infinity;
       const newPage = currentPage + direction;
 
       if (newPage > 0 && newPage <= totalPages) {
@@ -610,8 +585,7 @@ function setupGlobalListeners(): void {
           const cards = Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
           if (cards.length > 0) {
             const targetCard = target === "first" ? cards[0] : cards[cards.length - 1];
-            const { openModal, initQuickView } = await import("./components/modal.js");
-            initQuickView();
+            const { openModal } = await import("./components/modal.js");
             openModal(targetCard as any, cards);
           }
         }
@@ -650,8 +624,6 @@ function setupAuthSystem(): void {
     } catch (err) {
       if (import.meta.env.DEV) console.error("Error al sincronizar catálogo del usuario:", err);
     }
-
-    appEvents.emit("userDataUpdated");
   }
 
   function onLogout() {
@@ -1009,8 +981,7 @@ export function init(): void {
         const grid = dom.gridContainer || document.getElementById("grid-container");
         const cards = grid ? Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]")) : [];
         const card = grid?.querySelector<MovieCardElement>(`.movie-card[data-movie-id="${targetMovieId}"]`);
-        const { openModal, openModalForMovie, initQuickView } = await import("./components/modal.js");
-        initQuickView();
+        const { openModal, openModalForMovie } = await import("./components/modal.js");
         if (card && card.movieData) {
           openModal(card, cards);
         } else {

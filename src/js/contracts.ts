@@ -426,30 +426,17 @@ export function getAppBasePath(): string {
  *  - studio:   "/warner/"
  *  - selection:"/criterion/"
  */
+const PRETTY_PATH_FILTER_TYPES = new Set(["director", "actor", "genre", "country", "studio", "selection"]);
+
 export function buildFilterUrl(type: string, value: string): string {
   const basePrefix = getAppBasePath();
   if (!value) return `${basePrefix}/`;
 
-  if (type === "director") {
-    return `${basePrefix}${buildPrettyPath({ director: value })}`;
-  }
-  if (type === "actor") {
-    return `${basePrefix}${buildPrettyPath({ actor: value })}`;
-  }
-  if (type === "genre") {
-    return `${basePrefix}${buildPrettyPath({ genre: value })}`;
-  }
-  if (type === "country") {
-    return `${basePrefix}${buildPrettyPath({ country: value })}`;
-  }
-  if (type === "studio") {
-    return `${basePrefix}${buildPrettyPath({ studio: value })}`;
-  }
-  if (type === "selection") {
-    return `${basePrefix}${buildPrettyPath({ selection: value })}`;
-  }
   if (type === "year") {
     return `${basePrefix}/?year=${encodeURIComponent(value)}`;
+  }
+  if (PRETTY_PATH_FILTER_TYPES.has(type)) {
+    return `${basePrefix}${buildPrettyPath({ [type]: value } as Parameters<typeof buildPrettyPath>[0])}`;
   }
   return `${basePrefix}/`;
 }
@@ -464,11 +451,6 @@ export function normalizeSelectionCode(value: unknown): string | null {
   const text = normalizeTextValue(value).toLowerCase();
   if (!text || !SELECTION_SLUGS.has(text)) return null;
   return text;
-}
-
-export function normalizeCodeValue(value: unknown): string | null {
-  const text = normalizeTextValue(value).toLowerCase();
-  return text.length > 0 ? text : null;
 }
 
 export function normalizeStringList(value: unknown): string[] {
@@ -525,12 +507,12 @@ export function normalizeMovieId(value: unknown): number | null {
 }
 
 export function normalizeUserMovieEntry(entry: unknown = {}): UserMovieEntry {
-  if (!entry || typeof entry !== "object") return { rating: null, onWatchlist: false };
+  if (!entry || typeof entry !== "object") return Object.freeze({ rating: null, onWatchlist: false });
   const e = entry as Record<string, unknown>;
   const ratingVal = e.rating === null || e.rating === undefined ? null : Number.parseInt(String(e.rating), 10);
   const rating = Number.isFinite(ratingVal) && ratingVal !== null && ratingVal >= 1 && ratingVal <= 10 ? ratingVal : null;
   const onWatchlist = e.onWatchlist === true || e.on_watchlist === true;
-  return { rating, onWatchlist };
+  return Object.freeze({ rating, onWatchlist });
 }
 
 export function normalizeUserMovieData(data: unknown = {}): Record<string, UserMovieEntry> {

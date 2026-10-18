@@ -12,7 +12,8 @@ import {
   markEntriesAsSynced,
   mergeRemoteEntries
 } from "./localStore.js";
-import { setUserMovieData, appEvents } from "./state.js";
+import { setUserMovieData } from "./state.js";
+import { markMovieIdAsChecked } from "./checkedIds.js";
 
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 let isSyncing = false;
@@ -156,66 +157,88 @@ export async function syncWithServer(): Promise<void> {
  * Descarga las entradas remotas del usuario y las fusiona con las locales mediante LWW.
  * Si había películas guardadas en modo invitado, se subirán automáticamente.
  */
+let inFlightMergePromise: Promise<void> | null = null;
+
 export async function mergeOnLogin(userId: string): Promise<void> {
-  try {
-    const supabase = await getSupabase();
-    const PAGE_SIZE = 1000;
-    let from = 0;
-    const allRows: Array<{
-      movie_id: number | string;
-      rating: number | null;
-      on_watchlist: boolean;
-      updated_at?: string | null;
-    }> = [];
-
-    while (true) {
-      const { data, error } = await supabase
-        .from("user_movie_entries")
-        .select("movie_id, rating, on_watchlist, updated_at")
-        .eq("user_id", userId)
-        .order("id", { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (error) {
-        if (import.meta.env.DEV) {
-          console.warn("[SyncManager] Error al descargar catálogo remoto:", error);
-        }
-        break;
-      }
-
-      if (!data || data.length === 0) {
-        break;
-      }
-
-      allRows.push(...data);
-      if (data.length < PAGE_SIZE) {
-        break;
-      }
-      from += PAGE_SIZE;
-    }
-
-    const remoteEntries = allRows.map(r => ({
-      movie_id: Number(r.movie_id),
-      rating: r.rating !== undefined ? r.rating : null,
-      on_watchlist: Boolean(r.on_watchlist),
-      updated_at: r.updated_at
-    }));
-
-    const { mergedMap, hasLocalChangesToUpload } = await mergeRemoteEntries(remoteEntries);
-
-    // Actualizar estado reactivo en memoria
-    setUserMovieData(mergedMap);
-    appEvents.emit("userDataUpdated");
-
-    // Si el usuario tenía entradas en modo invitado o más recientes localmente, sincronizar de inmediato
-    if (hasLocalChangesToUpload) {
-      scheduleSync(100);
-    }
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error("[SyncManager] Excepción en mergeOnLogin:", error);
-    }
+  if (inFlightMergePromise) {
+    return inFlightMergePromise;
   }
+
+  inFlightMergePromise = (async () => {
+    try {
+      const supabase = await getSupabase();
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      const allRows: Array<{
+        movie_id: number | string;
+        rating: number | null;
+        on_watchlist: boolean;
+        updated_at?: string | null;
+      }> = [];
+
+      while (true) {
+        const { data, error } = await supabase
+          .from("user_movie_entries")
+          .select("movie_id, rating, on_watchlist, updated_at")
+          .eq("user_id", userId)
+          .order("id", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+          if (import.meta.env.DEV) {
+            console.warn("[SyncManager] Error al descargar catálogo remoto:", error);
+          }
+          break;
+        }
+
+        if (!data || data.length === 0) {
+          break;
+        }
+
+        allRows.push(...data);
+        if (data.length < PAGE_SIZE) {
+          break;
+        }
+        from += PAGE_SIZE;
+      }
+
+      for (const r of allRows) {
+        if (r.movie_id) {
+          markMovieIdAsChecked(r.movie_id);
+        }
+      }
+
+      const remoteEntries = allRows.map(r => ({
+        movie_id: Number(r.movie_id),
+        rating: r.rating !== undefined ? r.rating : null,
+        on_watchlist: Boolean(r.on_watchlist),
+        updated_at: r.updated_at
+      }));
+
+      const { mergedMap, hasLocalChangesToUpload } = await mergeRemoteEntries(remoteEntries);
+
+      // Marcar los IDs del catálogo consolidado como verificados para que fetchUserMovieDataForIds no vuelva a consultar Supabase
+      for (const id of Object.keys(mergedMap)) {
+        markMovieIdAsChecked(id);
+      }
+
+      // Actualizar estado reactivo en memoria (setUserMovieData emite internamente appEvents.emit("userDataUpdated"))
+      setUserMovieData(mergedMap);
+
+      // Si el usuario tenía entradas en modo invitado o más recientes localmente, sincronizar de inmediato
+      if (hasLocalChangesToUpload) {
+        scheduleSync(100);
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("[SyncManager] Excepción en mergeOnLogin:", error);
+      }
+    } finally {
+      inFlightMergePromise = null;
+    }
+  })();
+
+  return inFlightMergePromise;
 }
 
 /**

@@ -63,6 +63,37 @@ export interface RenderOptions {
   restoreScrollY?: number | null;
 }
 
+interface GridPaginationMetrics {
+  gridTotalItems: number;
+  totalPages: number;
+  lastPageSlots: number;
+  isOrphanPage: boolean;
+  logicalGridTotalItems: number;
+}
+
+/**
+ * Calcula las métricas de paginación del grid, considerando tarjetas VIP y absorción de orfandad (<= 2 slots).
+ */
+function computeGridPaginationMetrics(
+  totalMovies: number,
+  baseLimit: number,
+  hasVip: boolean
+): GridPaginationMetrics {
+  const gridTotalItems = hasVip ? (totalMovies >= 0 ? totalMovies + 1 : 1) : (totalMovies >= 0 ? totalMovies : 0);
+  const totalPages = totalMovies >= 0 ? getAdjustedTotalPages(gridTotalItems, baseLimit) : 1;
+  const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
+  const isOrphanPage = (Math.ceil(gridTotalItems / baseLimit) > 1) && lastPageSlots <= 2;
+  const logicalGridTotalItems = isOrphanPage ? totalPages * baseLimit : gridTotalItems;
+
+  return {
+    gridTotalItems,
+    totalPages,
+    lastPageSlots,
+    isOrphanPage,
+    logicalGridTotalItems,
+  };
+}
+
 /**
  * Carga películas según el estado activo y las pinta en la cuadrícula principal.
  */
@@ -258,11 +289,10 @@ export async function loadAndRenderMovies(
 
     // --- OPTIMIZACIÓN FILTRO DE AÑO ---
     if (isYearFilter) {
-      const gridTotalItems = confirmedHasVip ? (effectiveTotal >= 0 ? effectiveTotal + 1 : 1) : (effectiveTotal >= 0 ? effectiveTotal : 0);
-      const totalPages = effectiveTotal >= 0 ? getAdjustedTotalPages(gridTotalItems, basePageSize) : 1;
+      const metrics = computeGridPaginationMetrics(effectiveTotal, basePageSize, confirmedHasVip);
 
       // 1. Si el número total de películas CAMBIÓ o la página actual excede el límite de páginas (ej: estamos en pág 2 pero solo hay 1 página):
-      if ((effectiveTotal >= 0 && currentKnownTotal > 0 && effectiveTotal !== currentKnownTotal) || (effectiveTotal >= 0 && page > totalPages)) {
+      if ((effectiveTotal >= 0 && currentKnownTotal > 0 && effectiveTotal !== currentKnownTotal) || (effectiveTotal >= 0 && page > metrics.totalPages)) {
         const p1Limit = (confirmedHasVip) ? firstPageLimit - 1 : firstPageLimit;
         const p1Result = await fetchMovies(activeFilters, 1, p1Limit, signal, false, 0);
         if (p1Result.aborted) return;
@@ -280,11 +310,9 @@ export async function loadAndRenderMovies(
 
       // 2. Si el total NO cambió y estamos dentro del rango de páginas, comprobamos si las películas a renderizar en la página actual son idénticas:
       if (effectiveTotal >= 0 && currentKnownTotal > 0 && effectiveTotal === currentKnownTotal) {
-        const lastPageSlots = gridTotalItems % basePageSize || basePageSize;
-        const isOrphanPage = (Math.ceil(gridTotalItems / basePageSize) > 1) && lastPageSlots <= 2;
         let slotBudget: number = basePageSize;
-        if (page === totalPages) {
-          slotBudget = isOrphanPage ? basePageSize + lastPageSlots : lastPageSlots;
+        if (page === metrics.totalPages) {
+          slotBudget = metrics.isOrphanPage ? basePageSize + metrics.lastPageSlots : metrics.lastPageSlots;
         }
         const currentLimit = (page === 1 && confirmedHasVip) ? slotBudget - 1 : slotBudget;
         const moviesToRender = movies.length > currentLimit ? movies.slice(0, currentLimit) : movies;
@@ -299,7 +327,6 @@ export async function loadAndRenderMovies(
         if (isIdenticalPage) {
           // Ningún cambio en las fichas en pantalla: actualizamos estado y metadatos sin refrescar el grid ni hacer scroll
           applyResolvedTotal(effectiveTotal, movies, confirmedHasVip, vipData);
-          updateBreadcrumbData(getActiveFilters());
           updatePageTitle(movies);
           return; // Salida limpia sin refresco del grid ni scroll
         }
@@ -390,11 +417,7 @@ function applyResolvedTotal(
     : false;
   const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
 
-  const gridTotalItems = hasVip ? exactTotal + 1 : exactTotal;
-  const totalPages = getAdjustedTotalPages(gridTotalItems, baseLimit);
-  const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
-  const isOrphanPage = (Math.ceil(gridTotalItems / baseLimit) > 1) && lastPageSlots <= 2;
-  const logicalGridTotalItems = isOrphanPage ? totalPages * baseLimit : gridTotalItems;
+  const { totalPages, logicalGridTotalItems } = computeGridPaginationMetrics(exactTotal, baseLimit, hasVip);
 
   if (totalPages > 1) {
     renderPagination(dom.paginationContainer, logicalGridTotalItems, currentPage);
@@ -419,7 +442,6 @@ async function updateDomWithResults(
   const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
   const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
 
-  updateBreadcrumbData(activeFilters);
   updatePageTitle(movies);
 
   if (movies.length === 0) {
@@ -434,12 +456,9 @@ async function updateDomWithResults(
   // Presupuesto de slots de la página actual
   let slotBudget: number = baseLimit;
   if (totalMovies > 0) {
-    const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
-    const totalPages = getAdjustedTotalPages(gridTotalItems, baseLimit);
-    const lastPageSlots = gridTotalItems % baseLimit || baseLimit;
-    const isOrphanPage = (Math.ceil(gridTotalItems / baseLimit) > 1) && lastPageSlots <= 2;
-    if (currentPage === totalPages) {
-      slotBudget = isOrphanPage ? baseLimit + lastPageSlots : lastPageSlots;
+    const metrics = computeGridPaginationMetrics(totalMovies, baseLimit, hasVip);
+    if (currentPage === metrics.totalPages) {
+      slotBudget = metrics.isOrphanPage ? baseLimit + metrics.lastPageSlots : metrics.lastPageSlots;
     }
   } else if (currentPage === 1) {
     const returnedItemsCount = hasVip ? movies.length + 1 : movies.length;

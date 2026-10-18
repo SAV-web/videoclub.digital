@@ -519,11 +519,15 @@ describe("state.js y Pretty Paths", () => {
   });
 
   test("normaliza datos de usuario por película", () => {
+    const rawEntry = contracts.normalizeUserMovieEntry({ rating: "8", onWatchlist: true });
+    assert.equal(Object.isFrozen(rawEntry), true);
+
     state.updateUserDataForMovie("42", { rating: "8", onWatchlist: true });
     state.updateUserDataForMovie("bad-id", { rating: 10, onWatchlist: true });
 
     assert.deepEqual(state.getUserDataForMovie(42), { rating: 8, onWatchlist: true });
     assert.equal(state.getUserDataForMovie("bad-id"), undefined);
+    assert.equal(state.getWatchlistCount(), 1);
   });
 
   // ── canonicalizeCurrentUrl ──────────────────────────────────────────────────

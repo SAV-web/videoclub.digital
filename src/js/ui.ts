@@ -30,9 +30,7 @@ export interface DomElements {
   typeFilterToggle: HTMLButtonElement | null;
   headerPrevBtn: HTMLButtonElement | null;
   headerNextBtn: HTMLButtonElement | null;
-  autocompleteResults: HTMLElement | null;
   mainHeader: HTMLElement | null;
-  clearFiltersBtn: HTMLButtonElement | null;
   authModal: HTMLElement | null;
   authOverlay: HTMLElement | null;
   legalModal: HTMLElement | null;
@@ -62,9 +60,7 @@ const domSelectors: Record<keyof DomElements, string> = {
   typeFilterToggle: SELECTORS.TYPE_FILTER_TOGGLE,
   headerPrevBtn: SELECTORS.HEADER_PREV_BTN,
   headerNextBtn: SELECTORS.HEADER_NEXT_BTN,
-  autocompleteResults: SELECTORS.AUTOCOMPLETE_RESULTS,
   mainHeader: ".main-header",
-  clearFiltersBtn: SELECTORS.CLEAR_FILTERS_BTN,
   authModal: "#auth-modal",
   authOverlay: "#auth-overlay",
   legalModal: "#legal-modal",
@@ -583,6 +579,81 @@ export const closeAuthModal = (options?: { fromPopstate?: boolean } | Event): vo
 };
 
 
+/**
+ * Conecta el gesto táctil de arrastre hacia abajo (Swipe down to dismiss) en modales con formato Bottom Sheet en móvil (<= 768px).
+ * Devuelve una función de limpieza para remover los event listeners.
+ */
+export function bindBottomSheetSwipeToDismiss(
+  modalEl: HTMLElement,
+  scrollContainer: HTMLElement,
+  onClose: () => void
+): () => void {
+  let startY = 0;
+  let startX = 0;
+  let isDragging = false;
+  let startTime = 0;
+  let currentY = 0;
+
+  const onTouchStart = (e: TouchEvent) => {
+    if (window.innerWidth > 768) return;
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+    isDragging = false;
+    startTime = Date.now();
+    modalEl.classList.remove("is-dragging");
+  };
+
+  const onTouchMove = (e: TouchEvent) => {
+    if (window.innerWidth > 768) return;
+    const clientY = e.touches[0].clientY;
+    const clientX = e.touches[0].clientX;
+    const deltaY = clientY - startY;
+    const deltaX = clientX - startX;
+
+    if (!isDragging) {
+      if (Math.abs(deltaY) < 5 && Math.abs(deltaX) < 5) return;
+      // Solo iniciar arrastre hacia abajo si el scroll interno está en el tope
+      if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && scrollContainer.scrollTop <= 5) {
+        isDragging = true;
+        modalEl.classList.add("is-dragging");
+      }
+    }
+
+    if (isDragging) {
+      if (e.cancelable) e.preventDefault();
+      currentY = Math.max(0, deltaY);
+      modalEl.style.transform = `translate(-50%, ${currentY}px)`;
+    }
+  };
+
+  const endDrag = () => {
+    if (!isDragging) return;
+    modalEl.classList.remove("is-dragging");
+    const duration = Date.now() - startTime;
+    const velocityY = currentY / (duration || 1);
+
+    if (currentY > 100 || velocityY > 0.5) {
+      onClose();
+    } else {
+      modalEl.style.transform = "";
+    }
+    isDragging = false;
+    currentY = 0;
+  };
+
+  modalEl.addEventListener("touchstart", onTouchStart, { passive: true });
+  modalEl.addEventListener("touchmove", onTouchMove, { passive: false });
+  modalEl.addEventListener("touchend", endDrag, { passive: true });
+  modalEl.addEventListener("touchcancel", endDrag, { passive: true });
+
+  return () => {
+    modalEl.removeEventListener("touchstart", onTouchStart);
+    modalEl.removeEventListener("touchmove", onTouchMove);
+    modalEl.removeEventListener("touchend", endDrag);
+    modalEl.removeEventListener("touchcancel", endDrag);
+  };
+}
+
 let authModalListenersInitialized = false;
 
 function initAuthModalListeners(): void {
@@ -598,61 +669,7 @@ function initAuthModalListeners(): void {
 
   // Gesto táctil de deslizamiento hacia abajo para cerrar (Bottom Sheet Swipe Down en móvil)
   const authBox = authModal.querySelector<HTMLElement>(".auth-box") || authModal;
-  let startY = 0;
-  let startX = 0;
-  let isDragging = false;
-  let startTime = 0;
-  let currentY = 0;
-
-  authModal.addEventListener("touchstart", (e: TouchEvent) => {
-    if (window.innerWidth > 700) return;
-    startY = e.touches[0].clientY;
-    startX = e.touches[0].clientX;
-    isDragging = false;
-    startTime = Date.now();
-    authModal.classList.remove("is-dragging");
-  }, { passive: true });
-
-  authModal.addEventListener("touchmove", (e: TouchEvent) => {
-    if (window.innerWidth > 700) return;
-    const clientY = e.touches[0].clientY;
-    const clientX = e.touches[0].clientX;
-    const deltaY = clientY - startY;
-    const deltaX = clientX - startX;
-
-    if (!isDragging) {
-      if (Math.abs(deltaY) < 5 && Math.abs(deltaX) < 5) return;
-      // Solo iniciar arrastre hacia abajo si estamos en el tope superior del scroll
-      if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && authBox.scrollTop <= 5) {
-        isDragging = true;
-        authModal.classList.add("is-dragging");
-      }
-    }
-
-    if (isDragging) {
-      if (e.cancelable) e.preventDefault();
-      currentY = Math.max(0, deltaY);
-      authModal.style.transform = `translate(-50%, ${currentY}px)`;
-    }
-  }, { passive: false });
-
-  const endDrag = () => {
-    if (!isDragging) return;
-    authModal.classList.remove("is-dragging");
-    const duration = Date.now() - startTime;
-    const velocityY = currentY / (duration || 1);
-
-    if (currentY > 100 || velocityY > 0.5) {
-      closeAuthModal();
-    } else {
-      authModal.style.transform = "";
-    }
-    isDragging = false;
-    currentY = 0;
-  };
-
-  authModal.addEventListener("touchend", endDrag, { passive: true });
-  authModal.addEventListener("touchcancel", endDrag, { passive: true });
+  bindBottomSheetSwipeToDismiss(authModal, authBox, closeAuthModal);
 
   authModalListenersInitialized = true;
 }
@@ -935,10 +952,7 @@ export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null
     containers.forEach(el => el.hidden = true);
   }
 
-  // Actualizar visibilidad del texto explicativo del landpage
-  updateLandingHeroVisibility();
-
-  // Actualizar barra de estado móvil evitando re-consultas redundantes
+  // Actualizar barra de estado móvil y visibilidad del hero de portada evitando re-consultas redundantes
   updateMobileStatusBar(movies, total, showTotal);
 }
 
@@ -1002,6 +1016,8 @@ export function updateMobileStatusBar(
   totalMovies: number = getTotalMovies(),
   showTotalCount: boolean = shouldShowTotalCount()
 ): void {
+  updateLandingHeroVisibility();
+
   const { mobileStatusBar } = dom;
   if (!mobileStatusBar) return;
 
@@ -1117,7 +1133,6 @@ export function updateMobileStatusBar(
 
   // Si no hay filtros aplicados (Catálogo completo inicial sin filtros)
   mobileStatusBar.textContent = "";
-  updateLandingHeroVisibility();
 }
 
 // =================================================================

@@ -12,7 +12,7 @@ import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
 export { clearCheckedUserMovieIds, markMovieIdAsChecked };
-import { getUserDataForMovie, updateUserDataForMovie, setUserMovieData, getAllUserMovieData, appEvents } from "./state.js";
+import { getUserDataForMovie, updateUserDataForMovie, getAllUserMovieData } from "./state.js";
 import {
   ERROR_CODES,
   createAppError,
@@ -512,61 +512,6 @@ export function fetchMovies(
   return promise;
 }
 
-/**
- * Descarga el 100% de los datos y votos del usuario activo desde Supabase.
- * Se ejecuta al iniciar sesión o recargar la página para tener la totalidad
- * de las puntuaciones en memoria desde el primer instante.
- */
-export async function fetchAllUserMovieData(): Promise<Record<string, UserMovieEntry>> {
-  try {
-    const supabase = await getSupabase();
-    const session = await getCurrentSession();
-    if (!session?.user) return {};
-
-    const PAGE_SIZE = 1000;
-    let from = 0;
-    const allData: Array<{ movie_id: number; rating: number | null; on_watchlist: boolean }> = [];
-
-    while (true) {
-      const { data, error } = await supabase
-        .from('user_movie_entries')
-        .select('movie_id, rating, on_watchlist')
-        .eq('user_id', session.user.id)
-        .order('id', { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
-
-      if (error) {
-        if (import.meta.env.DEV) {
-          console.error("Error al descargar catálogo completo de usuario:", error);
-        }
-        break;
-      }
-
-      if (!data || data.length === 0) break;
-      allData.push(...data);
-      if (data.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
-    }
-
-    const userMap: Record<string, UserMovieEntry> = {};
-    allData.forEach(i => {
-      if (i.movie_id) {
-        userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist };
-        markMovieIdAsChecked(i.movie_id);
-      }
-    });
-
-    const normalized = normalizeUserMovieData(userMap);
-    setUserMovieData(normalized);
-    appEvents.emit("userDataUpdated");
-    return normalized;
-  } catch (err) {
-    if (import.meta.env.DEV) {
-      console.error("Error en fetchAllUserMovieData:", err);
-    }
-    return {};
-  }
-}
 
 // Descarga los datos del usuario únicamente para las películas visibles en pantalla (Lazy Sync por IDs)
 export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): Promise<Record<string, UserMovieEntry>> {

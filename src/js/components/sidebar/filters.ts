@@ -140,42 +140,16 @@ export function updateAllFilterControls(): void {
 
 function isPredefinedFilterItem(type: string, value: string): boolean {
   if (!value || !type) return false;
+  const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as { items?: Record<string, string>; titles?: Record<string, string> } | undefined;
+  if (!config) return false;
   const normVal = value.trim().toLowerCase();
+  const matchesRecord = (rec?: Record<string, string>) =>
+    rec ? Object.entries(rec).some(([k, v]) => k.toLowerCase() === normVal || v.toLowerCase() === normVal) : false;
 
-  if (type === 'selection') {
-    const items = FILTER_CONFIG.selection.items;
-    const titles = FILTER_CONFIG.selection.titles;
-    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal) ||
-      (titles ? Object.keys(titles).some(k => k.toLowerCase() === normVal || titles[k as keyof typeof titles].toLowerCase() === normVal) : false);
+  if (matchesRecord(config.items) || matchesRecord(config.titles)) return true;
+  if (type === "country") {
+    return Object.values(REGIONAL_GROUPS).some(r => r.value.toLowerCase() === normVal || r.label.toLowerCase() === normVal);
   }
-
-  if (type === 'studio') {
-    const items = FILTER_CONFIG.studio.items;
-    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
-  }
-
-  if (type === 'genre') {
-    const items = FILTER_CONFIG.genre.items;
-    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
-  }
-
-  if (type === 'country') {
-    const items = FILTER_CONFIG.country.items;
-    const isItem = Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
-    const isGroup = Object.values(REGIONAL_GROUPS).some(r => r.value.toLowerCase() === normVal || r.label.toLowerCase() === normVal);
-    return isItem || isGroup;
-  }
-
-  if (type === 'director') {
-    const items = FILTER_CONFIG.director?.items || {};
-    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
-  }
-
-  if (type === 'actor') {
-    const items = FILTER_CONFIG.actor?.items || {};
-    return Object.keys(items).some(k => k.toLowerCase() === normVal || items[k as keyof typeof items].toLowerCase() === normVal);
-  }
-
   return false;
 }
 
@@ -200,6 +174,10 @@ export function updatePillVisibility(): void {
 }
 
 let lastPillState: Record<string, string> = {};
+
+export function resetFilterPillsCache(): void {
+  lastPillState = {};
+}
 
 // Pinta los filtros como etiquetas de colores ("píldoras")
 export function renderFilterPills(): void {
@@ -313,11 +291,10 @@ export async function handleFilterChangeOptimistic(type: string, value: string |
   if (value && (type === 'actor' || type === 'director')) {
     notifyRemovedPersonIncompatibleFilters(previousFilters);
     const currentSort = previousFilters.sort;
-    const currentMediaType = previousFilters.mediaType;
 
     resetFiltersState();
     setSort(currentSort);
-    setMediaType(currentMediaType);
+    updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
     setFilter(type, value, true);
     setFilter('myList', null);
 
@@ -348,9 +325,6 @@ export async function handleFilterChangeOptimistic(type: string, value: string |
   if (newValue && type !== 'actor' && type !== 'director') {
     if (previousFilters.actor) setFilter('actor', null);
     if (previousFilters.director) setFilter('director', null);
-  } else if (newValue && (type === 'actor' || type === 'director')) {
-    notifyRemovedPersonIncompatibleFilters(previousFilters);
-    updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   }
 
   if (newValue) setFilter('myList', null);
@@ -452,8 +426,7 @@ export async function handleRandomMovieRecommendation(): Promise<void> {
 
   tryCloseMobileDrawer();
 
-  const { openModal, initQuickView } = await import("../modal.js");
-  initQuickView();
+  const { openModal } = await import("../modal.js");
   openModal(targetCard, cards);
 }
 

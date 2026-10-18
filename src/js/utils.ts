@@ -8,7 +8,7 @@
 // Funciones puras y rápidas que se usan por toda la web.
 // =================================================================
 
-import { CONFIG } from "./constants.js";
+import { CONFIG, STUDIO_DATA } from "./constants.js";
 import { ERROR_CODES, isAbortError, parseYearRangeRaw, buildFilterUrl, toSlug } from "./contracts.js";
 export { parseYearRangeRaw, buildFilterUrl, toSlug };
 import { Movie, MappedMovie } from "./types.js";
@@ -254,6 +254,78 @@ export function createElement(tag: string, { dataset, attributes, style, ...prop
   if (dataset) Object.assign(el.dataset, dataset);
   if (attributes) Object.entries(attributes).forEach(([k, v]) => el.setAttribute(k, v));
   return el;
+}
+
+/**
+ * Renderiza los iconos SVG de plataformas/estudios mediante APIs DOM seguras contra XSS (sin innerHTML).
+ */
+export function renderStudioIcons(
+  container: HTMLElement | null | undefined,
+  studios: string[] | string | null | undefined,
+  limit?: number
+): void {
+  if (!container) return;
+  container.textContent = "";
+
+  if (!studios) return;
+
+  const rawCodes = Array.isArray(studios)
+    ? studios
+    : studios.split(",").map(s => s.trim()).filter(Boolean);
+
+  const validCodes = limit && limit > 0 ? rawCodes.slice(0, limit) : rawCodes;
+
+  validCodes.forEach(code => {
+    const conf = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
+    if (conf) {
+      const span = createElement("span", {
+        className: `platform-icon ${conf.class || ""}`.trim(),
+        title: conf.title
+      });
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("width", String(conf.w || 24));
+      svg.setAttribute("height", String(conf.h || 24));
+      svg.setAttribute("fill", "currentColor");
+      svg.setAttribute("viewBox", conf.vb || "0 0 24 24");
+
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", `#${conf.id}`);
+      svg.appendChild(use);
+      span.appendChild(svg);
+      container.appendChild(span);
+    }
+  });
+}
+
+/**
+ * Configura un enlace externo (JustWatch, Wikipedia, etc.) de forma segura,
+ * aplicando sanitización URL, accesibilidad (aria-label) y estado visual (.disabled).
+ */
+export function setupExternalLink(
+  linkEl: Element | null | undefined,
+  serviceName: string,
+  rawUrl: string | null | undefined,
+  customAriaLabel?: string | null
+): void {
+  if (!linkEl) return;
+  const safeUrl = sanitizeExternalUrl(rawUrl);
+  const anchor = linkEl as HTMLAnchorElement;
+  if (safeUrl) {
+    anchor.href = safeUrl;
+    anchor.setAttribute("href", safeUrl);
+    anchor.classList.remove("disabled");
+    anchor.setAttribute("aria-label", customAriaLabel ?? `Ver en ${serviceName}`);
+  } else {
+    anchor.removeAttribute("href");
+    try {
+      delete (anchor as any).href;
+    } catch {
+      anchor.href = "";
+    }
+    anchor.classList.add("disabled");
+    anchor.removeAttribute("aria-label");
+  }
+  anchor.hidden = false;
 }
 
 // Hace que un botón dé un pequeño "saltito" al pulsarlo

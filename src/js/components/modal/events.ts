@@ -1,6 +1,6 @@
 import { appEvents } from "../../state.js";
 import { updateCardUI } from "../card/index.js";
-import { handleTouchStart, handleTouchMove, handleTouchEnd } from "./gestures.js";
+import { handleTouchStart, handleTouchMove, handleTouchEnd, isLandscapeCompactViewport } from "./gestures.js";
 import type { MovieCardElement } from "../../types.js";
 
 export interface ModalEventsDom {
@@ -17,58 +17,6 @@ export interface ModalEventsOptions {
   resetModalTransform: () => void;
 }
 
-/**
- * Maneja clics en metadatos (Director/Actor/Género/Año/País) para filtrar el catálogo.
- */
-export function handleMetadataClick(
-  event: MouseEvent,
-  closeModal: (options?: { suppressHistoryBack?: boolean }) => void
-): void {
-  const target = event.target as HTMLElement;
-  const directorLink = target.closest<HTMLElement>(".front-director-info a[data-director-name]");
-  const actorLink = target.closest<HTMLElement>('[data-template="actors"] a[data-actor-name]');
-  const genreLink = target.closest<HTMLElement>('[data-template="genre"] a[data-genre-name]');
-  const yearLink = target.closest<HTMLElement>("a[data-year-value]");
-  const countryLink = target.closest<HTMLElement>("[data-country-name]");
-
-  if (directorLink || actorLink || genreLink || yearLink || countryLink) {
-    // Permitir comportamiento predeterminado (abrir en nueva pestaña) si se usan teclas modificadoras
-    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
-
-    event.preventDefault();
-    closeModal({ suppressHistoryBack: true });
-
-    if (genreLink && genreLink.dataset.genreName) {
-      appEvents.emit("filter:apply", { type: "genre", value: genreLink.dataset.genreName });
-      return;
-    }
-
-    if (countryLink && countryLink.dataset.countryName) {
-      appEvents.emit("filter:apply", { type: "country", value: countryLink.dataset.countryName });
-      return;
-    }
-
-    let filterType: "director" | "actor" | "year";
-    let filterValue: string | undefined;
-
-    if (directorLink) {
-      filterType = "director";
-      filterValue = directorLink.dataset.directorName;
-    } else if (actorLink) {
-      filterType = "actor";
-      filterValue = actorLink.dataset.actorName;
-    } else {
-      filterType = "year";
-      filterValue = yearLink?.dataset.yearValue;
-    }
-
-    // Evento global de integración
-    appEvents.emit("filtersReset", {
-      keepSort: true,
-      newFilter: { type: filterType, value: filterValue }
-    });
-  }
-}
 
 export interface ModalEventListeners {
   unbind: () => void;
@@ -120,8 +68,6 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
     const handleContentClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
-      handleMetadataClick(e, closeModal);
-
       // Toggle flechas al tocar póster (Móvil/Tablet/Desktop), pero NUNCA en la barra de controles
       if (target.closest(".poster-container") && !target.closest(".card-rating-block")) {
         modal.classList.toggle("hide-arrows");
@@ -142,11 +88,7 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
       }
 
       if (target.classList?.contains("quick-view-media")) {
-        const isLandscape = typeof window.matchMedia === "function"
-          ? window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches
-          : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
-
-        if (isLandscape) {
+        if (isLandscapeCompactViewport()) {
           const scrollBottom = target.scrollHeight - target.clientHeight - target.scrollTop;
           // Al llegar al final del scroll tras haber iniciado desplazamiento, compactar cartel suavemente
           if (target.scrollTop > 15 && scrollBottom <= 35) {
@@ -158,29 +100,6 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
     content.addEventListener("scroll", handleScrollMask, { passive: true, capture: true });
     unsubscribers.push(() => {
       content.removeEventListener("scroll", handleScrollMask, { capture: true });
-    });
-
-    // Control táctil y de rueda para expandir cartel al hacer scroll hacia arriba en columna izquierda apaisada
-    let touchStartY = 0;
-    const handleTouchStartAux = (e: TouchEvent) => {
-      touchStartY = e.touches[0]?.clientY ?? 0;
-    };
-    const handleTouchMoveAux = (e: TouchEvent) => {
-      const currentY = e.touches[0]?.clientY ?? 0;
-      const deltaY = currentY - touchStartY;
-      const target = e.target as HTMLElement | null;
-      if (deltaY > 12 && target?.closest(".quick-view-media")) {
-        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
-        if (compactFront) {
-          compactFront.classList.remove("poster-compact");
-        }
-      }
-    };
-    content.addEventListener("touchstart", handleTouchStartAux, { passive: true });
-    content.addEventListener("touchmove", handleTouchMoveAux, { passive: true });
-    unsubscribers.push(() => {
-      content.removeEventListener("touchstart", handleTouchStartAux);
-      content.removeEventListener("touchmove", handleTouchMoveAux);
     });
 
     const handleContentWheel = (e: WheelEvent) => {
@@ -199,6 +118,13 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
   }
 
   // 3. Atajos de teclado
+  const SCROLL_KEY_DELTAS: Record<string, number> = {
+    ArrowDown: 70,
+    ArrowUp: -70,
+    PageDown: 250,
+    PageUp: -250
+  };
+
   const handleKeydown = (e: KeyboardEvent) => {
     if (!modal.classList.contains("is-visible")) return;
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -215,45 +141,20 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
       e.preventDefault();
       navigateToSibling(1);
     }
-    else if (e.key === "ArrowDown") {
+    else if (e.key in SCROLL_KEY_DELTAS) {
       e.preventDefault();
       e.stopPropagation();
-      const scrollTarget = window.innerWidth > 768
-        ? (modal.querySelector<HTMLElement>(".quick-view-details") || content)
-        : content;
-      scrollTarget?.scrollBy({ top: 70, behavior: "smooth" });
-    }
-    else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      e.stopPropagation();
-      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
-      if (compactFront) {
-        compactFront.classList.remove("poster-compact");
+      const delta = SCROLL_KEY_DELTAS[e.key];
+      if (delta < 0) {
+        const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
+        if (compactFront) {
+          compactFront.classList.remove("poster-compact");
+        }
       }
       const scrollTarget = window.innerWidth > 768
         ? (modal.querySelector<HTMLElement>(".quick-view-details") || content)
         : content;
-      scrollTarget?.scrollBy({ top: -70, behavior: "smooth" });
-    }
-    else if (e.key === "PageDown") {
-      e.preventDefault();
-      e.stopPropagation();
-      const scrollTarget = window.innerWidth > 768
-        ? (modal.querySelector<HTMLElement>(".quick-view-details") || content)
-        : content;
-      scrollTarget?.scrollBy({ top: 250, behavior: "smooth" });
-    }
-    else if (e.key === "PageUp") {
-      e.preventDefault();
-      e.stopPropagation();
-      const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
-      if (compactFront) {
-        compactFront.classList.remove("poster-compact");
-      }
-      const scrollTarget = window.innerWidth > 768
-        ? (modal.querySelector<HTMLElement>(".quick-view-details") || content)
-        : content;
-      scrollTarget?.scrollBy({ top: -250, behavior: "smooth" });
+      scrollTarget?.scrollBy({ top: delta, behavior: "smooth" });
     }
   };
 

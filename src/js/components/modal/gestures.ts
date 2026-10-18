@@ -1,5 +1,30 @@
 import { CSS_CLASSES } from "../../constants.js";
 
+// Consultas de Viewport cacheadas a nivel de módulo para evitar Layout Thrashing en eventos de alta frecuencia
+const landscapeCompactQuery =
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(orientation: landscape) and (max-height: 600px)")
+    : null;
+
+const landscapeOrientationQuery =
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(orientation: landscape)")
+    : null;
+
+export const isLandscapeCompactViewport = (): boolean => {
+  if (landscapeCompactQuery) return landscapeCompactQuery.matches;
+  if (typeof window !== "undefined") {
+    return window.innerWidth > window.innerHeight && window.innerHeight <= 600;
+  }
+  return false;
+};
+
+export const isMobilePortraitViewport = (): boolean => {
+  if (typeof window === "undefined") return false;
+  if (window.innerWidth > 768) return false;
+  return landscapeOrientationQuery ? !landscapeOrientationQuery.matches : window.innerHeight > window.innerWidth;
+};
+
 export const SWIPE_X_THRESHOLD = 80;
 export const SWIPE_Y_CLOSE_THRESHOLD = 90;
 
@@ -62,11 +87,7 @@ export function handleTouchMove(e: TouchEvent, options: GestureMoveOptions): voi
 
   // Restaurar tamaño del cartel en columna izquierda (modo apaisado) si el usuario hace scroll hacia arriba (swipe abajo)
   if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 15 && touchState.target?.closest(".quick-view-media")) {
-    const isLandscape = typeof window.matchMedia === "function"
-      ? window.matchMedia("(orientation: landscape) and (max-height: 600px)").matches
-      : (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
-
-    if (isLandscape) {
+    if (isLandscapeCompactViewport()) {
       const compactFront = modal.querySelector<HTMLElement>(".quick-view-media.poster-compact");
       if (compactFront) {
         compactFront.classList.remove("poster-compact");
@@ -82,8 +103,7 @@ export function handleTouchMove(e: TouchEvent, options: GestureMoveOptions): voi
 
     // Gesto Vertical (Cierre): Solo en modo bottom-sheet vertical si estamos arriba del todo y arrastramos hacia abajo
     if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY > 0 && content.scrollTop <= SCROLL_TOLERANCE) {
-      const isMobilePortrait = window.innerWidth <= 768 && (typeof window.matchMedia === "function" ? !window.matchMedia("(orientation: landscape)").matches : window.innerHeight > window.innerWidth);
-      if (isMobilePortrait) {
+      if (isMobilePortraitViewport()) {
         touchState.isDragging = true;
         modal.classList.add(CSS_CLASSES.IS_DRAGGING); // Desactivar transición para seguir el dedo
       }

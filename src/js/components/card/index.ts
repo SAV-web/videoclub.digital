@@ -28,6 +28,9 @@ import {
   handleCardClick,
   updateCardUI,
   initializeCard,
+  applyLqipImage,
+  populatePersonFields,
+  type PopulatePersonOptions,
   createCardElement,
   createPersonCardElement,
   createCollectionCardElement,
@@ -49,7 +52,10 @@ export {
   toggleWatchlist,
   handleCardClick,
   updateCardUI,
-  initializeCard
+  initializeCard,
+  applyLqipImage,
+  populatePersonFields,
+  type PopulatePersonOptions
 };
 
 // Estado de Renderizado

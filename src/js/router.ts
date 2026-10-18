@@ -79,24 +79,21 @@ export function updateUrl({ replace = false }: { replace?: boolean } = {}): void
   const cleanPath = search ? `${pathname}?${search}` : pathname;
   const newUrl = `${basePrefix}${cleanPath}`;
   const currentFullUrl = `${window.location.pathname}${window.location.search}`;
+  const hasChanged = newUrl !== currentFullUrl;
 
-  if (newUrl !== currentFullUrl) {
+  if (hasChanged) {
     saveCurrentScrollPosition();
-    if (typeof window !== "undefined" && window.history) {
-      if (replace) {
-        const nextState = { ...window.history.state, path: newUrl };
-        delete nextState.profileModalOpen;
-        delete nextState.quickViewOpen;
-        window.history.replaceState(nextState, "", newUrl);
-      } else {
-        window.history.pushState({ path: newUrl, scrollY: 0 }, "", newUrl);
-      }
+  }
+
+  if (typeof window !== "undefined" && window.history && (hasChanged || replace)) {
+    if (replace) {
+      const nextState = { ...window.history.state, path: newUrl };
+      delete nextState.profileModalOpen;
+      delete nextState.modalOpen;
+      window.history.replaceState(nextState, "", newUrl);
+    } else {
+      window.history.pushState({ path: newUrl, scrollY: 0 }, "", newUrl);
     }
-  } else if (replace && typeof window !== "undefined" && window.history) {
-    const nextState = { ...window.history.state, path: newUrl };
-    delete nextState.profileModalOpen;
-    delete nextState.quickViewOpen;
-    window.history.replaceState(nextState, "", newUrl);
   }
 }
 

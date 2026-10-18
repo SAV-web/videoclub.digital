@@ -18,20 +18,34 @@ const notConfiguredError = () =>
 // Almacenamiento dinámico que alterna entre localStorage y sessionStorage según el checkbox de "Recordar sesión"
 const customAuthStorage = {
   getItem(key: string): string | null {
-    const remember = localStorage.getItem("videoclub:remember_me") !== "false";
-    return remember ? localStorage.getItem(key) : sessionStorage.getItem(key);
+    try {
+      if (typeof localStorage === "undefined") return null;
+      const remember = localStorage.getItem("videoclub:remember_me") !== "false";
+      return remember ? localStorage.getItem(key) : (typeof sessionStorage !== "undefined" ? sessionStorage.getItem(key) : null);
+    } catch {
+      return null;
+    }
   },
   setItem(key: string, value: string): void {
-    const remember = localStorage.getItem("videoclub:remember_me") !== "false";
-    if (remember) {
-      localStorage.setItem(key, value);
-    } else {
-      sessionStorage.setItem(key, value);
+    try {
+      if (typeof localStorage === "undefined") return;
+      const remember = localStorage.getItem("videoclub:remember_me") !== "false";
+      if (remember) {
+        localStorage.setItem(key, value);
+      } else if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(key, value);
+      }
+    } catch {
+      // Degradar silenciosamente si el almacenamiento web está bloqueado o en modo incógnito estricto
     }
   },
   removeItem(key: string): void {
-    localStorage.removeItem(key);
-    sessionStorage.removeItem(key);
+    try {
+      if (typeof localStorage !== "undefined") localStorage.removeItem(key);
+      if (typeof sessionStorage !== "undefined") sessionStorage.removeItem(key);
+    } catch {
+      // Degradar silenciosamente
+    }
   },
 };
 
@@ -79,6 +93,8 @@ export function getSupabase(): Promise<SupabaseClient> {
               abortSignal: () => queryObj,
               limit: () => queryObj,
               in: () => queryObj,
+              delete: () => queryObj,
+              match: createMockQuery,
               maybeSingle: () => Promise.resolve({ data: null, error: null }),
               single: () => Promise.resolve({ data: null, error: null }),
               range: () => Promise.resolve({ data: [], error: null, count: 0 }),
@@ -94,6 +110,7 @@ export function getSupabase(): Promise<SupabaseClient> {
             signOut: () => Promise.resolve({ error: null }),
             resetPasswordForEmail: notConfiguredError,
             updateUser: notConfiguredError,
+            signInWithOtp: notConfiguredError,
           },
         };
         return mockClient as unknown as SupabaseClient;

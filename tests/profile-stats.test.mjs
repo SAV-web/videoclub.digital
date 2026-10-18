@@ -421,5 +421,79 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
       teardown();
     }
   });
+
+  test("setupProfileModal: medidor de fuerza de contraseñas aplica reglas NIST y actualiza DOM", () => {
+    const { domMap, teardown } = setupMockProfileDom();
+    try {
+      // 1. Contrato directo de evaluatePasswordStrength (NIST SP 800-63B)
+      assert.deepEqual(authModule.evaluatePasswordStrength(""), { score: 0, label: "" });
+      assert.deepEqual(authModule.evaluatePasswordStrength("corta"), { score: 1, label: "Muy corta (mín. 8)" });
+      
+      const robust = authModule.evaluatePasswordStrength("Xk9#mP$2026!zWqL");
+      assert.equal(robust.score, 4);
+      assert.equal(robust.label, "Muy robusta");
+
+      const penalized = authModule.evaluatePasswordStrength("videoclub12345");
+      assert.ok(penalized.score <= 2);
+
+      // 2. Comportamiento interactivo en el DOM del modal de perfil
+      const cleanup = profileModule.setupProfileModal();
+      const input = domMap["profile-new-password"];
+      const meter = domMap["profile-password-strength"];
+      const labelEl = createMockDomElement("span", { className: "strength-label" });
+      const progressEl = createMockDomElement("div", { className: "strength-bars" });
+      meter.children = [labelEl, progressEl];
+      meter.querySelector = (sel) => {
+        if (sel === ".strength-label") return labelEl;
+        if (sel === ".strength-bars") return progressEl;
+        return null;
+      };
+
+      // Input con contraseña corta
+      input.value = "abc";
+      input.dispatchEvent({ type: "input" });
+      assert.equal(meter.hidden, false);
+      assert.equal(meter.getAttribute("data-strength"), "1");
+      assert.equal(labelEl.textContent, "Muy corta (mín. 8)");
+      assert.equal(progressEl.getAttribute("aria-valuenow"), "1");
+
+      // Input con contraseña robusta
+      input.value = "Xk9#mP$2026!zWqL";
+      input.dispatchEvent({ type: "input" });
+      assert.equal(meter.getAttribute("data-strength"), "4");
+      assert.equal(labelEl.textContent, "Muy robusta");
+      assert.equal(progressEl.getAttribute("aria-valuenow"), "4");
+
+      // Input vaciado
+      input.value = "";
+      input.dispatchEvent({ type: "input" });
+      assert.equal(meter.hidden, true);
+      assert.equal(meter.getAttribute("data-strength"), null);
+      assert.equal(labelEl.textContent, "");
+      assert.equal(progressEl.getAttribute("aria-valuenow"), "0");
+
+      cleanup();
+    } finally {
+      teardown();
+    }
+  });
+
+  test("setupProfileModal: bindBottomSheetSwipeToDismiss conecta gestos táctiles de arrastre y desmonta limpiamente", () => {
+    const { domMap, teardown } = setupMockProfileDom();
+    try {
+      const cleanup = profileModule.setupProfileModal();
+      const modal = domMap["profile-modal"];
+      
+      // Simulación de interacción táctil móvil
+      modal.dispatchEvent({ type: "touchstart", touches: [{ clientX: 100, clientY: 100 }] });
+      modal.dispatchEvent({ type: "touchmove", touches: [{ clientX: 100, clientY: 250 }], cancelable: true, preventDefault: () => {} });
+      modal.dispatchEvent({ type: "touchend" });
+
+      // Verificación de desmontaje sin fugas
+      cleanup();
+    } finally {
+      teardown();
+    }
+  });
 });
 

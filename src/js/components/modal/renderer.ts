@@ -1,8 +1,8 @@
-import { createElement, renderCountryFlag, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, formatModalDuration, sanitizeExternalUrl } from "../../utils.js";
+import { createElement, renderCountryFlag, renderStudioIcons, setupExternalLink, applyLengthBasedClass, buildFilterUrl, formatModalDuration } from "../../utils.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
-import { STUDIO_DATA, IGNORED_ACTORS, CSS_CLASSES } from "../../constants.js";
-import { updateCardUI, initializeCard } from "../card/index.js";
-import { setupCardRatings, setupRatingListeners } from "../rating.js";
+import { CONFIG, IGNORED_ACTORS, CSS_CLASSES } from "../../constants.js";
+import { updateCardUI, initializeCard, handleCardClick, applyLqipImage, populatePersonFields } from "../card/index.js";
+import { setupCardRatings } from "../rating.js";
 import { fetchUserMovieDataForIds } from "../../api.js";
 import { updateUserDataForMovie } from "../../state.js";
 import type { Movie, MappedMovie, MovieCardElement } from "../../types.js";
@@ -65,61 +65,18 @@ export function getModalNodes(root: HTMLElement): ModalNodes {
 export function setupModalHeader(
   nodes: ModalNodes,
   movie: ExtendedMovie,
-  scheduleModalRAF?: (fn: () => void) => number,
-  getLifecycleGen?: () => number
+  _scheduleModalRAF?: (fn: () => void) => number,
+  _getLifecycleGen?: () => number
 ): void {
-  // Imagen (Efecto LQIP suave)
+  // Imagen (Efecto LQIP suave y unificado con applyLqipImage)
   if (nodes.img) {
     const posterUrl = movie.image_hq || movie.posterUrl;
-    nodes.img.alt = `Póster de ${movie.title}`;
+    nodes.img.alt = movie.title ? `Póster de ${movie.title}` : "";
 
-    if (movie.thumbhash_st && posterUrl) {
-      const currentGen = getLifecycleGen ? getLifecycleGen() : 0;
-      const tempImg = new Image();
-      tempImg.src = posterUrl;
-
-      if (tempImg.complete && tempImg.naturalWidth > 0) {
-        nodes.img.src = posterUrl;
-        nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
-        nodes.img.classList.remove(CSS_CLASSES.LOADED);
-        const applyLoaded = () => {
-          if (getLifecycleGen && currentGen !== getLifecycleGen()) return;
-          nodes.img?.classList.add(CSS_CLASSES.LOADED);
-        };
-        if (scheduleModalRAF) {
-          scheduleModalRAF(applyLoaded);
-        } else {
-          requestAnimationFrame(applyLoaded);
-        }
-      } else {
-        nodes.img.classList.remove(CSS_CLASSES.LOADED);
-        nodes.img.classList.add(CSS_CLASSES.LAZY_LQIP);
-        nodes.img.src = movie.thumbhash_st;
-        tempImg.onload = () => {
-          if (getLifecycleGen && currentGen !== getLifecycleGen()) return;
-          if (nodes.img) {
-            nodes.img.src = posterUrl;
-            const applyLoaded = () => {
-              if (getLifecycleGen && currentGen !== getLifecycleGen()) return;
-              nodes.img?.classList.add(CSS_CLASSES.LOADED);
-            };
-            if (scheduleModalRAF) {
-              scheduleModalRAF(applyLoaded);
-            } else {
-              requestAnimationFrame(applyLoaded);
-            }
-          }
-        };
-        tempImg.onerror = () => {
-          if (getLifecycleGen && currentGen !== getLifecycleGen()) return;
-          if (nodes.img) {
-            nodes.img.src = posterUrl;
-            nodes.img.classList.add(CSS_CLASSES.LOADED);
-          }
-        };
-      }
+    if (posterUrl) {
+      applyLqipImage(nodes.img, movie.thumbhash_st, posterUrl);
     } else {
-      nodes.img.src = posterUrl || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+      nodes.img.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
       nodes.img.classList.remove(CSS_CLASSES.LAZY_LQIP);
       nodes.img.classList.add(CSS_CLASSES.LOADED);
     }
@@ -181,24 +138,7 @@ export function setupModalHeader(
   );
 
   // Iconos Plataforma
-  if (nodes.iconsContainer && movie.studioList) {
-    nodes.iconsContainer.innerHTML = "";
-    const codes = movie.studioList;
-
-    codes.forEach(code => {
-      const conf = STUDIO_DATA[code as keyof typeof STUDIO_DATA];
-      if (conf) {
-        const span = createElement('span', { className: `platform-icon ${conf.class || ''}`, title: conf.title });
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", String(conf.w || "24")); svg.setAttribute("height", String(conf.h || "24"));
-        svg.setAttribute("fill", "currentColor"); svg.setAttribute("viewBox", conf.vb || "0 0 24 24");
-        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        use.setAttribute("href", `#${conf.id}`);
-        svg.appendChild(use); span.appendChild(svg);
-        nodes.iconsContainer?.appendChild(span);
-      }
-    });
-  }
+  renderStudioIcons(nodes.iconsContainer, movie.studioList || movie.studios_list);
 }
 
 /**
@@ -256,19 +196,8 @@ export function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void
   }
 
   // Links Externos
-  const setupLink = (key: string, rawUrl: string | null | undefined) => {
-    const el = nodes[`${key}-link`] as HTMLAnchorElement | null | undefined;
-    if (!el) return;
-    const safeUrl = sanitizeExternalUrl(rawUrl);
-    if (safeUrl) {
-      el.href = safeUrl; el.classList.remove('disabled'); el.setAttribute("aria-label", `Ver en ${key}`);
-    } else {
-      el.removeAttribute('href'); el.classList.add('disabled'); el.removeAttribute("aria-label");
-    }
-    el.hidden = false; // Siempre visible (habilitado o deshabilitado)
-  };
-  setupLink('justwatch', movie.justwatch);
-  setupLink('wikipedia', movie.wikipedia);
+  setupExternalLink(nodes["justwatch-link"] as HTMLAnchorElement | null, "justwatch", movie.justwatch);
+  setupExternalLink(nodes["wikipedia-link"] as HTMLAnchorElement | null, "wikipedia", movie.wikipedia);
 
   // Textos Largos
   if (nodes.genre) {
@@ -379,93 +308,20 @@ export function populateModalContent(options: PopulateModalOptions): void {
 
   if (isPerson) {
     // --- CAPA PERSONA (Síncrona) ---
-    // Foto de perfil
-    const img = cardClone.querySelector("img");
-    if (img && posterUrl) {
-      img.classList.remove(CSS_CLASSES.LOADED);
-      img.classList.add(CSS_CLASSES.LAZY_LQIP);
-
-      img.onload = () => {
-        scheduleModalRAF(() => {
-          img.classList.add(CSS_CLASSES.LOADED);
-        });
-      };
-      img.onerror = () => {
-        img.classList.add(CSS_CLASSES.LOADED);
-      };
-
-      img.src = posterUrl;
-      if (img.complete) {
-        img.classList.add(CSS_CLASSES.LOADED);
-      }
-    }
-
-    // Título/Nombre
-    const titleEl = cardClone.querySelector('[data-template="title"]');
-    if (titleEl && movie.name) {
-      titleEl.textContent = movie.name;
-    }
-
-    // Lugar de nacimiento
-    const birthplaceEl = cardClone.querySelector('[data-template="birthplace"]');
-    if (birthplaceEl) {
-      birthplaceEl.textContent = movie.place_of_birth || "";
-    }
-
-    // Edad y fechas
-    const ageEl = cardClone.querySelector('[data-template="age"]');
-    const datesEl = cardClone.querySelector('[data-template="dates"]');
-
-    const ageInfo = computePersonAgeInfo(movie.birthday, movie.deathday);
-
-    if (ageEl) ageEl.textContent = ageInfo.ageStr;
-    if (datesEl) datesEl.textContent = ageInfo.datesStr;
-
-    // Bandera del País
-    const countryCode = movie.countries?.code || movie.country_code || undefined;
-    const countryName = movie.countries?.name || movie.country || undefined;
-    renderCountryFlag(
-      cardClone.querySelector('[data-template="country-container"]'),
-      cardClone.querySelector('[data-template="country-flag"]'),
-      countryCode,
-      countryName,
-      false
-    );
-
-    // Biografía
-    const headlineEl = cardClone.querySelector('[data-template="bio-headline"]');
-    if (headlineEl) {
-      headlineEl.textContent = preserveHyphenatedWords(movie.titulo_bio) || "";
-    }
-
-    const biographyEl = cardClone.querySelector('[data-template="biography"]');
-    if (biographyEl) {
-      biographyEl.textContent = preserveHyphenatedWords(movie.biography) || "Biografía no disponible en el catálogo.";
-    }
-
-    // Botón de alternancia de rol (Director <-> Actor)
-    const roleToggleBtn = cardClone.querySelector<HTMLButtonElement>('[data-template="role-toggle-btn"]');
-    const roleLetterEl = cardClone.querySelector<HTMLElement>('[data-template="role-badge-letter"]');
-
-    if (roleToggleBtn && roleLetterEl) {
-      if (movie.hasBothRoles) {
-        const isDirector = movie.currentRole === "director";
-        const targetRole = isDirector ? "actor" : "director";
-        const currentLetter = isDirector ? "D" : "A";
-        const tooltipText = isDirector
-          ? `Ver películas de ${movie.name} como Actor`
-          : `Ver películas de ${movie.name} como Director`;
-
-        roleLetterEl.textContent = currentLetter;
-        roleToggleBtn.title = tooltipText;
-        roleToggleBtn.setAttribute("aria-label", tooltipText);
-        roleToggleBtn.style.display = "flex";
-        roleToggleBtn.dataset.targetRole = targetRole;
-        roleToggleBtn.dataset.personName = movie.name;
+    // Foto de perfil (Efecto LQIP unificado)
+    const img = nodes.img || cardClone.querySelector<HTMLImageElement>("img");
+    if (img) {
+      img.alt = movie.name ? `Foto de perfil de ${movie.name}` : "";
+      if (posterUrl) {
+        applyLqipImage(img, movie.thumbhash_st, posterUrl);
       } else {
-        roleToggleBtn.style.display = "none";
+        img.src = `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+        img.classList.remove(CSS_CLASSES.LAZY_LQIP);
+        img.classList.add(CSS_CLASSES.LOADED);
       }
     }
+
+    populatePersonFields(cardClone, movie);
 
     // Montaje
     content.textContent = "";
@@ -477,6 +333,7 @@ export function populateModalContent(options: PopulateModalOptions): void {
       personFront.classList.remove("poster-compact");
     }
     updateNavButtons(modalId, contextCards);
+    cardClone.addEventListener("click", handleCardClick);
   } else {
     // --- CAPA PELÍCULA ---
     // Poblar cabecera, detalles y notas síncronamente para evitar parpadeos y FOUC
@@ -504,10 +361,6 @@ export function populateModalContent(options: PopulateModalOptions): void {
     // Inicializar interactividad básica
     updateCardUI(cardClone);
     initializeCard(cardClone);
-    const starCont = cardClone.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
-    if (starCont) {
-      setupRatingListeners(starCont, true);
-    }
     updateNavButtons(modalId, contextCards);
 
     // Si el usuario está autenticado, sincronizar sus datos específicos (nota/watchlist) para la modal
