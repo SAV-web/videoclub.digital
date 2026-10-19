@@ -38,16 +38,20 @@ function inlineSvgSpritesPlugin() {
       if (fs.existsSync(spritePath)) {
         spriteSymbols = fs.readFileSync(spritePath, 'utf-8')
           .replace(/<\?xml[^>]*\?>/gi, '')
+          .replace(/<!--[\s\S]*?-->/g, '')
           .replace(/<svg[^>]*>/i, '')
           .replace(/<\/svg>\s*$/i, '')
+          .replace(/^\s*[\r\n]/gm, '')
           .trim();
       }
 
       if (fs.existsSync(flagsPath)) {
         flagsSymbols = fs.readFileSync(flagsPath, 'utf-8')
           .replace(/<\?xml[^>]*\?>/gi, '')
+          .replace(/<!--[\s\S]*?-->/g, '')
           .replace(/<svg[^>]*>/i, '')
           .replace(/<\/svg>\s*$/i, '')
+          .replace(/^\s*[\r\n]/gm, '')
           .trim();
       }
 

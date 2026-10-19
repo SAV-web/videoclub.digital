@@ -12,7 +12,7 @@
   &.is-interactive { cursor: pointer; }
 
   &.has-user-rating,
-  body.user-logged-in &.is-interactive:hover {
+  &.is-rating-preview {
     & .star-icon-path { stroke: var(--color-star-gold); }
     & .star-icon-path--filled { fill: var(--color-star-gold); }
   }

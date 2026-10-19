@@ -647,6 +647,11 @@ export function setupProfileModal(): () => void {
       const isPassword = dom.newPasswordInput.type === "password";
       dom.newPasswordInput.type = isPassword ? "text" : "password";
       dom.passwordToggleBtn?.classList.toggle("is-visible", isPassword);
+      dom.passwordToggleBtn?.setAttribute("aria-label", isPassword ? "Ocultar contraseña" : "Mostrar contraseña");
+      const useEl = dom.passwordToggleBtn?.querySelector("use");
+      if (useEl) {
+        useEl.setAttribute("href", isPassword ? "#icon-eye-off" : "#icon-eye");
+      }
     };
     dom.passwordToggleBtn.addEventListener("click", onTogglePassword);
     unsubscribers.push(() => dom.passwordToggleBtn?.removeEventListener("click", onTogglePassword));

@@ -181,6 +181,12 @@ export function renderUserStars(container: HTMLElement, value: number, hideHollo
  */
 function handleRatingPreviewEnter(event: MouseEvent | FocusEvent): void {
   if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
+  
+  // En dispositivos táctiles no ejecutamos previsualización de hover para evitar estados pegajosos
+  if (event.type === "mouseover" && typeof window !== "undefined" && window.matchMedia && !window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    return;
+  }
+
   const target = event.target as HTMLElement;
   const starIcon = target.closest<HTMLElement>(".star-icon");
   if (!starIcon) return;
@@ -189,6 +195,7 @@ function handleRatingPreviewEnter(event: MouseEvent | FocusEvent): void {
   const hoverLevel = parseInt(starIcon.dataset.ratingLevel || "0", 10);
   
   // Renderizamos estado "potencial" (lo que pasaría si haces click)
+  starContainer.classList.add(CSS_CLASSES.IS_RATING_PREVIEW);
   renderUserStars(starContainer, hoverLevel, false, false);
 }
 
@@ -197,6 +204,7 @@ function handleRatingPreviewEnter(event: MouseEvent | FocusEvent): void {
  */
 function handleRatingPreviewLeave(event: MouseEvent | FocusEvent): void {
   const starContainer = event.currentTarget as HTMLElement;
+  starContainer.classList.remove(CSS_CLASSES.IS_RATING_PREVIEW);
   const cardElement = starContainer.closest<HTMLElement>(".movie-card");
   if (cardElement) {
     appEvents.emit("card:requestUpdate", { cardElement });
@@ -222,6 +230,11 @@ function handleRatingKeyDown(event: KeyboardEvent): void {
 
   const card = starIcon.closest<MovieCardElement>(".movie-card");
   if (!card) return;
+
+  const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
+  if (starCont) {
+    starCont.classList.remove(CSS_CLASSES.IS_RATING_PREVIEW);
+  }
 
   const movieId = normalizeMovieId(card.dataset.movieId);
   if (!movieId) return;
@@ -327,6 +340,10 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
   const currentRating = getUserDataForMovie(movieId)?.rating;
 
   if (starEl) {
+    const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
+    if (starCont) {
+      starCont.classList.remove(CSS_CLASSES.IS_RATING_PREVIEW);
+    }
     const level = parseInt(starEl.dataset.ratingLevel || "0", 10);
     const newRating = resolveNextRating(currentRating, level);
 
@@ -337,6 +354,10 @@ export function handleRatingClick(event: MouseEvent, card: MovieCardElement): bo
   }
 
   if (wallRatingEl || isRotationDisabledBlock) {
+    const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
+    if (starCont) {
+      starCont.classList.remove(CSS_CLASSES.IS_RATING_PREVIEW);
+    }
     const newRating = resolveNextRating(currentRating, 1);
     setRating(movieId, newRating, card);
     triggerRatingAnimation(card, newRating, undefined);
@@ -363,6 +384,7 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
   const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
   if (!starCont) return;
 
+  starCont.classList.remove(CSS_CLASSES.IS_RATING_PREVIEW);
   starCont.classList.toggle(CSS_CLASSES.IS_INTERACTIVE, isLoggedIn);
 
   const state = getRatingPresentationState(mappedMovie, userData, isLoggedIn);
@@ -397,7 +419,7 @@ export function updateRatingUI(card: MovieCardElement, userDataInput?: UserMovie
     }
   }
 
-  starCont.classList.toggle("has-user-rating", hasUserRatingClass);
+  starCont.classList.toggle(CSS_CLASSES.HAS_USER_RATING, hasUserRatingClass);
   if (starCont.style.display !== starDisplay) starCont.style.display = starDisplay;
 }
 
