@@ -11,6 +11,7 @@
 import {
   escapeHtml,
   escapeAttr,
+  sanitizeExternalUrl,
   parseList,
   isSeriesType,
   formatRuntime,
@@ -76,6 +77,10 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
 
   const titleLengthClass = getTitleLengthClass(title);
   const origTitleLengthClass = getTitleLengthClass(displayOriginalTitle);
+  const safeJw = sanitizeExternalUrl(movie.justwatch);
+  const safeWiki = sanitizeExternalUrl(movie.wikipedia);
+  const safeFa = sanitizeExternalUrl(movie.fa_id);
+  const safeImdb = sanitizeExternalUrl(movie.imdb_id);
 
   // Directores frontal (enlace directo a la SPA con filtro activo)
   const directorsHtml = directors.map((name, i) => `
@@ -177,13 +182,13 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             <div class="episode-duration-group">
               ${episodesText ? `<span data-template="episodes">${escapeHtml(episodesText)}</span>` : ''}
               ${durationText ? `<span data-template="duration">${escapeHtml(durationText)}</span>` : ''}
-              ${movie.justwatch ? `
-                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(movie.justwatch)}" title="Ver en JustWatch" data-template="justwatch-link">
+              ${safeJw ? `
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeJw)}" title="Ver en JustWatch" data-template="justwatch-link">
                   <svg class="rating-icon" fill="#9A1485"><use href="${baseUrl}sprite.svg#icon-justwatch"></use></svg>
                 </a>
               ` : ''}
-              ${movie.wikipedia ? `
-                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(movie.wikipedia)}" title="Ver en Wikipedia" data-template="wikipedia-link">
+              ${safeWiki ? `
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeWiki)}" title="Ver en Wikipedia" data-template="wikipedia-link">
                   <svg class="rating-icon" fill="#B3404A"><use href="${baseUrl}sprite.svg#icon-wikipedia"></use></svg>
                 </a>
               ` : ''}
@@ -193,7 +198,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
           <div class="ratings-container">
             ${movie.fa_rating ? `
               <div class="rating-line">
-                <a target="_blank" rel="noopener noreferrer" class="rating-left" href="${escapeAttr(movie.fa_id || '#')}" data-template="fa-link">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeFa ? '' : 'disabled'}" ${safeFa ? `href="${escapeAttr(safeFa)}"` : ''} data-template="fa-link">
                   <svg class="rating-icon"><use href="${baseUrl}sprite.svg#icon-filmaffinity"></use></svg>
                   <span data-template="fa-rating">${movie.fa_rating.toFixed(1)}</span>
                 </a>
@@ -205,7 +210,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
             ` : ''}
             ${movie.imdb_rating ? `
               <div class="rating-line">
-                <a target="_blank" rel="noopener noreferrer" class="rating-left" href="${escapeAttr(movie.imdb_id || '#')}" data-template="imdb-link">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeImdb ? '' : 'disabled'}" ${safeImdb ? `href="${escapeAttr(safeImdb)}"` : ''} data-template="imdb-link">
                   <svg class="rating-icon" fill="#F5C618"><use href="${baseUrl}sprite.svg#icon-imdb"></use></svg>
                   <span data-template="imdb-rating">${movie.imdb_rating.toFixed(1)}</span>
                 </a>

@@ -145,7 +145,6 @@ interface ProfileDom {
   watchlistCount: HTMLElement | null;
   ratedCount: HTMLElement | null;
   averageStarsContainer: HTMLElement | null;
-  starsText: HTMLElement | null;
   breakdownContainer: HTMLElement | null;
   exploreWatchlistBtn: HTMLButtonElement | null;
   exploreRatedBtn: HTMLButtonElement | null;
@@ -181,7 +180,6 @@ function getProfileDom(): ProfileDom {
       watchlistCount: null,
       ratedCount: null,
       averageStarsContainer: null,
-      starsText: null,
       breakdownContainer: null,
       exploreWatchlistBtn: null,
       exploreRatedBtn: null,
@@ -215,7 +213,6 @@ function getProfileDom(): ProfileDom {
       watchlistCount: document.getElementById("profile-stat-watchlist-count"),
       ratedCount: document.getElementById("profile-stat-rated-count"),
       averageStarsContainer: document.getElementById("profile-stat-average-stars"),
-      starsText: document.getElementById("profile-stat-stars-text"),
       breakdownContainer: document.getElementById("profile-breakdown-container"),
       exploreWatchlistBtn: document.getElementById("profile-btn-explore-watchlist") as HTMLButtonElement | null,
       exploreRatedBtn: document.getElementById("profile-btn-explore-rated") as HTMLButtonElement | null,
@@ -286,6 +283,13 @@ export async function openProfileModal(): Promise<void> {
 
   // Resetear formulario de contraseña
   if (dom.passwordForm) dom.passwordForm.reset();
+  if (dom.newPasswordInput) dom.newPasswordInput.type = "password";
+  if (dom.passwordToggleBtn) {
+    dom.passwordToggleBtn.classList.remove("is-visible");
+    dom.passwordToggleBtn.setAttribute("aria-label", "Mostrar contraseña");
+    const useEl = dom.passwordToggleBtn.querySelector("use");
+    if (useEl) useEl.setAttribute("href", "#icon-eye");
+  }
   if (dom.securityMessage) {
     dom.securityMessage.hidden = true;
     dom.securityMessage.textContent = "";
@@ -356,9 +360,6 @@ export function renderProfileStats(): void {
   if (dom.averageStarsContainer) {
     renderFractionalStars(dom.averageStarsContainer, stats.averageStars || 0);
     dom.averageStarsContainer.setAttribute("aria-label", `Promedio de valoración: ${stats.formattedStars}`);
-  }
-  if (dom.starsText) {
-    dom.starsText.textContent = "";
   }
 
   if (dom.breakdownContainer) {
@@ -651,6 +652,8 @@ export function setupProfileModal(): () => void {
       const useEl = dom.passwordToggleBtn?.querySelector("use");
       if (useEl) {
         useEl.setAttribute("href", isPassword ? "#icon-eye-off" : "#icon-eye");
+      } else if (dom.passwordToggleBtn) {
+        dom.passwordToggleBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon"><use href="${isPassword ? "#icon-eye-off" : "#icon-eye"}"></use></svg>`;
       }
     };
     dom.passwordToggleBtn.addEventListener("click", onTogglePassword);

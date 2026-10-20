@@ -1,6 +1,6 @@
 import { createElement, renderCountryFlag, renderStudioIcons, setupExternalLink, applyLengthBasedClass, buildFilterUrl, formatModalDuration } from "../../utils.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
-import { CONFIG, IGNORED_ACTORS, CSS_CLASSES } from "../../constants.js";
+import { CONFIG, IGNORED_ACTORS_SET, CSS_CLASSES } from "../../constants.js";
 import { updateCardUI, initializeCard, handleCardClick, applyLqipImage, populatePersonFields } from "../card/index.js";
 import { setupCardRatings } from "../rating.js";
 import { fetchUserMovieDataForIds } from "../../api.js";
@@ -222,7 +222,7 @@ export function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void
     if (movie.parsedActors && movie.parsedActors.length > 0) {
       const frag = document.createDocumentFragment();
       movie.parsedActors.forEach((name, i, arr) => {
-        if ((IGNORED_ACTORS as readonly string[]).includes(name.toLowerCase())) {
+        if (IGNORED_ACTORS_SET.has(name.toLowerCase())) {
           frag.append(preserveHyphenatedWords(name));
         } else {
           frag.appendChild(createLink(name, 'actor'));

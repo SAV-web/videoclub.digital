@@ -399,13 +399,6 @@ export default {
         const [prefix, slug] = parts;
         const taxInfo = resolveTaxonomy(slug, prefix);
         if (taxInfo) {
-          const hasUppercase = /[A-Z]/.test(url.pathname);
-          const missingSlash = !url.pathname.endsWith("/");
-          const hasQuery = Boolean(url.search);
-          if (hasUppercase || missingSlash || hasQuery) {
-            return Response.redirect(new URL(taxInfo.canonicalPath, url.origin).toString(), 301);
-          }
-
           const cache = caches.default;
           const canonicalKey = new Request(new URL(taxInfo.canonicalPath, url.origin).toString(), request);
 

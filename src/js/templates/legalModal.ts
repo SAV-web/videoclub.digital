@@ -228,9 +228,9 @@ export const LEGAL_MODAL_HTML = `
                 </tr>
                 <tr>
                   <td><code>theme</code></td>
-                  <td>localStorage</td>
+                  <td>localStorage y Cookie técnica</td>
                   <td>Recordar tu preferencia de tema claro/oscuro</td>
-                  <td>Persistente hasta que la cambies</td>
+                  <td>Persistente (1 año o hasta que la cambies)</td>
                 </tr>
                 <tr>
                   <td><code>rotationState</code></td>

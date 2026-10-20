@@ -154,7 +154,7 @@ export const ICONS = {
   REWIND: `<svg class="sidebar-icon" aria-hidden="true"><use href="#icon-rewind"></use></svg>`,
   FORWARD: `<svg class="sidebar-icon" aria-hidden="true"><use href="#icon-forward"></use></svg>`,
   PLAY: `<svg class="sidebar-icon" aria-hidden="true"><use href="#icon-play-filter"></use></svg>`,
-  PAUSE_SMALL: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+  PAUSE_SMALL: `<svg class="sidebar-icon" aria-hidden="true"><use href="#icon-trash"></use></svg>`,
   CHEVRON_RIGHT: `<svg class="chevron-icon" width="16" height="16" aria-hidden="true"><use href="#icon-chevron-right"></use></svg>`,
   POPCORN: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 3 5m6 1V3m4 4 2-2"/><circle cx="9" cy="13" r="3"/><path d="M11.83 12H20a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h2.17M16 16h2"/></svg>`,
   CLAPPERBOARD: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Zm-14-.7 3.1 3.9m3.1-5.8 3.1 4M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>`,

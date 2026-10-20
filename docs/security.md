@@ -121,12 +121,12 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
     GRANT SELECT ON public.view_top_cpu_queries TO service_role;
     ```
 
-* **Vulnerabilidad 2 — Función de Auditoría Invocable Anónimamente ([`database/tests/data_tests.sql`](../database/tests/data_tests.sql)):**
-  - *Diagnóstico:* La función `public.run_data_tests(BOOLEAN)` otorgaba permisos a `authenticated` y `service_role` sin revocar el `EXECUTE` implícito de `PUBLIC`. Cualquier cliente anónimo podía ejecutar `POST /rest/v1/rpc/run_data_tests`, escaneando tablas completas y causando denegación de servicio por agotamiento de CPU.
-  - *Remediación:*
+* **Vulnerabilidad 2 — Función de Auditoría Invocable Vía RPC Pública ([`database/tests/data_tests.sql`](../database/tests/data_tests.sql)):**
+  - *Diagnóstico:* La función `public.run_data_tests(BOOLEAN)` no debe ser invocable por clientes anónimos (`anon`) ni por usuarios autenticados comunes (`authenticated`). Dado que evalúa tablas completas con un `statement_timeout = '120s'`, cualquier llamada maliciosa a `POST /rest/v1/rpc/run_data_tests` causaría denegación de servicio (DoS) por agotamiento de CPU e IOPS. El runner desatendido de CI ([`scripts/run-data-tests.mjs`](../scripts/run-data-tests.mjs)) y el script de ingesta ([`database/etl/ingest.sql`](../database/etl/ingest.sql)) operan con credenciales privilegiadas de servicio.
+  - *Remediación (Hardening DCL exclusivo para `service_role`):*
     ```sql
-    REVOKE EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) FROM PUBLIC, anon;
-    GRANT EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) TO authenticated, service_role;
+    REVOKE EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) FROM PUBLIC, anon, authenticated;
+    GRANT EXECUTE ON FUNCTION public.run_data_tests(BOOLEAN) TO service_role;
     ```
 
 * **Vulnerabilidad 3 — Agotamiento de Recursos por Paginación Profunda (Deep Pagination DoS / CWE-400) en `public.search_movies_offset` ([`database/functions/search_movies_offset.sql`](../database/functions/search_movies_offset.sql)):**
@@ -191,7 +191,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
 * **Puntos de Aplicación:**
   1. **Tarjeta SPA ([`src/js/components/card/cardElement.ts`](../src/js/components/card/cardElement.ts) y [`src/js/components/rating.ts`](../src/js/components/rating.ts)):** Si la URL no es segura, se elimina el atributo `href`, se remueve `aria-label` y se añade la clase `.disabled` tanto para JustWatch/Wikipedia como para FilmAffinity e IMDb en `setupCardRatings`.
   2. **Modal de Película ([`src/js/components/modal/renderer.ts`](../src/js/components/modal/renderer.ts)):** Validación idéntica en la apertura de fichas interactivas.
-  3. **Edge SSR ([`cloudflare/seo/render-movie.js`](../cloudflare/seo/render-movie.js)):** Validación estricta previa a la interpolación en cadenas HTML de JustWatch, Wikipedia, FilmAffinity e IMDb.
+  3. **Edge SSR ([`cloudflare/seo/render-movie.js`](../cloudflare/seo/render-movie.js) y [`cloudflare/seo/render-taxonomy.js`](../cloudflare/seo/render-taxonomy.js)):** Validación estricta previa a la interpolación en cadenas HTML de JustWatch, Wikipedia, FilmAffinity e IMDb tanto en fichas individuales como en tarjetas de catálogo y filmografías VIP ([`cloudflare/seo/render-person.js`](../cloudflare/seo/render-person.js)).
 
 ---
 

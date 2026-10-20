@@ -12,7 +12,8 @@ import {
   escapeAttr,
   parseList,
   isSeriesType,
-  formatRuntime,
+  formatModalDuration,
+  formatMetaUnitsHtml,
   formatYear,
   getTitleLengthClass,
   calculateAverageStars,
@@ -39,8 +40,6 @@ export function renderMovieHtml(movie, options = {}) {
   const baseUrl = options.baseUrl || '/';
 
   const isSeries = isSeriesType(movie.type);
-  const mediaTypePath = isSeries ? 'series' : 'peliculas';
-  const mediaTypeName = isSeries ? 'Series' : 'Películas';
 
   const posterPath = getPosterUrl(movie);
   const absolutePosterUrl = posterPath ? `${siteOrigin}${posterPath}` : '';
@@ -67,12 +66,17 @@ export function renderMovieHtml(movie, options = {}) {
     ? `${baseUrl}?_p=/director/${firstDirectorSlug}/&movie=${movie.id}`
     : `${baseUrl}?movie=${movie.id}`;
 
-  const durationText = formatRuntime(movie.minutes, isSeries);
-  const episodesText = isSeries && movie.episodes ? `${movie.episodes} x` : null;
+  const { episodesText, durationText } = formatModalDuration(movie.minutes, movie.episodes, isSeries);
+  const episodesHtml = formatMetaUnitsHtml(episodesText);
+  const durationHtml = formatMetaUnitsHtml(durationText);
 
   const titleLengthClass = getTitleLengthClass(movie.title);
   const displayOriginalTitle = movie.original_title?.trim() || movie.title;
   const origTitleLengthClass = getTitleLengthClass(displayOriginalTitle);
+  const safeJw = sanitizeExternalUrl(movie.justwatch);
+  const safeWiki = sanitizeExternalUrl(movie.wikipedia);
+  const safeFa = sanitizeExternalUrl(movie.fa_id);
+  const safeImdb = sanitizeExternalUrl(movie.imdb_id);
 
   // Estrellas continuas (0-3) y cálculo de clip-path
   const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= 5.5;
@@ -91,7 +95,7 @@ export function renderMovieHtml(movie, options = {}) {
   const primaryGenreSlug = primaryGenre ? genreToSlug(primaryGenre) : null;
 
   // 1. JSON-LD Schema.org Movie / TVSeries
-  const sameAs = [movie.imdb_id, movie.fa_id, movie.wikipedia, movie.justwatch].filter(Boolean);
+  const sameAs = [safeImdb, safeFa, safeWiki, safeJw].filter(Boolean);
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': isSeries ? 'TVSeries' : 'Movie',
@@ -115,7 +119,7 @@ export function renderMovieHtml(movie, options = {}) {
       : {}),
   };
 
-  // 2. BreadcrumbList Schema.org
+  // 2. BreadcrumbList Schema.org (URLs canónicas reales 200 OK)
   const breadcrumbElements = [
     {
       '@type': 'ListItem',
@@ -123,20 +127,14 @@ export function renderMovieHtml(movie, options = {}) {
       name: 'Inicio',
       item: `${siteOrigin}/`,
     },
-    {
-      '@type': 'ListItem',
-      position: 2,
-      name: mediaTypeName,
-      item: `${siteOrigin}/${mediaTypePath}/`,
-    },
   ];
 
   if (primaryGenre && primaryGenreSlug) {
     breadcrumbElements.push({
       '@type': 'ListItem',
-      position: 3,
+      position: 2,
       name: primaryGenre,
-      item: `${siteOrigin}/genero/${primaryGenreSlug}/${mediaTypePath}/`,
+      item: `${siteOrigin}/genero/${primaryGenreSlug}/`,
     });
   }
 
@@ -401,15 +399,15 @@ export function renderMovieHtml(movie, options = {}) {
             <!-- Duración, Episodios y Links Externos -->
             <div class="back-meta-header">
               <div class="episode-duration-group">
-                ${episodesText ? `<span data-template="episodes">${escapeHtml(episodesText)}</span>` : ''}
-                ${durationText ? `<span data-template="duration">${escapeHtml(durationText)}</span>` : ''}
-                ${sanitizeExternalUrl(movie.justwatch) ? `
-                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(sanitizeExternalUrl(movie.justwatch))}" title="Ver en JustWatch" data-template="justwatch-link">
+                ${episodesText ? `<span data-template="episodes">${episodesHtml}</span>` : ''}
+                ${durationText ? `<span data-template="duration">${durationHtml}</span>` : ''}
+                ${safeJw ? `
+                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeJw)}" title="Ver en JustWatch" data-template="justwatch-link">
                     <svg class="rating-icon" fill="#9A1485"><use href="${baseUrl}sprite.svg#icon-justwatch"></use></svg>
                   </a>
                 ` : ''}
-                ${sanitizeExternalUrl(movie.wikipedia) ? `
-                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(sanitizeExternalUrl(movie.wikipedia))}" title="Ver en Wikipedia" data-template="wikipedia-link">
+                ${safeWiki ? `
+                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeWiki)}" title="Ver en Wikipedia" data-template="wikipedia-link">
                     <svg class="rating-icon" fill="#B3404A"><use href="${baseUrl}sprite.svg#icon-wikipedia"></use></svg>
                   </a>
                 ` : ''}
@@ -420,7 +418,7 @@ export function renderMovieHtml(movie, options = {}) {
             <div class="ratings-container">
               ${movie.fa_rating ? `
                 <div class="rating-line">
-                  <a target="_blank" rel="noopener noreferrer" class="rating-left" ${sanitizeExternalUrl(movie.fa_id) ? `href="${escapeAttr(sanitizeExternalUrl(movie.fa_id))}"` : ''} data-template="fa-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeFa ? '' : 'disabled'}" ${safeFa ? `href="${escapeAttr(safeFa)}"` : ''} data-template="fa-link">
                     <svg class="rating-icon"><use href="${baseUrl}sprite.svg#icon-filmaffinity"></use></svg>
                     <span data-template="fa-rating">${movie.fa_rating.toFixed(1)}</span>
                   </a>
@@ -433,7 +431,7 @@ export function renderMovieHtml(movie, options = {}) {
 
               ${movie.imdb_rating ? `
                 <div class="rating-line">
-                  <a target="_blank" rel="noopener noreferrer" class="rating-left" ${sanitizeExternalUrl(movie.imdb_id) ? `href="${escapeAttr(sanitizeExternalUrl(movie.imdb_id))}"` : ''} data-template="imdb-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeImdb ? '' : 'disabled'}" ${safeImdb ? `href="${escapeAttr(safeImdb)}"` : ''} data-template="imdb-link">
                     <svg class="rating-icon" fill="#F5C618"><use href="${baseUrl}sprite.svg#icon-imdb"></use></svg>
                     <span data-template="imdb-rating">${movie.imdb_rating.toFixed(1)}</span>
                   </a>

@@ -436,6 +436,34 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
       edgeSeoModule.formatVotesUnified(12500),
       sharedFormatters.formatVotesUnified(12500),
     );
+
+    // 5. computePersonAgeInfo en Edge SEO
+    assert.deepEqual(
+      edgeSeoModule.computePersonAgeInfo("1970-07-30", null),
+      sharedFormatters.computePersonAgeInfo("1970-07-30", null),
+    );
+    assert.deepEqual(
+      edgeSeoModule.computePersonAgeInfo("1928-07-26", "1999-03-07"),
+      sharedFormatters.computePersonAgeInfo("1928-07-26", "1999-03-07"),
+    );
+
+    // 4. formatModalDuration y formatMetaUnitsHtml en Edge SEO
+    assert.deepEqual(
+      edgeSeoModule.formatModalDuration(105, null, false),
+      sharedFormatters.formatModalDuration(105, null, false),
+    );
+    assert.deepEqual(
+      edgeSeoModule.formatModalDuration(30, 10, true),
+      sharedFormatters.formatModalDuration(30, 10, true),
+    );
+    assert.equal(
+      edgeSeoModule.formatMetaUnitsHtml("10 ep. x"),
+      '10 <span class="meta-unit">ep.</span> <span class="meta-unit">x</span>',
+    );
+    assert.equal(
+      edgeSeoModule.formatMetaUnitsHtml("1 h. 45 min."),
+      '1 <span class="meta-unit">h.</span> 45 <span class="meta-unit">min.</span>',
+    );
   });
 });
 

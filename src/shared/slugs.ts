@@ -1,3 +1,5 @@
+import { normalizeText } from "./formatters.js";
+
 // =================================================================
 //          FUENTE ÚNICA DE VERDAD: IDENTIDAD Y CANONICIDAD
 //                     (src/shared/slugs.ts)
@@ -23,23 +25,7 @@
  *     "Ciencia Ficción"  → "ciencia-ficcion"
  */
 export function toSlug(text: string): string {
-  if (!text) return "";
-  return text
-    .toLowerCase()
-    .replace(/[’‘`]/g, "'")
-    .replace(/[øØ]/g, "o")
-    .replace(/[æÆ]/g, "ae")
-    .replace(/[œŒ]/g, "oe")
-    .replace(/[ß]/g, "ss")
-    .replace(/[ðÐ]/g, "d")
-    .replace(/[þÞ]/g, "th")
-    .replace(/[łŁ]/g, "l")
-    .replace(/[đĐ]/g, "d")
-    .replace(/[ħĦ]/g, "h")
-    .replace(/[ŋŊ]/g, "n")
-    .replace(/[ıI]/g, "i")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+  return normalizeText(text)
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
@@ -74,13 +60,7 @@ export const GENRE_SLUG_MAP: Record<string, string> = Object.fromEntries(
 export function genreToSlug(genre: string | null | undefined): string | null {
   if (!genre) return null;
   const slug = toSlug(genre);
-  if (!slug) return null;
-
-  if (GENRE_SLUG_MAP[slug]) return slug;
-
-  const norm = genre.trim().toLowerCase();
-  const direct = Object.keys(GENRE_SLUG_MAP).find(k => GENRE_SLUG_MAP[k].toLowerCase() === norm);
-  return direct ?? null;
+  return GENRE_SLUG_MAP[slug] ? slug : null;
 }
 
 /**

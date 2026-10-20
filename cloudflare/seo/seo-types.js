@@ -217,6 +217,30 @@ export function formatModalDuration(minutes, episodes, isSeries = false) {
   };
 }
 
+/**
+ * Envuelve palabras y unidades de duración/episodios en spans con clase .meta-unit
+ * para replicar la modulación tipográfica de la modal SPA (-20% font-weight).
+ */
+export function formatMetaUnitsHtml(text) {
+  if (!text) return '';
+  const regex = /([a-zA-ZáéíóúÁÉÍÓÚñÑ]+(?:\.)?)/g;
+  let result = '';
+  let lastIndex = 0;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      result += escapeHtml(text.substring(lastIndex, match.index));
+    }
+    result += `<span class="meta-unit">${escapeHtml(match[0])}</span>`;
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    result += escapeHtml(text.substring(lastIndex));
+  }
+  return result;
+}
+
+
 export function formatYear(year, yearEnd, isSeries = false, fallback = '', type = '') {
   if (!year) return fallback;
   const text = String(year);
@@ -326,3 +350,50 @@ export function sanitizeExternalUrl(url) {
   return null;
 }
 
+/**
+ * Calcula la información cronológica y edad de personas (vivas o fallecidas).
+ */
+export function computePersonAgeInfo(birthday, deathday) {
+  if (!birthday) {
+    return { bYear: '', dYear: '', datesStr: '', ageStr: '' };
+  }
+
+  const birthDate = new Date(birthday);
+  if (isNaN(birthDate.getTime())) {
+    return { bYear: '', dYear: '', datesStr: '', ageStr: '' };
+  }
+
+  const bYear = String(birthDate.getUTCFullYear());
+  let dYear = '';
+  let age = 0;
+  let isDeceased = false;
+
+  if (deathday) {
+    const deathDate = new Date(deathday);
+    if (!isNaN(deathDate.getTime())) {
+      dYear = String(deathDate.getUTCFullYear());
+      isDeceased = true;
+      let diff = deathDate.getUTCFullYear() - birthDate.getUTCFullYear();
+      const m = deathDate.getUTCMonth() - birthDate.getUTCMonth();
+      if (m < 0 || (m === 0 && deathDate.getUTCDate() < birthDate.getUTCDate())) {
+        diff--;
+      }
+      age = diff;
+    }
+  }
+
+  if (!isDeceased) {
+    const now = new Date();
+    let diff = now.getUTCFullYear() - birthDate.getUTCFullYear();
+    const m = now.getUTCMonth() - birthDate.getUTCMonth();
+    if (m < 0 || (m === 0 && now.getUTCDate() < birthDate.getUTCDate())) {
+      diff--;
+    }
+    age = diff;
+  }
+
+  const datesStr = isDeceased ? `${bYear}-${dYear}` : `${bYear}-`;
+  const ageStr = isDeceased ? `✝ (${age})` : `(${age})`;
+
+  return { bYear, dYear, datesStr, ageStr };
+}

@@ -367,14 +367,17 @@ BEGIN
                    d.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(director_name, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
                 OR d.name_norm = public.unaccent_immutable(lower(director_name))
                 OR regexp_replace(d.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
-                OR (
-                    d.components IS NOT NULL AND EXISTS (
-                        SELECT 1 
-                        FROM unnest(string_to_array(d.components, ',')) comp(name)
-                        WHERE public.unaccent_immutable(lower(trim(comp.name))) = public.unaccent_immutable(lower(director_name))
-                           OR regexp_replace(public.unaccent_immutable(lower(trim(comp.name))), '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
-                    )
-                )
+              )
+            UNION
+            SELECT d.name AS d_name
+            FROM public.people d
+            WHERE d.type IN ('D', 'DA', 'AD')
+              AND d.components IS NOT NULL
+              AND EXISTS (
+                  SELECT 1 
+                  FROM unnest(string_to_array(d.components, ',')) comp(name)
+                  WHERE public.unaccent_immutable(lower(trim(comp.name))) = public.unaccent_immutable(lower(director_name))
+                     OR regexp_replace(public.unaccent_immutable(lower(trim(comp.name))), '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(director_name)), '[^a-z0-9]', '', 'g')
               )
             UNION
             SELECT director_name

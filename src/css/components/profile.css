@@ -100,13 +100,14 @@
 }
 
 .profile-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   color: var(--profile-text-muted);
-  font-size: 1.75rem;
-  line-height: 1;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   border-radius: var(--radius-sm, 6px);
   transition: color 0.15s ease, background-color 0.15s ease;
 }

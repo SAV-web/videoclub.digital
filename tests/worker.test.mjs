@@ -541,6 +541,9 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     // Verificación de Schema.org JSON-LD
     assert.match(html, /"@type":"Movie"/);
     assert.match(html, /"@type":"BreadcrumbList"/);
+    assert.ok(html.includes('"item":"https://videoclub.digital/genero/drama/"'), "El nivel 2 del breadcrumb debe enlazar al género canónico real /genero/drama/");
+    assert.ok(!html.includes('/genero/drama/peliculas/'), "NO debe contener rutas hijas inexistentes 404");
+    assert.ok(!html.includes('"item":"https://videoclub.digital/peliculas/"'), "NO debe enlazar a /peliculas/ (inexistente en el Worker)");
     assert.match(html, /Frank Darabont/);
 
     // Verificación de Speculation Rules y CSS
@@ -603,15 +606,15 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     );
   });
 
-  test("Series SEO: los episodios se representan con 'x' en lugar de con 'ep' en /titulo/chernobyl-2019/", async () => {
+  test("Series SEO: los episodios se representan con formato modal SPA ('5 ep. x') en /titulo/chernobyl-2019/", async () => {
     const request = new Request("https://videoclub.digital/titulo/chernobyl-2019/");
     const response = await worker.fetch(request, {}, defaultCtx);
 
     assert.equal(response.status, 200);
     const html = await response.text();
 
-    assert.ok(html.includes("5 x"), "Los episodios deben contener el formato '5 x'");
-    assert.ok(!html.includes("5 ep"), "NO debe contener el formato '5 ep'");
+    assert.ok(html.includes('5 <span class="meta-unit">ep.</span> <span class="meta-unit">x</span>'), "Los episodios deben contener el formato modal con clases .meta-unit");
+    assert.ok(html.includes('330 <span class="meta-unit">min.</span>'), "La duración debe contener el formato modal con clases .meta-unit");
   });
 
   test("Ficha SEO de título: fondo estático (.seo-backdrop), overlay sin desenfoque y sin cabecera flotante redundante", async () => {

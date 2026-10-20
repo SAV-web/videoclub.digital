@@ -1,4 +1,4 @@
-import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS, FILTER_CONFIG } from "../../constants.js";
+import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS_SET, FILTER_CONFIG } from "../../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, renderStudioIcons, setupExternalLink, getPosterUrl, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../../utils.js";
 import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../../state.js";
 import { saveLocalEntryWithMovie } from "../../localStore.js";
@@ -378,7 +378,7 @@ export function handleCardClick(this: MovieCardElement, event: MouseEvent): void
         const listText = createElement("div", { className: "actors-list-text" });
 
         actors.forEach(name => {
-          if ((IGNORED_ACTORS as readonly string[]).includes(name.toLowerCase())) {
+          if (IGNORED_ACTORS_SET.has(name.toLowerCase())) {
             listText.appendChild(createElement("span", {
               className: "actor-list-item",
               textContent: name,
@@ -700,7 +700,7 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
     actorsEl.textContent = preserveHyphenatedWords(shortActors) || "Reparto no disponible";
 
 
-    const hasActors = actors.length > 0 && actors.some(a => !(IGNORED_ACTORS as readonly string[]).includes(a.toLowerCase()));
+    const hasActors = actors.length > 0 && actors.some(a => !IGNORED_ACTORS_SET.has(a.toLowerCase()));
     const genres = (movie.genres || "").split(",").map(g => g.trim()).filter(Boolean);
     const canExpand = hasActors || genres.length > 0;
     const expandBtn = actorsEl.parentElement?.querySelector(".actors-expand-btn");

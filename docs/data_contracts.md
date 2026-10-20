@@ -53,8 +53,7 @@ Garantiza la presencia de datos en columnas estructurales indispensables para el
 | :--- | :--- | :--- | :--- | :--- |
 | `movies_title_slug_not_null` | `public.movies` | `title`, `slug` | `ERROR` | Toda película requiere título legible y slug para URLs públicas. |
 | `movies_relevance_not_null` | `public.movies` | `relevance` | `ERROR` | Vital para el orden natural de catálogo y el *Daily Showcase*. |
-| `directors_name_slug_not_null`| `public.directors`| `name`, `slug` | `ERROR` | Los directores sin slug rompen las rutas `/director/{slug}/`. |
-| `actors_name_slug_not_null` | `public.actors` | `name`, `slug` | `ERROR` | Los actores sin slug rompen las rutas `/actor/{slug}/`. |
+| `people_name_slug_not_null` | `public.people` | `name`, `slug` | `ERROR` | Realizadores e intérpretes sin slug rompen las rutas canónicas `/director/{slug}/` y `/actor/{slug}/`. |
 
 ---
 
@@ -65,8 +64,7 @@ Garantiza la ausencia de duplicados que provoquen ambigüedad en búsquedas o co
 | :--- | :--- | :--- | :--- | :--- |
 | `movies_slug_unique` | `public.movies` | `slug` | `ERROR` | El motor de Edge SSR en Cloudflare Workers y la SPA requieren relación 1:1 estricta. |
 | `movies_fa_id_unique` | `public.movies` | `fa_id` | `ERROR` | Evita registros duplicados procedentes de sincronizaciones sucesivas. |
-| `directors_slug_unique` | `public.directors`| `slug` | `ERROR` | Garantiza unicidad en páginas canónicas de realizadores. |
-| `actors_slug_unique` | `public.actors` | `slug` | `ERROR` | Garantiza unicidad en páginas canónicas de intérpretes. |
+| `people_slug_unique` | `public.people` | `slug` | `ERROR` | Garantiza unicidad en páginas canónicas de realizadores e intérpretes. |
 
 ---
 
@@ -76,8 +74,8 @@ Verifica que las claves foráneas y las tablas de relación N:M no contengan reg
 | Test | Tablas Involucradas | Condición de Fallo | Severidad |
 | :--- | :--- | :--- | :--- |
 | `movies_country_id_fk_countries` | `movies` $\to$ `countries` | `m.country_id IS NOT NULL AND c.id IS NULL` | `ERROR` |
-| `movie_directors_orphans` | `movie_directors` $\leftrightarrow$ `movies`, `directors` | Registros donde `movie_id` o `director_id` no existen. | `ERROR` |
-| `movie_actors_orphans` | `movie_actors` $\leftrightarrow$ `movies`, `actors` | Registros donde `movie_id` o `actor_id` no existen. | `ERROR` |
+| `movie_directors_orphans` | `movie_directors` $\leftrightarrow$ `movies`, `people` | Registros donde `movie_id` o `director_id` no existen. | `ERROR` |
+| `movie_actors_orphans` | `movie_actors` $\leftrightarrow$ `movies`, `people` | Registros donde `movie_id` o `actor_id` no existen. | `ERROR` |
 | `movie_genres_orphans` | `movie_genres` $\leftrightarrow$ `movies`, `genres` | Registros donde `movie_id` o `genre_id` no existen. | `ERROR` |
 
 ---
@@ -91,7 +89,7 @@ Audita la coherencia lógica de las métricas numéricas y temporales cinematogr
 | `series_year_end_gte_year` | `movies` | `year_end IS NULL OR year_end >= year` | `ERROR` |
 | `movies_ratings_in_bounds` | `movies` | Calificaciones en rango `[0.0, 10.0]` | `ERROR` |
 | `movies_minutes_positive` | `movies` | `minutes > 0` | `WARN` |
-| `people_dates_order_valid` | `directors`, `actors` | `deathday IS NULL OR deathday >= birthday` | `WARN` |
+| `people_dates_order_valid` | `public.people` | `deathday IS NULL OR deathday >= birthday` | `WARN` |
 | `countries_region_valid` | `countries` | `region IS NULL OR region IN ('nordic', 'latam')` | `WARN` |
 
 ---

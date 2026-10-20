@@ -13,7 +13,8 @@ import {
   escapeAttr,
   preserveHyphenatedWords,
   toSlug,
-  getTitleLengthClass
+  getTitleLengthClass,
+  computePersonAgeInfo
 } from './seo-types.js';
 
 import { renderSpaMovieCard } from './render-taxonomy.js';
@@ -25,53 +26,6 @@ function safeJsonLd(obj) {
     .replace(/&/g, '\\u0026');
 }
 
-/**
- * Calcula la información cronológica y edad de personas (vivas o fallecidas).
- */
-export function computePersonAgeInfo(birthday, deathday) {
-  if (!birthday) {
-    return { bYear: '', dYear: '', datesStr: '', ageStr: '' };
-  }
-
-  const birthDate = new Date(birthday);
-  if (isNaN(birthDate.getTime())) {
-    return { bYear: '', dYear: '', datesStr: '', ageStr: '' };
-  }
-
-  const bYear = String(birthDate.getUTCFullYear());
-  let dYear = '';
-  let age = 0;
-  let isDeceased = false;
-
-  if (deathday) {
-    const deathDate = new Date(deathday);
-    if (!isNaN(deathDate.getTime())) {
-      dYear = String(deathDate.getUTCFullYear());
-      isDeceased = true;
-      let diff = deathDate.getUTCFullYear() - birthDate.getUTCFullYear();
-      const m = deathDate.getUTCMonth() - birthDate.getUTCMonth();
-      if (m < 0 || (m === 0 && deathDate.getUTCDate() < birthDate.getUTCDate())) {
-        diff--;
-      }
-      age = diff;
-    }
-  }
-
-  if (!isDeceased) {
-    const now = new Date();
-    let diff = now.getUTCFullYear() - birthDate.getUTCFullYear();
-    const m = now.getUTCMonth() - birthDate.getUTCMonth();
-    if (m < 0 || (m === 0 && now.getUTCDate() < birthDate.getUTCDate())) {
-      diff--;
-    }
-    age = diff;
-  }
-
-  const datesStr = isDeceased ? `${bYear}-${dYear}` : `${bYear}-`;
-  const ageStr = isDeceased ? `✝ (${age})` : `(${age})`;
-
-  return { bYear, dYear, datesStr, ageStr };
-}
 
 /**
  * Renderiza la tarjeta VIP oficial (.person-card) en el Edge.

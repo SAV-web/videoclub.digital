@@ -9,7 +9,7 @@ function setupMockProfileDom() {
   const domMap = {};
   const ids = [
     "profile-overlay", "profile-modal", "profile-modal-close", "profile-avatar-large", "profile-modal-title",
-    "profile-stat-watchlist-count", "profile-stat-rated-count", "profile-stat-average-stars", "profile-stat-stars-text",
+    "profile-stat-watchlist-count", "profile-stat-rated-count", "profile-stat-average-stars",
     "profile-breakdown-container", "profile-btn-explore-watchlist", "profile-btn-explore-rated", "profile-password-form",
     "profile-new-password", "profile-password-toggle", "profile-password-strength", "profile-security-message",
     "profile-password-submit-btn", "profile-sync-dot", "profile-sync-text", "profile-btn-force-sync",

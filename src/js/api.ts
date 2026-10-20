@@ -7,7 +7,7 @@
 // recordar lo que ya ha descargado y no pedirlo dos veces.
 // =================================================================
 
-import { CONFIG, IGNORED_ACTORS, TEXT_FILTER_KEYS } from "./constants.js";
+import { CONFIG, IGNORED_ACTORS_SET, TEXT_FILTER_KEYS } from "./constants.js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
@@ -781,7 +781,7 @@ export const fetchCountrySuggestions = (term: string) => fetchSuggestions("get_c
 export const fetchActorSuggestions = async (term: string): Promise<string[]> => {
   const suggestions = await fetchSuggestions("get_actor_suggestions", term);
   // Filtrar actores ignorados (animación, etc.)
-  return suggestions.filter(name => !(IGNORED_ACTORS as readonly string[]).includes(name.trim().toLowerCase()));
+  return suggestions.filter(name => !IGNORED_ACTORS_SET.has(name.trim().toLowerCase()));
 };
 
 // --- DATOS ALEATORIOS (Discovery) ---
@@ -791,7 +791,7 @@ export const fetchRandomTopActors = async (): Promise<string[]> => {
 
   const { data, error } = await supabase.rpc("get_random_top_actors", { limit_count: 5 });
   if (error) return [];
-  return (data as Array<{ name: string }> || []).map(d => d.name).filter((name: string) => !(IGNORED_ACTORS as readonly string[]).includes(name.trim().toLowerCase()));
+  return (data as Array<{ name: string }> || []).map(d => d.name).filter((name: string) => !IGNORED_ACTORS_SET.has(name.trim().toLowerCase()));
 };
 
 export const fetchRandomTopDirectors = async (): Promise<string[]> => {
