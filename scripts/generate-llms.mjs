@@ -61,7 +61,7 @@ async function main() {
 ## Catálogo y Enlaces Principales
 
 - [Inicio / Catálogo Completo](https://videoclub.digital/): Rejilla interactiva de películas y series con filtrado multidimensional instantáneo.
-- [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice de sitemaps estructurados para películas, directores, actores, géneros y países.
+- [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice de sitemaps estructurados para películas, personas VIP, géneros, estudios, selecciones y países.
 - [Especificación Completa para Agentes (llms-full.txt)](https://videoclub.digital/llms-full.txt): Referencia exhaustiva con la totalidad de taxonomías, operadores y metadatos.
 
 ## Estructura de URLs Canónicas y Contrato de Enrutamiento
@@ -69,20 +69,21 @@ async function main() {
 La plataforma opera con una separación contractual estricta entre las páginas estáticas indexables (SEO SSR en Edge) y las rutas de navegación interactiva en el cliente (SPA):
 
 ### 1. Conjunto de Landing Pages SEO SSR (Indexables en el Edge)
-El contrato SEO del Edge Worker genera páginas HTML estáticas optimizadas para motores de búsqueda exclusivamente para rutas de **un solo segmento** y entidades principales:
+El contrato SEO del Edge Worker genera páginas HTML estáticas optimizadas para motores de búsqueda exclusivamente para rutas prefijadas por dimensión y entidades principales:
 - **Fichas de Título**: \`/titulo/{slug}/\` (ej: \`https://videoclub.digital/titulo/el-padrino-1972/\`)
-- **Entidades VIP (Personas)**: \`/director/{slug}/\` y \`/actor/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`, \`https://videoclub.digital/actor/al-pacino/\`). *Nota: No se admiten parámetros tipo \`?director=\` ni \`?actor=\` en URLs canónicas.*
-- **Taxonomías Simples (1 segmento de ruta)**:
-  - **21 Géneros Canónicos**: ${OFFICIAL_GENRES.map(g => `\`/${toSlug(g)}/\` (${g})`).join(", ")}.
-  - **Países y Regiones Principales**: \`/eeuu/\` (EEUU), \`/espana/\` (España), \`/uk/\` (Reino Unido), \`/francia/\` (Francia), \`/japon/\` (Japón), \`/italia/\` (Italia), \`/alemania/\` (Alemania), \`/latam/\` (Latinoamérica), \`/nordic/\` (Países Nórdicos).
-  - **15 Estudios Cinematográficos**: ${Array.from(STUDIO_SLUGS).map(s => `\`/${s}/\``).join(", ")}.
-  - **10 Selecciones Críticas**: ${Array.from(SELECTION_SLUGS).map(s => `\`/${s}/\``).join(", ")}.
+- **Entidades VIP (Personas en la Raíz)**: \`/{vip-slug}/\` (ej: \`https://videoclub.digital/christopher-nolan/\`, \`https://videoclub.digital/al-pacino/\`). Las personalidades cinematográficas VIP disponen de URL canónica indexable directamente en la raíz con marcado Schema.org Person y filmografía completa.
+- **Taxonomías Canónicas Prefijadas**:
+  - **21 Géneros Canónicos**: ${OFFICIAL_GENRES.map(g => `\`/genero/${toSlug(g)}/\` (${g})`).join(", ")}.
+  - **Países y Regiones Principales**: \`/pais/eeuu/\` (EEUU), \`/pais/espana/\` (España), \`/pais/uk/\` (Reino Unido), \`/pais/francia/\` (Francia), \`/pais/japon/\` (Japón), \`/pais/italia/\` (Italia), \`/pais/alemania/\` (Alemania), \`/pais/latam/\` (Latinoamérica), \`/pais/nordic/\` (Países Nórdicos).
+  - **15 Estudios Cinematográficos**: ${Array.from(STUDIO_SLUGS).map(s => `\`/estudio/${s}/\``).join(", ")}.
+  - **10 Selecciones Críticas**: ${Array.from(SELECTION_SLUGS).map(s => `\`/seleccion/${s}/\``).join(", ")}.
 
-*Garantía Contractual SEO:* Solo las URLs simples de 1 segmento anteriores forman parte del sitemap oficial y disponen de Server-Side Rendering (SSR) en el Edge con marcado Schema.org completo.
+*Garantía Contractual SEO:* Solo las URLs canónicas estructuradas anteriores forman parte del sitemap oficial y disponen de Server-Side Rendering (SSR) en el Edge con marcado Schema.org completo.
 
 ### 2. Rutas Combinadas y Exclusiones (Navegación Interactiva de la SPA)
 Las rutas combinadas son rutas funcionales de la SPA, pero no forman parte del conjunto de landing pages SEO SSR.
 El analizador de la SPA (\`parsePrettyPath\`) procesa dinámicamente en el navegador múltiples segmentos y operadores de exclusión:
+- **Entidades de Persona en la SPA**: \`/director/{slug}/\` y \`/actor/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`, \`https://videoclub.digital/actor/al-pacino/\`). *Nota: No se admiten parámetros tipo \`?director=\` ni \`?actor=\` en URLs canónicas.*
 - **Jerarquía combinada**: \`/{genero}/{pais}/{estudio O seleccion}/\` (ej: \`/drama/francia/\`, \`/sci-fi/eeuu/warner/\`, \`/drama/criterion/\`, \`/japon/sony/\`).
 - **Exclusiones**: Se prefijan con \`no-\` (ej: \`/comedia/no-eeuu/\`, \`/drama/no-terror/\`).
 Estas rutas permiten deep-linking y una experiencia de usuario instantánea y reactiva en la aplicación, pero no son páginas SEO SSR pre-renderizadas por el Edge Worker.
@@ -107,18 +108,18 @@ Los filtros no posicionales utilizan exclusivamente parámetros URL:
   // 2. GENERAR public/llms-full.txt (Especificación exhaustiva y completa)
   const genresListMarkdown = OFFICIAL_GENRES.map(g => {
     const slug = toSlug(g);
-    return `- \`/${slug}/\` — **${g}** (\`https://videoclub.digital/${slug}/\`)`;
+    return `- \`/genero/${slug}/\` — **${g}** (\`https://videoclub.digital/genero/${slug}/\`)`;
   }).join("\n");
 
   const studiosListMarkdown = Array.from(STUDIO_SLUGS).map(slug => {
     const info = STUDIO_DATA[slug];
     const name = info?.title || slug.charAt(0).toUpperCase() + slug.slice(1);
-    return `- \`/${slug}/\` — **${name}** (\`https://videoclub.digital/${slug}/\`)`;
+    return `- \`/estudio/${slug}/\` — **${name}** (\`https://videoclub.digital/estudio/${slug}/\`)`;
   }).join("\n");
 
   const selectionsListMarkdown = Array.from(SELECTION_SLUGS).map(slug => {
     const desc = SELECTION_TITLES[slug] || slug;
-    return `- \`/${slug}/\` — **${desc}** (\`https://videoclub.digital/${slug}/\`)`;
+    return `- \`/seleccion/${slug}/\` — **${desc}** (\`https://videoclub.digital/seleccion/${slug}/\`)`;
   }).join("\n");
 
   const majorCountries = [
@@ -162,7 +163,7 @@ Los filtros no posicionales utilizan exclusivamente parámetros URL:
   ];
 
   const countriesListMarkdown = majorCountries.map(([slug, name]) => {
-    return `- \`/${slug}/\` — **${name}** (\`https://videoclub.digital/${slug}/\`)`;
+    return `- \`/pais/${slug}/\` — **${name}** (\`https://videoclub.digital/pais/${slug}/\`)`;
   }).join("\n");
 
   const llmsFullTxtContent = `# VIDEOCLUB.DIGITAL — Especificación Completa del Catálogo (llms-full.txt)
@@ -214,15 +215,13 @@ ${countriesListMarkdown}
 
 ## 3. Entidades de Personas (Directores y Actores)
 
-Las personalidades del catálogo cuentan con rutas dedicadas con prefijo semántico:
+Las personalidades del catálogo cuentan con URLs canónicas en el Edge y rutas dedicadas en la aplicación:
 
-- **Directores**: \`/director/{slug}/\`
-  - Ejemplo: \`https://videoclub.digital/director/christopher-nolan/\`
-  - Ejemplo: \`https://videoclub.digital/director/martin-scorsese/\`
-  - Ejemplo: \`https://videoclub.digital/director/luis-garcia-berlanga/\`
-- **Actores**: \`/actor/{slug}/\`
-  - Ejemplo: \`https://videoclub.digital/actor/al-pacino/\`
-  - Ejemplo: \`https://videoclub.digital/actor/eduard-fernandez/\`
+- **Canónicas SEO SSR (en la Raíz)**: Las personalidades VIP (directores y actores con ficha indexable y filmografía completa) residen directamente en la raíz canónica:
+  - \`/{vip-slug}/\` (ej: \`https://videoclub.digital/christopher-nolan/\`, \`https://videoclub.digital/al-pacino/\`, \`https://videoclub.digital/martin-scorsese/\`, \`https://videoclub.digital/luis-garcia-berlanga/\`, \`https://videoclub.digital/eduard-fernandez/\`)
+- **Navegación Interactiva en la SPA**: En el cliente (SPA), se utilizan las rutas dedicadas con prefijo semántico para el filtrado directo en la rejilla:
+  - **Directores**: \`/director/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`)
+  - **Actores**: \`/actor/{slug}/\` (ej: \`https://videoclub.digital/actor/al-pacino/\`)
 
 *Regla de Protocolo:*
 No se utilizan consultas por parámetro (\`?director=\` o \`?actor=\`) para enlaces permanentes o canónicos.
@@ -234,14 +233,14 @@ No se utilizan consultas por parámetro (\`?director=\` o \`?actor=\`) para enla
 La arquitectura de VIDEOCLUB.DIGITAL establece una clara frontera contractual entre las páginas SEO SSR pre-renderizadas en el Edge y las rutas multi-segmento procesadas por la SPA:
 
 ### A. Conjunto Canónico de Landing Pages SEO SSR (Indexables en el Edge)
-El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos OpenGraph y Schema.org exclusivamente para URLs de **un único segmento** (más fichas de título y entidades VIP):
+El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos OpenGraph y Schema.org exclusivamente para URLs canónicas prefijadas y entidades VIP:
 1. **Fichas de Título**: \`/titulo/{slug}/\` (ej: \`https://videoclub.digital/titulo/el-padrino-1972/\`)
-2. **Entidades VIP**: \`/director/{slug}/\` y \`/actor/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`, \`https://videoclub.digital/actor/al-pacino/\`)
-3. **Taxonomías Simples (1 segmento de ruta)**:
-   - Género simple: \`https://videoclub.digital/drama/\`
-   - País simple: \`https://videoclub.digital/francia/\`
-   - Estudio simple: \`https://videoclub.digital/warner/\`
-   - Selección simple: \`https://videoclub.digital/criterion/\`
+2. **Entidades VIP (en la Raíz)**: \`/{vip-slug}/\` (ej: \`https://videoclub.digital/christopher-nolan/\`, \`https://videoclub.digital/al-pacino/\`)
+3. **Taxonomías Canónicas Prefijadas**:
+   - Género: \`https://videoclub.digital/genero/drama/\`
+   - País: \`https://videoclub.digital/pais/francia/\`
+   - Estudio: \`https://videoclub.digital/estudio/warner/\`
+   - Selección: \`https://videoclub.digital/seleccion/criterion/\`
 
 *Garantía Contractual:* Solo estas páginas forman parte de \`sitemap.xml\` y entregan HTML SSR bajo demanda desde el Edge Worker para motores de búsqueda y agentes.
 
@@ -250,24 +249,28 @@ El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos Ope
 
 El enrutador del cliente de la Single Page Application (\`parsePrettyPath()\`) admite la combinación de taxonomías en un orden jerárquico estricto para proporcionar deep-linking interactivo y filtrado instantáneo en el navegador:
 
-1. **Jerarquía Combinada**: \`/{genero}/{pais}/{estudio O seleccion}/\`
+1. **Rutas de Personas en la SPA**:
+   - \`/director/{slug}/\` (ej: \`https://videoclub.digital/director/christopher-nolan/\`)
+   - \`/actor/{slug}/\` (ej: \`https://videoclub.digital/actor/al-pacino/\`)
+
+2. **Jerarquía Combinada**: \`/{genero}/{pais}/{estudio O seleccion}/\`
    - Ejemplo (Género + País): \`https://videoclub.digital/drama/francia/\`
    - Ejemplo (Género + País + Estudio): \`https://videoclub.digital/sci-fi/eeuu/warner/\`
    - Ejemplo (Género + Selección): \`https://videoclub.digital/drama/criterion/\`
    - Ejemplo (País + Estudio): \`https://videoclub.digital/japon/sony/\`
 
-2. **Exclusiones de Catálogo**:
+3. **Exclusiones de Catálogo**:
    - Prefijadas con \`no-\`: \`https://videoclub.digital/comedia/no-eeuu/\`
    - Exclusión de género: \`https://videoclub.digital/drama/no-terror/\`
 
 Estas combinaciones enriquecen la interactividad del usuario final sin fragmentar el presupuesto de rastreo (crawl budget) de los motores de búsqueda en el Edge.
 
-3. **Filtrado Temporal (Años y Décadas)**:
+4. **Filtrado Temporal (Años y Décadas)**:
    - **NO** forma parte de la ruta. Los años o décadas nunca tienen segmentos propios en la URL.
    - El año se filtra siempre vía Query Parameter:
      - Año individual: \`https://videoclub.digital/?year=1994\`
-     - Rango de años: \`https://videoclub.digital/sci-fi/?year=1980-1989\`
-     - Rango abierto: \`https://videoclub.digital/drama/?year=2010-\`
+     - Rango de años: \`https://videoclub.digital/genero/sci-fi/?year=1980-1989\`
+     - Rango abierto: \`https://videoclub.digital/genero/drama/?year=2010-\`
 
 4. **Parámetros URL Adicionales**:
    - \`?search={texto}\`: Búsqueda de texto completo normalizada sin acentos ni diacríticos.

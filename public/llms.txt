@@ -5,7 +5,7 @@
 ## Catálogo y Enlaces Principales
 
 - [Inicio / Catálogo Completo](https://videoclub.digital/): Rejilla interactiva de películas y series con filtrado multidimensional instantáneo.
-- [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice de sitemaps estructurados para películas, directores, actores, géneros y países.
+- [Mapa del Sitio (Sitemap Index)](https://videoclub.digital/sitemap-index.xml): Índice de sitemaps estructurados para películas, personas VIP, géneros, estudios, selecciones y países.
 - [Especificación Completa para Agentes (llms-full.txt)](https://videoclub.digital/llms-full.txt): Referencia exhaustiva con la totalidad de taxonomías, operadores y metadatos.
 
 ## Estructura de URLs Canónicas y Contrato de Enrutamiento
@@ -13,20 +13,21 @@
 La plataforma opera con una separación contractual estricta entre las páginas estáticas indexables (SEO SSR en Edge) y las rutas de navegación interactiva en el cliente (SPA):
 
 ### 1. Conjunto de Landing Pages SEO SSR (Indexables en el Edge)
-El contrato SEO del Edge Worker genera páginas HTML estáticas optimizadas para motores de búsqueda exclusivamente para rutas de **un solo segmento** y entidades principales:
+El contrato SEO del Edge Worker genera páginas HTML estáticas optimizadas para motores de búsqueda exclusivamente para rutas prefijadas por dimensión y entidades principales:
 - **Fichas de Título**: `/titulo/{slug}/` (ej: `https://videoclub.digital/titulo/el-padrino-1972/`)
-- **Entidades VIP (Personas)**: `/director/{slug}/` y `/actor/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`, `https://videoclub.digital/actor/al-pacino/`). *Nota: No se admiten parámetros tipo `?director=` ni `?actor=` en URLs canónicas.*
-- **Taxonomías Simples (1 segmento de ruta)**:
-  - **21 Géneros Canónicos**: `/accion/` (Acción), `/animacion/` (Animación), `/aventuras/` (Aventuras), `/belico/` (Bélico), `/biografia/` (Biografía), `/noir/` (Noir), `/comedia/` (Comedia), `/crimen/` (Crimen), `/deporte/` (Deporte), `/documental/` (Documental), `/drama/` (Drama), `/familiar/` (Familiar), `/fantasia/` (Fantasía), `/historico/` (Histórico), `/intriga/` (Intriga), `/musica/` (Música), `/romance/` (Romance), `/sci-fi/` (Sci-Fi), `/terror/` (Terror), `/thriller/` (Thriller), `/western/` (Western).
-  - **Países y Regiones Principales**: `/eeuu/` (EEUU), `/espana/` (España), `/uk/` (Reino Unido), `/francia/` (Francia), `/japon/` (Japón), `/italia/` (Italia), `/alemania/` (Alemania), `/latam/` (Latinoamérica), `/nordic/` (Países Nórdicos).
-  - **15 Estudios Cinematográficos**: `/warner/`, `/universal/`, `/sony/`, `/paramount/`, `/disney/`, `/netflix/`, `/amazon/`, `/fox/`, `/lionsgate/`, `/canalplus/`, `/bbc/`, `/miramax/`, `/a24/`, `/movistar/`, `/apple/`.
-  - **10 Selecciones Críticas**: `/1001movies/`, `/tspdt/`, `/criterion/`, `/kinolorber/`, `/toptv/`, `/hbo/`, `/acontra/`, `/arrow/`, `/eureka/`, `/imprint/`.
+- **Entidades VIP (Personas en la Raíz)**: `/{vip-slug}/` (ej: `https://videoclub.digital/christopher-nolan/`, `https://videoclub.digital/al-pacino/`). Las personalidades cinematográficas VIP disponen de URL canónica indexable directamente en la raíz con marcado Schema.org Person y filmografía completa.
+- **Taxonomías Canónicas Prefijadas**:
+  - **21 Géneros Canónicos**: `/genero/accion/` (Acción), `/genero/animacion/` (Animación), `/genero/aventuras/` (Aventuras), `/genero/belico/` (Bélico), `/genero/biografia/` (Biografía), `/genero/noir/` (Noir), `/genero/comedia/` (Comedia), `/genero/crimen/` (Crimen), `/genero/deporte/` (Deporte), `/genero/documental/` (Documental), `/genero/drama/` (Drama), `/genero/familiar/` (Familiar), `/genero/fantasia/` (Fantasía), `/genero/historico/` (Histórico), `/genero/intriga/` (Intriga), `/genero/musica/` (Música), `/genero/romance/` (Romance), `/genero/sci-fi/` (Sci-Fi), `/genero/terror/` (Terror), `/genero/thriller/` (Thriller), `/genero/western/` (Western).
+  - **Países y Regiones Principales**: `/pais/eeuu/` (EEUU), `/pais/espana/` (España), `/pais/uk/` (Reino Unido), `/pais/francia/` (Francia), `/pais/japon/` (Japón), `/pais/italia/` (Italia), `/pais/alemania/` (Alemania), `/pais/latam/` (Latinoamérica), `/pais/nordic/` (Países Nórdicos).
+  - **15 Estudios Cinematográficos**: `/estudio/warner/`, `/estudio/universal/`, `/estudio/sony/`, `/estudio/paramount/`, `/estudio/disney/`, `/estudio/netflix/`, `/estudio/amazon/`, `/estudio/fox/`, `/estudio/lionsgate/`, `/estudio/canalplus/`, `/estudio/bbc/`, `/estudio/miramax/`, `/estudio/a24/`, `/estudio/movistar/`, `/estudio/apple/`.
+  - **10 Selecciones Críticas**: `/seleccion/1001movies/`, `/seleccion/tspdt/`, `/seleccion/criterion/`, `/seleccion/kinolorber/`, `/seleccion/toptv/`, `/seleccion/hbo/`, `/seleccion/acontra/`, `/seleccion/arrow/`, `/seleccion/eureka/`, `/seleccion/imprint/`.
 
-*Garantía Contractual SEO:* Solo las URLs simples de 1 segmento anteriores forman parte del sitemap oficial y disponen de Server-Side Rendering (SSR) en el Edge con marcado Schema.org completo.
+*Garantía Contractual SEO:* Solo las URLs canónicas estructuradas anteriores forman parte del sitemap oficial y disponen de Server-Side Rendering (SSR) en el Edge con marcado Schema.org completo.
 
 ### 2. Rutas Combinadas y Exclusiones (Navegación Interactiva de la SPA)
 Las rutas combinadas son rutas funcionales de la SPA, pero no forman parte del conjunto de landing pages SEO SSR.
 El analizador de la SPA (`parsePrettyPath`) procesa dinámicamente en el navegador múltiples segmentos y operadores de exclusión:
+- **Entidades de Persona en la SPA**: `/director/{slug}/` y `/actor/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`, `https://videoclub.digital/actor/al-pacino/`). *Nota: No se admiten parámetros tipo `?director=` ni `?actor=` en URLs canónicas.*
 - **Jerarquía combinada**: `/{genero}/{pais}/{estudio O seleccion}/` (ej: `/drama/francia/`, `/sci-fi/eeuu/warner/`, `/drama/criterion/`, `/japon/sony/`).
 - **Exclusiones**: Se prefijan con `no-` (ej: `/comedia/no-eeuu/`, `/drama/no-terror/`).
 Estas rutas permiten deep-linking y una experiencia de usuario instantánea y reactiva en la aplicación, pero no son páginas SEO SSR pre-renderizadas por el Edge Worker.

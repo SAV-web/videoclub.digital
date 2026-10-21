@@ -55,91 +55,6 @@ combined += `
   color: var(--color-text-primary);
 }
 
-.brand-text, .mark-v {
-  fill: currentColor;
-  font-family: var(--font-title, 'Inter', -apple-system, sans-serif);
-  font-weight: 800;
-}
-
-.brand-dot, .mark-dot {
-  fill: #d4a347;
-}
-
-/* Header SEO específico para fichas de título (Logo reducido V• a la izquierda de la ficha) */
-.movie-seo-header {
-  position: relative;
-  z-index: calc(var(--z-index-overlay, 1999) + 2);
-  width: 100%;
-  background: transparent;
-  border: none;
-  padding: var(--space-md) 0 var(--space-xs);
-}
-
-.movie-header-content {
-  width: 90%;
-  max-width: 720px;
-  margin-inline: auto;
-  padding: 0;
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-@media (max-width: 700px) {
-  .movie-seo-header {
-    padding: var(--space-sm) 0 var(--space-xs);
-  }
-  .movie-header-content {
-    width: 96%;
-  }
-}
-
-
-.main-header-primary-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  flex-wrap: wrap;
-}
-
-.total-results-container {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-tertiary);
-  background: var(--color-surface-2);
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-}
-
-.total-results-count {
-  font-weight: bold;
-  color: var(--color-text-primary);
-}
-
-.btn-open-spa-subtle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-surface-1);
-  border: 1px solid var(--color-border);
-  padding: 6px 14px;
-  border-radius: var(--radius-pill);
-  text-decoration: none;
-  transition: all var(--duration-quick) var(--ease-smooth);
-}
-.btn-open-spa-subtle:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text-primary);
-  border-color: var(--color-accent);
-}
-
 /* Título original en el reverso como enlace interactivo a la ficha completa */
 .back-original-title-link {
   color: inherit !important;
@@ -282,29 +197,6 @@ combined += `
   pointer-events: none;
 }
 
-.btn-header-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: 9999px;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-.btn-header-cta:hover {
-  background: #f59e0b;
-  color: #0d0d0d;
-  transform: scale(1.08);
-}
-.btn-header-cta svg {
-  width: 20px;
-  height: 20px;
-}
-
 /* Margen lateral en páginas SEO del tamaño del sidebar replegado (65px a ambos lados) */
 @media (min-width: 769px) {
   :is(.collection-wall, .person-wall) .main-layout {
@@ -414,41 +306,6 @@ combined += `
 /* Ventana modal de vista rápida siempre por encima del header al hacer zoom */
 .quick-view-modal {
   z-index: calc(var(--z-index-overlay, 1999) + 10) !important;
-}
-
-/* Ficha SEO de título (/titulo/:slug/): géneros y reparto sin restricción de espacio ni truncado con '...' */
-.is-quick-view .detail-item[data-template="actors-container"],
-.is-quick-view .detail-item[data-template="genre-container"] {
-  display: block !important;
-  line-height: 1.5 !important;
-  -webkit-line-clamp: none !important;
-  line-clamp: none !important;
-  -webkit-box-orient: unset !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  white-space: normal !important;
-  max-height: none !important;
-  padding-right: 0 !important;
-}
-
-.is-quick-view .detail-item[data-template="actors-container"] .detail-data,
-.is-quick-view .detail-item[data-template="genre-container"] .detail-data {
-  display: inline !important;
-  line-height: 1.5 !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  white-space: normal !important;
-}
-
-/* Colores de barras de puntuaciones FA e IMDb en ficha SEO */
-[data-template="fa-votes-bar"],
-.is-quick-view [data-template="fa-votes-bar"] {
-  background-color: #2570b8 !important;
-}
-
-[data-template="imdb-votes-bar"],
-.is-quick-view [data-template="imdb-votes-bar"] {
-  background-color: #f5c518 !important;
 }
 
 /* Bloqueo estricto de scroll en la vista SEO de título para fondo estático */

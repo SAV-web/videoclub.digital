@@ -34,67 +34,69 @@ describe("Especificación Canónica llms.txt y llms-full.txt", () => {
     await viteEnv?.close();
   });
 
-  test("Los 21 géneros oficiales están documentados con su slug canónico en ambos archivos", () => {
+  test("Los 21 géneros oficiales están documentados con su ruta canónica /genero/:slug/ en ambos archivos", () => {
     const { OFFICIAL_GENRES, toSlug } = slugsModule;
     assert.equal(OFFICIAL_GENRES.length, 21, "Deben existir exactamente 21 géneros oficiales");
 
     for (const genre of OFFICIAL_GENRES) {
       const slug = toSlug(genre);
       assert.ok(
-        llmsTxt.includes(`/${slug}/`),
-        `llms.txt debe listar el slug canónico /${slug}/ para el género ${genre}`
+        llmsTxt.includes(`/genero/${slug}/`),
+        `llms.txt debe listar la ruta canónica /genero/${slug}/ para el género ${genre}`
       );
       assert.ok(
-        llmsFullTxt.includes(`/${slug}/`),
-        `llms-full.txt debe listar el slug canónico /${slug}/ para el género ${genre}`
+        llmsFullTxt.includes(`/genero/${slug}/`),
+        `llms-full.txt debe listar la ruta canónica /genero/${slug}/ para el género ${genre}`
       );
     }
   });
 
-  test("Los 15 estudios oficiales están documentados con su slug canónico en ambos archivos", () => {
+  test("Los 15 estudios oficiales están documentados con su ruta canónica /estudio/:slug/ en ambos archivos", () => {
     const { STUDIO_SLUGS } = slugsModule;
     assert.equal(STUDIO_SLUGS.size, 15, "Deben existir exactamente 15 estudios oficiales");
 
     for (const studio of STUDIO_SLUGS) {
       assert.ok(
-        llmsTxt.includes(`/${studio}/`),
-        `llms.txt debe listar el slug canónico /${studio}/`
+        llmsTxt.includes(`/estudio/${studio}/`),
+        `llms.txt debe listar la ruta canónica /estudio/${studio}/`
       );
       assert.ok(
-        llmsFullTxt.includes(`/${studio}/`),
-        `llms-full.txt debe listar el slug canónico /${studio}/`
+        llmsFullTxt.includes(`/estudio/${studio}/`),
+        `llms-full.txt debe listar la ruta canónica /estudio/${studio}/`
       );
     }
   });
 
-  test("Las 10 selecciones oficiales están documentadas con su slug canónico en ambos archivos", () => {
+  test("Las 10 selecciones oficiales están documentadas con su ruta canónica /seleccion/:slug/ en ambos archivos", () => {
     const { SELECTION_SLUGS } = slugsModule;
     assert.equal(SELECTION_SLUGS.size, 10, "Deben existir exactamente 10 selecciones oficiales");
 
     for (const sel of SELECTION_SLUGS) {
       assert.ok(
-        llmsTxt.includes(`/${sel}/`),
-        `llms.txt debe listar el slug canónico /${sel}/`
+        llmsTxt.includes(`/seleccion/${sel}/`),
+        `llms.txt debe listar la ruta canónica /seleccion/${sel}/`
       );
       assert.ok(
-        llmsFullTxt.includes(`/${sel}/`),
-        `llms-full.txt debe listar el slug canónico /${sel}/`
+        llmsFullTxt.includes(`/seleccion/${sel}/`),
+        `llms-full.txt debe listar la ruta canónica /seleccion/${sel}/`
       );
     }
   });
 
-  test("Los países clave utilizan sus slugs canónicos reales y no traducciones inventadas", () => {
-    // EEUU debe ser /eeuu/, no /estados-unidos/
-    assert.ok(llmsTxt.includes("/eeuu/"));
-    assert.ok(llmsFullTxt.includes("/eeuu/"));
+  test("Los países clave utilizan sus rutas canónicas reales /pais/:slug/ y no traducciones inventadas", () => {
+    // EEUU debe ser /pais/eeuu/, no /estados-unidos/
+    assert.ok(llmsTxt.includes("/pais/eeuu/"));
+    assert.ok(llmsFullTxt.includes("/pais/eeuu/"));
     assert.ok(!llmsTxt.includes("/estados-unidos/"));
     assert.ok(!llmsFullTxt.includes("`/estados-unidos/` —"));
+    assert.ok(!llmsFullTxt.includes("`/pais/estados-unidos/` —"));
 
-    // UK debe ser /uk/, no /reino-unido/
-    assert.ok(llmsTxt.includes("/uk/"));
-    assert.ok(llmsFullTxt.includes("/uk/"));
+    // UK debe ser /pais/uk/, no /reino-unido/
+    assert.ok(llmsTxt.includes("/pais/uk/"));
+    assert.ok(llmsFullTxt.includes("/pais/uk/"));
     assert.ok(!llmsTxt.includes("/reino-unido/"));
     assert.ok(!llmsFullTxt.includes("`/reino-unido/` —"));
+    assert.ok(!llmsFullTxt.includes("`/pais/reino-unido/` —"));
   });
 
   test("No se listan rutas erróneas o inventadas señaladas en la auditoría", () => {
@@ -123,7 +125,9 @@ describe("Especificación Canónica llms.txt y llms-full.txt", () => {
     }
   });
 
-  test("Las entidades de persona se documentan obligatoriamente con prefijos de ruta canónicos", () => {
+  test("Las entidades de persona se documentan con la raíz VIP canónica y los prefijos de la SPA", () => {
+    assert.ok(llmsTxt.includes("/{vip-slug}/"));
+    assert.ok(llmsFullTxt.includes("/{vip-slug}/"));
     assert.ok(llmsTxt.includes("/director/{slug}/"));
     assert.ok(llmsTxt.includes("/actor/{slug}/"));
     assert.ok(llmsFullTxt.includes("/director/{slug}/"));

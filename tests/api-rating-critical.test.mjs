@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
+import { createMockDomElement, setupGlobalDom } from "./helpers/mock-dom.mjs";
 
 let viteEnv;
 let checkedIdsModule;
@@ -127,6 +128,40 @@ describe("syncManager.ts (Background Sync y Eventos de Conectividad)", () => {
     const cleanup = syncManagerModule.initSyncListeners();
     assert.equal(typeof cleanup, "function");
     cleanup();
+  });
+
+  test("initSyncListeners escucha SYNC_PENDING_ENTRIES del Service Worker y lo desuscribe en cleanup", () => {
+    const { teardown } = setupGlobalDom({ fallbackCreate: true });
+    let swMessageListener = null;
+
+    Object.defineProperty(globalThis.navigator, "serviceWorker", {
+      value: {
+        addEventListener: (event, handler) => {
+          if (event === "message") swMessageListener = handler;
+        },
+        removeEventListener: (event, handler) => {
+          if (event === "message" && swMessageListener === handler) {
+            swMessageListener = null;
+          }
+        }
+      },
+      configurable: true,
+      writable: true
+    });
+
+    try {
+      const cleanup = syncManagerModule.initSyncListeners();
+      assert.equal(typeof swMessageListener, "function", "Debe registrar un listener de message en navigator.serviceWorker");
+
+      // Simular mensaje de Background Sync del Service Worker
+      swMessageListener({ data: { type: "SYNC_PENDING_ENTRIES" } });
+
+      cleanup();
+      assert.equal(swMessageListener, null, "Cleanup debe retirar el listener de navigator.serviceWorker");
+    } finally {
+      delete globalThis.navigator.serviceWorker;
+      teardown();
+    }
   });
 });
 

@@ -127,19 +127,15 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // 1. Ignorar métodos no-GET y esquemas no-http
-  if (request.method !== 'GET' || !url.protocol.startsWith('http')) return;
-
-  // 2. EXCEPCIONES: Datos dinámicos y assets remotos de Supabase (Auth, REST, Storage)
+  // 1. Ignorar métodos no-GET, esquemas no-http y peticiones cross-origin (aislamiento estricto por origen)
   // NOTA DE ARQUITECTURA:
-  // - Supabase Auth (/auth/v1/) y tablas REST (/rest/v1/) manejan datos vivos de sesión y usuario.
-  // - La fuente principal Inter se autoaloja localmente (/assets/fonts/) en el mismo origen.
-  // - Por tanto, cualquier petición cross-origin residual hacia el dominio de Supabase hace bypass inmediato.
-  if (url.hostname.includes("supabase.co")) {
-    return;
-  }
+  // - Aislamiento de Origen Cruzado (Cross-World Mismatch): El Service Worker restringe
+  //   sus estrategias estrictamente a `url.origin === self.location.origin`.
+  // - Peticiones a dominios externos (Supabase Auth/REST/Storage, fuentes remotas, CDNs o extensiones)
+  //   hacen bypass inmediato hacia la red nativa sin ser interceptadas ni almacenadas en caché.
+  if (request.method !== 'GET' || !url.protocol.startsWith('http') || url.origin !== self.location.origin) return;
 
-  // 3. ESTRATEGIA: Navegación (HTML)
+  // 2. ESTRATEGIA: Navegación (HTML)
   if (request.mode === 'navigate') {
     const lowerPath = url.pathname.toLowerCase();
     const isSeoRoute = 
@@ -159,13 +155,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 4. ESTRATEGIA: Imágenes de Catálogo (Posters y VIPs)
+  // 3. ESTRATEGIA: Imágenes de Catálogo (Posters y VIPs)
   if (url.pathname.startsWith("/posters/") || url.pathname.startsWith("/vips/")) {
     event.respondWith(cacheFirst(request, CACHE_DYNAMIC));
     return;
   }
 
-  // 5. ESTRATEGIA: Assets Estáticos (JS, CSS, Fuentes, Iconos)
+  // 4. ESTRATEGIA: Assets Estáticos (JS, CSS, Fuentes, Iconos)
   if (
     request.destination === "script" ||
     request.destination === "style" ||
@@ -176,7 +172,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 6. Fallback por defecto (Cache First simple)
+  // 5. Fallback por defecto (Cache First simple)
   event.respondWith(
     caches.match(request).then((response) => {
       return response || fetch(request).then((networkResponse) => {

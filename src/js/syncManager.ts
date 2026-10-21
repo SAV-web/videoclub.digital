@@ -243,7 +243,7 @@ export async function mergeOnLogin(userId: string): Promise<void> {
 
 /**
  * Inicializa los escuchadores globales de conectividad y ciclo de vida de la página
- * para sincronizar automáticamente al recuperar la red o enfocar la pestaña.
+ * para sincronizar automáticamente al recuperar la red o recibir eventos Background Sync del Service Worker.
  */
 export function initSyncListeners(): () => void {
   if (typeof window === "undefined") {
@@ -254,10 +254,24 @@ export function initSyncListeners(): () => void {
     scheduleSync(200);
   };
 
+  const onSwMessage = (event: MessageEvent) => {
+    if (event.data && event.data.type === "SYNC_PENDING_ENTRIES") {
+      scheduleSync(100);
+    }
+  };
+
   window.addEventListener("online", onOnline);
+
+  const hasSw = "serviceWorker" in navigator && Boolean(navigator.serviceWorker);
+  if (hasSw) {
+    navigator.serviceWorker.addEventListener("message", onSwMessage);
+  }
 
   return () => {
     window.removeEventListener("online", onOnline);
+    if (hasSw) {
+      navigator.serviceWorker.removeEventListener("message", onSwMessage);
+    }
     if (syncTimeout) {
       clearTimeout(syncTimeout);
       syncTimeout = null;

@@ -16,27 +16,27 @@ VIDEOCLUB.DIGITAL es un archivo y catálogo cinematográfico independiente en es
 Todas las rutas canónicas del catálogo son estrictamente deterministas. Cada slug mapea 1:1 con un registro de base de datos.
 
 ### A. Catálogo Completo de Géneros Oficiales (21)
-- `/accion/` — **Acción** (`https://videoclub.digital/accion/`)
-- `/animacion/` — **Animación** (`https://videoclub.digital/animacion/`)
-- `/aventuras/` — **Aventuras** (`https://videoclub.digital/aventuras/`)
-- `/belico/` — **Bélico** (`https://videoclub.digital/belico/`)
-- `/biografia/` — **Biografía** (`https://videoclub.digital/biografia/`)
-- `/noir/` — **Noir** (`https://videoclub.digital/noir/`)
-- `/comedia/` — **Comedia** (`https://videoclub.digital/comedia/`)
-- `/crimen/` — **Crimen** (`https://videoclub.digital/crimen/`)
-- `/deporte/` — **Deporte** (`https://videoclub.digital/deporte/`)
-- `/documental/` — **Documental** (`https://videoclub.digital/documental/`)
-- `/drama/` — **Drama** (`https://videoclub.digital/drama/`)
-- `/familiar/` — **Familiar** (`https://videoclub.digital/familiar/`)
-- `/fantasia/` — **Fantasía** (`https://videoclub.digital/fantasia/`)
-- `/historico/` — **Histórico** (`https://videoclub.digital/historico/`)
-- `/intriga/` — **Intriga** (`https://videoclub.digital/intriga/`)
-- `/musica/` — **Música** (`https://videoclub.digital/musica/`)
-- `/romance/` — **Romance** (`https://videoclub.digital/romance/`)
-- `/sci-fi/` — **Sci-Fi** (`https://videoclub.digital/sci-fi/`)
-- `/terror/` — **Terror** (`https://videoclub.digital/terror/`)
-- `/thriller/` — **Thriller** (`https://videoclub.digital/thriller/`)
-- `/western/` — **Western** (`https://videoclub.digital/western/`)
+- `/genero/accion/` — **Acción** (`https://videoclub.digital/genero/accion/`)
+- `/genero/animacion/` — **Animación** (`https://videoclub.digital/genero/animacion/`)
+- `/genero/aventuras/` — **Aventuras** (`https://videoclub.digital/genero/aventuras/`)
+- `/genero/belico/` — **Bélico** (`https://videoclub.digital/genero/belico/`)
+- `/genero/biografia/` — **Biografía** (`https://videoclub.digital/genero/biografia/`)
+- `/genero/noir/` — **Noir** (`https://videoclub.digital/genero/noir/`)
+- `/genero/comedia/` — **Comedia** (`https://videoclub.digital/genero/comedia/`)
+- `/genero/crimen/` — **Crimen** (`https://videoclub.digital/genero/crimen/`)
+- `/genero/deporte/` — **Deporte** (`https://videoclub.digital/genero/deporte/`)
+- `/genero/documental/` — **Documental** (`https://videoclub.digital/genero/documental/`)
+- `/genero/drama/` — **Drama** (`https://videoclub.digital/genero/drama/`)
+- `/genero/familiar/` — **Familiar** (`https://videoclub.digital/genero/familiar/`)
+- `/genero/fantasia/` — **Fantasía** (`https://videoclub.digital/genero/fantasia/`)
+- `/genero/historico/` — **Histórico** (`https://videoclub.digital/genero/historico/`)
+- `/genero/intriga/` — **Intriga** (`https://videoclub.digital/genero/intriga/`)
+- `/genero/musica/` — **Música** (`https://videoclub.digital/genero/musica/`)
+- `/genero/romance/` — **Romance** (`https://videoclub.digital/genero/romance/`)
+- `/genero/sci-fi/` — **Sci-Fi** (`https://videoclub.digital/genero/sci-fi/`)
+- `/genero/terror/` — **Terror** (`https://videoclub.digital/genero/terror/`)
+- `/genero/thriller/` — **Thriller** (`https://videoclub.digital/genero/thriller/`)
+- `/genero/western/` — **Western** (`https://videoclub.digital/genero/western/`)
 
 *Aclaraciones críticas de normalización:*
 - El slug para **Ciencia Ficción** es obligatoriamente `sci-fi`.
@@ -45,78 +45,78 @@ Todas las rutas canónicas del catálogo son estrictamente deterministas. Cada s
 - El slug para **Música** es obligatoriamente `musica`.
 
 ### B. Estudios y Productoras Oficiales (15)
-- `/warner/` — **Warner Bros.** (`https://videoclub.digital/warner/`)
-- `/universal/` — **Universal** (`https://videoclub.digital/universal/`)
-- `/sony/` — **Sony-Columbia** (`https://videoclub.digital/sony/`)
-- `/paramount/` — **Paramount** (`https://videoclub.digital/paramount/`)
-- `/disney/` — **Disney** (`https://videoclub.digital/disney/`)
-- `/netflix/` — **Netflix** (`https://videoclub.digital/netflix/`)
-- `/amazon/` — **Amazon MGM** (`https://videoclub.digital/amazon/`)
-- `/fox/` — **20th Century Fox** (`https://videoclub.digital/fox/`)
-- `/lionsgate/` — **Lionsgate** (`https://videoclub.digital/lionsgate/`)
-- `/canalplus/` — **StudioCanal** (`https://videoclub.digital/canalplus/`)
-- `/bbc/` — **BBC** (`https://videoclub.digital/bbc/`)
-- `/miramax/` — **Miramax** (`https://videoclub.digital/miramax/`)
-- `/a24/` — **A24** (`https://videoclub.digital/a24/`)
-- `/movistar/` — **Movistar** (`https://videoclub.digital/movistar/`)
-- `/apple/` — **Apple TV** (`https://videoclub.digital/apple/`)
+- `/estudio/warner/` — **Warner Bros.** (`https://videoclub.digital/estudio/warner/`)
+- `/estudio/universal/` — **Universal** (`https://videoclub.digital/estudio/universal/`)
+- `/estudio/sony/` — **Sony-Columbia** (`https://videoclub.digital/estudio/sony/`)
+- `/estudio/paramount/` — **Paramount** (`https://videoclub.digital/estudio/paramount/`)
+- `/estudio/disney/` — **Disney** (`https://videoclub.digital/estudio/disney/`)
+- `/estudio/netflix/` — **Netflix** (`https://videoclub.digital/estudio/netflix/`)
+- `/estudio/amazon/` — **Amazon MGM** (`https://videoclub.digital/estudio/amazon/`)
+- `/estudio/fox/` — **20th Century Fox** (`https://videoclub.digital/estudio/fox/`)
+- `/estudio/lionsgate/` — **Lionsgate** (`https://videoclub.digital/estudio/lionsgate/`)
+- `/estudio/canalplus/` — **StudioCanal** (`https://videoclub.digital/estudio/canalplus/`)
+- `/estudio/bbc/` — **BBC** (`https://videoclub.digital/estudio/bbc/`)
+- `/estudio/miramax/` — **Miramax** (`https://videoclub.digital/estudio/miramax/`)
+- `/estudio/a24/` — **A24** (`https://videoclub.digital/estudio/a24/`)
+- `/estudio/movistar/` — **Movistar** (`https://videoclub.digital/estudio/movistar/`)
+- `/estudio/apple/` — **Apple TV** (`https://videoclub.digital/estudio/apple/`)
 
 *Nota sobre plataformas VOD:*
 El catálogo clasifica por los 15 sellos de producción/estudio canónicos registrados arriba. No existen rutas para servicios externos como `/filmin/`, `/prime-video/` ni `/hbo-max/`.
 
 ### C. Selecciones y Colecciones Canónicas (10)
-- `/1001movies/` — **1001 películas que hay que ver antes de morir (Steven Jay Schneider)** (`https://videoclub.digital/1001movies/`)
-- `/tspdt/` — **They Shoot Pictures, Don't They? (Top 1000 de la historia del cine)** (`https://videoclub.digital/tspdt/`)
-- `/criterion/` — **The Criterion Collection** (`https://videoclub.digital/criterion/`)
-- `/kinolorber/` — **Colección Kino Lorber** (`https://videoclub.digital/kinolorber/`)
-- `/toptv/` — **Mejores series de televisión de la historia (Top TV)** (`https://videoclub.digital/toptv/`)
-- `/hbo/` — **Colección HBO Originals** (`https://videoclub.digital/hbo/`)
-- `/acontra/` — **A Contracorriente Films** (`https://videoclub.digital/acontra/`)
-- `/arrow/` — **Arrow Video** (`https://videoclub.digital/arrow/`)
-- `/eureka/` — **Eureka Entertainment / Masters of Cinema** (`https://videoclub.digital/eureka/`)
-- `/imprint/` — **Imprint Films** (`https://videoclub.digital/imprint/`)
+- `/seleccion/1001movies/` — **1001 películas que hay que ver antes de morir (Steven Jay Schneider)** (`https://videoclub.digital/seleccion/1001movies/`)
+- `/seleccion/tspdt/` — **They Shoot Pictures, Don't They? (Top 1000 de la historia del cine)** (`https://videoclub.digital/seleccion/tspdt/`)
+- `/seleccion/criterion/` — **The Criterion Collection** (`https://videoclub.digital/seleccion/criterion/`)
+- `/seleccion/kinolorber/` — **Colección Kino Lorber** (`https://videoclub.digital/seleccion/kinolorber/`)
+- `/seleccion/toptv/` — **Mejores series de televisión de la historia (Top TV)** (`https://videoclub.digital/seleccion/toptv/`)
+- `/seleccion/hbo/` — **Colección HBO Originals** (`https://videoclub.digital/seleccion/hbo/`)
+- `/seleccion/acontra/` — **A Contracorriente Films** (`https://videoclub.digital/seleccion/acontra/`)
+- `/seleccion/arrow/` — **Arrow Video** (`https://videoclub.digital/seleccion/arrow/`)
+- `/seleccion/eureka/` — **Eureka Entertainment / Masters of Cinema** (`https://videoclub.digital/seleccion/eureka/`)
+- `/seleccion/imprint/` — **Imprint Films** (`https://videoclub.digital/seleccion/imprint/`)
 
 *Aclaraciones críticas de normalización:*
 - Los slugs son estrictamente alfanuméricos simples sin guiones ni añadidos: `1001movies`, `tspdt`, `criterion`, etc.
 
 ### D. Países y Grupos Regionales
-- `/eeuu/` — **EEUU (Estados Unidos)** (`https://videoclub.digital/eeuu/`)
-- `/espana/` — **España** (`https://videoclub.digital/espana/`)
-- `/uk/` — **Reino Unido (UK)** (`https://videoclub.digital/uk/`)
-- `/francia/` — **Francia** (`https://videoclub.digital/francia/`)
-- `/italia/` — **Italia** (`https://videoclub.digital/italia/`)
-- `/alemania/` — **Alemania** (`https://videoclub.digital/alemania/`)
-- `/japon/` — **Japón** (`https://videoclub.digital/japon/`)
-- `/corea-del-sur/` — **Corea del Sur** (`https://videoclub.digital/corea-del-sur/`)
-- `/canada/` — **Canadá** (`https://videoclub.digital/canada/`)
-- `/australia/` — **Australia** (`https://videoclub.digital/australia/`)
-- `/hong-kong/` — **Hong Kong** (`https://videoclub.digital/hong-kong/`)
-- `/mexico/` — **México** (`https://videoclub.digital/mexico/`)
-- `/argentina/` — **Argentina** (`https://videoclub.digital/argentina/`)
-- `/suecia/` — **Suecia** (`https://videoclub.digital/suecia/`)
-- `/dinamarca/` — **Dinamarca** (`https://videoclub.digital/dinamarca/`)
-- `/noruega/` — **Noruega** (`https://videoclub.digital/noruega/`)
-- `/polonia/` — **Polonia** (`https://videoclub.digital/polonia/`)
-- `/rusia/` — **Rusia** (`https://videoclub.digital/rusia/`)
-- `/irlanda/` — **Irlanda** (`https://videoclub.digital/irlanda/`)
-- `/belgica/` — **Bélgica** (`https://videoclub.digital/belgica/`)
-- `/austria/` — **Austria** (`https://videoclub.digital/austria/`)
-- `/holanda/` — **Holanda (Países Bajos)** (`https://videoclub.digital/holanda/`)
-- `/suiza/` — **Suiza** (`https://videoclub.digital/suiza/`)
-- `/portugal/` — **Portugal** (`https://videoclub.digital/portugal/`)
-- `/grecia/` — **Grecia** (`https://videoclub.digital/grecia/`)
-- `/brasil/` — **Brasil** (`https://videoclub.digital/brasil/`)
-- `/chile/` — **Chile** (`https://videoclub.digital/chile/`)
-- `/colombia/` — **Colombia** (`https://videoclub.digital/colombia/`)
-- `/cuba/` — **Cuba** (`https://videoclub.digital/cuba/`)
-- `/india/` — **India** (`https://videoclub.digital/india/`)
-- `/china/` — **China** (`https://videoclub.digital/china/`)
-- `/taiwan/` — **Taiwán** (`https://videoclub.digital/taiwan/`)
-- `/iran/` — **Irán** (`https://videoclub.digital/iran/`)
-- `/turquia/` — **Turquía** (`https://videoclub.digital/turquia/`)
-- `/nueva-zelanda/` — **Nueva Zelanda** (`https://videoclub.digital/nueva-zelanda/`)
-- `/latam/` — **Región Latinoamérica (Grupo Regional)** (`https://videoclub.digital/latam/`)
-- `/nordic/` — **Región Países Nórdicos (Grupo Regional)** (`https://videoclub.digital/nordic/`)
+- `/pais/eeuu/` — **EEUU (Estados Unidos)** (`https://videoclub.digital/pais/eeuu/`)
+- `/pais/espana/` — **España** (`https://videoclub.digital/pais/espana/`)
+- `/pais/uk/` — **Reino Unido (UK)** (`https://videoclub.digital/pais/uk/`)
+- `/pais/francia/` — **Francia** (`https://videoclub.digital/pais/francia/`)
+- `/pais/italia/` — **Italia** (`https://videoclub.digital/pais/italia/`)
+- `/pais/alemania/` — **Alemania** (`https://videoclub.digital/pais/alemania/`)
+- `/pais/japon/` — **Japón** (`https://videoclub.digital/pais/japon/`)
+- `/pais/corea-del-sur/` — **Corea del Sur** (`https://videoclub.digital/pais/corea-del-sur/`)
+- `/pais/canada/` — **Canadá** (`https://videoclub.digital/pais/canada/`)
+- `/pais/australia/` — **Australia** (`https://videoclub.digital/pais/australia/`)
+- `/pais/hong-kong/` — **Hong Kong** (`https://videoclub.digital/pais/hong-kong/`)
+- `/pais/mexico/` — **México** (`https://videoclub.digital/pais/mexico/`)
+- `/pais/argentina/` — **Argentina** (`https://videoclub.digital/pais/argentina/`)
+- `/pais/suecia/` — **Suecia** (`https://videoclub.digital/pais/suecia/`)
+- `/pais/dinamarca/` — **Dinamarca** (`https://videoclub.digital/pais/dinamarca/`)
+- `/pais/noruega/` — **Noruega** (`https://videoclub.digital/pais/noruega/`)
+- `/pais/polonia/` — **Polonia** (`https://videoclub.digital/pais/polonia/`)
+- `/pais/rusia/` — **Rusia** (`https://videoclub.digital/pais/rusia/`)
+- `/pais/irlanda/` — **Irlanda** (`https://videoclub.digital/pais/irlanda/`)
+- `/pais/belgica/` — **Bélgica** (`https://videoclub.digital/pais/belgica/`)
+- `/pais/austria/` — **Austria** (`https://videoclub.digital/pais/austria/`)
+- `/pais/holanda/` — **Holanda (Países Bajos)** (`https://videoclub.digital/pais/holanda/`)
+- `/pais/suiza/` — **Suiza** (`https://videoclub.digital/pais/suiza/`)
+- `/pais/portugal/` — **Portugal** (`https://videoclub.digital/pais/portugal/`)
+- `/pais/grecia/` — **Grecia** (`https://videoclub.digital/pais/grecia/`)
+- `/pais/brasil/` — **Brasil** (`https://videoclub.digital/pais/brasil/`)
+- `/pais/chile/` — **Chile** (`https://videoclub.digital/pais/chile/`)
+- `/pais/colombia/` — **Colombia** (`https://videoclub.digital/pais/colombia/`)
+- `/pais/cuba/` — **Cuba** (`https://videoclub.digital/pais/cuba/`)
+- `/pais/india/` — **India** (`https://videoclub.digital/pais/india/`)
+- `/pais/china/` — **China** (`https://videoclub.digital/pais/china/`)
+- `/pais/taiwan/` — **Taiwán** (`https://videoclub.digital/pais/taiwan/`)
+- `/pais/iran/` — **Irán** (`https://videoclub.digital/pais/iran/`)
+- `/pais/turquia/` — **Turquía** (`https://videoclub.digital/pais/turquia/`)
+- `/pais/nueva-zelanda/` — **Nueva Zelanda** (`https://videoclub.digital/pais/nueva-zelanda/`)
+- `/pais/latam/` — **Región Latinoamérica (Grupo Regional)** (`https://videoclub.digital/pais/latam/`)
+- `/pais/nordic/` — **Región Países Nórdicos (Grupo Regional)** (`https://videoclub.digital/pais/nordic/`)
 
 *Aclaraciones críticas de normalización:*
 - Estados Unidos utiliza el slug `eeuu` (no `/estados-unidos/`).
@@ -126,15 +126,13 @@ El catálogo clasifica por los 15 sellos de producción/estudio canónicos regis
 
 ## 3. Entidades de Personas (Directores y Actores)
 
-Las personalidades del catálogo cuentan con rutas dedicadas con prefijo semántico:
+Las personalidades del catálogo cuentan con URLs canónicas en el Edge y rutas dedicadas en la aplicación:
 
-- **Directores**: `/director/{slug}/`
-  - Ejemplo: `https://videoclub.digital/director/christopher-nolan/`
-  - Ejemplo: `https://videoclub.digital/director/martin-scorsese/`
-  - Ejemplo: `https://videoclub.digital/director/luis-garcia-berlanga/`
-- **Actores**: `/actor/{slug}/`
-  - Ejemplo: `https://videoclub.digital/actor/al-pacino/`
-  - Ejemplo: `https://videoclub.digital/actor/eduard-fernandez/`
+- **Canónicas SEO SSR (en la Raíz)**: Las personalidades VIP (directores y actores con ficha indexable y filmografía completa) residen directamente en la raíz canónica:
+  - `/{vip-slug}/` (ej: `https://videoclub.digital/christopher-nolan/`, `https://videoclub.digital/al-pacino/`, `https://videoclub.digital/martin-scorsese/`, `https://videoclub.digital/luis-garcia-berlanga/`, `https://videoclub.digital/eduard-fernandez/`)
+- **Navegación Interactiva en la SPA**: En el cliente (SPA), se utilizan las rutas dedicadas con prefijo semántico para el filtrado directo en la rejilla:
+  - **Directores**: `/director/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`)
+  - **Actores**: `/actor/{slug}/` (ej: `https://videoclub.digital/actor/al-pacino/`)
 
 *Regla de Protocolo:*
 No se utilizan consultas por parámetro (`?director=` o `?actor=`) para enlaces permanentes o canónicos.
@@ -146,14 +144,14 @@ No se utilizan consultas por parámetro (`?director=` o `?actor=`) para enlaces 
 La arquitectura de VIDEOCLUB.DIGITAL establece una clara frontera contractual entre las páginas SEO SSR pre-renderizadas en el Edge y las rutas multi-segmento procesadas por la SPA:
 
 ### A. Conjunto Canónico de Landing Pages SEO SSR (Indexables en el Edge)
-El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos OpenGraph y Schema.org exclusivamente para URLs de **un único segmento** (más fichas de título y entidades VIP):
+El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos OpenGraph y Schema.org exclusivamente para URLs canónicas prefijadas y entidades VIP:
 1. **Fichas de Título**: `/titulo/{slug}/` (ej: `https://videoclub.digital/titulo/el-padrino-1972/`)
-2. **Entidades VIP**: `/director/{slug}/` y `/actor/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`, `https://videoclub.digital/actor/al-pacino/`)
-3. **Taxonomías Simples (1 segmento de ruta)**:
-   - Género simple: `https://videoclub.digital/drama/`
-   - País simple: `https://videoclub.digital/francia/`
-   - Estudio simple: `https://videoclub.digital/warner/`
-   - Selección simple: `https://videoclub.digital/criterion/`
+2. **Entidades VIP (en la Raíz)**: `/{vip-slug}/` (ej: `https://videoclub.digital/christopher-nolan/`, `https://videoclub.digital/al-pacino/`)
+3. **Taxonomías Canónicas Prefijadas**:
+   - Género: `https://videoclub.digital/genero/drama/`
+   - País: `https://videoclub.digital/pais/francia/`
+   - Estudio: `https://videoclub.digital/estudio/warner/`
+   - Selección: `https://videoclub.digital/seleccion/criterion/`
 
 *Garantía Contractual:* Solo estas páginas forman parte de `sitemap.xml` y entregan HTML SSR bajo demanda desde el Edge Worker para motores de búsqueda y agentes.
 
@@ -162,24 +160,28 @@ El Cloudflare Edge Worker proporciona Server-Side Rendering (SSR), metadatos Ope
 
 El enrutador del cliente de la Single Page Application (`parsePrettyPath()`) admite la combinación de taxonomías en un orden jerárquico estricto para proporcionar deep-linking interactivo y filtrado instantáneo en el navegador:
 
-1. **Jerarquía Combinada**: `/{genero}/{pais}/{estudio O seleccion}/`
+1. **Rutas de Personas en la SPA**:
+   - `/director/{slug}/` (ej: `https://videoclub.digital/director/christopher-nolan/`)
+   - `/actor/{slug}/` (ej: `https://videoclub.digital/actor/al-pacino/`)
+
+2. **Jerarquía Combinada**: `/{genero}/{pais}/{estudio O seleccion}/`
    - Ejemplo (Género + País): `https://videoclub.digital/drama/francia/`
    - Ejemplo (Género + País + Estudio): `https://videoclub.digital/sci-fi/eeuu/warner/`
    - Ejemplo (Género + Selección): `https://videoclub.digital/drama/criterion/`
    - Ejemplo (País + Estudio): `https://videoclub.digital/japon/sony/`
 
-2. **Exclusiones de Catálogo**:
+3. **Exclusiones de Catálogo**:
    - Prefijadas con `no-`: `https://videoclub.digital/comedia/no-eeuu/`
    - Exclusión de género: `https://videoclub.digital/drama/no-terror/`
 
 Estas combinaciones enriquecen la interactividad del usuario final sin fragmentar el presupuesto de rastreo (crawl budget) de los motores de búsqueda en el Edge.
 
-3. **Filtrado Temporal (Años y Décadas)**:
+4. **Filtrado Temporal (Años y Décadas)**:
    - **NO** forma parte de la ruta. Los años o décadas nunca tienen segmentos propios en la URL.
    - El año se filtra siempre vía Query Parameter:
      - Año individual: `https://videoclub.digital/?year=1994`
-     - Rango de años: `https://videoclub.digital/sci-fi/?year=1980-1989`
-     - Rango abierto: `https://videoclub.digital/drama/?year=2010-`
+     - Rango de años: `https://videoclub.digital/genero/sci-fi/?year=1980-1989`
+     - Rango abierto: `https://videoclub.digital/genero/drama/?year=2010-`
 
 4. **Parámetros URL Adicionales**:
    - `?search={texto}`: Búsqueda de texto completo normalizada sin acentos ni diacríticos.

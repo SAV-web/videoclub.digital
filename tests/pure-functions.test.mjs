@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { after, before, describe, test } from "node:test";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 import { createMockDomElement } from "./helpers/mock-dom.mjs";
@@ -288,3 +289,18 @@ describe("rating.ts (Cálculo Visual y Estados de Valoración)", () => {
   });
 });
 
+describe("public/sw.js (Service Worker Interceptor & Origin Isolation)", () => {
+  test("sw.js aplica aislamiento estricto por origen (url.origin !== self.location.origin)", () => {
+    const swCode = fs.readFileSync("public/sw.js", "utf8");
+    assert.match(
+      swCode,
+      /url\.origin !== self\.location\.origin/,
+      "Debe contener la guarda de aislamiento estricto por origen",
+    );
+    assert.match(
+      swCode,
+      /request\.method !== ['"]GET['"]/,
+      "Debe descartar métodos no-GET",
+    );
+  });
+});
