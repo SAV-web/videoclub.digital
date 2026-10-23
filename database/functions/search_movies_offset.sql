@@ -142,51 +142,34 @@ BEGIN
         v_media_type_filter := 'TRUE';
     END IF;
 
-    -- FASE 1.2: EVALUACIÓN DE DAILY SHOWCASE (Escaparate Diario Dinámico Adaptativo)
-    -- Aplica en relevancia por defecto si no hay búsqueda por texto ni filtro de personas VIP (director/actor)
+    -- FASE 1.1: DETECCIÓN DE FILTROS TEMÁTICOS ACTIVOS
+    v_has_filters := (genre_name IS NOT NULL AND TRIM(genre_name) <> '')
+                  OR (country_name IS NOT NULL AND TRIM(country_name) <> '')
+                  OR (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0)
+                  OR (p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '')
+                  OR (p_studio_code IS NOT NULL AND TRIM(p_studio_code) <> '')
+                  OR (p_year_start IS NOT NULL)
+                  OR (p_year_end IS NOT NULL)
+                  OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 0)
+                  OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 0)
+                  OR (media_type IS NOT NULL AND lower(media_type) IN ('movies', 'series'));
+
+    -- FASE 1.2: EVALUACIÓN DE DAILY SHOWCASE (Escaparate Diario Dinámico de Portada Limpia)
+    -- Aplica en relevancia por defecto EXCLUSIVAMENTE en la portada general limpia:
+    -- Sin filtros temáticos, sin búsqueda por texto y sin filtro de personas VIP (director/actor).
+    -- Los filtros temáticos, búsquedas y filmografías se ordenan estrictamente por mérito canónico (relevance ASC, id ASC)
+    -- para desbloquear parada temprana por índice (Early Stop) y latencia ultra-baja (~3 ms).
     IF v_safe_sort_field = 'relevance' 
+       AND NOT v_has_filters
        AND (search_term IS NULL OR TRIM(search_term) = '')
        AND (director_name IS NULL OR TRIM(director_name) = '')
        AND (actor_name IS NULL OR TRIM(actor_name) = '') THEN
         
         v_enable_daily_showcase := TRUE;
-
-        -- Detección de filtros temáticos activos
-        v_has_filters := (genre_name IS NOT NULL AND TRIM(genre_name) <> '')
-                      OR (country_name IS NOT NULL AND TRIM(country_name) <> '')
-                      OR (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 0)
-                      OR (p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '')
-                      OR (p_studio_code IS NOT NULL AND TRIM(p_studio_code) <> '')
-                      OR (p_year_start IS NOT NULL)
-                      OR (p_year_end IS NOT NULL)
-                      OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 0)
-                      OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 0)
-                      OR (media_type IS NOT NULL AND lower(media_type) IN ('movies', 'series'));
-
-        -- Si hay selección o estudio activo en portada, la primera ficha de la UI la ocupa la tarjeta VIP (377 películas + 1 VIP = 378 slots)
-        -- En portada general limpia, la ventana completa es de 378 películas (mcm de 42 y 54)
-        IF (p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '') 
-           OR (p_studio_code IS NOT NULL AND TRIM(p_studio_code) <> '') THEN
-            v_showcase_limit := 377;
-        ELSE
-            v_showcase_limit := 378;
-        END IF;
-
-        -- Ventana Proporcional Adaptativa para filtros
-        -- Si hay filtros activos:
-        --   - < 50 películas: baraja solo el Top 12
-        --   - 50..200 películas: baraja solo el Top 24
-        --   - > 200 películas: baraja solo el Top 42
-        -- En portada general limpia (sin filtros): mantiene el escaparate amplio de 378 películas
-        IF v_has_filters THEN
-            v_threshold_expr := 'CASE WHEN m.total_matches < 50 THEN 12 WHEN m.total_matches <= 200 THEN 24 ELSE 42 END';
-            v_outer_threshold_expr := 'CASE WHEN fm.total_matches < 50 THEN 12 WHEN fm.total_matches <= 200 THEN 24 ELSE 42 END';
-            v_include_total_matches := TRUE;
-        ELSE
-            v_threshold_expr := v_showcase_limit::text;
-            v_outer_threshold_expr := v_showcase_limit::text;
-            v_include_total_matches := get_count;
-        END IF;
+        v_showcase_limit := 378;
+        v_threshold_expr := v_showcase_limit::text;
+        v_outer_threshold_expr := v_showcase_limit::text;
+        v_include_total_matches := get_count;
 
         v_order_clause := format('
             ORDER BY 
@@ -206,6 +189,8 @@ BEGIN
                 fm.natural_rank ASC
         ', v_outer_threshold_expr, v_outer_threshold_expr);
     ELSE
+        v_enable_daily_showcase := FALSE;
+        v_include_total_matches := FALSE;
         v_outer_order_clause := v_order_clause;
     END IF;
 

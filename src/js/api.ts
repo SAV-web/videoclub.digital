@@ -12,7 +12,7 @@ import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
 import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
 export { clearCheckedUserMovieIds, markMovieIdAsChecked };
-import { getUserDataForMovie, updateUserDataForMovie, getAllUserMovieData } from "./state.js";
+import { getUserDataForMovie, updateUserDataForMovie, getAllUserMovieData, appEvents } from "./state.js";
 import {
   ERROR_CODES,
   createAppError,
@@ -256,6 +256,7 @@ export async function getLocalMyListResponse(
     // Recuperar las fichas disponibles en cached_movies
     const cachedMap = await getCachedMoviesByIds(targetIds);
     if (cachedMap.size === 0) return null;
+    if (cachedMap.size < targetIds.length) return null;
 
     // Mapear a MappedMovie
     const availableMovies: MappedMovie[] = [];
@@ -302,6 +303,74 @@ export async function getLocalMyListResponse(
   } catch {
     return null;
   }
+}
+
+/**
+ * Revalida Mi Lista en segundo plano contra Supabase sin bloquear el hilo principal.
+ * Si detecta novedades o discrepancias respecto a la caché local, actualiza IndexedDB
+ * y emite 'userDataUpdated' para refrescar el estado de la UI.
+ */
+function revalidateMyListInBackground(
+  userId: string,
+  filters: ActiveFilters,
+  page: number,
+  pageSize: number,
+  requestCount: boolean,
+  currentLocalRes: ApiResponse
+): void {
+  setTimeout(async () => {
+    try {
+      const supabase = await getSupabase();
+      let query = supabase
+        .from('movies')
+        .select(`
+          id, title, original_title, year, year_end, type, 
+          genres:genres_list, directors:directors_list, actors:actors_list, 
+          minutes, slug, fa_id, fa_rating, fa_votes, 
+          imdb_id, imdb_rating, imdb_votes, avg_rating, 
+          synopsis, thumbhash_st, last_synced_at, 
+          episodes, wikipedia, selections_list, studios_list, justwatch,
+          countries(name, code),
+          user_movie_entries!inner(user_id, rating, on_watchlist)
+        `, requestCount ? { count: 'exact' } : {})
+        .eq('user_movie_entries.user_id', userId);
+
+      if (filters.myList === 'rated') query = query.not('user_movie_entries.rating', 'is', null);
+      else if (filters.myList === 'watchlist') query = query.eq('user_movie_entries.on_watchlist', true);
+      else query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
+
+      if (filters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
+      else if (filters.mediaType === 'series') query = query.ilike('type', 'S%');
+
+      const [sortField, sortDirection] = (filters.sort || "relevance,asc").split(",");
+      if (sortField === 'relevance') query = query.order('relevance', { ascending: true });
+      else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
+
+      const start = (page - 1) * pageSize;
+      const { data, error, count } = await query.range(start, start + pageSize - 1);
+
+      if (error || !data) return;
+
+      const remoteItems = (data || []).map(mRaw => mapMoviePayload(shapeRawMovieRow(mRaw)));
+      if (remoteItems.length > 0) {
+        saveCachedMovies(remoteItems).catch(() => {});
+      }
+
+      const localIds = (currentLocalRes.items || []).map(m => m.id);
+      const remoteIds = remoteItems.map(m => m.id);
+      const hasDifferences = localIds.length !== remoteIds.length ||
+        localIds.some((id, idx) => id !== remoteIds[idx]) ||
+        (requestCount && count !== undefined && count !== currentLocalRes.total);
+
+      if (hasDifferences) {
+        const queryKey = createCanonicalCacheKey({ ...filters }, page, pageSize);
+        queryCache.set(queryKey, normalizeMoviesResponse({ total: count ?? -1, items: remoteItems }));
+        appEvents.emit("userDataUpdated");
+      }
+    } catch {
+      // Silenciar errores en segundo plano sin alterar la experiencia visual
+    }
+  }, 50);
 }
 
 // Trae las películas principales para pintar el muro
@@ -357,18 +426,33 @@ export function fetchMovies(
       if (normFilters.myList) {
         const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
 
-        // 1. Fallback offline estricto: si no hay conexión, servir desde almacenamiento local
+        // 1. Intento de resolución Local-First (0 ms) si tenemos los datos completos en IndexedDB
+        const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+
+        if (localRes !== null) {
+          if (!isOffline) {
+            // Revalidación asíncrona transparente en segundo plano (patrón SWR)
+            getCurrentSession().then(session => {
+              if (session?.user) {
+                revalidateMyListInBackground(session.user.id, normFilters, normPage, normPageSize, normRequestCount, localRes);
+              }
+            }).catch(() => {});
+          }
+          return localRes;
+        }
+
+        // 2. Si la caché local es insuficiente o está vacía, acudimos a la red
         if (isOffline) {
-          const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
-          if (localRes) return localRes;
+
+
           return { total: 0, items: [] };
         }
 
         const session = await getCurrentSession();
         if (!session?.user) {
-          // Si no hay sesión remota activa, intentar servir las entradas locales existentes
-          const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
-          if (localRes) return localRes;
+
+
+
           return { total: 0, items: [] };
         }
 
@@ -460,35 +544,6 @@ export function fetchMovies(
 
       const rawItems = (data?.items || []).map((mRaw: unknown) => shapeRawMovieRow(mRaw));
       const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: rawItems }, mapMoviePayload);
-
-      // Filtro de precisión para garantizar que el nombre del actor o director coincida exactamente con una de las personas de la lista
-      // (Evita que buscar "Yuna" devuelva a "Madeleine Yuna Voyles" o que buscar "Daniels" devuelva a "Lee Daniels" o "Greg Daniels")
-      if (result.items && result.items.length > 0) {
-        const initialCount = result.items.length;
-        if (normFilters.actor) {
-          const targetActorClean = normalizeText(normFilters.actor).replace(/[^a-z0-9]/g, "");
-          result.items = result.items.filter(m =>
-            m.parsedActors && m.parsedActors.some(a => normalizeText(a).replace(/[^a-z0-9]/g, "") === targetActorClean)
-          );
-        }
-        if (normFilters.director) {
-          const targetDirClean = normalizeText(normFilters.director).replace(/[^a-z0-9]/g, "");
-          result.items = result.items.filter(m =>
-            m.parsedDirectors && m.parsedDirectors.some(d => {
-              const cleanD = normalizeText(d).replace(/[^a-z0-9]/g, "");
-              return cleanD === targetDirClean;
-            })
-          );
-        }
-
-        // Si se han descartado resultados espurios por imprecisión del tsquery del servidor,
-        // ajustamos el total cuando el lote de resultados original sea menor que el tamaño de página
-        if ((normFilters.director || normFilters.actor) && result.items.length < initialCount) {
-          if (rawItems.length < (normPageSize || 42)) {
-            result.total = result.items.length;
-          }
-        }
-      }
 
       if (!signal?.aborted) {
         // Si ya hay un total real guardado en la caché y la consulta actual devolvió total=-1, preservamos el conteo previo

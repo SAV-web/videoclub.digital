@@ -105,7 +105,7 @@ function createRpcPromise(data) {
 }
 
 describe("RenderEngine & API: Matriz VIP / Personas y Paginación", () => {
-  test("persona VIP + página 1: determina hasVip=true, pide firstPageLimit-1 y offset 0", async () => {
+  test("persona VIP + página 1: determina hasVip=true, pide firstPageLimit en paralelo y offset 0", async () => {
     const supabase = await apiModule.getSupabase();
     let rpcCalls = [];
 
@@ -145,7 +145,7 @@ describe("RenderEngine & API: Matriz VIP / Personas y Paginación", () => {
       return createRpcPromise({
         data: {
           total: -1,
-          items: Array.from({ length: 41 }, (_, i) => ({
+          items: Array.from({ length: 44 }, (_, i) => ({
             id: i + 1,
             title: `Pelicula ${i + 1}`,
             slug: `pelicula-${i + 1}`,
@@ -160,13 +160,13 @@ describe("RenderEngine & API: Matriz VIP / Personas y Paginación", () => {
 
     await renderEngineModule.loadAndRenderMovies(1);
 
-    // Debe haberse llamado a search_movies_offset con límite dinámico - 1 (firstPageLimit - 1) y offset 0
+    // Debe haberse llamado a search_movies_offset en paralelo con cuota completa firstPageLimit y offset 0
     assert.equal(rpcCalls.length >= 1, true, "Debe llamar al catálogo");
     const firstCall = rpcCalls[0];
-    const expectedVipLimit = constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT - 1;
-    assert.equal(firstCall.params.page_limit, expectedVipLimit, `En pág 1 para VIP el page_limit debe ser ${expectedVipLimit} (firstPageLimit - 1)`);
+    const expectedLimit = constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
+    assert.equal(firstCall.params.page_limit, expectedLimit, `En pág 1 en paralelo el page_limit inicial debe ser ${expectedLimit}`);
     assert.equal(firstCall.params.page_offset, 0, "En pág 1 el offset debe ser 0");
-    assert.equal(firstCall.params.get_count, false, "En camino crítico get_count debe ser false");
+    assert.equal(firstCall.params.get_count, true, "Con filtros activos get_count es true en llamada unificada");
   });
 
   test("persona NO VIP + página 1: determina hasVip=false, pide firstPageLimit completo (42) y offset 0", async () => {
@@ -228,7 +228,7 @@ describe("RenderEngine & API: Matriz VIP / Personas y Paginación", () => {
     const expectedNoVipLimit = constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
     assert.equal(firstCall.params.page_limit, expectedNoVipLimit, `En pág 1 para NO VIP el page_limit debe ser ${expectedNoVipLimit} completo`);
     assert.equal(firstCall.params.page_offset, 0, "En pág 1 el offset debe ser 0");
-    assert.equal(firstCall.params.get_count, false, "En camino crítico get_count debe ser false");
+    assert.equal(firstCall.params.get_count, true, "Con filtros activos get_count es true en llamada unificada");
   });
 
   test("persona VIP + página 2: calcula offset con decremento -1 ((page - 1) * basePageSize - 1)", async () => {
@@ -389,7 +389,7 @@ describe("RenderEngine & API: Desacoplamiento de Conteo (Pintar Primero → Cont
       }
     };
 
-    stateModule.setFilter("genre", "accion");
+    stateModule.resetFiltersState();
 
     // loadAndRenderMovies debe resolver inmediatamente tras pintar el catálogo sin esperar a countPromise
     const loadPromise = renderEngineModule.loadAndRenderMovies(1);
@@ -443,7 +443,7 @@ describe("RenderEngine & API: Desacoplamiento de Conteo (Pintar Primero → Cont
       }
     };
 
-    stateModule.setFilter("genre", "drama");
+    stateModule.resetFiltersState();
 
     await renderEngineModule.loadAndRenderMovies(1);
 
@@ -469,6 +469,43 @@ describe("RenderEngine & API: Desacoplamiento de Conteo (Pintar Primero → Cont
 
     // Comprobamos que la paginación se ha dibujado para 840 películas (840 / 42 = 20 páginas)
     assert.equal(paginationContainer.children.length > 0, true, "La paginación debe haberse renderizado tras el count");
+  });
+
+  test("con filtros activos → petición unificada directa con get_count=true y sin llamada secundaria", async () => {
+    const supabase = await apiModule.getSupabase();
+    let rpcCalls = [];
+
+    supabase.from = () => ({
+      select: () => ({ in: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }),
+    });
+
+    supabase.rpc = (name, params) => {
+      rpcCalls.push({ name, params });
+      return createRpcPromise({
+        data: {
+          total: 840,
+          items: Array.from({ length: constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT }, (_, i) => ({
+            id: i + 650,
+            title: `Película Filtrada ${i}`,
+            slug: `pelicula-filtrada-${i}`,
+          })),
+        },
+        error: null,
+      });
+    };
+
+    stateModule.setFilter("genre", "drama");
+
+    await renderEngineModule.loadAndRenderMovies(1);
+
+    // Esperar una vuelta del event loop por si hubiese llamadas secundarias residuales
+    await new Promise((r) => setTimeout(r, 30));
+
+    // Debe haberse realizado exactamente 1 sola llamada RPC
+    assert.equal(rpcCalls.length, 1, "Debe haber una única llamada RPC unificada");
+    assert.equal(rpcCalls[0].params.get_count, true, "La llamada debe solicitar get_count=true directamente");
+    assert.equal(stateModule.getTotalMovies(), 840, "El total debe resolverse de inmediato en el estado");
+    assert.equal(gridContainer.children.length > 0, true, "El grid debe contener las fichas");
   });
 });
 
@@ -561,9 +598,9 @@ describe("RenderEngine & API: Concurrencia, In-Flight y AbortSignal", () => {
       }
     };
 
-    stateModule.setFilter("genre", "terror");
+    stateModule.resetFiltersState();
 
-    // Primera carga (camino crítico se resuelve, conteo queda pendiente)
+    // Primera carga en portada limpia (camino crítico se resuelve con get_count=false, conteo queda pendiente en diferido)
     await renderEngineModule.loadAndRenderMovies(1);
 
     // Usuario navega rápidamente a otro filtro, cambiando el estado y abortando la petición previa
@@ -651,11 +688,11 @@ describe("RenderEngine: Cuota y Renderizado Exacto de Página 1 (Regla 42 Fichas
     };
 
     supabase.rpc = (name, params) => {
-      // Para VIP se solicitan firstPageLimit - 1 = 43 películas
+      // Catálogo grande (100 películas): la API devuelve la cuota solicitada en paralelo (44 items)
       return createRpcPromise({
         data: {
-          total: -1,
-          items: Array.from({ length: constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT - 1 }, (_, i) => ({
+          total: 100,
+          items: Array.from({ length: constantsModule.CONFIG.DYNAMIC_PAGE_SIZE_LIMIT }, (_, i) => ({
             id: 1200 + i,
             title: `Scorsese Movie ${i + 1}`,
             slug: `scorsese-movie-${i + 1}`,

@@ -50,11 +50,12 @@ import {
   setCurrentPage,
   getTotalMovies,
   setTotalMovies,
-  setFilter
+  setFilter,
+  hasActiveMeaningfulFilters
 } from "./state.js";
 
 import { updateUrl } from "./router.js";
-import type { MappedMovie, VipData } from "./types.js";
+import type { MappedMovie, VipData, PersonDetails } from "./types.js";
 
 export interface RenderOptions {
   replaceHistory?: boolean;
@@ -152,7 +153,7 @@ export async function loadAndRenderMovies(
 
   try {
     let vipData: VipData | null = null;
-    let hasVip = false;
+    let confirmedHasVip = false;
 
     const vipType = (!activeFilters.myList && !activeFilters.searchTerm)
       ? (activeFilters.director ? "director" as const : (activeFilters.actor ? "actor" as const : null))
@@ -160,13 +161,21 @@ export async function loadAndRenderMovies(
     const vipName = vipType ? (activeFilters.director || activeFilters.actor) : null;
     const hasGroupVip = !activeFilters.myList && !activeFilters.searchTerm && (!!activeFilters.selection || !!activeFilters.studio);
 
-    // Promesa para grupos (colección o estudio), que permite paralelizar su obtención con el catálogo
+    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
+    const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+    const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
+
+    // Promesas para entidades especiales (colecciones, estudios y personas en página 1),
+    // que permiten paralelizar su obtención con el catálogo en la misma ráfaga de red
     let groupPromise: Promise<{ type: "collection" | "studio"; code: string; thumbhash_st: string | null }> | null = null;
+    let personPromise: Promise<PersonDetails | null> | null = null;
+
+    let fetchLimit: number = basePageSize;
+    let fetchOffset = (page - 1) * basePageSize;
 
     if (hasGroupVip) {
       // 1. Grupos (Colecciones y Estudios): El VIP es determinista y estático (siempre hay tarjeta VIP en pág 1).
-      // hasVip es true con 100% de certeza, permitiendo paralelizar fetchGroupDetails con el catálogo.
-      hasVip = true;
+      confirmedHasVip = true;
       const groupType = activeFilters.selection ? "selection" : "studio";
       const groupCode = (activeFilters.selection || activeFilters.studio) as string;
       groupPromise = fetchGroupDetails(groupType, groupCode).then(data => ({
@@ -174,62 +183,61 @@ export async function loadAndRenderMovies(
         code: groupCode,
         thumbhash_st: data?.thumbhash_st || null
       }));
-    } else if (vipType && vipName) {
-      // 2. Personas (Directores y Actores): La condición VIP (vip === 1 o birthday) depende de la base de datos.
-      // Debe determinarse con certeza ANTES de calcular fetchLimit y fetchOffset para evitar:
-      // - Pedir 1 película de menos en pág 1 si la persona no es VIP.
-      // - Desfasar el offset (-1) y duplicar la última película de la pág 1 en la pág 2+ si la persona no es VIP.
-      // - Distorsionar el cálculo de orfandad al final del catálogo.
-      // Nota de rendimiento: Si la persona ya está en memoria, personCache responde síncronamente en 0 ms.
-      const personData = await fetchPersonDetails(vipType, vipName);
-      if (personData) {
-        if (personData.name && personData.name !== vipName) {
-          if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
-            setFilter(vipType, personData.name, true);
-            activeFilters = getActiveFilters();
-            updatePageTitle();
-            updateBreadcrumbData(activeFilters);
-          }
-        }
-        const isVip = personData.vip === 1 || Boolean(personData.birthday);
-        if (isVip) {
-          hasVip = true;
-          const personSlug = personData.slug || toSlug(personData.name);
-          preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
-          if (page === 1) vipData = { type: "person", data: personData };
-        }
-      }
-    }
 
-    const confirmedHasVip = hasVip;
-
-    const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
-    const basePageSize = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
-    const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
-
-    let fetchLimit: number = basePageSize;
-    let fetchOffset = (page - 1) * basePageSize;
-
-    if (confirmedHasVip) {
       if (page === 1) {
         fetchLimit = firstPageLimit - 1;
         fetchOffset = 0;
       } else {
-        fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
+        fetchLimit = basePageSize + 2;
         fetchOffset = ((page - 1) * basePageSize) - 1;
+      }
+    } else if (vipType && vipName) {
+      // 2. Personas (Directores y Actores)
+      if (page === 1) {
+        // En página 1, el offset es invariablemente 0. Disparamos la consulta de persona y catálogo
+        // 100% en paralelo (eliminando el Waterfall de ~80-120 ms). Solicitamos la cuota completa
+        // firstPageLimit (44) y, si tras responder resulta ser VIP, podamos el ítem sobrante en memoria.
+        fetchLimit = firstPageLimit;
+        fetchOffset = 0;
+        personPromise = fetchPersonDetails(vipType, vipName);
+      } else {
+        // En página 2+, el offset depende estrictamente del estatus VIP (41 si es VIP, 42 si no).
+        // Al haber navegado previamente por la pág 1, personCache responde síncronamente en 0 ms.
+        const personData = await fetchPersonDetails(vipType, vipName);
+        if (personData) {
+          if (personData.name && personData.name !== vipName) {
+            if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
+              setFilter(vipType, personData.name, true);
+              activeFilters = getActiveFilters();
+              updatePageTitle();
+              updateBreadcrumbData(activeFilters);
+            }
+          }
+          const isVip = personData.vip === 1 || Boolean(personData.birthday);
+          if (isVip) {
+            confirmedHasVip = true;
+            const personSlug = personData.slug || toSlug(personData.name);
+            preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
+          }
+        }
+        fetchLimit = basePageSize + 2;
+        fetchOffset = confirmedHasVip ? ((page - 1) * basePageSize) - 1 : (page - 1) * basePageSize;
       }
     } else {
       if (page === 1) {
         fetchLimit = firstPageLimit;
       } else {
-        fetchLimit = basePageSize + 2; // Traer margen extra de +2 por si es la última página tras absorber huérfanos
+        fetchLimit = basePageSize + 2;
       }
     }
 
-    // Solo requerimos count en el camino crítico si es un filtro de año en página posterior (page > 1)
-    // donde es imprescindible conocer si page > totalPages para redirigir a página 1 antes de pintar.
+    // En catálogo general limpio (/), mantenemos shouldRequestCount = false para no penalizar
+    // el Fast-Path de ~1.5 ms de la primera página y resolvemos el conteo de forma diferida en background.
+    // Cuando hay filtros activos (o filtro de año en pág > 1), solicitamos get_count = true directamente
+    // en la primera llamada unificada para evitar duplicar peticiones RPC innecesarias a la base de datos.
+    const hasFilters = hasActiveMeaningfulFilters() || Boolean(activeFilters.mediaType && activeFilters.mediaType !== 'all');
     const isCriticalCountNeeded = isYearFilter && page > 1;
-    const shouldRequestCount = isCriticalCountNeeded;
+    const shouldRequestCount = hasFilters || isCriticalCountNeeded;
 
     const catalogPromise = fetchMovies(
       activeFilters,
@@ -240,8 +248,9 @@ export async function loadAndRenderMovies(
       fetchOffset
     );
 
-    const [groupResult, catalogResult] = await Promise.all([
+    const [groupResult, personData, catalogResult] = await Promise.all([
       groupPromise,
+      personPromise,
       catalogPromise
     ]);
 
@@ -251,6 +260,28 @@ export async function loadAndRenderMovies(
         code: groupResult.code,
         thumbhash_st: groupResult.thumbhash_st
       };
+    } else if (personData && page === 1) {
+      if (vipName && personData.name && personData.name !== vipName) {
+        if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
+          setFilter(vipType!, personData.name, true);
+          activeFilters = getActiveFilters();
+          updatePageTitle();
+          updateBreadcrumbData(activeFilters);
+        }
+      }
+      const isVip = personData.vip === 1 || Boolean(personData.birthday);
+      if (isVip) {
+        confirmedHasVip = true;
+        const personSlug = personData.slug || toSlug(personData.name);
+        preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
+        vipData = { type: "person", data: personData };
+
+        // Si es VIP en página 1, la tarjeta VIP consume 1 slot. Si el catálogo devolvió
+        // la cuota completa (firstPageLimit = 44), podamos el ítem sobrante a 43 (firstPageLimit - 1).
+        if (catalogResult.items && catalogResult.items.length > firstPageLimit - 1) {
+          catalogResult.items = catalogResult.items.slice(0, firstPageLimit - 1);
+        }
+      }
     }
 
     let result = catalogResult;
