@@ -673,6 +673,12 @@ export const openAuthModal = async (): Promise<void> => {
   appEvents.emit("auth:requested");
   await loadAuthStyles();
   ensureAuthModalMounted();
+  try {
+    const { initAuthForms } = await import("./auth.js");
+    initAuthForms();
+  } catch (e) {
+    if (import.meta.env.DEV) console.error("Error loading auth module", e);
+  }
   initAuthModalListeners();
   if (!window.history.state?.modalOpen) {
     window.history.pushState({ modalOpen: true }, "", window.location.href);

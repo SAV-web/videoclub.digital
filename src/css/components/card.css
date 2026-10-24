@@ -1207,20 +1207,95 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 
 /* =================================================================
  *  I. FICHAS VIP: PERSONAS, COLECCIONES Y ESTUDIOS
+ *  — Placa Inaugural de Exposición (Quiet Luxury Exhibition Plaque)
  * ================================================================= */
 
-.person-card:not(.is-quick-view) .flip-card-inner {
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+:is(.person-card, .collection-card, .studio-card):not(.is-quick-view) {
+  /* Marco distinguido en oro viejo pulido y halo de exposición */
+  & .flip-card-inner {
+    box-shadow: 0 0 0 2px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.85),
+                0 8px 24px rgba(0, 0, 0, 0.14),
+                0 0 16px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.2);
+    transition: box-shadow var(--duration-fast) var(--ease-smooth),
+                transform var(--duration-quick) var(--ease-spring);
+  }
+
+  /* Filete interior de autor en la foto/sello (cero alteración métrica) */
+  & .poster-container img {
+    outline: 2px solid rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.85);
+    outline-offset: -2px;
+  }
+
+  /* Superficie frontal con iluminación radial de sala de exposición */
+  & .flip-card-front {
+    background: radial-gradient(ellipse 90% 55% at 50% 8%, rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.08) 0%, var(--color-surface) 72%);
+  }
+
+  /* Tipografía de autor: empaque editorial distinguido */
+  & .title-director-block h3 {
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  /* Línea divisoria cinematográfica en haz dorado */
+  & .poster-container::after {
+    content: "";
+    position: absolute;
+    bottom: -10px;
+    left: 8%;
+    right: 8%;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent 0%, var(--color-brand-gold, #d4a347) 50%, transparent 100%);
+    opacity: 0.65;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover .flip-card-inner {
+      box-shadow: 0 0 0 2.5px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 1),
+                  0 14px 38px rgba(0, 0, 0, 0.25),
+                  0 0 24px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.45);
+    }
+  }
+}
+
+:where(html.dark-mode) :is(.person-card, .collection-card, .studio-card):not(.is-quick-view) {
+  & .flip-card-inner {
+    box-shadow: 0 0 0 2px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.9),
+                0 10px 32px rgba(0, 0, 0, 0.55),
+                0 0 20px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.28);
+  }
+
+  /* Fondo carbón noble con sutil calidez dorada */
+  & .flip-card-front {
+    background: radial-gradient(ellipse 90% 55% at 50% 8%, rgba(212, 163, 71, 0.12) 0%, #151619 75%);
+  }
+
+  & .title-director-block h3 {
+    color: #fff6da;
+    text-shadow: 0 1px 8px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.25);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover .flip-card-inner {
+      box-shadow: 0 0 0 2.5px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 1),
+                  0 16px 42px rgba(0, 0, 0, 0.7),
+                  0 0 26px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.5);
+    }
+  }
 }
 
 .person-card:not(.is-quick-view) .flip-card-back {
   padding: var(--space-md);
   background-color: var(--color-surface-1);
+  box-shadow: inset 0 0 0 1px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.25);
+
+  & .bio-headline {
+    color: var(--color-brand-gold, #d4a347);
+  }
 }
 
 .person-card:not(.is-quick-view) .poster-container img {
   object-position: top center;
-  border: 3px solid var(--color-accent) !important;
 }
 
 .collection-card:not(.is-quick-view) .poster-container img {
@@ -1241,17 +1316,6 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   width: 100%;
 }
 
-.person-card:not(.is-quick-view) .poster-container::after {
-  content: "";
-  position: absolute;
-  bottom: -10px;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-text-tertiary), transparent);
-  opacity: 0.4;
-}
-
 /* Botón de alternancia de rol (Director / Actor) */
 .person-role-toggle-btn {
   position: absolute;
@@ -1262,8 +1326,8 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   height: 26px;
   border-radius: 50%;
   background: var(--color-surface, #1e1e1e);
-  color: var(--color-accent);
-  border: 2px solid var(--color-accent);
+  color: var(--color-brand-gold, #d4a347);
+  border: 2px solid var(--color-brand-gold, #d4a347);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
@@ -1280,15 +1344,17 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
     color var(--duration-fast) ease,
     box-shadow var(--duration-fast) ease;
 
-  &:hover {
-    transform: scale(1.18);
-    background: var(--color-accent);
-    color: #ffffff;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px var(--color-accent);
-  }
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: scale(1.18);
+      background: var(--color-accent);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.5);
+    }
 
-  &:active {
-    transform: scale(0.92);
+    &:active {
+      transform: scale(0.92);
+    }
   }
 
   &:focus-visible {
@@ -1299,11 +1365,11 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 
 :where(html.dark-mode) .person-role-toggle-btn {
   background: #141414;
-  color: var(--color-accent);
-  border-color: var(--color-accent);
+  color: var(--color-brand-gold, #d4a347);
+  border-color: var(--color-brand-gold, #d4a347);
 
   &:hover {
-    background: var(--color-accent);
+    background: var(--color-brand-gold, #d4a347);
     color: #141414;
   }
 }
@@ -1338,11 +1404,11 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 }
 
 /* Ajustes VIP en Modo Muro */
-.movie-card.person-card:not(.is-quick-view) .card-rating-block {
+.movie-card:is(.person-card, .collection-card, .studio-card):not(.is-quick-view) .card-rating-block {
   display: none;
 }
 
-body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .card-rating-block {
+body.rotation-disabled .movie-card:is(.person-card, .collection-card, .studio-card):not(.is-quick-view) .card-rating-block {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1351,11 +1417,12 @@ body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .card-rating-
   pointer-events: none !important;
 }
 
-body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .wall-person-name {
+body.rotation-disabled .movie-card:is(.person-card, .collection-card, .studio-card):not(.is-quick-view) .wall-person-name {
   display: block;
   font-size: 0.95rem;
   font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
+  color: var(--color-brand-gold, #d4a347);
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1364,7 +1431,7 @@ body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .wall-person-
   transform: translateY(-4px) !important;
 }
 
-body.rotation-disabled .movie-card.person-card:not(.is-quick-view).no-bio {
+body.rotation-disabled .movie-card:is(.person-card, .collection-card, .studio-card):not(.is-quick-view).no-bio {
   cursor: default;
 }
 

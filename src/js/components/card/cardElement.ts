@@ -4,7 +4,7 @@ import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../../st
 import { saveLocalEntryWithMovie } from "../../localStore.js";
 import { scheduleSync } from "../../syncManager.js";
 import { showToast, areInteractionsLocked, lockGlobalInteractions } from "../../ui.js";
-import { setupRatingListeners, handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "../rating.js";
+import { handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutationOnWatchlist } from "../rating.js";
 import { normalizeMovieId } from "../../contracts.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
 import type { MappedMovie, PersonDetails, UserMovieEntry, MovieCardElement } from "../../types.js";
@@ -20,7 +20,6 @@ import {
   getSingleTapTimeout,
   setSingleTapTimeout,
   getHoveredCard,
-  setHoveredCard,
   getCardGeneration,
   getFlipOnboardingTimeout,
   setFlipOnboardingTimeout,
@@ -955,6 +954,9 @@ export function createGroupCardElement(
   card.style.setProperty("--card-index", "0");
 
   const isStudio = kind === 'studio';
+  if (isStudio) {
+    card.classList.replace('collection-card', 'studio-card');
+  }
   const img = card.querySelector('img');
 
   let fullName = code;

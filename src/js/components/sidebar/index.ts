@@ -266,7 +266,7 @@ export function initSidebar(): void {
   if (isInitialized()) return;
   setInitialized(true);
 
-  const sidebarLifecycleController = renewAbortController();
+  renewAbortController();
 
   if (isMobileLayout()) {
     setSidebarState(false);

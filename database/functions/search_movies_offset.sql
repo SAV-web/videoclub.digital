@@ -222,13 +222,12 @@ BEGIN
     END IF;
 
     -- FASE 1.6: FAST-PATH QUIRÚRGICO DE PORTADA LIMPIA (DAILY SHOWCASE)
-    -- Si la consulta es para el escaparate limpio de portada, dentro de los 378 títulos del pool
-    -- y no requiere conteo, cortocircuitamos con Index-Only Scan sobre idx_movies_relevance_id (~1.5 ms).
+    -- Si la consulta es para el escaparate limpio de portada, dentro de los 378 títulos del pool,
+    -- cortocircuitamos con Index-Only Scan sobre idx_movies_relevance_id (~1.5 ms).
     IF v_enable_daily_showcase 
        AND NOT v_has_filters 
        AND v_showcase_limit = 378 
-       AND (v_offset + v_limit <= 378) 
-       AND NOT get_count THEN
+       AND (v_offset + v_limit <= 378) THEN
 
         WITH raw_showcase AS (
             SELECT id
@@ -249,7 +248,7 @@ BEGIN
             LIMIT v_limit OFFSET v_offset
         )
         SELECT json_build_object(
-            'total', -1,
+            'total', CASE WHEN get_count THEN (SELECT count(*) FROM public.movies) ELSE -1 END,
             'items', COALESCE(
                 (
                     SELECT json_agg(rows)
@@ -273,7 +272,7 @@ BEGIN
                             EXTRACT(EPOCH FROM m.last_synced_at)::INT as last_synced_at,
                             CASE WHEN m.type ILIKE 'S%' THEN m.episodes ELSE NULL END as episodes,
                             m.wikipedia,
-                            m.selections_list, m.studios_list, m.justwatch, m.slug
+                            m.selections_list, m.studios_list, m.justwatch, m.slug, m.relevance
                         FROM paged_ids fm
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id
@@ -481,7 +480,7 @@ BEGIN
                             EXTRACT(EPOCH FROM m.last_synced_at)::INT as last_synced_at,
                             CASE WHEN m.type ILIKE ''S%'' THEN m.episodes ELSE NULL END as episodes,
                             m.wikipedia,
-                            m.selections_list, m.studios_list, m.justwatch, m.slug
+                            m.selections_list, m.studios_list, m.justwatch, m.slug, m.relevance
                         FROM paged_ids fm
                         JOIN public.movies m ON fm.id = m.id
                         LEFT JOIN public.countries c ON m.country_id = c.id

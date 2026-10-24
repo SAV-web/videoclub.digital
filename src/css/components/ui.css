@@ -20,7 +20,7 @@
 }
 
 /* Ajuste Modo Muro */
-body.rotation-disabled .skeleton-card { aspect-ratio: 2 / 3.2; }
+body.rotation-disabled .skeleton-card { aspect-ratio: 2 / 3; }
 
 .skeleton-card::after,
 .skeleton::after {

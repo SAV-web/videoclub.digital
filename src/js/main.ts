@@ -976,20 +976,6 @@ export function init(): void {
   setupHeaderListeners();
   setupGlobalListeners();
 
-  const loginBtn = document.getElementById("login-button");
-  if (loginBtn) {
-    const onLoginClick = async () => {
-      try {
-        const { initAuthForms } = await import("./auth.js") as unknown as { initAuthForms(): void };
-        initAuthForms();
-      } catch (e) {
-        if (import.meta.env.DEV) console.error("Error loading auth module", e);
-      }
-    };
-    loginBtn.addEventListener("click", onLoginClick, { once: true });
-    mainUnsubscribers.push(() => loginBtn.removeEventListener("click", onLoginClick));
-  }
-
   // Sincronizar datos de usuario al recuperar el foco de la pestaña
   const handleMainVisibilityChange = () => {
     if (document.visibilityState === "visible") {

@@ -340,6 +340,33 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
     - **Poda de Listeners y Clases Fantasma**: Supresión de la conmutación de `.is-scrolled` y de falsas transiciones CSS sobre degradados de máscara en `modal/events.ts` y `modal/renderer.ts`.
     - **Fluidez y Legibilidad**: Desplazamiento nativo a 120 FPS sin tirones (*zero jank*) en WebKit (iOS) y Blink (Android), garantizando nitidez tipográfica total sin degradados que emborronen el texto.
 
+42. **Acabado Editorial de "Placa Inaugural" en Tarjetas VIP (`src/css/components/card.css`):**
+    - **Invariante Geométrica de Imagen (1:1 con Películas)**: Eliminación de la sobreescritura de bordes en `.person-card .poster-container img`, garantizando que el retrato ocupe exactamente las mismas dimensiones (250px × 318px), passepartout (`var(--space-xxs) solid var(--color-surface)`) y radio de curvatura (`var(--radius-xxl)`) que los carteles del catálogo.
+    - **Encuadre y Textura "Quiet Luxury" Exclusivo en CSS**: Distinción visual de autor sin añadir nodos HTML mediante filete perimetral en oro viejo de 2px (`rgba(var(--color-brand-gold-rgb), 0.85)`), ribete interior en el retrato (`outline-offset: -2px`), halo lumínico de exposición, iluminación cenital radial sobre fondo carbón noble (`#151619`) y haz divisorio cinematográfico.
+    - **Jerarquía Tipográfica y Modo Muro**: Tipografía de autor reforzada (`font-weight: 800; letter-spacing: 0.015em;`), titular de biografía en oro (`.bio-headline`), botón de rol dual (D/A) estilizado y nombre destacado en oro envejecido en Modo Muro (`.wall-person-name`).
+
+43. **Punto Único de Entrada e Inicialización Idempotente en Auth Modal (`src/js/ui.ts`, `src/js/main.ts`, `src/js/auth.ts`):**
+    - **Resolución de Carrera y Cobertura Total**: Integración de la llamada a `initAuthForms()` directamente dentro de `openAuthModal()` tras `ensureAuthModalMounted()`, garantizando que tanto los clics directos como las aperturas inducidas (voto o watchlist de usuarios anónimos) dispongan de formularios enlazados con sus submit listeners y conmutadores de contraseña.
+    - **Poda de Listener Duplicado**: Eliminación del listener asíncrono redundante sobre `#login-button` en `main.ts` que podía ejecutarse antes del montaje del DOM.
+    - **Blindaje de Idempotencia**: Incorporación del flag `authFormsInitialized` en `auth.ts` para evitar la duplicación de listeners ante aperturas sucesivas del modal.
+
+44. **Paridad de Ordenación por Relevancia y Cero Parpadeo en Mi Lista (`src/js/api.ts`, `database/functions/search_movies_offset.sql`, `src/shared/types.ts`):**
+    - **Inclusión de `relevance` en Proyecciones**: Incorporación de la columna `relevance` en las dos consultas `.select(...)` de `api.ts`, en el tipo canónico `Movie` / `SupabaseMovieRow` y en las dos ramas SELECT de `search_movies_offset.sql`.
+    - **Desempate Canónico por ID (`a.id - b.id`)**: Actualización de la función de ordenación local en `getLocalMyListResponse` con control seguro de nulos y desempate por `id`, reflejando exactamente el `.order('id', { ascending: true })` en las consultas de Supabase.
+    - **Erradicación de Falsos Positivos en SWR**: Al coincidir la ordenación local con la remota, `revalidateMyListInBackground` deja de detectar discrepancias espurias (`hasDifferences = true`), eliminando parpadeos y re-renderizados fantasma tras 50 ms.
+
+45. **Extensión del Fast-Path de Portada Limpia a Conteo Directo (`database/functions/search_movies_offset.sql`):**
+    - **Desacoplamiento de `get_count` en Fase 1.6**: Retirada de la restricción `AND NOT get_count` en la condición del Fast-Path del escaparate diario limpio (portada sin filtros dentro de los 378 títulos del pool).
+    - **Conteo Index-Only Instantáneo (~2 ms)**: Resolución de `total` mediante `CASE WHEN get_count THEN (SELECT count(*) FROM public.movies) ELSE -1 END`, sustituyendo el costoso desvío a la Fase 4 (que ejecutaba `ROW_NUMBER() OVER ()`, `COUNT(*) OVER ()` y `hashtext()` sobre las 14.564 filas) por un escaneo directo de índice sin degradar la latencia de la llamada en segundo plano (50 ms).
+
+46. **Extensión de Modo Muro a Colecciones y Estudios (`src/css/components/card.css`, `src/js/components/card/cardElement.ts`):**
+    - **Generalización de Selectores de Modo Muro**: Sustitución de `.movie-card.person-card` por la tríada `:is(.person-card, .collection-card, .studio-card)` en las reglas de `card.css` que gestionan `.card-rating-block` y `.wall-person-name` bajo `body.rotation-disabled`.
+    - **Identidad Semántica en Estudios**: `createGroupCardElement` reemplaza dinámicamente `collection-card` por `studio-card` en nodos de estudio, asegurando alineación visual perfecta del título en oro (`var(--color-brand-gold)`) bajo el cartel y supresión limpia de estrellas en todas las tarjetas de cabecera #0.
+
+47. **Paridad Geométrica y Cero CLS en Esqueletos de Modo Muro (`src/css/components/ui.css`):**
+    - **Unificación de Relación de Aspecto (`aspect-ratio: 2 / 3`)**: Corrección del ratio en `.skeleton-card` bajo `body.rotation-disabled` (anteriormente `2 / 3.2`), igualando con exactitud matemática el ratio de las tarjetas hidratadas reales (`card.css`).
+    - **Erradicación de Saltos Visuales**: Elimina la contracción del 6,67% en la altura de fila durante la transición de carga a catálogo en Modo Muro, asegurando estabilidad visual absoluta (*Cumulative Layout Shift* = 0).
+
 ## ⏱️ Protocolo de Eficiencia en Desarrollo y Validación (Cost & Latency Optimization)
 
 Para optimizar el uso de recursos, reducir tiempos de ciclo y minimizar costes operativos en agentes de IA y flujos CI/CD:

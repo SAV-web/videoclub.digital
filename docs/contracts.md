@@ -586,6 +586,10 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
 3. **Precalentamiento en Inactividad (*Idle Warmup*)**:
    - Los estilos diferidos se pre-cargan en segundo plano aprovechando periodos de inactividad del navegador mediante `runWhenIdle()`, garantizando que cuando el usuario interactúe con los disparadores correspondientes, el recurso ya resida en la caché del navegador para una respuesta visual instantánea.
 
+4. **Punto Único de Inicialización de Lógica y Formularios (SSOT en `openAuthModal`)**:
+   - Toda la secuencia de orquestación diferida del modal de autenticación (emisión de `auth:requested`, carga asíncrona de estilos `loadAuthStyles`, montaje del DOM `ensureAuthModalMounted`, enlace idempotente de formularios `initAuthForms` y listeners de modal `initAuthModalListeners`) reside de forma centralizada en `openAuthModal()`.
+   - Queda prohibido asociar escuchadores de carga parcial o duplicados en disparadores individuales (como botones del sidebar), garantizando que cualquier vía de apertura (botón de login, valoración no autenticada, guardado en lista o flujo de recuperación) disponga de formularios funcionales e interactivos al 100%.
+
 ## 16. Contrato de Desplazamiento y Scroll en Modales (Native GPU Scrolling & Zero Masking)
 
 1. **Scroll Acelerado por Hardware Puro (Zero `mask-image`)**:
@@ -595,3 +599,49 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
 2. **Supresión de Conmutación Dinámica de Estados de Scroll**:
    - Queda prohibido asociar escuchadores de eventos `scroll` continuos para alternar clases de máscara visual (como `.is-scrolled`).
    - La contención y los límites visuales se resuelven mediante espaciado (*padding*) y cajas delimitadoras estáticas.
+
+## 17. Contrato de Diseño y Jerarquía de Tarjetas VIP (Inaugural Plaque Specification)
+
+1. **Invariante Dimensional y Cero CLS (1:1 con Películas)**:
+   - Las tarjetas VIP (`.person-card`, `.collection-card`, `.studio-card`) deben mantener estrictamente el mismo ratio dimensional, encuadre de imagen (`border: var(--space-xxs) solid var(--color-surface); border-radius: var(--radius-xxl);`) y modelo de caja que las tarjetas de películas (`.movie-card:not(.is-quick-view)`), garantizando un ritmo de cuadrícula perfecto y cero saltos de diseño (*Cumulative Layout Shift* = 0).
+   - Queda terminantemente prohibido alterar el grosor de borde o el tamaño del contenedor `.poster-container` o su imagen con bordes que rompan la alineación métrica de la cuadrícula.
+
+2. **Diferenciación Semiótica de Autor Exclusiva en CSS (Quiet Luxury Plaque)**:
+   - La distinción visual de la ficha #0 respecto a las obras de su filmografía o catálogo se vehiculará exclusivamente mediante tratamiento de superficie en CSS (sin añadir nodos HTML extra):
+     a) Filete perimetral en oro viejo de 2px (`0 0 0 2px rgba(var(--color-brand-gold-rgb), 0.85)`) y halo lumínico de exposición en `.flip-card-inner`, junto con filete interior de autor (`outline: 2px solid ...; outline-offset: -2px`) en la foto sin alterar sus cotas.
+     b) Fondo carbón noble con iluminación cenital radial en sala de exposición (`.flip-card-front`).
+     c) Divisor horizontal en haz cinematográfico dorado (`.poster-container::after`).
+     d) Tipografía de autor distinguida y contrastada con `font-weight: 800` y matiz marfil/dorado en modo oscuro y Modo Muro.
+     e) Botón de alternancia de rol (D/A) armonizado en oro viejo pulido.
+
+3. **Paridad Estructural en Modo Muro (`body.rotation-disabled`)**:
+   - Las reglas de ocultación de `.card-rating-block` y presentación de `.wall-person-name` en oro viejo aplican homogéneamente a toda la tríada VIP (`:is(.person-card, .collection-card, .studio-card)`), asegurando que tanto personas como colecciones y estudios muestren su cabecera tipográfica en la cuadrícula plana sin discrepancias de estilo.
+
+## 18. Contrato de Consistencia de Ordenación y Caché en Mi Lista (Local-First Relevance Parity)
+
+1. **Paridad de Proyección de Datos (Columna `relevance`)**:
+   - Tanto las consultas directas en `src/js/api.ts` (`revalidateMyListInBackground` y `fetchMovies`) como la función perimetral SQL `search_movies_offset.sql` deben incluir obligatoriamente la columna `relevance` en sus proyecciones de campos.
+   - De este modo, las películas cacheadas en IndexedDB (`cached_movies`) preservan su puntuación canónica de relevancia asignada en PostgreSQL.
+
+2. **Desempate Determinista en Servidor y Cliente (`id ASC`)**:
+   - Tanto en el ordenamiento local en JavaScript (`getLocalMyListResponse`) como en las consultas a Supabase (`.order(...)`), cualquier ordenación por `relevance` (u otro campo de criterio múltiple) debe incluir un desempate unívoco por `id ASC` (`a.id - b.id`).
+   - Esto erradica falsos positivos en `hasDifferences` durante la revalidación en segundo plano (`revalidateMyListInBackground`), previniendo parpadeos (*re-renders*) innecesarios al entrar en Mi Lista.
+
+## 19. Contrato de Conteo Directo en Fast-Path de Portada Limpia (Index-Only Count Optimization)
+
+1. **Cortocircuito Completo en Portada Limpia (Fase 1.6)**:
+   - Toda solicitud dirigida al escaparate limpio de portada (`v_enable_daily_showcase AND NOT v_has_filters AND v_showcase_limit = 378 AND (v_offset + v_limit <= 378)`) debe resolverse íntegramente dentro de la Fase 1.6 de `search_movies_offset.sql`, independientemente del valor del flag `get_count`.
+   - Queda prohibido desviar la consulta a la Fase 4 cuando `get_count = true`, evitando el coste de `ROW_NUMBER() OVER ()`, `COUNT(*) OVER ()` y `hashtext()` sobre las 14.564 películas del catálogo global.
+
+2. **Resolución Instantánea de Total por Escaneo de Índice**:
+   - En la proyección `json_build_object`, el campo `'total'` se resuelve condicionalmente como `CASE WHEN get_count THEN (SELECT count(*) FROM public.movies) ELSE -1 END`.
+   - Dado que la portada limpia sin filtros abarca la totalidad del universo cinematográfico activo, `(SELECT count(*) FROM public.movies)` se resuelve en ~2 ms mediante *Index-Only Scan*, reduciendo drásticamente el consumo de CPU y latencia en el servidor de base de datos.
+
+## 20. Contrato de Estabilidad Geométrica de Esqueletos (Zero CLS Skeleton Contract)
+
+1. **Invariante de Relación de Aspecto en Carga**:
+   - Todo esqueleto de carga (`.skeleton-card`) debe reflejar con exactitud matemática el `aspect-ratio` de las tarjetas reales a las que sustituye temporalmente.
+   - En modo normal interactivo: `aspect-ratio: 500 / 950` idéntico en ambos componentes (`card.css` y `ui.css`).
+   - En Modo Muro (`body.rotation-disabled`): `aspect-ratio: 2 / 3` estricto en ambos componentes (`card.css` y `ui.css`), garantizando que la altura de fila calculada por el motor geométrico durante el estado de carga coincida al 100% con la de las carátulas hidratadas, erradicando saltos acumulativos de maquetación (*Cumulative Layout Shift* = 0).
+
+

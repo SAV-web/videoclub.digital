@@ -284,14 +284,24 @@ export async function getLocalMyListResponse(
       const valA: any = (a as any)[sortField];
       const valB: any = (b as any)[sortField];
 
-      if (valA === undefined || valA === null) return 1;
-      if (valB === undefined || valB === null) return -1;
+      const aHasVal = valA !== undefined && valA !== null;
+      const bHasVal = valB !== undefined && valB !== null;
 
-      if (typeof valA === "string") {
-        const cmp = valA.localeCompare(valB, "es", { sensitivity: "base" });
-        return isAsc ? cmp : -cmp;
+      if (aHasVal && !bHasVal) return -1;
+      if (!aHasVal && bHasVal) return 1;
+
+      if (aHasVal && bHasVal) {
+        if (typeof valA === "string") {
+          const cmp = valA.localeCompare(valB, "es", { sensitivity: "base" });
+          if (cmp !== 0) return isAsc ? cmp : -cmp;
+        } else {
+          const diff = isAsc ? valA - valB : valB - valA;
+          if (diff !== 0) return diff;
+        }
       }
-      return isAsc ? valA - valB : valB - valA;
+
+      // Desempate canónico idéntico a PostgreSQL (ORDER BY ... ASC, id ASC)
+      return a.id - b.id;
     });
 
     const total = requestCount ? filtered.length : -1;
@@ -323,7 +333,7 @@ function revalidateMyListInBackground(
       let query = supabase
         .from('movies')
         .select(`
-          id, title, original_title, year, year_end, type, 
+          id, title, original_title, year, year_end, type, relevance,
           genres:genres_list, directors:directors_list, actors:actors_list, 
           minutes, slug, fa_id, fa_rating, fa_votes, 
           imdb_id, imdb_rating, imdb_votes, avg_rating, 
@@ -342,8 +352,8 @@ function revalidateMyListInBackground(
       else if (filters.mediaType === 'series') query = query.ilike('type', 'S%');
 
       const [sortField, sortDirection] = (filters.sort || "relevance,asc").split(",");
-      if (sortField === 'relevance') query = query.order('relevance', { ascending: true });
-      else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
+      if (sortField === 'relevance') query = query.order('relevance', { ascending: true }).order('id', { ascending: true });
+      else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false }).order('id', { ascending: true });
 
       const start = (page - 1) * pageSize;
       const { data, error, count } = await query.range(start, start + pageSize - 1);
@@ -459,8 +469,8 @@ export function fetchMovies(
           let query = supabase
             .from('movies')
             .select(`
-              id, title, original_title, year, year_end, type, 
-              genres:genres_list, directors:directors_list, actors:actors_list, 
+              id, title, original_title, year, year_end, type, relevance,
+          genres:genres_list, directors:directors_list, actors:actors_list, 
               minutes, slug, fa_id, fa_rating, fa_votes, 
               imdb_id, imdb_rating, imdb_votes, avg_rating, 
               synopsis, thumbhash_st, last_synced_at, 
@@ -480,8 +490,8 @@ export function fetchMovies(
           else if (normFilters.mediaType === 'series') query = query.ilike('type', 'S%');
 
           const [sortField, sortDirection] = (normFilters.sort || "relevance,asc").split(",");
-          if (sortField === 'relevance') query = query.order('relevance', { ascending: true });
-          else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false });
+          if (sortField === 'relevance') query = query.order('relevance', { ascending: true }).order('id', { ascending: true });
+      else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false }).order('id', { ascending: true });
 
           const start = (normPage - 1) * normPageSize;
           const { data, error, count } = await query.range(start, start + normPageSize - 1);

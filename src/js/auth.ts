@@ -612,10 +612,14 @@ export function showResetPasswordView(): void {
   openAuthModal();
 }
 
-// Inicializa todos los formularios y listeners de autenticación
+let authFormsInitialized = false;
+
+// Inicializa todos los formularios y listeners de autenticación (idempotente)
 export function initAuthForms(): void {
+  if (authFormsInitialized) return;
   const dom = getDom();
   if (!dom.fLogin) return;
+  authFormsInitialized = true;
 
   dom.fLogin.addEventListener("submit", e => { void handleLoginRegisterSubmit(e, true); });
   if (dom.fReg) {

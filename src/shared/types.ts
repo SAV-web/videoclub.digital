@@ -48,6 +48,7 @@ export interface SupabaseMovieRow {
   wikipedia: string | null;
   justwatch: string | null;
   slug?: string | null;
+  relevance?: number | null;
   countries?: { name: string; code: string } | null;
   user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
 }
@@ -93,6 +94,7 @@ export interface Movie {
   wikipedia: string | null;
   justwatch: string | null;
   slug?: string | null;
+  relevance?: number | null;
 }
 
 // =================================================================
