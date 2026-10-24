@@ -327,7 +327,6 @@ export function populateModalContent(options: PopulateModalOptions): void {
     const personFront = cardClone.querySelector<HTMLElement>(".quick-view-media");
     if (personFront) {
       personFront.scrollTop = 0;
-      personFront.classList.remove("is-scrolled");
       personFront.classList.remove("poster-compact");
     }
     updateNavButtons(modalId, contextCards);
@@ -341,19 +340,16 @@ export function populateModalContent(options: PopulateModalOptions): void {
     // Montaje
     content.textContent = "";
     content.scrollTop = 0;
-    content.classList.remove("is-scrolled");
     content.appendChild(clone);
     const initialFront = cardClone.querySelector<HTMLElement>(".quick-view-media");
     if (initialFront) {
       initialFront.scrollTop = 0;
-      initialFront.classList.remove("is-scrolled");
       initialFront.classList.remove("poster-compact");
     }
     const initialBack = cardClone.querySelector<HTMLElement>(".quick-view-details");
     if (initialBack) {
       initialBack.scrollTop = 0;
-      initialBack.classList.remove("is-scrolled");
-    }
+      }
 
     // Inicializar interactividad básica
     updateCardUI(cardClone);

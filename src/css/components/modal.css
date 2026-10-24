@@ -949,9 +949,11 @@
  * ================================================================= */
 
 @media (max-width: 768px) {
-  .quick-view-overlay {
-    backdrop-filter: blur(4px) saturate(85%);
-    -webkit-backdrop-filter: blur(4px) saturate(85%);
+  .quick-view-overlay,
+  .legal-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(0, 0, 0, 0.68);
   }
 
   .quick-view-modal {
@@ -998,16 +1000,7 @@
     width: 100%;
   }
 
-  .quick-view-content {
-    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
-    mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
-    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
 
-    &.is-scrolled {
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
-      mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
-    }
-  }
 }
 
 /* =================================================================
@@ -1061,17 +1054,8 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     box-sizing: border-box;
-    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
-    mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
-    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
-
     &::-webkit-scrollbar {
       display: none;
-    }
-
-    &.is-scrolled {
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
-      mask-image: linear-gradient(to bottom, transparent 0, black 28px, black calc(100% - 32px), transparent 100%);
     }
   }
 
@@ -1275,13 +1259,7 @@
     overflow: hidden;
     height: 100%;
     border-radius: inherit;
-    -webkit-mask-image: none;
-    mask-image: none;
 
-    &.is-scrolled {
-      -webkit-mask-image: none;
-      mask-image: none;
-    }
   }
 
   .modal-nav-btn {
@@ -1317,17 +1295,8 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     box-sizing: border-box;
-    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-    mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
-
     &::-webkit-scrollbar {
       display: none;
-    }
-
-    &.is-scrolled {
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
-      mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 28px), transparent 100%);
     }
   }
 
@@ -1352,10 +1321,7 @@
     left: auto;
     padding: var(--space-sm) var(--space-sm) var(--space-md) var(--space-sm);
 
-    &.poster-compact {
-      -webkit-mask-image: none;
-      mask-image: none;
-    }
+
   }
 
   /* Adaptación de hijos de la columna izquierda para evitar cortes de contenido */
@@ -1422,10 +1388,11 @@
 }
 
 @media (hover: none) and (pointer: coarse) {
-  .quick-view-overlay {
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
-    background-color: rgba(0, 0, 0, 0.5);
+  .quick-view-overlay,
+  .legal-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(0, 0, 0, 0.68);
   }
 }
 

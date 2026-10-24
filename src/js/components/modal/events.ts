@@ -89,27 +89,23 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
     const cleanupRating = initRatingInteractions(content);
     unsubscribers.push(cleanupRating);
 
-    // Control de máscara de continuidad: detecta scroll para retirar el degradado superior en el tope
-    const handleScrollMask = (e: Event) => {
+    // En pantallas apaisadas compactas, detecta scroll para compactar cartel suavemente
+    const handleLandscapePosterScroll = (e: Event) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
-      if (target.classList?.contains("quick-view-details") || target.classList?.contains("quick-view-media") || target === content) {
-        target.classList.toggle("is-scrolled", target.scrollTop > 4);
-      }
 
       if (target.classList?.contains("quick-view-media")) {
         if (isLandscapeCompactViewport()) {
           const scrollBottom = target.scrollHeight - target.clientHeight - target.scrollTop;
-          // Al llegar al final del scroll tras haber iniciado desplazamiento, compactar cartel suavemente
           if (target.scrollTop > 15 && scrollBottom <= 35) {
             target.classList.add("poster-compact");
           }
         }
       }
     };
-    content.addEventListener("scroll", handleScrollMask, { passive: true, capture: true });
+    content.addEventListener("scroll", handleLandscapePosterScroll, { passive: true, capture: true });
     unsubscribers.push(() => {
-      content.removeEventListener("scroll", handleScrollMask, { capture: true });
+      content.removeEventListener("scroll", handleLandscapePosterScroll, { capture: true });
     });
 
     const handleContentWheel = (e: WheelEvent) => {

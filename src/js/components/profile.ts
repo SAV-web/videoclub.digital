@@ -1,3 +1,4 @@
+import "../../css/components/profile.css";
 // =================================================================
 //      PANEL DE PERFIL DE USUARIO (src/js/components/profile.ts)
 // =================================================================

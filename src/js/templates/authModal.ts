@@ -162,3 +162,16 @@ export function ensureAuthModalMounted(): HTMLElement | null {
   }
   return modal;
 }
+
+let authStylesPromise: Promise<unknown> | null = null;
+
+/**
+ * Carga diferida de los estilos de autenticación (auth.css).
+ * Previene el bloqueo del renderizado inicial y evita FOUC garantizando su resolución.
+ */
+export function loadAuthStyles(): Promise<unknown> {
+  if (!authStylesPromise) {
+    authStylesPromise = import("../../css/components/auth.css");
+  }
+  return authStylesPromise;
+}

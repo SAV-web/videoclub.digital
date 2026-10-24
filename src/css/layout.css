@@ -127,6 +127,10 @@ body.sidebar-is-open .sidebar {
     opacity: 0;
     transform: translateY(-10px);
     pointer-events: none;
+
+    & .landing-hero-description {
+      animation-play-state: paused;
+    }
   }
 }
 

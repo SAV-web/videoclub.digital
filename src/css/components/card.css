@@ -1067,11 +1067,18 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   aspect-ratio: 2 / 3;
   contain-intrinsic-size: auto 105px 158px;
   transition: transform var(--duration-quick) ease;
+  perspective: none;
 
   & .flip-card-inner {
     box-shadow: var(--shadow-sm);
     border: none;
     background-color: transparent;
+    transform-style: flat;
+    transform: none !important;
+  }
+
+  & .flip-card-back {
+    display: none !important;
   }
 
   & .movie-summary {

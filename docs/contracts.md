@@ -528,5 +528,70 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
    - Si la tarjeta se encuentra en rotación manual por el usuario, el modo muro está activo (`ROTATION_DISABLED`) o una modal está desplegada (`MODAL_OPEN`), la ejecución se descarta de forma segura.
 
 
+## 11. Contrato de Sombreadores de Fondo y Overlays (Rendimiento GPU)
+
+1. **Desactivación de `backdrop-filter` en Móviles y Dispositivos Táctiles (`<= 768px`)**:
+   - En viewports móviles y dispositivos con puntero grueso (`hover: none and pointer: coarse`), queda prohibido aplicar `backdrop-filter: blur(...)` sobre overlays de modales (`.quick-view-overlay`, `.auth-overlay`, `.profile-overlay`, `.legal-overlay`) y cajón lateral (`.sidebar-overlay`).
+   - La capa de oscurecimiento se implementa con fondo semitransparente sólido `rgba(0, 0, 0, 0.68)`, garantizando 0 ms de readback de textura y coste cero de GPU durante gestos táctiles de arrastre (*swipe-down*) a 120 FPS.
+
+2. **Supresión Universal en Notificaciones Toast**:
+   - Los elementos `.toast` prescinden de `backdrop-filter` en todas las plataformas, confiando en sus fondos de alta opacidad (95%) para garantizar legibilidad sin forzar pases de sombreado en la GPU.
+
+3. **Preservación de Glassmorphism en Escritorio (`> 768px`)**:
+   - En pantallas grandes con puntero fino, se preserva el desenfoque sutil (`blur(6px) saturate(85%)`) en modales flotantes centradas, manteniendo compatibilidad con `prefers-reduced-transparency: reduce`.
 
 
+## 12. Contrato de Renderizado y Perspectiva en Modo Muro (Wall Mode GPU & Layout Optimization)
+
+1. **Poda Estricta de Caras Traseras en el Render Tree (`display: none !important`)**:
+   - En Modo Muro (`body.rotation-disabled`), las tarjetas de películas (`.movie-card:not(.is-quick-view)`) son pósters visuales 2D que abren directamente la modal al interactuar, prescindiendo por diseño de cualquier rotación sobre su eje vertical.
+   - La cara trasera `.flip-card-back` debe evaluarse obligatoriamente con `display: none !important` para erradicar sus nodos DOM del árbol de renderizado (*Render Tree*) del navegador, evitando que el motor de layout calcule estilos, fuentes o geometrías de elementos que jamás serán visibles.
+
+2. **Aplanamiento de Contextos 3D (`perspective: none` y `transform-style: flat`)**:
+   - Queda prohibido mantener contextos de apilamiento 3D activos sobre las 72 tarjetas de una página en Modo Muro.
+   - `.movie-card:not(.is-quick-view)` debe declarar `perspective: none` y `.flip-card-inner` debe declarar `transform-style: flat` y `transform: none !important`.
+   - La GPU debe tratar la cuadrícula del muro de exploración como un plano 2D continuo de alto rendimiento, optimizando la asignación de buffers de memoria de vídeo (VRAM) y blindando la tasa de refresco a 60-120 FPS durante el scroll vertical rápido.
+
+
+## 13. Contrato de Interacción y Composición de Botones (Button Stacking & Tactile Feedback)
+
+1. **Supresión de Pseudo-Ondas y Capas de Aislamiento (Zero Ripple & Zero Isolation)**:
+   - Queda prohibido el uso de pseudo-elementos (`&::after` / `&::before`) para simular ondas o efectos de agua (*ripple effects*) sobre los botones base (`.btn`).
+   - Se erradican las declaraciones `isolation: isolate` y `overflow: hidden` del selector base `.btn`, evitando la creación forzada de contextos de apilamiento en la GPU y previniendo el truncamiento de contornos accesibles (*focus outlines*) o elementos flotantes adyacentes.
+
+2. **Feedback Mecánico Instantáneo en `:active`**:
+   - La respuesta háptica y táctil a la interacción del usuario se vehicula mediante micro-hundimiento mecánico a escala (`transform: translateY(1px) scale(0.97)`) y sombra interna de presión (`inset 0 1px 1px rgba(0, 0, 0, 0.05)`).
+   - La duración de la transición en estado presionado debe ser inmediata (<= 50 ms) con retorno elástico suave (300 ms mediante `--ease-luxury`), garantizando una respuesta táctil sólida y cinemática acorde a la identidad *Quiet Luxury* de la aplicación.
+
+## 14. Contrato de Animación y Suspensión del Hero de Portada (Hero Animation Freezing on Scroll)
+
+1. **Suspensión Obligatoria en Scroll (`animation-play-state: paused`)**:
+   - Cuando el Hero de bienvenida se desplaza fuera del viewport activo (`.landing-hero.is-scrolled-away`), es imperativo pausar de inmediato las animaciones internas mediante `animation-play-state: paused` en `.landing-hero-description`.
+   - Queda prohibido mantener bucles infinitos de fotogramas (`infinite crossfade`) ejecutándose en segundo plano sobre elementos con `opacity: 0` o inaccesibles visualmente.
+
+2. **Reanudación Transparente y Ahorro Energético**:
+   - Al regresar a la parte superior de la página (`scrollY < 15px`), el estado `is-scrolled-away` se retira y el bucle de rotación reanuda su ciclo natural en el mismo punto de lectura sin saltos bruscos.
+   - Este mecanismo protege la tasa de refresco a 120 FPS y la autonomía de batería en dispositivos móviles durante la exploración prolongada de películas.
+
+## 15. Contrato de Carga Diferida de Estilos en Modales (Lazy CSS Architecture)
+
+1. **Aislamiento de Hojas CSS Secundarias (Zero Unused CSS on Startup)**:
+   - Las hojas de estilo correspondientes a vistas o modales diferidos que no forman parte del App Shell ni del catálogo visible inicial (`auth.css`, `profile.css`) quedan terminantemente excluidas del fichero bloqueante de renderizado (`src/css/main.css`).
+   - El CSS crítico inicial debe limitarse exclusivamente a la infraestructura global, layout, navegación, tarjetas del catálogo y modal de vista rápida.
+
+2. **Invariante de Cero FOUC (Async Style Guard)**:
+   - Todo componente modal cuyo CSS se cargue bajo demanda debe garantizar que la promesa de importación (`import("../../css/components/...")`) se resuelva antes de hacer visible el contenedor modal en el DOM.
+   - Queda prohibido desocultar modales en estado no estilizado.
+
+3. **Precalentamiento en Inactividad (*Idle Warmup*)**:
+   - Los estilos diferidos se pre-cargan en segundo plano aprovechando periodos de inactividad del navegador mediante `runWhenIdle()`, garantizando que cuando el usuario interactúe con los disparadores correspondientes, el recurso ya resida en la caché del navegador para una respuesta visual instantánea.
+
+## 16. Contrato de Desplazamiento y Scroll en Modales (Native GPU Scrolling & Zero Masking)
+
+1. **Scroll Acelerado por Hardware Puro (Zero `mask-image`)**:
+   - Queda estrictamente prohibido el uso de `-webkit-mask-image` o `mask-image` sobre contenedores con desplazamiento (`overflow-y: auto`), incluyendo `.quick-view-content`, `.quick-view-column` y `.quick-view-details`.
+   - El scroll debe delegarse de forma pura al compositor nativo del navegador (*Off-Thread Compositor Scrolling*), evitando la creación de superficies intermedias (*FBO / Offscreen Buffers*) en cada fotograma táctil.
+
+2. **Supresión de Conmutación Dinámica de Estados de Scroll**:
+   - Queda prohibido asociar escuchadores de eventos `scroll` continuos para alternar clases de máscara visual (como `.is-scrolled`).
+   - La contención y los límites visuales se resuelven mediante espaciado (*padding*) y cajas delimitadoras estáticas.

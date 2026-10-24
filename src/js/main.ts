@@ -965,6 +965,9 @@ export function init(): void {
       loadSidebar();
       setupAuthModal();
       setupLegalModal();
+      if (document.body.classList.contains("user-logged-in") || hasStoredAuthSessionOrHash()) {
+        void import("./components/profile.js");
+      }
     }, 1000)
   );
 

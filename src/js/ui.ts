@@ -10,7 +10,7 @@ import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
 import { getActiveFilters, getTotalMovies, hasActiveMeaningfulFilters, appEvents, getWatchlistCount, getCurrentPage } from "./state.js";
 import { ActiveFilters, MappedMovie } from "./types.js";
-import { ensureAuthModalMounted } from "./templates/authModal.js";
+import { ensureAuthModalMounted, loadAuthStyles } from "./templates/authModal.js";
 import { ensureLegalModalMounted } from "./templates/legalModal.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
@@ -669,8 +669,9 @@ function initAuthModalListeners(): void {
   authModalListenersInitialized = true;
 }
 
-export const openAuthModal = (): void => {
+export const openAuthModal = async (): Promise<void> => {
   appEvents.emit("auth:requested");
+  await loadAuthStyles();
   ensureAuthModalMounted();
   initAuthModalListeners();
   if (!window.history.state?.modalOpen) {
@@ -690,7 +691,10 @@ export function setupAuthModal(): void {
   const { loginButton } = dom;
   if (!loginButton) return;
 
-  loginButton.addEventListener("click", openAuthModal);
+  // Pre-calentar estilos de autenticación en segundo plano durante inactividad
+  void loadAuthStyles();
+
+  loginButton.addEventListener("click", () => { void openAuthModal(); });
   authTriggerBound = true;
 }
 
