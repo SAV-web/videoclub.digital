@@ -179,7 +179,7 @@ export function renderUserStars(container: HTMLElement, value: number, hideHollo
 /**
  * Maneja el hover y foco sobre las estrellas (Feedback visual inmediato).
  */
-function handleRatingPreviewEnter(event: MouseEvent | FocusEvent): void {
+function handleRatingPreviewEnter(event: MouseEvent | FocusEvent, containerOverride?: HTMLElement): void {
   if (typeof document !== "undefined" && !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
   
   // En dispositivos táctiles no ejecutamos previsualización de hover para evitar estados pegajosos
@@ -191,7 +191,9 @@ function handleRatingPreviewEnter(event: MouseEvent | FocusEvent): void {
   const starIcon = target.closest<HTMLElement>(".star-icon");
   if (!starIcon) return;
   
-  const starContainer = event.currentTarget as HTMLElement;
+  const starContainer = containerOverride || (event.currentTarget as HTMLElement) || starIcon.closest<HTMLElement>('[data-action="set-rating-estrellas"]');
+  if (!starContainer) return;
+
   const hoverLevel = parseInt(starIcon.dataset.ratingLevel || "0", 10);
   
   // Renderizamos estado "potencial" (lo que pasaría si haces click)
@@ -200,10 +202,14 @@ function handleRatingPreviewEnter(event: MouseEvent | FocusEvent): void {
 }
 
 /**
- * Restaura el estado original al salir del contenedor (blur o mouseleave).
+ * Restaura el estado original al salir del contenedor (blur o mouseout/mouseleave).
  */
-function handleRatingPreviewLeave(event: MouseEvent | FocusEvent): void {
-  const starContainer = event.currentTarget as HTMLElement;
+function handleRatingPreviewLeave(eventOrContainer: (MouseEvent | FocusEvent) | HTMLElement): void {
+  const starContainer = (eventOrContainer instanceof HTMLElement)
+    ? eventOrContainer
+    : (eventOrContainer.currentTarget as HTMLElement) || (eventOrContainer.target as HTMLElement)?.closest?.<HTMLElement>('[data-action="set-rating-estrellas"]');
+  if (!starContainer) return;
+
   starContainer.classList.remove(CSS_CLASSES.IS_RATING_PREVIEW);
   const cardElement = starContainer.closest<HTMLElement>(".movie-card");
   if (cardElement) {
@@ -247,20 +253,80 @@ function handleRatingKeyDown(event: KeyboardEvent): void {
   triggerRatingAnimation(card, newRating, starIcon);
 }
 
+/**
+ * Inicializa la delegación global de eventos de valoración (hover, foco y teclado)
+ * en el contenedor raíz (ej: #grid-container o #quick-view-content).
+ * Elimina la necesidad de registrar 5 listeners por cada tarjeta individual.
+ */
+export function initRatingInteractions(root: HTMLElement): () => void {
+  if (!root) return () => {};
+
+  const onMouseOver = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const starIcon = target.closest<HTMLElement>(".star-icon");
+    if (!starIcon) return;
+    const starContainer = starIcon.closest<HTMLElement>('[data-action="set-rating-estrellas"]');
+    if (starContainer && root.contains(starContainer)) {
+      handleRatingPreviewEnter(e, starContainer);
+    }
+  };
+
+  const onMouseOut = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const starContainer = target.closest<HTMLElement>('[data-action="set-rating-estrellas"]');
+    if (!starContainer || !root.contains(starContainer)) return;
+    const related = e.relatedTarget as HTMLElement | null;
+    if (!related || !starContainer.contains(related)) {
+      handleRatingPreviewLeave(starContainer);
+    }
+  };
+
+  const onFocusIn = (e: FocusEvent) => {
+    const target = e.target as HTMLElement;
+    const starIcon = target.closest<HTMLElement>(".star-icon");
+    if (!starIcon) return;
+    const starContainer = starIcon.closest<HTMLElement>('[data-action="set-rating-estrellas"]');
+    if (starContainer && root.contains(starContainer)) {
+      handleRatingPreviewEnter(e, starContainer);
+    }
+  };
+
+  const onFocusOut = (e: FocusEvent) => {
+    const target = e.target as HTMLElement;
+    const starContainer = target.closest<HTMLElement>('[data-action="set-rating-estrellas"]');
+    if (!starContainer || !root.contains(starContainer)) return;
+    const related = e.relatedTarget as HTMLElement | null;
+    if (!related || !starContainer.contains(related)) {
+      handleRatingPreviewLeave(starContainer);
+    }
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.star-icon[data-rating-level]')) {
+      handleRatingKeyDown(e);
+    }
+  };
+
+  root.addEventListener("mouseover", onMouseOver as EventListener, { passive: true });
+  root.addEventListener("mouseout", onMouseOut as EventListener, { passive: true });
+  root.addEventListener("focusin", onFocusIn as EventListener);
+  root.addEventListener("focusout", onFocusOut as EventListener);
+  root.addEventListener("keydown", onKeyDown as EventListener);
+
+  return () => {
+    root.removeEventListener("mouseover", onMouseOver as EventListener);
+    root.removeEventListener("mouseout", onMouseOut as EventListener);
+    root.removeEventListener("focusin", onFocusIn as EventListener);
+    root.removeEventListener("focusout", onFocusOut as EventListener);
+    root.removeEventListener("keydown", onKeyDown as EventListener);
+  };
+}
+
 export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean = true): void {
   if (!isInteractive) return;
-
   const isLoggedIn = typeof document !== "undefined" && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
   starContainer.classList.toggle(CSS_CLASSES.IS_INTERACTIVE, isLoggedIn);
-
-  if (starContainer.dataset.ratingListeners === "true") return;
-  starContainer.dataset.ratingListeners = "true";
-
-  starContainer.addEventListener("mouseover", handleRatingPreviewEnter as EventListener, { passive: true });
-  starContainer.addEventListener("mouseleave", handleRatingPreviewLeave as EventListener, { passive: true });
-  starContainer.addEventListener("keydown", handleRatingKeyDown as EventListener);
-  starContainer.addEventListener("focusin", handleRatingPreviewEnter as EventListener);
-  starContainer.addEventListener("focusout", handleRatingPreviewLeave as EventListener);
 }
 
 // =================================================================

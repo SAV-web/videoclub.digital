@@ -670,6 +670,7 @@ function initAuthModalListeners(): void {
 }
 
 export const openAuthModal = (): void => {
+  appEvents.emit("auth:requested");
   ensureAuthModalMounted();
   initAuthModalListeners();
   if (!window.history.state?.modalOpen) {

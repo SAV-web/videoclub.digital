@@ -7,7 +7,7 @@
 // - Usa un "vigilante" (Proxy) para avisar al instante cuando algo cambia.
 // =================================================================
 
-import { clearCheckedUserMovieIds, markMovieIdAsChecked } from "./checkedIds.js";
+
 import { DEFAULTS, CONFIG, TEXT_FILTER_KEYS } from "./constants.js";
 import { normalizeText } from "./utils.js";
 import {
@@ -67,6 +67,7 @@ export interface AppEventPayloads {
   'card:requestUpdate': { cardElement: HTMLElement };
   'state:changed': { path: string; value: unknown; oldValue: unknown };
   'page:requestChange': { direction: number; target: 'first' | 'last' };
+  'auth:requested': undefined;
 }
 
 export const appEvents = {
@@ -538,7 +539,7 @@ export function updateUserDataForMovie(movieId: number | string, data: Partial<U
   const normalizedMovieId = normalizeMovieId(movieId);
   if (normalizedMovieId === null) return;
 
-  markMovieIdAsChecked(normalizedMovieId);
+
   const strId = String(normalizedMovieId);
   const current = state.userMovieData[strId] || { onWatchlist: false, rating: null };
   const updated = normalizeUserMovieEntry({ ...current, ...data });
@@ -551,7 +552,7 @@ export function updateUserDataForMovie(movieId: number | string, data: Partial<U
 // Borra datos de usuario (al hacer logout)
 export function clearUserMovieData(): void {
   state.userMovieData = {};
-  clearCheckedUserMovieIds();
+
 }
 
 // Devuelve el número total de películas activas en la lista de seguimiento (Watchlist)

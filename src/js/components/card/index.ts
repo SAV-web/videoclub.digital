@@ -185,10 +185,43 @@ export function renderErrorState(container: HTMLElement | null, pagContainer: HT
 // =================================================================
 
 const ONBOARDING_FLIP_DELAY_MS = 3000;
+const ONBOARDING_STORAGE_KEY = "videoclub:flip_onboarding_count";
+export const MAX_ONBOARDING_FLIPS = 10;
+
+export function getFlipOnboardingCount(): number {
+  try {
+    if (typeof localStorage === "undefined") return MAX_ONBOARDING_FLIPS;
+    const val = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+    return val ? parseInt(val, 10) || 0 : 0;
+  } catch {
+    return MAX_ONBOARDING_FLIPS;
+  }
+}
+
+export function resetFlipOnboardingCount(): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+    }
+  } catch {
+    // Silencioso ante restricciones de storage
+  }
+}
+
+function incrementFlipOnboardingCount(): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const current = getFlipOnboardingCount();
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, String(current + 1));
+  } catch {
+    // Silencioso ante restricciones de storage
+  }
+}
 
 export function runFlipOnboarding(container: HTMLElement | null): void {
   if (!container) return;
   if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)) return;
+  if (getFlipOnboardingCount() >= MAX_ONBOARDING_FLIPS) return;
 
   const fOnboard = getFlipOnboardingTimeout();
   if (fOnboard) clearTimeout(fOnboard);
@@ -205,17 +238,25 @@ export function runFlipOnboarding(container: HTMLElement | null): void {
       return;
     }
     if (getFlippedCard()) return; // Si el usuario ya está interactuando, no interrumpir
+    if (getFlipOnboardingCount() >= MAX_ONBOARDING_FLIPS) return;
 
-    // Seleccionar la primera ficha de película real (omitiendo fichas de cabecera VIP: Director, Actor, Colección o Estudio)
-    const targetMovieCard = container.querySelector<HTMLElement>(
-      `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card):not(.studio-card)`
+    // Seleccionar aleatoriamente una de las 4 primeras fichas de película reales
+    const movieCards = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card):not(.studio-card)`
+      )
     );
 
+    const candidateCards = movieCards.slice(0, 4);
+    if (candidateCards.length === 0) return;
+
+    const targetMovieCard = candidateCards[Math.floor(Math.random() * candidateCards.length)];
     if (!targetMovieCard || !targetMovieCard.isConnected) return;
 
     const inner = targetMovieCard.querySelector<HTMLElement>(".flip-card-inner");
     if (inner && !inner.classList.contains("is-flipped")) {
       inner.classList.add("is-flipped");
+      incrementFlipOnboardingCount();
 
       setFlipBackTimeout(setTimeout(() => {
         if (onboardGen !== getCardGeneration()) return;

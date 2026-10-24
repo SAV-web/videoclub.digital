@@ -6,7 +6,7 @@
 // ofreciendo un único punto de inicialización para el cliente SDK.
 // =================================================================
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { CONFIG } from "./constants.js";
 import { ERROR_CODES, createAppError } from "./contracts.js";
 
@@ -63,6 +63,7 @@ export function getSupabase(): Promise<SupabaseClient> {
       const { SUPABASE_URL: url, SUPABASE_ANON_KEY: key } = CONFIG;
 
       if (url && key && !isTestEnv) {
+        const { createClient } = await import("@supabase/supabase-js");
         return createClient(url, key, {
           auth: {
             persistSession: true,

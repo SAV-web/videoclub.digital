@@ -1,10 +1,8 @@
 import { createElement, renderCountryFlag, renderStudioIcons, setupExternalLink, applyLengthBasedClass, buildFilterUrl, formatModalDuration } from "../../utils.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
 import { CONFIG, IGNORED_ACTORS_SET, CSS_CLASSES } from "../../constants.js";
-import { updateCardUI, initializeCard, handleCardClick, applyLqipImage, populatePersonFields } from "../card/index.js";
+import { updateCardUI, initializeCard, applyLqipImage, populatePersonFields } from "../card/index.js";
 import { setupCardRatings } from "../rating.js";
-import { fetchUserMovieDataForIds } from "../../api.js";
-import { updateUserDataForMovie } from "../../state.js";
 import type { Movie, MappedMovie, MovieCardElement } from "../../types.js";
 
 export interface ExtendedMovie extends MappedMovie {
@@ -333,7 +331,6 @@ export function populateModalContent(options: PopulateModalOptions): void {
       personFront.classList.remove("poster-compact");
     }
     updateNavButtons(modalId, contextCards);
-    cardClone.addEventListener("click", handleCardClick);
   } else {
     // --- CAPA PELÍCULA ---
     // Poblar cabecera, detalles y notas síncronamente para evitar parpadeos y FOUC
@@ -362,17 +359,5 @@ export function populateModalContent(options: PopulateModalOptions): void {
     updateCardUI(cardClone);
     initializeCard(cardClone);
     updateNavButtons(modalId, contextCards);
-
-    // Si el usuario está autenticado, sincronizar sus datos específicos (nota/watchlist) para la modal
-    if (movie.id && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-      fetchUserMovieDataForIds([movie.id]).then(userEntries => {
-        if (userEntries[movie.id]) {
-          updateUserDataForMovie(movie.id, userEntries[movie.id]);
-          if (content && content.dataset.movieId === String(movie.id)) {
-            updateCardUI(cardClone);
-          }
-        }
-      }).catch(() => { });
-    }
   }
 }

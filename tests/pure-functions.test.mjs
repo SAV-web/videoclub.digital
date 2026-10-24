@@ -10,6 +10,7 @@ let seoModule;
 let ratingModule;
 let stateModule;
 let utilsModule;
+let authModule;
 
 before(async () => {
   viteEnv = await startViteSsrServer([
@@ -18,8 +19,9 @@ before(async () => {
     "/src/js/components/rating.ts",
     "/src/js/state.ts",
     "/src/js/utils.ts",
+    "/src/js/auth.ts",
   ]);
-  [apiModule, seoModule, ratingModule, stateModule, utilsModule] = viteEnv.modules;
+  [apiModule, seoModule, ratingModule, stateModule, utilsModule, authModule] = viteEnv.modules;
 });
 
 after(async () => {
@@ -304,3 +306,96 @@ describe("public/sw.js (Service Worker Interceptor & Origin Isolation)", () => {
     );
   });
 });
+
+describe("auth.ts (hasStoredAuthSessionOrHash - Detección Instantánea de Sesión)", () => {
+  const originalLocation = globalThis.window?.location;
+  const originalLocalStorage = globalThis.localStorage;
+  const originalSessionStorage = globalThis.sessionStorage;
+
+  function mockStorage(initial = {}) {
+    const store = { ...initial };
+    return {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => { store[k] = String(v); },
+      removeItem: (k) => { delete store[k]; },
+      get length() { return Object.keys(store).length; },
+      key: (i) => Object.keys(store)[i] ?? null,
+    };
+  }
+
+  test("retorna false si no hay tokens almacenados ni hash en URL (visitante anónimo)", () => {
+    globalThis.localStorage = mockStorage();
+    globalThis.sessionStorage = mockStorage();
+    if (globalThis.window) {
+      globalThis.window.location = { hash: "", search: "" };
+    }
+
+    const hasAuth = authModule.hasStoredAuthSessionOrHash();
+    assert.equal(hasAuth, false);
+  });
+
+  test("retorna true si existe token sb-*-auth-token en localStorage o sessionStorage", () => {
+    globalThis.localStorage = mockStorage({ "sb-wibygecgfczcvaqewleq-auth-token": JSON.stringify({ user: { id: "u1" } }) });
+    globalThis.sessionStorage = mockStorage();
+    if (globalThis.window) {
+      globalThis.window.location = { hash: "", search: "" };
+    }
+
+    assert.equal(authModule.hasStoredAuthSessionOrHash(), true);
+
+    // Caso sessionStorage
+    globalThis.localStorage = mockStorage();
+    globalThis.sessionStorage = mockStorage({ "sb-token": "valid" });
+    assert.equal(authModule.hasStoredAuthSessionOrHash(), true);
+  });
+
+  test("retorna true ante parámetros de URL hash de OAuth o Magic Link (access_token, error, recovery)", () => {
+    globalThis.localStorage = mockStorage();
+    globalThis.sessionStorage = mockStorage();
+    if (!globalThis.window) {
+      globalThis.window = {};
+    }
+
+    globalThis.window.location = { hash: "#access_token=xyz&type=magiclink", search: "" };
+    assert.equal(authModule.hasStoredAuthSessionOrHash(), true);
+
+    globalThis.window.location = { hash: "#error=access_denied&error_code=otp_expired", search: "" };
+    assert.equal(authModule.hasStoredAuthSessionOrHash(), true);
+
+    globalThis.window.location = { hash: "#type=recovery", search: "" };
+    assert.equal(authModule.hasStoredAuthSessionOrHash(), true);
+  });
+
+  test("restaura variables globales tras las pruebas", () => {
+    globalThis.localStorage = originalLocalStorage;
+    globalThis.sessionStorage = originalSessionStorage;
+    if (globalThis.window) {
+      globalThis.window.location = originalLocation;
+    }
+  });
+});
+
+describe("utils.ts (getRandomSubarray y Selección Uniforme)", () => {
+  test("getRandomSubarray extrae exactamente N elementos únicos sin mutar el array original", () => {
+    const original = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+    const originalClone = [...original];
+    const picked = utilsModule.getRandomSubarray(original, 5);
+
+    assert.equal(picked.length, 5);
+    assert.deepEqual(original, originalClone); // Invariante: no muta el array fuente
+    assert.equal(new Set(picked).size, 5); // Invariante: elementos únicos sin repetición
+    for (const item of picked) {
+      assert.equal(original.includes(item), true);
+    }
+  });
+
+  test("getRandomSubarray maneja límites con degradación segura (vacío, size 0, size > length)", () => {
+    assert.deepEqual(utilsModule.getRandomSubarray([], 5), []);
+    assert.deepEqual(utilsModule.getRandomSubarray(["A", "B"], 0), []);
+    const small = ["A", "B"];
+    const picked = utilsModule.getRandomSubarray(small, 10);
+    assert.equal(picked.length, 2);
+    assert.equal(picked.includes("A") && picked.includes("B"), true);
+  });
+});
+

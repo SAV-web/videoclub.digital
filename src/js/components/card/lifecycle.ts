@@ -2,6 +2,7 @@ import { CSS_CLASSES } from "../../constants.js";
 import { appEvents } from "../../state.js";
 import { areInteractionsLocked, lockGlobalInteractions } from "../../ui.js";
 import type { MovieCardElement } from "../../types.js";
+import { initRatingInteractions } from "../rating.js";
 
 import {
   lazyLoadObserver,
@@ -18,7 +19,8 @@ import {
   resetCardBackState,
   loadAndOpenModal,
   handleSingleTap,
-  INTERACTIVE_SELECTOR
+  INTERACTIVE_SELECTOR,
+  handleCardClick
 } from "./cardElement.js";
 
 let isCardEventsInitialized = false;
@@ -84,6 +86,23 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     gridContainer.removeEventListener("pointerover", handlePointerOver);
     gridContainer.removeEventListener("pointerout", handlePointerOut);
   });
+
+  // --- Delegación de Clics en Tarjetas ---
+  const handleGridClick = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const card = target.closest<MovieCardElement>(`.${CSS_CLASSES.MOVIE_CARD}`);
+    if (!card || !gridContainer.contains(card)) return;
+    handleCardClick.call(card, e);
+  };
+
+  gridContainer.addEventListener("click", handleGridClick);
+  cardUnsubscribers.push(() => {
+    gridContainer.removeEventListener("click", handleGridClick);
+  });
+
+  // --- Delegación de Valoraciones (Hover, Foco y Teclado) ---
+  const cleanupRating = initRatingInteractions(gridContainer);
+  cardUnsubscribers.push(cleanupRating);
 
   // --- Actualizar tarjetas del grid cuando se descarguen datos de usuario ---
   cardUnsubscribers.push(

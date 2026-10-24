@@ -6,14 +6,14 @@
 // =================================================================
 
 import { getSupabase } from "./supabaseClient.js";
-import { getCurrentSession } from "./auth.js";
+import { getCurrentSession, hasStoredAuthSessionOrHash } from "./auth.js";
 import {
   getPendingSyncEntries,
   markEntriesAsSynced,
   mergeRemoteEntries
 } from "./localStore.js";
 import { setUserMovieData } from "./state.js";
-import { markMovieIdAsChecked } from "./checkedIds.js";
+
 
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 let isSyncing = false;
@@ -66,6 +66,11 @@ export async function syncWithServer(): Promise<void> {
   const syncTimestamp = Date.now();
 
   try {
+    // Si no hay rastro de sesión activa en el almacenamiento, posponer sin descargar Supabase
+    if (!hasStoredAuthSessionOrHash()) {
+      return;
+    }
+
     const supabase = await getSupabase();
     const session = await getCurrentSession();
 
@@ -202,12 +207,7 @@ export async function mergeOnLogin(userId: string): Promise<void> {
         from += PAGE_SIZE;
       }
 
-      for (const r of allRows) {
-        if (r.movie_id) {
-          markMovieIdAsChecked(r.movie_id);
-        }
-      }
-
+      
       const remoteEntries = allRows.map(r => ({
         movie_id: Number(r.movie_id),
         rating: r.rating !== undefined ? r.rating : null,
@@ -217,11 +217,7 @@ export async function mergeOnLogin(userId: string): Promise<void> {
 
       const { mergedMap, hasLocalChangesToUpload } = await mergeRemoteEntries(remoteEntries);
 
-      // Marcar los IDs del catálogo consolidado como verificados para que fetchUserMovieDataForIds no vuelva a consultar Supabase
-      for (const id of Object.keys(mergedMap)) {
-        markMovieIdAsChecked(id);
-      }
-
+      
       // Actualizar estado reactivo en memoria (setUserMovieData emite internamente appEvents.emit("userDataUpdated"))
       setUserMovieData(mergedMap);
 

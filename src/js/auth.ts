@@ -48,6 +48,52 @@ export async function updatePassword(newPassword: string) {
   return await supabase.auth.updateUser({ password: newPassword });
 }
 
+/**
+ * Comprueba de forma síncrona en 0 ms si el navegador tiene indicios de sesión activa
+ * (token en localStorage/sessionStorage) o si la URL contiene parámetros de retorno OAuth/Magic Link.
+ * Permite evitar la descarga y ejecución de @supabase/supabase-js para visitantes anónimos.
+ */
+export function hasStoredAuthSessionOrHash(): boolean {
+  try {
+    if (typeof window !== "undefined" && window.location) {
+      const hash = window.location.hash || "";
+      if (
+        hash.includes("access_token=") ||
+        hash.includes("refresh_token=") ||
+        hash.includes("error=") ||
+        hash.includes("error_code=") ||
+        hash.includes("type=recovery")
+      ) {
+        return true;
+      }
+      const search = window.location.search || "";
+      if (search.includes("code=") || search.includes("error=")) {
+        return true;
+      }
+    }
+
+    const checkStorage = (storage: Storage): boolean => {
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k && (k.includes("auth-token") || k.startsWith("sb-"))) {
+          const val = storage.getItem(k);
+          if (val && val !== "null" && val !== "undefined") {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    if (typeof localStorage !== "undefined" && checkStorage(localStorage)) return true;
+    if (typeof sessionStorage !== "undefined" && checkStorage(sessionStorage)) return true;
+  } catch {
+    // Modo incógnito estricto o almacenamiento bloqueado: no fallar
+    return false;
+  }
+  return false;
+}
+
 interface AuthDom {
   vLogin: HTMLElement | null;
   vReg: HTMLElement | null;

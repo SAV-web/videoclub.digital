@@ -15,14 +15,14 @@ import {
   preloadLcpImage,
   createAbortableRequest,
   getAdjustedTotalPages,
-  normalizeText
+  normalizeText,
+  runWhenIdle
 } from "./utils.js";
 
 import {
   fetchMovies,
   fetchPersonDetails,
-  fetchGroupDetails,
-  fetchUserMovieDataForIds
+  fetchGroupDetails
 } from "./api.js";
 
 import { isAbortError, toSlug } from "./contracts.js";
@@ -72,6 +72,26 @@ interface GridPaginationMetrics {
   logicalGridTotalItems: number;
 }
 
+let isInitialSeoDone = false;
+
+/**
+ * Inyecta metadatos estructurados (JSON-LD ItemList y Breadcrumbs) de forma no bloqueante
+ * única y exclusivamente en el arranque en frío (Initial Load) para rastreadores web,
+ * desacoplándolo del hilo principal mediante runWhenIdle y omitiéndolo en navegaciones interactivas.
+ */
+function scheduleInitialSeo(movies: MappedMovie[], total: number): void {
+  if (isInitialSeoDone) return;
+  isInitialSeoDone = true;
+  runWhenIdle(() => {
+    updateStructuredData(movies, total);
+    updateBreadcrumbData(getActiveFilters());
+  });
+}
+
+export function resetInitialSeoState(): void {
+  isInitialSeoDone = false;
+}
+
 /**
  * Calcula las métricas de paginación del grid, considerando tarjetas VIP y absorción de orfandad (<= 2 slots).
  */
@@ -104,11 +124,10 @@ export async function loadAndRenderMovies(
 ): Promise<void> {
   const signal = createAbortableRequest("movie-grid-load").signal;
 
-  // 1. Actualizar estado -> 2. Actualizar URL -> 3. Actualizar SEO -> 4. Lanzar fetch
+  // 1. Actualizar estado -> 2. Actualizar URL -> 3. Actualizar SEO canónico -> 4. Lanzar fetch
   setCurrentPage(page);
   updateUrl({ replace: replaceHistory });
   updatePageTitle();
-  updateBreadcrumbData(getActiveFilters());
 
   document.body.classList.add(CSS_CLASSES.IS_FETCHING);
   dom.gridContainer?.classList.add(CSS_CLASSES.IS_FETCHING);
@@ -210,7 +229,6 @@ export async function loadAndRenderMovies(
               setFilter(vipType, personData.name, true);
               activeFilters = getActiveFilters();
               updatePageTitle();
-              updateBreadcrumbData(activeFilters);
             }
           }
           const isVip = personData.vip === 1 || Boolean(personData.birthday);
@@ -266,7 +284,6 @@ export async function loadAndRenderMovies(
           setFilter(vipType!, personData.name, true);
           activeFilters = getActiveFilters();
           updatePageTitle();
-          updateBreadcrumbData(activeFilters);
         }
       }
       const isVip = personData.vip === 1 || Boolean(personData.birthday);
@@ -368,15 +385,6 @@ export async function loadAndRenderMovies(
       vipData.total = effectiveTotal;
     }
 
-    if (movies && movies.length > 0) {
-      if (document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) {
-        const movieIds = movies.map((m) => m.id);
-        fetchUserMovieDataForIds(movieIds).catch((err) => {
-          if (import.meta.env.DEV) console.error("Error syncing page user data", err);
-        });
-      }
-    }
-
     // Pinta la cuadrícula con efecto cascada (Camino crítico inmediato)
     await updateDomWithResults(movies, effectiveTotal, vipData, confirmedHasVip);
     const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
@@ -436,7 +444,7 @@ function applyResolvedTotal(
 ): void {
   setTotalMovies(exactTotal);
   updateTotalResultsUI(exactTotal, movies);
-  updateStructuredData(movies, exactTotal);
+  scheduleInitialSeo(movies, exactTotal);
 
   if (vipData && (vipData.type === "collection" || vipData.type === "studio")) {
     vipData.total = exactTotal;
@@ -478,7 +486,7 @@ async function updateDomWithResults(
   if (movies.length === 0) {
     setTotalMovies(0);
     updateTotalResultsUI(0, movies);
-    updateStructuredData(movies, 0);
+    scheduleInitialSeo([], 0);
     renderNoResults(dom.gridContainer, dom.paginationContainer, activeFilters);
     updateHeaderPaginationState(1, 0);
     return;
@@ -508,12 +516,17 @@ async function updateDomWithResults(
     // Si el total aún no se conoce, mantenemos estado provisional seguro sin romper la interfaz
     setTotalMovies(-1);
     updateTotalResultsUI(-1, movies);
+    scheduleInitialSeo(movies, movies.length);
     if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     if (dom.headerPrevBtn) dom.headerPrevBtn.disabled = currentPage <= 1;
     if (dom.headerNextBtn) dom.headerNextBtn.disabled = movies.length < (currentPage === 1 && hasVip ? firstPageLimit - 1 : baseLimit);
   }
 
-  if (currentPage === 1 && movies.length > 0) {
+  const isCleanHome = currentPage === 1 &&
+    !hasActiveMeaningfulFilters() &&
+    (!activeFilters.mediaType || activeFilters.mediaType === "all");
+
+  if (isCleanHome && movies.length > 0) {
     runFlipOnboarding(dom.gridContainer);
   }
 }

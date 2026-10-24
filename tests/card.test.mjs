@@ -602,4 +602,35 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
     assert.ok(errorBox.textContent.includes("¡Vaya! Algo ha ido mal"));
     assert.ok(errorBox.textContent.includes("Error al conectar con el catálogo"));
   });
+
+  test("runFlipOnboarding: gestiona contador de 10 ejecuciones y respeta persistencia en localStorage", () => {
+    const store = new Map();
+    const prevStorage = globalThis.localStorage;
+    globalThis.localStorage = {
+      getItem: (k) => store.get(k) || null,
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: (k) => store.delete(k),
+      clear: () => store.clear()
+    };
+
+    try {
+      cardModule.resetFlipOnboardingCount();
+      assert.equal(cardModule.getFlipOnboardingCount(), 0);
+
+      // Simular que ya ha alcanzado el límite de 10 ejecuciones
+      globalThis.localStorage.setItem("videoclub:flip_onboarding_count", "10");
+      assert.equal(cardModule.getFlipOnboardingCount(), 10);
+
+      // runFlipOnboarding debe ser un no-op inmediato sin programar nada
+      const container = createMockDomElement("div");
+      cardModule.runFlipOnboarding(container);
+      assert.equal(container.children.length, 0);
+
+      // Resetear contador y verificar que vuelve a 0
+      cardModule.resetFlipOnboardingCount();
+      assert.equal(cardModule.getFlipOnboardingCount(), 0);
+    } finally {
+      globalThis.localStorage = prevStorage;
+    }
+  });
 });

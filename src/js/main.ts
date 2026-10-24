@@ -17,8 +17,8 @@ import {
 } from "./utils.js";
 
 import { fetchMovieById } from "./api.js";
-import { signOutCurrentUser, onAuthStateChange } from "./auth.js";
-import { clearCheckedUserMovieIds } from "./checkedIds.js";
+import { signOutCurrentUser, onAuthStateChange, hasStoredAuthSessionOrHash } from "./auth.js";
+
 import { getAppBasePath } from "./contracts.js";
 import { getAllLocalEntries, clearLocalStore } from "./localStore.js";
 import { mergeOnLogin, initSyncListeners, scheduleSync } from "./syncManager.js";
@@ -608,7 +608,14 @@ function setupGlobalListeners(): void {
 
 
 // --- 5. ENCHUFAR LA AUTENTICACIÓN ---
+let isAuthSystemStarted = false;
+
 function setupAuthSystem(): void {
+  if (isAuthSystemStarted) return;
+  isAuthSystemStarted = true;
+  mainUnsubscribers.push(() => {
+    isAuthSystemStarted = false;
+  });
   const userAvatarInitials = document.getElementById("user-avatar-initials");
   const logoutButton = document.getElementById("logout-button");
   const loginButton = document.getElementById("login-button");
@@ -626,7 +633,7 @@ function setupAuthSystem(): void {
       userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
     }
     isAuthInitialized = true;
-    clearCheckedUserMovieIds();
+
 
     // Sincronización Local-First (Merge on Login): fusiona catálogo remoto con el local
     try {
@@ -931,7 +938,20 @@ export function init(): void {
   window.addEventListener("popstate", handlePopState);
   mainUnsubscribers.push(() => window.removeEventListener("popstate", handlePopState));
 
-  setupAuthSystem(); // Iniciar sesión de inmediato para resolver la carga limpia de la landing page
+  if (hasStoredAuthSessionOrHash()) {
+    setupAuthSystem();
+  } else {
+    // Para visitantes anónimos, la inicialización de Supabase Auth se posterga hasta que se solicite explícitamente
+    const triggerLazyAuth = () => {
+      setupAuthSystem();
+    };
+    const loginBtn = document.getElementById("login-button");
+    if (loginBtn) {
+      loginBtn.addEventListener("click", triggerLazyAuth, { once: true });
+      mainUnsubscribers.push(() => loginBtn.removeEventListener("click", triggerLazyAuth));
+    }
+    mainUnsubscribers.push(appEvents.on("auth:requested", triggerLazyAuth));
+  }
 
   // Si la URL contiene parámetro de modal legal, inicializarlo de inmediato sin esperar al idle timer
   if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("legal")) {

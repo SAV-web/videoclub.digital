@@ -276,3 +276,60 @@ export const FILTER_CONFIG: Record<string, FilterGroup> = {
     items: {},
   },
 } as const;
+
+/**
+ * PISCINA CURADA DE DIRECTORES (100 Referentes Cinematográficos Verificados)
+ * Selección representativa de autores consagrados del cine mundial, verificados
+ * en la base de datos de personas para descubrimiento instantáneo a 0 ms.
+ */
+export const CURATED_DIRECTORS: readonly string[] = [
+  "Akira Kurosawa", "Alejandro Amenábar", "Alejandro González Iñárritu", "Alfonso Cuarón", "Alfred Hitchcock",
+  "Anthony Mann", "Barry Levinson", "Bernardo Bertolucci", "Billy Wilder", "Bong Joon-ho",
+  "Brian De Palma", "Buster Keaton", "Carlos Saura", "Charles Chaplin", "Christopher Nolan",
+  "Claude Chabrol", "Clint Eastwood", "David Cronenberg", "David Fincher", "David Lynch",
+  "Denis Villeneuve", "Don Siegel", "Ernst Lubitsch", "Federico Fellini", "Fernando Trueba",
+  "Francis Ford Coppola", "François Ozon", "François Truffaut", "Fritz Lang", "George Cukor",
+  "George Lucas", "Guillermo del Toro", "Gus Van Sant", "Guy Ritchie", "Hayao Miyazaki",
+  "Henry Hathaway", "Hirokazu Koreeda", "Howard Hawks", "Ingmar Bergman", "Isabel Coixet",
+  "Jacques Tourneur", "James Cameron", "Jean Renoir", "Jean-Luc Godard", "Joel Coen",
+  "John Carpenter", "John Ford", "John Frankenheimer", "John Huston", "John Sturges",
+  "Josef von Sternberg", "Joseph L. Mankiewicz", "Ken Loach", "Lars von Trier", "Luchino Visconti",
+  "Luis Buñuel", "Luis García Berlanga", "Martin Scorsese", "Michael Curtiz", "Michael Haneke",
+  "Michelangelo Antonioni", "Milos Forman", "Oliver Stone", "Orson Welles", "Otto Preminger",
+  "Park Chan-wook", "Paul Thomas Anderson", "Paul Verhoeven", "Pedro Almodóvar", "Peter Jackson",
+  "Pier Paolo Pasolini", "Quentin Tarantino", "Rainer Werner Fassbinder", "Raoul Walsh", "Richard Fleischer",
+  "Richard Linklater", "Ridley Scott", "Rob Reiner", "Robert Aldrich", "Robert Altman",
+  "Robert Rodriguez", "Robert Siodmak", "Robert Wise", "Robert Zemeckis", "Roman Polanski",
+  "Ron Howard", "Sam Peckinpah", "Sam Raimi", "Sergio Leone", "Sidney Lumet",
+  "Sofia Coppola", "Spike Lee", "Stanley Donen", "Stanley Kubrick", "Stephen Frears",
+  "Steven Soderbergh", "Steven Spielberg", "Tim Burton", "Vittorio De Sica", "Werner Herzog"
+];
+
+/**
+ * PISCINA CURADA DE ACTORES (100 Figuras Universales Verificadas)
+ * Figuras legendarias e icónicas del cine clásico y contemporáneo, verificadas
+ * en la base de datos de personas para descubrimiento instantáneo a 0 ms.
+ */
+export const CURATED_ACTORS: readonly string[] = [
+  "Al Pacino", "Alfred Molina", "Anthony Hopkins", "Antonio Banderas", "Antonio de la Torre",
+  "Audrey Hepburn", "Ben Affleck", "Ben Kingsley", "Ben Stiller", "Benicio del Toro",
+  "Bette Davis", "Bill Murray", "Bill Nighy", "Brad Pitt", "Brian Cox",
+  "Burt Lancaster", "Cary Grant", "Cate Blanchett", "Charlize Theron", "Christian Bale",
+  "Christopher Plummer", "Christopher Walken", "Clint Eastwood", "Colin Firth", "Daniel Day-Lewis",
+  "Dennis Quaid", "Denzel Washington", "Donald Sutherland", "Dustin Hoffman", "Ed Harris",
+  "Eduard Fernández", "Emma Thompson", "Ethan Hawke", "Ewan McGregor", "Forest Whitaker",
+  "Gary Oldman", "Gene Hackman", "George Clooney", "Gérard Depardieu", "Glenn Close",
+  "Harrison Ford", "Harvey Keitel", "Helen Mirren", "Henry Fonda", "Humphrey Bogart",
+  "Ingrid Bergman", "Jack Nicholson", "Jackie Chan", "James Caan", "James Mason",
+  "James Stewart", "Javier Bardem", "Javier Cámara", "Javier Gutiérrez", "Jeremy Irons",
+  "Jim Carrey", "Joaquin Phoenix", "Jodie Foster", "John Cusack", "John Goodman",
+  "John Hurt", "John Malkovich", "John Travolta", "John Turturro", "John Wayne",
+  "Johnny Depp", "Josh Brolin", "Jude Law", "Julia Roberts", "Juliette Binoche",
+  "Kate Winslet", "Katharine Hepburn", "Keanu Reeves", "Kevin Bacon", "Kevin Costner",
+  "Kirk Douglas", "Laurence Fishburne", "Leonardo DiCaprio", "Liam Neeson", "Luis Tosar",
+  "Marcello Mastroianni", "Marlon Brando", "Max von Sydow", "Meryl Streep", "Michael Caine",
+  "Morgan Freeman", "Natalie Portman", "Nicolas Cage", "Nicole Kidman", "Paul Newman",
+  "Penélope Cruz", "Philip Seymour Hoffman", "Ralph Fiennes", "Ricardo Darín", "Robert De Niro",
+  "Robert Downey Jr.", "Robert Duvall", "Robert Redford", "Robin Williams", "Russell Crowe"
+];
+

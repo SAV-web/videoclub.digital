@@ -4,7 +4,6 @@ import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 import { createMockDomElement, setupGlobalDom } from "./helpers/mock-dom.mjs";
 
 let viteEnv;
-let checkedIdsModule;
 let ratingModule;
 let stateModule;
 let syncManagerModule;
@@ -12,34 +11,17 @@ let uiModule;
 
 before(async () => {
   viteEnv = await startViteSsrServer([
-    "/src/js/checkedIds.ts",
     "/src/js/components/rating.ts",
     "/src/js/state.ts",
     "/src/js/syncManager.ts",
     "/src/js/ui.ts"
   ]);
-  [checkedIdsModule, ratingModule, stateModule, syncManagerModule, uiModule] = viteEnv.modules;
+  [ratingModule, stateModule, syncManagerModule, uiModule] = viteEnv.modules;
 });
 
 
 after(async () => {
   await viteEnv?.close();
-});
-
-describe("checkedIds.ts (Gestión de Caché de Películas Consultadas)", () => {
-  test("marca IDs como consultados y permite verificar/limpiar el estado", () => {
-    checkedIdsModule.clearCheckedUserMovieIds();
-
-    assert.equal(checkedIdsModule.isMovieIdChecked("12345"), false);
-    assert.equal(checkedIdsModule.isMovieIdChecked(12345), false);
-
-    checkedIdsModule.markMovieIdAsChecked("12345");
-    assert.equal(checkedIdsModule.isMovieIdChecked("12345"), true);
-    assert.equal(checkedIdsModule.isMovieIdChecked(12345), true);
-
-    checkedIdsModule.clearCheckedUserMovieIds();
-    assert.equal(checkedIdsModule.isMovieIdChecked("12345"), false);
-  });
 });
 
 describe("rating.ts (Lógica de Valoración y Exclusividad Watchlist)", () => {

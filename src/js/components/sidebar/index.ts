@@ -7,9 +7,8 @@
 // del DOM y ciclo de vida de los subsistemas del sidebar.
 // =================================================================
 
-import { CONFIG, ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, StudioInfo, SelectionInfo } from "../../constants.js";
-import { createElement, triggerHapticFeedback, triggerPopAnimation, runWhenIdle } from "../../utils.js";
-import { fetchRandomTopActors, fetchRandomTopDirectors } from "../../api.js";
+import { CONFIG, ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, CURATED_DIRECTORS, CURATED_ACTORS, StudioInfo, SelectionInfo } from "../../constants.js";
+import { createElement, triggerHapticFeedback, triggerPopAnimation, getRandomSubarray } from "../../utils.js";
 import { appEvents } from "../../state.js";
 
 import {
@@ -361,36 +360,14 @@ export function initSidebar(): void {
     listContainer.appendChild(fragment);
   };
 
+  // Poblado síncrono en 0 ms de 5 directores y 5 actores aleatorios de las piscinas curadas
+  const selectedDirectors = getRandomSubarray(CURATED_DIRECTORS, 5);
+  FILTER_CONFIG.director.items = selectedDirectors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
+
+  const selectedActors = getRandomSubarray(CURATED_ACTORS, 5);
+  FILTER_CONFIG.actor.items = selectedActors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
+
   Object.keys(FILTER_CONFIG).forEach(populateFilterSection);
-
-  const currentSignal = sidebarLifecycleController.signal;
-  const currentFilterGen = getGeneration();
-  const updateDynamicFilters = async () => {
-    try {
-      if (currentFilterGen !== getGeneration() || currentSignal.aborted) return;
-      const [actors, directors] = await Promise.all([
-        fetchRandomTopActors(),
-        fetchRandomTopDirectors()
-      ]);
-      if (currentFilterGen !== getGeneration() || currentSignal.aborted) return;
-
-      if (actors && actors.length > 0) {
-        FILTER_CONFIG.actor.items = actors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
-        populateFilterSection('actor');
-      }
-
-      if (directors && directors.length > 0) {
-        FILTER_CONFIG.director.items = directors.reduce((acc, name) => ({ ...acc, [name]: name }), {});
-        populateFilterSection('director');
-      }
-    } catch (e) {
-      if (import.meta.env.DEV) console.error("Error cargando filtros dinámicos:", e);
-    }
-  };
-
-  sidebarUnsubscribers.push(
-    runWhenIdle(updateDynamicFilters, 500)
-  );
 
   updateRotationButtonUI();
 

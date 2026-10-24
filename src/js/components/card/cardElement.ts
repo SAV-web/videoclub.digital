@@ -292,19 +292,23 @@ export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: M
   scheduleSync(200);
 }
 
-export function handleCardClick(this: MovieCardElement, event: MouseEvent): void {
+export function handleCardClick(this: MovieCardElement | void, event: MouseEvent): void {
+  const target = event.target as HTMLElement;
+  const card = (this && (this as HTMLElement).classList?.contains?.(CSS_CLASSES.MOVIE_CARD))
+    ? (this as MovieCardElement)
+    : target.closest<MovieCardElement>(`.${CSS_CLASSES.MOVIE_CARD}`);
+
+  if (!card) return;
+
   // Contrato Global: Respetar el cooldown de gestos y descartar clics adicionales si la modal está abriéndose/abierta
   if (areInteractionsLocked() || document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
-    if (!this.classList.contains('is-quick-view') && !this.closest('#quick-view-content')) {
+    if (!card.classList.contains('is-quick-view') && !card.closest('#quick-view-content')) {
       event.preventDefault();
       event.stopPropagation();
       return;
     }
   }
-
-  const card = this;
   const isPerson = card.classList.contains('person-card');
-  const target = event.target as HTMLElement;
 
   // 0. Botón de alternancia de rol en VIP (Director <-> Actor)
   const roleToggleBtn = target.closest<HTMLElement>('.person-role-toggle-btn');
@@ -784,11 +788,8 @@ export function updateCardUI(card: MovieCardElement): void {
 }
 
 export function initializeCard(card: MovieCardElement): void {
-  const starCont = card.querySelector<HTMLElement>('[data-action="set-rating-estrellas"]');
-  if (starCont) {
-    setupRatingListeners(starCont, true);
-  }
-  card.addEventListener("click", handleCardClick);
+  // Las interacciones de clic y puntuación están 100% delegadas a nivel de contenedor
+  // (#grid-container y #quick-view-content), por lo que las tarjetas no requieren listeners individuales.
 }
 
 export function createCardElement(movie: MappedMovie, index: number): DocumentFragment {
@@ -935,8 +936,6 @@ export function createPersonCardElement(person: PersonDetails): DocumentFragment
   }
 
   populatePersonFields(card, person);
-
-  card.addEventListener("click", handleCardClick);
 
   return clone;
 }

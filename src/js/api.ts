@@ -10,8 +10,7 @@
 import { CONFIG, IGNORED_ACTORS_SET, TEXT_FILTER_KEYS } from "./constants.js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
-import { isMovieIdChecked, markMovieIdAsChecked, clearCheckedUserMovieIds } from "./checkedIds.js";
-export { clearCheckedUserMovieIds, markMovieIdAsChecked };
+
 import { getUserDataForMovie, updateUserDataForMovie, getAllUserMovieData, appEvents } from "./state.js";
 import {
   ERROR_CODES,
@@ -20,7 +19,6 @@ import {
   normalizeMovieId,
   normalizeMovieQuery,
   normalizeMoviesResponse,
-  normalizeUserMovieData,
   normalizeUserMovieEntry,
   toAppError,
   toSlug,
@@ -185,9 +183,9 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
  * Dispone de fallback resiliente transparente hacia Supabase SDK directo en caso de error o tests.
  */
 async function executeCatalogRpc(
-  supabase: any,
   rpcParams: Record<string, unknown>,
-  signal?: AbortSignal | null
+  signal?: AbortSignal | null,
+  passedSupabase?: any
 ): Promise<{ data: any; error: any }> {
   const globalProc = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })?.process;
   const isBrowser = typeof window !== "undefined" && typeof window.fetch === "function";
@@ -216,6 +214,7 @@ async function executeCatalogRpc(
     }
   }
 
+  const supabase = passedSupabase || await getSupabase();
   let query = supabase.rpc("search_movies_offset", rpcParams);
   if (signal) query = query.abortSignal(signal);
   return await query;
@@ -419,7 +418,6 @@ export function fetchMovies(
 
   let promise!: Promise<ApiResponse>;
   promise = (async () => {
-    const supabase = await getSupabase();
 
     try {
       // MODO A: MI LISTA (Películas privadas del usuario)
@@ -457,6 +455,7 @@ export function fetchMovies(
         }
 
         try {
+          const supabase = await getSupabase();
           let query = supabase
             .from('movies')
             .select(`
@@ -519,7 +518,7 @@ export function fetchMovies(
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         if (signal?.aborted) throw { name: "AbortError" };
 
-        const response = await executeCatalogRpc(supabase, rpcParams, signal);
+        const response = await executeCatalogRpc(rpcParams, signal);
         data = response.data;
         error = response.error;
 
@@ -568,63 +567,6 @@ export function fetchMovies(
 }
 
 
-// Descarga los datos del usuario únicamente para las películas visibles en pantalla (Lazy Sync por IDs)
-export async function fetchUserMovieDataForIds(movieIds: (number | string)[]): Promise<Record<string, UserMovieEntry>> {
-  if (!movieIds || movieIds.length === 0) return {};
-
-  const uncachedIds: number[] = [];
-  for (const rawId of movieIds) {
-    const normId = normalizeMovieId(rawId);
-    if (normId !== null && !isMovieIdChecked(normId)) {
-      uncachedIds.push(normId);
-    }
-  }
-
-  // Si los IDs ya fueron verificados o cargados en memoria, devolver los datos del estado
-  if (uncachedIds.length === 0) {
-    const existing: Record<string, UserMovieEntry> = {};
-    for (const rawId of movieIds) {
-      const normId = normalizeMovieId(rawId);
-      if (normId !== null) {
-        const u = getUserDataForMovie(normId);
-        if (u) existing[String(normId)] = u;
-      }
-    }
-    return existing;
-  }
-
-  const supabase = await getSupabase();
-  const session = await getCurrentSession();
-  if (!session?.user) return {};
-
-  const { data, error } = await supabase
-    .from('user_movie_entries')
-    .select('movie_id, rating, on_watchlist')
-    .in('movie_id', uncachedIds);
-
-  if (error) {
-    if (import.meta.env.DEV) {
-      console.error("Error al cargar datos del usuario para el lote de películas:", error);
-    }
-    return {};
-  }
-
-  // Marcar todos los IDs de la página como consultados para no repetir peticiones
-  uncachedIds.forEach(id => markMovieIdAsChecked(id));
-
-  const userMap: Record<string, UserMovieEntry> = {};
-  (data || []).forEach(i => {
-    if (i.movie_id) {
-      userMap[i.movie_id] = { rating: i.rating, onWatchlist: i.on_watchlist };
-    }
-  });
-
-  const normalized = normalizeUserMovieData(userMap);
-  for (const [id, entry] of Object.entries(normalized)) {
-    updateUserDataForMovie(id, entry);
-  }
-  return normalized;
-}
 
 const NOT_FOUND = Symbol("person-not-found");
 // Memoria para los VIPs (Actores/Directores). Máximo 50 a la vez para no ahogar el móvil.
@@ -837,24 +779,6 @@ export const fetchActorSuggestions = async (term: string): Promise<string[]> => 
   const suggestions = await fetchSuggestions("get_actor_suggestions", term);
   // Filtrar actores ignorados (animación, etc.)
   return suggestions.filter(name => !IGNORED_ACTORS_SET.has(name.trim().toLowerCase()));
-};
-
-// --- DATOS ALEATORIOS (Discovery) ---
-
-export const fetchRandomTopActors = async (): Promise<string[]> => {
-  const supabase = await getSupabase();
-
-  const { data, error } = await supabase.rpc("get_random_top_actors", { limit_count: 5 });
-  if (error) return [];
-  return (data as Array<{ name: string }> || []).map(d => d.name).filter((name: string) => !IGNORED_ACTORS_SET.has(name.trim().toLowerCase()));
-};
-
-export const fetchRandomTopDirectors = async (): Promise<string[]> => {
-  const supabase = await getSupabase();
-
-  const { data, error } = await supabase.rpc("get_random_top_directors", { limit_count: 5 });
-  if (error) return [];
-  return (data as Array<{ name: string }> || []).map(d => d.name);
 };
 
 /**

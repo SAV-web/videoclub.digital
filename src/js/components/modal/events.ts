@@ -1,5 +1,7 @@
 import { appEvents } from "../../state.js";
-import { updateCardUI } from "../card/index.js";
+import { updateCardUI, handleCardClick } from "../card/index.js";
+import { CSS_CLASSES } from "../../constants.js";
+import { initRatingInteractions } from "../rating.js";
 import { handleTouchStart, handleTouchMove, handleTouchEnd, isLandscapeCompactViewport } from "./gestures.js";
 import type { MovieCardElement } from "../../types.js";
 
@@ -72,12 +74,20 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
       if (target.closest(".poster-container") && !target.closest(".card-rating-block")) {
         modal.classList.toggle("hide-arrows");
       }
+
+      const card = target.closest<MovieCardElement>(`.${CSS_CLASSES.MOVIE_CARD}`);
+      if (card && content.contains(card)) {
+        handleCardClick.call(card, e);
+      }
     };
 
     content.addEventListener("click", handleContentClick);
     unsubscribers.push(() => {
       content.removeEventListener("click", handleContentClick);
     });
+
+    const cleanupRating = initRatingInteractions(content);
+    unsubscribers.push(cleanupRating);
 
     // Control de máscara de continuidad: detecta scroll para retirar el degradado superior en el tope
     const handleScrollMask = (e: Event) => {

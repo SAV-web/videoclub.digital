@@ -449,3 +449,84 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
    - **Compatibilidad con `text-wrap: wrap` frente a `text-wrap: balance`**:
      - Por especificación W3C, la regla global `text-wrap: balance` (aplicada a encabezados `h1..h6` en `globals.css`) inhibe la partición silábica para priorizar el equilibrio métrico entre líneas completas.
      - Para que `hyphens: auto` opere eficazmente, `.bio-headline` se excluye de la regla balanceada (`h4:not(.bio-headline)`) y se fija explícitamente a `text-wrap: wrap`, liberando al motor tipográfico del navegador para insertar guiones en saltos de línea.
+
+
+## 5. Contrato de Autenticación Diferida (Lazy-Loading de Auth y Supabase SDK)
+
+1. **Detección Instantánea de Sesión (`hasStoredAuthSessionOrHash`)**:
+   - Comprobación síncrona en 0 ms que precede a cualquier carga de librerías.
+   - Evalúa `localStorage` y `sessionStorage` buscando claves de token (`auth-token` o `sb-`).
+   - Evalúa `window.location.hash` buscando parámetros de redirección OAuth, Magic Link o recuperación de contraseña (`access_token=`, `refresh_token=`, `error_code=`, `error=`, `type=recovery`).
+   - Si no existen indicios de sesión, el usuario se clasifica como visitante anónimo puro.
+
+2. **Diferimiento del SDK (`@supabase/supabase-js`)**:
+   - Para visitantes anónimos, la ejecución de `setupAuthSystem()` y la importación del paquete `supabase-vendor` se postergan hasta que el usuario realiza una acción autenticada: clic en el botón *"Entrar"* (`#login-button`) o emisión del evento global `auth:requested` (ej. al abrir el modal de autenticación vía `openAuthModal()`).
+   - La navegación general, filtrado por facetas y ordenación en el catálogo público se ejecutan exclusivamente contra el endpoint nativo `/api/rpc/search_movies_offset` sin requerir la presencia ni inicialización del cliente de Supabase.
+   - En caso de usuarios con sesión previa o retorno de enlaces mágicos, la inicialización es inmediata en el arranque (`init()`), preservando el flujo continuo de autenticación y la sincronización Local-First.
+
+
+## 6. Contrato de Delegación de Eventos en Tarjetas y Calificaciones
+
+1. **Desacoplamiento Estructural de Tarjetas**:
+   - Las tarjetas generadas mediante `createCardElement` y `createPersonCardElement` son nodos pasivos que no registran escuchadores `click` ni de valoración individuales.
+   - La función `initializeCard(card)` opera como un no-op de compatibilidad a 0 ms.
+
+2. **Delegación a Nivel de Contenedor Ancestral**:
+   - `#grid-container` (en la vista de cuadrícula) y `#quick-view-content` (en la vista modal) asumen la orquestación centralizada de eventos mediante burbujeo (*Event Bubbling*).
+   - **Clics**: `handleCardClick` resuelve dinámicamente la tarjeta contextual mediante `event.target.closest(".movie-card")`.
+   - **Valoraciones (`initRatingInteractions`)**: Los eventos `mouseover`, `mouseout`, `focusin`, `focusout` y `keydown` se gestionan en el contenedor raíz, resolviendo `.star-icon` y `[data-action="set-rating-estrellas"]` dinámicamente.
+   - Al sustituir la cuadrícula con `replaceChildren`, los nodos se destruyen de forma limpia sin requerir desmontaje manual de escuchadores ni generar presión sobre el recolector de basura.
+
+
+## 7. Contrato de Sincronización Local-First de Datos de Usuario (Supresión de Lazy Sync por IDs)
+
+1. **Estado Canónico en Memoria e IndexedDB (Zero Lazy Sync)**:
+   - Los datos de usuario (valoraciones `rating`, estado de seguimiento `is_watchlist`, etc.) se gestionan exclusivamente bajo arquitectura Local-First.
+   - Al arrancar la aplicación o completar el inicio de sesión, el estado local (`state.userMovieData`) se hidrata a 0 ms desde IndexedDB (`getAllLocalEntries`) y se sincroniza en bloque con Supabase mediante `mergeOnLogin()`.
+   - Queda terminantemente prohibido reintroducir consultas fragmentadas de red por lotes de IDs (`fetchUserMovieDataForIds`) o cachés de comprobación parcial (`checkedIds.ts`).
+
+2. **Renderizado Reactivo sin Peticiones Fantasma**:
+   - Tanto el renderizado del catálogo (`renderEngine.ts`) como la apertura de la modal de vista rápida (`modal/renderer.ts`) obtienen los datos de interacción del usuario sincrónicamente desde `state.userMovieData[movieId]`.
+   - Las mutaciones de notas o watchlist actualizan en primer lugar la memoria y la base de datos local IndexedDB, encolando la sincronización en segundo plano con el servidor perimetral/Supabase de forma transparente sin bloquear la UI ni incurrir en parpadeos visuales (*flicker*) o saltos de layout (*Layout Thrashing*).
+
+
+## 8. Contrato de Metadatos SEO y Esquemas Estructurados en la SPA
+
+1. **Aislamiento de la Navegación Interactiva (Zero JSON-LD Re-generation)**:
+   - Durante la navegación interactiva ordinaria (cambio de facetas, filtros, slider de años, paginación o búsqueda), queda prohibida la regeneración de esquemas JSON-LD (`ItemList` o `BreadcrumbList`) en el `<head>`.
+   - La interacción del usuario solo actualiza síncronamente `updatePageTitle()`: `document.title`, `<link rel="canonical">`, `meta[name="description"]`, `meta[property="og:*"]` y directivas `meta[name="robots"]`.
+
+2. **Diferimiento Asíncrono no bloqueante en Arranque Frío**:
+   - Para cubrir rastreadores web en rutas SPA que no dispongan de SSR perimetral directo, `updateStructuredData` y `updateBreadcrumbData` se programan exclusivamente una única vez en la carga inicial (`scheduleInitialSeo`).
+   - La inyección se delega a periodos de inactividad del navegador mediante `runWhenIdle()` (utilizando `requestIdleCallback` con fallback a `setTimeout`), impidiendo que la serialización de strings JSON compita con el primer renderizado visual (*First Contentful Paint*) y protegiendo las métricas de interactividad (TBT e INP).
+
+
+## 9. Contrato de Filtros de Descubrimiento en el Menú Lateral (Sidebar)
+
+1. **Piscinas Curadas Estáticas (Zero Network Discovery)**:
+   - Los acordeones de "Directores" y "Actores" del sidebar se nutren de colecciones curadas estáticas (`CURATED_DIRECTORS` y `CURATED_ACTORS`) en `constants.ts`, compuestas por 100 referentes cinematográficos mundiales verificados contra la base de datos de personas.
+   - Queda prohibido lanzar consultas RPC dinámicas (`get_random_top_actors`, `get_random_top_directors`) para poblar estas sugerencias.
+
+2. **Poblado Síncrono a 0 ms**:
+   - Al montar el sidebar (`initSidebar`), se seleccionan uniformemente 5 elementos de cada piscina en $O(k)$ mediante `getRandomSubarray` y se insertan síncronamente en el primer pase de `populateFilterSection`.
+   - Se erradica el parpadeo de contenido diferido (*Layout Shift*) y se garantiza que el SDK de Supabase permanezca desacoplado y descargado al 0% para visitantes anónimos.
+   - La búsqueda y autocompletado en los campos *"Otro director..."* y *"Otro actor..."* preservan su funcionamiento asíncrono nativo por demanda exclusivamente cuando el usuario introduce 2 o más caracteres.
+
+
+## 10. Contrato de Flip Onboarding en Tarjetas de Catálogo
+
+1. **Restricción a Portada Limpia (`isCleanHome`)**:
+   - El temporizador de aprendizaje (`runFlipOnboarding`) solo puede programarse cuando la aplicación se encuentra en la portada inicial limpia: primera página (`currentPage === 1`), sin filtros significativos activos (`!hasActiveMeaningfulFilters()`) y en tipo de medio general (`mediaType === 'all'`).
+   - Se prohíbe terminantemente agendar giros automáticos durante navegaciones filtradas por géneros, países, estudios, selecciones, años o autores.
+
+2. **Frecuencia Máxima de 10 Ejecuciones (`MAX_ONBOARDING_FLIPS = 10`)**:
+   - Se mantiene un contador persistente en `localStorage` (`videoclub:flip_onboarding_count`).
+   - Una vez alcanzadas las 10 ejecuciones, `runFlipOnboarding()` opera como un no-op inmediato a 0 ms sin registrar temporizadores en el bucle de eventos ni provocar repintados de capas 3D.
+
+3. **Selección Aleatoria entre las Primeras 4 Fichas**:
+   - Para evitar monotonía visual, la tarjeta objetivo se escoge uniformemente al azar entre las 4 primeras fichas de película reales (`:not(.person-card):not(.collection-card):not(.studio-card)`).
+   - Si la tarjeta se encuentra en rotación manual por el usuario, el modo muro está activo (`ROTATION_DISABLED`) o una modal está desplegada (`MODAL_OPEN`), la ejecución se descarta de forma segura.
+
+
+
+

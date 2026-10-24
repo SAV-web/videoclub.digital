@@ -519,3 +519,21 @@ export function applyLengthBasedClass(
     }
   }
 }
+
+/**
+ * Extrae N elementos aleatorios sin repetición de una colección (Fisher-Yates parcial en O(k)).
+ * Garantiza selección uniforme en memoria a 0 ms sin mutar el array original.
+ */
+export function getRandomSubarray<T>(arr: readonly T[], size: number): T[] {
+  if (!arr || arr.length === 0 || size <= 0) return [];
+  const copy = [...arr];
+  const count = Math.min(size, copy.length);
+  for (let i = 0; i < count; i++) {
+    const j = i + Math.floor(Math.random() * (copy.length - i));
+    const temp = copy[i];
+    copy[i] = copy[j];
+    copy[j] = temp;
+  }
+  return copy.slice(0, count);
+}
+
