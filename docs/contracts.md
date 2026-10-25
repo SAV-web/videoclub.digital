@@ -627,6 +627,11 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
    - Tanto en el ordenamiento local en JavaScript (`getLocalMyListResponse`) como en las consultas a Supabase (`.order(...)`), cualquier ordenación por `relevance` (u otro campo de criterio múltiple) debe incluir un desempate unívoco por `id ASC` (`a.id - b.id`).
    - Esto erradica falsos positivos en `hasDifferences` durante la revalidación en segundo plano (`revalidateMyListInBackground`), previniendo parpadeos (*re-renders*) innecesarios al entrar en Mi Lista.
 
+3. **Invariante de Auto-hidratación en Carga en Frío / F5**:
+   - `getLocalMyListResponse` debe asegurar la lectura directa de IndexedDB (`await getAllLocalEntries()`) cuando la memoria reactiva inicia vacía, impidiendo falsos positivos de lista vacía `{ total: 0, items: [] }`.
+   - Si no existen entradas locales pero existen indicios de sesión activa (`hasStoredAuthSessionOrHash()`), debe retornar `null` para activar el fallback a Supabase.
+   - Las emisiones del evento `userDataUpdated` deben re-renderizar de inmediato la cuadrícula si el filtro `myList` está activo en pantalla.
+
 ## 19. Contrato de Conteo Directo en Fast-Path de Portada Limpia (Index-Only Count Optimization)
 
 1. **Cortocircuito Completo en Portada Limpia (Fase 1.6)**:

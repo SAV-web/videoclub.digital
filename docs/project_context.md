@@ -367,6 +367,11 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
     - **Unificación de Relación de Aspecto (`aspect-ratio: 2 / 3`)**: Corrección del ratio en `.skeleton-card` bajo `body.rotation-disabled` (anteriormente `2 / 3.2`), igualando con exactitud matemática el ratio de las tarjetas hidratadas reales (`card.css`).
     - **Erradicación de Saltos Visuales**: Elimina la contracción del 6,67% en la altura de fila durante la transición de carga a catálogo en Modo Muro, asegurando estabilidad visual absoluta (*Cumulative Layout Shift* = 0).
 
+48. **Resolución de Condición de Carrera en Recarga de Mi Lista (`src/js/api.ts`, `src/js/main.ts`):**
+    - **Auto-hidratación Local-First Inmediata en `getLocalMyListResponse`**: Si la memoria reactiva (`state.userMovieData`) arranca vacía durante una recarga en frío o F5, la función lee y puebla directamente las entradas desde IndexedDB (`await getAllLocalEntries()`) antes de evaluar los IDs de películas, erradicando falsos positivos de lista vacía.
+    - **Fallback Transparente a Red ante Sesión Activa**: Si la base local no dispone de registros pero el usuario cuenta con token de sesión (`hasStoredAuthSessionOrHash()`), `getLocalMyListResponse` retorna `null` para que `fetchMovies` consulte Supabase y descargue el catálogo privado en lugar de mostrar «No se encontraron resultados».
+    - **Reactividad Dinámica en `handleDataRefresh`**: El escuchador del evento `userDataUpdated` en `main.ts` ahora re-renderiza silenciosamente el catálogo (`loadAndRenderMovies`) si el usuario tiene activo el filtro `myList`, manteniendo la vista sincronizada tras completar la revalidación SWR en segundo plano o el *merge* de inicio de sesión.
+
 ## ⏱️ Protocolo de Eficiencia en Desarrollo y Validación (Cost & Latency Optimization)
 
 Para optimizar el uso de recursos, reducir tiempos de ciclo y minimizar costes operativos en agentes de IA y flujos CI/CD:

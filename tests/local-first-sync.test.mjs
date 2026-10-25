@@ -191,4 +191,28 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
     assert.equal(resRated.items[0].id, 702);
     assert.equal(resRated.items[0].title, "Arrival");
   });
+
+  test("getLocalMyListResponse auto-hidrata desde IndexedDB si la memoria está vacía (arranque en frío / F5)", async () => {
+    stateModule.clearUserMovieData();
+
+    await localStore.saveLocalEntry(801, { onWatchlist: true, rating: null });
+    await localStore.saveCachedMovies([
+      { id: 801, title: "Solaris", year: 1972, type: "movie" }
+    ]);
+
+    const res = await apiModule.getLocalMyListResponse(
+      { myList: "watchlist" },
+      1,
+      10,
+      true
+    );
+
+    assert.ok(res);
+    assert.equal(res.total, 1);
+    assert.equal(res.items.length, 1);
+    assert.equal(res.items[0].id, 801);
+    assert.equal(res.items[0].title, "Solaris");
+
+    assert.ok(stateModule.getAllUserMovieData()["801"]);
+  });
 });

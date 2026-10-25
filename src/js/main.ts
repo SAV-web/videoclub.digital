@@ -555,6 +555,10 @@ function setupGlobalListeners(): void {
 
   const handleDataRefresh = () => {
     updateAppBadge();
+    const currentFilters = getActiveFilters();
+    if (currentFilters.myList) {
+      loadAndRenderMovies(getCurrentPage(), { forceSkeleton: false });
+    }
   };
 
   // Eventos Personalizados de la App

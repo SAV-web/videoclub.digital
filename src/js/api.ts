@@ -11,7 +11,7 @@ import { CONFIG, IGNORED_ACTORS_SET, TEXT_FILTER_KEYS } from "./constants.js";
 import { LRUCache } from "lru-cache";
 import { createAbortableRequest, mapMoviePayload, normalizeText, parseYearRangeRaw } from "./utils.js";
 
-import { getUserDataForMovie, updateUserDataForMovie, getAllUserMovieData, appEvents } from "./state.js";
+import { getUserDataForMovie, updateUserDataForMovie, getAllUserMovieData, setUserMovieData, appEvents } from "./state.js";
 import {
   ERROR_CODES,
   createAppError,
@@ -25,8 +25,8 @@ import {
 } from "./contracts.js";
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import { getSupabase } from "./supabaseClient.js";
-import { getCurrentSession } from "./auth.js";
-import { saveCachedMovies, getCachedMoviesByIds } from "./localStore.js";
+import { getCurrentSession, hasStoredAuthSessionOrHash } from "./auth.js";
+import { saveCachedMovies, getCachedMoviesByIds, getAllLocalEntries } from "./localStore.js";
 
 // Re-exportamos getSupabase para preservar compatibilidad con tests y módulos externos
 export { getSupabase };
@@ -231,7 +231,17 @@ export async function getLocalMyListResponse(
   requestCount: boolean
 ): Promise<ApiResponse | null> {
   try {
-    const userEntries = getAllUserMovieData();
+    let userEntries = getAllUserMovieData();
+
+    // Si la memoria aún está vacía (arranque en frío o recarga F5), hidratar desde IndexedDB
+    if (Object.keys(userEntries).length === 0) {
+      const localEntries = await getAllLocalEntries();
+      if (Object.keys(localEntries).length > 0) {
+        setUserMovieData(localEntries);
+        userEntries = localEntries;
+      }
+    }
+
     const targetIds: number[] = [];
 
     for (const [idStr, entry] of Object.entries(userEntries)) {
@@ -249,6 +259,11 @@ export async function getLocalMyListResponse(
     }
 
     if (targetIds.length === 0) {
+      // Si el usuario está identificado pero la base local no tiene entradas para esta lista,
+      // delegar a la red (Supabase) en lugar de asumir lista vacía prematuramente
+      if (Object.keys(userEntries).length === 0 && hasStoredAuthSessionOrHash()) {
+        return null;
+      }
       return { total: 0, items: [] };
     }
 
