@@ -630,7 +630,7 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
 3. **Invariante de Auto-hidratación en Carga en Frío / F5**:
    - `getLocalMyListResponse` debe asegurar la lectura directa de IndexedDB (`await getAllLocalEntries()`) cuando la memoria reactiva inicia vacía, impidiendo falsos positivos de lista vacía `{ total: 0, items: [] }`.
    - Si no existen entradas locales pero existen indicios de sesión activa (`hasStoredAuthSessionOrHash()`), debe retornar `null` para activar el fallback a Supabase.
-   - Las emisiones del evento `userDataUpdated` deben re-renderizar de inmediato la cuadrícula si el filtro `myList` está activo en pantalla.
+   - La resolución de catálogo en `getLocalMyListResponse` nutre directamente la carga principal en curso, evitando invocar `loadAndRenderMovies` de forma re-entrante desde los escuchadores de `userDataUpdated` para garantizar que la señal de red no sea abortada y la clase `.is-fetching` se retire limpiamente en todos los escenarios.
 
 ## 19. Contrato de Conteo Directo en Fast-Path de Portada Limpia (Index-Only Count Optimization)
 
@@ -648,5 +648,26 @@ En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores
    - Todo esqueleto de carga (`.skeleton-card`) debe reflejar con exactitud matemática el `aspect-ratio` de las tarjetas reales a las que sustituye temporalmente.
    - En modo normal interactivo: `aspect-ratio: 500 / 950` idéntico en ambos componentes (`card.css` y `ui.css`).
    - En Modo Muro (`body.rotation-disabled`): `aspect-ratio: 2 / 3` estricto en ambos componentes (`card.css` y `ui.css`), garantizando que la altura de fila calculada por el motor geométrico durante el estado de carga coincida al 100% con la de las carátulas hidratadas, erradicando saltos acumulativos de maquetación (*Cumulative Layout Shift* = 0).
+
+## 21. Contrato de Diseño de Píldoras de Filtros en Sidebar (Quiet Luxury Filter Pill Standard)
+
+1. **Invariante de Superficie y Contraste**:
+   - Las píldoras de filtros activos (`.filter-pill`) deben mantener texto de alta legibilidad en blanco marfil (`#f5f5f5` / `#ffffff`) tanto en tema claro como oscuro, erradicando gradientes diagonales obsoletos o inversiones a texto negro sobre fondos claros.
+   - En tema oscuro, las píldoras de inclusión adoptan fondo carbón (`var(--color-surface-2)`) y filete fino en oro viejo (`1px solid rgba(var(--color-brand-gold-rgb), 0.5)`), alineadas con los botones de ordenación y el Bento Grid.
+   - Las píldoras de exclusión (`.filter-pill--exclude`) utilizan fondo óxido translúcido con ribete en carmín técnico (`var(--color-error)`).
+
+2. **Microinteracción del Botón de Retirada (`.remove-filter-btn`)**:
+   - El aspa `×` responde dinámicamente con viraje al dorado de marca (`var(--color-brand-gold)`) y escala suave al posar el cursor, con área de contacto táctil protegida.
+
+## 22. Contrato de Tipografía y Ficha Técnica en Modal de Vista Rápida (Cinematic Archive Standard)
+
+1. **Invariante Ortográfica y Escala del Año**:
+   - El año cinematográfico debe representarse siempre como un bloque numérico limpio de cuatro cifras (`1994`) sin punto de millar ni caracteres de separación, conforme a las directrices de la RAE y el estándar internacional de catálogos fílmicos, tanto en el cliente SPA (`renderer.ts`) como en el renderizado perimetral Edge SSR (`render-movie.js`).
+   - La escala tipográfica del año en la columna multimedia (`.is-quick-view [data-template="year"]` y `.is-quick-view .year-flag-group`) se fija en `1.65rem`, subordinada rigurosamente al título de la obra (`2.05rem`) para preservar una jerarquía visual armónica.
+
+2. **Rótulos de Ficha Técnica (Field Labels)**:
+   - Los encabezados de metadatos preservan su estilo característico en versalitas (`font-variant: small-caps; font-size: 1rem; letter-spacing: 0.12em;`) y punto ortográfico (`Género.`, `Reparto.`, `Sinopsis.`), manteniendo la identidad visual distintiva del proyecto.
+
+
 
 

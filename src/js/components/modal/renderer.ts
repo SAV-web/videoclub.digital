@@ -108,11 +108,8 @@ export function setupModalHeader(
     nodes.year.textContent = "";
     if (movie.year) {
       const yearStr = String(movie.year);
-      const formattedYear = yearStr.length === 4
-        ? `${yearStr.slice(0, 1)}.${yearStr.slice(1)}`
-        : yearStr;
       const yearLink = createElement("a", {
-        textContent: formattedYear,
+        textContent: yearStr,
         href: buildFilterUrl("year", yearStr),
         className: "year-link",
         dataset: { yearValue: yearStr }
@@ -120,11 +117,10 @@ export function setupModalHeader(
       nodes.year.appendChild(yearLink);
       if (movie.displayYear && movie.displayYear.length > yearStr.length) {
         const rawSuffix = movie.displayYear.substring(yearStr.length);
-        const formattedSuffix = rawSuffix.replace(/\b(\d{4})\b/g, (m) => `${m.slice(0, 1)}.${m.slice(1)}`);
-        nodes.year.appendChild(document.createTextNode(formattedSuffix));
+        nodes.year.appendChild(document.createTextNode(rawSuffix));
       }
     } else if (movie.displayYear) {
-      nodes.year.textContent = movie.displayYear.replace(/\b(\d{4})\b/g, (m) => `${m.slice(0, 1)}.${m.slice(1)}`);
+      nodes.year.textContent = movie.displayYear;
     }
   }
 

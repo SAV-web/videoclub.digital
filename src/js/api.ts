@@ -26,7 +26,7 @@ import {
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import { getSupabase } from "./supabaseClient.js";
 import { getCurrentSession, hasStoredAuthSessionOrHash } from "./auth.js";
-import { saveCachedMovies, getCachedMoviesByIds, getAllLocalEntries } from "./localStore.js";
+import { saveCachedMovies, getCachedMoviesByIds, getAllLocalEntries, saveLocalEntry } from "./localStore.js";
 
 // Re-exportamos getSupabase para preservar compatibilidad con tests y módulos externos
 export { getSupabase };
@@ -387,9 +387,24 @@ function revalidateMyListInBackground(
         (requestCount && count !== undefined && count !== currentLocalRes.total);
 
       if (hasDifferences) {
+        for (const mRaw of data || []) {
+          if (mRaw.id && mRaw.user_movie_entries) {
+            const rawEntry = Array.isArray(mRaw.user_movie_entries) ? mRaw.user_movie_entries[0] : mRaw.user_movie_entries;
+            if (rawEntry && typeof rawEntry === "object") {
+              const entryUpdate: Partial<UserMovieEntry> = {
+                rating: rawEntry.rating !== undefined ? rawEntry.rating : null,
+                onWatchlist: Boolean(rawEntry.on_watchlist)
+              };
+              updateUserDataForMovie(mRaw.id, entryUpdate);
+              saveLocalEntry(mRaw.id, entryUpdate).catch(() => {});
+            }
+          }
+        }
+
         const queryKey = createCanonicalCacheKey({ ...filters }, page, pageSize);
         queryCache.set(queryKey, normalizeMoviesResponse({ total: count ?? -1, items: remoteItems }));
         appEvents.emit("userDataUpdated");
+        appEvents.emit("myList:revalidated");
       }
     } catch {
       // Silenciar errores en segundo plano sin alterar la experiencia visual
@@ -416,12 +431,13 @@ export function fetchMovies(
   // Excluir requestCount de la firma de caché para evitar duplicación de slots en la caché LRU
   const queryKey = createCanonicalCacheKey({ ...normFilters, explicitOffset: normExplicitOffset }, normPage, normPageSize);
 
-  if (!normFilters.myList) {
-    const cached = queryCache.get(queryKey);
-    // Servimos de la caché solo si no se requiere conteo (requestCount=false) o si ya tenemos el conteo exacto válido
-    if (cached && (!normRequestCount || cached.total >= 0)) {
-      return Promise.resolve(cached);
+  const cached = queryCache.get(queryKey);
+  // Servimos de la caché solo si no se requiere conteo (requestCount=false) o si ya tenemos el conteo exacto válido
+  if (cached && (!normRequestCount || cached.total >= 0)) {
+    if (normFilters.myList) {
+      queryCache.delete(queryKey);
     }
+    return Promise.resolve(cached);
   }
 
   const inFlightPromise = inFlightRequests.get(queryKey);

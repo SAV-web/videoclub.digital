@@ -220,7 +220,7 @@
 }
 
 /* Efecto de carga LQIP (Blur suave y progresivo) - 380ms */
-.movie-card:not(.is-quick-view) :is(.flip-card-front, .person-card, .collection-card) img.lazy-lqip {
+.movie-card:not(.is-quick-view) :is(.flip-card-front, .person-card, .collection-card, .studio-card) img.lazy-lqip {
   filter: blur(10px);
   transform: scale(1.05);
   will-change: filter, transform;
@@ -1298,7 +1298,7 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
   object-position: top center;
 }
 
-.collection-card:not(.is-quick-view) .poster-container img {
+:is(.collection-card, .studio-card):not(.is-quick-view) .poster-container img {
   object-position: center center;
 }
 
@@ -1375,13 +1375,13 @@ body.rotation-disabled .movie-card:not(.is-quick-view) {
 }
 
 /* Fichas de Selección y Estudio: Centrado y divisores */
-.collection-card:not(.is-quick-view) .movie-summary {
+:is(.collection-card, .studio-card):not(.is-quick-view) .movie-summary {
   position: relative;
   justify-content: center;
   padding: calc(var(--space-sm) + 2px) var(--space-xxs) calc(var(--space-sm) + 2px);
 }
 
-.collection-card:not(.is-quick-view) .movie-meta {
+:is(.collection-card, .studio-card):not(.is-quick-view) .movie-meta {
   position: absolute;
   bottom: 6px;
   left: 0;

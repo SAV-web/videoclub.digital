@@ -63,6 +63,7 @@ export interface AppEventPayloads {
   'uiActionTriggered': undefined;
   'updateSidebarUI': undefined;
   'userDataUpdated': undefined;
+  'myList:revalidated': undefined;
   'userMovieDataChanged': { movieId: number };
   'card:requestUpdate': { cardElement: HTMLElement };
   'state:changed': { path: string; value: unknown; oldValue: unknown };

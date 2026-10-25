@@ -370,7 +370,31 @@ Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegaci
 48. **Resolución de Condición de Carrera en Recarga de Mi Lista (`src/js/api.ts`, `src/js/main.ts`):**
     - **Auto-hidratación Local-First Inmediata en `getLocalMyListResponse`**: Si la memoria reactiva (`state.userMovieData`) arranca vacía durante una recarga en frío o F5, la función lee y puebla directamente las entradas desde IndexedDB (`await getAllLocalEntries()`) antes de evaluar los IDs de películas, erradicando falsos positivos de lista vacía.
     - **Fallback Transparente a Red ante Sesión Activa**: Si la base local no dispone de registros pero el usuario cuenta con token de sesión (`hasStoredAuthSessionOrHash()`), `getLocalMyListResponse` retorna `null` para que `fetchMovies` consulte Supabase y descargue el catálogo privado en lugar de mostrar «No se encontraron resultados».
-    - **Reactividad Dinámica en `handleDataRefresh`**: El escuchador del evento `userDataUpdated` en `main.ts` ahora re-renderiza silenciosamente el catálogo (`loadAndRenderMovies`) si el usuario tiene activo el filtro `myList`, manteniendo la vista sincronizada tras completar la revalidación SWR en segundo plano o el *merge* de inicio de sesión.
+    - **Desacoplamiento de Renderizado en `handleDataRefresh`**: La hidratación en `getLocalMyListResponse` alimenta directamente la carga inicial legítima sin requerir re-renderizados superpuestos desde `handleDataRefresh`, previniendo colisiones de aborto y congelaciones en modo pálido.
+
+49. **Evolución Quiet Luxury de Píldoras de Filtros en Sidebar (`src/css/components/sidebar.css`):**
+    - **Poda de Degradados Obsoletos**: Supresión del gradiente diagonal a 45° y de la inversión a texto negro en modo oscuro (`color: var(--color-bg)`), sustituyéndolos por superficies nobles con texto blanco nítido y micro-bordes de precisión.
+    - **Encuadre de Oro Viejo en Modo Oscuro**: En tema oscuro, `.filter-pill` adopta fondo carbón (`var(--color-surface-2)`) con ribete fino en oro viejo (`1px solid rgba(var(--color-brand-gold-rgb), 0.5)`), alineando la identidad del sidebar con los botones de ordenación y el Bento Grid.
+    - **Microinteracción Reactiva en Botón de Retirada (`×`)**: `.remove-filter-btn` transiciona su aspa hacia oro envejecido (`var(--color-brand-gold)`) en *hover*, con opacidad y escalado balanceados. Píldoras de exclusión armonizadas con fondo óxido translúcido y borde carmín.
+
+50. **Tipografía Cinematográfica y Proporción del Año en Modal de Vista Rápida (`src/js/components/modal/renderer.ts`, `src/css/components/modal.css`):**
+    - **Normalización Ortográfica y Escala del Año (`1994` a `1.65rem`)**: Eliminación del separador de millar artificioso (`1.994`) en `renderer.ts`, restaurando el formato cinematográfico estándar de 4 dígitos. Reducción de la escala tipográfica en `modal.css` de `2.4rem` a `1.65rem`, devolviendo la jerarquía visual de cabecera al título de la película (`2.05rem`).
+    - **Preservación de Versalitas y Estilo Clásico en Metadatos**: Mantenimiento de la identidad visual de catálogo con versalitas (`font-variant: small-caps`) y punto final en los encabezados `Género.`, `Reparto.` y `Sinopsis.`.
+
+51. **Erradicación de Doble Carga y Descongelación del Modo Pálido en Mi Lista (`src/js/main.ts`):**
+    - **Poda de Re-renderizado Parásito en `handleDataRefresh`**: Supresión de la invocación redundante a `loadAndRenderMovies` dentro de `handleDataRefresh` al escuchar `userDataUpdated`. La carga legítima inicial del catálogo (`init`) ya dispone de todas las películas locales desde el primer milisegundo gracias a `getLocalMyListResponse` (`api.ts`).
+    - **Eliminación de Abortos en Vuelo y Limpieza de `.is-fetching`**: Al no dispararse una segunda carga superpuesta sobre la primera, la señal de aborto (`signal.aborted`) permanece en `false`, permitiendo que el bloque `finally` de `renderEngine.ts` retire limpiamente la clase `.is-fetching`, restaurando el brillo al 100% y eliminando el parpadeo y la congelación en modo pálido.
+
+52. **Paridad Completa de Tarjetas de Estudio en CSS e Interacciones JS (`src/css/components/card.css`, `src/js/components/card/cardElement.ts`, `src/js/components/card/lifecycle.ts`):**
+    - **Inclusión de `.studio-card` en Reglas de Centrado y Metadatos**: Actualización de selectores en `card.css` con `:is(.collection-card, .studio-card):not(.is-quick-view)` para `.movie-summary`, `.movie-meta`, `.poster-container img` y el efecto LQIP de desenfoque progresivo.
+    - **Guardas de No-Rotación en Interacciones Táctiles y Hover**: Integración de la comprobación `card.classList.contains('studio-card')` en `startFlipTimer`, `handleSingleTap` (`cardElement.ts`), `handlePointerOver` y `handlePointerUp` (`lifecycle.ts`), blindando a las tarjetas de estudio frente a giros indeseados y caras traseras vacías.
+
+53. **Paridad del Año Sin Punto en Edge SSR (`cloudflare/seo/render-movie.js`):**
+    - **Alineación con Contrato 22.1**: Simplificación de la plantilla de año en `render-movie.js`, erradicando la inyección obsoleta de punto de millar (`1.994`) y garantizando paridad exacta del año cinematográfico estándar de 4 dígitos (`1994`) entre la SPA interactiva y el renderizado SSR en Cloudflare Workers.
+
+54. **Reconciliación SWR en Caliente para Mi Lista ante Discrepancias Remotas (`src/js/api.ts`, `src/js/state.ts`, `src/js/main.ts`):**
+    - **Evento Desacoplado `'myList:revalidated'`**: Si la revalidación en segundo plano (`revalidateMyListInBackground`) detecta diferencias reales entre la nube y la caché local (`hasDifferences`), sincroniza las entradas en memoria/IndexedDB, guarda la respuesta remota en `queryCache` y emite el evento `'myList:revalidated'`.
+    - **Consumo Efímero de Caché en `fetchMovies`**: El motor de API permite consumir entradas de `queryCache` para `myList` purgándolas inmediatamente de un solo uso, lo que permite que `loadAndRenderMovies` refresque suavemente el catálogo sin esqueletos (`forceSkeleton: false`) cuando hay cambios remotos, sin dispararse jamás en arranques ordinarios ni abortar la carga inicial limpia de F5.
 
 ## ⏱️ Protocolo de Eficiencia en Desarrollo y Validación (Cost & Latency Optimization)
 

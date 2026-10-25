@@ -206,7 +206,7 @@ export function prefetchCardResources(card: MovieCardElement): void {
 }
 
 export function startFlipTimer(cardElement: MovieCardElement): void {
-  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || cardElement.classList.contains('collection-card') || cardElement.classList.contains('person-card')) return;
+  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || cardElement.classList.contains('collection-card') || cardElement.classList.contains('studio-card') || cardElement.classList.contains('person-card')) return;
   const inner = cardElement.querySelector(".flip-card-inner");
   if (inner?.classList.contains("is-flipped")) return;
 
@@ -223,7 +223,7 @@ export function startFlipTimer(cardElement: MovieCardElement): void {
 }
 
 export const handleSingleTap = (cardElement: MovieCardElement): void => {
-  if (!cardElement || cardElement.classList.contains('collection-card') || cardElement.classList.contains('person-card')) return;
+  if (!cardElement || cardElement.classList.contains('collection-card') || cardElement.classList.contains('studio-card') || cardElement.classList.contains('person-card')) return;
   const inner = cardElement.querySelector(".flip-card-inner");
   if (!inner) return;
 

@@ -376,7 +376,7 @@ export function renderMovieHtml(movie, options = {}) {
                   <div class="year-flag-group">
                     ${movie.year ? `
                       <span data-template="year">
-                        <a href="${baseUrl}?year=${movie.year}" class="year-link">${String(movie.year).length === 4 ? `${String(movie.year).slice(0, 1)}.${String(movie.year).slice(1)}` : movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length).replace(/\b(\d{4})\b/g, m => `${m.slice(0, 1)}.${m.slice(1)}`))}
+                        <a href="${baseUrl}?year=${movie.year}" class="year-link">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length))}
                       </span>
                     ` : ''}
                     ${countryCode ? `

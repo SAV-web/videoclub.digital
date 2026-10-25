@@ -624,7 +624,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.4rem;
+  font-size: 1.65rem;
   font-weight: var(--font-weight-bold, 700);
   letter-spacing: -0.02em;
   line-height: 1;
@@ -658,7 +658,7 @@
 }
 
 .is-quick-view [data-template="year"] {
-  font-size: 2.4rem;
+  font-size: 1.65rem;
   font-weight: var(--font-weight-bold, 700);
   letter-spacing: -0.02em;
   line-height: 1;

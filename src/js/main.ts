@@ -555,10 +555,6 @@ function setupGlobalListeners(): void {
 
   const handleDataRefresh = () => {
     updateAppBadge();
-    const currentFilters = getActiveFilters();
-    if (currentFilters.myList) {
-      loadAndRenderMovies(getCurrentPage(), { forceSkeleton: false });
-    }
   };
 
   // Eventos Personalizados de la App
@@ -575,6 +571,13 @@ function setupGlobalListeners(): void {
 
     appEvents.on("userDataUpdated", () => {
       handleDataRefresh();
+    }),
+
+    appEvents.on("myList:revalidated", () => {
+      const currentFilters = getActiveFilters();
+      if (currentFilters.myList) {
+        loadAndRenderMovies(getCurrentPage(), { forceSkeleton: false });
+      }
     }),
 
     appEvents.on("uiActionTriggered", clearToast),
@@ -808,7 +811,6 @@ export function init(): void {
   getAllLocalEntries().then(localEntries => {
     if (Object.keys(localEntries).length > 0) {
       setUserMovieData(localEntries);
-      appEvents.emit("userDataUpdated");
     }
   }).catch(() => {});
 
