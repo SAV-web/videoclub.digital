@@ -1258,7 +1258,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.headers.get("X-Edge-Cache"), "MISS");
     assert.equal(
       response.headers.get("Cache-Control"),
-      "public, s-maxage=300, stale-while-revalidate=3600"
+      "public, max-age=0, s-maxage=21600, stale-while-revalidate=86400"
     );
     assert.equal(response.headers.get("Access-Control-Allow-Origin"), "*");
     assert.equal(fetchCalls.length, initialFetchCalls + 1, "Debe invocar Supabase en Cache MISS");
@@ -1317,6 +1317,73 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("Cache-Control"), "no-store, private");
     assert.equal(response.headers.get("X-Edge-Cache"), null, "Petición autenticada no debe portar X-Edge-Cache");
+  });
+
+  test("Edge Caching RPC: Clave de caché particionada con fecha de Madrid rota limpiamente", async () => {
+    const body = { page_limit: 42, page_offset: 0, sort_field: "relevance" };
+    const req = new Request("https://videoclub.digital/api/rpc/search_movies_offset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const res = await worker.fetch(req, {}, defaultCtx);
+    assert.equal(res.status, 200);
+
+    const storedUrls = Array.from(cacheStore.keys());
+    const rpcCacheUrl = storedUrls.find((u) => u.includes("/_edge_cache/rpc/search_movies_offset"));
+    assert.ok(rpcCacheUrl, "Debe existir una clave de caché perimetral para search_movies_offset");
+    assert.match(rpcCacheUrl, /[?&]d=\d{4}-\d{2}-\d{2}/, "La clave de caché debe incluir el parámetro d=YYYY-MM-DD");
+  });
+
+  test("Negociación Markdown en /titulo/:slug/ entrega ficha Markdown y aísla la caché frente a HTML", async () => {
+    // 1. Petición de un agente de IA con Accept: text/markdown
+    const mdReq = new Request("https://videoclub.digital/titulo/chernobyl-2019/", {
+      headers: { Accept: "text/markdown, text/plain" }
+    });
+    const mdRes = await worker.fetch(mdReq, {}, defaultCtx);
+
+    assert.equal(mdRes.status, 200);
+    assert.equal(mdRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
+    assert.equal(mdRes.headers.get("Vary"), "Accept");
+    assert.ok(mdRes.headers.get("Link")?.includes('rel="canonical"'));
+
+    const mdText = await mdRes.text();
+    assert.match(mdText, /# Chernobyl \(2019 - Miniserie\)/);
+    assert.match(mdText, /Johan Renck/);
+    assert.match(mdText, /Central Nuclear de Chernóbil/);
+    assert.ok(mdText.length < 2000, "El payload de Markdown debe ser ligero (<2 KB)");
+
+    // 2. Petición posterior de un navegador humano con Accept: text/html
+    // Debe entregar HTML completo y NO el markdown cacheado (cero envenenamiento de caché)
+    const htmlReq = new Request("https://videoclub.digital/titulo/chernobyl-2019/", {
+      headers: { Accept: "text/html,application/xhtml+xml" }
+    });
+    const htmlRes = await worker.fetch(htmlReq, {}, defaultCtx);
+
+    assert.equal(htmlRes.status, 200);
+    assert.ok(htmlRes.headers.get("Content-Type")?.includes("text/html"));
+    const htmlText = await htmlRes.text();
+    assert.match(htmlText, /<!DOCTYPE html>/i);
+  });
+
+  test("Negociación Markdown en /:vip-slug/ entrega ficha Markdown de persona VIP con filmografía", async () => {
+    const mdReq = new Request("https://videoclub.digital/christopher-nolan/", {
+      headers: { Accept: "text/markdown" }
+    });
+    const mdRes = await worker.fetch(mdReq, {}, defaultCtx);
+
+    assert.equal(mdRes.status, 200);
+    assert.equal(mdRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
+    assert.equal(mdRes.headers.get("Vary"), "Accept");
+    assert.ok(mdRes.headers.get("Link")?.includes('rel="canonical"'));
+
+    const mdText = await mdRes.text();
+    assert.match(mdText, /# Christopher Nolan/);
+    assert.match(mdText, /Director/);
+    assert.match(mdText, /Apasionado del medio audiovisual/);
+    assert.match(mdText, /Filmografía Destacada como Director/);
+    assert.match(mdText, /Origen \(2010\)/);
+    assert.ok(mdText.length < 3000, "El perfil de persona VIP en Markdown debe ser ligero (<3 KB)");
   });
 });
 

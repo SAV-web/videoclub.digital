@@ -160,6 +160,10 @@ El Cloudflare Worker (`cloudflare/worker.js`) y el cliente SPA comparten paridad
    Durante la navegación SPA, no se regeneran esquemas JSON-LD masivos en cada filtro para no saturar el hilo principal. La inyección de metadatos estructurados en cliente se programa en periodos de inactividad (`requestIdleCallback`).
 3. **Proxy Perimetral Inmutable de Imágenes:**
    Las rutas `/posters/*` y `/vips/*` se sirven desde el Worker con cabeceras `Cache-Control: public, max-age=31536000, immutable`, descargando el egress de Supabase Storage.
+4. **Caché Perimetral de Catálogo RPC con Partición Temporal de Madrid:**
+   Las respuestas de catálogo público (`/api/rpc/search_movies_offset`) se cachean en el Edge durante 6 horas (`public, max-age=0, s-maxage=21600, stale-while-revalidate=86400`). La clave de caché particiona con la fecha de Madrid (`d=YYYY-MM-DD`), garantizando rotación automática a medianoche sin desincronización en el Daily Showcase. Las solicitudes autenticadas con JWT de usuario hacen bypass directo con `no-store, private`.
+5. **Negociación de Contenido Markdown para Agentes de IA (GEO - Generative Engine Optimization):**
+   Las rutas de películas (`/titulo/:slug/`) y personas VIP (`/:vip-slug/`) soportan negociación de contenido ante la cabecera HTTP `Accept: text/markdown`. El Worker entrega una ficha limpia de alta densidad semántica (<1-3 KB en lugar de 25 KB de HTML) con `Content-Type: text/markdown; charset=utf-8`, `Cache-Control: public, s-maxage=604800, stale-while-revalidate=86400`, `Vary: Accept` y enlace canónico. La clave interna de caché perimetral se particiona con el prefijo sintético `/_edge_cache/md/...`, impidiendo el envenenamiento de caché hacia navegadores ordinarios (`text/html`).
 
 ---
 
@@ -198,3 +202,8 @@ La modal de detalle cinemático (`src/js/components/modal/`) implementa una expe
    Las tarjetas no registran escuchadores individuales `click` ni de puntuación. `#grid-container` y `#quick-view-content` gestionan todas las interacciones de forma centralizada mediante delegación en el contenedor raíz, permitiendo reciclar nodos DOM con `replaceChildren` sin fugas de memoria.
 4. **Indicador Minimalista de Orden en Subheader Móvil:**
    En vista móvil, la barra de estado bajo la cabecera sustituye el texto `"orden"` por la flecha direccional `↓` (`renderStatusBar` en `ui.ts`), optimizando el espacio horizontal sin saturar la línea de metadatos de recuento.
+5. **Atajos de Teclado Globales (Power-User Hotkeys):**
+   El sistema escucha en `document` un mapa ergonómico de atajos rápidos de escritorio: `b` o `Ctrl+K` / `Cmd+K` para enfocar y seleccionar el buscador (`#search-input`), `m` para alternar el Modo Muro (`toggleRotationMode`), `s` o `[` para replegar/desplegar la barra lateral (`toggleDesktopSidebar` o `openMobileDrawer`), y `r` para activar una recomendación aleatoria global (*"Sorpréndeme"*).
+   - **Barrera de Modales:** Si `document.body` tiene la clase `.modal-open`, los atajos de catálogo se suspenden de inmediato para no interferir con las modales.
+   - **Barrera de Entradas Editables:** Si el foco reside en `input`, `textarea`, `select` o `isContentEditable`, los atajos alfabéticos se omiten permitiendo escritura ordinaria.
+   - **Protección de Modificadores de SO:** Los atajos de una sola letra (`b`, `m`, `s`, `r`) se bloquean si `ctrlKey`, `metaKey` o `altKey` están activos, impidiendo colisiones con funciones nativas del navegador como recargar página (`Ctrl+R` / `Cmd+R`).

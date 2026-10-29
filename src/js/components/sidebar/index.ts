@@ -46,7 +46,7 @@ import {
   resetFilterPillsCache
 } from "./filters.js";
 
-export { openMobileDrawer, closeMobileDrawer } from "./gestures.js";
+export { openMobileDrawer, closeMobileDrawer, toggleRotationMode } from "./gestures.js";
 export { collapseAllSections, resetFilterPillsCache, renderFilterPills, isRawPersonSlug, handleRandomMovieRecommendation } from "./filters.js";
 
 export function disposeSidebarEvents(): void {

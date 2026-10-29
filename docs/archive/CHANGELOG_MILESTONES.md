@@ -461,3 +461,17 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
 3. **Escudo de Inmunidad (*Pinning Shield*) y Ampliación de Caché LRU**:
    - Umbral de retención local `MAX_CACHED_MOVIES` ampliado a `3500` títulos en `src/js/localStore.ts`.
    - La rutina de desalojo `pruneOldCachedMovies` consulta `STORE_USER_ENTRIES` e inmuniza cualquier obra valorada o en seguimiento, evitando la pérdida de fichas locales para perfiles cinéfilos de gran volumen.
+
+4. **Caché Perimetral RPC de 6 Horas con Partición Temporal de Madrid**:
+   - Ampliación de retención perimetral de 5 minutos a 6 horas (`s-maxage=21600`) con `stale-while-revalidate=86400` y `max-age=0` para clientes en `/api/rpc/search_movies_offset` (`cloudflare/worker.js`).
+   - Partición de la clave de Edge Cache incorporando la fecha determinista de Madrid (`d=YYYY-MM-DD` mediante `Intl.DateTimeFormat` a nivel de módulo), garantizando rotación automática a medianoche sin desincronización en el Daily Showcase ni mezcla de semillas entre páginas consecutivas.
+
+5. **Negociación Markdown para Agentes de IA en Películas y Personas VIP**:
+   - Creación de `cloudflare/seo/render-markdown.js` con generadores de alta densidad semántica `renderMovieMarkdown` y `renderPersonMarkdown`.
+   - Soporte de `Accept: text/markdown` en `/titulo/:slug/` y `/:vip-slug/` entregando metadatos cinematográficos en <1-3 KB (reducción del 97.5% en egress frente al HTML).
+   - Aislamiento perimetral con clave de caché sintética `/_edge_cache/md/...`, cabecera `Vary: Accept` y purga selectiva sincronizada en `/internal/purge`, erradicando el envenenamiento de caché hacia navegadores web estándar.
+
+6. **Atajos de Teclado Globales (*Power-User Hotkeys* en Escritorio)**:
+   - Registro de atajos ergonómicos en `main.ts`: `b` o `Ctrl+K` / `Cmd+K` para enfocar y auto-seleccionar el buscador (`#search-input`), `m` para alternar el Modo Muro 2D/3D (`toggleRotationMode`), `s` o `[` para plegar/desplegar la barra lateral (`toggleDesktopSidebar`), y `r` para pedir una recomendación aleatoria global (*"Sorpréndeme"*).
+   - Triple blindaje de seguridad: suspensión total si hay modales abiertas (`document.body.classList.contains("modal-open")`), desactivación en elementos editables (`input`, `textarea`, `select`, `isContentEditable`), y bloqueo de modificadores (`ctrlKey`, `metaKey`, `altKey`) para no colisionar con funciones del sistema (`Ctrl+R`, etc.).
+   - Hidratación bajo demanda (`await loadSidebar()`) para preservar la dieta estricta del bundle inicial (<45 KB).

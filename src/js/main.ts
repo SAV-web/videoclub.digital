@@ -86,6 +86,8 @@ interface SidebarModule {
   openMobileDrawer(): void;
   collapseAllSections(): void;
   toggleDesktopSidebar(): void;
+  toggleRotationMode(forceState?: boolean | null): void;
+  handleRandomMovieRecommendation(): void | Promise<void>;
 }
 
 // Módulos que cargamos más tarde para que la web arranque al instante
@@ -216,6 +218,90 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");
   loadAndRenderMovies(1, { forceSkeleton: false });
+}
+
+/**
+ * Registra atajos de teclado globales para usuarios de escritorio (Power-User Hotkeys).
+ * - "b" o "Ctrl+K" / "Cmd+K": Enfocar buscador
+ * - "m": Alternar Modo Muro (Wall Mode)
+ * - "s" o "[": Plegar / Desplegar Sidebar
+ * - "r": Sorpréndeme (Recomendación aleatoria global)
+ * Ignora eventos si hay modales abiertas o si el foco reside en campos editables.
+ */
+export function initGlobalHotkeys(): () => void {
+  const onKeyDown = async (e: KeyboardEvent) => {
+    // 1. Si hay alguna modal activa, no interferir con su ciclo de vida
+    if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+      return;
+    }
+
+    // 2. Si el foco reside en un elemento editable, permitir entrada ordinaria
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      (target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+
+    // 3. Atajo de Búsqueda: tecla "b" sin modificadores o combinación "Ctrl+K" / "Cmd+K"
+    const isSearchHotKey =
+      (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "b") ||
+      ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k");
+
+    if (isSearchHotKey) {
+      e.preventDefault();
+      const searchInput = dom.searchInput;
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+      return;
+    }
+
+    // 4. Bloquear cualquier combinación con modificadores para atajos de carácter simple
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const key = e.key.toLowerCase();
+
+    // 5. Tecla "m": Alternar Modo Muro (Wall Mode)
+    if (key === "m") {
+      e.preventDefault();
+      const mod = await loadSidebar();
+      mod?.toggleRotationMode();
+      return;
+    }
+
+    // 6. Tecla "s" o "[": Plegar / Desplegar Sidebar
+    if (key === "s" || key === "[") {
+      e.preventDefault();
+      const mod = await loadSidebar();
+      if (!mod) return;
+      const isMobile = window.innerWidth <= 768 || window.innerHeight <= 500;
+      if (isMobile) {
+        document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)
+          ? mod.closeMobileDrawer()
+          : mod.openMobileDrawer();
+      } else {
+        mod.toggleDesktopSidebar();
+      }
+      return;
+    }
+
+    // 7. Tecla "r": Sorpréndeme (Recomendación aleatoria global)
+    if (key === "r") {
+      e.preventDefault();
+      const mod = await loadSidebar();
+      mod?.handleRandomMovieRecommendation();
+      return;
+    }
+  };
+
+  document.addEventListener("keydown", onKeyDown);
+  return () => document.removeEventListener("keydown", onKeyDown);
 }
 
 // --- 4. PREPARATIVOS AL ARRANCAR (Cableado) ---
@@ -425,7 +511,10 @@ function setupHeaderListeners(): void {
   }
 
   const updateSearchPlaceholder = () => {
-    if (dom.searchInput) dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
+    if (dom.searchInput) {
+      dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
+      if (!dom.searchInput.title) dom.searchInput.title = "Buscar (B o Ctrl+K)";
+    }
   };
   const debouncedResize = debounce(updateSearchPlaceholder, 250);
   window.addEventListener("resize", debouncedResize);
@@ -552,6 +641,10 @@ function setupGlobalListeners(): void {
 
   document.addEventListener("keydown", handleEscKey);
   mainUnsubscribers.push(() => document.removeEventListener("keydown", handleEscKey));
+
+  // Atajos de Teclado Globales de Escritorio (Power-User Hotkeys: B, M, S, R, Ctrl+K)
+  const disposeHotkeys = initGlobalHotkeys();
+  mainUnsubscribers.push(disposeHotkeys);
 
   const handleDataRefresh = () => {
     updateAppBadge();

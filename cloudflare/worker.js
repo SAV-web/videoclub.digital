@@ -15,6 +15,7 @@
  */
 
 import { renderMovieHtml } from "./seo/render-movie.js";
+import { renderMovieMarkdown, renderPersonMarkdown } from "./seo/render-markdown.js";
 import { MOVIE_PROJECTION } from "./seo/seo-types.js";
 import { SEO_CARD_CSS } from "./seo/seo-card-css.js";
 import { resolveTaxonomy } from "./seo/taxonomy-types.js";
@@ -39,6 +40,17 @@ function resolveEnvironment(env) {
 
   return { supabaseUrl, supabaseAnonKey, storageUrl, purgeSecret };
 }
+
+/**
+ * Formateador de fecha determinista en zona horaria 'Europe/Madrid' (formato ISO YYYY-MM-DD).
+ * Instanciado a nivel de módulo en V8 para evitar re-asignación en cada petición HTTP.
+ */
+const MADRID_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Madrid",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit"
+});
 
 /**
  * Serializa canónicamente los parámetros de RPC ordenando sus claves alfabéticamente
@@ -148,8 +160,10 @@ export default {
       for (const slug of slugs) {
         const canonicalMovie = new URL(`/titulo/${slug}/`, url.origin).toString();
         const nonSlashMovie = new URL(`/titulo/${slug}`, url.origin).toString();
+        const mdMovie = new URL(`/_edge_cache/md/titulo/${slug}`, url.origin).toString();
         const canonicalPerson = new URL(`/${slug}/`, url.origin).toString();
         const nonSlashPerson = new URL(`/${slug}`, url.origin).toString();
+        const mdPerson = new URL(`/_edge_cache/md/vip/${slug}`, url.origin).toString();
         const canonicalGenre = new URL(`/genero/${slug}/`, url.origin).toString();
         const canonicalCountry = new URL(`/pais/${slug}/`, url.origin).toString();
         const canonicalStudio = new URL(`/estudio/${slug}/`, url.origin).toString();
@@ -157,13 +171,15 @@ export default {
 
         const p1 = await cache.delete(canonicalMovie);
         const p2 = await cache.delete(nonSlashMovie);
-        const p3 = await cache.delete(canonicalPerson);
-        const p4 = await cache.delete(nonSlashPerson);
-        const p5 = await cache.delete(canonicalGenre);
-        const p6 = await cache.delete(canonicalCountry);
-        const p7 = await cache.delete(canonicalStudio);
-        const p8 = await cache.delete(canonicalSel);
-        if (p1 || p2 || p3 || p4 || p5 || p6 || p7 || p8) purgedCount++;
+        const p3 = await cache.delete(mdMovie);
+        const p4 = await cache.delete(canonicalPerson);
+        const p5 = await cache.delete(nonSlashPerson);
+        const p6 = await cache.delete(mdPerson);
+        const p7 = await cache.delete(canonicalGenre);
+        const p8 = await cache.delete(canonicalCountry);
+        const p9 = await cache.delete(canonicalStudio);
+        const p10 = await cache.delete(canonicalSel);
+        if (p1 || p2 || p3 || p4 || p5 || p6 || p7 || p8 || p9 || p10) purgedCount++;
       }
       return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
         status: 200,
@@ -239,7 +255,7 @@ export default {
           return new Response(upstream.body, { status: upstream.status, headers: passHeaders });
         }
 
-        // B. Peticiones de catálogo público anónimo: Edge Cache perimetral en PoP local (TTL 300s + SWR 3600s)
+        // B. Peticiones de catálogo público anónimo: Edge Cache perimetral en PoP local (TTL 21600s / 6h + SWR 86400s)
         const bodyText = await request.text();
         let rpcParams = {};
         try {
@@ -247,8 +263,10 @@ export default {
         } catch (_) {}
 
         const cache = caches.default;
+        const madridDate = MADRID_DATE_FORMATTER.format(new Date());
         const canonicalKeyParam = canonicalizeRpcParams(rpcParams);
         const cacheKeyUrl = new URL("/_edge_cache/rpc/search_movies_offset", url.origin);
+        cacheKeyUrl.searchParams.set("d", madridDate);
         cacheKeyUrl.searchParams.set("q", canonicalKeyParam);
         const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
 
@@ -281,7 +299,7 @@ export default {
           const upstreamBody = await upstream.text();
           const responseHeaders = new Headers({
             "Content-Type": "application/json; charset=utf-8",
-            "Cache-Control": "public, s-maxage=300, stale-while-revalidate=3600",
+            "Cache-Control": "public, max-age=0, s-maxage=21600, stale-while-revalidate=86400",
             "X-Edge-Cache": "MISS",
             "Access-Control-Allow-Origin": "*"
           });
@@ -332,7 +350,11 @@ export default {
       const slug = url.pathname.replace(/^\/titulo\//i, "").replace(/\/$/, "").trim().toLowerCase();
       if (slug) {
         const cache = caches.default;
-        const canonicalKey = new Request(new URL(`/titulo/${slug}/`, url.origin).toString(), request);
+        const isMarkdownRequest = acceptHeader.includes("text/markdown");
+        const cacheKeyUrl = isMarkdownRequest
+          ? new URL(`/_edge_cache/md/titulo/${slug}`, url.origin)
+          : new URL(`/titulo/${slug}/`, url.origin);
+        const canonicalKey = new Request(cacheKeyUrl.toString(), request);
         
         // Intento en Edge Cache
         const cached = await cache.match(canonicalKey);
@@ -366,10 +388,30 @@ export default {
           }
 
           const movie = rows[0];
+
+          // Negociación Markdown para Agentes de IA (Perplexity, SearchGPT, Claude, etc.)
+          if (isMarkdownRequest) {
+            const md = renderMovieMarkdown(movie, url.origin);
+            const responseHeaders = new Headers({
+              "Content-Type": "text/markdown; charset=utf-8",
+              "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+              "Vary": "Accept",
+              "Link": `<${url.origin}/titulo/${slug}/>; rel="canonical"`
+            });
+            applySecurityHeaders(responseHeaders);
+            const response = new Response(md, {
+              status: 200,
+              headers: responseHeaders
+            });
+            ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+            return response;
+          }
+
           const html = renderMovieHtml(movie, { siteOrigin: url.origin, baseUrl: "/" });
           const responseHeaders = new Headers({
             "Content-Type": "text/html; charset=utf-8",
             "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+            "Vary": "Accept",
             "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
           });
           applySecurityHeaders(responseHeaders);
@@ -486,7 +528,11 @@ export default {
           }
 
           const cache = caches.default;
-          const canonicalKey = new Request(new URL(`/${slug}/`, url.origin).toString(), request);
+          const isMarkdownRequest = acceptHeader.includes("text/markdown");
+          const cacheKeyUrl = isMarkdownRequest
+            ? new URL(`/_edge_cache/md/vip/${slug}`, url.origin)
+            : new URL(`/${slug}/`, url.origin);
+          const canonicalKey = new Request(cacheKeyUrl.toString(), request);
 
           const cached = await cache.match(canonicalKey);
           if (cached) {
@@ -564,6 +610,24 @@ export default {
               filmographies[activeRole] = await fetchFilmography(activeRole);
             }
 
+            // Negociación Markdown para Agentes de IA
+            if (isMarkdownRequest) {
+              const md = renderPersonMarkdown(person, { filmographies }, url.origin);
+              const responseHeaders = new Headers({
+                "Content-Type": "text/markdown; charset=utf-8",
+                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                "Vary": "Accept",
+                "Link": `<${url.origin}/${slug}/>; rel="canonical"`
+              });
+              applySecurityHeaders(responseHeaders);
+              const response = new Response(md, {
+                status: 200,
+                headers: responseHeaders
+              });
+              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+              return response;
+            }
+
             const html = renderPersonHtml(person, {
               activeRole,
               hasBothRoles,
@@ -575,6 +639,7 @@ export default {
             const responseHeaders = new Headers({
               "Content-Type": "text/html; charset=utf-8",
               "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+              "Vary": "Accept",
               "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
             });
             applySecurityHeaders(responseHeaders);

@@ -99,6 +99,10 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
     stateModule.resetFiltersState();
     sidebarModule.disposeSidebarEvents();
     mainSearchInput.value = "";
+    if (globalThis.document?.body?.classList) {
+      globalThis.document.body.classList.remove("modal-open");
+      globalThis.document.body.classList.remove("sidebar-open");
+    }
     Object.values(pillContainers).forEach((c) => {
       c.children.length = 0;
       c.textContent = "";
@@ -496,6 +500,82 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
       assert.equal(rpcParamsCaptured.get_count, false, "No debe solicitar recálculo de conteo");
     } finally {
       supabase.rpc = origRpc;
+    }
+  });
+
+  test("initGlobalHotkeys: atajos 'b', 'Ctrl+K', 'm', 's', 'r' y protecciones modales", async () => {
+    let focusCalled = false;
+    let selectCalled = false;
+    mainSearchInput.focus = () => { focusCalled = true; };
+    mainSearchInput.select = () => { selectCalled = true; };
+
+    const cleanupHotkeys = mainModule.initGlobalHotkeys();
+
+    function dispatchKey(key, opts = {}) {
+      let prevented = false;
+      const ev = {
+        type: "keydown",
+        key,
+        ctrlKey: opts.ctrlKey || false,
+        metaKey: opts.metaKey || false,
+        altKey: opts.altKey || false,
+        target: opts.target || globalThis.document.body,
+        preventDefault: () => { prevented = true; },
+      };
+      globalThis.document.dispatchEvent(ev);
+      return { prevented, ev };
+    }
+
+    try {
+      // 1. Tecla 'b' sin modificadores enfoca el buscador
+      focusCalled = false;
+      selectCalled = false;
+      const rB = dispatchKey("b");
+      assert.equal(rB.prevented, true);
+      assert.equal(focusCalled, true);
+      assert.equal(selectCalled, true);
+
+      // 2. 'Ctrl+K' enfoca el buscador
+      focusCalled = false;
+      selectCalled = false;
+      const rCtrlK = dispatchKey("k", { ctrlKey: true });
+      assert.equal(rCtrlK.prevented, true);
+      assert.equal(focusCalled, true);
+      assert.equal(selectCalled, true);
+
+      // 3. 'Ctrl+R' (recargar página) no es interceptado por 'r'
+      const rReload = dispatchKey("r", { ctrlKey: true });
+      assert.equal(rReload.prevented, false, "Ctrl+R no debe ser interceptado");
+
+      // 4. Si el foco está en un INPUT, 'b' es ignorado
+      focusCalled = false;
+      const rInput = dispatchKey("b", { target: { tagName: "INPUT" } });
+      assert.equal(rInput.prevented, false);
+      assert.equal(focusCalled, false);
+
+      // 5. Si hay una modal abierta (modal-open en body), 'b' es ignorado
+      globalThis.document.body.classList.add("modal-open");
+      focusCalled = false;
+      const rModal = dispatchKey("b");
+      assert.equal(rModal.prevented, false);
+      assert.equal(focusCalled, false);
+      globalThis.document.body.classList.remove("modal-open");
+
+      // 6. Tecla 'm' intercepta y previene default
+      const rM = dispatchKey("m");
+      assert.equal(rM.prevented, true, "Tecla 'm' debe llamar preventDefault()");
+
+      // 7. Tecla 's' y '[' interceptan y previenen default
+      const rS = dispatchKey("s");
+      assert.equal(rS.prevented, true, "Tecla 's' debe llamar preventDefault()");
+      const rBracket = dispatchKey("[");
+      assert.equal(rBracket.prevented, true, "Tecla '[' debe llamar preventDefault()");
+
+      // 8. Tecla 'r' sin modificadores intercepta y previene default
+      const rRandom = dispatchKey("r");
+      assert.equal(rRandom.prevented, true, "Tecla 'r' debe llamar preventDefault()");
+    } finally {
+      cleanupHotkeys();
     }
   });
 });
