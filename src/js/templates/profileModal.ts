@@ -157,6 +157,10 @@ export const PROFILE_MODAL_HTML = `
               <button type="button" id="profile-btn-export-csv" class="profile-secondary-btn">
                 Exportar mi colección (CSV)
               </button>
+              <button type="button" id="profile-btn-import-csv" class="profile-secondary-btn">
+                Importar colección (CSV)
+              </button>
+              <input type="file" id="profile-csv-file-input" accept=".csv,text/csv" hidden aria-hidden="true" />
             </div>
           </div>
         </section>

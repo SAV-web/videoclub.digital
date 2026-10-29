@@ -82,6 +82,44 @@ export function createMockIndexedDB() {
                     }, 0);
                     return req;
                   },
+                  count: () => {
+                    const req = { result: 0, onsuccess: null, onerror: null };
+                    setTimeout(() => {
+                      req.result = targetMap.size;
+                      if (req.onsuccess) req.onsuccess();
+                    }, 0);
+                    return req;
+                  },
+                  index: (indexName) => {
+                    return {
+                      openKeyCursor: () => {
+                        const req = { result: null, onsuccess: null, onerror: null };
+                        const entries = Array.from(targetMap.entries());
+                        if (indexName === "by_cachedAt") {
+                          entries.sort((a, b) => (a[1].cachedAt || 0) - (b[1].cachedAt || 0));
+                        }
+                        let currentIndex = 0;
+                        function step() {
+                          if (currentIndex < entries.length) {
+                            const [key] = entries[currentIndex];
+                            const cursor = {
+                              primaryKey: key,
+                              continue: () => {
+                                currentIndex++;
+                                setTimeout(step, 0);
+                              }
+                            };
+                            req.result = cursor;
+                          } else {
+                            req.result = null;
+                          }
+                          if (req.onsuccess) req.onsuccess({ target: req });
+                        }
+                        setTimeout(step, 0);
+                        return req;
+                      }
+                    };
+                  },
                   clear: () => {
                     const req = { result: undefined, onsuccess: null, onerror: null };
                     targetMap.clear();

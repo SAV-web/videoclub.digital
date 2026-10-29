@@ -289,7 +289,12 @@ RETURNS TABLE(suggestion text) LANGUAGE sql STABLE PARALLEL SAFE SECURITY DEFINE
 SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     SELECT name FROM public.mv_actor_suggestions
     WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
-      AND name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+      AND (
+          name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+          OR (search_term LIKE '%-%' AND name_norm LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
+          OR (name_norm LIKE '%.%' AND replace(replace(name_norm, '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
+          OR (name_norm LIKE '%.%' AND replace(name_norm, '.', '') LIKE '%' || replace(replace(public.unaccent_immutable(lower(search_term)), '.', ''), ' ', '') || '%')
+      )
     ORDER BY movie_count DESC
     LIMIT 10;
 $$;
@@ -305,11 +310,17 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
             CASE 
                 WHEN d.name_norm LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
                 WHEN d.name_norm LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 2
+                WHEN replace(d.name_norm, '.', ' ') LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
                 ELSE 3
             END AS prefix_rank
         FROM public.mv_director_suggestions d
         WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
-          AND d.name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+          AND (
+              d.name_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+              OR (search_term LIKE '%-%' AND d.name_norm LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
+              OR (d.name_norm LIKE '%.%' AND replace(replace(d.name_norm, '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
+              OR (d.name_norm LIKE '%.%' AND replace(d.name_norm, '.', '') LIKE '%' || replace(replace(public.unaccent_immutable(lower(search_term)), '.', ''), ' ', '') || '%')
+          )
     ),
     component_matches AS (
         -- 2. Si el nombre del dúo NO coincide directamente, pero sí uno de sus integrantes
@@ -319,15 +330,23 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
             CASE 
                 WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
                 WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 2
+                WHEN replace(public.unaccent_immutable(lower(TRIM(comp.name))), '.', ' ') LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
                 ELSE 3
             END AS prefix_rank
         FROM public.mv_director_suggestions d
         CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
         WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
           AND d.components IS NOT NULL
-          AND d.components_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-          AND d.name_norm NOT LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-          AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+          AND (
+              d.components_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+              OR (search_term LIKE '%-%' AND d.components_norm LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
+              OR (d.components_norm LIKE '%.%' AND replace(replace(d.components_norm, '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
+          )
+          AND (
+              public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+              OR (search_term LIKE '%-%' AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
+              OR (public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%.%' AND replace(replace(public.unaccent_immutable(lower(TRIM(comp.name))), '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
+          )
         
         UNION ALL
         
@@ -338,15 +357,23 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
             CASE 
                 WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
                 WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 2
+                WHEN replace(public.unaccent_immutable(lower(TRIM(comp.name))), '.', ' ') LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
                 ELSE 3
             END AS prefix_rank
         FROM public.mv_director_suggestions d
         CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
         WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
           AND d.components IS NOT NULL
-          AND d.components_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-          AND d.name_norm NOT LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-          AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+          AND (
+              d.components_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+              OR (search_term LIKE '%-%' AND d.components_norm LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
+              OR (d.components_norm LIKE '%.%' AND replace(replace(d.components_norm, '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
+          )
+          AND (
+              public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
+              OR (search_term LIKE '%-%' AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
+              OR (public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%.%' AND replace(replace(public.unaccent_immutable(lower(TRIM(comp.name))), '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
+          )
     ),
     all_matches AS (
         SELECT * FROM direct_matches
@@ -620,7 +647,7 @@ BEGIN
             TRIM(p.vip::text) AS vip_raw
         FROM public.people_staging p
         LEFT JOIN public.countries c 
-            ON (p.country_id ~ '^[0-9]+$' AND c.id = p.country_id::int)
+            ON (c.id = CASE WHEN TRIM(p.country_id) ~ '^[0-9]{1,5}$' THEN TRIM(p.country_id)::int END)
             OR c.code = UPPER(TRIM(p.country_id)) 
             OR c.name_norm = public.unaccent_immutable(LOWER(TRIM(p.country_id)))
         WHERE p.name IS NOT NULL AND TRIM(p.name) <> ''

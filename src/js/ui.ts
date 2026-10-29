@@ -1123,7 +1123,7 @@ export function updateMobileStatusBar(
 
     // 8. Criterio de Orden (solo si no es el orden predeterminado "Orden")
     if (filters.sort && filters.sort !== DEFAULTS.SORT && sortMap[filters.sort]) {
-      segments.push(`orden ${sortMap[filters.sort]}`);
+      segments.push(`↓ ${sortMap[filters.sort]}`);
     }
 
     if (segments.length === 0) {

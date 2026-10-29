@@ -13,7 +13,7 @@ function setupMockProfileDom() {
     "profile-breakdown-container", "profile-btn-explore-watchlist", "profile-btn-explore-rated", "profile-password-form",
     "profile-new-password", "profile-password-toggle", "profile-password-strength", "profile-security-message",
     "profile-password-submit-btn", "profile-sync-dot", "profile-sync-text", "profile-btn-force-sync",
-    "profile-btn-export-csv", "profile-btn-logout", "profile-btn-delete-account", "profile-danger-zone",
+    "profile-btn-export-csv", "profile-btn-import-csv", "profile-csv-file-input", "profile-btn-logout", "profile-btn-delete-account", "profile-danger-zone",
     "profile-btn-cancel-delete", "profile-btn-confirm-delete", "profile-delete-message",
   ];
   ids.forEach((id) => {
@@ -491,6 +491,57 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
 
       // Verificación de desmontaje sin fugas
       cleanup();
+    } finally {
+      teardown();
+    }
+  });
+
+  test("parseCsvRows: parsea correctamente cabeceras, valores entrecomillados y saltos CRLF", () => {
+    const csv = '\uFEFFID,Título,Mi Valoración (1-10),En Pendientes\r\n101,"Pulp Fiction",10,No\r\n102,"Alien, el octavo pasajero",,Sí\r\n103,"Dune: Parte ""Dos""",8,No';
+    const rows = profileModule.parseCsvRows(csv);
+    assert.equal(rows.length, 4);
+    assert.deepEqual(rows[0], ["ID", "Título", "Mi Valoración (1-10)", "En Pendientes"]);
+    assert.equal(rows[1][0], "101");
+    assert.equal(rows[1][1], "Pulp Fiction");
+    assert.equal(rows[1][2], "10");
+    assert.equal(rows[1][3], "No");
+
+    assert.equal(rows[2][0], "102");
+    assert.equal(rows[2][1], "Alien, el octavo pasajero");
+    assert.equal(rows[2][2], "");
+    assert.equal(rows[2][3], "Sí");
+
+    assert.equal(rows[3][0], "103");
+    assert.equal(rows[3][1], 'Dune: Parte "Dos"');
+    assert.equal(rows[3][2], "8");
+    assert.equal(rows[3][3], "No");
+  });
+
+  test("importUserDataCsv: procesa archivo CSV nativo, respeta exclusividad e hidrata estado de usuario", async () => {
+    const { teardown } = setupMockProfileDom();
+    try {
+      const csvContent = [
+        "ID,Título,Mi Valoración (1-10),En Pendientes",
+        '501,"Ciudadano Kane",10,No',
+        '502,"Vértigo",,Sí',
+        '503,"Centauros del desierto",9,Sí',
+        'invalid,"Película rota",10,No',
+      ].join("\r\n");
+
+      const file = {
+        name: "videoclub-coleccion-2026-10-28.csv",
+        type: "text/csv",
+        size: csvContent.length,
+        text: async () => csvContent,
+      };
+
+      await profileModule.importUserDataCsv(file);
+
+      const all = stateModule.getAllUserMovieData();
+      assert.deepEqual(all["501"], { rating: 10, onWatchlist: false });
+      assert.deepEqual(all["502"], { rating: null, onWatchlist: true });
+      assert.deepEqual(all["503"], { rating: 9, onWatchlist: false }, "Debe excluir de pendientes si tiene nota");
+      assert.equal(all["invalid"], undefined, "No debe importar filas con ID inválido");
     } finally {
       teardown();
     }

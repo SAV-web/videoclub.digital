@@ -51,7 +51,8 @@ import {
   getTotalMovies,
   setTotalMovies,
   setFilter,
-  hasActiveMeaningfulFilters
+  hasActiveMeaningfulFilters,
+  appEvents
 } from "./state.js";
 
 import { updateUrl } from "./router.js";
@@ -225,10 +226,14 @@ export async function loadAndRenderMovies(
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
           if (personData.name && personData.name !== vipName) {
-            if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
+            const isMatch = toSlug(personData.name) === toSlug(vipName)
+              || normalizeText(personData.name) === normalizeText(vipName)
+              || toSlug(personData.name).replace(/-/g, '') === toSlug(vipName).replace(/-/g, '');
+            if (isMatch) {
               setFilter(vipType, personData.name, true);
               activeFilters = getActiveFilters();
               updatePageTitle();
+              appEvents.emit("updateSidebarUI");
             }
           }
           const isVip = personData.vip === 1 || Boolean(personData.birthday);
@@ -280,10 +285,14 @@ export async function loadAndRenderMovies(
       };
     } else if (personData && page === 1) {
       if (vipName && personData.name && personData.name !== vipName) {
-        if (toSlug(personData.name) === toSlug(vipName) || normalizeText(personData.name) === normalizeText(vipName)) {
+        const isMatch = toSlug(personData.name) === toSlug(vipName)
+          || normalizeText(personData.name) === normalizeText(vipName)
+          || toSlug(personData.name).replace(/-/g, '') === toSlug(vipName).replace(/-/g, '');
+        if (isMatch) {
           setFilter(vipType!, personData.name, true);
           activeFilters = getActiveFilters();
           updatePageTitle();
+          appEvents.emit("updateSidebarUI");
         }
       }
       const isVip = personData.vip === 1 || Boolean(personData.birthday);
@@ -299,6 +308,11 @@ export async function loadAndRenderMovies(
           catalogResult.items = catalogResult.items.slice(0, firstPageLimit - 1);
         }
       }
+    } else if (!personData && vipType && page === 1) {
+      setFilter(vipType, null, true);
+      activeFilters = getActiveFilters();
+      updatePageTitle();
+      appEvents.emit("updateSidebarUI");
     }
 
     let result = catalogResult;

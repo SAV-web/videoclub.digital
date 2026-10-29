@@ -13,7 +13,7 @@ export const LOCAL_DB_NAME = "videoclub_local_db";
 export const LOCAL_DB_VERSION = 2;
 export const STORE_USER_ENTRIES = "user_entries";
 export const STORE_CACHED_MOVIES = "cached_movies";
-export const MAX_CACHED_MOVIES = 1000;
+export const MAX_CACHED_MOVIES = 3500;
 
 export interface LocalUserEntry {
   movieId: number;
@@ -212,6 +212,77 @@ export async function saveLocalEntry(
   customTimestamp?: number
 ): Promise<LocalUserEntry> {
   return saveLocalEntryWithMovie(movieId, partialData, null, customTimestamp);
+}
+
+/**
+ * Guarda en lote un conjunto de entradas de usuario importadas en una única transacción de IndexedDB.
+ * Cada entrada se marca con estado 'dirty' (o 'deleted' si no tiene valoración ni watchlist),
+ * permitiendo sincronización en lote en segundo plano.
+ */
+export async function saveLocalEntriesBatch(
+  entries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean }>,
+  customTimestamp?: number
+): Promise<{ importedCount: number; mergedMap: Record<string, UserMovieEntry> }> {
+  const db = await openLocalDB();
+  const allCurrent = await new Promise<LocalUserEntry[]>((resolve, reject) => {
+    const tx = db.transaction(STORE_USER_ENTRIES, "readonly");
+    const store = tx.objectStore(STORE_USER_ENTRIES);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+
+  const localMap = new Map<number, LocalUserEntry>();
+  for (const item of allCurrent) {
+    localMap.set(item.movieId, item);
+  }
+
+  const now = customTimestamp || Date.now();
+  const updatesToPut: LocalUserEntry[] = [];
+
+  for (const item of entries) {
+    const normalized = normalizeUserMovieEntry({
+      rating: item.rating,
+      onWatchlist: item.onWatchlist
+    });
+
+    const isInactive = normalized.rating === null && !normalized.onWatchlist;
+    const entry: LocalUserEntry = {
+      movieId: item.movieId,
+      rating: normalized.rating,
+      onWatchlist: normalized.onWatchlist,
+      updatedAt: now,
+      syncStatus: isInactive ? "deleted" : "dirty"
+    };
+
+    localMap.set(item.movieId, entry);
+    updatesToPut.push(entry);
+  }
+
+  if (updatesToPut.length > 0) {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_USER_ENTRIES, "readwrite");
+      const store = tx.objectStore(STORE_USER_ENTRIES);
+      for (const entry of updatesToPut) {
+        store.put(entry);
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Transacción en lote abortada."));
+    });
+  }
+
+  const mergedMap: Record<string, UserMovieEntry> = {};
+  for (const [id, entry] of localMap.entries()) {
+    if (entry.syncStatus !== "deleted") {
+      mergedMap[String(id)] = {
+        rating: entry.rating,
+        onWatchlist: entry.onWatchlist
+      };
+    }
+  }
+
+  return { importedCount: updatesToPut.length, mergedMap };
 }
 
 /**
@@ -473,8 +544,11 @@ export async function saveCachedMovies(movies: Array<Movie | MappedMovie>): Prom
 
 /**
  * Purgado LRU para mantener cached_movies por debajo del límite prudente.
+ * Implementa un Escudo de Inmunidad (Pinning Shield): las películas presentes
+ * en la colección activa del usuario (user_entries con rating o en watchlist)
+ * jamás son expulsadas de IndexedDB por la política LRU.
  */
-async function pruneOldCachedMovies(): Promise<void> {
+export async function pruneOldCachedMovies(maxLimit = MAX_CACHED_MOVIES): Promise<void> {
   try {
     const db = await openLocalDB();
     if (!db.objectStoreNames.contains(STORE_CACHED_MOVIES)) return;
@@ -486,9 +560,29 @@ async function pruneOldCachedMovies(): Promise<void> {
       req.onerror = () => resolve(0);
     });
 
-    if (count <= MAX_CACHED_MOVIES) return;
+    if (count <= maxLimit) return;
 
-    const excess = count - MAX_CACHED_MOVIES;
+    // Escudo de Inmunidad: obtener IDs protegidos de la colección activa del usuario
+    const protectedIds = new Set<number>();
+    if (db.objectStoreNames.contains(STORE_USER_ENTRIES)) {
+      await new Promise<void>((resolve) => {
+        const tx = db.transaction(STORE_USER_ENTRIES, "readonly");
+        const store = tx.objectStore(STORE_USER_ENTRIES);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const rows: LocalUserEntry[] = req.result || [];
+          for (const row of rows) {
+            if (row.syncStatus !== "deleted" && (row.rating !== null || row.onWatchlist)) {
+              protectedIds.add(row.movieId);
+            }
+          }
+          resolve();
+        };
+        req.onerror = () => resolve();
+      });
+    }
+
+    const excess = count - maxLimit;
     await new Promise<void>((resolve) => {
       const tx = db.transaction(STORE_CACHED_MOVIES, "readwrite");
       const store = tx.objectStore(STORE_CACHED_MOVIES);
@@ -498,18 +592,28 @@ async function pruneOldCachedMovies(): Promise<void> {
 
       req.onsuccess = (e) => {
         const cursor = (e.target as IDBRequest<IDBCursorWithValue>).result;
-        if (cursor && deleted < excess) {
-          store.delete(cursor.primaryKey);
-          deleted++;
-          cursor.continue();
-        } else {
+        if (!cursor || deleted >= excess) {
           resolve();
+          return;
         }
+
+        const id = Number(cursor.primaryKey);
+        // Escudo de Inmunidad: si la película forma parte de la colección del usuario, se preserva
+        if (protectedIds.has(id)) {
+          cursor.continue();
+          return;
+        }
+
+        store.delete(cursor.primaryKey);
+        deleted++;
+        cursor.continue();
       };
       req.onerror = () => resolve();
     });
-  } catch {
-    // Si falla el purgado, no interrumpir
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn("[LocalStore] Error al purgar caché de películas:", error);
+    }
   }
 }
 

@@ -9,11 +9,11 @@ import "../../css/components/profile.css";
 
 import { getSupabase } from "../supabaseClient.js";
 import { getCurrentSession, signOutCurrentUser, updatePassword, evaluatePasswordStrength } from "../auth.js";
-import { getAllUserMovieData, clearUserMovieData, appEvents } from "../state.js";
+import { getAllUserMovieData, clearUserMovieData, setUserMovieData, appEvents } from "../state.js";
 import { openAccessibleModal, closeAccessibleModal, showToast, bindBottomSheetSwipeToDismiss } from "../ui.js";
 import { UserMovieEntry } from "../types.js";
-import { getPendingSyncEntries, clearLocalStore, getCachedMoviesByIds } from "../localStore.js";
-import { syncWithServer, mergeOnLogin } from "../syncManager.js";
+import { getPendingSyncEntries, clearLocalStore, getCachedMoviesByIds, saveLocalEntriesBatch } from "../localStore.js";
+import { syncWithServer, mergeOnLogin, scheduleSync } from "../syncManager.js";
 import { calculateUserStars } from "../../shared/formatters.js";
 import { ensureProfileModalMounted } from "../templates/profileModal.js";
 import { renderStars } from "./rating.js";
@@ -159,6 +159,8 @@ interface ProfileDom {
   syncText: HTMLElement | null;
   forceSyncBtn: HTMLButtonElement | null;
   exportCsvBtn: HTMLButtonElement | null;
+  importCsvBtn: HTMLButtonElement | null;
+  csvFileInput: HTMLInputElement | null;
   logoutBtn: HTMLButtonElement | null;
   deleteAccountBtn: HTMLButtonElement | null;
   dangerZone: HTMLElement | null;
@@ -194,6 +196,8 @@ function getProfileDom(): ProfileDom {
       syncText: null,
       forceSyncBtn: null,
       exportCsvBtn: null,
+      importCsvBtn: null,
+      csvFileInput: null,
       logoutBtn: null,
       deleteAccountBtn: null,
       dangerZone: null,
@@ -227,6 +231,8 @@ function getProfileDom(): ProfileDom {
       syncText: document.getElementById("profile-sync-text"),
       forceSyncBtn: document.getElementById("profile-btn-force-sync") as HTMLButtonElement | null,
       exportCsvBtn: (document.getElementById("profile-btn-export-csv") || document.getElementById("profile-btn-export-json")) as HTMLButtonElement | null,
+      importCsvBtn: document.getElementById("profile-btn-import-csv") as HTMLButtonElement | null,
+      csvFileInput: document.getElementById("profile-csv-file-input") as HTMLInputElement | null,
       logoutBtn: document.getElementById("profile-btn-logout") as HTMLButtonElement | null,
       deleteAccountBtn: document.getElementById("profile-btn-delete-account") as HTMLButtonElement | null,
       dangerZone: document.getElementById("profile-danger-zone"),
@@ -555,6 +561,164 @@ export async function exportUserDataCsv(): Promise<void> {
 export const exportUserDataJson = exportUserDataCsv;
 
 /**
+ * Parsea un contenido CSV plano en una matriz de celdas string[][],
+ * soportando comillas escapadas (""), comas o puntos y coma, saltos CRLF/LF y BOM UTF-8.
+ */
+export function parseCsvRows(csvText: string): string[][] {
+  const cleanText = csvText.replace(/^\uFEFF/, "");
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = "";
+  let inQuotes = false;
+  const firstLine = cleanText.split(/\r\n|\n|\r/)[0] || "";
+  const delimiter = (!firstLine.includes(",") && firstLine.includes(";")) ? ";" : ",";
+
+  for (let i = 0; i < cleanText.length; i++) {
+    const char = cleanText[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (cleanText[i + 1] === '"') {
+          currentCell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        currentCell += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === delimiter) {
+        currentRow.push(currentCell.trim());
+        currentCell = "";
+      } else if (char === "\r") {
+        if (cleanText[i + 1] === "\n") i++;
+        currentRow.push(currentCell.trim());
+        currentCell = "";
+        if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
+        currentRow = [];
+      } else if (char === "\n") {
+        currentRow.push(currentCell.trim());
+        currentCell = "";
+        if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
+        currentRow = [];
+      } else {
+        currentCell += char;
+      }
+    }
+  }
+  if (currentCell.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
+  }
+  return rows;
+}
+
+/**
+ * Importa una colección de usuario desde un archivo CSV nativo de videoclub.digital.
+ * Valida la estructura, realiza inserción atómica en IndexedDB en lote,
+ * actualiza el estado reactivo en memoria y programa la sincronización en segundo plano con Supabase.
+ */
+export async function importUserDataCsv(file: File): Promise<void> {
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith(".csv") && file.type && !file.type.includes("csv") && !file.type.includes("text")) {
+    showToast("El archivo seleccionado debe ser un documento en formato CSV (.csv).", "info");
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    showToast("El archivo supera el tamaño máximo permitido de 10 MB.", "info");
+    return;
+  }
+
+  const dom = getProfileDom();
+  if (dom.importCsvBtn) {
+    dom.importCsvBtn.disabled = true;
+    dom.importCsvBtn.textContent = "Importando...";
+  }
+
+  try {
+    const text = await file.text();
+    const rows = parseCsvRows(text);
+
+    if (rows.length < 2) {
+      showToast("El archivo CSV no contiene registros suficientes para importar.", "info");
+      return;
+    }
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const idIdx = headers.findIndex(h => h === "id" || h === "movie_id" || h === "id película" || h === "id pelicula");
+
+    if (idIdx === -1) {
+      showToast("El archivo CSV no contiene la columna 'ID' obligatoria de videoclub.", "info");
+      return;
+    }
+
+    const ratingIdx = headers.findIndex(h => h.includes("valoraci") || h.includes("rating") || h.includes("nota"));
+    const watchlistIdx = headers.findIndex(h => h.includes("pendiente") || h.includes("watchlist"));
+
+    const validEntries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean }> = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const rawId = row[idIdx];
+      if (!rawId) continue;
+
+      const movieId = Number(rawId);
+      if (!Number.isInteger(movieId) || movieId <= 0) continue;
+
+      let rating: number | null = null;
+      if (ratingIdx !== -1 && row[ratingIdx]) {
+        const rawRating = Number(row[ratingIdx]);
+        if (Number.isInteger(rawRating) && rawRating >= 1 && rawRating <= 10) {
+          rating = rawRating;
+        }
+      }
+
+      let onWatchlist = false;
+      if (rating !== null) {
+        // Invariante contractual: si la obra tiene calificación, se excluye de pendientes
+        onWatchlist = false;
+      } else if (watchlistIdx !== -1 && row[watchlistIdx]) {
+        const rawW = row[watchlistIdx].trim().toLowerCase();
+        if (rawW === "sí" || rawW === "si" || rawW === "true" || rawW === "1" || rawW === "yes") {
+          onWatchlist = true;
+        }
+      }
+
+      if (rating === null && !onWatchlist) continue;
+
+      validEntries.push({ movieId, rating, onWatchlist });
+    }
+
+    if (validEntries.length === 0) {
+      showToast("No se encontraron registros válidos de calificación o pendientes para importar.", "info");
+      return;
+    }
+
+    const { importedCount, mergedMap } = await saveLocalEntriesBatch(validEntries);
+    setUserMovieData(mergedMap);
+    scheduleSync(0);
+    renderProfileStats();
+
+    showToast(`Se han importado ${importedCount.toLocaleString("es-ES")} obras a tu colección con éxito.`, "success");
+  } catch (err) {
+    if (import.meta.env.DEV) console.error("Error al importar colección CSV:", err);
+    showToast("Se produjo un error al procesar el archivo CSV.", "error");
+  } finally {
+    if (dom.importCsvBtn) {
+      dom.importCsvBtn.disabled = false;
+      dom.importCsvBtn.textContent = "Importar colección (CSV)";
+    }
+    if (dom.csvFileInput) {
+      dom.csvFileInput.value = "";
+    }
+  }
+}
+
+/**
  * Ejecuta la baja definitiva del usuario en el backend (RPC delete_user_account),
  * purga todos los almacenes locales (IndexedDB y memoria) y cierra la sesión.
  */
@@ -782,6 +946,28 @@ export function setupProfileModal(): () => void {
     };
     dom.exportCsvBtn.addEventListener("click", onExport);
     unsubscribers.push(() => dom.exportCsvBtn?.removeEventListener("click", onExport));
+  }
+
+  // 8.1. Importar CSV
+  if (dom.importCsvBtn && dom.csvFileInput) {
+    const onImportClick = () => {
+      dom.csvFileInput?.click();
+    };
+    const onFileChange = (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (file) {
+        importUserDataCsv(file).catch(err => {
+          if (import.meta.env.DEV) console.error("Error al importar CSV:", err);
+        });
+      }
+    };
+    dom.importCsvBtn.addEventListener("click", onImportClick);
+    dom.csvFileInput.addEventListener("change", onFileChange);
+    unsubscribers.push(() => {
+      dom.importCsvBtn?.removeEventListener("click", onImportClick);
+      dom.csvFileInput?.removeEventListener("change", onFileChange);
+    });
   }
 
   // 9. Cerrar Sesión desde el modal

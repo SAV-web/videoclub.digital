@@ -215,4 +215,53 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
 
     assert.ok(stateModule.getAllUserMovieData()["801"]);
   });
+
+  test("pruneOldCachedMovies respeta el Escudo de Inmunidad (Pinning Shield) protegiendo películas del usuario", async () => {
+    // 1. Guardamos una película en user_entries (en la colección activa del usuario: con rating o en watchlist)
+    await localStore.saveLocalEntry(901, { rating: 10, onWatchlist: false });
+
+    // 2. Guardamos 3 películas en cached_movies con diferentes fechas de caché
+    // Película 901 (antigua, pero protegida por estar en la colección del usuario)
+    // Película 902 (antigua, no protegida)
+    // Película 903 (reciente, no protegida)
+    await localStore.saveCachedMovies([
+      { id: 901, title: "El Padrino", year: 1972 },
+      { id: 902, title: "Pulp Fiction", year: 1994 },
+      { id: 903, title: "Matrix", year: 1999 }
+    ]);
+
+    // Forzamos timestamps controlados en cached_movies para verificar orden LRU
+    const db = await localStore.openLocalDB();
+    await new Promise((resolve) => {
+      const tx = db.transaction("cached_movies", "readwrite");
+      const store = tx.objectStore("cached_movies");
+      store.put({ id: 901, title: "El Padrino", year: 1972, cachedAt: 100 });
+      store.put({ id: 902, title: "Pulp Fiction", year: 1994, cachedAt: 200 });
+      store.put({ id: 903, title: "Matrix", year: 1999, cachedAt: 300 });
+      tx.oncomplete = resolve;
+    });
+
+    // Purgamos con límite = 2. Con 3 películas, excess = 1.
+    // La película más antigua es la 901 (cachedAt 100), pero tiene Escudo de Inmunidad.
+    // Por tanto, debe ser omitida y debe purgarse la 902 (cachedAt 200).
+    await localStore.pruneOldCachedMovies(2);
+
+    const m901 = await localStore.getCachedMovie(901);
+    const m902 = await localStore.getCachedMovie(902);
+    const m903 = await localStore.getCachedMovie(903);
+
+    assert.ok(m901, "La película 901 (en colección) debe preservarse intacta por el Escudo de Inmunidad");
+    assert.equal(m902, null, "La película 902 (antigua y no protegida) debe haber sido purgada");
+    assert.ok(m903, "La película 903 (reciente) debe preservarse");
+
+    // Caso 2: Si todas las películas restantes en el almacén están protegidas por el usuario,
+    // la purga no debe eliminar ninguna aunque se supere el límite
+    await localStore.saveLocalEntry(903, { rating: null, onWatchlist: true });
+    await localStore.pruneOldCachedMovies(1); // límite 1 cuando hay 2 películas protegidas (901 y 903)
+
+    const final901 = await localStore.getCachedMovie(901);
+    const final903 = await localStore.getCachedMovie(903);
+    assert.ok(final901, "901 sigue protegida");
+    assert.ok(final903, "903 sigue protegida por estar en watchlist");
+  });
 });

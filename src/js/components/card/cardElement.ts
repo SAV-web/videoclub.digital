@@ -622,11 +622,12 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
       });
       yearContainer.appendChild(yearLink);
       if (displayYear.length > String(movie.year).length) {
-        const suffix = displayYear.substring(String(movie.year).length);
+        const rawSuffix = displayYear.substring(String(movie.year).length);
+        const suffix = rawSuffix.replace(/ \((M)\)/g, "\u00A0($1)");
         yearContainer.appendChild(document.createTextNode(suffix));
       }
     } else {
-      yearContainer.textContent = displayYear;
+      yearContainer.textContent = displayYear.replace(/ \((M)\)/g, "\u00A0($1)");
     }
   }
 

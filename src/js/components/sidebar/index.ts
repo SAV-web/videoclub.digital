@@ -47,7 +47,7 @@ import {
 } from "./filters.js";
 
 export { openMobileDrawer, closeMobileDrawer } from "./gestures.js";
-export { collapseAllSections, resetFilterPillsCache } from "./filters.js";
+export { collapseAllSections, resetFilterPillsCache, renderFilterPills, isRawPersonSlug, handleRandomMovieRecommendation } from "./filters.js";
 
 export function disposeSidebarEvents(): void {
   bumpGeneration();

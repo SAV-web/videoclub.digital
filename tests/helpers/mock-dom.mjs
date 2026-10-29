@@ -84,7 +84,7 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
     replaceChildren: (...newChildren) => {
       el.textContent = "";
       children.length = 0;
-      newChildren.forEach((c) => el.appendChild(typeof c === "string" ? createMockDomElement("span") : c));
+      newChildren.forEach((c) => el.appendChild(typeof c === "string" ? { textContent: c, nodeType: 3 } : c));
     },
     querySelector: () => null,
     querySelectorAll: () => [],
@@ -104,7 +104,7 @@ export function createMockDomElement(tagName = "div", extraProps = {}) {
       return child;
     },
     append: (...newChildren) => {
-      newChildren.forEach((c) => el.appendChild(typeof c === "string" ? createMockDomElement("span") : c));
+      newChildren.forEach((c) => el.appendChild(typeof c === "string" ? { textContent: c, nodeType: 3 } : c));
     },
     removeChild: (child) => {
       const idx = children.indexOf(child);
@@ -272,6 +272,7 @@ export function setupGlobalDom(options = {}) {
     getElementsByClassName: () => [],
     createElement: (tag) => createMockDomElement(tag),
     createElementNS: (_ns, tag) => createMockDomElement(tag),
+    createTextNode: (text) => ({ textContent: String(text), nodeType: 3 }),
     createDocumentFragment: () => createMockDomElement("div"),
     _getListenerCount: (event) => (docListeners[event] ? docListeners[event].length : 0),
   };

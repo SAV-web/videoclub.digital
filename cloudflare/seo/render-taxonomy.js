@@ -159,7 +159,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
               <div class="year-country-line">
                 <div class="year-flag-group">
                   <span data-template="year">
-                    ${movie.year ? `<a href="${baseUrl}?_p=/&_q=year%3D${movie.year}" class="year-link" data-year-value="${movie.year}">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length))}` : ''}
+                    ${movie.year ? `<a href="${baseUrl}?_p=/&_q=year%3D${movie.year}" class="year-link" data-year-value="${movie.year}">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length)).replace(/ \((M)\)/g, '&nbsp;($1)')}` : ''}
                   </span>
                   ${countryCode ? `
                     <a class="country-info" href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">

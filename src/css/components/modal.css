@@ -664,6 +664,7 @@
   line-height: 1;
   display: inline-flex;
   align-items: center;
+  white-space: pre;
 }
 
 .is-quick-view .year-link {

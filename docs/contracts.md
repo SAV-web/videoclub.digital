@@ -1,673 +1,200 @@
-# Contratos de Datos - VIDEOCLUB.DIGITAL
+# Contratos del Sistema - VIDEOCLUB.DIGITAL
 
-Este documento define las fronteras de datos que debe respetar la aplicación. El contrato ejecutable vive en `src/js/contracts.ts` y `src/js/types.ts`; este archivo explica su intención para mantenimiento.
+Este documento formaliza los **10 Contratos Normativos del Sistema**. Define las fronteras de datos, interfaces y reglas de negocio invariantes que deben respetar todas las capas de la aplicación: cliente SPA, capa perimetral Edge SSR (Cloudflare Workers) y backend relacional (PostgreSQL en Supabase).
 
-## 1. Estado Global
+> [!NOTE]
+> La implementación ejecutable de estos contratos reside en [`src/js/contracts.ts`](file:///src/js/contracts.ts), [`src/js/types.ts`](file:///src/js/types.ts) y [`src/shared/`](file:///src/shared/).
+> Para la evolución histórica y especificaciones de micro-interacciones previas, consultar [`docs/archive/CHANGELOG_MILESTONES.md`](file:///docs/archive/CHANGELOG_MILESTONES.md).
 
-El estado público de la aplicación tiene esta forma:
+---
+
+## 1. Contrato de Estado Global y Reactividad Canónica
+
+El estado central de la aplicación (`AppState`) sigue esta estructura estricta:
 
 ```ts
-{
-  currentPage: number,
-  totalMovies: number,
-  activeFilters: ActiveFilters,
-  userMovieData: Record<number, UserMovieEntry>
+interface AppState {
+  currentPage: number;
+  totalMovies: number;
+  activeFilters: ActiveFilters;
+  userMovieData: Record<number, UserMovieEntry>;
 }
 ```
 
-Reglas:
+### Reglas Invariantes
+1. **Normalización Defensiva:**
+   - `currentPage` es siempre un entero positivo $\ge 1$. Si entra un valor inválido o $\le 0$, se normaliza a `1`.
+   - `totalMovies` es siempre un entero $\ge -1$. El valor `-1` representa contractualmente *"total desconocido o en cómputo asíncrono"*.
+   - `activeFilters` contiene siempre la totalidad de sus claves inicializadas; ningún consumidor asume filtros parciales.
+2. **Inmutabilidad y Caché de Proxies (`state.ts`):**
+   - `userMovieData` se indexa por `movieId` numérico.
+   - Cada entrada `UserMovieEntry` se congela con `Object.freeze({ rating: number | null, onWatchlist: boolean })` mediante `normalizeUserMovieEntry`.
+   - El motor reactivo (`makeReactive`) utiliza un `WeakMap` interno (`proxyCache`) para reutilizar referencias en $O(1)$, evitando la instanciación redundante de proxies durante iteraciones masivas de catálogo.
+3. **Manejo Estándar de Errores (`AppError`):**
+   - Todo error del sistema encapsula `{ name: "AppError", code: ERROR_CODES.*, message: string, cause?: unknown }`.
+   - El código `ABORTED` identifica peticiones canceladas por concurrencia; el sistema descarta su propagación visual sin alertar al usuario.
 
-- `currentPage` siempre es un entero positivo. Si entra un valor inválido, vuelve a `1`.
-- `totalMovies` siempre es un entero mayor o igual que `-1`. El valor `-1` significa "total desconocido".
-- `activeFilters` siempre contiene todas sus claves; ningún consumidor debe asumir filtros parciales.
-- `userMovieData` se indexa por `movieId` numérico convertido a clave de objeto.
-- `UserMovieEntry` se normaliza mediante `normalizeUserMovieEntry`, devolviendo objetos congelados (`Object.freeze`) con `{ rating: number | null, onWatchlist: boolean }`. Esta inmutabilidad estructural garantiza que el motor reactivo (`makeReactive` en `state.ts`) no genere envolturas Proxy al iterar el catálogo de usuario (ej: `getWatchlistCount()`, `getAllUserMovieData()`), ahorrando miles de instanciaciones temporales y garantizando estabilidad referencial mediante caché `WeakMap`.
+---
 
-## 2. Filtros
+## 2. Contrato Canónico de URLs y Jerarquía de Facetas
 
-`ActiveFilters` (definido en `src/js/types.ts`) tiene esta forma:
+Toda URL en **videoclub.digital** responde a un estándar semántico legible (*Pretty URLs*) y predecible:
+
+$$\text{https://videoclub.digital/}\{\text{persona}\}\text{/}\{\text{género}\}\text{/}\{\text{país}\}\text{/}\{\text{estudio o selección}\}\text{/}\{\text{no-género}\}\text{/}\{\text{no-país}\}\text{/}$$
+
+### Reglas Invariantes
+1. **Lectura Agnóstica al Orden (`parsePrettyPath`):**
+   Los segmentos de ruta no exigen posiciones fijas. Cada segmento se contrasta contra los diccionarios cerrados del SSOT (`GENRE_SLUG_MAP`, `COUNTRY_SLUG_MAP`, `STUDIO_SLUGS`, `SELECTION_SLUGS`). Las rutas `/eeuu/drama/` y `/drama/eeuu/` son semánticamente equivalentes.
+2. **Parámetros de Búsqueda y Alias Soportados:**
+   - `year`: Rango numérico (`"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"`), acotado a `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]`.
+   - `sort` (alias `orden`): Slugs amigables (`recientes`, `antiguas`, `nota-fa`, `nota-imdb`, `votos-fa`, `votos-imdb`) o crudos (`year,desc`...). Si es desconocido, cae a `relevance,desc`.
+   - `search` (alias `buscar`, `q`): Cadena de texto libre normalizada con `.trim()`.
+   - `type`: Modo de medio restringido a `'all' | 'movies' | 'series'`.
+   - `p` (alias `page`): Entero finito $\ge 1$.
+   - `list`: Modo de lista privada (`'rated' | 'watchlist' | 'mixed'`).
+3. **Purga de Parámetros en Rutas SEO Perimetrales:**
+   Cualquier acceso directo a rutas indexables (`/titulo/:slug/`, `/genero/:slug/`, `/:vip-slug/`) acompañado de query strings innecesarias ejecuta una redirección HTTP 301 en el Edge hacia la URL canónica limpia con barra final.
+4. **Directivas Robots Deterministas:**
+   - Vistas públicas y canónicas: `index, follow, max-image-preview:large`.
+   - Vistas privadas (`?list=...`) o búsquedas libres (`?search=...`): `noindex, follow`.
+
+---
+
+## 3. Contrato de Filtros de Catálogo y Menú Lateral (Sidebar)
+
+### Reglas Invariantes
+1. **Exclusividad Semántica:**
+   - `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con filtros de género, país, selección, estudio, exclusiones y año. Activar un autor purga las facetas incompatibles y notifica al usuario (`notifyRemovedPersonIncompatibleFilters`).
+   - `selection` y `studio` son mutuamente excluyentes entre sí (ambos compiten por la cabecera VIP destacada).
+2. **Piscinas Curadas Estáticas a 0 ms (Zero Network Discovery):**
+   Los acordeones de sugerencias de directores y actores en el menú lateral se alimentan de listas estáticas normativas (`CURATED_DIRECTORS` y `CURATED_ACTORS`) en `src/shared/constants.ts` (100 cineastas mundiales consolidados). No se emiten consultas RPC de descubrimiento dinámico en la apertura del menú.
+3. **Tolerancia Diacrítica e Iniciales sin Punto:**
+   El motor de búsqueda y autocompletado normaliza las entradas retirando acentos y permitiendo búsquedas de nombres compuestos tanto con puntos como con espacios (`"j. j. abrams"` $\equiv$ `"j j abrams"`).
+4. **Recomendación Aleatoria Global ("Sorpréndeme"):**
+   El botón `#play-button` ("Sorpréndeme") selecciona una obra aleatoria entre el total de resultados coincidentes con los filtros activos (`appState.totalMovies`). Si el resultado está pintado en la cuadrícula actual, ejecuta un *fast-path* a 0 ms con scroll y auto-apertura del modal. Si está en una página remota, realiza una consulta RPC ligera con offset aleatorio (`getMoviesPage({ page: randomPage, pageSize: 1 })`), abriendo inmediatamente la ficha sin vibraciones ni latencias intrusivas.
+
+---
+
+## 4. Contrato de Daily Showcase y Barajado Determinista
+
+La ordenación por defecto del catálogo (*"Orden"* / `relevance,desc`) implementa serendipia rotativa controlada mediante la función PL/pgSQL `search_movies_offset`.
+
+### Reglas Invariantes
+1. **Semilla Temporal Canónica:**
+   $$\text{seed} = (\text{CURRENT\_TIMESTAMP AT TIME ZONE 'Europe/Madrid'})::\text{date}::\text{text}$$
+   La rotación se actualiza a las 00:00:00 hora peninsular española, garantizando paridad global instantánea.
+2. **Dispersión Pseudoaleatoria Uniforme:**
+   $$\text{rank\_hash}(m) = \operatorname{hashtext}(m.\text{id}::\text{text} \mathbin{\Vert} \text{seed})$$
+3. **Ordenación Bi-Nivel (Two-Tier SQL Order):**
+   - **Tier 0 (Ventana de Excelencia - 378 títulos):** Barajado diario determinista entre las 378 mejores películas (`threshold = 378`, mínimo común múltiplo de cuadrículas de 42 y 54 ítems).
+   - **Tier 1 (Catálogo General):** Los títulos restantes preservan orden riguroso por mérito natural (`natural_rank ASC`).
+4. **Paginación Determinista sin Estado (*Stateless*):**
+   La navegación entre páginas consecutivas (`0..42`, `42..84`...) no requiere sesiones ni almacenamiento temporal; garantiza cero duplicados y cero omisiones.
+
+---
+
+## 5. Contrato de Respuestas de API y Conteo Desacoplado
+
+Las respuestas del catálogo cumplen la interfaz `ApiResponse`:
 
 ```ts
-{
-  searchTerm: string,
-  genre: string | null,
-  year: string | null,
-  country: string | null,
-  director: string | null,
-  actor: string | null,
-  selection: string | null,
-  studio: string | null,
-  sort: string,
-  mediaType: "all" | "movies" | "series",
-  excludedGenres: string[],
-  excludedCountries: string[],
-  myList: null | "rated" | "watchlist" | "mixed"
+interface ApiResponse {
+  total: number;
+  items: MappedMovie[];
+  aborted?: true;
 }
 ```
 
-Reglas:
-
-- Los textos se recortan con `trim`; textos vacíos pasan a `null`, salvo `searchTerm`, que pasa a `""`.
-- `year` acepta `YYYY`, `YYYY-` (hasta el año máximo), `-YYYY` (desde 1900) o `YYYY-YYYY` y se limita al rango `CONFIG.YEAR_MIN` - `CONFIG.YEAR_MAX`. Si el rango abarca el periodo completo por defecto, se omite de la URL (`null`). La función pura de parseo `parseYearRangeRaw` reside de forma única en `contracts.ts` para evitar duplicidades o dependencias circulares.
-- `sort` solo acepta valores presentes en el selector de ordenación de `index.html`.
-- `mediaType` solo acepta `all`, `movies` o `series`.
-- `excludedGenres` y `excludedCountries` son arrays únicos, sin valores vacíos.
-- `myList` solo acepta `rated`, `watchlist`, `mixed` o `null`.
-- **Exclusividad de Personas y Notificación de Filtros Eliminados**: `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con `genre`, `country`, `selection`, `studio`, `excludedGenres`, `excludedCountries` y `year`. Al activar una persona (desde autocompletado, enlaces de tarjeta, vista rápida o insignia de rol), el sistema evalúa los filtros incompatibles activos y notifica al usuario mediante un mensaje informativo contextual (`notifyRemovedPersonIncompatibleFilters`, ej: `"Eliminados filtros de género, país y estudio."`).
-- **Exclusividad de Selección y Estudio**: `selection` y `studio` son mutuamente excluyentes entre sí (ambos representan entidades VIP de grupo y ocupan la cabecera destacada de catálogo). Al seleccionar una saga/colección se limpia el estudio activo, y al seleccionar un estudio se limpia la selección activa.
-- **Banderas de País Interactivas**: Todas las banderas de país (en tarjetas, tarjetas VIP y modal) se generan como enlaces interactivos (`<a>` con `[data-country-name]`) que emiten `filter:apply` con `{ type: "country", value: countryName }`, permitiendo filtrado instantáneo por país.
-- **Línea Informativa del Header (*Status Bar*)**: Sigue estrictamente la jerarquía canónica de las URLs:
-  $$\text{Total títulos} \to \text{Persona VIP} \to \text{Género} \to \text{País} \to \text{Selección/Estudio} \to \text{Búsqueda} \to \text{Mi Lista} \to \text{Año} \to \text{Orden} \to \text{Tipo}$$
-- **Hero Introductorio de Portada (`#landing-hero`)**:
-  - Visibilidad condicional (`updateLandingHeroVisibility` en `src/js/ui.ts`): Solo se muestra en la portada inicial (`currentPage === 1`), sin búsqueda activa (`!searchTerm`) y sin filtros de catálogo aplicados (`!hasActiveMeaningfulFilters()` y `mediaType === 'all'`).
-  - Es agnóstico a la ordenación del catálogo: una preferencia de ordenación (`sort` o `preferred_sort` en `localStorage`) **nunca** oculta el hero.
-  - Contrato de Scroll (`scrollWatcher.ts`): Al explorar la cuadrícula hacia abajo (`scrollY > 45px`), el componente recibe la clase `CSS_CLASSES.HERO_SCROLLED_AWAY` (`is-scrolled-away`), transicionando suavemente por GPU (`opacity: 0; transform: translateY(-10px); pointer-events: none;`) sin colapso brusco de alturas para evitar saltos de maquetación (CLS). Al regresar a la parte superior (`scrollY < 15px`), vuelve a emerger automáticamente.
-- **Exclusividad Estricta de Géneros y Países con sus Exclusiones**:
-  - `genre` y `excludedGenres` son **mutuamente excluyentes** y NUNCA pueden coexistir interactuando con la UI ni en las URLs (no debe poder elegirse `/drama/no-animacion/`). Al activar un género positivo se eliminan todas las exclusiones de género, y al activar una exclusión de género se anula cualquier género positivo activo.
-  - `country` y `excludedCountries` son **mutuamente excluyentes** y NUNCA pueden coexistir interactuando con la UI ni en las URLs (no debe poder elegirse `/uk/no-espana/`). Al activar un país positivo se eliminan todas las exclusiones de país, y al activar una exclusión de país se anula cualquier país positivo activo.
+### Reglas Invariantes
+1. **Desacoplamiento de Conteo (Pintar Primero → Contar Después):**
+   La carga inicial de catálogo se ejecuta con `get_count = false`. La API entrega inmediatamente las películas de la primera página con `total = -1`. La interfaz retira `.is-fetching` y `aria-busy` devolviendo el control al usuario de inmediato, mientras una segunda solicitud no bloqueante calcula y actualiza el total atómicamente (`applyResolvedTotal`).
+2. **Fast-Path de Portada Limpia (~1.5 ms):**
+   Cuando el catálogo se consulta sin filtros ni búsquedas en orden de relevancia, la función SQL ejecuta un atajo mediante *Index-Only Scan*, devolviendo el total global (`SELECT count(*) FROM public.movies`) en ~2 ms sin escanear las 14.500 filas.
+3. **Carga Diferida del SDK de Supabase (Lazy Auth):**
+   Visitantes anónimos interactúan con el catálogo mediante el endpoint HTTP nativo `/api/rpc/search_movies_offset`. El SDK pesado de Supabase (`@supabase/supabase-js`) no se descarga ni inicializa hasta que el usuario pulsa *"Entrar"* o interactúa con acciones autenticadas.
 
 ---
 
-## 2.1. Contrato Canónico de URLs (*URL Contract Specification*)
+## 6. Contrato de Datos de Usuario y Sincronización Local-First (SWR)
 
-El sistema de enrutamiento y serialización de filtros (blindado de forma automatizada en [`tests/url-contract.test.mjs`](../tests/url-contract.test.mjs)) sigue una estricta separación entre segmentos de ruta semánticos (*pathname*) y parámetros de consulta técnicos (*query string*).
+Los datos de seguimiento y notas personales del usuario se rigen por la arquitectura *Local-First*:
 
-### A. Segmentos de Ruta (*Pathname*) — Jerarquía Posicional y Lectura Agnóstica
-
-1. **Jerarquía Canónica de Escritura (`buildPrettyPath`)**:
-   La generación de URLs siempre escribe los segmentos en este orden determinista:
-   $$\text{URL} = \text{/}\{\text{género}\}\text{/}\{\text{país}\}\text{/}\{\text{estudio-o-selección}\}\text{/}\{\text{no-género}\}\text{/}\{\text{no-país}\}\text{/}$$
-2. **Lectura Agnóstica al Orden (`parsePrettyPath`)**:
-   Al leer una URL entrante, la función no asume posiciones fijas. Clasifica cada segmento analizando a qué diccionario cerrado pertenece. De este modo, `/eeuu/drama/` y `/drama/eeuu/` son semánticamente equivalentes y producen el mismo estado de filtros.
-3. **Vocabularios Cerrados vs. Texto Libre**:
-   - **Persona**: `/director/{slug}/` o `/actor/{slug}/`. Prioridad absoluta. Texto libre (sin lista blanca), se envía tal cual al backend tras decodificar.
-   - **Género**: 1 segmento de una lista cerrada de **21 géneros canónicos** (`GENRE_SLUG_MAP`).
-   - **País**: 1 segmento de lista cerrada (`COUNTRY_SLUG_MAP`), que incluye ~120 países y 2 grupos regionales agregados (`/latam/`, `/nordic/`).
-   - **Estudio o Selección**: 1 segmento. Mutuamente excluyentes entre sí (`STUDIO_SLUGS`: 15 estudios mnemónicos; `SELECTION_SLUGS`: 10 selecciones).
-   - **Exclusiones**: Prefijo `no-` antepuesto al slug de género o país (`/no-animacion/`, `/no-eeuu/`).
-
-### B. Parámetros de Query String y Alias Soportados
-
-| Parámetro Canónico | Alias Aceptados | Formato / Valores Permitidos | Comportamiento |
-| :--- | :--- | :--- | :--- |
-| `year` | — | `"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"` | Recortado a límites `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]`. |
-| `sort` | `orden` | Slugs amigables (`recientes`, `antiguas`, `nota-fa`, `nota-imdb`, `votos-fa`, `votos-imdb`) o valores crudos (`year,desc`, `fa_rating,desc`...) | Si el valor es desconocido, cae a `DEFAULTS.SORT`. |
-| `search` | `buscar`, `q` | Texto libre | Se normaliza con `.trim()`. |
-| `type` | — | `all`, `movies`, `series` | Si es ajeno a este conjunto, cae a `DEFAULTS.MEDIA_TYPE`. |
-| `p` | `page` | Entero finito $\ge 1$ | Valores $\le 0$ o no numéricos caen a página `1`. |
-| `exg` | — | Slugs de géneros separados por comas | Parseado a `excludedGenres: string[]`. |
-| `exc` | — | Slugs de países separados por comas | Parseado a `excludedCountries: string[]`. |
-| `list` | — | `rated`, `watchlist`, `mixed` (o `true` $\to$ `mixed`) | Normalizado mediante `normalizeMyList`. |
-
-### C. Contrato de Personas y Compensación Backend (Lossy Slugs)
-
-`slugToPersonQuery` convierte todos los guiones en espacios (`"daniel-day-lewis"` $\to$ `"daniel day lewis"`). Esta transformación delega contractualmente en el backend de PostgreSQL:
-1. **Reconstrucción de slug**: Reconvierte espacios a guiones contra el índice `slug` (`directors.slug`, `actors.slug`).
-2. **Fallback Alfanumérico Estricto (Fases 3.6 y 3.7 de `search_movies_offset`)**:
-   Empareja `regexp_replace(name_norm, '[^a-z0-9]', '', 'g')`, de modo que `"danieldaylewis"` casa con `"Daniel Day-Lewis"` sin importar discrepancias de guiones en el cliente.
-3. **Expansión de colectivos/dúos**: Expansión vía `directors.components` (ej. Hermanos Russo $\leftrightarrow$ Joe y Anthony Russo).
-
-### D. Tabla de URLs Prohibidas, Rechazadas o Normalizadas
-
-Esta matriz está verificada por pruebas automatizadas de regresión en CI:
-
-| URL o Entrada | Causa de Rechazo / Análisis | Comportamiento del Contrato |
-| :--- | :--- | :--- |
-| `/ciencia-ficcion/` | No es un slug de `GENRE_SLUG_MAP` (el canónico oficial es `sci-fi`). | `slugToGenre` devuelve `null`; el segmento se ignora en silencio. |
-| `/w/` (letra única) | Código legado de 1 letra. `STUDIO_SLUGS` exige pertenencia a los 15 mnemónicos oficiales. | Se descarta; `studio: null`. |
-| `?sort=nota-negativa` | Valor inventado no presente en `SORT_SLUG_MAP` ni `SORT_VALUES`. | `normalizeSort` cae a `DEFAULTS.SORT` (`"relevance,desc"`). |
-| `?type=documentales` | No contemplado en `MEDIA_TYPES` (`all`, `movies`, `series`). | `normalizeMediaType` cae a `DEFAULTS.MEDIA_TYPE` (`"all"`). |
-| `?p=-3` o `?p=abc` | No cumple la exigencia de entero finito > 0. | `normalizePageNumber` cae a página `1`. |
-| `?year=3000` / `?year=1800` | Años fuera del intervalo real histórico y de producción. | Recortado con `Math.min`/`Math.max` a `CONFIG.YEAR_MIN` (1900) y `YEAR_MAX`. |
-| `/drama/no-drama/` | Coexistencia de género positivo con su propia exclusión. | La regla de exclusividad anula el positivo: queda `excludedGenres: ["Drama"]` y `genre: null`. |
-| `?list=true` | Booleano legado, no es valor de `MY_LIST_MODES`. | Se traduce especialmente a `"mixed"` antes de validar. |
-| `/Drama/`, `/EEUU/`, `/ drama /` | Mayúsculas, espacios accidentales o falta de trim. | `parsePrettyPath` aplica `.trim().toLowerCase()` a cada segmento; se resuelve idéntico a la versión canónica. |
-| Segmento desconocido (`/estrenos/`, typos) | No pertenece a ningún diccionario ni tiene prefijo reconocido. | Se ignora silenciosamente; no se interpreta como comodín. |
+### Reglas Invariantes
+1. **Latencia Cero en Escritura:**
+   Toda acción (valorar con estrellas, añadir a Watchlist) muta sincrónicamente el estado en memoria (`state.userMovieData`) y la base de datos local IndexedDB (`localStore.ts`).
+2. **Sincronización en Segundo Plano:**
+   Las mutaciones encolan tareas de sincronización asíncrona hacia Supabase (`syncManager.ts`). Si el usuario carece de conexión, las operaciones persisten con estado `dirty` hasta su reanudación.
+3. **Reconciliación Suave en Caliente (SWR Revalidation):**
+   En "Mi Lista", la interfaz se pinta inmediatamente desde IndexedDB. Si la revalidación en segundo plano detecta diferencias remotas reales (películas añadidas/eliminadas desde otro dispositivo), actualiza la caché y emite `userDataUpdated` / `myListReconciled` para refrescar suavemente el grid sin bloquear la navegación.
+4. **Exclusividad Mutua entre Nota y Watchlist:**
+   Puntuar una película la retira automáticamente de la Watchlist (`resolveWatchlistMutationOnRate`). Añadir una película a la Watchlist elimina su puntuación previa (`resolveRatingMutationOnWatchlist`).
+5. **Retención Local Segura (MAX_CACHED_MOVIES = 3500 y Escudo de Inmunidad):**
+   El almacén `cached_movies` en IndexedDB purga títulos mediante política LRU al superar las 3.500 fichas. Las obras pertenecientes a la colección activa del usuario (`user_entries` con valoración o en watchlist) cuentan con un *Escudo de Inmunidad* permanente (*Pinning Shield*), impidiendo su desalojo de la memoria local y garantizando resolución a 0 ms y modo offline para usuarios cinéfilos con miles de títulos.
+6. **Importación y Exportación Bidireccional de Colección (CSV):**
+   El modal de Perfil permite tanto la exportación como la importación atómica en lote de la colección del usuario (`movie_id, rating, on_watchlist`). La ingesta valida los esquemas mediante `parseCsvRows`, persiste atómicamente en IndexedDB en lote (`saveLocalEntriesBatch`) con estado `dirty`, actualiza sincrónicamente el estado reactivo (`state.setUserMovieData`) y programa la sincronización asíncrona hacia Supabase (`scheduleSync()`), garantizando la regla de exclusividad mutua entre valoración y watchlist.
 
 ---
 
-## 2.2. Contrato de Producto Editorial: Daily Showcase y Barajado Determinista (*Editorial Showcase Contract Specification*)
+## 7. Contrato de Entidades VIP (Personas, Colecciones, Estudios)
 
-Este apartado formaliza la lógica de negocio y producto que gobierna el orden de presentación predeterminado del catálogo en **VIDEOCLUB.DIGITAL**. Aunque por estrictos motivos de rendimiento y eficiencia de costes (*zero-egress, stateless pagination*) su ejecución reside en la función PL/pgSQL `public.search_movies_offset` ([`database/functions/search_movies_offset.sql`](../database/functions/search_movies_offset.sql)), sus especificaciones son un **contrato formal de producto inmutable** para cualquier capa cliente, middleware o rastreador.
+### Reglas Invariantes
+1. **Inyección en Posición 0:**
+   Al filtrar por una entidad VIP, la ficha biográfica o corporativa se inserta en el índice `0` de la primera página, empujando la primera película a la posición `1`.
+2. **Cálculo de Paginación y Offset Seguro:**
+   La condición VIP de un autor se resuelve con certeza antes de solicitar el catálogo. Si la persona no es VIP, el tamaño de página y offset operan de forma estándar, impidiendo saltos o duplicaciones de películas entre la página 1 y 2.
+3. **Soporte de Doble Rol (Director / Actor):**
+   Si una persona cuenta con obras en ambos roles (`people.type` `'AD'` o `'DA'`), se presenta la insignia interactiva `(D)` o `(A)`. La alternancia permuta la filmografía en el cliente mediante CSS (`display: contents` / `display: none`) con URL canónica única y 0 ms de latencia.
+4. **Paridad Cromática y Coherencia Corporativa (*Quiet Luxury*):**
+   Las fichas VIP (`.person-card`, `.collection-card`, `.studio-card`) comparten exactamente el mismo fondo de superficie que las fichas de película (`background-color: var(--color-surface-1)`) y perfilan su contorno con el acento corporativo de la marca (`var(--color-accent)`), eliminando oros discordantes.
 
-### A. Racional de Producto: Serendipia Controlada vs. Canon Cinematográfico
+---
 
-Un videoclub digital se enfrenta al dilema entre la **estabilidad del canon** (las mejores obras deben ser visibles) y la **frescura del descubrimiento** (un catálogo estático genera fatiga en el usuario recurrente).
+## 8. Contrato de Paridad Perimetral Edge SSR ↔ SPA
 
-* **Objetivo de Negocio**: Ofrecer un escaparate diario rotativo (*Daily Showcase*) que cambie cada medianoche sin degradar el nivel cualitativo de la portada ni empujar obras mediocres a las primeras posiciones.
-* **Mecanismo Híbrido**: Se aplica un barajado pseudoaleatorio determinista exclusivamente sobre una **ventana acotada de excelencia** (*Top Tier*), manteniendo el resto del catálogo ordenado con rigor absoluto por relevancia natural.
+El Cloudflare Worker (`cloudflare/worker.js`) y el cliente SPA comparten paridad visual y de marcado 1:1.
 
-### B. Justificación Arquitectónica: ¿Por qué reside en PL/pgSQL?
+### Reglas Invariantes
+1. **Coherencia Cromática en Arranque:**
+   El HTML generado en el Edge evalúa la preferencia de color (`theme=dark/light` en cookie o `prefers-color-scheme`) e inyecta la clase `dark-mode` en `<html>` antes de entregar el documento, erradicando destellos de modo claro/oscuro (Anti-FOUC).
+2. **Marcado Estructurado JSON-LD Aislado:**
+   Durante la navegación SPA, no se regeneran esquemas JSON-LD masivos en cada filtro para no saturar el hilo principal. La inyección de metadatos estructurados en cliente se programa en periodos de inactividad (`requestIdleCallback`).
+3. **Proxy Perimetral Inmutable de Imágenes:**
+   Las rutas `/posters/*` y `/vips/*` se sirven desde el Worker con cabeceras `Cache-Control: public, max-age=31536000, immutable`, descargando el egress de Supabase Storage.
 
-1. **Eficiencia Operativa y Ahorro de Egress**: Barajar una ventana de hasta 378 películas en la capa de aplicación (Edge Worker o cliente SPA) obligaría a transferir por red los metadatos completos de cientos de títulos solo para que el servidor descarte la mayoría y entregue una página de 42 o 50 ítems. En PostgreSQL, la proyección y paginación (`LIMIT` / `OFFSET`) ocurren en memoria local del motor C con coste de transferencia mínimo.
-2. **Paginación Determinista sin Estado (*Stateless Determinism*)**: El uso de una función hash pura dependiente de la fecha permite que la navegación entre páginas consecutivas (`página 1: 0..42`, `página 2: 42..84`, etc.) conserve un orden consistente sin requerir sesiones en servidor, almacenamiento en Redis ni cookies de usuario.
-3. **Paridad Absoluta SPA / Edge SSR**: Al ser una función SQL pura consumida tanto por el cliente de Supabase en la SPA como por el Cloudflare Worker para bots y pre-renderizado, se garantiza que humanos y motores de búsqueda observen exactamente el mismo escaparate en cualquier instante del día.
+---
 
-### C. Especificación Matemática del Algoritmo
+## 9. Contrato de Vista Rápida (Modal) y Ficha Técnica
 
-#### 1. Semilla Temporal de Referencia (*Seed*)
-La rotación diaria está anclada a la fecha civil oficial de España:
-$$\text{seed} = (\text{CURRENT\_TIMESTAMP AT TIME ZONE 'Europe/Madrid'})::\text{date}::\text{text}$$
-* **Zona Horaria Canónica**: `Europe/Madrid` (CET / CEST).
-* **Cambio de Escaparate**: Ocurre exactamente a las `00:00:00` hora peninsular española, garantizando sincronía global para todos los usuarios independientemente de su huso horario local.
+La modal de detalle cinemático (`src/js/components/modal/`) implementa una experiencia inmersiva adaptada a tres modos de pantalla:
 
-#### 2. Función de Dispersión Pseudoaleatoria (*Hashing*)
-Para cada película $m$ dentro de la ventana elegible, su posición relativa en el escaparate del día se computa mediante:
-$$\text{rank\_hash}(m) = \operatorname{hashtext}(m.\text{id}::\text{text} \mathbin{\Vert} \text{seed})$$
-Esta función produce una distribución uniforme de enteros de 32 bits, determinista y libre de sesgos de inserción.
-
-#### 3. Cláusula de Ordenación de Dos Niveles (*Two-Tier SQL Order*)
-La consulta aplica un orden jerárquico que aísla la ventana de serendipia del catálogo general:
-
-```sql
-ORDER BY 
-    CASE WHEN m.natural_rank <= (v_threshold_expr) THEN 0 ELSE 1 END ASC,
-    CASE WHEN m.natural_rank <= (v_threshold_expr) 
-         THEN hashtext(m.id::text || (CURRENT_TIMESTAMP AT TIME ZONE 'Europe/Madrid')::date::text) 
-    END ASC,
-    m.natural_rank ASC
+```
+- Escritorio (> 768px): Modal flotante centrada con columna multimedia fija y ficha técnica en scroll nativo.
+- Móvil Vertical (<= 768px): Bottom Sheet a pantalla completa con gesto táctil de cierre (swipe down).
+- Móvil Apaisado (Landscape): Disposición horizontal con columnas desacopladas y scroll independiente.
 ```
 
-* **Tier 0 (Dentro de la ventana)**: Títulos con `natural_rank <= threshold`. Se ordenan según `rank_hash(m)`.
-* **Tier 1 (Fuera de la ventana)**: Títulos restantes. Se ordenan estrictamente por mérito natural (`natural_rank ASC`), asegurando que la calidad continúe decreciendo de forma predecible en las páginas profundas.
+### Reglas Invariantes
+1. **Tipografía del Año sin Punto:**
+   El año cinematográfico se formatea siempre como bloque numérico limpio de cuatro dígitos (`1994`) sin puntos de millar, conforme al estándar de catálogos cinematográficos y directrices ortográficas de la RAE.
+2. **Espaciado No Colapsable en Miniseries `(M)`:**
+   Cuando una obra es miniserie, el indicador `(M)` (ej. `2019 (M)`) mantiene un espacio garantizado respecto al año. Para evitar el colapso de espacios en Flexbox (`[data-template="year"]`), el renderizador inyecta obligatoriamente un espacio no divisible (`\u00A0(M)` en DOM, `&nbsp;(M)` en SSR) y la regla CSS `white-space: pre`.
+3. **Rótulos de Metadatos en Versalitas:**
+   Los encabezados de datos conservan tipografía editorial en versalitas (`font-variant: small-caps; letter-spacing: 0.12em;`) y punto ortográfico (`Género.`, `Reparto.`, `Sinopsis.`).
+4. **Rendimiento de Scroll GPU y Cero Enmascaramiento:**
+   En dispositivos móviles se desactiva `backdrop-filter` para evitar sobrecarga en GPU durante gestos táctiles, empleando fondos sólidos de alta densidad (`rgba(0, 0, 0, 0.68)`).
 
 ---
 
-### D. Matriz de Comportamiento y Reglas de Negocio
-
-El barajado editorial se activa **exclusivamente** en la **Portada General Limpia** cuando el campo de ordenación es la relevancia por defecto (`sort_field = 'relevance'`, visualizado como **"Orden"** en la UI).
-
-| Contexto de Navegación | Condición de Activación | Tamaño de Ventana (*Threshold*) | Comportamiento Editorial |
-| :--- | :--- | :--- | :--- |
-| **Portada General Limpia** | Sin búsqueda de texto ni ningún filtro activo (`v_has_filters = false`). | **378 títulos** | Baraja las 378 mejores películas del catálogo general. El número 378 es el mínimo común múltiplo ($\operatorname{mcm}(42, 54)$) que garantiza cuadrículas completas y simétricas tanto en vistas de 6 como de 7 columnas (9 páginas enteras de serendipia). En peticiones iniciales (`get_count = false`), vuela en $\sim 1.5\text{ ms}$ vía Fast-Path. |
-| **Filtros Temáticos (Género, País, Año, Estudio, Selección, Tipo)** | Cualquier filtro activo (`genre_name`, `country_name`, `p_year_*`, `p_selection_code`, etc.). | **Desactivado** ($threshold = 0$) | **Invariante canónica**: Al filtrar por dimensiones del catálogo, prima la autoridad y jerarquía editorial estricta (`relevance ASC, id ASC`). Al combinar `get_count = true` en una única llamada unificada y el orden canónico por índice, se eliminan peticiones RPC duplicadas en segundo plano con tiempos de respuesta en BD de $\sim 3\text{ ms}$. |
-| **Búsqueda de Texto Libre** | `search_term` presente y no vacío. | **Desactivado** ($threshold = 0$) | **Invariante de búsqueda**: Una búsqueda por texto (`q=...`) jamás se baraja. La relevancia léxica y trigramas de PostgreSQL tienen prioridad absoluta para no confundir al usuario. |
-| **Filmografías de Personas** | `director_name` o `actor_name` presente. | **Desactivado** ($threshold = 0$) | **Invariante autoral**: La filmografía de un autor o intérprete jamás se baraja. Debe preservar su orden canónico de relevancia o cronología histórica. |
-| **Criterios Explícitos de Orden** | `sort_field` distinto de `'relevance'` (año, notas, votos). | **Desactivado** | Si el usuario solicita explícitamente ordenar por nota (Filmaffinity/IMDb), año o votos, se anula el Showcase y se aplica la ordenación solicitada con desempate determinista por `relevance ASC, id ASC`. |
-
----
-
-### E. Invariantes Contractuales para Testing e Integración
-
-Cualquier consumidor del backend (pruebas en `tests/`, Edge Worker o componentes cliente) puede asumir contractualmente las siguientes garantías:
-
-1. **Idempotencia Intra-Día**: Dos peticiones con idénticos parámetros ejecutadas en el mismo día natural (hora Madrid) garantizan exactamente los mismos resultados en el mismo orden:
-   $$\forall\ t_1, t_2 \in \text{mismo día Madrid} \implies \operatorname{RPC}(P, t_1) \equiv \operatorname{RPC}(P, t_2)$$
-2. **Cero Duplicados en Paginación**: Un ítem retornado en la página $N$ jamás aparecerá en la página $N+1$, incluso si coincide con el límite exacto del umbral de corte del Showcase.
-3. **Preservación del Desempate Determinista**: Si dos películas empatan en nota, año o relevancia, el desempate final siempre lo dicta `m.id ASC`, eliminando cualquier indeterminación aleatoria del motor relacional.
-4. **Fast-Path Quirúrgico de Portada Limpia**: Cuando `sort_field = 'relevance'` sin filtros ni búsquedas (`v_has_filters = false`), `get_count = false` y `offset + limit <= 378`, la RPC ejecuta un atajo optimizado (*Fast-Path*) que extrae exclusivamente el pool de 378 títulos mediante Index-Only Scan sobre `idx_movies_relevance_id`. El orden relativo, la función hash de fecha y el desempate por `natural_rank ASC` son estrictamente idénticos al camino general, respondiendo con `total: -1` y una latencia de base de datos de $\sim 1.5\text{ ms}$.
-
----
-
-## 3. Respuestas de API
-
-La respuesta estándar de películas (`ApiResponse`) es:
-
-```ts
-{
-  total: number,
-  items: MappedMovie[],
-  aborted?: true
-}
-```
-
-Reglas:
-
-- `total` debe ser un entero. `-1` significa "total desconocido".
-- `items` siempre es un array.
-- Cada película debe tener al menos `id` válido y `title` string antes de mapearse para UI mediante `shapeRawMovieRow` y `mapMoviePayload`.
-- Una petición cancelada devuelve `{ aborted: true, total: -1, items: [] }` y no debe mostrarse como error al usuario.
-
-## 4. Datos de Usuario
-
-`UserMovieEntry` tiene esta forma:
-
-```ts
-{
-  rating: number | null,
-  onWatchlist: boolean
-}
-```
-
-Reglas:
-
-- `rating` solo acepta enteros de `1` a `10`; cualquier otro valor pasa a `null`.
-- `onWatchlist` siempre es booleano.
-- Las mutaciones optimistas deben pasar por `updateUserDataForMovie`.
-- Las escrituras remotas deben pasar por `setUserMovieDataAPI`.
-- Al puntuar una película, la mutación elimina la película de la Watchlist (`resolveWatchlistMutationOnRate`). De forma recíproca, al añadir una película a la Watchlist, se borra la puntuación existente (`resolveRatingMutationOnWatchlist`).
-- **Autenticación Obligatoria para Interacción**: Las estrellas de puntuación (`rating`), el botón de nota en el muro (`wall-rating`) y el botón de añadir/quitar de la lista (`watchlist`) requieren sesión activa del usuario (`body.user-logged-in`). Si un usuario no autenticado interactúa con estos controles por ratón o teclado, el sistema intercepta la acción de inmediato (sin voltear la tarjeta ni mutar el almacenamiento local) y presenta una notificación toast informativa (`"Identifícate para votar"` en puntuación o `"Identifícate para añadir"` en lista). Asimismo, los efectos de previsualización dorada y animaciones hover/active de estrellas se deshabilitan fuera de sesión.
-
-## 5. Entidades de Personas y Doble Rol (VIPs)
-
-`PersonDetails` y `VipData` (definidos en `src/js/types.ts`):
-
-```ts
-interface PersonDetails {
-  name: string;
-  slug?: string | null;
-  birthday: string | null;
-  deathday: string | null;
-  place_of_birth: string | null;
-  country_name: string | null;
-  country_flag: string | null;
-  titulo_bio: string | null;
-  biography: string | null;
-  components?: string | null;
-  role: 'director' | 'actor';
-  otherRoleCount?: number;
-}
-```
-
-Reglas:
-- Si una persona tiene títulos computados tanto como actor como director, `otherRoleCount` refleja el total de obras en el rol alternativo.
-- Si `otherRoleCount > 0`, la UI renderiza la insignia interactiva `(D)` (en fichas de actor) o `(A)` (en fichas de director), permitiendo alternar la filmografía instantáneamente.
-- Para directores colectivos o dúos (ej. Hermanos Russo), `components` almacena los nombres individuales separados por coma, activando el autocompletado y búsqueda bidireccional.
-- **Formato Canónico de Edad (`computePersonAgeInfo`)**:
-  - Personas vivas: `(edad)` (ej. `(54)`).
-  - Personas fallecidas: `✝ (edad)` (ej. `✝ (74)`), con fechas cronológicas `YYYY-YYYY` (o `YYYY-` si vive).
-- **Normalización y Formato Canónico de Slugs VIP**:
-  Los slugs del manifiesto perimetral (`cloudflare/seo/vip-manifest.js`) derivan de `people.slug` (`vip = 1`) y deben cumplir estrictamente el formato URL-safe canónico: minúsculas alfanuméricas ASCII separadas exclusivamente por guiones simples (`/^[a-z0-9]+(?:-[a-z0-9]+)*$/`), sin espacios ni guiones terminales. El generador `generate-vip-manifest.mjs` aplica `.trim().toLowerCase()` y valida el patrón, descartando anomalías y garantizando paridad determinista con `rawSlug.toLowerCase()` en la evaluación $O(1)$ de `VIP_SLUGS.has(slug)` del Cloudflare Worker.
-- **Principio Arquitectónico: VIP = Fuente Editorial (SSOT en Supabase)**:
-  `VIP_SLUGS` actúa exclusivamente como filtro de enrutamiento perimetral para decidir en tiempo constante $O(1)$ si una ruta raíz debe intentar resolverse como ficha SEO VIP. Toda la información editorial (nombre, biografía, foto, fechas cronológicas, rol cruzado y filmografía) reside y procede **siempre de Supabase** (`public.people`). El manifiesto no sustituye a la base de datos ni almacena fichas, preservando la ligereza del bundle perimetral y la frescura editorial de los contenidos.
-- **Principio Arquitectónico: Artefacto de Enrutamiento Versionado en Git (*Checked-in Routing Manifest*)**:
-  Aunque `cloudflare/seo/vip-manifest.js` es un archivo derivado generado mediante el script [`scripts/generate-vip-manifest.mjs`](../scripts/generate-vip-manifest.mjs), **se versiona deliberadamente en el repositorio de Git** en lugar de ser ignorado en `.gitignore`. Esta decisión de ingeniería garantiza tres propiedades críticas:
-  1. *Compilaciones herméticas y pruebas offline*: Permite que la suite de pruebas del Worker ([`tests/worker.test.mjs`](../tests/worker.test.mjs)), el chequeo de tipos (`tsc --noEmit`) y los entornos de CI se ejecuten de forma determinista y desconectada de la red, sin requerir conexión a internet ni variables de entorno secretas de Supabase en cada clon del repositorio.
-  2. *Resiliencia perimetral durante el despliegue*: Elimina el riesgo de que una caída transitoria de red hacia Supabase durante `wrangler deploy` genere un manifiesto vacío o aborte la publicación del Cloudflare Worker en producción.
-  3. *Auditoría de superficie de enrutamiento*: Cada adición, modificación o baja de una personalidad VIP genera un `diff` explícito en Git (`+ "denis-villeneuve"`), posibilitando la revisión por pares (*Code Review*) del impacto SEO antes de pasar a producción.
-  *Garantía de frescura*: Para evitar artefactos obsoletos (*stale artifacts*), el ciclo de vida del proyecto en `package.json` enlaza automáticamente el paso `prepare:worker` dentro de `npm run build`, `npm run build:worker` y `npm run deploy:worker`.
-- **SEO VIP Dual (Actor y Director) — URL Inmutable e Intercambio D/A**:
-  Para personas VIP que son simultáneamente actor y director (`people.type` `'DA'` o `'AD'`), existe **una única URL SEO canónica** (`https://videoclub.digital/:slug/`). La alternancia entre la filmografía como Director (**D**) y como Actor (**A**) es una interacción de interfaz en cliente, controlada mediante la insignia circular interactiva `.person-role-toggle-btn` (idéntica a las fichas de la SPA: muestra una única letra 'D' o 'A' a la vez sin coincidir ambos círculos en pantalla, conmutando al pulsar). Dicha alternancia conmuta la visibilidad en el grid (`display: contents` / `display: none`) sin modificar la URL, sin parámetros query (`?rol=...`), sin redirecciones y sin alterar el historial (`pushState`/`replaceState`). Ambas filmografías se resuelven en paralelo (`Promise.all`) durante el SSR en el Edge para garantizar 0 ms de latencia al alternar. El sitemap y las etiquetas canónicas registran exclusivamente la URL raíz única del VIP.
-- **Trasera Ampliada de Tarjetas (SPA y Páginas SEO Edge SSR)**:
-  Al pulsar el botón circular `+` en reparto (`.actors-expand-btn`) o en sinopsis (`.expand-content-btn`), la trasera de la tarjeta pasa a estado ampliado (`.is-expanded`, y `.show-actors` si procede). El botón inferior transmuta dinámicamente en un círculo con el glifo `−` (`expandBtn.textContent = "−"`). El usuario puede replegar a la trasera normal tanto haciendo clic en el círculo `−` como pulsando en cualquier área neutra fuera de enlaces interactivos (`a[href]`, botones o selección de texto). Al replegarse, se restablece el desplazamiento (`scrollTop = 0`) y el glifo `+` sin desencadenar el volteo hacia la cara frontal.
-- **Normalización Canónica y Purga de Query Strings en Rutas SEO**:
-  Si el usuario o un rastreador accede a cualquier ruta SEO perimetral (`/titulo/:slug/`, `/genero/:slug/`, `/pais/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/` o `/:vip-slug/`) acompañada de una query string (ej. `?sort=...`, `?rol=...`, `?utm_source=...`), el Cloudflare Worker ejecuta de inmediato una redirección 301 eliminando por completo los parámetros de búsqueda y conduciendo a la URL SEO canónica limpia con barra final. Se previene así la degradación accidental a la landpage SPA (`/?_p=...`) producida por fallbacks estáticos.
-
-## 6. Errores
-
-Los errores de aplicación usan `AppError`:
-
-```ts
-{
-  name: "AppError",
-  code: ERROR_CODES.*,
-  message: string,
-  cause?: unknown
-}
-```
-
-Códigos permitidos (`ERROR_CODES` en `contracts.ts`):
-
-- `ABORTED`: petición cancelada; no se muestra toast.
-- `AUTH_REQUIRED`: el usuario debe iniciar sesión.
-- `CONFIGURATION`: faltan credenciales o configuración obligatoria.
-- `DATABASE`: fallo de Supabase/PostgreSQL.
-- `NETWORK`: fallo de conexión.
-- `VALIDATION`: datos inválidos antes de llamar a la API.
-- `UNKNOWN`: error no clasificado.
-
-## 7. Regla de Arquitectura
-
-Las fronteras obligatorias son:
-
-1. URL hacia estado: `syncStateWithUrlParams`.
-2. UI hacia estado: setters de `state.ts`.
-3. Estado hacia Supabase: `fetchMovies` y `setUserMovieDataAPI`.
-4. Supabase hacia UI: `normalizeMoviesResponse`, `shapeRawMovieRow` y `mapMoviePayload`.
-5. Errores técnicos hacia usuario: `getFriendlyErrorMessage`.
-
-No se deben consumir datos externos directamente desde componentes sin pasar por estas fronteras.
-
----
-
-## 8. Coherencia de Modo Claro / Oscuro (SPA ↔ SEO Edge)
-
-Para garantizar cero parpadeos (*zero-flicker*) e idéntica experiencia visual al navegar entre la SPA y las páginas servidas desde el Edge de Cloudflare:
-
-1. **Persistencia Dual Sincronizada**:
-   - `localStorage.setItem("theme", "dark" | "light")`.
-   - `document.cookie = "theme=" + ("dark" | "light") + "; path=/; max-age=31536000; SameSite=Lax"`.
-2. **Script Anti-Flicker Síncrono en `<head>` (0 ms)**:
-   Presente en `index.html` y en todos los renderizadores perimetrales (`render-taxonomy.js`, `render-person.js`, `render-movie.js`). Evalúa en orden:
-   $$\text{Preferencia guardada (localStorage o Cookie)} \implies \text{Preferencia del SO (prefers-color-scheme)}$$
-   Garantiza que la clase `dark-mode` o `light-mode` esté aplicada en `<html>` antes del primer fotograma del navegador.
-3. **Control Interactivo en Cabeceras SEO**:
-   Todas las vistas estáticas del Edge incluyen el botón `#theme-toggle` con animación de iconos Sol/Luna, permitiendo alternar el tema sin necesidad de regresar a la SPA.
-
----
-
-## 9. Especificación de Fichas y Tarjetas en Edge SSR y SPA
-
-1. **Reverso de Tarjeta Canónico (Paridad Total SPA / Edge SSR)**:
-   - Se elimina por completo el botón `"Ficha completa →"`.
-   - **Jerarquía Secuencial del Reverso**: Siguiendo el criterio unificado de la modal, el orden de elementos es:
-     $$\text{1. Meta Header (duración, Wikipedia, JustWatch)} \to \text{2. Puntuaciones (FA / IMDb)} \to \text{3. Título Original} \to \text{4. Géneros y Reparto} \to \text{5. Sinopsis}$$
-   - **Presencia Incondicional del Título Original**: El título original se renderiza **siempre** en la cara trasera (tanto en la SPA como en Edge SSR), incluso si coincide exactamente con el título en castellano/traducido, garantizando que el usuario disponga en todo momento de la referencia original y el enlace interactivo hacia la ficha completa.
-   - El acceso a la ficha completa se realiza pulsando sobre el título original (`.back-original-title-link`), ubicado inmediatamente debajo de las puntuaciones con `pointer-events: auto !important`, `z-index: 20` y cursor interactivo.
-   - **Alineación Milimétrica de Iconos `+`**:
-     - El contenedor `.flip-card-back` posee un padding perimetral de `var(--space-xs, 8px)`.
-     - El botón de reparto `.actors-expand-btn` está fijado a `bottom: 0; right: 0;` dentro de su contenedor (`padding-right: 20px`), situando su borde derecho a exactamente 8px del filo de la tarjeta.
-     - El botón flotante de sinopsis `.expand-content-btn` está anclado a `bottom: 8px; right: var(--space-xs, 8px);`.
-     - Ambos botones circulares de $18 \times 18\text{ px}$ comparten idéntica coordenada vertical milimétrica a 8px del margen derecho.
-   - **Ritmo Vertical e Interlineado Armónico (Separación de Líneas)**:
-     - Para prevenir aglomeración visual (*amontonamiento*) y asegurar una lectura limpia en la cara trasera:
-       - `.back-meta-header`: `margin-bottom: 6px` para separar la duración y enlaces externos de los ratings.
-       - `.flip-card-back .ratings-container`: `gap: 5px` entre barras de FA e IMDb, con `margin-bottom: 4px` para crear una separación neta respecto al título original.
-       - `.back-original-title-wrapper`: márgenes equilibrados `margin-top: 9px; margin-bottom: 7px;` (~13px de distancia efectiva respecto al icono y barra de IMDb) e interlineado de título `line-height: 1.25` (evitando colisión entre líneas).
-       - `.details-list`: `margin: 7px 0; padding-top: 7px; border-top: 1px solid var(--color-border);` con `gap: 6px` entre géneros y reparto, y `line-height: 1.35`.
-       - `.plot-summary-final`: `padding-top: 7px; border-top: 1px solid var(--color-border);` con `line-height: 1.38` y `opacity: 0.85`, proporcionando aire visual antes y después de cada línea divisoria y un interlineado descansado en la sinopsis.
-   - **Botón `−` de Cierre de Detalle en SEO Edge**:
-     - Al expandir reparto (`.show-actors`) o sinopsis (`.is-expanded`), el botón flotante inferior cambia su glifo a `−` y se eleva a `z-index: 60 !important`, superando tanto la capa de sinopsis (`z-index: 15`) como la de actores/géneros (`.actors-scrollable-content`, `z-index: 40`).
-     - El manejador perimetral evalúa si la tarjeta se encuentra en cualquiera de los dos estados expandidos para cerrarla limpiamente y restaurar el icono a `+`.
-     - El contenedor `.scrollable-content` se excluye del manejador global de volteo para evitar giros involuntarios durante la lectura o scroll de la sinopsis.
-2. **Normalización Case-Insensitive de URLs SEO**:
-   - Cualquier petición con mayúsculas (ej. `/titulo/Chernobyl-2019`, `/genero/Sci-Fi`, `/Christopher-Nolan`) se redirige mediante `301 Moved Permanently` a su equivalente en minúsculas con trailing slash (`/titulo/chernobyl-2019/`).
-3. **Formato de Series en SEO**:
-   - Los episodios se representan con la convención canónica `"x"` (ej. `"5 x"`) en lugar del texto `"ep"`.
-
----
-
-## 10. Desplegables del Sidebar y Alto Contraste
-
-En los 4 acordeones colapsables del menú lateral (Géneros, Países, Directores, Actores):
-
-1. **Ítems Seleccionados en Lista (`.filter-link.active`, `.bento-grid .filter-link.active`)**:
-   - **Modo Claro**: Fondo slate profundo `#1e293b`, borde sutil y texto `#ffffff !important` (`font-weight: 700`), con sombra de elevación `0 2px 6px rgba(0,0,0,0.25)`.
-   - **Modo Oscuro**: Fondo acentuado `#334155`, borde `#64748b` y texto `#ffffff !important` (`font-weight: 700`), preservando contraste WCAG AAA superior a 7:1 (evitando el uso de texto oscuro `var(--color-bg)`).
-   - En listas verticales (directores/actores), el indicador activo `▶` y el borde izquierdo se resaltan en `#38bdf8`.
-2. **Visibilidad Determinista**:
-   - Los directores y actores activos no se ocultan de sus listas al seleccionarse, sino que se marcan como activos con la clase `.active`, permitiendo al usuario ver el elemento seleccionado en el propio desplegable.
-3. **Autocompletado de Entrada**:
-   - Los resultados activos (`.sidebar-autocomplete-item.is-active`, `:hover`) usan fondos contrastados (`#1e293b` en claro, `#334155` en oscuro) y texto blanco con resaltado azul `#38bdf8` en coincidencias (`<strong>`).
-
----
-
-## 11. Contrato de la Vista Rápida (Modal): Modos Escritorio, Móvil Vertical y Móvil Apaisado
-
-1. **Estructura y Breakpoints Responsivos**:
-   - **Modo Escritorio (`≥ 769px`)**:
-     - Ventana flotante centrada (`width: 90%; max-width: 720px; max-height: 92dvh;`).
-     - Estructura de dos columnas al 50% con scroll vertical independiente (`overflow-y: auto`) y barras invisibles (`scrollbar-width: none`). En fichas de personas VIP, la partición se adapta a 45% (media) / 55% (detalles).
-     - Botones de navegación exteriores (`left: -32px; right: -32px;`).
-     - Contenedor elástico con supresión de scroll anidado (`overflow: hidden`).
-   - **Modo Móvil Vertical (`≤ 768px` y orientación *portrait*)**:
-     - Modal de panel inferior (*Bottom Sheet*, `width: 96%; height: 92dvh;`).
-     - Barra de arrastre superior visible (`&::before`).
-     - Apilamiento vertical de columnas (`flex-direction: column`).
-     - Arrastre vertical de cierre (*swipe-to-dismiss*) activo cuando `scrollTop <= 5px`.
-   - **Modo Móvil Apaisado (*Landscape* con altura `<= 600px` táctil o `<= 550px`)**:
-     - Breakpoint específico: `@media (orientation: landscape) and (max-height: 550px), (orientation: landscape) and (max-height: 600px) and (pointer: coarse)`.
-     - Modal centrado en el viewport (`top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(94vw, 780px); max-width: 780px; height: min(92dvh, 92svh);`). El ancho de `94vw` optimiza el aprovechamiento horizontal en pantalla reduciendo márgenes laterales excesivos; la altura con `svh` previene desbordamientos por la barra de direcciones en Chrome móvil.
-     - Supresión estricta de la barra de arrastre superior (`&::before { display: none; }`).
-     - Desacoplamiento del gesto de cierre vertical: el *swipe-to-dismiss* se inhabilita para garantizar el scroll vertical nativo en ambas columnas.
-     - Dos columnas independientes al 50% (`.quick-view-media` y `.quick-view-details`), cada una con altura completa y `overflow-y: auto`.
-     - Flechas de navegación adaptadas a los flancos (`left: -26px; right: -26px; top: 50%; transform: translateY(-50%);`).
-     - Fichas de personas VIP: el lugar de nacimiento (`.front-director-info`) se centra con `padding-inline: 0` para sincronizarse perfectamente con el nombre.
-
-2. **Contrato de Reducción Progresiva del Cartel (`.poster-compact`)**:
-   - **Estado Inicial**: El cartel arranca siempre en tamaño completo de columna (`width: 100%; max-width: 290px; margin-inline: auto; margin-bottom: var(--space-sm);`), destacando la portada cinematográfica o fotografía del cineasta bajo la misma regla unificada.
-   - **Activación por Desplazamiento**:
-     - Cuando el usuario se desplaza por la columna izquierda y alcanza el fondo (`scrollTop > 15px` y `scrollBottom <= 35px`), se inyecta la clase `.poster-compact` en `.quick-view-media`.
-     - El cartel reduce sus dimensiones a `clamp(175px, 44vh, 220px)` (tanto en películas como en directores/actores) mediante una transición desacelerada fluida de `0.45s` (`cubic-bezier(0.16, 1, 0.3, 1)`).
-     - El padding horizontal de la columna se optimiza a `var(--space-sm)` (8px) para eliminar holguras laterales innecesarias a la izquierda.
-     - Se garantiza la visualización simultánea del cartel con estrellas, watchlist, título traducido, estudio, año y bandera de país.
-   - **Persistencia**:
-     - El cartel permanece en tamaño reducido mientras el usuario lee o interactúa con los controles inferiores (votar con estrellas, añadir a watchlist o abrir enlaces).
-     - El desplazamiento o lectura en la columna derecha (`.quick-view-details`) es totalmente autónomo y no afecta al estado del cartel en la columna izquierda.
-   - **Restauración al Hacer Scroll Arriba**:
-     - La clase `.poster-compact` se retira y el cartel recupera suavemente su tamaño completo (hasta 290px) ante cualquier acción intencional de subida en la columna izquierda:
-       1. Arrastre táctil hacia abajo (`touchmove` con `deltaY > 12px` originado en `.quick-view-media`).
-       2. Giro de rueda de ratón o trackpad hacia arriba (`wheel` con `deltaY < -5px` sobre `.quick-view-media`).
-       3. Pulsación de teclas `ArrowUp` o `PageUp`.
-   - **Máscaras de Continuidad**:
-     - Degradados de desvanecimiento dinámicos superior (`24px`) e inferior (`28px`).
-     - Al activarse `.poster-compact`, la máscara inferior de `.quick-view-details` se desactiva (`mask-image: none`) para asegurar que la línea de estudio + año + bandera se visualice con nitidez y opacidad absoluta.
-   - **Reseteo Determinista**:
-     - Al cambiar de ficha (navegación previa/siguiente) o cerrar la modal, se restablece `scrollTop = 0` y se eliminan las clases `.is-scrolled` y `.poster-compact`.
-
-3. **Contrato de Metadatos y Formateo en la Modal (Duración, Episodios y Años)**:
-   - **Formateo de Episodios y Duración (`formatModalDuration`)**:
-     - **Series**: Sigue estrictamente la estructura `[N] ep. x [M] min.` (ej. `10 ep. x 30 min.`).
-       - Si solo se dispone de episodios: `10 ep.`
-       - Si solo se dispone de duración por episodio: `30 min.`
-       - Si no se dispone de ninguno: fallback semántico `"Serie TV"`.
-       - *Distribución en el DOM*: El nodo `[data-template="episodes"]` aloja `10 ep. x` y el nodo `[data-template="duration"]` aloja `30 min.`. Se aplica un ajuste de espaciado (`margin-right: -10px` en modo modal) para mantener un espacio visual natural de palabra entre ambos elementos y preservar los `16px` canónicos de separación respecto a los iconos adyacentes (JustWatch/Wikipedia).
-       - *Jerarquía Tipográfica (-20% de peso en palabras/unidades)*: Las palabras y abreviaturas (`ep.`, `min.`, `h.`, `x`, `Película`, `Serie TV`) se encapsulan en elementos `<span class="meta-unit">` con `font-weight: 560 !important` (exactamente un 20% menos de peso frente al `font-weight: 700` de las cifras numéricas en la fuente variable Inter), destacando las cantidades y reduciendo la prominencia visual de las unidades.
-     - **Películas**: Formato de tiempo canónico `[H] h. [M] min.` (ej. `1 h. 45 min.`), `[H] h.` (ej. `2 h.`), o `[M] min.` (ej. `45 min.`). Si no hay duración informada, fallback semántico `"Película"`.
-     - *Desacoplamiento Card / SEO*: El dorso de las tarjetas del catálogo (`cardElement.ts`) y las tarjetas de landing SSR de Cloudflare (`render-taxonomy.js`, `render-person.js`) preservan el formato condensado perimetral (`[N] x`), manteniendo desacoplada la presentación extendida de la modal. En cambio, la ficha individual `/titulo/:slug/` (`render-movie.js`), al representar la vista `.is-quick-view` completa, implementa con total paridad `formatModalDuration` junto a los envoltorios tipográficos `<span class="meta-unit">`.
-   - **Formateo de Años en Series con Cambio de Siglo (`formatYear`)**:
-     - Cuando una serie tiene un año inicial anterior al 2000 (ej. `1990`) y un año final igual o posterior a 2000 (ej. `2010`), se inserta un apóstrofe al año abreviado final: `1990-'10`.
-     - Si ambos años pertenecen al mismo siglo, se mantiene el formato canónico sin apóstrofe (ej. `1990-95`, `2010-15`).
-
-4. **Contrato Tipográfico de Biografías VIP (Titulares y Cuerpos de Texto)**:
-   - **Partición Silábica Automática (`hyphens: auto`)**:
-     - Tanto el titular biográfico (`.bio-headline` / `data-template="bio-headline"`) como el cuerpo de la biografía (`.plot-summary-final` / `data-template="biography"`) implementan `hyphens: auto; -webkit-hyphens: auto;`.
-     - Esto garantiza una maquetación equilibrada y sin saltos bruscos ni huecos antiestéticos en el titular cuando se visualiza en anchos reducidos (columnas compactas de la modal, móviles o tarjetas del catálogo).
-   - **Conservación de Guiones Léxicos (`preserveHyphenatedWords`)**:
-     - El texto de `titulo_bio` y `biography` se procesa sistemáticamente mediante `preserveHyphenatedWords` en la modal SPA (`modal/renderer.ts`), en el reverso de la tarjeta (`cardElement.ts`) y en el SSR perimetral (`render-person.js`).
-     - Esto sustituye guiones internos de palabras ("Sci-Fi", "Day-Lewis", "co-fundador") por guiones no divisibles (`U+2011`), impidiendo que el motor tipográfico rompa por la mitad términos con guion propio.
-   - **Compatibilidad con `text-wrap: wrap` frente a `text-wrap: balance`**:
-     - Por especificación W3C, la regla global `text-wrap: balance` (aplicada a encabezados `h1..h6` en `globals.css`) inhibe la partición silábica para priorizar el equilibrio métrico entre líneas completas.
-     - Para que `hyphens: auto` opere eficazmente, `.bio-headline` se excluye de la regla balanceada (`h4:not(.bio-headline)`) y se fija explícitamente a `text-wrap: wrap`, liberando al motor tipográfico del navegador para insertar guiones en saltos de línea.
-
-
-## 5. Contrato de Autenticación Diferida (Lazy-Loading de Auth y Supabase SDK)
-
-1. **Detección Instantánea de Sesión (`hasStoredAuthSessionOrHash`)**:
-   - Comprobación síncrona en 0 ms que precede a cualquier carga de librerías.
-   - Evalúa `localStorage` y `sessionStorage` buscando claves de token (`auth-token` o `sb-`).
-   - Evalúa `window.location.hash` buscando parámetros de redirección OAuth, Magic Link o recuperación de contraseña (`access_token=`, `refresh_token=`, `error_code=`, `error=`, `type=recovery`).
-   - Si no existen indicios de sesión, el usuario se clasifica como visitante anónimo puro.
-
-2. **Diferimiento del SDK (`@supabase/supabase-js`)**:
-   - Para visitantes anónimos, la ejecución de `setupAuthSystem()` y la importación del paquete `supabase-vendor` se postergan hasta que el usuario realiza una acción autenticada: clic en el botón *"Entrar"* (`#login-button`) o emisión del evento global `auth:requested` (ej. al abrir el modal de autenticación vía `openAuthModal()`).
-   - La navegación general, filtrado por facetas y ordenación en el catálogo público se ejecutan exclusivamente contra el endpoint nativo `/api/rpc/search_movies_offset` sin requerir la presencia ni inicialización del cliente de Supabase.
-   - En caso de usuarios con sesión previa o retorno de enlaces mágicos, la inicialización es inmediata en el arranque (`init()`), preservando el flujo continuo de autenticación y la sincronización Local-First.
-
-
-## 6. Contrato de Delegación de Eventos en Tarjetas y Calificaciones
-
-1. **Desacoplamiento Estructural de Tarjetas**:
-   - Las tarjetas generadas mediante `createCardElement` y `createPersonCardElement` son nodos pasivos que no registran escuchadores `click` ni de valoración individuales.
-   - La función `initializeCard(card)` opera como un no-op de compatibilidad a 0 ms.
-
-2. **Delegación a Nivel de Contenedor Ancestral**:
-   - `#grid-container` (en la vista de cuadrícula) y `#quick-view-content` (en la vista modal) asumen la orquestación centralizada de eventos mediante burbujeo (*Event Bubbling*).
-   - **Clics**: `handleCardClick` resuelve dinámicamente la tarjeta contextual mediante `event.target.closest(".movie-card")`.
-   - **Valoraciones (`initRatingInteractions`)**: Los eventos `mouseover`, `mouseout`, `focusin`, `focusout` y `keydown` se gestionan en el contenedor raíz, resolviendo `.star-icon` y `[data-action="set-rating-estrellas"]` dinámicamente.
-   - Al sustituir la cuadrícula con `replaceChildren`, los nodos se destruyen de forma limpia sin requerir desmontaje manual de escuchadores ni generar presión sobre el recolector de basura.
-
-
-## 7. Contrato de Sincronización Local-First de Datos de Usuario (Supresión de Lazy Sync por IDs)
-
-1. **Estado Canónico en Memoria e IndexedDB (Zero Lazy Sync)**:
-   - Los datos de usuario (valoraciones `rating`, estado de seguimiento `is_watchlist`, etc.) se gestionan exclusivamente bajo arquitectura Local-First.
-   - Al arrancar la aplicación o completar el inicio de sesión, el estado local (`state.userMovieData`) se hidrata a 0 ms desde IndexedDB (`getAllLocalEntries`) y se sincroniza en bloque con Supabase mediante `mergeOnLogin()`.
-   - Queda terminantemente prohibido reintroducir consultas fragmentadas de red por lotes de IDs (`fetchUserMovieDataForIds`) o cachés de comprobación parcial (`checkedIds.ts`).
-
-2. **Renderizado Reactivo sin Peticiones Fantasma**:
-   - Tanto el renderizado del catálogo (`renderEngine.ts`) como la apertura de la modal de vista rápida (`modal/renderer.ts`) obtienen los datos de interacción del usuario sincrónicamente desde `state.userMovieData[movieId]`.
-   - Las mutaciones de notas o watchlist actualizan en primer lugar la memoria y la base de datos local IndexedDB, encolando la sincronización en segundo plano con el servidor perimetral/Supabase de forma transparente sin bloquear la UI ni incurrir en parpadeos visuales (*flicker*) o saltos de layout (*Layout Thrashing*).
-
-
-## 8. Contrato de Metadatos SEO y Esquemas Estructurados en la SPA
-
-1. **Aislamiento de la Navegación Interactiva (Zero JSON-LD Re-generation)**:
-   - Durante la navegación interactiva ordinaria (cambio de facetas, filtros, slider de años, paginación o búsqueda), queda prohibida la regeneración de esquemas JSON-LD (`ItemList` o `BreadcrumbList`) en el `<head>`.
-   - La interacción del usuario solo actualiza síncronamente `updatePageTitle()`: `document.title`, `<link rel="canonical">`, `meta[name="description"]`, `meta[property="og:*"]` y directivas `meta[name="robots"]`.
-
-2. **Diferimiento Asíncrono no bloqueante en Arranque Frío**:
-   - Para cubrir rastreadores web en rutas SPA que no dispongan de SSR perimetral directo, `updateStructuredData` y `updateBreadcrumbData` se programan exclusivamente una única vez en la carga inicial (`scheduleInitialSeo`).
-   - La inyección se delega a periodos de inactividad del navegador mediante `runWhenIdle()` (utilizando `requestIdleCallback` con fallback a `setTimeout`), impidiendo que la serialización de strings JSON compita con el primer renderizado visual (*First Contentful Paint*) y protegiendo las métricas de interactividad (TBT e INP).
-
-
-## 9. Contrato de Filtros de Descubrimiento en el Menú Lateral (Sidebar)
-
-1. **Piscinas Curadas Estáticas (Zero Network Discovery)**:
-   - Los acordeones de "Directores" y "Actores" del sidebar se nutren de colecciones curadas estáticas (`CURATED_DIRECTORS` y `CURATED_ACTORS`) en `constants.ts`, compuestas por 100 referentes cinematográficos mundiales verificados contra la base de datos de personas.
-   - Queda prohibido lanzar consultas RPC dinámicas (`get_random_top_actors`, `get_random_top_directors`) para poblar estas sugerencias.
-
-2. **Poblado Síncrono a 0 ms**:
-   - Al montar el sidebar (`initSidebar`), se seleccionan uniformemente 5 elementos de cada piscina en $O(k)$ mediante `getRandomSubarray` y se insertan síncronamente en el primer pase de `populateFilterSection`.
-   - Se erradica el parpadeo de contenido diferido (*Layout Shift*) y se garantiza que el SDK de Supabase permanezca desacoplado y descargado al 0% para visitantes anónimos.
-   - La búsqueda y autocompletado en los campos *"Otro director..."* y *"Otro actor..."* preservan su funcionamiento asíncrono nativo por demanda exclusivamente cuando el usuario introduce 2 o más caracteres.
-
-
-## 10. Contrato de Flip Onboarding en Tarjetas de Catálogo
-
-1. **Restricción a Portada Limpia (`isCleanHome`)**:
-   - El temporizador de aprendizaje (`runFlipOnboarding`) solo puede programarse cuando la aplicación se encuentra en la portada inicial limpia: primera página (`currentPage === 1`), sin filtros significativos activos (`!hasActiveMeaningfulFilters()`) y en tipo de medio general (`mediaType === 'all'`).
-   - Se prohíbe terminantemente agendar giros automáticos durante navegaciones filtradas por géneros, países, estudios, selecciones, años o autores.
-
-2. **Frecuencia Máxima de 10 Ejecuciones (`MAX_ONBOARDING_FLIPS = 10`)**:
-   - Se mantiene un contador persistente en `localStorage` (`videoclub:flip_onboarding_count`).
-   - Una vez alcanzadas las 10 ejecuciones, `runFlipOnboarding()` opera como un no-op inmediato a 0 ms sin registrar temporizadores en el bucle de eventos ni provocar repintados de capas 3D.
-
-3. **Selección Aleatoria entre las Primeras 4 Fichas**:
-   - Para evitar monotonía visual, la tarjeta objetivo se escoge uniformemente al azar entre las 4 primeras fichas de película reales (`:not(.person-card):not(.collection-card):not(.studio-card)`).
-   - Si la tarjeta se encuentra en rotación manual por el usuario, el modo muro está activo (`ROTATION_DISABLED`) o una modal está desplegada (`MODAL_OPEN`), la ejecución se descarta de forma segura.
-
-
-## 11. Contrato de Sombreadores de Fondo y Overlays (Rendimiento GPU)
-
-1. **Desactivación de `backdrop-filter` en Móviles y Dispositivos Táctiles (`<= 768px`)**:
-   - En viewports móviles y dispositivos con puntero grueso (`hover: none and pointer: coarse`), queda prohibido aplicar `backdrop-filter: blur(...)` sobre overlays de modales (`.quick-view-overlay`, `.auth-overlay`, `.profile-overlay`, `.legal-overlay`) y cajón lateral (`.sidebar-overlay`).
-   - La capa de oscurecimiento se implementa con fondo semitransparente sólido `rgba(0, 0, 0, 0.68)`, garantizando 0 ms de readback de textura y coste cero de GPU durante gestos táctiles de arrastre (*swipe-down*) a 120 FPS.
-
-2. **Supresión Universal en Notificaciones Toast**:
-   - Los elementos `.toast` prescinden de `backdrop-filter` en todas las plataformas, confiando en sus fondos de alta opacidad (95%) para garantizar legibilidad sin forzar pases de sombreado en la GPU.
-
-3. **Preservación de Glassmorphism en Escritorio (`> 768px`)**:
-   - En pantallas grandes con puntero fino, se preserva el desenfoque sutil (`blur(6px) saturate(85%)`) en modales flotantes centradas, manteniendo compatibilidad con `prefers-reduced-transparency: reduce`.
-
-
-## 12. Contrato de Renderizado y Perspectiva en Modo Muro (Wall Mode GPU & Layout Optimization)
-
-1. **Poda Estricta de Caras Traseras en el Render Tree (`display: none !important`)**:
-   - En Modo Muro (`body.rotation-disabled`), las tarjetas de películas (`.movie-card:not(.is-quick-view)`) son pósters visuales 2D que abren directamente la modal al interactuar, prescindiendo por diseño de cualquier rotación sobre su eje vertical.
-   - La cara trasera `.flip-card-back` debe evaluarse obligatoriamente con `display: none !important` para erradicar sus nodos DOM del árbol de renderizado (*Render Tree*) del navegador, evitando que el motor de layout calcule estilos, fuentes o geometrías de elementos que jamás serán visibles.
-
-2. **Aplanamiento de Contextos 3D (`perspective: none` y `transform-style: flat`)**:
-   - Queda prohibido mantener contextos de apilamiento 3D activos sobre las 72 tarjetas de una página en Modo Muro.
-   - `.movie-card:not(.is-quick-view)` debe declarar `perspective: none` y `.flip-card-inner` debe declarar `transform-style: flat` y `transform: none !important`.
-   - La GPU debe tratar la cuadrícula del muro de exploración como un plano 2D continuo de alto rendimiento, optimizando la asignación de buffers de memoria de vídeo (VRAM) y blindando la tasa de refresco a 60-120 FPS durante el scroll vertical rápido.
-
-
-## 13. Contrato de Interacción y Composición de Botones (Button Stacking & Tactile Feedback)
-
-1. **Supresión de Pseudo-Ondas y Capas de Aislamiento (Zero Ripple & Zero Isolation)**:
-   - Queda prohibido el uso de pseudo-elementos (`&::after` / `&::before`) para simular ondas o efectos de agua (*ripple effects*) sobre los botones base (`.btn`).
-   - Se erradican las declaraciones `isolation: isolate` y `overflow: hidden` del selector base `.btn`, evitando la creación forzada de contextos de apilamiento en la GPU y previniendo el truncamiento de contornos accesibles (*focus outlines*) o elementos flotantes adyacentes.
-
-2. **Feedback Mecánico Instantáneo en `:active`**:
-   - La respuesta háptica y táctil a la interacción del usuario se vehicula mediante micro-hundimiento mecánico a escala (`transform: translateY(1px) scale(0.97)`) y sombra interna de presión (`inset 0 1px 1px rgba(0, 0, 0, 0.05)`).
-   - La duración de la transición en estado presionado debe ser inmediata (<= 50 ms) con retorno elástico suave (300 ms mediante `--ease-luxury`), garantizando una respuesta táctil sólida y cinemática acorde a la identidad *Quiet Luxury* de la aplicación.
-
-## 14. Contrato de Animación y Suspensión del Hero de Portada (Hero Animation Freezing on Scroll)
-
-1. **Suspensión Obligatoria en Scroll (`animation-play-state: paused`)**:
-   - Cuando el Hero de bienvenida se desplaza fuera del viewport activo (`.landing-hero.is-scrolled-away`), es imperativo pausar de inmediato las animaciones internas mediante `animation-play-state: paused` en `.landing-hero-description`.
-   - Queda prohibido mantener bucles infinitos de fotogramas (`infinite crossfade`) ejecutándose en segundo plano sobre elementos con `opacity: 0` o inaccesibles visualmente.
-
-2. **Reanudación Transparente y Ahorro Energético**:
-   - Al regresar a la parte superior de la página (`scrollY < 15px`), el estado `is-scrolled-away` se retira y el bucle de rotación reanuda su ciclo natural en el mismo punto de lectura sin saltos bruscos.
-   - Este mecanismo protege la tasa de refresco a 120 FPS y la autonomía de batería en dispositivos móviles durante la exploración prolongada de películas.
-
-## 15. Contrato de Carga Diferida de Estilos en Modales (Lazy CSS Architecture)
-
-1. **Aislamiento de Hojas CSS Secundarias (Zero Unused CSS on Startup)**:
-   - Las hojas de estilo correspondientes a vistas o modales diferidos que no forman parte del App Shell ni del catálogo visible inicial (`auth.css`, `profile.css`) quedan terminantemente excluidas del fichero bloqueante de renderizado (`src/css/main.css`).
-   - El CSS crítico inicial debe limitarse exclusivamente a la infraestructura global, layout, navegación, tarjetas del catálogo y modal de vista rápida.
-
-2. **Invariante de Cero FOUC (Async Style Guard)**:
-   - Todo componente modal cuyo CSS se cargue bajo demanda debe garantizar que la promesa de importación (`import("../../css/components/...")`) se resuelva antes de hacer visible el contenedor modal en el DOM.
-   - Queda prohibido desocultar modales en estado no estilizado.
-
-3. **Precalentamiento en Inactividad (*Idle Warmup*)**:
-   - Los estilos diferidos se pre-cargan en segundo plano aprovechando periodos de inactividad del navegador mediante `runWhenIdle()`, garantizando que cuando el usuario interactúe con los disparadores correspondientes, el recurso ya resida en la caché del navegador para una respuesta visual instantánea.
-
-4. **Punto Único de Inicialización de Lógica y Formularios (SSOT en `openAuthModal`)**:
-   - Toda la secuencia de orquestación diferida del modal de autenticación (emisión de `auth:requested`, carga asíncrona de estilos `loadAuthStyles`, montaje del DOM `ensureAuthModalMounted`, enlace idempotente de formularios `initAuthForms` y listeners de modal `initAuthModalListeners`) reside de forma centralizada en `openAuthModal()`.
-   - Queda prohibido asociar escuchadores de carga parcial o duplicados en disparadores individuales (como botones del sidebar), garantizando que cualquier vía de apertura (botón de login, valoración no autenticada, guardado en lista o flujo de recuperación) disponga de formularios funcionales e interactivos al 100%.
-
-## 16. Contrato de Desplazamiento y Scroll en Modales (Native GPU Scrolling & Zero Masking)
-
-1. **Scroll Acelerado por Hardware Puro (Zero `mask-image`)**:
-   - Queda estrictamente prohibido el uso de `-webkit-mask-image` o `mask-image` sobre contenedores con desplazamiento (`overflow-y: auto`), incluyendo `.quick-view-content`, `.quick-view-column` y `.quick-view-details`.
-   - El scroll debe delegarse de forma pura al compositor nativo del navegador (*Off-Thread Compositor Scrolling*), evitando la creación de superficies intermedias (*FBO / Offscreen Buffers*) en cada fotograma táctil.
-
-2. **Supresión de Conmutación Dinámica de Estados de Scroll**:
-   - Queda prohibido asociar escuchadores de eventos `scroll` continuos para alternar clases de máscara visual (como `.is-scrolled`).
-   - La contención y los límites visuales se resuelven mediante espaciado (*padding*) y cajas delimitadoras estáticas.
-
-## 17. Contrato de Diseño y Jerarquía de Tarjetas VIP (Inaugural Plaque Specification)
-
-1. **Invariante Dimensional y Cero CLS (1:1 con Películas)**:
-   - Las tarjetas VIP (`.person-card`, `.collection-card`, `.studio-card`) deben mantener estrictamente el mismo ratio dimensional, encuadre de imagen (`border: var(--space-xxs) solid var(--color-surface); border-radius: var(--radius-xxl);`) y modelo de caja que las tarjetas de películas (`.movie-card:not(.is-quick-view)`), garantizando un ritmo de cuadrícula perfecto y cero saltos de diseño (*Cumulative Layout Shift* = 0).
-   - Queda terminantemente prohibido alterar el grosor de borde o el tamaño del contenedor `.poster-container` o su imagen con bordes que rompan la alineación métrica de la cuadrícula.
-
-2. **Diferenciación Semiótica de Autor Exclusiva en CSS (Quiet Luxury Plaque)**:
-   - La distinción visual de la ficha #0 respecto a las obras de su filmografía o catálogo se vehiculará exclusivamente mediante tratamiento de superficie en CSS (sin añadir nodos HTML extra):
-     a) Filete perimetral en oro viejo de 2px (`0 0 0 2px rgba(var(--color-brand-gold-rgb), 0.85)`) y halo lumínico de exposición en `.flip-card-inner`, junto con filete interior de autor (`outline: 2px solid ...; outline-offset: -2px`) en la foto sin alterar sus cotas.
-     b) Fondo carbón noble con iluminación cenital radial en sala de exposición (`.flip-card-front`).
-     c) Divisor horizontal en haz cinematográfico dorado (`.poster-container::after`).
-     d) Tipografía de autor distinguida y contrastada con `font-weight: 800` y matiz marfil/dorado en modo oscuro y Modo Muro.
-     e) Botón de alternancia de rol (D/A) armonizado en oro viejo pulido.
-
-3. **Paridad Estructural en Modo Muro (`body.rotation-disabled`)**:
-   - Las reglas de ocultación de `.card-rating-block` y presentación de `.wall-person-name` en oro viejo aplican homogéneamente a toda la tríada VIP (`:is(.person-card, .collection-card, .studio-card)`), asegurando que tanto personas como colecciones y estudios muestren su cabecera tipográfica en la cuadrícula plana sin discrepancias de estilo.
-
-## 18. Contrato de Consistencia de Ordenación y Caché en Mi Lista (Local-First Relevance Parity)
-
-1. **Paridad de Proyección de Datos (Columna `relevance`)**:
-   - Tanto las consultas directas en `src/js/api.ts` (`revalidateMyListInBackground` y `fetchMovies`) como la función perimetral SQL `search_movies_offset.sql` deben incluir obligatoriamente la columna `relevance` en sus proyecciones de campos.
-   - De este modo, las películas cacheadas en IndexedDB (`cached_movies`) preservan su puntuación canónica de relevancia asignada en PostgreSQL.
-
-2. **Desempate Determinista en Servidor y Cliente (`id ASC`)**:
-   - Tanto en el ordenamiento local en JavaScript (`getLocalMyListResponse`) como en las consultas a Supabase (`.order(...)`), cualquier ordenación por `relevance` (u otro campo de criterio múltiple) debe incluir un desempate unívoco por `id ASC` (`a.id - b.id`).
-   - Esto erradica falsos positivos en `hasDifferences` durante la revalidación en segundo plano (`revalidateMyListInBackground`), previniendo parpadeos (*re-renders*) innecesarios al entrar en Mi Lista.
-
-3. **Invariante de Auto-hidratación en Carga en Frío / F5**:
-   - `getLocalMyListResponse` debe asegurar la lectura directa de IndexedDB (`await getAllLocalEntries()`) cuando la memoria reactiva inicia vacía, impidiendo falsos positivos de lista vacía `{ total: 0, items: [] }`.
-   - Si no existen entradas locales pero existen indicios de sesión activa (`hasStoredAuthSessionOrHash()`), debe retornar `null` para activar el fallback a Supabase.
-   - La resolución de catálogo en `getLocalMyListResponse` nutre directamente la carga principal en curso, evitando invocar `loadAndRenderMovies` de forma re-entrante desde los escuchadores de `userDataUpdated` para garantizar que la señal de red no sea abortada y la clase `.is-fetching` se retire limpiamente en todos los escenarios.
-
-## 19. Contrato de Conteo Directo en Fast-Path de Portada Limpia (Index-Only Count Optimization)
-
-1. **Cortocircuito Completo en Portada Limpia (Fase 1.6)**:
-   - Toda solicitud dirigida al escaparate limpio de portada (`v_enable_daily_showcase AND NOT v_has_filters AND v_showcase_limit = 378 AND (v_offset + v_limit <= 378)`) debe resolverse íntegramente dentro de la Fase 1.6 de `search_movies_offset.sql`, independientemente del valor del flag `get_count`.
-   - Queda prohibido desviar la consulta a la Fase 4 cuando `get_count = true`, evitando el coste de `ROW_NUMBER() OVER ()`, `COUNT(*) OVER ()` y `hashtext()` sobre las 14.564 películas del catálogo global.
-
-2. **Resolución Instantánea de Total por Escaneo de Índice**:
-   - En la proyección `json_build_object`, el campo `'total'` se resuelve condicionalmente como `CASE WHEN get_count THEN (SELECT count(*) FROM public.movies) ELSE -1 END`.
-   - Dado que la portada limpia sin filtros abarca la totalidad del universo cinematográfico activo, `(SELECT count(*) FROM public.movies)` se resuelve en ~2 ms mediante *Index-Only Scan*, reduciendo drásticamente el consumo de CPU y latencia en el servidor de base de datos.
-
-## 20. Contrato de Estabilidad Geométrica de Esqueletos (Zero CLS Skeleton Contract)
-
-1. **Invariante de Relación de Aspecto en Carga**:
-   - Todo esqueleto de carga (`.skeleton-card`) debe reflejar con exactitud matemática el `aspect-ratio` de las tarjetas reales a las que sustituye temporalmente.
-   - En modo normal interactivo: `aspect-ratio: 500 / 950` idéntico en ambos componentes (`card.css` y `ui.css`).
-   - En Modo Muro (`body.rotation-disabled`): `aspect-ratio: 2 / 3` estricto en ambos componentes (`card.css` y `ui.css`), garantizando que la altura de fila calculada por el motor geométrico durante el estado de carga coincida al 100% con la de las carátulas hidratadas, erradicando saltos acumulativos de maquetación (*Cumulative Layout Shift* = 0).
-
-## 21. Contrato de Diseño de Píldoras de Filtros en Sidebar (Quiet Luxury Filter Pill Standard)
-
-1. **Invariante de Superficie y Contraste**:
-   - Las píldoras de filtros activos (`.filter-pill`) deben mantener texto de alta legibilidad en blanco marfil (`#f5f5f5` / `#ffffff`) tanto en tema claro como oscuro, erradicando gradientes diagonales obsoletos o inversiones a texto negro sobre fondos claros.
-   - En tema oscuro, las píldoras de inclusión adoptan fondo carbón (`var(--color-surface-2)`) y filete fino en oro viejo (`1px solid rgba(var(--color-brand-gold-rgb), 0.5)`), alineadas con los botones de ordenación y el Bento Grid.
-   - Las píldoras de exclusión (`.filter-pill--exclude`) utilizan fondo óxido translúcido con ribete en carmín técnico (`var(--color-error)`).
-
-2. **Microinteracción del Botón de Retirada (`.remove-filter-btn`)**:
-   - El aspa `×` responde dinámicamente con viraje al dorado de marca (`var(--color-brand-gold)`) y escala suave al posar el cursor, con área de contacto táctil protegida.
-
-## 22. Contrato de Tipografía y Ficha Técnica en Modal de Vista Rápida (Cinematic Archive Standard)
-
-1. **Invariante Ortográfica y Escala del Año**:
-   - El año cinematográfico debe representarse siempre como un bloque numérico limpio de cuatro cifras (`1994`) sin punto de millar ni caracteres de separación, conforme a las directrices de la RAE y el estándar internacional de catálogos fílmicos, tanto en el cliente SPA (`renderer.ts`) como en el renderizado perimetral Edge SSR (`render-movie.js`).
-   - La escala tipográfica del año en la columna multimedia (`.is-quick-view [data-template="year"]` y `.is-quick-view .year-flag-group`) se fija en `1.65rem`, subordinada rigurosamente al título de la obra (`2.05rem`) para preservar una jerarquía visual armónica.
-
-2. **Rótulos de Ficha Técnica (Field Labels)**:
-   - Los encabezados de metadatos preservan su estilo característico en versalitas (`font-variant: small-caps; font-size: 1rem; letter-spacing: 0.12em;`) y punto ortográfico (`Género.`, `Reparto.`, `Sinopsis.`), manteniendo la identidad visual distintiva del proyecto.
-
-
-
-
+## 10. Contrato de Rendimiento Geométrico, Modo Muro y Delegación de Eventos
+
+### Reglas Invariantes
+1. **Estabilidad Geométrica Absoluta (CLS = 0):**
+   Los esqueletos de carga (`.skeleton-card`) y las tarjetas renderizadas (`.movie-card`) poseen idéntica relación de aspecto matemática:
+   - Modo Exploración normal: `aspect-ratio: 500 / 950`.
+   - Modo Muro 2D (`body.rotation-disabled`): `aspect-ratio: 2 / 3`.
+2. **Aplanamiento 2D en Modo Muro:**
+   Al desactivar la rotación manual (Modo Muro), las tarjetas eliminan sus caras traseras del árbol de renderizado (`display: none !important`), declaran `perspective: none` y `transform-style: flat`. La GPU gestiona el grid como un lienzo 2D plano, garantizando 60-120 FPS estables.
+3. **Delegación Global de Eventos (Event Bubbling):**
+   Las tarjetas no registran escuchadores individuales `click` ni de puntuación. `#grid-container` y `#quick-view-content` gestionan todas las interacciones de forma centralizada mediante delegación en el contenedor raíz, permitiendo reciclar nodos DOM con `replaceChildren` sin fugas de memoria.
+4. **Indicador Minimalista de Orden en Subheader Móvil:**
+   En vista móvil, la barra de estado bajo la cabecera sustituye el texto `"orden"` por la flecha direccional `↓` (`renderStatusBar` en `ui.ts`), optimizando el espacio horizontal sin saturar la línea de metadatos de recuento.

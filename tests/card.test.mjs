@@ -513,6 +513,28 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
     gridContainer.remove();
   });
 
+  test("populateCard: formatea año con espacio al lado del año para miniseries (M)", async () => {
+    const gridContainer = createGridContainer();
+
+    const miniMovie = createMockMovie({
+      id: 302,
+      title: "Chernobyl",
+      year: 2019,
+      displayYear: "2019 (M)",
+      type: "SM",
+      isSeries: true,
+    });
+
+    await cardModule.renderMovieGrid(gridContainer, [miniMovie]);
+    const card = gridContainer.children[0];
+
+    const yearEl = card.querySelector('[data-template="year"]');
+    assert.ok(yearEl, "Debe existir yearEl");
+    assert.equal(yearEl.textContent, "2019\u00A0(M)", "Debe incluir espacio no divisible entre año y (M)");
+
+    gridContainer.remove();
+  });
+
   test("toggleWatchlist: actualiza de forma optimista la clase .is-active y el estado de usuario cuando el usuario está autenticado", async () => {
     globalThis.document.body.classList.add("user-logged-in");
     const gridContainer = createGridContainer();

@@ -617,6 +617,16 @@ const personCache = new LRUCache<string, PersonDetails | typeof NOT_FOUND>({
 });
 
 // Saca la foto y la fecha de nacimiento de un VIP cuando le clicas
+export function getCachedPersonDetails(type: 'director' | 'actor', name: string): PersonDetails | null {
+  if (!name) return null;
+  const key = `${type}:${name}`;
+  if (personCache.has(key)) {
+    const cached = personCache.get(key);
+    return cached === NOT_FOUND ? null : (cached ?? null);
+  }
+  return null;
+}
+
 export async function fetchPersonDetails(type: 'director' | 'actor', name: string): Promise<PersonDetails | null> {
   if (!name) return null;
   const key = `${type}:${name}`;
@@ -627,12 +637,14 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
 
   const roleTypes = type === 'director' ? ['D', 'DA', 'AD'] : ['A', 'AD', 'DA'];
   const nameNorm = normalizeText(name);
-  const words = nameNorm.split(/[\s-]+/).filter(w => w.length > 0);
+  const words = nameNorm.replace(/\./g, ' ').split(/[\s-]+/).filter(w => w.length > 0);
   const wildcardPattern = words.length > 0 ? `%${words.join('%')}%` : `%${nameNorm}%`;
 
   try {
     const supabase = await getSupabase();
-    const safeNameNorm = `"${nameNorm.replace(/"/g, '""')}"`;
+    const alternatives = getAlternativeSearchTerms(name);
+    const candidateNorms = Array.from(new Set([nameNorm, ...alternatives.map(a => normalizeText(a))]));
+    const safeNameNorms = candidateNorms.map(n => `"${n.replace(/"/g, '""')}"`).join(',');
     const safeNameLike = `"%${name.replace(/"/g, '""')}%"`;
 
     const selectFields = 'id, name, slug, type, vip, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components';
@@ -642,7 +654,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       .from('people')
       .select(selectFields)
       .in('type', roleTypes)
-      .or(type === 'director' ? `name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}` : `name_norm.eq.${safeNameNorm}`)
+      .or(type === 'director' ? `name_norm.in.(${safeNameNorms}),components.ilike.${safeNameLike}` : `name_norm.in.(${safeNameNorms})`)
       .limit(1);
 
     // 2. Si no hay coincidencia exacta (ej. slug parcial o variantes), fallback con todas las palabras
@@ -685,6 +697,12 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
     };
 
     personCache.set(key, personData);
+    if (personData.name) {
+      personCache.set(`${type}:${personData.name}`, personData);
+    }
+    if (personData.slug) {
+      personCache.set(`${type}:${personData.slug}`, personData);
+    }
     return personData;
   } catch (e) {
     if (import.meta.env.DEV) {
@@ -813,11 +831,98 @@ const fetchSuggestions = async (rpcName: string, searchTerm: string): Promise<st
   }
 };
 
+/**
+ * Genera variantes fonéticas y ortográficas comunes:
+ * - Guiones a espacios: 'juan-antonio-bardem' -> 'juan antonio bardem'
+ * - Iniciales sin punto a con punto: 'j j abrams' -> 'j.j. abrams', 'j. j. abrams'
+ * - Iniciales pegadas: 'jj abrams' -> 'j.j. abrams', 'j j abrams'
+ * - Iniciales intermedias o iniciales únicas: 'david o russell' -> 'david o. russell'
+ * - Búsqueda sin puntos si trae puntos: 'j.j. abrams' -> 'j j abrams'
+ */
+export function getAlternativeSearchTerms(term: string): string[] {
+  if (!term) return [];
+  const alternatives: string[] = [];
+  const clean = term.trim();
+
+  // 1. Si contiene guiones (ej. 'juan-antonio-bardem' o 'j-j-abrams')
+  if (clean.includes('-')) {
+    const unhyphenated = clean.replace(/[-_]+/g, ' ').trim();
+    if (unhyphenated !== clean && unhyphenated.length >= 2) alternatives.push(unhyphenated);
+  }
+
+  // 2. Si contiene iniciales separadas por espacio sin punto (ej. 'j j abrams', 'j a bayona', 'p t anderson')
+  if (/\b[a-zA-Z]\s+[a-zA-Z]\b/.test(clean)) {
+    const dottedCompact = clean.replace(/\b([a-zA-Z])\s+(?=[a-zA-Z]\b)/g, '$1.').replace(/\b([a-zA-Z])\s+/g, '$1. ');
+    if (dottedCompact !== clean && !alternatives.includes(dottedCompact)) {
+      alternatives.push(dottedCompact);
+    }
+    const dottedSpaced = clean.replace(/\b([a-zA-Z])\s+/g, '$1. ');
+    if (dottedSpaced !== clean && !alternatives.includes(dottedSpaced)) {
+      alternatives.push(dottedSpaced);
+    }
+  }
+
+  // 3. Si contiene iniciales pegadas al inicio (ej. 'jj abrams' o 'pt anderson')
+  if (/^[a-zA-Z]{2}\s+/.test(clean)) {
+    const expanded = clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1.$2. ');
+    if (!alternatives.includes(expanded)) {
+      alternatives.push(expanded);
+    }
+    const expandedSpaced = clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1 $2 ');
+    if (!alternatives.includes(expandedSpaced)) {
+      alternatives.push(expandedSpaced);
+    }
+  }
+
+  // 4. Inicial intermedia aislada (ej. 'david o russell' -> 'david o. russell')
+  if (/\s+[a-zA-Z]\s+/.test(clean)) {
+    const middleInitialDotted = clean.replace(/\s+([a-zA-Z])\s+/g, ' $1. ');
+    if (!alternatives.includes(middleInitialDotted)) {
+      alternatives.push(middleInitialDotted);
+    }
+  }
+
+  // 5. Inicial única inicial (ej. 'm night shyamalan' -> 'm. night shyamalan')
+  if (/^[a-zA-Z]\s+/.test(clean)) {
+    const firstInitialDotted = clean.replace(/^([a-zA-Z])\s+/, '$1. ');
+    if (!alternatives.includes(firstInitialDotted)) {
+      alternatives.push(firstInitialDotted);
+    }
+  }
+
+  // 6. Si contiene puntos pero la búsqueda podría ser sin puntos (ej. 'j.j. abrams' -> 'j j abrams')
+  if (clean.includes('.')) {
+    const strippedDots = clean.replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+    if (strippedDots !== clean && !alternatives.includes(strippedDots)) {
+      alternatives.push(strippedDots);
+    }
+  }
+
+  return alternatives.filter(alt => alt.length >= 2);
+}
+
 export const fetchGenreSuggestions = (term: string) => fetchSuggestions("get_genre_suggestions", term);
-export const fetchDirectorSuggestions = (term: string) => fetchSuggestions("get_director_suggestions", term);
+export const fetchDirectorSuggestions = async (term: string): Promise<string[]> => {
+  let suggestions = await fetchSuggestions("get_director_suggestions", term);
+  if (suggestions.length === 0) {
+    const alternatives = getAlternativeSearchTerms(term);
+    for (const alt of alternatives) {
+      suggestions = await fetchSuggestions("get_director_suggestions", alt);
+      if (suggestions.length > 0) break;
+    }
+  }
+  return suggestions;
+};
 export const fetchCountrySuggestions = (term: string) => fetchSuggestions("get_country_suggestions", term);
 export const fetchActorSuggestions = async (term: string): Promise<string[]> => {
-  const suggestions = await fetchSuggestions("get_actor_suggestions", term);
+  let suggestions = await fetchSuggestions("get_actor_suggestions", term);
+  if (suggestions.length === 0) {
+    const alternatives = getAlternativeSearchTerms(term);
+    for (const alt of alternatives) {
+      suggestions = await fetchSuggestions("get_actor_suggestions", alt);
+      if (suggestions.length > 0) break;
+    }
+  }
   // Filtrar actores ignorados (animación, etc.)
   return suggestions.filter(name => !IGNORED_ACTORS_SET.has(name.trim().toLowerCase()));
 };

@@ -1,7 +1,7 @@
 import { CONFIG, ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, REGIONAL_GROUPS, DEFAULTS } from "../../constants.js";
 import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, normalizeText } from "../../utils.js";
-import { fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions } from "../../api.js";
-import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, appEvents } from "../../state.js";
+import { fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions, getCachedPersonDetails, fetchPersonDetails, fetchMovies } from "../../api.js";
+import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, getTotalMovies, appEvents } from "../../state.js";
 import { showToast, clearToast, clearAllSidebarAutocomplete, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI } from "../../ui.js";
 import { loadAndRenderMovies } from "../../renderEngine.js";
 import { ActiveFilters, MovieCardElement } from "../../types.js";
@@ -179,6 +179,11 @@ export function resetFilterPillsCache(): void {
   lastPillState = {};
 }
 
+export function isRawPersonSlug(val: string): boolean {
+  if (!val || typeof val !== 'string') return false;
+  return val.includes('-') && val === val.toLowerCase() && !val.includes(' ');
+}
+
 // Pinta los filtros como etiquetas de colores ("píldoras")
 export function renderFilterPills(): void {
   const activeFilters = getActiveFilters();
@@ -190,8 +195,17 @@ export function renderFilterPills(): void {
 
     const inc = activeFilters[type as keyof ActiveFilters];
     const exc = type === 'genre' ? (activeFilters.excludedGenres || []) : type === 'country' ? (activeFilters.excludedCountries || []) : [];
+
+    let resolvedPersonName: string | null = null;
+    if ((type === 'director' || type === 'actor') && inc && typeof inc === 'string') {
+      const cached = getCachedPersonDetails(type as 'director' | 'actor', inc);
+      if (cached?.name) {
+        resolvedPersonName = cached.name;
+      }
+    }
+
     const stateKey = `${type}-combined`;
-    const currState = `${(inc as string) || ""}|${exc.join(",")}`;
+    const currState = `${(inc as string) || ""}|${exc.join(",")}|${resolvedPersonName || ""}`;
 
     if (lastPillState[stateKey] === currState) {
       if (inc) pillIndex++;
@@ -201,7 +215,20 @@ export function renderFilterPills(): void {
     lastPillState[stateKey] = currState;
 
     const desired: Array<{ val: string; exc: boolean }> = [];
-    if (inc && typeof inc === 'string') desired.push({ val: inc, exc: false });
+    if (inc && typeof inc === 'string') {
+      if (type === 'director' || type === 'actor') {
+        const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string> } | undefined;
+        const isCurated = !!(config?.items?.[inc] || config?.items?.[inc.toUpperCase()]);
+        const targetVal = resolvedPersonName || inc;
+
+        // Las píldoras solo deben contener el nombre de actor o director bien escrito o no salir
+        if (resolvedPersonName || isCurated || !isRawPersonSlug(targetVal)) {
+          desired.push({ val: targetVal, exc: false });
+        }
+      } else {
+        desired.push({ val: inc, exc: false });
+      }
+    }
     exc.forEach(v => desired.push({ val: v, exc: true }));
 
     const exist = Array.from(cont.children) as HTMLElement[];
@@ -218,6 +245,10 @@ export function renderFilterPills(): void {
 
         const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string>; titles?: Record<string, string> } | undefined;
         let text = config?.items?.[item.val] || config?.items?.[item.val.toUpperCase()];
+        if (!text && (type === 'director' || type === 'actor')) {
+          const cached = getCachedPersonDetails(type as 'director' | 'actor', item.val);
+          if (cached?.name) text = cached.name;
+        }
         if (!text && type === 'selection' && FILTER_CONFIG.selection.titles) {
           text = FILTER_CONFIG.selection.titles[item.val] || FILTER_CONFIG.selection.titles[item.val.toUpperCase()];
         }
@@ -397,7 +428,11 @@ export function resetFilters(): void {
   tryCloseMobileDrawer();
 }
 
+let isOraculoFetching = false;
+
 export async function handleRandomMovieRecommendation(): Promise<void> {
+  if (isOraculoFetching) return;
+
   clearToast();
   if (dom.playButton) triggerPopAnimation(dom.playButton);
   triggerHapticFeedback('medium');
@@ -416,18 +451,74 @@ export async function handleRandomMovieRecommendation(): Promise<void> {
     return;
   }
 
-  const randomIndex = Math.floor(Math.random() * cards.length);
-  const targetCard = cards[randomIndex];
-  const movieTitle = (targetCard.movieData as { title?: string } | undefined)?.title;
-
-  if (movieTitle) {
-    showToast(`🎲 El oráculo ha elegido: ${movieTitle}`, "info");
-  }
+  const filters = getActiveFilters();
+  const totalMovies = getTotalMovies();
 
   tryCloseMobileDrawer();
 
+  // Fast-Path local: si todas las obras filtradas caben en la página actual o el total aún no está resuelto
+  if (totalMovies <= cards.length || totalMovies <= 0) {
+    const randomIndex = Math.floor(Math.random() * cards.length);
+    const targetCard = cards[randomIndex];
+    const movieTitle = (targetCard.movieData as { title?: string } | undefined)?.title;
+
+    if (movieTitle) {
+      showToast(`🎲 El oráculo ha elegido: ${movieTitle}`, "info");
+    }
+
+    const { openModal } = await import("../modal.js");
+    openModal(targetCard, cards);
+    return;
+  }
+
+  // Selección global en todo el universo del filtro activo (sin feedback durante la latencia)
+  isOraculoFetching = true;
+  try {
+    const randomOffset = Math.floor(Math.random() * totalMovies);
+    const response = await fetchMovies(
+      filters,
+      randomOffset + 1,
+      1,
+      null,
+      false,
+      randomOffset
+    );
+
+    if (response?.items && response.items.length > 0) {
+      const selectedMovie = response.items[0];
+      const movieTitle = selectedMovie.title;
+
+      if (movieTitle) {
+        showToast(`🎲 El oráculo ha elegido: ${movieTitle}`, "info");
+      }
+
+      const { openModal, openModalForMovie } = await import("../modal.js");
+      const matchingCard = cards.find(
+        (c) => (c.movieData as { id?: number } | undefined)?.id === selectedMovie.id
+      );
+
+      if (matchingCard) {
+        openModal(matchingCard, cards);
+      } else {
+        openModalForMovie(selectedMovie);
+      }
+      return;
+    }
+  } catch {
+    // Degradación segura silenciosa a las tarjetas de la página actual
+  } finally {
+    isOraculoFetching = false;
+  }
+
+  // Fallback si la consulta de red devolvió vacío o falló
+  const fallbackIndex = Math.floor(Math.random() * cards.length);
+  const fallbackCard = cards[fallbackIndex];
+  const fallbackTitle = (fallbackCard.movieData as { title?: string } | undefined)?.title;
+  if (fallbackTitle) {
+    showToast(`🎲 El oráculo ha elegido: ${fallbackTitle}`, "info");
+  }
   const { openModal } = await import("../modal.js");
-  openModal(targetCard, cards);
+  openModal(fallbackCard, cards);
 }
 
 export function hasCompactTriggeringFilters(): boolean {
@@ -522,16 +613,38 @@ export function setupAutocompleteHandlers(): void {
         if (rawTerm.length < 2) return;
 
         const apiTerm = sanitizeSearchTerm(rawTerm);
-        let selectedValue = rawTerm;
+        let selectedValue: string | null = null;
 
         try {
           const suggestions = await fetcher(apiTerm);
           if (suggestions && suggestions.length > 0) {
-            const normalizedRaw = normalizeText(rawTerm).toLowerCase();
-            const exactMatch = suggestions.find(s => normalizeText(s).toLowerCase() === normalizedRaw);
+            const simplify = (str: string) => normalizeText(str).replace(/[\.\-_]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+            const simplifiedRaw = simplify(rawTerm);
+            const exactMatch = suggestions.find(s => simplify(s) === simplifiedRaw);
             selectedValue = exactMatch || suggestions[0];
           }
         } catch {
+          selectedValue = null;
+        }
+
+        if (!selectedValue && (filterType === 'director' || filterType === 'actor')) {
+          try {
+            const personData = await fetchPersonDetails(filterType as 'director' | 'actor', rawTerm);
+            if (personData && personData.name) {
+              selectedValue = personData.name;
+            }
+          } catch {
+            selectedValue = null;
+          }
+        }
+
+        if (!selectedValue) {
+          if (filterType === 'director' || filterType === 'actor') {
+            input.value = "";
+            syncClearState();
+            clearAllSidebarAutocomplete();
+            return;
+          }
           selectedValue = rawTerm;
         }
 

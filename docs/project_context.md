@@ -1,409 +1,129 @@
-# VIDEOCLUB.DIGITAL - Project Context & Architecture
+# VIDEOCLUB.DIGITAL - Contexto del Proyecto y Arquitectura
 
 ## 📌 Visión General
 
-**videoclub.digital** es una Progressive Web App (PWA) móvil-first diseñada para explorar, filtrar y descubrir películas y series. Actúa como un "oráculo cinéfilo" con un motor de búsqueda y filtrado extremadamente rápido, integración de cuentas de usuario, y un enfoque obsesivo en el rendimiento web (60-120 FPS, optimización de CPU/GPU, y prevención de re-renders innecesarios).
+**videoclub.digital** es una Progressive Web App (PWA) de alto rendimiento orientada a móvil (*mobile-first*), diseñada para explorar, filtrar, catalogar y descubrir cine clásico y de culto con una experiencia de usuario distinguida (*Quiet Luxury*) y latencia ultra-baja.
+
+El sistema fusiona una Single Page Application (SPA) reactiva y *Local-First* con una capa de renderizado perimetral en el Edge (*Server-Side Rendering*) sobre Cloudflare Workers para optimización extrema en motores de búsqueda (SEO) y accesibilidad universal.
+
+---
 
 ## 🛠️ Stack Tecnológico
 
-- **Frontend:** TypeScript (ES2022+), HTML5 Semántico, CSS3 (Variables, Grid, Flexbox, Container Queries).
-- **Build Tool:** Vite (con esbuild y TypeScript para minificación y type-checking estricto).
-- **Backend/Database:** Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset` optimizado sin sobrecoste de conteo ni ventanas en portada limpia, precomputación vectorizada de `genre_tsquery` $O(1)$ en `public.genres`, RLS, Trigram Indexes), Supabase Auth, Supabase Storage.
-- **Edge SSR & CDN:** Cloudflare Worker (`cloudflare/worker.js`) con ESM bundle vía esbuild, proxy inmutable de imágenes (`/posters/*`, `/vips/*`), Edge SSR para SEO, negociación Markdown para agentes de IA y endpoint perimetral `/api/rpc/search_movies_offset` con Edge Caching público canónico (`s-maxage=300, stale-while-revalidate=3600`) y bypass directo para usuarios autenticados.
-- **PWA & Offline:** Service Worker propio (`sw.js`) inyectado dinámicamente con versión por timestamp en build time vía Vite, con estrategias de caché `CACHE_STATIC` y `CACHE_DYNAMIC` y `manifest.webmanifest`.
-- **Arquitectura Local-First:** `localStore.ts` (IndexedDB v2 con almacén de fichas `cached_movies` y retención LRU), `syncManager.ts` con estado de sincronización (`dirty`, `synced`, `deleted`), cola offline, renderizado instantáneo en 0 ms para *Mi Lista* y resolución determinista *Last-Write-Wins* (LWW).
-- **Dependencias Externas Clave:** `@supabase/supabase-js`, `lru-cache` (caché en memoria para búsquedas/filtros).
+| Capa | Tecnologías Clave |
+| :--- | :--- |
+| **Frontend SPA** | TypeScript (ES2022 estricto), HTML5 semántico con `<template>`, CSS3 moderno (Nesting nativo, Container Queries, CSS Grid/Flexbox, View Transitions API), Vite. |
+| **Edge & Proxy** | Cloudflare Workers, Cloudflare Cache API, Service Worker perimetral (*Stale-While-Revalidate* e invalidación versionada). |
+| **Backend & Datos** | Supabase (PostgreSQL 15+), funciones RPC optimizadas en PL/pgSQL, vistas materializadas, Row Level Security (RLS), Supabase Storage. |
+| **Almacenamiento Local** | IndexedDB nativo (*Local-First Storage*) para calificaciones, estados de seguimiento (*watchlist*) y notas personales con sincronización SWR en segundo plano. |
+| **Testing & Calidad** | Node.js Test Runner nativo (205 tests concurrentes sin dependencias pesadas), TypeScript Type Checking estricto (`tsc --noEmit`). |
 
-## 📂 Estructura del Proyecto
+---
 
-### 1. Archivos Raíz y Configuración
+## 📂 Arquitectura por Capas del Sistema
 
-- `index.html`: Punto de entrada. Contiene el CSS crítico (_Above the Fold_), script temprano en `<head>` para neutralizar de raíz el destello (Anti-FOUC) del Hero de bienvenida en recargas con parámetros de listas (`?list=watchlist`, `?list=rated`, `?list=mixed`), preloads, meta tags SEO, política CSP ajustada (sin directivas exclusivas de cabecera como `frame-ancestors`) y los `<template>` de los componentes para instanciación rápida.
-- `vite.config.js`: Configurado con `base: '/'` (ruta absoluta raíz estricta para garantizar la resolución correcta de bundles en rutas SEO anidadas como `/titulo/:slug/` o `/genero/:slug/`), código moderno (`es2022`), minificación de CSS, separación de chunks (vendor, supabase), proxy de desarrollo para `/api/rpc` e inyección automática de versión de Service Worker (`injectSwVersion`).
-- `public/404.html`: Fallback SPA histórico de contingencia. En la arquitectura actual, Cloudflare Workers gestiona el enrutamiento SPA de forma nativa a través de `not_found_handling = "single-page-application"`.
-- `public/sw.js`: Service Worker interceptor con versión inyectada dinámicamente (`vYYYYMMDDHHMM`), aislamiento estricto por origen (`url.origin === self.location.origin`) y estrategias:
-  - _Network First_ (`CACHE_STATIC` para navegación HTML y App Shell, con bypass explícito para rutas SEO perimetrales `/titulo/*`, `/genero/*`, `/pais/*`, `/estudio/*`, `/seleccion/*`, `/actor/*`, `/director/*` y slugs VIP para evitar colisiones con el App Shell).
-  - _Stale-While-Revalidate_ (`CACHE_DYNAMIC` para assets estáticos JS/CSS/Fuentes con precacheo de `/`, `/manifest.webmanifest` y `/assets/fonts/Inter-Variable-v41.woff2` en `CRITICAL_ASSETS` para servicio instantáneo offline a 0 ms; la tipografía Inter-Variable se autoaloja localmente eliminando roundtrips cross-origin).
-  - _Cache First_ (`CACHE_DYNAMIC` para pósters y fotos VIP proxyeadas con límite FIFO).
-  - _Aislamiento de Origen Cruzado_: Los recursos alojados en `*.supabase.co` (Auth, REST) fluyen directamente por red nativa sin ser interceptados por el SW.
-  - Estrategia de invalidación documentada en `docs/service_worker_invalidation.md`.
-- `wrangler.toml`: Configuración de Cloudflare Workers y Static Assets. Declara la ruta de zona `videoclub.digital/*`, vincula `./dist` con binding `ASSETS`, enrutamiento SPA directo y `run_worker_first = true` bajo `[assets]` para asegurar que el código del Worker intercepte y evalúe las rutas SEO perimetrales antes de que el servidor estático devuelva el fallback SPA.
-- `cloudflare/worker.js`: Origen de producción y capa perimetral (*Edge SSR, Reverse Proxy & Static Assets serving*):
-  - Inyección dinámica y **fail-closed** de entorno (`env.SUPABASE_URL`, `env.SUPABASE_ANON_KEY`), habiéndose eliminado por completo cualquier credencial hardcodeada o transitoria (`TRANSITIONAL_CONFIG`). Si falta la configuración en el entorno de Cloudflare, las rutas SEO devuelven inmediatamente un error explícito `500 Server misconfigured (missing Supabase credentials)` con `Cache-Control: no-store`.
-  - Inyección de `Cache-Control: public, max-age=31536000, immutable` en bundles de Vite (`/assets/*`).
-  - Endpoint de catálogo perimetral `/api/rpc/search_movies_offset`: Clave de caché canónica determinista (`canonicalizeRpcParams`), almacenamiento en Cloudflare Cache API para peticiones anónimas (`s-maxage=300, stale-while-revalidate=3600`) y bypass directo para peticiones con JWT de usuario autenticado.
-  - Proxy perimetral de imágenes (`/posters/*` y `/vips/*`) con reescritura hacia Supabase Storage para evitar consumo de egress.
-  - Negociación de contenido Markdown (`Accept: text/markdown` $\to$ `/llms.txt`) y cabeceras de descubrimiento para agentes de IA (`Link: </llms.txt>; rel="alternate"`). Documentado en `cloudflare/README.md`.
-  - Endpoint de purga selectiva perimetral (`POST /internal/purge`) protegido estrictamente mediante variable de entorno secreta `PURGE_SECRET` (sin fallbacks hardcodeados en código; devuelve `500 Server misconfigured` si el secreto no está configurado).
-  - Inyección de cabeceras HTTP de seguridad simétricas (`applySecurityHeaders`): endurecimiento perimetral mediante `X-Frame-Options: DENY`, `Content-Security-Policy` con directiva `frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, `Strict-Transport-Security` y `X-XSS-Protection: 0`, aplicado homogéneamente sobre la SPA, Edge SSR y páginas semánticas de error (documentado exhaustivamente en `docs/security.md`).
-  - Fallback a `env.ASSETS.fetch(request)` para servir la SPA y recursos estáticos sin servidores externos.
+```
+├── cloudflare/          # Capa Perimetral: Edge SSR, Reverse Proxy, Cache API y SEO
+│   ├── worker.js        # Punto de entrada del Cloudflare Worker (enrutador perimetral)
+│   └── seo/             # Renderizadores HTML estáticos para bots y rastreadores
+├── src/
+│   ├── shared/          # Single Source of Truth (SSOT): constantes, slugs, taxonomías y eventos
+│   ├── js/              # Lógica del cliente SPA (TypeScript)
+│   │   ├── api.ts       # Cliente de datos, caché canónica y reconciliación SWR
+│   │   ├── state.ts     # Estado global reactivo basado en Proxies con WeakMap
+│   │   ├── renderEngine.ts # Orquestación de cuadrícula, paginación y slots VIP
+│   │   ├── storage/     # Motor Local-First sobre IndexedDB y cola de sincronización
+│   │   └── components/  # Componentes modulares con ciclo de vida explícito (SRP)
+│   │       ├── card/        # Fichas de película y autor (3D flip, modo muro 2D, LQIP)
+│   │       ├── modal/       # Vista rápida cinemática y ficha técnica
+│   │       └── sidebar/     # Filtros facetados, piscinas curadas y Oráculo global
+│   └── css/             # SSOT de estilos (tokens de marca, nesting y responsive)
+├── database/            # Backend relacional: esquemas, RPCs, ingesta ETL y tests de datos
+├── public/              # Assets estáticos, manifest PWA y Service Worker (sw.js)
+├── docs/                # Documentación canónica viva
+│   └── archive/         # Memoria técnica histórica y registro de hitos
+└── tests/               # Batería de pruebas unitarias y de integración en Node.js
+```
 
-### 2. Módulos Compartidos SSOT (`src/shared/`)
+### 1. Núcleo Perimetral y Edge SSR (`cloudflare/`)
+- **Renderizado Perimetral de Rutas SEO:** Intercepta rutas indexables (`/titulo/:slug/`, `/director/:slug/`, `/actor/:slug/`, `/genero/:slug/`, `/pais/:slug/`, etc.) inyectando HTML semántico completo, meta tags OpenGraph, marcado estructurado JSON-LD y CSS crítico embebido antes de entregar la respuesta al navegador o bot.
+- **Reverse Proxy & Cache API:** Cachea las respuestas RPC anónimas de `/api/rpc/search_movies_offset` en el Edge de Cloudflare con cabeceras deterministas (`s-maxage=300, stale-while-revalidate=3600`) y proxy transparente de imágenes hacia Supabase Storage.
+- **Fail-Closed Security:** Validación estricta de variables de entorno y cabeceras de seguridad simétricas (CSP, HSTS, X-Frame-Options DENY).
 
-- **`slugs.ts`**: Fuente Única de Verdad para slugs canónicos. Mapea y normaliza los 21 géneros canónicos oficiales (`GENRE_SLUG_MAP`), el catálogo oficial de países (`COUNTRY_SLUG_MAP`), estudios, colecciones y personas. La resolución de sinónimos temáticos y multilingües de búsqueda se delega dinámicamente a PostgreSQL (`genres.synonyms`).
-- **`constants.ts`**: Constantes globales compartidas, límites de años dinámicos y taxonomías.
-- **`formatters.ts`**: Funciones puras de formateo, puntuación y normalización de texto. Incluye la función canónica de seguridad `sanitizeExternalUrl` para validar esquemas seguros exclusivamente HTTPS (`^https://`) y neutralizar esquemas inseguros HTTP, vectores de inyección XSS (`javascript:`, `data:`) y enlaces relativos en la UI y el Edge SSR.
+### 2. Fuente Única de Verdad Compartida (`src/shared/`)
+- Módulos isomórficos consumidos idénticamente por el cliente SPA, los scripts de compilación, el worker perimetral y los tests:
+  - `slugs.ts`: Generación canónica y desambiguación de slugs (eliminación de acentos, caracteres especiales y colisiones).
+  - `taxonomy.ts`: Diccionario normativo de géneros, países, estudios y selecciones.
+  - `events.ts`: Bus global tipado (`appEvents`) para comunicación desacoplada entre componentes sin dependencias circulares.
+  - `constants.ts`: Tamaños de página, semillas temporales y piscinas curadas estáticas.
 
-### 3. Frontend TS (`src/js/`)
+### 3. Cliente SPA y Gestión de Estado (`src/js/`)
+- **Estado Reactivo (`state.ts`):** Proxies transparentes cacheados mediante `WeakMap` para reactividad en $O(1)$ sin sobrecarga de memoria ni recreación de envolturas.
+- **Sincronización Local-First (`storage/`, `api.ts`):** Los datos personales (watchlist, notas, estrellas) se graban sincrónicamente en memoria e IndexedDB (0 ms de latencia percibida) y se sincronizan asíncronamente con Supabase en segundo plano (*Optimistic UI + Background Reconciliation*).
+- **Carga Diferida del SDK (`auth.ts`):** Visitantes anónimos navegan con 0 KB del SDK de Supabase. La librería se descarga bajo demanda solo cuando el usuario interactúa con funciones de autenticación.
 
-Arquitectura modular con tipado estricto (TypeScript), funciones puras, delegación de eventos y sincronización local-first.
+### 4. Componentes Modulares y Ciclo de Vida (`src/js/components/`)
+- Principio de Responsabilidad Única (SRP): Cada componente gestiona su propio DOM, escuchadores y funciones de desmontaje explícito (`disposeCardEvents`, `disposeModalEvents`, `disposeSidebarEvents`).
+- Delegación de eventos en contenedores raíz (`#grid-container`, `#quick-view-content`) para evitar listeners acumulativos sobre cientos de tarjetas.
 
-- **`main.ts`**: Director de orquesta y punto de entrada SPA (*Wiring Hub*). Conecta el bus de eventos global (`appEvents`), cablea los manejadores de cabecera y teclado, orquesta el ciclo de autenticación y sesión de usuario (`setupAuthSystem`), y gestiona el arranque determinista (`init()`) y el desmontaje total sin fugas (`disposeApp()`). Aplica estricta separación de responsabilidades (SRP): delega la mutación del DOM de fichas al ámbito de cada componente (`card/lifecycle.ts` y `modal/events.ts`), limitándose a actualizar el shell global (`updateAppBadge()`). Unifica el cálculo de páginas con `getAdjustedTotalPages` con soporte no bloqueante para Fast-Path (`totalMovies === -1`), y evita dobles ejecuciones de clics de tarjetas suprimiendo listeners delegados redundantes en `#grid-container` y `#quick-view-content`.
-- **`renderEngine.ts`**: Motor centralizado de carga y renderizado del catálogo (`loadAndRenderMovies`, `updateDomWithResults`). Administra consultas RPC abortables a Supabase, lógica de páginas huérfanas, presupuestos de slots, renderizado de cuadrícula, esqueletos, estados vacíos y sincronización de metadatos SEO (`Title`, `Breadcrumbs`, `StructuredData`).
-- **`router.ts`**: Sincronización bidireccional entre la URL (*Pretty Paths* canónicos y query params) y el estado inmutable global (`readUrlAndSetState`, `updateUrl`), manipulación de la History API nativa (`pushState`/`replaceState`), normalización determinista de rutas y persistencia en memoria del *scroll*.
-- **`scrollWatcher.ts`**: Monitorización de scroll de alto rendimiento mediante `requestAnimationFrame` desacoplado del hilo principal (*passive scroll*). Gestiona la visibilidad del header móvil (*hide/show on scroll* preservando foco y teclado virtual), prefetch predictivo de la página siguiente (>70% de scroll) y guardado debounced de posición.
-- **`state.ts`**: Gestor de estado global inmutable y reactivo. Sincroniza la URL (_Pretty Paths_ y QueryParams) con el estado de la aplicación (`activeFilters`, `currentPage`, `userMovieData`), ejecuta `canonicalizeCurrentUrl()` para garantizar URLs canónicas estrictas, e implementa reactividad profunda mediante `makeReactive` con caché `WeakMap` para garantizar estabilidad referencial $O(1)$ de los sub-árboles de estado y evitar re-instanciaciones de Proxies.
-- **`contracts.ts`**: Definición central de contratos de datos, códigos de error (`ERROR_CODES`), detección unificada del base path (`getAppBasePath()`), generación de URLs canónicas de filtros (`buildFilterUrl`), guardas de tipos y normalizadores puros de bajo nivel (`parseYearRangeRaw`, `normalizeMovieId`, `normalizeUserMovieEntry` con congelamiento inmutable `Object.freeze` para optimizar la interacción con proxies reactivos).
-- **`api.ts`**: Capa de acceso a datos. Implementa deduplicación de peticiones (_In-flight requests_), cliente perimetral `executeCatalogRpc` con fallback a Supabase RPC, resolución local instantánea de *Mi Lista* (`getLocalMyListResponse`), Stale-While-Revalidate hacia Supabase, `AbortController` para cancelar consultas obsoletas y memoria LRU (`queryCache`, `suggestionsCache`, `personCache`).
-- **`localStore.ts`**: Almacenamiento local-first en IndexedDB v2. Incluye `user_entries` (con índices `by_watchlist`, `by_rating`, `by_syncStatus`), `cached_movies` (con índice temporal `by_cachedAt` y purgado LRU `MAX_CACHED_MOVIES = 1000`), escrituras atómicas transaccionales (`saveLocalEntryWithMovie`) y reconciliación determinista *Last-Write-Wins* (LWW).
-- **`syncManager.ts`**: Gestor de sincronización bidireccional en segundo plano entre el almacenamiento local y Supabase (`user_movie_entries`), con soporte offline y reintentos ante reconexión.
-- **`checkedIds.ts`**: Control de deduplicación de IDs de películas sincronizadas en memoria para romper dependencias circulares.
-- **`ui.ts`**: Controladores genéricos del DOM. Maneja Toasts, esqueletos de carga (_Skeletons_), paginación y las trampas de foco (_Focus Trap_) para modales.
-- **`seo.ts`**: Generador dinámico de `JSON-LD` (Schema.org), títulos, breadcrumbs, `og:url` y canonical tags siempre referenciados a la URL canónica pura vía `getCanonicalUrl()`.
-- **`utils.ts`**: Herramientas puras de alto rendimiento. Incluye creadores de nodos DOM veloces (`createElement` vía `Object.assign`), normalización de texto (eliminación de acentos), formateadores, gestión segura de `localStorage`, construcción segura de iconos SVG de productoras (`renderStudioIcons` vía `<use href="/sprite.svg#...">`), configuración de enlaces externos sanitizados y accesibles (`setupExternalLink` para JustWatch y Wikipedia) y cálculo canónico de páginas huérfanas (`getAdjustedTotalPages`).
-- **`constants.ts`**: Fuente única de la verdad. Almacena mapeos de clases CSS, selectores del DOM, SVG sprites integrados (`ICONS`), límites de paginación y mapeos de plataformas (Netflix, HBO, etc).
-- **`auth.ts`**: Lógica de registro y login delegada a Supabase Auth.
-- **`templates/` (`src/js/templates/`)**: Plantillas diferidas (*Lazy Templates*) para vistas modales secundarias (`authModal.ts`, `legalModal.ts`, `profileModal.ts`). Inyectan el marcado bajo demanda en el DOM solo cuando el usuario interactúa, reduciendo ~35 KB del documento HTML inicial.
-- **`types.ts`**: Interfaces TypeScript centralizadas (`MappedMovie`, `ActiveFilters`, `UserMovieEntry`, `PersonDetails`, `VipData`).
-
-### 4. Componentes TS (`src/js/components/`)
-
-- **`card/` (Módulo de Ficha y Cuadrícula)**: Descompuesto en submódulos especializados para desacoplar el ciclo de vida, la construcción del DOM y el estado reactivo:
-  - **`context.ts`**: Estado reactivo interno del componente (tarjeta actualmente volteada, hover activo, temporizadores de *flip*, *hover* y *onboarding*, observer LQIP/ThumbHash compartido y generación de ciclo de vida `cardLifecycleGen`).
-  - **`cardElement.ts`**: Construcción y formateo del DOM de tarjetas individuales. Resuelve plantillas `<template>` mediante *Lazy Getters* bajo demanda; gestiona plantillas específicas (películas, personas VIP con insignias duales `(D)`/`(A)`, colecciones y estudios); administra eventos individuales (tap, doble clic, *flip*, atajos táctiles, prefetch FIFO de imágenes y actualización optimista de Watchlist con notificación informativa en ausencia de sesión). Desacopla la apertura de modal delegando en la auto-inicialización de `openModal`, unifica el formato tipográfico mediante `applyLengthBasedClass`, centraliza la inicialización de personas con `populatePersonFields` y consolida el pipeline de carga de imágenes prioritarias y perezosas.
-  - **`lifecycle.ts`**: Delegación de eventos e interacciones a nivel de cuadrícula (*Grid*). Gestiona eventos `pointerover`, `pointerout`, clics y escuchadores del documento (`visibilitychange` para repliegue al cambiar de pestaña con desacoplamiento de fases de lectura geométrica y escritura para prevenir *layout thrashing*). Exporta `initCardInteractions()` y `disposeCardEvents()` para la limpieza estricta de *listeners*, *observers* y temporizadores sin redundancias.
-  - **`index.ts`**: Orquestador principal y fachada pública de la tarjeta. Implementa el renderizado por lotes masivo (`renderMovieGrid` mediante `yieldToMain`), esqueletos (`renderSkeletons`), estados vacíos/error (`renderNoResults`, `renderErrorState`), animación guiada de inicio (`runFlipOnboarding`) y re-exporta la API pública completa para el resto de la aplicación.
-- **`modal/` (Módulo de Vista Rápida / Quick View)**: Descompuesto en submódulos especializados por responsabilidad para desacoplar renderizado, gestos táctiles, eventos y navegación, con `modal.ts` como orquestador y fachada pública (~396 líneas):
-  - **`renderer.ts`**: Renderizado síncrono y montaje del DOM para películas y personas VIP (`populateModalContent`), portadas y personas con LQIP progresivo vía `applyLqipImage` (erradicando instancias obsoletas de `new Image()` y dobles decodificaciones), resolución de plantilla (`#quick-view-template` / `#quick-view-person-template`), banderas de país, metadatos (`renderModalMetaUnits`), enlaces interactivos de taxonomía (`createLink`), botón de alternancia de rol dual `(D)`/`(A)` e inicialización limpia de notas/watchlist para usuarios autenticados sin duplicación de escuchadores.
-  - **`navigation.ts`**: Navegación entre tarjetas adyacentes (`navigateToSibling`), límites de catálogo y muro con solicitud de cambio de página (`calculateTotalPages` centralizado con `getAdjustedTotalPages` y soporte para Fast-Path $total = -1$), actualización de botones previo/siguiente (`updateNavButtons`) y precarga predictiva de imágenes adyacentes (`prefetchAdjacentModalImages`).
-  - **`gestures.ts`**: Lógica y física de gestos táctiles (`touchState`, `handleTouchStart`, `handleTouchMove`, `handleTouchEnd`), detección de arrastre vertical con *rubber banding* exponencial para descarte (`SWIPE_Y_CLOSE_THRESHOLD`), deslizamiento horizontal para navegación (`SWIPE_X_THRESHOLD`) y compatibilidad con móvil apaisado. Cachea consultas `window.matchMedia` a nivel de módulo en $O(1)$, evitando la instanciación de objetos en cada fotograma de scroll o touch.
-  - **`events.ts`**: Centralización de todos los escuchadores de la vista rápida expuestos mediante interfaz limpia `bindModalEvents` / `unbind`: eventos de aplicación (`appEvents`), delegación de clics en metadatos y póster, máscara de scroll y compactación apaisada (`.poster-compact`), eventos auxiliares de rueda y tacto, atajos de teclado condensados mediante mapa declarativo de deltas (`SCROLL_KEY_DELTAS` para `Escape`, flechas y `PageUp`/`PageDown`), botones de navegación y enlace de gestos sin listeners táctiles duplicados.
-  - **`modal.ts`**: Orquestador principal y API pública (`isModalOpen`, `openModal`, `openModalForMovie`, `closeModal`, `initQuickView`, `disposeModalEvents`). Mantiene la caché DOM lazy, ciclo de vida (`modalLifecycleGen`), auto-inicialización idempotente en `openModal` sin bloqueos de interacción redundantes ni dependencias en flags globales de `window`, temporizadores y RAF cancelables, cierre por clic exterior (`handleOutsideClick`), integración con History API (`modalOpen`) y coordinación de *View Transitions API* (expansión y repliegue *Hero* de la tarjeta).
-- **`profile.ts`**: Panel de perfil de usuario y estadísticas cinemáticas en tiempo real. Procesa catálogos masivos (>2.500 entradas), calculando media sobre 10 y sobre 3 estrellas, desglose por franjas de valoración, medidor de fuerza de contraseñas alineado con las especificaciones NIST SP 800-63B (`evaluatePasswordStrength`), exportación de datos en formato CSV/JSON y baja de cuenta vía RPC.
-- **`sidebar/` (Módulo del Menú Lateral de Filtrado)**: Descompuesto en submódulos modulares para aislar lógica de filtros, sincronización de años y gestos móviles:
-  - **`context.ts`**: Almacena el caché de selectores del DOM (`dom`), referencias al estado de layout móvil/escritorio (`isMobileLayout`) y registro de desuscripciones del bus de eventos.
-  - **`filters.ts`**: Lógica de selección, deselección y reconciliación visual de los 4 desplegables principales (género, país, directores, actores, estudios y selecciones). Gestiona autocompletado en tiempo real con debounce y guardias (`>= 2`), soporte bidireccional para colectivos y dúos cinematográficos (ej. Hermanos Russo $\leftrightarrow$ Joe y Anthony Russo), estilos de alto contraste en modo claro (`#1e293b`) y oscuro (`#334155`), inserción de píldoras dinámicas de exclusión (`(NO País) x`) y reseteo canónico de caché de píldoras (`resetFilterPillsCache`).
-  - **`yearFilter.ts`**: Coordinación del filtro de rango temporal, actualización de inputs numéricos y sincronización bidireccional con el componente `yearSlider`.
-  - **`gestures.ts`**: Física de arrastre táctil (*touch gestures*) y gestos de deslizamiento (*swipe-to-dismiss*) para la apertura y cierre suave del *drawer* en dispositivos móviles, con soporte para *haptic feedback*.
-  - **`index.ts`**: Fachada y ciclo de vida del menú lateral. Orquesta la inicialización (`initSidebar`), cierre/apertura programática (`closeMobileDrawer`, `openMobileDrawer`), colapso de acordeones (`collapseAllSections`) y desmontaje exhaustivo (`disposeSidebarEvents`), purgando referencias residuales en `sectionContainers` y reseteando `lastPillState` para evitar retención de memoria y estados estancados tras ciclos `init → dispose → init`.
-- **`rating.ts`**: Lógica visual del sistema de puntuación por estrellas y lógica de votación de usuario (optimista), manteniendo la exclusividad mutua con la Watchlist. Exige inicio de sesión previo (`body.user-logged-in`) para cualquier interacción o mutación (ratón, teclado, foco o nota en muro): en ausencia de sesión, no previsualiza el llenado ni anima en hover/active, bloquea la mutación local/remota, notifica vía toast informativo e invoca automáticamente la modal de autenticación (`openAuthModal()`).
-- **`yearSlider.ts`**: Componente nativo de control de rango de años doble (_DualRangeSlider_) con soporte táctil, arrastre fluido de pivotes, cálculos precisos de porcentaje y sin dependencias externas.
-
-### 5. Capa Perimetral y Edge SSR (`cloudflare/`)
-
-- **Propósito**: Renderizado en el servidor perimetral (*Edge SSR*) y optimización de entrega sin latencia de origen ni consumo de egress.
-- **Tecnología**: Cloudflare Workers (ESM bundle vía esbuild).
-- **Rutas Servidas en Edge SSR**:
-  - `/titulo/:slug/`: Ficha completa accesible con modal nativo, Backdrop Dual Adaptativo Estático (`public/assets/seo/backdrop-light.webp` y `backdrop-dark.webp`) sin scroll global (`overflow: hidden; background-attachment: fixed;`), conmutación por CSS `background-image` y anti-flicker, sin cabecera flotante redundante (el branding y controles forman parte del backdrop integrado), enlaces canónicos en géneros (`/genero/:slug/`), directores y reparto, Schema.org Movie/TVSeries, Breadcrumbs y normalización case-insensitive 301. En dispositivos móviles (vertical ≤ 768px y apaisado con altura ≤ 600px), el fondo .seo-backdrop se suprime por completo (display: none !important; background-image: none !important;), ya que la tarjeta modal cubre casi la totalidad del viewport y evita la descarga innecesaria del asset WebP de 38 KB.
-  - `/:vip-slug/`: Ficha VIP oficial de director o actor con tarjeta dedicada `#0`, foto `/vips/:slug.webp`, biografía con giro 3D y filmografía destacada en cuadrícula (evaluación perezosa *lazy* de tarjetas por rol).
-  - `/genero/:slug/`, `/pais/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/`: Muros de taxonomía cerrada con 42 tarjetas oficiales.
-  - Reverso de tarjeta en Edge SSR: idéntico visualmente a la SPA; el título original se ubica bajo las puntuaciones y actúa como enlace a la ficha (`.back-original-title-link`), la sinopsis fluye con degradado hasta la base, los botones `+` se alinean milimétricamente a 8px del margen derecho y el botón `−` permite cerrar tanto el panel de reparto como la sinopsis expandida elevándose a `z-index: 60`.
-- **Coherencia de Tema Claro / Oscuro**: Script anti-flicker síncrono en `<head>` (0 ms) que sincroniza `localStorage` y cookie `theme=...`, junto al botón interactivo `#theme-toggle` en todas las cabeceras perimetrales.
-- **Filosofía VIP = Fuente Editorial**: `VIP_SLUGS` actúa estrictamente como filtro de enrutamiento perimetral en tiempo constante $O(1)$ para decidir si una ruta raíz intenta resolverse como ficha SEO VIP; los datos editoriales siempre proceden de Supabase (SSOT), quedando terminantemente prohibido almacenar fichas dentro del manifiesto.
-- **Pipeline de Preparación de Artefactos**: `npm run prepare:worker` genera deterministamente el manifiesto VIP (`generate-vip-manifest.mjs`) y el CSS perimetral en memoria (`build-seo-css.mjs`), integrándose de forma atómica en `build:worker` y `deploy:worker`.
-
-### 6. Scripts de Automatización y Generación (`scripts/`)
-
-- **`build-seo-css.mjs`**: Compila y minifica el CSS perimetral unificado (`public/seo-card-v7.css` minificado directamente y `cloudflare/seo/seo-card-css.js`).
-- **`generate-vip-manifest.mjs`**: Genera el índice en memoria de personas VIP (`cloudflare/seo/vip-manifest.js`) a partir de `people.vip = 1` en Supabase. Carga credenciales con `process.loadEnvFile()` de Node.js de forma determinista y fail-closed (sin credenciales hardcodeadas).
-- **`generate-sitemap.mjs`**: Genera sitemaps canónicos (`public/sitemap.xml` y `public/sitemap-index.xml`) con más de 15.000 URLs indexables, resolviendo entorno mediante `process.loadEnvFile()`.
-- **`generate-llms.mjs`**: Genera especificaciones canónicas para agentes de IA (`public/llms.txt` y `public/llms-full.txt`).
-- **`run-data-tests.mjs`**: Runner de auditoría declarativa DataOps contra PostgreSQL (`run_data_tests`).
-- **`sync-sprites.mjs`**: Herramienta de sincronización de SVG sprites hacia `public/sprite.svg`.
-
-### 7. Estilos (`src/css/`)
-
-- **`variables.css`**: Design tokens. Fuentes (Inter), paleta de colores adaptable (Tema Claro/Oscuro dinámico con tokens como `--color-rating-star` y `--color-accent-darker`) y duraciones de animación (_Quiet Luxury easing_).
-- **`globals.css`**: Reset, utilidades generales y scrollbars personalizados.
-- **`layout.css`**: Estructura macro basada en Container Queries (`container-type: inline-size`), cabecera fija elástica (`position: sticky; top: 0;`), CSS Grid para la cuadrícula principal adaptativa y componente de portada `#landing-hero` ("Cartelera de Cine & Haz Dorado") con halo radial suave de proyector (`radial-gradient`), titular en oro metálico pulido (`background-clip: text`), micro-separador de haz de luz (`::after` con destello difuso) y transición de desvanecimiento suave (`.is-scrolled-away`) sincronizada con el bucle rAF de `scrollWatcher.ts`.
-- **`components/*.css`**: CSS scopeado a componentes. Uso intensivo de `contain: layout paint style` y `content-visibility: auto` para máximo rendimiento. Evita transicionar propiedades pesadas (`width`, `padding`) en móviles, priorizando `transform` y `opacity` (GPU).
-- **Frontera Canónica de Breakpoints (Mobile / Desktop)**: Estandarización unificada en todo el proyecto:
-  - `≤ 768px` $\to$ **MÓVIL** (panel deslizable *Bottom Sheet*, gestos táctiles, botones de acción ampliados para accesibilidad WCAG).
-  - `≥ 769px` $\to$ **ESCRITORIO** (ventanas flotantes bicolumna con scroll independiente, flechas exteriores y hover habilitado para ratón `pointer: fine`).
-  - Eliminada toda frontera transitoria o inconsistente (antiguos 700/701px).
-- **Contrato Arquitectónico Card vs. Quick View**:
-  El sistema mantiene una separación estricta e infranqueable entre la tarjeta 3D del catálogo y la modal editorial de vista rápida:
-
-  ```text
-  CARD NORMAL (.movie-card:not(.is-quick-view))
-  ├── .flip-card-inner
-  ├── .flip-card-front
-  └── .flip-card-back
-
-  QUICK VIEW (.movie-card.is-quick-view)
-  ├── .quick-view-inner
-  ├── .quick-view-media
-  └── .quick-view-details
-  ```
-
-  **Reglas de aislamiento estructural:**
-  1. `flip-card-*` pertenece exclusivamente a la interacción 3D de Card (`card.css` y plantillas de catálogo).
-  2. `quick-view-*` pertenece exclusivamente a Quick View (`modal.css` y plantillas `#quick-view-template` / `#quick-view-person-template`).
-  3. Los cambios de estilo y estructura de Quick View no deben depender de selectores estructurales internos de Card.
-  4. **Invariante de mantenimiento:** `modal.css` es responsable de Quick View y no debe volver a introducir selectores `flip-card-*`.
-
-- **Arquitectura de Componentes CSS**:
-  - **`globals.css` (Patrones Canónicos Globales)**:
-    - Centralización de animaciones canónicas (`modal-pop-in`, `modal-slide-up`, `fade-in`, `fade-out`, `fade-in-subtle`) eliminando duplicaciones en componentes locales.
-    - Patrón canónico de **Bottom Sheet** móvil bajo `@media (max-width: 768px)`: unifica el tirador superior (*Pill Handle* `&::before` 40×5px con `var(--color-border)`) y el desacoplamiento de transiciones durante el arrastre (`&.is-dragging { transition: none !important; will-change: transform; }`) para `.quick-view-modal`, `.auth-modal` y `.profile-modal`.
-  - **`modal.css` (Quick View & Legal Modal)**:
-    - Estructurado en 10 secciones delimitadas (A a J): Base/Estructura, Contenido/Tipografía, Ratings/Acciones, Navegación, Mobile (Bottom Sheet), Desktop (Bicolumna Películas 50/50), Personas VIP (45/55), Landscape (móviles apaisados $\le 550\text{px}/600\text{px}$ con layout 50/50 y cartel dinámico `.poster-compact`), Rendimiento/Transiciones y Modal Legal e Informativo.
-    - Cascada limpia y unidireccional: la capa base establece el contrato común, Desktop define las ventanas flotantes (50/50 películas y 45/55 personas), y Landscape actúa al final como excepción terminal para alturas compactas, eliminando conflictos de cascada sin depender de `!important` artificiales. Migración integral a unidades de altura dinámica `dvh` (`92dvh`, `85dvh`, `90dvh`) para mitigar solapamientos con barras de navegación móviles. Deduplicación de enlaces externos JustWatch/Wikipedia heredando de `card.css`.
-  - **`card.css` (Card System)**:
-    - Estructurado en 10 secciones modulares (A a J): Base/3D, Frontal (Póster/LQIP), Frontal (Títulos `text-wrap: balance`/Metadatos), Trasera (Títulos/Duración/Enlaces externos), Trasera (Detalles/Sinopsis `text-wrap: pretty`/Actores), Botones expansores (`+`/`−` con área táctil 40px WCAG), Elementos interactivos/Watchlist (microanimaciones Pop/Glow/Settle), Modo Muro (`body.rotation-disabled`, ratio 2:3, lógica estrellas usuario vs media), Fichas VIP (fotos 2:3 con `object-position: top center`, botón dual D/A `.person-role-toggle-btn`) y Rendimiento/Accesibilidad (`will-change: auto` en imágenes cargadas).
-    - Reducción neta del 16% en tamaño en bytes (~5,8 KB ahorrados), eliminación de reglas redundantes en Dark Mode (contorno dorado) y consolidación cromática de estudios con selector `:is()`.
-  - **`header.css` (Header Component)**: Refactor consolidado y ligero (Fase 10E-B). Cascada nativa limpia entre desktop y móvil, donde las reglas activas de tipo (`.type-filter--movies`, `.type-filter--series`) prevalecen naturalmente sobre `:where(html.dark-mode)` por orden de aparición e idéntica especificidad `(0, 2, 0)`, eliminando el 100% de los `!important` redundantes y purgando selectores huérfanos (`#sort-select`, `&[hidden]`).
-  - **`profile.css` & Tokens Semánticos de Perfil (Fases 10D-D y 10D-F)**: Reemplazo integral del vocabulario histórico por design tokens semánticos propios en `variables.css` (`--profile-surface`, `--profile-text-primary`, `--profile-text-secondary`, `--profile-text-muted`, `--profile-border`, `--profile-accent`, `--profile-success`, `--profile-warning`, `--profile-danger*`). Modo Claro integral con contraste accesible WCAG AA (4.58:1 en `--profile-accent: #9e7123`) y migración a `dvh`.
-  - **`sidebar.css` (Sidebar & Bento Grid)**: Consolidación de reglas de búsqueda y hover de celdas Bento mediante CSS Nesting `:where(html.dark-mode) &`, borde dorado interactivo en elementos de autocompletado y purga de selectores obsoletos (`.logo-title`, `.total-results-container`).
-  - **`button.css` & `layout.css`**: Desacoplamiento estricto de componentes cruzados (`.type-filter-toggle`, `.sidebar-control-button`) y unificación del tamaño de paginación táctil a 48px en `ui.css` (eliminando la contradicción de 36px en `layout.css`).
-- **Principio SSOT en Desarrollo vs Compilación Perimetral**: El directorio `src/css/` es la **Única Fuente de Verdad** de los estilos. Durante el desarrollo local (`npm run dev`), Vite procesa estos archivos en tiempo real con HMR (*Hot Module Replacement*). Los artefactos derivados para SEO perimetral (`public/seo-card-v7.*` y `cloudflare/seo/seo-card-css.js`) son generados automáticamente por `scripts/build-seo-css.mjs` y **nunca deben editarse manualmente ni recompilarse en cada cambio menor de diseño**. Su regeneración se delega exclusivamente a `npm run prepare:worker` antes de un commit o despliegue.
-- **Grafo Semántico de Código (`.codebase-memory/`)**: Índice persistente del repositorio (`graph.db.zst`, 3.134 nodos y 15.168 aristas semánticas) gestionado por el servidor MCP `codebase-memory` para análisis de impacto y trazabilidad de dependencias TypeScript/Edge sin afectar al control de versiones (excluido en `.gitignore`).
-
-### 8. Suite de Tests (`tests/`)
-
-- Ejecución centralizada mediante el test runner nativo de Node.js (`node --test`), con ejecución concurrente paralela nativa (reducción de 28,5 s a 11-14 s en local y ~4 s en CI) y batería exhaustiva de aserciones sin dependencias externas pesadas.
-- **`tests/helpers/vite-ssr.mjs`**: Helper unificado `startViteSsrServer()` que arranca el entorno Vite en modo SSR de forma aislada para evaluar módulos TypeScript directamente.
-- **Batería de Pruebas (Suites activas en Node.js Test Runner)**:
-  - `card.test.mjs`: Tests de caracterización del componente `card/` (renderizado masivo, tarjetas VIP con insignias duales, formato de directores/episodios, actualización optimista de Watchlist y estados vacíos/error).
-  - `lifecycle-dispose.test.mjs`: Ciclo de vida y funciones de desmontaje explícito (`disposeApp`, `disposeCardEvents`, `disposeModalEvents`, `disposeSidebarEvents`) para prevenir *memory leaks* y verificar el reenganche limpio de escuchadores.
-  - `url-contract.test.mjs`: Test formal del contrato de URLs (jerarquía canónica, lectura agnóstica al orden, reglas de exclusividad semántica y las 10 filas de la Tabla 4 de URLs prohibidas/normalizadas).
-  - `worker.test.mjs`: Batería exhaustiva de smoke tests del Cloudflare Worker (Edge SSR de títulos con enlaces de género, contratos HTTP explícitos 200/404/500/502, seguridad fail-closed ante ausencia de credenciales, taxonomías perimetrales, personas VIP en la raíz con roles duales D/A, normalización case-insensitive 301, proxy perimetral de imágenes con `immutable`, ThumbHash LQIP, inyección de cabecera `Link rel="alternate"` y negociación Markdown para agentes).
-  - `profile-stats.test.mjs`: Panel de perfil, estadísticas cinemáticas, cálculo de notas/estrellas, exportación CSV/JSON y reconciliación de sesión (`openProfileModal` con `mergeOnLogin`).
-  - `contracts-state-utils.test.mjs`: Contratos de datos, formato canónico de edad de fallecidos `✝ (74)`, tipos de error, paridad de slugs y normalizadores puros.
-  - `api-rating-critical.test.mjs`: Normalización de parámetros RPC, claves de caché canónicas, discriminación de directores y conversión de notas a estrellas en tarjetas.
-  - `pure-functions.test.mjs`: Funciones puras de formateo, puntuación y equivalencia SPA vs. SSR.
-  - `shared-and-events.test.mjs`: Integridad del SSOT de constantes, taxonomías compartidas y ciclo de vida del bus de eventos sin fugas de memoria.
-  - `local-first-sync.test.mjs`: Arquitectura local-first (`localStore.ts`, `syncManager.ts`), resolución LWW, persistencia de estados (`dirty`/`synced`/`deleted`) y reconciliación remota.
-  - `llms-spec.test.mjs`: Verificación de la especificación de rutas canónicas en `llms.txt` y `llms-full.txt` frente a las taxonomías oficiales.
-  - `sidebar.test.mjs`: Tests del menú lateral de filtros (selección/deselección de facetas, píldoras dinámicas de exclusión, gestos táctiles y autocompletado).
-  - `render-engine-vip-count.test.mjs`: Tests de renderEngine (carga y renderizado de cuadrícula, paginación, cálculo de slots VIP y resolución asíncrona del total).
+---
 
 ## 💾 Backend y Base de Datos (PostgreSQL / Supabase)
 
 ### Tablas Principales
+- **`movies`**: Catálogo fílmico indexado (título, año, directores, actores, slug, rating, póster, thumbhash LQIP).
+- **`people`**: Creadores (directores/actores) con soporte de doble rol (`A`, `D`, `AD`, `DA`), condición VIP, biografía, lugar/fecha de nacimiento y fallecimiento.
+- **`user_movie_data`**: Registro personal de usuarios (watchlist, notas, valoraciones) blindado con Row Level Security (RLS).
+- **`countries`**, **`studios`**, **`collections`**: Tablas de referencia normalizadas.
 
-- `movies`: Núcleo central. Identificador inmutable `id` (`PRIMARY KEY`, `GENERATED BY DEFAULT`), metadatos, valoraciones (FA, IMDb, y `avg_rating` calculada automáticamente) y campos de vectores de texto (`_tsv`) para búsqueda rápida.
-- `people`: Entidad canónica consolidada para realizadores e intérpretes (directores, actores o roles duales `type IN ('D', 'A', 'AD', 'DA')`), con metadatos VIP, biografías y componentes para colectivos.
-- Relaciones N:M: `movie_actors`, `movie_directors`, `movie_genres`, `movie_selections`, `movie_studios` (todas con `ON DELETE CASCADE` hacia `movies` para integridad referencial atómica en bajas de catálogo).
-- `user_movie_entries`: Almacena las valoraciones (1-10) y la Watchlist (boolean) por usuario con exclusividad mutua.
-- Tablas `_staging`: Usadas para el proceso ETL (ingesta masiva desde CSV con datos consolidados completos) mediante la función diferencial `process_staging_data()`. La columna `show IS TRUE` actúa como filtro de admisión (gatekeeper) para la carga al catálogo consolidado cruzando por clave primaria inmutable `id`.
+### Funciones RPC Críticas
+1. **`search_movies_offset`**: Motor de filtrado y ordenación principal:
+   - **Showcase Determinista Diario:** Barajado pseudoaleatorio basado en semilla de fecha (`hashtext(seed || movie_id)`) que cambia diariamente a medianoche UTC preservando estabilidad de paginación.
+   - **Fast-Path de Portada Limpia:** Detección de navegación inicial sin filtros para resolver el total de catálogo mediante *Index-Only Scan* en ~2 ms.
+   - **Conteo Desacoplado (`get_count`):** Parámetro booleano que permite devolver las tarjetas inmediatamente y calcular el total en una petición en segundo plano no bloqueante.
+2. **`process_staging_data`**: Pipeline ETL de ingesta de creadores y películas: deduplicación canónica insensible a mayúsculas y acentos (`unaccent_immutable`), casteo seguro de países e identificación de condición VIP.
 
-### Lógica Avanzada SQL (`database/script.sql`, `database/schema.sql` y `database/tests/data_tests.sql`)
+---
 
-- **Columnas Generadas (`GENERATED ALWAYS AS ... STORED`)**: Usadas para calcular campos `tsvector` de búsqueda en tiempo de inserción, descargando al procesador durante las consultas `SELECT`. También se usa para normalizar textos (`unaccent`).
-- **Índices y Operadores Cualificados**:
-  - Índices GIN con Trigramas cualificados (`extensions.gin_trgm_ops`) para autocompletado ultra-rápido en nombres de personas (`idx_people_name_norm_trgm`), componentes de colectivos (`idx_people_components_trgm`) y países (`idx_countries_name_norm_trgm`).
-  - Índices compuestos calibrados para consultas habituales (`idx_movies_relevance_id (relevance ASC, id ASC)`, `movies_country_id_year_desc_idx (country_id, year DESC)`), purgando índices solapados o redundantes para optimizar consumo de RAM (`shared_buffers`) y escritura en ETL.
-  - Índice funcional inmutable `idx_people_name_alnum` (`regexp_replace(name_norm, '[^a-z0-9]', '', 'g')`) para resolución instantánea por índice B-Tree en directores y actores con guiones o signos de puntuación.
-- **Vistas Materializadas (`mv_*`)**: Caché pre-calculada de las sugerencias del buscador para no saturar la CPU de la base de datos contando películas. Auto-convergencia segura con `RESTRICT` e índices dedicados.
-- **RPC Principal (`search_movies_offset`)**: Función PL/pgSQL responsable de toda la lógica de filtrado del backend.
-  - **Late Row Lookup & Proyección Dinámica**: En la consulta base selecciona únicamente las columnas necesarias para ordenación (`relevance, id` en orden por defecto), habilitando *Index Only Scan* sobre el índice B-Tree compuesto `idx_movies_relevance_id (relevance ASC, id ASC)` con $-93,5\%$ de reducción de bloques de memoria. Ordena solo IDs y métricas ligeras con **desempate determinista (`m.id ASC`)** para evitar saltos entre páginas, y _luego_ hace JOIN con textos pesados (sinopsis, arrays) y empaqueta en JSON puro (`json_build_object`).
-  - **Daily Showcase Exclusivo de Portada Limpia**: Para el orden `"relevance,asc"`, baraja 378 películas en la portada general limpia (`v_has_filters = false`). En cuanto el usuario aplica cualquier filtro temático (género, país, año, estudio, selección, tipo), búsqueda o filmografía de persona, el barajado se desactiva por completo ($threshold = 0$), ordenando estrictamente por mérito canónico `relevance ASC, id ASC`. Esta separación elimina las funciones de ventana (`ROW_NUMBER()` y `COUNT(*) OVER ()`), desbloquea la parada temprana por índice (*Early Stop*) y materializa la estrategia *Pintar Primero -> Contar Después*, reduciendo la latencia de filtrado de ~60 ms a ~3 ms.
-  - **Fast-Path Quirúrgico de Portada Limpia (Fase 1.6)**: Cortocircuito de alto rendimiento para la primera carga de portada sin filtros (`v_enable_daily_showcase AND NOT v_has_filters AND v_showcase_limit = 378 AND (v_offset + v_limit <= 378) AND NOT get_count`). Aísla el pool de 378 películas directamente mediante `raw_showcase LIMIT 378` sin escanear las 14.564 filas del catálogo entero ni calcular ventanas globales, reduciendo la latencia de la base de datos de 335 ms a ~1,5 ms.
-  - **Compensación de Personas con Guiones (Fases 3.6 y 3.7)**: Al recibir nombres transformados a espacios desde el frontend (`slugToPersonQuery`), el SQL compensa mediante reconstrucción contra el índice `slug`, coincidencia de `name_norm` y fallback alfanumérico estricto (`regexp_replace(name_norm, '[^a-z0-9]', '', 'g')`) acelerado por el índice funcional `idx_people_name_alnum`. En directores, la resolución de componentes de colectivos se desacopla mediante `UNION` para evitar escaneos secuenciales y garantizar ejecución por *Bitmap Index Scan*.
-  - **Mitigación de Deep Pagination DoS (Fase 1.4)**: Cortocircuito inmediato si `v_offset > 15000`, previniendo el consumo abusivo de CPU e IOPS mediante escaneo, ordenación y descarte secuencial en memoria/disco por parte de clientes públicos anónimos (`anon`).
-  - **Mitigación de Input Inflation DoS (Fase 1.3)**: Cortocircuito temprano si los arrays `p_country_codes`, `excluded_genres` o `excluded_countries` superan 10 elementos, o si `search_term` excede 100 caracteres, bloqueando la saturación de CPU por `unnest` y lematización lingüística masiva.
-- **ETL Diferencial de Alto Rendimiento (`process_staging_data`)**: Pipeline transaccional con tabla temporal en memoria (`tmp_affected_staging`), inserción con `OVERRIDING SYSTEM VALUE` sobre `movies.id` (`GENERATED BY DEFAULT`), cruce por clave primaria inmutable `id` (`ON CONFLICT (id) DO UPDATE`), admisión por `show IS TRUE`, purga diferencial de películas retiradas (`show IS FALSE`) con propagación en cascada (`ON DELETE CASCADE`), **pre-agregación lineal $O(N_1 + N_2 + ...)$** que elimina la multiplicación por producto cartesiano en relaciones N:M, y purga final de personas huérfanas no VIP.
-- **DataOps Quality Gate (`run_data_tests`)**: Suite declarativa inspirada en dbt ejecutada nativamente en PostgreSQL, integrada en GitHub Actions ([`.github/workflows/data-audit.yml`](../.github/workflows/data-audit.yml)) mediante [`scripts/run-data-tests.mjs`](../scripts/run-data-tests.mjs) (ejecución diaria programada a las 03:00 UTC y manual), desacoplada del pipeline de despliegue continuo de código para optimizar los tiempos de ciclo en CI.
-- **Seguridad (RLS & DCL Hardening)**: Row Level Security habilitado en todas las tablas. Lectura pública general; `user_movie_entries` protegida con política unificada `FOR ALL` al `auth.uid()`; tablas de staging restringidas exclusivamente a `service_role` mediante DCL (`REVOKE ALL`). Hardening explícito en vistas de telemetría (`view_slow_queries`, `view_top_cpu_queries`) y funciones de auditoría (`run_data_tests`) revocando el acceso por defecto de `PUBLIC`/`anon`/`authenticated` y restringiéndolo en exclusiva a `service_role` para evitar exfiltración de telemetría o abusos DoS vía RPC.
-- **`search_path` Seguro**: Fijado estrictamente en todas las funciones `SECURITY DEFINER` (`SET search_path = pg_catalog, public, extensions, pg_temp;`).
-- **Auditoría Forense y Mitigaciones**: Documentadas íntegramente en `docs/security.md`.
+## ⚡ 10 Principios Invariantes de Rendimiento y Arquitectura
 
-## ⚡ Patrones de Rendimiento y Arquitectura (Performance)
+1. **Desacoplamiento Crítico de Conteo (Pintar Primero → Contar Después):**
+   La primera carga de catálogo solicita `get_count = false` para no demorar el First Contentful Paint esperando el cálculo secuencial de `COUNT(*)` en PostgreSQL. La UI se libera inmediatamente y el total se resuelve en segundo plano de forma atómica.
+2. **Navegación Fluida sin Parpadeo (*In-Flight Stale Grid*):**
+   Al cambiar de página o filtro con contenido ya visible, se conserva el grid anterior con opacidad sutil y `aria-busy="true"`, sustituyendo el DOM de una sola vez al llegar los nuevos datos, reservando los esqueletos únicamente para la primera carga en frío.
+3. **Cero Salto de Maquetación (*Zero Cumulative Layout Shift*):**
+   Las tarjetas reales y los esqueletos de carga comparten estrictamente la misma relación de aspecto matemática (`aspect-ratio: 500 / 950` en modo normal y `2 / 3` en Modo Muro), asegurando un CLS = 0 absoluto durante transiciones.
+4. **Camino Crítico LCP y Preloads Higiénicos:**
+   Exactamente una sola carátula visible (tarjeta VIP en posición 0 o primera película del catálogo) ostenta `fetchpriority="high"` y `loading="eager"`. Se reutiliza un único elemento `<link data-lcp-preload="true">` en `<head>` para evitar fugas de preloads acumulativos.
+5. **Arquitectura Local-First SWR en Datos de Usuario:**
+   Toda interacción con películas (añadir a favoritos, calificar con estrellas) muta síncronamente el estado en memoria y la base de datos local IndexedDB, postergando la sincronización remota a la red en segundo plano. Si la revalidación en caliente detecta discrepancias remotas, reconcilia suavemente la vista.
+6. **Aplanamiento y Poda en Modo Muro (Optimización 2D para GPU):**
+   En Modo Muro (`body.rotation-disabled`), las tarjetas no rotan. Las caras traseras se retiran del árbol de renderizado con `display: none !important` y se anulan los contextos 3D (`perspective: none`, `transform-style: flat`), garantizando 60-120 FPS fluidos en listas de 72 elementos.
+7. **Dieta Estricta del Bundle y Carga Diferida:**
+   El SDK de Supabase, las modales de autenticación/perfil y sus hojas de estilo CSS secundarias se cargan estrictamente bajo demanda (*Lazy Loading*), asegurando que el bundle crítico inicial de la SPA pese menos de 45 KB gzipped.
+8. **Piscinas Curadas Estáticas en Descubrimiento (Zero Network Discovery):**
+   Las sugerencias de autores en el menú lateral se nutren de colecciones curadas estáticas (100 referentes mundiales verificados), erradicando peticiones dinámicas de red en la apertura del menú y garantizando un montaje en 0 ms.
+9. **Paridad Cromática y Coherencia de Marca (Quiet Luxury):**
+   Unificación rigurosa de superficies y paleta entre tipos de fichas (películas, directores, actores, estudios y colecciones). Fichas VIP utilizan el mismo fondo de superficie corporativo (`--color-surface-1`) y acento de marca (`--color-accent`), eliminando oros estridentes y respetando contraste AA en modo claro y oscuro.
+10. **Aislamiento DOM y Prevención de Layout Thrashing:**
+    Separación estricta de lecturas geométricas (`getBoundingClientRect`, `scrollY`) de escrituras (mutación de clases o estilos). Delegación centralizada de eventos mediante burbujeo nativo para evitar acumulación de listeners.
 
-1. **Prevención de Layout Thrashing:**
-   Separación estricta de las lecturas del DOM (ej. `.offsetHeight`, `.scrollY`) de las escrituras del DOM (ej. `.classList.add`). Se orquesta con `requestAnimationFrame` en el scroll y en `handleCardVisibilityChange` desacoplando la fase de lectura geométrica en lote (`getBoundingClientRect`) de la mutación de `src` y desvinculación de observers.
-2. **DOM Lazy Loading:**
-   Las secciones pesadas como el listado completo de actores en la parte trasera de una tarjeta no se renderizan al crear la tarjeta. Se insertan dinámicamente mediante `DocumentFragment` solo cuando el usuario pulsa "Ver Reparto".
-3. **In-Flight Deduplication & AbortControllers:**
-   Si el usuario pulsa repetidamente un filtro, las peticiones HTTP previas se abortan automáticamente para evitar sobrecarga de red y _race conditions_ visuales.
-4. **View Transitions API:**
-   Animaciones nativas para transicionar del grid a la vista de detalle, con fallback seguro para navegadores antiguos.
-5. **Aislamiento de Renderizado CSS:**
-   Uso intensivo de la propiedad `contain` y `will-change: transform` para evitar que las animaciones locales provoquen recálculos globales en la pantalla.
-6. **Gestión de Ciclo de Vida y Limpieza de Memoria (Teardown):**
-   Todos los módulos (`card/`, `modal.ts`, `sidebar/`, `main.ts`) implementan funciones de desmontaje explícito (`disposeCardEvents`, `disposeModalEvents`, `disposeSidebarEvents`, `disposeMainEvents`, `disposeApp`) y un bus de eventos global con desuscripción limpia (`appEvents.off`, `appEvents.clearAll`) para prevenir _memory leaks_ y listeners huérfanos.
-7. **Desacoplamiento Crítico de Conteo (Pintar Primero → Contar Después) y Liberación Inmediata de UI:**
-   La primera carga de catálogo solicita `get_count = false` para no bloquear el First/Largest Contentful Paint esperando el cálculo secuencial del `COUNT(*)` en PostgreSQL. El grid se pinta inmediatamente y el bloque `finally` de `loadAndRenderMovies` retira de inmediato `.is-fetching` y `aria-busy`, devolviendo la opacidad al 100% y liberando los clics sin esperar al conteo. El total se resuelve en segundo plano de forma no bloqueante, actualizando paginación y contadores atómicamente (`applyResolvedTotal`) con cero flicker y cero reconstrucción de tarjetas.
-8. **Navegación Fluida sin Parpadeo de Skeletons (*In-Flight Stale Grid*):**
-   Al cambiar de página o filtro con contenido ya visible, se conserva temporalmente el grid anterior con estado visual de carga discreto (`.grid-container.is-fetching`, opacidad 0.6 y `aria-busy="true"`), sustituyendo el DOM de una sola vez al llegar la nueva respuesta y reservando el esqueleto únicamente para la primera carga o contenedores vacíos.
-9. **Camino LCP Optimizado y Gestión de Preloads:**
-   Garantía de que exactamente una sola imagen en pantalla (tarjeta VIP en posición 0 o primera película) ostente `fetchpriority="high"` y `loading="eager"`. Eliminación de instancias redundantes de `new Image()` en `applyLqipImage` (reutilizado tanto en catálogo como en la modal y fichas de personas VIP), unificando el ThumbHash como `backgroundImage` directo y conectando el `src` al elemento `<img>` del DOM. Reutilización higiénica de un único elemento `<link data-lcp-preload="true">` en `<head>` para evitar preloads huérfanos acumulativos.
-10. **Determinación Certera de Estado VIP y Consistencia de Offset:**
-   Para personas (directores/actores), la condición VIP (`vip === 1` o `birthday`) se resuelve con certeza antes de calcular los parámetros de paginación del catálogo (`personCache` en 0 ms si ya está en memoria). Si la persona no es VIP, se solicita el `fetchLimit` íntegro en pág. 1 y el offset estándar `(page - 1) * basePageSize` en pág. 2+, previniendo la pérdida de una película en la primera página o la duplicación de la última película en páginas sucesivas. En grupos (colección/estudio), la tarjeta VIP es determinista y su metadata se paraleliza con `Promise.all`.
-11. **Consolidación Canónica de Facetas y Directivas Robots:**
-   Colapso estricto de parámetros secundarios y efímeros (`page`, `sort`, filtros combinados) hacia la URL canónica de la categoría base limpia (`getCanonicalUrl`), resolviendo el problema de dispersión de rastreo e indexación duplicada en navegación facetada. Asignación determinista de `noindex, follow` en búsquedas libres y listas privadas, junto a `index, follow, max-image-preview:large` en vistas de catálogo público.
-12. **Escalonado Fluido de Cuadrícula con Container Queries Multi-Navegador:**
-   Implementación de escalones graduados mediante Container Queries (`@container (min-width: 600px)` para 4 columnas y `@container (min-width: 760px)` para 5 columnas) en el modo exploración, asegurando una densidad visual y tamaño de tarjetas idéntico entre navegadores que integran barras de herramientas fijas (como Opera) y navegadores con viewport despejado (como Chrome).
-13. **Optimización de Transición Modal y Depuración de Tooltips:**
-   Ajuste de tiempos y aceleración en las transiciones de apertura y cierre de la modal de detalle desde las fichas del grid para una respuesta táctil y visual instantánea, junto con la retirada de atributos redundantes `title="Sinopsis"` en plantillas del cliente y SSR.
-14. **Desacoplamiento Modular de Eventos y Prevención de Doble Renderizado (SRP en DOM):**
-    Delegación exclusiva de la actualización de fichas al ámbito del propio componente (`card/lifecycle.ts` para `#grid-container` y `modal/events.ts` para la vista rápida), eliminando consultas globales `document.querySelectorAll(".movie-card")` en `main.ts` y dobles invocaciones de `updateCardUI` y `handleCardClick`. Las consultas `window.matchMedia` se cachean a nivel de módulo en $O(1)$, evitando la instanciación de objetos en bucles de alta frecuencia de scroll y touch.
-15. **Caché de Proxies Reactivos y Congelación Inmutable (`state.ts` y `contracts.ts`):**
-    Uso de `WeakMap` (`proxyCache`) en `makeReactive` para reutilizar proxies hijos en $O(1)$ sin asignaciones de memoria repetidas en lecturas frecuentes del estado (`activeFilters`, `userMovieData`). Congelación atómica (`Object.freeze`) en `normalizeUserMovieEntry` para eludir envolturas reactivas profundas innecesarias en diccionarios voluminosos.
-16. **Deduplicación en Vuelo y Marcado Preventivo de Caché de Usuario (`syncManager.ts` y `checkedIds.ts`):**
-    Protección contra colisiones paralelas en `mergeOnLogin(userId)` mediante `inFlightMergePromise`, compartiendo la misma promesa de red. Marcado proactivo de los IDs de películas descargadas y consolidadas (`markMovieIdAsChecked`) para que `fetchUserMovieDataForIds` en `renderEngine.ts` omita consultas redundantes a Supabase en la página inicial.
-17. **Unificación de Emisiones Reactivas (*SSOT Event Emission*):**
-    Centralización estricta de la emisión de `userDataUpdated` exclusivamente dentro de `setUserMovieData` en `state.ts`, eliminando emisiones duplicadas en `syncManager.ts` y `main.ts` que provocaban hasta 3 re-renderizados consecutivos del grid de tarjetas.
-18. **Unificación de Temporizadores de Reposo de Scroll (`scrollWatcher.ts`):**
-    Fusión de temporizadores independientes de guardado de scroll y prefetch predictivo en un único `scrollIdleTimer` con umbral balanceado a 200 ms, reduciendo al 50% las llamadas a `clearTimeout`/`setTimeout` durante desplazamientos táctiles a 60–120 Hz.
-19. **Blindaje de Almacenamiento y Mocking Resiliente (`supabaseClient.ts` y `router.ts`):**
-    Encapsulamiento defensivo de `localStorage` y `sessionStorage` en `customAuthStorage` con comprobaciones de entorno y `try / catch` ante restricciones de seguridad (modo incógnito estricto, bloqueo de almacenamiento). Saneamiento de `modalOpen` en History API dentro de `router.ts` y completado de stubs (`.delete()`, `.match()`, `signInWithOtp`) en `mockClient` para ejecuciones de prueba sin credenciales.
-20. **Sincronización Simétrica del Estado Contraído del Sidebar (`sidebar/context.ts`, `gestures.ts` e `index.ts`):**
-    Unificación SSOT mediante `isSidebarCollapsed()` y `setSidebarCollapsed(collapsed)` que sincroniza simultáneamente `document.documentElement` y `document.body`. Corrige el bloqueo permanente a 65px provocado por el selector `:is(html.sidebar-collapsed, body.sidebar-collapsed)` cuando solo se alternaba en `document.body`, restableciendo la alternancia fluida de ancho (65px ↔ 200px), el icono interactivo (`ICONS.FORWARD` `>>` vs `ICONS.REWIND` `<<`) y el registro de eventos tempranos antes del vencimiento del *idle timer*.
-21. **Depuración y Alineación Crítica de `index.html` (Anti-FOUC y Cero CLS):**
-    - **Alineación de CSS Crítico (*Above the Fold*)**: Ajuste de `.grid-container` en móviles (`repeat(2, minmax(0, 1fr))` por debajo de 400px), unificación de breakpoints de padding horizontal (`var(--space-lg)` en 769px–1199px y `var(--space-xxl)` a partir de 1200px en `.main-header` y `.content`) y sincronización de variables de radio `--radius-lg`, `--radius-xl` y `--radius-xxl` con `variables.css`, erradicando saltos acumulativos de diseño (*Cumulative Layout Shift* = 0.000).
-    - **Eliminación de Código Muerto en DOM y CSS**: Supresión de la plantilla huérfana `#sidebar-skeleton-template` y sus clases en `ui.css`, retirada de `#active-filters-container` y `#total-results-sidebar` (junto con la regla `#total-results-sidebar { display: none !important; }`), y eliminación del control invisible e inaccesible `<select id="sort-select">` con su manejador `handleSortChange` y selectores en `ui.ts` y `constants.ts`.
-    - **Saneamiento Accesible y Limpieza de Estilos**: Asignación de `id="quick-view-title"` en `<template id="quick-view-person-template">` para satisfacer `aria-labelledby="quick-view-title"` en la modal rápida de fichas VIP (WCAG 2.1 AA) y retirada de estilos `style` inline redundantes en `.bio-headline` de las plantillas de personas.
-22. **Auditoría Integral de Iconos Vectoriales y Optimización de Sprites SVG (`src/sprite.svg`, `src/flags.svg`, `scripts/sync-sprites.mjs`, `vite.config.js` y `src/js/constants.ts`):**
-    - **Saneamiento Estructural y Supresión de Huérfanos**: Cierre de la etiqueta `</symbol>` faltante en `#icon-bbc`, supresión de símbolos obsoletos no referenciados (`#icon-film` y `#icon-hbo`), incorporación de `#icon-eye-off` para alternancia de visibilidad de contraseñas, y renombrado de gradientes `<linearGradient id="a|b">` a `id="nf-a|nf-b"` en `#icon-netflix` para prevenir colisiones en el espacio de nombres global del DOM.
-    - **Unificación DOM e Instanciación SSOT (`<use href="#...">`)**: En `src/js/constants.ts`, sustitución de cadenas de geometría inline duplicada en `ICONS` (`PAUSE`, `REWIND`, `FORWARD`, `PLAY`, `CHEVRON_RIGHT`, `LIST`) por referencias directas al sprite SVG, garantizando consistencia estructural con el HTML inicial y reduciendo el peso del bundle JS. Unificación análoga en `#sort-dropdown-trigger` y en el botón de visibilidad de contraseña en formularios de autenticación y perfil.
-    - **Depuración de Comentarios en Doble Canal (-5,6 KB)**: Despojado automático de 166 comentarios XML (`/<!--[\s\S]*?-->/g`) y líneas vacías redundantes tanto en el plugin de inyección SPA (`inlineSvgSpritesPlugin` en `vite.config.js`) como en la generación de assets públicos para CDN/SSR (`copyCleanSprites` en `scripts/sync-sprites.mjs`), preservando los comentarios y documentación íntegros en los archivos fuente de desarrollo.
-    - **Corrección de Estados de Calificación en Modal Móvil (`rating.ts` y `rating.css`)**: Implementación de las clases canónicas `.has-user-rating` e `.is-rating-preview` para evitar que las estrellas queden teñidas de amarillo al desvotar en dispositivos táctiles sin evento `mouseleave`, restableciendo el tono gris neutro de la calificación comunitaria.
-23. **Paridad Funcional, Seguridad de Enlaces y Optimización Perimetral (`cloudflare/`, `src/shared/`, `src/js/`):**
-    - **Normalización de Texto y $O(1)$ en Slugs y Actores Ignorados**: Unificación de `toSlug` en `slugs.ts` delegando en `normalizeText` de `formatters.ts` (eliminando 14 llamadas regex encadenadas duplicadas), simplificación $O(1)$ en `genreToSlug` y migración a `IGNORED_ACTORS_SET.has()` en componentes (`cardElement.ts`, `modal/renderer.ts`, `api.ts`).
-    - **Depuración de Plantillas y Coherencia de Iconografía**: Retirada de referencia huérfana `starsText` en `profile.ts`, unificación del botón de cierre con `<use href="#icon-close">` en `profileModal.ts` (igual que `legalModal.ts`), icono `#icon-trash` unificado en botón de eliminar cuenta y alternancia reactiva `#icon-eye` / `#icon-eye-off` en contraseña de perfil. Corrección técnica en la tabla de cookies de `legalModal.ts` (`localStorage y Cookie técnica` para Zero-Flicker theme).
-    - **Sanitización Estricta de Enlaces Externos en Edge SSR**: Incorporación de `sanitizeExternalUrl` en `render-taxonomy.js` y `render-movie.js`, blindando enlaces a JustWatch, Wikipedia, FilmAffinity e IMDb contra esquemas inseguros o Stored XSS, y aplicando clase `.disabled` sin `href` interactivo ante obras sin identificador externo (idéntico a la SPA).
-    - **Modulación Tipográfica de Duración y Paridad en Quick View (`render-movie.js`)**: Adopción de `formatModalDuration` junto al nuevo helper `formatMetaUnitsHtml` en `seo-types.js`, encapsulando palabras y unidades (`ep.`, `min.`, `h.`, `x`, `Película`, `Serie TV`) en `<span class="meta-unit">` con `font-weight: 560` en el SSR de `/titulo/:slug/`.
-    - **Corrección Canónica de Breadcrumbs y Eliminación de Redundancia 301**: Reestructuración del `BreadcrumbList` JSON-LD en `render-movie.js` para enlazar exclusivamente a URLs reales que devuelven HTTP 200 OK (`Inicio` $\to$ `/genero/:slug/` $\to$ `/titulo/:slug/`), eliminando enlaces a rutas inexistentes 404 (`/peliculas/` o `/genero/.../peliculas/`). Eliminación de comprobación 301 redundante en Paso 4 de `worker.js`.
-    - **Centralización DRY de Helpers y Regeneración de CSS Perimetral**: Traslado de `computePersonAgeInfo` a `seo-types.js` (purgando 50 líneas duplicadas en `render-person.js`), blindaje de desacoplamiento de JS nativo en Node para el Worker, y recompilación perimetral minificada con `build-seo-css.mjs` reduciendo el bundle CSS a 126,9 KB (-57 KB netos).
-24. **Robustez PWA, Sincronización de Contratos LLM y Purgado de CSS Perimetral (`public/sw.js`, `src/js/syncManager.ts`, `scripts/`, `cloudflare/seo/`):**
-    - **Aislamiento Estricto por Origen en Service Worker (`public/sw.js`)**: Guarda perimetral `if (request.method !== 'GET' || !url.protocol.startsWith('http') || url.origin !== self.location.origin) return;` que asegura aislamiento estricto por origen, evitando que peticiones a Supabase, esquemas `chrome-extension://` o recursos cross-origin queden interceptados indebidamente por las estrategias de caché dinámica del SW.
-    - **Receptor Reactivo de Background Sync (`src/js/syncManager.ts`)**: Suscripción al mensaje `{ type: "SYNC_PENDING_ENTRIES" }` emitido por el Service Worker durante el evento `sync`, disparando `scheduleSync(100)` con desuscripción simétrica e idempotente en `initSyncListeners()`.
-    - **Sincronización Canónica de Rutas en Especificación de Agentes (`scripts/generate-llms.mjs`)**: Documentación fidedigna de las rutas canónicas del Edge Worker con prefijo dimensional (`/genero/:slug/`, `/estudio/:slug/`, `/seleccion/:slug/`, `/pais/:slug/`) y personas VIP en la raíz canónica (`/:vip-slug/`), distinguiéndolas formalmente de las rutas interactivas de la SPA (`/director/:slug/`, `/actor/:slug/`, combinadas y filtros `no-`). Regeneración sincronizada de `public/llms.txt`, `public/llms-full.txt` y validación estricta en `tests/llms-spec.test.mjs`.
-    - **Limpieza de Reglas Muertas y Purgado CSS en Edge (`scripts/build-seo-css.mjs`)**: Eliminación de 143 líneas de selectores duplicados u obsoletos (`.brand-text`, `.mark-v`, `.brand-dot`, `.mark-dot`, `.movie-seo-header`, `.total-results-container`, `.btn-open-spa-subtle`, `.btn-header-cta`, etc.), reduciendo el bundle minificado en memoria de Cloudflare (`cloudflare/seo/seo-card-css.js`) y `public/seo-card-v7.css` a 124.397 bytes (-2,8 KB adicionales).
-25. **Optimización de Base de Datos y Aceleración de Filtros en RPC (`database/functions/search_movies_offset.sql`):**
-    - **Aislamiento del Daily Showcase en Portada Limpia**: Restricción del barajado diario determinista por fecha exclusivamente a la portada general (`v_has_filters = false`). En cualquier navegación filtrada (géneros, países, estudios, selecciones, años o medios), el orden por relevancia pasa a ser `relevance ASC, id ASC` canónico directo.
-    - **Desbloqueo de Early Stop y Latencia Ultra-Baja**: Supresión de las funciones de ventana `COUNT(*) OVER ()` y `ROW_NUMBER() OVER ()` en consultas filtradas, permitiendo que PostgreSQL aproveche escaneos por índice con parada temprana (`LIMIT 42`). La estrategia *Pintar Primero -> Contar Después* pasa a ejecutarse en ~3 ms reales en lugar de los ~40-85 ms previos.
-26. **Unificación de Conteo en Filtros y Supresión de RPC Duplicada (`src/js/renderEngine.ts`):**
-    - **Petición Unificada con Conteo (`get_count = true`)**: En navegaciones con filtros activos (`hasActiveMeaningfulFilters() || mediaType !== 'all'`), la primera llamada al catálogo solicita directamente el conteo exacto junto con las películas. Esto elimina por completo la segunda petición RPC diferida en segundo plano, reduciendo al 50% las llamadas de red y el consumo de CPU en Supabase/PostgreSQL.
-    - **Preservación del Fast-Path en Portada Limpia (`/`)**: En el catálogo general limpio sin filtros se preserva `get_count = false` en la primera carga para aprovechar el Fast-Path (~1.5 ms), manteniendo el conteo diferido en segundo plano exclusivamente para poblar la paginación general.
-27. **Paralelización de Personas y Catálogo en Página 1 (`src/js/renderEngine.ts`):**
-    - **Supresión de Waterfall en Caché Fría**: Lanzamiento concurrente de `fetchPersonDetails` y `fetchMovies` (`page_limit: 44`, `page_offset: 0`) vía `Promise.all` en la primera página de directores y actores. Ahorra un RTT completo (~80-120 ms) en frío al abrir cualquier autor o intérprete.
-    - **Poda Dinámica en Memoria y Blindaje de Offset en Pág > 1**: Si al resolver la persona se confirma estatus VIP, se poda el ítem 44 en memoria a 43 (`firstPageLimit - 1`) antes de evaluar la orfandad y renderizar. En páginas posteriores (`page > 1`), se preserva la resolución previa del estatus (instantánea desde `personCache` en 0 ms) para calcular con precisión absoluta el offset con decremento (`41` o `42`), erradicando duplicados o desfases inter-página.
-28. **Consolidación de Desambiguación Autoral en Base de Datos (`src/js/api.ts`):**
-    - **Retirada de Filtrado Redundante en Cliente**: Supresión de la post-verificación manual en JavaScript (`result.items.filter(...)`) sobre `parsedDirectors` y `parsedActors`. La desambiguación de homónimos cortos y colectivos se consolida como responsabilidad exclusiva de PostgreSQL (Fases 3.6/3.7 en `search_movies_offset.sql` con índice GIN y `EXISTS unnest`), garantizando coherencia absoluta entre el conteo exacto de la base de datos y los elementos pintados en pantalla, y erradicando el descarte indebido de títulos en autores con nombres de colectivo (ej. Hermanos Russo).
-29. **Arquitectura Local-First SWR en "Mi Lista" (`src/js/api.ts`):**
-    - **Render Instantáneo a 0 ms**: Consulta prioritaria a `getLocalMyListResponse` contra `cached_movies` en IndexedDB. Si todas las películas de la lista/página están disponibles en el dispositivo, se devuelven de inmediato sin bloquear al usuario en la red.
-    - **Revalidación Asíncrona en Segundo Plano**: Si el usuario está conectado y con sesión, `revalidateMyListInBackground` verifica novedades contra Supabase de forma no bloqueante, sincronizando las fichas en caché y actualizando la interfaz únicamente si existen diferencias reales de datos o conteo. En caso de caché fría incompleta, se conmuta de forma transparente a la consulta de red.
-30. **Carga Perezosa Condicional de Supabase SDK y Dieta Crítica del Bundle JS (`src/js/supabaseClient.ts`, `src/js/auth.ts`, `src/js/api.ts`, `src/js/main.ts`, `vite.config.js`):**
-    - **Aislamiento en Chunk Dinámico de `@supabase/supabase-js`**: Transición del import estático superior a importación dinámica (`const { createClient } = await import("@supabase/supabase-js")`) dentro de `getSupabase()`, junto con la partición explícita de `manualChunks` en Vite (`supabase-vendor`).
-    - **Detección de Sesión Sincrónica en 0 ms (`hasStoredAuthSessionOrHash`)**: Comprobación sin coste de red ni parseo de librerías para verificar si existen tokens activos (`sb-*-auth-token`) en `localStorage`/`sessionStorage` o parámetros entrantes de autenticación (`#access_token`, `#refresh_token`, `#type=recovery`, `#error_code`) en la URL.
-    - **Arranque Limpio y Desacoplado para Visitantes Anónimos**: Para el 95% de visitantes no logueados, `setupAuthSystem()` se posterga por completo hasta que el usuario hace clic en "Entrar" o se dispara el evento `auth:requested`, eliminando la descarga del SDK pesado en el camino crítico.
-    - **Consumo 100% Nativo en Catálogo Público**: Desvinculación de `getSupabase()` en `fetchMovies` para el catálogo público ordinario, delegando exclusivamente en `fetch("/api/rpc/search_movies_offset")` perimetral con fallback resiliente bajo demanda.
-    - **Reducción Masiva del Vendor Crítico**: El chunk vendor inicial descargado por el navegador se reduce drásticamente de **241,9 kB (64 kB gzip)** a tan solo **18,1 kB (5,7 kB gzip)** (-223,8 kB raw / -58,3 kB gzip), mejorando sustancialmente las métricas Core Web Vitals (TBT, FCP y LCP) en dispositivos móviles.
-31. **Delegación Global de Eventos en Tarjetas y Contenedor de Valoraciones (`src/js/components/card/lifecycle.ts`, `src/js/components/card/cardElement.ts`, `src/js/components/rating.ts`, `src/js/components/modal/events.ts`):**
-    - **Supresión de Listeners Individuales en Tarjetas**: Eliminación de `addEventListener("click", handleCardClick)` en cada ficha individual y en tarjetas VIP, delegando el manejo de clics al ancestro `#grid-container` y al contenedor `#quick-view-content` del modal.
-    - **Delegación Unificada de Valoraciones (`initRatingInteractions`)**: Centralización de los 5 eventos de calificación (`mouseover`, `mouseout`, `focusin`, `focusout`, `keydown`) en un único grupo de escuchadores fijos a nivel de contenedor.
-    - **Reducción a Cero del Tiempo de `initializeCard`**: Las 42 (o 72) tarjetas se montan en el DOM sin ningún listener individual, reduciendo de entre 252 y 432 registros dinámicos por página a únicamente 6 escuchadores delegados persistentes en toda la aplicación, reduciendo la presión sobre el recolector de basura (*Garbage Collector*) y previniendo fugas de memoria en navegaciones rápidas.
-32. **Retirada del Subsistema Obsoleto de Lazy Sync por IDs (`src/js/checkedIds.ts`, `src/js/api.ts`, `src/js/renderEngine.ts`, `src/js/components/modal/renderer.ts`):**
-    - **Eliminación Total de `checkedIds.ts`**: Fichero íntegro eliminado junto con su caché en memoria `checkedUserMovieIds` y sus funciones `markMovieIdAsChecked`, `isMovieIdChecked` y `clearCheckedUserMovieIds`.
-    - **Supresión de `fetchUserMovieDataForIds` en `src/js/api.ts`**: Retirada del endpoint residual y de las consultas fraccionadas `user_movie_entries.in('movie_id', ...)`.
-    - **Consolidación Local-First sin Peticiones Fantasma**: El renderizado del grid (`renderEngine.ts`) y la apertura del modal (`renderer.ts`) leen instantáneamente las notas y estados de watchlist desde `state.userMovieData` (hidratado a 0 ms desde IndexedDB con `getAllLocalEntries` y sincronizado en `mergeOnLogin`), eliminando 1 petición de red en cada cambio de página y 1 en cada apertura de modal, y erradicando cualquier riesgo de flicker o layout thrashing.
-33. **Desacoplamiento y Diferimiento de Metadatos JSON-LD en la SPA (`src/js/renderEngine.ts`):**
-    - **Supresión de JSON-LD en Navegación Interactiva**: Eliminación de la regeneración síncrona de `ItemList` (20 películas) y `BreadcrumbList` en cada cambio de filtro, paginación o desplazamiento del control de años.
-    - **Preservación Instantánea de Metadatos de Usuario**: `updatePageTitle()` mantiene la sincronización en tiempo real de `document.title`, `<link rel="canonical">`, OpenGraph y directivas `meta robots` para el usuario y navegador.
-    - **Diferimiento Asíncrono no bloqueante en Arranque en Frío (`scheduleInitialSeo`)**: Los esquemas Schema.org se inyectan única y exclusivamente una vez durante la carga inicial desvinculados del camino crítico mediante `runWhenIdle()`, reduciendo a cero el bloqueo del hilo principal (TBT e INP) y eliminando la presión innecesaria sobre el recolector de basura (*Garbage Collector*).
-34. **Curaduría Estática en Cliente y Cierre de Fuga del SDK de Supabase (`src/js/constants.ts`, `src/js/utils.ts`, `src/js/components/sidebar/index.ts`, `src/js/api.ts`):**
-    - **Eliminación Total de Peticiones RPC de Descubrimiento**: Supresión de `fetchRandomTopActors` y `fetchRandomTopDirectors` en `api.ts`, ahorrando 2 llamadas RPC (`get_random_top_actors` y `get_random_top_directors`) en cada inicio de sesión.
-    - **Blindaje Absoluto del Bundle Diet de Auth**: Erradicado el "Caballo de Troya" que activaba `getSupabase()` a los 500 ms de arrancar la aplicación, garantizando que el paquete pesado de Supabase jamás se descargue para visitantes anónimos en la carga inicial ni en el sidebar.
-    - **Piscinas Curadas de 100 Directores y 100 Actores (`CURATED_DIRECTORS` / `CURATED_ACTORS`)**: Definición en `constants.ts` de 100 directores y 100 actores legendarios e icónicos (100% verificados contra la base de datos de personas).
-    - **Poblado Síncrono a 0 ms con Barajado Local $O(k)$ (`getRandomSubarray`)**: El sidebar selecciona 5 nombres al azar de forma instantánea y uniforme al montar los filtros, eliminando tareas diferidas en `runWhenIdle`, parpadeos visuales al desplegar los acordeones y garantizando operatividad 100% Local-First / Offline.
-35. **Control de Frecuencia y Aleatoriedad del Flip Onboarding (`src/js/components/card/index.ts`, `src/js/renderEngine.ts`):**
-    - **Restricción a Portada Limpia (`isCleanHome`)**: La animación de aprendizaje 3D solo se agenda en la página 1 limpia del catálogo general (`/`), erradicando giros molestos cuando el usuario filtra por género, país, estudio, autor o búsquedas.
-    - **Límite Estricto de 10 Ejecuciones con Persistencia (`videoclub:flip_onboarding_count`)**: Contador en `localStorage` que desconecta por completo la lógica a 0 ms tras 10 giros, eliminando temporizadores residuales y repintados 3D para usuarios consolidados.
-    - **Selección Aleatoria Dinámica entre las Primeras 4 Fichas**: El objetivo del giro se elige uniformemente al azar entre las 4 primeras tarjetas de la fila superior, aportando una experiencia de descubrimiento orgánica y no monótona.
-36. **Optimización de GPU en Overlays y Toasts (Híbrido Quirúrgico de `backdrop-filter`, `src/css/components/`):**
-    - **Coste Cero en Dispositivos Móviles (`<= 768px`) y Táctiles**: Supresión de `backdrop-filter: blur(...)` en `.quick-view-overlay`, `.auth-overlay`, `.profile-overlay`, `.legal-overlay` y `.sidebar-overlay`, sustituyéndolo por un scrim oscuro cinematográfico (`rgba(0, 0, 0, 0.68)`). Elimina por completo los pases de convolución gaussiana en GPU durante el arrastre táctil (*swipe-down*) y aperturas de modales a 120 FPS.
-    - **Purga Universal en Toasts**: Eliminación de `backdrop-filter` en `.toast`, erradicando el cálculo de sombreado invisible bajo fondos con 95% de opacidad.
-    - **Preservación del Glassmorphism en Escritorio (`> 768px`)**: Mantenimiento del desenfoque sofisticado en modales centradas de sobremesa con soporte para aceleración de hardware y respeto estricto a `prefers-reduced-transparency`.
-37. **Optimización 2D y Poda Estructural de Layout en Modo Muro (`src/css/components/card.css`):**
-    - **Poda de Layout y Render Tree (`display: none !important`)**: En Modo Muro (`body.rotation-disabled`), se suprime por completo `.flip-card-back` del árbol de renderizado. Esto elimina más de 1.500 nodos DOM invisibles (sinopsis, repartos, directores, botones de acción) del flujo de cálculo geométrico en las 72 tarjetas simultáneas.
-    - **Aplanamiento a 2D y Liberación de VRAM (`perspective: none` y `transform-style: flat`)**: Se anula el contexto de perspectiva 3D en `.movie-card:not(.is-quick-view)` y se aplana `.flip-card-inner` a 2D (`transform: none !important`), permitiendo que el compositor de la GPU gestione las 72 carátulas como texturas planas ordinarias. Reduce drásticamente la ocupación de memoria de vídeo (VRAM) y garantiza scroll ultra-fluido a 120 FPS sin matrices de transformación 3D activas.
-
-38. **Poda de Pseudo-Ripple y Liberación de Contextos de Apilamiento en Botones (`src/css/components/button.css`):**
-    - **Supresión de Pseudo-Ondas (`&::after`)**: Eliminación del efecto de onda expansiva (*ripple*) centrado en `.btn`, erradicando transiciones de 0,6 s y nodos DOM espurios en el árbol de renderizado de cada botón de la aplicación.
-    - **Liberación de Aislamiento y Desbordamiento (`isolation: isolate` y `overflow: hidden`)**: Eliminación de la creación forzada de contextos de apilamiento independientes en GPU por botón y desbloqueo del desbordamiento para garantizar que anillos de foco accesibles (`:focus-visible`) no queden recortados.
-    - **Consolidación del Feedback Táctil Mecánico (`:active`)**: Unificación de la microinteracción de pulsación con escala limpia (`scale(0.97)`), hundimiento de 1 px y sombra interna a 50 ms, reforzando la coherencia con el diseño *Quiet Luxury*.
-
-39. **Congelación de Animación del Hero en Scroll (`src/css/layout.css`):**
-    - **Supresión de Ticks en Compositor**: Cuando `#landing-hero` pasa al estado `.is-scrolled-away` al descender por el catálogo, se aplica `animation-play-state: paused` sobre `.landing-hero-description`.
-    - **Ahorro de GPU y Batería**: Congela los cálculos del bucle infinito de 30s (`heroTaglineCrossfade`) sobre los 6 párrafos cuando el Hero está oculto, liberando a la GPU de animar capas invisibles y reanudando la rotación de forma fluida al volver a la parte superior de la portada.
-
-40. **Carga Diferida de CSS en Modales de Autenticación y Perfil (`src/css/main.css`, `src/js/`):**
-    - **Poda del CSS Crítico Inicial (-24,8 KB raw / ~19 KB minificado)**: Retirada de `@import "components/auth.css"` y `@import "components/profile.css"` del archivo CSS bloqueante principal (`main.css`), reduciendo un ~14% el peso del bundle que compite por el First Contentful Paint.
-    - **Carga Asíncrona sin FOUC (`loadAuthStyles` y `profile.css`)**: `openAuthModal` asegura la resolución asíncrona de los estilos antes de retirar el atributo `hidden` del modal, garantizando cero destellos de contenido sin estilos.
-    - **Pre-carga en Inactividad (*Idle Prefetch*)**: Invocación en segundo plano durante periodos ociosos del navegador (`runWhenIdle` a 1000 ms) para pre-calentar `auth.css` y, si el usuario tiene sesión activa, el chunk de `profile.js` + `profile.css`, asegurando apertura instantánea a 0 ms.
-
-41. **Supresión de Máscaras Alfa en Scroll de la Modal (`src/css/components/modal.css`, `src/js/components/modal/`):**
-    - **Scroll 100% Nativo en GPU**: Eliminación de `-webkit-mask-image` y `mask-image` lineales en `.quick-view-content` y `.quick-view-column`, erradicando la recomposición obligatoria de texturas en superficies intermedias (*Render Targets*) durante el desplazamiento táctil.
-    - **Poda de Listeners y Clases Fantasma**: Supresión de la conmutación de `.is-scrolled` y de falsas transiciones CSS sobre degradados de máscara en `modal/events.ts` y `modal/renderer.ts`.
-    - **Fluidez y Legibilidad**: Desplazamiento nativo a 120 FPS sin tirones (*zero jank*) en WebKit (iOS) y Blink (Android), garantizando nitidez tipográfica total sin degradados que emborronen el texto.
-
-42. **Acabado Editorial de "Placa Inaugural" en Tarjetas VIP (`src/css/components/card.css`):**
-    - **Invariante Geométrica de Imagen (1:1 con Películas)**: Eliminación de la sobreescritura de bordes en `.person-card .poster-container img`, garantizando que el retrato ocupe exactamente las mismas dimensiones (250px × 318px), passepartout (`var(--space-xxs) solid var(--color-surface)`) y radio de curvatura (`var(--radius-xxl)`) que los carteles del catálogo.
-    - **Encuadre y Textura "Quiet Luxury" Exclusivo en CSS**: Distinción visual de autor sin añadir nodos HTML mediante filete perimetral en oro viejo de 2px (`rgba(var(--color-brand-gold-rgb), 0.85)`), ribete interior en el retrato (`outline-offset: -2px`), halo lumínico de exposición, iluminación cenital radial sobre fondo carbón noble (`#151619`) y haz divisorio cinematográfico.
-    - **Jerarquía Tipográfica y Modo Muro**: Tipografía de autor reforzada (`font-weight: 800; letter-spacing: 0.015em;`), titular de biografía en oro (`.bio-headline`), botón de rol dual (D/A) estilizado y nombre destacado en oro envejecido en Modo Muro (`.wall-person-name`).
-
-43. **Punto Único de Entrada e Inicialización Idempotente en Auth Modal (`src/js/ui.ts`, `src/js/main.ts`, `src/js/auth.ts`):**
-    - **Resolución de Carrera y Cobertura Total**: Integración de la llamada a `initAuthForms()` directamente dentro de `openAuthModal()` tras `ensureAuthModalMounted()`, garantizando que tanto los clics directos como las aperturas inducidas (voto o watchlist de usuarios anónimos) dispongan de formularios enlazados con sus submit listeners y conmutadores de contraseña.
-    - **Poda de Listener Duplicado**: Eliminación del listener asíncrono redundante sobre `#login-button` en `main.ts` que podía ejecutarse antes del montaje del DOM.
-    - **Blindaje de Idempotencia**: Incorporación del flag `authFormsInitialized` en `auth.ts` para evitar la duplicación de listeners ante aperturas sucesivas del modal.
-
-44. **Paridad de Ordenación por Relevancia y Cero Parpadeo en Mi Lista (`src/js/api.ts`, `database/functions/search_movies_offset.sql`, `src/shared/types.ts`):**
-    - **Inclusión de `relevance` en Proyecciones**: Incorporación de la columna `relevance` en las dos consultas `.select(...)` de `api.ts`, en el tipo canónico `Movie` / `SupabaseMovieRow` y en las dos ramas SELECT de `search_movies_offset.sql`.
-    - **Desempate Canónico por ID (`a.id - b.id`)**: Actualización de la función de ordenación local en `getLocalMyListResponse` con control seguro de nulos y desempate por `id`, reflejando exactamente el `.order('id', { ascending: true })` en las consultas de Supabase.
-    - **Erradicación de Falsos Positivos en SWR**: Al coincidir la ordenación local con la remota, `revalidateMyListInBackground` deja de detectar discrepancias espurias (`hasDifferences = true`), eliminando parpadeos y re-renderizados fantasma tras 50 ms.
-
-45. **Extensión del Fast-Path de Portada Limpia a Conteo Directo (`database/functions/search_movies_offset.sql`):**
-    - **Desacoplamiento de `get_count` en Fase 1.6**: Retirada de la restricción `AND NOT get_count` en la condición del Fast-Path del escaparate diario limpio (portada sin filtros dentro de los 378 títulos del pool).
-    - **Conteo Index-Only Instantáneo (~2 ms)**: Resolución de `total` mediante `CASE WHEN get_count THEN (SELECT count(*) FROM public.movies) ELSE -1 END`, sustituyendo el costoso desvío a la Fase 4 (que ejecutaba `ROW_NUMBER() OVER ()`, `COUNT(*) OVER ()` y `hashtext()` sobre las 14.564 filas) por un escaneo directo de índice sin degradar la latencia de la llamada en segundo plano (50 ms).
-
-46. **Extensión de Modo Muro a Colecciones y Estudios (`src/css/components/card.css`, `src/js/components/card/cardElement.ts`):**
-    - **Generalización de Selectores de Modo Muro**: Sustitución de `.movie-card.person-card` por la tríada `:is(.person-card, .collection-card, .studio-card)` en las reglas de `card.css` que gestionan `.card-rating-block` y `.wall-person-name` bajo `body.rotation-disabled`.
-    - **Identidad Semántica en Estudios**: `createGroupCardElement` reemplaza dinámicamente `collection-card` por `studio-card` en nodos de estudio, asegurando alineación visual perfecta del título en oro (`var(--color-brand-gold)`) bajo el cartel y supresión limpia de estrellas en todas las tarjetas de cabecera #0.
-
-47. **Paridad Geométrica y Cero CLS en Esqueletos de Modo Muro (`src/css/components/ui.css`):**
-    - **Unificación de Relación de Aspecto (`aspect-ratio: 2 / 3`)**: Corrección del ratio en `.skeleton-card` bajo `body.rotation-disabled` (anteriormente `2 / 3.2`), igualando con exactitud matemática el ratio de las tarjetas hidratadas reales (`card.css`).
-    - **Erradicación de Saltos Visuales**: Elimina la contracción del 6,67% en la altura de fila durante la transición de carga a catálogo en Modo Muro, asegurando estabilidad visual absoluta (*Cumulative Layout Shift* = 0).
-
-48. **Resolución de Condición de Carrera en Recarga de Mi Lista (`src/js/api.ts`, `src/js/main.ts`):**
-    - **Auto-hidratación Local-First Inmediata en `getLocalMyListResponse`**: Si la memoria reactiva (`state.userMovieData`) arranca vacía durante una recarga en frío o F5, la función lee y puebla directamente las entradas desde IndexedDB (`await getAllLocalEntries()`) antes de evaluar los IDs de películas, erradicando falsos positivos de lista vacía.
-    - **Fallback Transparente a Red ante Sesión Activa**: Si la base local no dispone de registros pero el usuario cuenta con token de sesión (`hasStoredAuthSessionOrHash()`), `getLocalMyListResponse` retorna `null` para que `fetchMovies` consulte Supabase y descargue el catálogo privado en lugar de mostrar «No se encontraron resultados».
-    - **Desacoplamiento de Renderizado en `handleDataRefresh`**: La hidratación en `getLocalMyListResponse` alimenta directamente la carga inicial legítima sin requerir re-renderizados superpuestos desde `handleDataRefresh`, previniendo colisiones de aborto y congelaciones en modo pálido.
-
-49. **Evolución Quiet Luxury de Píldoras de Filtros en Sidebar (`src/css/components/sidebar.css`):**
-    - **Poda de Degradados Obsoletos**: Supresión del gradiente diagonal a 45° y de la inversión a texto negro en modo oscuro (`color: var(--color-bg)`), sustituyéndolos por superficies nobles con texto blanco nítido y micro-bordes de precisión.
-    - **Encuadre de Oro Viejo en Modo Oscuro**: En tema oscuro, `.filter-pill` adopta fondo carbón (`var(--color-surface-2)`) con ribete fino en oro viejo (`1px solid rgba(var(--color-brand-gold-rgb), 0.5)`), alineando la identidad del sidebar con los botones de ordenación y el Bento Grid.
-    - **Microinteracción Reactiva en Botón de Retirada (`×`)**: `.remove-filter-btn` transiciona su aspa hacia oro envejecido (`var(--color-brand-gold)`) en *hover*, con opacidad y escalado balanceados. Píldoras de exclusión armonizadas con fondo óxido translúcido y borde carmín.
-
-50. **Tipografía Cinematográfica y Proporción del Año en Modal de Vista Rápida (`src/js/components/modal/renderer.ts`, `src/css/components/modal.css`):**
-    - **Normalización Ortográfica y Escala del Año (`1994` a `1.65rem`)**: Eliminación del separador de millar artificioso (`1.994`) en `renderer.ts`, restaurando el formato cinematográfico estándar de 4 dígitos. Reducción de la escala tipográfica en `modal.css` de `2.4rem` a `1.65rem`, devolviendo la jerarquía visual de cabecera al título de la película (`2.05rem`).
-    - **Preservación de Versalitas y Estilo Clásico en Metadatos**: Mantenimiento de la identidad visual de catálogo con versalitas (`font-variant: small-caps`) y punto final en los encabezados `Género.`, `Reparto.` y `Sinopsis.`.
-
-51. **Erradicación de Doble Carga y Descongelación del Modo Pálido en Mi Lista (`src/js/main.ts`):**
-    - **Poda de Re-renderizado Parásito en `handleDataRefresh`**: Supresión de la invocación redundante a `loadAndRenderMovies` dentro de `handleDataRefresh` al escuchar `userDataUpdated`. La carga legítima inicial del catálogo (`init`) ya dispone de todas las películas locales desde el primer milisegundo gracias a `getLocalMyListResponse` (`api.ts`).
-    - **Eliminación de Abortos en Vuelo y Limpieza de `.is-fetching`**: Al no dispararse una segunda carga superpuesta sobre la primera, la señal de aborto (`signal.aborted`) permanece en `false`, permitiendo que el bloque `finally` de `renderEngine.ts` retire limpiamente la clase `.is-fetching`, restaurando el brillo al 100% y eliminando el parpadeo y la congelación en modo pálido.
-
-52. **Paridad Completa de Tarjetas de Estudio en CSS e Interacciones JS (`src/css/components/card.css`, `src/js/components/card/cardElement.ts`, `src/js/components/card/lifecycle.ts`):**
-    - **Inclusión de `.studio-card` en Reglas de Centrado y Metadatos**: Actualización de selectores en `card.css` con `:is(.collection-card, .studio-card):not(.is-quick-view)` para `.movie-summary`, `.movie-meta`, `.poster-container img` y el efecto LQIP de desenfoque progresivo.
-    - **Guardas de No-Rotación en Interacciones Táctiles y Hover**: Integración de la comprobación `card.classList.contains('studio-card')` en `startFlipTimer`, `handleSingleTap` (`cardElement.ts`), `handlePointerOver` y `handlePointerUp` (`lifecycle.ts`), blindando a las tarjetas de estudio frente a giros indeseados y caras traseras vacías.
-
-53. **Paridad del Año Sin Punto en Edge SSR (`cloudflare/seo/render-movie.js`):**
-    - **Alineación con Contrato 22.1**: Simplificación de la plantilla de año en `render-movie.js`, erradicando la inyección obsoleta de punto de millar (`1.994`) y garantizando paridad exacta del año cinematográfico estándar de 4 dígitos (`1994`) entre la SPA interactiva y el renderizado SSR en Cloudflare Workers.
-
-54. **Reconciliación SWR en Caliente para Mi Lista ante Discrepancias Remotas (`src/js/api.ts`, `src/js/state.ts`, `src/js/main.ts`):**
-    - **Evento Desacoplado `'myList:revalidated'`**: Si la revalidación en segundo plano (`revalidateMyListInBackground`) detecta diferencias reales entre la nube y la caché local (`hasDifferences`), sincroniza las entradas en memoria/IndexedDB, guarda la respuesta remota en `queryCache` y emite el evento `'myList:revalidated'`.
-    - **Consumo Efímero de Caché en `fetchMovies`**: El motor de API permite consumir entradas de `queryCache` para `myList` purgándolas inmediatamente de un solo uso, lo que permite que `loadAndRenderMovies` refresque suavemente el catálogo sin esqueletos (`forceSkeleton: false`) cuando hay cambios remotos, sin dispararse jamás en arranques ordinarios ni abortar la carga inicial limpia de F5.
+---
 
 ## ⏱️ Protocolo de Eficiencia en Desarrollo y Validación (Cost & Latency Optimization)
 
-Para optimizar el uso de recursos, reducir tiempos de ciclo y minimizar costes operativos en agentes de IA y flujos CI/CD:
+Para optimizar recursos y tiempos de ejecución durante el mantenimiento continuo, se aplica un triple principio operativo estricto:
 
-1. **Diagnóstico Directo:** Identificación precisa de la causa raíz mediante lecturas de código acotadas y análisis focalizado antes de intervenir.
-2. **Edición Quirúrgica:** Modificación exclusiva de las líneas responsables del comportamiento deseado, sin formateos globales ni alteraciones en módulos colaterales.
+1. **Diagnóstico Directo:** Identificación precisa de la causa raíz mediante lecturas de código focalizadas por rangos de línea, sin ejecuciones globales no solicitadas.
+2. **Edición Quirúrgica:** Modificación atómica exclusiva de las líneas responsables del problema, sin reformateos ni efectos colaterales en módulos adyacentes.
 3. **Validación Mínima Suficiente (*Targeted Testing & Builds*):**
-   - **Pruebas Focalizadas:** Ejecutar únicamente el archivo de pruebas correspondiente al módulo modificado (`node --test tests/<modulo>.test.mjs`), evitando suites globales innecesarias durante la iteración activa.
-   - **Compilaciones Desacopladas:** Construir únicamente los artefactos alterados (ej. compilar CSS sin regenerar manifiestos pesados de base de datos).
-   - **Fast-Path Commit (3 segundos):** Para commits y pushes estándar, PROHIBIDO ejecutar `prepare:worker` (que consulta la BD remota de Supabase) o la suite completa local de 205 tests (que toma ~13s levantando SSR en Node). La validación local inmediata se limita a `npx tsc --noEmit` (~1s) o test focalizado si aplica. La suite exhaustiva queda delegada al CI remoto en GitHub Actions tras el push.
+   - **Zero Chrome DevTools proactivo:** El servidor local de Vite actualiza la pantalla del usuario en tiempo real vía HMR. Prohibido abrir navegadores headless de forma automática salvo petición explícita de auditoría.
+   - **Tests focalizados:** Ejecución exclusiva del test unitario específico del archivo modificado (ej. `node --test tests/card.test.mjs`). La suite completa de 205 tests se delega a la integración continua (CI) en GitHub Actions.
+   - **Fast-Path Commit:** En órdenes de subida o commit, validación de tipos ultra-rápida (`npx tsc --noEmit`, ~1s) y encadenamiento atómico inmediato (`git add -A && git commit -m "..." && git push`).
 
+---
+
+## 📜 Memoria Histórica y Registro de Hitos
+
+El registro pormenorizado de los **61 hitos de ingeniería y refactorizaciones técnicas** ejecutados en el proyecto se encuentra preservado íntegramente en:
+👉 [**`docs/archive/CHANGELOG_MILESTONES.md`**](file:///docs/archive/CHANGELOG_MILESTONES.md)

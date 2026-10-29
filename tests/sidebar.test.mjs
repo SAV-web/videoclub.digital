@@ -27,6 +27,10 @@ domMap["mobile-sidebar-toggle"] = mobileSidebarToggle;
 const myListButton = createMockDomElement("button", { id: "my-list-button" });
 domMap["my-list-button"] = myListButton;
 
+const gridContainer = createMockDomElement("div", { id: "grid-container" });
+domMap["grid-container"] = gridContainer;
+domMap["#grid-container"] = gridContainer;
+
 // Secciones de filtros con contenedores de píldoras
 const sectionTypes = ["genre", "country", "selection", "studio", "actor", "director"];
 const pillContainers = {};
@@ -379,5 +383,119 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
     // Cleanup
     globalThis.document.documentElement.classList.remove("sidebar-collapsed");
     globalThis.document.body.classList.remove("sidebar-collapsed");
+  });
+
+  test("Director/Actor: los slugs crudos no se renderizan como píldora hasta resolverse el nombre bien escrito", () => {
+    sidebarModule.initSidebar();
+
+    // 1. Verificación pura de isRawPersonSlug
+    assert.equal(sidebarModule.isRawPersonSlug("juan-antonio-bardem"), true);
+    assert.equal(sidebarModule.isRawPersonSlug("pedro-almodovar"), true);
+    assert.equal(sidebarModule.isRawPersonSlug("Juan Antonio Bardem"), false);
+    assert.equal(sidebarModule.isRawPersonSlug("Jean-Luc Godard"), false);
+    assert.equal(sidebarModule.isRawPersonSlug("Daniel Day-Lewis"), false);
+
+    // 2. Establecer filtro director con un slug crudo
+    stateModule.setFilter("director", "juan-antonio-bardem");
+    sidebarModule.resetFilterPillsCache();
+    sidebarModule.renderFilterPills();
+
+    // La píldora NO debe salir en el DOM si es un slug crudo no resuelto
+    const dirContainer = pillContainers["director"];
+    assert.equal(dirContainer.children.length, 0, "Un slug crudo sin resolver nunca debe generar píldora en el DOM");
+
+    // 3. Cuando se resuelve el nombre canónico bien escrito
+    stateModule.setFilter("director", "Juan Antonio Bardem");
+    sidebarModule.renderFilterPills();
+
+    // La píldora debe salir con el nombre canónico bien escrito
+    assert.equal(dirContainer.children.length, 1, "Debe crearse la píldora para el nombre canónico");
+    assert.equal(dirContainer.children[0].dataset.filterValue, "Juan Antonio Bardem");
+    assert.match(dirContainer.children[0].textContent, /Juan Antonio Bardem/);
+  });
+
+  test("Búsquedas sin punto ('j j abrams', 'jj abrams'): generación de variantes y resolución canónica", () => {
+    // 1. Verificación de generación de variantes fonéticas y ortográficas en apiModule
+    const abramsVariants = apiModule.getAlternativeSearchTerms("j j abrams");
+    assert.ok(abramsVariants.includes("j.j. abrams"), "Debe generar la variante compacta con puntos 'j.j. abrams'");
+
+    const compactVariants = apiModule.getAlternativeSearchTerms("jj abrams");
+    assert.ok(compactVariants.includes("j.j. abrams"), "Debe expandir 'jj abrams' a 'j.j. abrams'");
+
+    const middleVariants = apiModule.getAlternativeSearchTerms("david o russell");
+    assert.ok(middleVariants.includes("david o. russell"), "Debe puntuar la inicial intermedia");
+
+    const singleInitialVariants = apiModule.getAlternativeSearchTerms("m night shyamalan");
+    assert.ok(singleInitialVariants.includes("m. night shyamalan"), "Debe puntuar la inicial inicial");
+
+    // 2. Comprobar que una píldora para 'J.J. Abrams' se renderiza impecable con el nombre canónico
+    sidebarModule.initSidebar();
+    stateModule.setFilter("director", "J.J. Abrams");
+    sidebarModule.resetFilterPillsCache();
+    sidebarModule.renderFilterPills();
+
+    const dirContainer = pillContainers["director"];
+    assert.equal(dirContainer.children.length, 1);
+    assert.equal(dirContainer.children[0].dataset.filterValue, "J.J. Abrams");
+    assert.match(dirContainer.children[0].textContent, /J\.J\. Abrams/);
+  });
+
+  test("handleRandomMovieRecommendation: selecciona película globalmente cuando totalMovies > cards.length", async () => {
+    const grid = document.getElementById("grid-container");
+    grid.innerHTML = "";
+    grid.children = [];
+
+    // Creamos 2 tarjetas locales
+    const card1 = createMockDomElement("div", { className: "movie-card" });
+    card1.movieData = { id: 101, title: "Metropolis" };
+    const card2 = createMockDomElement("div", { className: "movie-card" });
+    card2.movieData = { id: 102, title: "M, el vampiro de Düsseldorf" };
+    grid.appendChild(card1);
+    grid.appendChild(card2);
+
+    grid.querySelectorAll = (sel) => {
+      if (sel.includes(".movie-card")) return [card1, card2];
+      return [];
+    };
+
+    const supabase = await apiModule.getSupabase();
+    const origRpc = supabase.rpc;
+    let rpcCalls = 0;
+    let rpcParamsCaptured = null;
+
+    supabase.rpc = (fnName, params) => {
+      rpcCalls++;
+      rpcParamsCaptured = params;
+      const p = Promise.resolve({
+        data: {
+          items: [{ id: 999, title: "La Noche del Cazador", slug: "la-noche-del-cazador-1955" }],
+          total: 500
+        },
+        error: null
+      });
+      p.abortSignal = () => p;
+      return p;
+    };
+
+    try {
+      // Caso 1: totalMovies = 2 (total <= cards.length) -> Fast-Path local sin tocar RPC
+      stateModule.setTotalMovies(2);
+      await sidebarModule.handleRandomMovieRecommendation();
+      assert.equal(rpcCalls, 0, "En el fast-path local no debe emitirse consulta RPC");
+
+      // Caso 2: totalMovies = 500 (total > cards.length) -> Selección global remota con offset
+      stateModule.setTotalMovies(500);
+      await sidebarModule.handleRandomMovieRecommendation();
+
+      assert.equal(rpcCalls, 1, "Debe invocar la RPC para consultar el offset global");
+      assert.equal(rpcParamsCaptured.page_limit, 1, "Debe solicitar exactamente 1 película");
+      assert.ok(
+        rpcParamsCaptured.page_offset >= 0 && rpcParamsCaptured.page_offset < 500,
+        `El offset (${rpcParamsCaptured.page_offset}) debe estar en el rango de totalMovies (0..499)`
+      );
+      assert.equal(rpcParamsCaptured.get_count, false, "No debe solicitar recálculo de conteo");
+    } finally {
+      supabase.rpc = origRpc;
+    }
   });
 });
