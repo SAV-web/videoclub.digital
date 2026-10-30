@@ -170,9 +170,8 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
     );
   });
 
-  test("exportUserDataCsv y exportUserDataJson están disponibles como funciones de exportación", () => {
+  test("exportUserDataCsv está disponible como función de exportación", () => {
     assert.equal(typeof profileModule.exportUserDataCsv, "function");
-    assert.equal(typeof profileModule.exportUserDataJson, "function");
   });
 
   test("deleteUserAccount está disponible y gestiona la baja del usuario capturando respuestas RPC", async () => {

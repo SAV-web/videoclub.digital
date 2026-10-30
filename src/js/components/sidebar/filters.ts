@@ -245,10 +245,6 @@ export function renderFilterPills(): void {
 
         const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string>; titles?: Record<string, string> } | undefined;
         let text = config?.items?.[item.val] || config?.items?.[item.val.toUpperCase()];
-        if (!text && (type === 'director' || type === 'actor')) {
-          const cached = getCachedPersonDetails(type as 'director' | 'actor', item.val);
-          if (cached?.name) text = cached.name;
-        }
         if (!text && type === 'selection' && FILTER_CONFIG.selection.titles) {
           text = FILTER_CONFIG.selection.titles[item.val] || FILTER_CONFIG.selection.titles[item.val.toUpperCase()];
         }
@@ -442,7 +438,7 @@ export async function handleRandomMovieRecommendation(): Promise<void> {
 
   const cards = Array.from(
     grid.querySelectorAll<MovieCardElement>(
-      `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card):not(.studio-card)`
+      `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card)`
     )
   );
 
@@ -456,69 +452,49 @@ export async function handleRandomMovieRecommendation(): Promise<void> {
 
   tryCloseMobileDrawer();
 
-  // Fast-Path local: si todas las obras filtradas caben en la página actual o el total aún no está resuelto
-  if (totalMovies <= cards.length || totalMovies <= 0) {
-    const randomIndex = Math.floor(Math.random() * cards.length);
-    const targetCard = cards[randomIndex];
-    const movieTitle = (targetCard.movieData as { title?: string } | undefined)?.title;
-
-    if (movieTitle) {
-      showToast(`🎲 El oráculo ha elegido: ${movieTitle}`, "info");
-    }
-
-    const { openModal } = await import("../modal.js");
-    openModal(targetCard, cards);
-    return;
-  }
-
-  // Selección global en todo el universo del filtro activo (sin feedback durante la latencia)
-  isOraculoFetching = true;
-  try {
-    const randomOffset = Math.floor(Math.random() * totalMovies);
-    const response = await fetchMovies(
-      filters,
-      randomOffset + 1,
-      1,
-      null,
-      false,
-      randomOffset
-    );
-
-    if (response?.items && response.items.length > 0) {
-      const selectedMovie = response.items[0];
-      const movieTitle = selectedMovie.title;
-
-      if (movieTitle) {
-        showToast(`🎲 El oráculo ha elegido: ${movieTitle}`, "info");
-      }
-
-      const { openModal, openModalForMovie } = await import("../modal.js");
-      const matchingCard = cards.find(
-        (c) => (c.movieData as { id?: number } | undefined)?.id === selectedMovie.id
+  // Si hay más películas en el universo filtrado que en pantalla, intentamos selección remota
+  if (totalMovies > cards.length) {
+    isOraculoFetching = true;
+    try {
+      const randomOffset = Math.floor(Math.random() * totalMovies);
+      const response = await fetchMovies(
+        filters,
+        randomOffset + 1,
+        1,
+        null,
+        false,
+        randomOffset
       );
 
-      if (matchingCard) {
-        openModal(matchingCard, cards);
-      } else {
-        openModalForMovie(selectedMovie);
+      const selectedMovie = response?.items?.[0];
+      if (selectedMovie) {
+        if (selectedMovie.title) {
+          showToast(`🎲 El oráculo ha elegido: ${selectedMovie.title}`, "info");
+        }
+
+        const { openModal, openModalForMovie } = await import("../modal.js");
+        const matchingCard = cards.find(
+          (c) => (c.movieData as { id?: number } | undefined)?.id === selectedMovie.id
+        );
+
+        matchingCard ? openModal(matchingCard, cards) : openModalForMovie(selectedMovie);
+        return;
       }
-      return;
+    } catch {
+      // Fallback seguro y silencioso a la cuadrícula visible
+    } finally {
+      isOraculoFetching = false;
     }
-  } catch {
-    // Degradación segura silenciosa a las tarjetas de la página actual
-  } finally {
-    isOraculoFetching = false;
   }
 
-  // Fallback si la consulta de red devolvió vacío o falló
-  const fallbackIndex = Math.floor(Math.random() * cards.length);
-  const fallbackCard = cards[fallbackIndex];
-  const fallbackTitle = (fallbackCard.movieData as { title?: string } | undefined)?.title;
-  if (fallbackTitle) {
-    showToast(`🎲 El oráculo ha elegido: ${fallbackTitle}`, "info");
+  // Selección en la cuadrícula visible (Fast-Path local o Fallback de red unificados)
+  const targetCard = cards[Math.floor(Math.random() * cards.length)];
+  const movieTitle = (targetCard.movieData as { title?: string } | undefined)?.title;
+  if (movieTitle) {
+    showToast(`🎲 El oráculo ha elegido: ${movieTitle}`, "info");
   }
   const { openModal } = await import("../modal.js");
-  openModal(fallbackCard, cards);
+  openModal(targetCard, cards);
 }
 
 export function hasCompactTriggeringFilters(): boolean {

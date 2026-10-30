@@ -873,71 +873,44 @@ export function getAlternativeSearchTerms(term: string): string[] {
   const alternatives: string[] = [];
   const clean = term.trim();
 
-  // 1. Si contiene guiones (ej. 'juan-antonio-bardem' o 'j-j-abrams')
+  // 1. Guiones a espacios (ej. 'juan-antonio-bardem' -> 'juan antonio bardem')
   if (clean.includes('-')) {
     const unhyphenated = clean.replace(/[-_]+/g, ' ').trim();
     if (unhyphenated !== clean && unhyphenated.length >= 2) alternatives.push(unhyphenated);
   }
 
-  // 2. Si contiene iniciales separadas por espacio sin punto (ej. 'j j abrams', 'j a bayona', 'p t anderson')
-  if (/\b[a-zA-Z]\s+[a-zA-Z]\b/.test(clean)) {
-    const dottedCompact = clean.replace(/\b([a-zA-Z])\s+(?=[a-zA-Z]\b)/g, '$1.').replace(/\b([a-zA-Z])\s+/g, '$1. ');
-    if (dottedCompact !== clean && !alternatives.includes(dottedCompact)) {
-      alternatives.push(dottedCompact);
-    }
-    const dottedSpaced = clean.replace(/\b([a-zA-Z])\s+/g, '$1. ');
-    if (dottedSpaced !== clean && !alternatives.includes(dottedSpaced)) {
-      alternatives.push(dottedSpaced);
-    }
-  }
-
-  // 3. Si contiene iniciales pegadas al inicio (ej. 'jj abrams' o 'pt anderson')
+  // 2. Iniciales pegadas al inicio (ej. 'jj abrams' -> 'j.j. abrams', 'j. j. abrams')
   if (/^[a-zA-Z]{2}\s+/.test(clean)) {
-    const expanded = clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1.$2. ');
-    if (!alternatives.includes(expanded)) {
-      alternatives.push(expanded);
-    }
-    const expandedSpaced = clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1 $2 ');
-    if (!alternatives.includes(expandedSpaced)) {
-      alternatives.push(expandedSpaced);
-    }
+    alternatives.push(clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1.$2. '));
+    alternatives.push(clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1. $2. '));
   }
 
-  // 4. Inicial intermedia aislada (ej. 'david o russell' -> 'david o. russell')
-  if (/\s+[a-zA-Z]\s+/.test(clean)) {
-    const middleInitialDotted = clean.replace(/\s+([a-zA-Z])\s+/g, ' $1. ');
-    if (!alternatives.includes(middleInitialDotted)) {
-      alternatives.push(middleInitialDotted);
+  // 3. Letras sueltas de 1 carácter seguidas de espacio (ej. 'j j abrams', 'david o russell', 'm night shyamalan')
+  if (/\b[a-zA-Z]\s+/.test(clean)) {
+    // Variante compacta punteada si hay iniciales consecutivas ('j j abrams' -> 'j.j. abrams')
+    if (/\b[a-zA-Z]\s+[a-zA-Z]\b/.test(clean)) {
+      alternatives.push(clean.replace(/\b([a-zA-Z])\s+(?=[a-zA-Z]\b)/g, '$1.').replace(/\b([a-zA-Z])\s+/g, '$1. '));
     }
+    // Variante espaciada ('j. j. abrams', 'david o. russell', 'm. night shyamalan')
+    alternatives.push(clean.replace(/\b([a-zA-Z])\s+/g, '$1. '));
   }
 
-  // 5. Inicial única inicial (ej. 'm night shyamalan' -> 'm. night shyamalan')
-  if (/^[a-zA-Z]\s+/.test(clean)) {
-    const firstInitialDotted = clean.replace(/^([a-zA-Z])\s+/, '$1. ');
-    if (!alternatives.includes(firstInitialDotted)) {
-      alternatives.push(firstInitialDotted);
-    }
-  }
-
-  // 6. Si contiene puntos pero la búsqueda podría ser sin puntos (ej. 'j.j. abrams' -> 'j j abrams')
+  // 4. Con puntos a sin puntos (ej. 'j.j. abrams' -> 'j j abrams')
   if (clean.includes('.')) {
-    const strippedDots = clean.replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
-    if (strippedDots !== clean && !alternatives.includes(strippedDots)) {
-      alternatives.push(strippedDots);
-    }
+    const stripped = clean.replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+    if (stripped !== clean) alternatives.push(stripped);
   }
 
-  return alternatives.filter(alt => alt.length >= 2);
+  return Array.from(new Set(alternatives)).filter(alt => alt.length >= 2 && alt !== clean);
 }
 
 export const fetchGenreSuggestions = (term: string) => fetchSuggestions("get_genre_suggestions", term);
 export const fetchDirectorSuggestions = async (term: string): Promise<string[]> => {
   let suggestions = await fetchSuggestions("get_director_suggestions", term);
   if (suggestions.length === 0) {
-    const alternatives = getAlternativeSearchTerms(term);
-    for (const alt of alternatives) {
-      suggestions = await fetchSuggestions("get_director_suggestions", alt);
-      if (suggestions.length > 0) break;
+    const [candidate] = getAlternativeSearchTerms(term);
+    if (candidate) {
+      suggestions = await fetchSuggestions("get_director_suggestions", candidate);
     }
   }
   return suggestions;
@@ -946,10 +919,9 @@ export const fetchCountrySuggestions = (term: string) => fetchSuggestions("get_c
 export const fetchActorSuggestions = async (term: string): Promise<string[]> => {
   let suggestions = await fetchSuggestions("get_actor_suggestions", term);
   if (suggestions.length === 0) {
-    const alternatives = getAlternativeSearchTerms(term);
-    for (const alt of alternatives) {
-      suggestions = await fetchSuggestions("get_actor_suggestions", alt);
-      if (suggestions.length > 0) break;
+    const [candidate] = getAlternativeSearchTerms(term);
+    if (candidate) {
+      suggestions = await fetchSuggestions("get_actor_suggestions", candidate);
     }
   }
   // Filtrar actores ignorados (animación, etc.)

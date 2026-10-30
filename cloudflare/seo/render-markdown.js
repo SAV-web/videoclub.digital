@@ -12,7 +12,8 @@ import {
   isSeriesType,
   formatVotesUnified,
   toSlug,
-  computePersonAgeInfo
+  computePersonAgeInfo,
+  formatYear
 } from './seo-types.js';
 
 /**
@@ -26,6 +27,9 @@ export function renderMovieMarkdown(movie, siteOrigin = 'https://videoclub.digit
   if (!movie) return '';
 
   const isSeries = isSeriesType(movie.type);
+  const typeUpper = (movie.type || '').toUpperCase().trim();
+  const isMini = typeUpper === 'SM' || typeUpper === 'SAM' || typeUpper === 'SDM' || String(movie.year_end).trim().toUpperCase() === 'M';
+  const mediaLabel = isMini ? 'Miniserie' : isSeries ? 'Serie de TV' : '';
   const rawGenres = parseList(movie.genres_list);
   const directors = parseList(movie.directors_list);
   const actors = parseList(movie.actors_list);
@@ -38,7 +42,8 @@ export function renderMovieMarkdown(movie, siteOrigin = 'https://videoclub.digit
   const lines = [];
 
   // Título y tipo
-  const yearSuffix = movie.year ? ` (${movie.year}${isSeries ? ' - Miniserie' : ''})` : '';
+  const typeSuffix = mediaLabel ? ` - ${mediaLabel}` : '';
+  const yearSuffix = movie.year ? ` (${movie.year}${typeSuffix})` : '';
   lines.push(`# ${movie.title}${yearSuffix}`);
   lines.push('');
 
@@ -128,8 +133,12 @@ export function renderPersonMarkdown(person, options = {}, siteOrigin = 'https:/
   if (countryName) {
     lines.push(`- **País:** ${countryName}`);
   }
-  if (ageInfo?.text) {
-    lines.push(`- **Fechas:** ${ageInfo.text}`);
+  if (ageInfo?.datesStr) {
+    const datesWithAge = `${ageInfo.datesStr} ${ageInfo.ageStr}`.trim();
+    lines.push(`- **Fechas:** ${datesWithAge}`);
+  }
+  if (person.place_of_birth) {
+    lines.push(`- **Lugar de nacimiento:** ${person.place_of_birth.trim()}`);
   }
 
   // Biografía

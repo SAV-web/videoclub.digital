@@ -116,12 +116,11 @@ export function setupModalHeader(
       });
       nodes.year.appendChild(yearLink);
       if (movie.displayYear && movie.displayYear.length > yearStr.length) {
-        const rawSuffix = movie.displayYear.substring(yearStr.length);
-        const suffix = rawSuffix.replace(/ \((M)\)/g, "\u00A0($1)");
+        const suffix = movie.displayYear.substring(yearStr.length);
         nodes.year.appendChild(document.createTextNode(suffix));
       }
     } else if (movie.displayYear) {
-      nodes.year.textContent = movie.displayYear.replace(/ \((M)\)/g, "\u00A0($1)");
+      nodes.year.textContent = movie.displayYear;
     }
   }
 

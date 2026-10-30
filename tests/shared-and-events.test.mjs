@@ -132,7 +132,7 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
     assert.equal(sharedFormatters.formatYear(2017, "2020", true), "2017-20");
     assert.equal(sharedFormatters.formatYear(1990, "2010", true), "1990-'10");
     assert.equal(sharedFormatters.formatYear(1990, 1998, true), "1990-98");
-    assert.equal(sharedFormatters.formatYear(1999, "2000", true, "", "SM"), "1999-'00 (M)");
+    assert.equal(sharedFormatters.formatYear(1999, "2000", true, "", "SM"), "1999-'00\u00A0(M)");
     assert.equal(sharedFormatters.formatYear(2022, "current", true), "2022-");
     assert.equal(sharedFormatters.formatYear(2020, "present", true), "2020-");
     assert.equal(
@@ -140,10 +140,10 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
       "2015-",
     );
     assert.equal(sharedFormatters.formatYear(2018, "-", true), "2018-");
-    assert.equal(sharedFormatters.formatYear(2019, "M", true), "2019 (M)");
-    assert.equal(sharedFormatters.formatYear(2019, null, true, "", "SM"), "2019 (M)");
-    assert.equal(sharedFormatters.formatYear(2021, null, true, "", "SAM"), "2021 (M)");
-    assert.equal(sharedFormatters.formatYear(2023, null, true, "", "SDM"), "2023 (M)");
+    assert.equal(sharedFormatters.formatYear(2019, "M", true), "2019\u00A0(M)");
+    assert.equal(sharedFormatters.formatYear(2019, null, true, "", "SM"), "2019\u00A0(M)");
+    assert.equal(sharedFormatters.formatYear(2021, null, true, "", "SAM"), "2021\u00A0(M)");
+    assert.equal(sharedFormatters.formatYear(2023, null, true, "", "SDM"), "2023\u00A0(M)");
     assert.equal(sharedFormatters.formatYear(2024, null, true, "", "S-"), "2024-");
     assert.equal(sharedFormatters.formatYear(2023, null, true, "", "SA-"), "2023-");
     assert.equal(sharedFormatters.formatYear(2022, null, true, "", "SD-"), "2022-");

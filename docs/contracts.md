@@ -47,7 +47,7 @@ $$\text{https://videoclub.digital/}\{\text{persona}\}\text{/}\{\text{género}\}\
    Los segmentos de ruta no exigen posiciones fijas. Cada segmento se contrasta contra los diccionarios cerrados del SSOT (`GENRE_SLUG_MAP`, `COUNTRY_SLUG_MAP`, `STUDIO_SLUGS`, `SELECTION_SLUGS`). Las rutas `/eeuu/drama/` y `/drama/eeuu/` son semánticamente equivalentes.
 2. **Parámetros de Búsqueda y Alias Soportados:**
    - `year`: Rango numérico (`"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"`), acotado a `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]`.
-   - `sort` (alias `orden`): Slugs amigables (`recientes`, `antiguas`, `nota-fa`, `nota-imdb`, `votos-fa`, `votos-imdb`) o crudos (`year,desc`...). Si es desconocido, cae a `relevance,desc`.
+   - `sort` (alias `orden`): Slugs amigables (`recientes`, `antiguas`, `nota-fa`, `nota-imdb`, `votos-fa`, `votos-imdb`) o crudos (`year,desc`...). Si es desconocido, cae a `relevance,asc`.
    - `search` (alias `buscar`, `q`): Cadena de texto libre normalizada con `.trim()`.
    - `type`: Modo de medio restringido a `'all' | 'movies' | 'series'`.
    - `p` (alias `page`): Entero finito $\ge 1$.
@@ -77,7 +77,7 @@ $$\text{https://videoclub.digital/}\{\text{persona}\}\text{/}\{\text{género}\}\
 
 ## 4. Contrato de Daily Showcase y Barajado Determinista
 
-La ordenación por defecto del catálogo (*"Orden"* / `relevance,desc`) implementa serendipia rotativa controlada mediante la función PL/pgSQL `search_movies_offset`.
+La ordenación por defecto del catálogo (*"Orden"* / `relevance,asc`) implementa serendipia rotativa controlada mediante la función PL/pgSQL `search_movies_offset`.
 
 ### Reglas Invariantes
 1. **Semilla Temporal Canónica:**

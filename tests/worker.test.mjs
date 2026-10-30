@@ -88,7 +88,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
             original_title: "Chernobyl",
             slug: "chernobyl-2019",
             year: 2019,
-            type: "series",
+            type: "SM",
             episodes: 5,
             minutes: 330,
             genres_list: "Drama, Historia",
@@ -1380,6 +1380,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     const mdText = await mdRes.text();
     assert.match(mdText, /# Christopher Nolan/);
     assert.match(mdText, /Director/);
+    assert.match(mdText, /Fechas:\*\* 1970-/);
+    assert.match(mdText, /Lugar de nacimiento:\*\* Londres, UK/);
     assert.match(mdText, /Apasionado del medio audiovisual/);
     assert.match(mdText, /Filmografía Destacada como Director/);
     assert.match(mdText, /Origen \(2010\)/);

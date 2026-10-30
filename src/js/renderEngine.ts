@@ -15,7 +15,6 @@ import {
   preloadLcpImage,
   createAbortableRequest,
   getAdjustedTotalPages,
-  normalizeText,
   runWhenIdle
 } from "./utils.js";
 
@@ -117,6 +116,26 @@ function computeGridPaginationMetrics(
 }
 
 /**
+ * Si el nombre canónico de la persona en la base de datos difiere del filtro actual
+ * pero coincide al normalizar (ignorando guiones y símbolos), actualiza el filtro,
+ * el título de la página y el Sidebar al nombre canónico bien escrito.
+ */
+function syncPersonFilterName(
+  personData: PersonDetails,
+  vipType: "director" | "actor",
+  vipName: string
+): void {
+  if (!personData.name || personData.name === vipName) return;
+  const cleanDb = toSlug(personData.name).replace(/-/g, "");
+  const cleanFilter = toSlug(vipName).replace(/-/g, "");
+  if (cleanDb === cleanFilter) {
+    setFilter(vipType, personData.name, true);
+    updatePageTitle();
+    appEvents.emit("updateSidebarUI");
+  }
+}
+
+/**
  * Carga películas según el estado activo y las pinta en la cuadrícula principal.
  */
 export async function loadAndRenderMovies(
@@ -141,7 +160,7 @@ export async function loadAndRenderMovies(
   // 2. Navegación con contenido ya visible -> Mantener temporalmente el grid anterior (.is-fetching)
   //    sin parpadeo de skeletons hasta que la nueva respuesta lo sustituya de una sola vez.
   const hasExistingContent = Boolean(
-    dom.gridContainer?.querySelector(".movie-card, .person-card, .collection-card, .studio-card")
+    dom.gridContainer?.querySelector(".movie-card, .person-card, .collection-card")
   );
 
   if (forceSkeleton || !hasExistingContent) {
@@ -225,17 +244,7 @@ export async function loadAndRenderMovies(
         // Al haber navegado previamente por la pág 1, personCache responde síncronamente en 0 ms.
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
-          if (personData.name && personData.name !== vipName) {
-            const isMatch = toSlug(personData.name) === toSlug(vipName)
-              || normalizeText(personData.name) === normalizeText(vipName)
-              || toSlug(personData.name).replace(/-/g, '') === toSlug(vipName).replace(/-/g, '');
-            if (isMatch) {
-              setFilter(vipType, personData.name, true);
-              activeFilters = getActiveFilters();
-              updatePageTitle();
-              appEvents.emit("updateSidebarUI");
-            }
-          }
+          syncPersonFilterName(personData, vipType, vipName);
           const isVip = personData.vip === 1 || Boolean(personData.birthday);
           if (isVip) {
             confirmedHasVip = true;
@@ -284,16 +293,8 @@ export async function loadAndRenderMovies(
         thumbhash_st: groupResult.thumbhash_st
       };
     } else if (personData && page === 1) {
-      if (vipName && personData.name && personData.name !== vipName) {
-        const isMatch = toSlug(personData.name) === toSlug(vipName)
-          || normalizeText(personData.name) === normalizeText(vipName)
-          || toSlug(personData.name).replace(/-/g, '') === toSlug(vipName).replace(/-/g, '');
-        if (isMatch) {
-          setFilter(vipType!, personData.name, true);
-          activeFilters = getActiveFilters();
-          updatePageTitle();
-          appEvents.emit("updateSidebarUI");
-        }
+      if (vipName) {
+        syncPersonFilterName(personData, vipType!, vipName);
       }
       const isVip = personData.vip === 1 || Boolean(personData.birthday);
       if (isVip) {
@@ -308,9 +309,8 @@ export async function loadAndRenderMovies(
           catalogResult.items = catalogResult.items.slice(0, firstPageLimit - 1);
         }
       }
-    } else if (!personData && vipType && page === 1) {
+    } else if (!personData && vipType && page === 1 && (!catalogResult.items || catalogResult.items.length === 0)) {
       setFilter(vipType, null, true);
-      activeFilters = getActiveFilters();
       updatePageTitle();
       appEvents.emit("updateSidebarUI");
     }

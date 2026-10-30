@@ -27,12 +27,13 @@ El sistema fusiona una Single Page Application (SPA) reactiva y *Local-First* co
 │   ├── worker.js        # Punto de entrada del Cloudflare Worker (enrutador perimetral)
 │   └── seo/             # Renderizadores HTML estáticos para bots y rastreadores
 ├── src/
-│   ├── shared/          # Single Source of Truth (SSOT): constantes, slugs, taxonomías y eventos
+│   ├── shared/          # Single Source of Truth (SSOT): constantes, slugs, formateadores y tipos
 │   ├── js/              # Lógica del cliente SPA (TypeScript)
 │   │   ├── api.ts       # Cliente de datos, caché canónica y reconciliación SWR
-│   │   ├── state.ts     # Estado global reactivo basado en Proxies con WeakMap
+│   │   ├── state.ts     # Estado global reactivo basado en Proxies con WeakMap y bus appEvents
 │   │   ├── renderEngine.ts # Orquestación de cuadrícula, paginación y slots VIP
-│   │   ├── storage/     # Motor Local-First sobre IndexedDB y cola de sincronización
+│   │   ├── localStore.ts # Persistencia Local-First sobre IndexedDB (caché y datos de usuario)
+│   │   ├── syncManager.ts # Cola de sincronización bidireccional y resolución LWW
 │   │   └── components/  # Componentes modulares con ciclo de vida explícito (SRP)
 │   │       ├── card/        # Fichas de película y autor (3D flip, modo muro 2D, LQIP)
 │   │       ├── modal/       # Vista rápida cinemática y ficha técnica
@@ -47,19 +48,20 @@ El sistema fusiona una Single Page Application (SPA) reactiva y *Local-First* co
 
 ### 1. Núcleo Perimetral y Edge SSR (`cloudflare/`)
 - **Renderizado Perimetral de Rutas SEO:** Intercepta rutas indexables (`/titulo/:slug/`, `/director/:slug/`, `/actor/:slug/`, `/genero/:slug/`, `/pais/:slug/`, etc.) inyectando HTML semántico completo, meta tags OpenGraph, marcado estructurado JSON-LD y CSS crítico embebido antes de entregar la respuesta al navegador o bot.
-- **Reverse Proxy & Cache API:** Cachea las respuestas RPC anónimas de `/api/rpc/search_movies_offset` en el Edge de Cloudflare con cabeceras deterministas (`s-maxage=300, stale-while-revalidate=3600`) y proxy transparente de imágenes hacia Supabase Storage.
+- **Reverse Proxy & Cache API:** Cachea las respuestas RPC anónimas de `/api/rpc/search_movies_offset` en el Edge de Cloudflare con cabeceras deterministas (`s-maxage=21600, stale-while-revalidate=86400`) y proxy transparente de imágenes hacia Supabase Storage.
 - **Fail-Closed Security:** Validación estricta de variables de entorno y cabeceras de seguridad simétricas (CSP, HSTS, X-Frame-Options DENY).
 
 ### 2. Fuente Única de Verdad Compartida (`src/shared/`)
 - Módulos isomórficos consumidos idénticamente por el cliente SPA, los scripts de compilación, el worker perimetral y los tests:
   - `slugs.ts`: Generación canónica y desambiguación de slugs (eliminación de acentos, caracteres especiales y colisiones).
-  - `taxonomy.ts`: Diccionario normativo de géneros, países, estudios y selecciones.
-  - `events.ts`: Bus global tipado (`appEvents`) para comunicación desacoplada entre componentes sin dependencias circulares.
   - `constants.ts`: Tamaños de página, semillas temporales y piscinas curadas estáticas.
+  - `formatters.ts`: Formateo canónico de duraciones, notas y años cinematográficos.
+  - `types.ts`: Contratos e interfaces canónicas transversales.
+- *Nota arquitectónica:* El diccionario normativo de taxonomías reside de forma isomórfica en `cloudflare/seo/taxonomy-types.js` y `src/js/constants.ts`, mientras que el bus global tipado de eventos (`appEvents`) reside en `src/js/state.ts`.
 
 ### 3. Cliente SPA y Gestión de Estado (`src/js/`)
 - **Estado Reactivo (`state.ts`):** Proxies transparentes cacheados mediante `WeakMap` para reactividad en $O(1)$ sin sobrecarga de memoria ni recreación de envolturas.
-- **Sincronización Local-First (`storage/`, `api.ts`):** Los datos personales (watchlist, notas, estrellas) se graban sincrónicamente en memoria e IndexedDB (0 ms de latencia percibida) y se sincronizan asíncronamente con Supabase en segundo plano (*Optimistic UI + Background Reconciliation*).
+- **Sincronización Local-First (`localStore.ts`, `syncManager.ts`, `api.ts`):** Los datos personales (watchlist, notas, estrellas) se graban sincrónicamente en memoria e IndexedDB (0 ms de latencia percibida) y se sincronizan asíncronamente con Supabase en segundo plano (*Optimistic UI + Background Reconciliation*).
 - **Carga Diferida del SDK (`auth.ts`):** Visitantes anónimos navegan con 0 KB del SDK de Supabase. La librería se descarga bajo demanda solo cuando el usuario interactúa con funciones de autenticación.
 
 ### 4. Componentes Modulares y Ciclo de Vida (`src/js/components/`)
@@ -73,8 +75,8 @@ El sistema fusiona una Single Page Application (SPA) reactiva y *Local-First* co
 ### Tablas Principales
 - **`movies`**: Catálogo fílmico indexado (título, año, directores, actores, slug, rating, póster, thumbhash LQIP).
 - **`people`**: Creadores (directores/actores) con soporte de doble rol (`A`, `D`, `AD`, `DA`), condición VIP, biografía, lugar/fecha de nacimiento y fallecimiento.
-- **`user_movie_data`**: Registro personal de usuarios (watchlist, notas, valoraciones) blindado con Row Level Security (RLS).
-- **`countries`**, **`studios`**, **`collections`**: Tablas de referencia normalizadas.
+- **`user_movie_entries`**: Registro personal de usuarios (watchlist, notas, valoraciones) blindado con Row Level Security (RLS).
+- **`countries`**, **`studios`**, **`selections`**: Tablas de referencia normalizadas.
 
 ### Funciones RPC Críticas
 1. **`search_movies_offset`**: Motor de filtrado y ordenación principal:

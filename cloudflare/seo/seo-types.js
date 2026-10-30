@@ -260,9 +260,9 @@ export function formatYear(year, yearEnd, isSeries = false, fallback = '', type 
       const isCenturyChange = Number.isFinite(startNum) && Number.isFinite(endNum) && startNum < 2000 && endNum >= 2000;
       const endSuffix = normEnd.length === 4 ? normEnd.slice(-2) : normEnd;
       const formatted = isCenturyChange ? `${text}-'${endSuffix}` : `${text}-${endSuffix}`;
-      return isMini ? `${formatted} (M)` : formatted;
+      return isMini ? `${formatted}\u00A0(M)` : formatted;
     }
-    if (isMini) return `${text} (M)`;
+    if (isMini) return `${text}\u00A0(M)`;
   }
   return text;
 }

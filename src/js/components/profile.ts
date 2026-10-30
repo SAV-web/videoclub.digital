@@ -230,7 +230,7 @@ function getProfileDom(): ProfileDom {
       syncDot: document.getElementById("profile-sync-dot"),
       syncText: document.getElementById("profile-sync-text"),
       forceSyncBtn: document.getElementById("profile-btn-force-sync") as HTMLButtonElement | null,
-      exportCsvBtn: (document.getElementById("profile-btn-export-csv") || document.getElementById("profile-btn-export-json")) as HTMLButtonElement | null,
+      exportCsvBtn: document.getElementById("profile-btn-export-csv") as HTMLButtonElement | null,
       importCsvBtn: document.getElementById("profile-btn-import-csv") as HTMLButtonElement | null,
       csvFileInput: document.getElementById("profile-csv-file-input") as HTMLInputElement | null,
       logoutBtn: document.getElementById("profile-btn-logout") as HTMLButtonElement | null,
@@ -554,11 +554,6 @@ export async function exportUserDataCsv(): Promise<void> {
     }
   }
 }
-
-/**
- * Alias retrocompatible para exportUserDataCsv.
- */
-export const exportUserDataJson = exportUserDataCsv;
 
 /**
  * Parsea un contenido CSV plano en una matriz de celdas string[][],

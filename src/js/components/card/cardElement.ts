@@ -68,7 +68,7 @@ export const HOVER_DELAY = 1000;
 export const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
 
 export async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
-  if (cardElement.classList.contains('collection-card') || cardElement.classList.contains('studio-card')) return;
+  if (cardElement.classList.contains('collection-card')) return;
   if (cardElement.classList.contains('person-card')) {
     const personData = cardElement.movieData as PersonDetails | undefined;
     if (!personData?.biography || !personData.biography.trim()) return;
@@ -206,7 +206,7 @@ export function prefetchCardResources(card: MovieCardElement): void {
 }
 
 export function startFlipTimer(cardElement: MovieCardElement): void {
-  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || cardElement.classList.contains('collection-card') || cardElement.classList.contains('studio-card') || cardElement.classList.contains('person-card')) return;
+  if (document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED) || cardElement.classList.contains('collection-card') || cardElement.classList.contains('person-card')) return;
   const inner = cardElement.querySelector(".flip-card-inner");
   if (inner?.classList.contains("is-flipped")) return;
 
@@ -223,7 +223,7 @@ export function startFlipTimer(cardElement: MovieCardElement): void {
 }
 
 export const handleSingleTap = (cardElement: MovieCardElement): void => {
-  if (!cardElement || cardElement.classList.contains('collection-card') || cardElement.classList.contains('studio-card') || cardElement.classList.contains('person-card')) return;
+  if (!cardElement || cardElement.classList.contains('collection-card') || cardElement.classList.contains('person-card')) return;
   const inner = cardElement.querySelector(".flip-card-inner");
   if (!inner) return;
 
@@ -622,12 +622,11 @@ export function populateCard(card: MovieCardElement, movie: MappedMovie, index: 
       });
       yearContainer.appendChild(yearLink);
       if (displayYear.length > String(movie.year).length) {
-        const rawSuffix = displayYear.substring(String(movie.year).length);
-        const suffix = rawSuffix.replace(/ \((M)\)/g, "\u00A0($1)");
+        const suffix = displayYear.substring(String(movie.year).length);
         yearContainer.appendChild(document.createTextNode(suffix));
       }
     } else {
-      yearContainer.textContent = displayYear.replace(/ \((M)\)/g, "\u00A0($1)");
+      yearContainer.textContent = displayYear;
     }
   }
 
@@ -956,7 +955,7 @@ export function createGroupCardElement(
 
   const isStudio = kind === 'studio';
   if (isStudio) {
-    card.classList.replace('collection-card', 'studio-card');
+    card.classList.add('studio-card');
   }
   const img = card.querySelector('img');
 

@@ -485,3 +485,34 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Poda del parámetro fantasma en cadena `movies`: eliminación de `movies` en `updateTotalResultsUI(total)` y `updateMobileStatusBar(total, showTotal)` en `src/js/ui.ts` y desacoplamiento de sus 3 puntos de invocación en `src/js/renderEngine.ts`.
    - Unificación de listeners de teclado globales en `document`: consolidación de `handleEscKey` (cierre del menú lateral móvil en viewport estrecho) dentro del despachador central `initGlobalHotkeys` de `src/js/main.ts`, ahorrando un listener permanente en el documento y simplificando el ciclo de vida de desuscripción.
    - Eliminación de redundancia DOM en resize: supresión de la comprobación redundante `if (!dom.searchInput.title) ...` en el resize listener de `main.ts`, al estar garantizada nativamente en el markup estático de `index.html`.
+
+9. **Desacoplamiento DRY y Blindaje de Contexto en Filtros VIP (`renderEngine.ts`)**:
+   - Centralización de la reconciliación canónica de nombres de personas en `syncPersonFilterName(personData, vipType, vipName)`, eliminando 20 líneas duplicadas entre `page === 1` y `page > 1`.
+   - Simplificación booleana: unificación de comparaciones mediante `toSlug(name).replace(/-/g, '')`, englobando de forma matemática todas las variaciones alfanuméricas (puntos, guiones, diacríticos y espacios) y permitiendo retirar el import innecesario de `normalizeText`.
+   - Erradicación del borrado destructivo de filtros: protección en `loadAndRenderMovies` condicionando la limpieza del filtro a que el catálogo no haya devuelto ítems (`!catalogResult.items || catalogResult.items.length === 0`), garantizando que personas con películas en catálogo pero sin registro en `people` (o ante micro-cortes) conserven sus filtros, píldoras y paginación intactos.
+
+10. **Optimización de Red y Poda de Regexp en Variantes de Búsqueda (`src/js/api.ts`)**:
+    - Poda de sobrecarga RPC en sugerencias del Sidebar: sustitución del bucle iterativo secuencial `for (const alt of alternatives)` en `fetchDirectorSuggestions` y `fetchActorSuggestions` por una sola alternativa prioritaria `[candidate] = getAlternativeSearchTerms(term)`, garantizando a lo sumo 1 reintento de red en lugar de hasta 5 llamadas consecutivas en búsquedas sin resultados.
+    - Unificación de expresiones regulares en `getAlternativeSearchTerms`: fusión de 4 bloques redundantes en una regla universal de iniciales sueltas `\b([a-zA-Z])\s+` que puntúa letras únicas consecutivas, intermedias e iniciales (`'j j abrams'`, `'david o russell'`, `'m night shyamalan'`), reduciendo el algoritmo a la mitad de líneas con total cobertura de tests.
+
+11. **Formateo SSOT de Miniseries `\u00A0(M)` y Poda de Regex en Renderizado (`formatters.ts`, `cardElement.ts`, `renderer.ts`)**:
+    - Centralización en `formatYear`: inyección directa del espacio no divisible (`\u00A0(M)`) en `src/shared/formatters.ts` y `cloudflare/seo/seo-types.js`.
+    - Eliminación de 4 regex redundantes: retirada definitiva de `.replace(/ \((M)\)/g, "\u00A0($1)")` en el bucle de pintado de tarjetas (`cardElement.ts`) y en la vista rápida de la modal (`modal/renderer.ts`), erradicando sobrecarga de expresiones regulares en el ciclo de vida del DOM y garantizando el espaciado no divisible de forma transversal.
+
+12. **Jerarquía Polimórfica OOCSS en Tarjetas VIP de Grupo (`cardElement.ts`, `lifecycle.ts`)**:
+    - Preservación de `.collection-card` como clase base estructural en `createGroupCardElement` (`cardElement.ts`) incorporando `.studio-card` como modificador aditivo (`card.classList.add('studio-card')`), en vez de reemplazar la clase base.
+    - Poda de guardas redundantes: retirada sistemática de comprobaciones secundarias `|| card.classList.contains('studio-card')` y `:not(.studio-card)` en `cardElement.ts`, `lifecycle.ts`, `filters.ts`, `renderEngine.ts` y `ui.ts`. Las tarjetas de estudios heredan automáticamente la condición inerte y exclusiones del DOM a través de `.collection-card` con cero duplicación de selectores.
+
+13. **Poda de Consulta Duplicada a `getCachedPersonDetails` en Renderizado de Píldoras (`sidebar/filters.ts`)**:
+    - Retirada de la segunda llamada redundante en `renderFilterPills()`: dado que `item.val` ya contiene el nombre canónico resuelto en la primera fase de construcción de la lista de filtros deseados (`desired`), la segunda consulta a `getCachedPersonDetails(type, item.val)` era 100% redundante, ahorrando lecturas al `Map` en cada actualización del Sidebar.
+
+14. **Unificación de Fall-Through en el Oráculo (`handleRandomMovieRecommendation` en `sidebar/filters.ts`)**:
+    - Fusión del Fast-Path y Fallback: reestructuración del flujo de recomendación aleatoria de modo que el intento remoto condicionado a `totalMovies > cards.length` realiza early-return solo ante respuesta exitosa, cayendo de forma natural y sin bifurcaciones duplicadas al bloque de selección local. Ahorro de 16 líneas idénticas y mayor linealidad algorítmica.
+
+15. **Poda de Alias Deprecado y Limpieza de Imports (`profile.ts`, `sidebar/index.ts`)**:
+    - Retirada del alias muerto `exportUserDataJson` y del selector fallback `|| document.getElementById("profile-btn-export-json")` en `src/js/components/profile.ts`, completando la migración exclusiva a CSV en la suite de pruebas (`tests/profile-stats.test.mjs`).
+    - Eliminación del import no utilizado `CONFIG` en la cabecera de `src/js/components/sidebar/index.ts`.
+
+16. **Corrección de Extracción de Datos Cronológicos y Clasificación de Series en Markdown (`cloudflare/seo/render-markdown.js`)**:
+    - Corrección en ficha VIP de personas (`renderPersonMarkdown`): sustitución del acceso a la propiedad inexistente `ageInfo?.text` por el cálculo canónico de `computePersonAgeInfo` (`${ageInfo.datesStr} ${ageInfo.ageStr}`), incorporando además `place_of_birth` cuando esté disponible para una ficha biográfica completa entregada a bots y LLMs.
+    - Diferenciación semántica de series (`renderMovieMarkdown`): reemplazo de la etiqueta rígida `' - Miniserie'` por discriminación semántica real (`isMini` para `SM`, `SAM`, `SDM` o `year_end === 'M'`, y `'Serie de TV'` para series regulares de múltiples temporadas `S`, `S-`, etc.), garantizando fichas Markdown fidedignas para cualquier formato audiovisual.

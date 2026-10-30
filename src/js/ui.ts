@@ -441,8 +441,8 @@ export function prefetchNextPage(
 ): void {
   const pageSize = getCurrentPageSize();
 
-  // Determinamos si hay una tarjeta VIP en el DOM (person-card, collection-card, studio-card)
-  const hasVip = !!document.querySelector('.person-card, .collection-card, .studio-card');
+  // Determinamos si hay una tarjeta VIP en el DOM (person-card, collection-card)
+  const hasVip = !!document.querySelector('.person-card, .collection-card');
   const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
 
   const totalPages = getAdjustedTotalPages(gridTotalItems, pageSize);

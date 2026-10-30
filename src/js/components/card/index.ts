@@ -243,7 +243,7 @@ export function runFlipOnboarding(container: HTMLElement | null): void {
     // Seleccionar aleatoriamente una de las 4 primeras fichas de película reales
     const movieCards = Array.from(
       container.querySelectorAll<HTMLElement>(
-        `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card):not(.studio-card)`
+        `.${CSS_CLASSES.MOVIE_CARD}:not(.person-card):not(.collection-card)`
       )
     );
 

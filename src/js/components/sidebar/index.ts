@@ -7,7 +7,7 @@
 // del DOM y ciclo de vida de los subsistemas del sidebar.
 // =================================================================
 
-import { CONFIG, ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, CURATED_DIRECTORS, CURATED_ACTORS, StudioInfo, SelectionInfo } from "../../constants.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, CURATED_DIRECTORS, CURATED_ACTORS, StudioInfo, SelectionInfo } from "../../constants.js";
 import { createElement, triggerHapticFeedback, triggerPopAnimation, getRandomSubarray } from "../../utils.js";
 import { appEvents } from "../../state.js";
 

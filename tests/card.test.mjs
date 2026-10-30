@@ -520,7 +520,7 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
       id: 302,
       title: "Chernobyl",
       year: 2019,
-      displayYear: "2019 (M)",
+      displayYear: "2019\u00A0(M)",
       type: "SM",
       isSeries: true,
     });

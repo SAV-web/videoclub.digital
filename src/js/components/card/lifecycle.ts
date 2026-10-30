@@ -47,7 +47,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
     if (e.pointerType !== 'mouse') return;
     const target = e.target as HTMLElement;
     const card = target.closest<MovieCardElement>(".movie-card");
-    if (!card || card.classList.contains('collection-card') || card.classList.contains('studio-card') || card.classList.contains('person-card')) return;
+    if (!card || card.classList.contains('collection-card') || card.classList.contains('person-card')) return;
 
     const hovered = getHoveredCard();
     if (hovered !== card) {
@@ -166,7 +166,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 
     const criticalElements = '[data-action="toggle-watchlist"], [data-action^="set-rating"], a[href], .expand-content-btn, .actors-expand-btn, .actor-list-item, .genre-list-item';
 
-    if (card.classList.contains('collection-card') || card.classList.contains('studio-card') || target.closest(criticalElements)) return;
+    if (card.classList.contains('collection-card') || target.closest(criticalElements)) return;
 
     // Si la trasera de la tarjeta está ampliada (sinopsis o reparto), un tap fuera de los enlaces
     // contrae la vista y devuelve la tarjeta a su trasera normal sin voltearla al frente
