@@ -418,21 +418,8 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
     assert.match(dirContainer.children[0].textContent, /Juan Antonio Bardem/);
   });
 
-  test("Búsquedas sin punto ('j j abrams', 'jj abrams'): generación de variantes y resolución canónica", () => {
-    // 1. Verificación de generación de variantes fonéticas y ortográficas en apiModule
-    const abramsVariants = apiModule.getAlternativeSearchTerms("j j abrams");
-    assert.ok(abramsVariants.includes("j.j. abrams"), "Debe generar la variante compacta con puntos 'j.j. abrams'");
-
-    const compactVariants = apiModule.getAlternativeSearchTerms("jj abrams");
-    assert.ok(compactVariants.includes("j.j. abrams"), "Debe expandir 'jj abrams' a 'j.j. abrams'");
-
-    const middleVariants = apiModule.getAlternativeSearchTerms("david o russell");
-    assert.ok(middleVariants.includes("david o. russell"), "Debe puntuar la inicial intermedia");
-
-    const singleInitialVariants = apiModule.getAlternativeSearchTerms("m night shyamalan");
-    assert.ok(singleInitialVariants.includes("m. night shyamalan"), "Debe puntuar la inicial inicial");
-
-    // 2. Comprobar que una píldora para 'J.J. Abrams' se renderiza impecable con el nombre canónico
+  test("Búsquedas con iniciales ('J.J. Abrams'): renderizado canónico de píldoras", () => {
+    // Comprobar que una píldora para 'J.J. Abrams' se renderiza impecable con el nombre canónico
     sidebarModule.initSidebar();
     stateModule.setFilter("director", "J.J. Abrams");
     sidebarModule.resetFilterPillsCache();

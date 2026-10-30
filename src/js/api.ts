@@ -666,14 +666,12 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
 
   const roleTypes = type === 'director' ? ['D', 'DA', 'AD'] : ['A', 'AD', 'DA'];
   const nameNorm = normalizeText(name);
-  const words = nameNorm.replace(/\./g, ' ').split(/[\s-]+/).filter(w => w.length > 0);
+  const words = nameNorm.replace(/\./g, ' ').replace(/\b([a-z])([a-z])\b/gi, '$1 $2').split(/[\s-]+/).filter(w => w.length > 0);
   const wildcardPattern = words.length > 0 ? `%${words.join('%')}%` : `%${nameNorm}%`;
 
   try {
     const supabase = await getSupabase();
-    const alternatives = getAlternativeSearchTerms(name);
-    const candidateNorms = Array.from(new Set([nameNorm, ...alternatives.map(a => normalizeText(a))]));
-    const safeNameNorms = candidateNorms.map(n => `"${n.replace(/"/g, '""')}"`).join(',');
+    const safeNameNorm = `"${nameNorm.replace(/"/g, '""')}"`;
     const safeNameLike = `"%${name.replace(/"/g, '""')}%"`;
 
     const selectFields = 'id, name, slug, type, vip, thumbhash_st, birthday, deathday, place_of_birth, biography, titulo_bio, countries(name, code), components';
@@ -683,7 +681,7 @@ export async function fetchPersonDetails(type: 'director' | 'actor', name: strin
       .from('people')
       .select(selectFields)
       .in('type', roleTypes)
-      .or(type === 'director' ? `name_norm.in.(${safeNameNorms}),components.ilike.${safeNameLike}` : `name_norm.in.(${safeNameNorms})`)
+      .or(type === 'director' ? `name_norm.eq.${safeNameNorm},components.ilike.${safeNameLike}` : `name_norm.eq.${safeNameNorm}`)
       .limit(1);
 
     // 2. Si no hay coincidencia exacta (ej. slug parcial o variantes), fallback con todas las palabras
@@ -860,70 +858,11 @@ const fetchSuggestions = async (rpcName: string, searchTerm: string): Promise<st
   }
 };
 
-/**
- * Genera variantes fonéticas y ortográficas comunes:
- * - Guiones a espacios: 'juan-antonio-bardem' -> 'juan antonio bardem'
- * - Iniciales sin punto a con punto: 'j j abrams' -> 'j.j. abrams', 'j. j. abrams'
- * - Iniciales pegadas: 'jj abrams' -> 'j.j. abrams', 'j j abrams'
- * - Iniciales intermedias o iniciales únicas: 'david o russell' -> 'david o. russell'
- * - Búsqueda sin puntos si trae puntos: 'j.j. abrams' -> 'j j abrams'
- */
-export function getAlternativeSearchTerms(term: string): string[] {
-  if (!term) return [];
-  const alternatives: string[] = [];
-  const clean = term.trim();
-
-  // 1. Guiones a espacios (ej. 'juan-antonio-bardem' -> 'juan antonio bardem')
-  if (clean.includes('-')) {
-    const unhyphenated = clean.replace(/[-_]+/g, ' ').trim();
-    if (unhyphenated !== clean && unhyphenated.length >= 2) alternatives.push(unhyphenated);
-  }
-
-  // 2. Iniciales pegadas al inicio (ej. 'jj abrams' -> 'j.j. abrams', 'j. j. abrams')
-  if (/^[a-zA-Z]{2}\s+/.test(clean)) {
-    alternatives.push(clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1.$2. '));
-    alternatives.push(clean.replace(/^([a-zA-Z])([a-zA-Z])\s+/, '$1. $2. '));
-  }
-
-  // 3. Letras sueltas de 1 carácter seguidas de espacio (ej. 'j j abrams', 'david o russell', 'm night shyamalan')
-  if (/\b[a-zA-Z]\s+/.test(clean)) {
-    // Variante compacta punteada si hay iniciales consecutivas ('j j abrams' -> 'j.j. abrams')
-    if (/\b[a-zA-Z]\s+[a-zA-Z]\b/.test(clean)) {
-      alternatives.push(clean.replace(/\b([a-zA-Z])\s+(?=[a-zA-Z]\b)/g, '$1.').replace(/\b([a-zA-Z])\s+/g, '$1. '));
-    }
-    // Variante espaciada ('j. j. abrams', 'david o. russell', 'm. night shyamalan')
-    alternatives.push(clean.replace(/\b([a-zA-Z])\s+/g, '$1. '));
-  }
-
-  // 4. Con puntos a sin puntos (ej. 'j.j. abrams' -> 'j j abrams')
-  if (clean.includes('.')) {
-    const stripped = clean.replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
-    if (stripped !== clean) alternatives.push(stripped);
-  }
-
-  return Array.from(new Set(alternatives)).filter(alt => alt.length >= 2 && alt !== clean);
-}
-
 export const fetchGenreSuggestions = (term: string) => fetchSuggestions("get_genre_suggestions", term);
-export const fetchDirectorSuggestions = async (term: string): Promise<string[]> => {
-  let suggestions = await fetchSuggestions("get_director_suggestions", term);
-  if (suggestions.length === 0) {
-    const [candidate] = getAlternativeSearchTerms(term);
-    if (candidate) {
-      suggestions = await fetchSuggestions("get_director_suggestions", candidate);
-    }
-  }
-  return suggestions;
-};
+export const fetchDirectorSuggestions = (term: string) => fetchSuggestions("get_director_suggestions", term);
 export const fetchCountrySuggestions = (term: string) => fetchSuggestions("get_country_suggestions", term);
 export const fetchActorSuggestions = async (term: string): Promise<string[]> => {
-  let suggestions = await fetchSuggestions("get_actor_suggestions", term);
-  if (suggestions.length === 0) {
-    const [candidate] = getAlternativeSearchTerms(term);
-    if (candidate) {
-      suggestions = await fetchSuggestions("get_actor_suggestions", candidate);
-    }
-  }
+  const suggestions = await fetchSuggestions("get_actor_suggestions", term);
   // Filtrar actores ignorados (animación, etc.)
   return suggestions.filter(name => !IGNORED_ACTORS_SET.has(name.trim().toLowerCase()));
 };
