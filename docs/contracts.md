@@ -125,7 +125,7 @@ Los datos de seguimiento y notas personales del usuario se rigen por la arquitec
 2. **Sincronización en Segundo Plano:**
    Las mutaciones encolan tareas de sincronización asíncrona hacia Supabase (`syncManager.ts`). Si el usuario carece de conexión, las operaciones persisten con estado `dirty` hasta su reanudación.
 3. **Reconciliación Suave en Caliente (SWR Revalidation):**
-   En "Mi Lista", la interfaz se pinta inmediatamente desde IndexedDB. Si la revalidación en segundo plano detecta diferencias remotas reales (películas añadidas/eliminadas desde otro dispositivo), actualiza la caché y emite `userDataUpdated` / `myListReconciled` para refrescar suavemente el grid sin bloquear la navegación.
+   En "Mi Lista", la interfaz se pinta inmediatamente desde IndexedDB. Si la revalidación en segundo plano detecta diferencias remotas reales (películas añadidas/eliminadas o notas modificadas desde otro dispositivo), fusiona las entradas en IndexedDB mediante `mergeRemoteEntries` con `syncStatus: "synced"` (respetando LWW y evitando re-subidas redundantes de entradas "dirty"), actualiza la caché y emite `userDataUpdated` / `myList:revalidated` para refrescar suavemente el grid sin bloquear la navegación.
 4. **Exclusividad Mutua entre Nota y Watchlist:**
    Puntuar una película la retira automáticamente de la Watchlist (`resolveWatchlistMutationOnRate`). Añadir una película a la Watchlist elimina su puntuación previa (`resolveRatingMutationOnWatchlist`).
 5. **Retención Local Segura (MAX_CACHED_MOVIES = 3500 y Escudo de Inmunidad):**
@@ -207,3 +207,4 @@ La modal de detalle cinemático (`src/js/components/modal/`) implementa una expe
    - **Barrera de Modales:** Si `document.body` tiene la clase `.modal-open`, los atajos de catálogo se suspenden de inmediato para no interferir con las modales.
    - **Barrera de Entradas Editables:** Si el foco reside en `input`, `textarea`, `select` o `isContentEditable`, los atajos alfabéticos se omiten permitiendo escritura ordinaria.
    - **Protección de Modificadores de SO:** Los atajos de una sola letra (`b`, `m`, `s`, `r`) se bloquean si `ctrlKey`, `metaKey` o `altKey` están activos, impidiendo colisiones con funciones nativas del navegador como recargar página (`Ctrl+R` / `Cmd+R`).
+    - **Unificación de Listener Escape:** La tecla `Escape` para cerrar el cajón lateral móvil se gestiona dentro del mismo escuchador de `initGlobalHotkeys`, evitando la proliferación de escuchadores globales `keydown` duplicados en `document`.

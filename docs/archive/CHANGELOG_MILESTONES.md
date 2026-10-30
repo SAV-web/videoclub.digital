@@ -475,3 +475,13 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Registro de atajos ergonómicos en `main.ts`: `b` o `Ctrl+K` / `Cmd+K` para enfocar y auto-seleccionar el buscador (`#search-input`), `m` para alternar el Modo Muro 2D/3D (`toggleRotationMode`), `s` o `[` para plegar/desplegar la barra lateral (`toggleDesktopSidebar`), y `r` para pedir una recomendación aleatoria global (*"Sorpréndeme"*).
    - Triple blindaje de seguridad: suspensión total si hay modales abiertas (`document.body.classList.contains("modal-open")`), desactivación en elementos editables (`input`, `textarea`, `select`, `isContentEditable`), y bloqueo de modificadores (`ctrlKey`, `metaKey`, `altKey`) para no colisionar con funciones del sistema (`Ctrl+R`, etc.).
    - Hidratación bajo demanda (`await loadSidebar()`) para preservar la dieta estricta del bundle inicial (<45 KB).
+
+7. **Reconciliación SWR Limpia en 'Mi Lista' (Erradicación de Falsos 'dirty')**:
+   - Corrección del bug silencioso en `revalidateMyListInBackground` (`src/js/api.ts`): sustitución del guardado con `saveLocalEntry` por `mergeRemoteEntries` con protocolo LWW (*Last-Write-Wins*).
+   - Inclusión de `updated_at` en la consulta `user_movie_entries`. Las entradas remotas se consolidan en IndexedDB con `syncStatus: "synced"`, eliminando re-subidas parásitas a Supabase y blindando la persistencia local ante recargas o modo offline.
+
+8. **Depuración de Código Muerto y Redundancias en SPA (Auditoría main.ts, ui.ts y renderEngine.ts)**:
+   - Eliminación de variables write-only sin lecturas: retirada definitiva de `isAuthInitialized` en el ciclo de autenticación y de `modalWasOpen` en el despachador de navegación hacia atrás (`handlePopState`).
+   - Poda del parámetro fantasma en cadena `movies`: eliminación de `movies` en `updateTotalResultsUI(total)` y `updateMobileStatusBar(total, showTotal)` en `src/js/ui.ts` y desacoplamiento de sus 3 puntos de invocación en `src/js/renderEngine.ts`.
+   - Unificación de listeners de teclado globales en `document`: consolidación de `handleEscKey` (cierre del menú lateral móvil en viewport estrecho) dentro del despachador central `initGlobalHotkeys` de `src/js/main.ts`, ahorrando un listener permanente en el documento y simplificando el ciclo de vida de desuscripción.
+   - Eliminación de redundancia DOM en resize: supresión de la comprobación redundante `if (!dom.searchInput.title) ...` en el resize listener de `main.ts`, al estar garantizada nativamente en el markup estático de `index.html`.

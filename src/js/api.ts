@@ -26,7 +26,8 @@ import {
 import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
 import { getSupabase } from "./supabaseClient.js";
 import { getCurrentSession, hasStoredAuthSessionOrHash } from "./auth.js";
-import { saveCachedMovies, getCachedMoviesByIds, getAllLocalEntries, saveLocalEntry } from "./localStore.js";
+import { saveCachedMovies, getCachedMoviesByIds, getAllLocalEntries, mergeRemoteEntries } from "./localStore.js";
+import { scheduleSync } from "./syncManager.js";
 
 // Re-exportamos getSupabase para preservar compatibilidad con tests y módulos externos
 export { getSupabase };
@@ -334,7 +335,7 @@ export async function getLocalMyListResponse(
  * Si detecta novedades o discrepancias respecto a la caché local, actualiza IndexedDB
  * y emite 'userDataUpdated' para refrescar el estado de la UI.
  */
-function revalidateMyListInBackground(
+export function revalidateMyListInBackground(
   userId: string,
   filters: ActiveFilters,
   page: number,
@@ -355,7 +356,7 @@ function revalidateMyListInBackground(
           synopsis, thumbhash_st, last_synced_at, 
           episodes, wikipedia, selections_list, studios_list, justwatch,
           countries(name, code),
-          user_movie_entries!inner(user_id, rating, on_watchlist)
+          user_movie_entries!inner(user_id, rating, on_watchlist, updated_at)
         `, requestCount ? { count: 'exact' } : {})
         .eq('user_movie_entries.user_id', userId);
 
@@ -382,22 +383,50 @@ function revalidateMyListInBackground(
 
       const localIds = (currentLocalRes.items || []).map(m => m.id);
       const remoteIds = remoteItems.map(m => m.id);
+      const currentEntries = getAllUserMovieData();
+      const hasRatingDifferences = (data || []).some(mRaw => {
+        if (!mRaw.id || !mRaw.user_movie_entries) return false;
+        const raw = Array.isArray(mRaw.user_movie_entries) ? mRaw.user_movie_entries[0] : mRaw.user_movie_entries;
+        if (!raw || typeof raw !== "object") return false;
+        const local = currentEntries[String(mRaw.id)];
+        if (!local) return true;
+        const remoteRating = raw.rating !== undefined ? raw.rating : null;
+        const remoteWatchlist = Boolean(raw.on_watchlist);
+        return local.rating !== remoteRating || local.onWatchlist !== remoteWatchlist;
+      });
+
       const hasDifferences = localIds.length !== remoteIds.length ||
         localIds.some((id, idx) => id !== remoteIds[idx]) ||
+        hasRatingDifferences ||
         (requestCount && count !== undefined && count !== currentLocalRes.total);
 
       if (hasDifferences) {
+        const remoteEntries: Array<{
+          movie_id: number;
+          rating: number | null;
+          on_watchlist: boolean;
+          updated_at?: string | null;
+        }> = [];
+
         for (const mRaw of data || []) {
           if (mRaw.id && mRaw.user_movie_entries) {
             const rawEntry = Array.isArray(mRaw.user_movie_entries) ? mRaw.user_movie_entries[0] : mRaw.user_movie_entries;
             if (rawEntry && typeof rawEntry === "object") {
-              const entryUpdate: Partial<UserMovieEntry> = {
+              remoteEntries.push({
+                movie_id: Number(mRaw.id),
                 rating: rawEntry.rating !== undefined ? rawEntry.rating : null,
-                onWatchlist: Boolean(rawEntry.on_watchlist)
-              };
-              updateUserDataForMovie(mRaw.id, entryUpdate);
-              saveLocalEntry(mRaw.id, entryUpdate).catch(() => {});
+                on_watchlist: Boolean(rawEntry.on_watchlist),
+                updated_at: rawEntry.updated_at || null
+              });
             }
+          }
+        }
+
+        if (remoteEntries.length > 0) {
+          const { mergedMap, hasLocalChangesToUpload } = await mergeRemoteEntries(remoteEntries);
+          setUserMovieData(mergedMap);
+          if (hasLocalChangesToUpload) {
+            scheduleSync(100);
           }
         }
 

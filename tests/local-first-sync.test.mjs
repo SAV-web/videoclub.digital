@@ -264,4 +264,73 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
     assert.ok(final901, "901 sigue protegida");
     assert.ok(final903, "903 sigue protegida por estar en watchlist");
   });
+
+  test("revalidateMyListInBackground fusiona entradas remotas como 'synced' y no deja pendientes 'dirty'", async () => {
+    stateModule.clearUserMovieData();
+    const supabase = await apiModule.getSupabase();
+    const origFrom = supabase.from;
+
+    // Simular respuesta de Supabase con entrada remota de usuario
+    supabase.from = () => {
+      return {
+        select: () => ({
+          eq: () => ({
+            not: () => ({
+              order: () => ({
+                order: () => ({
+                  range: async () => ({
+                    data: [
+                      {
+                        id: 999,
+                        title: "El Padrino",
+                        slug: "el-padrino-1972",
+                        year: 1972,
+                        user_movie_entries: [
+                          { user_id: "user-123", rating: 10, on_watchlist: false, updated_at: new Date().toISOString() }
+                        ]
+                      }
+                    ],
+                    error: null,
+                    count: 1
+                  })
+                })
+              })
+            })
+          })
+        })
+      };
+    };
+
+    try {
+      const currentLocalRes = { total: 0, items: [] };
+
+      apiModule.revalidateMyListInBackground(
+        "user-123",
+        { myList: "rated" },
+        1,
+        10,
+        true,
+        currentLocalRes
+      );
+
+      // Esperar a que se resuelva la revalidación en segundo plano (setTimeout 50ms + async)
+      await new Promise(r => setTimeout(r, 120));
+
+      // 1. La entrada debe existir en IndexedDB
+      const entry = await localStore.getLocalEntry(999);
+      assert.ok(entry, "La entrada 999 debe haberse persistido en IndexedDB");
+      assert.equal(entry.rating, 10);
+      assert.equal(entry.syncStatus, "synced", "La entrada que viene de Supabase DEBE guardarse como 'synced', jamás 'dirty'");
+
+      // 2. getPendingSyncEntries NO debe tener entradas pendientes
+      const pending = await localStore.getPendingSyncEntries();
+      assert.equal(pending.length, 0, "No debe haber entradas pendientes de sincronizar tras revalidar");
+
+      // 3. El estado en memoria debe estar actualizado
+      const memData = stateModule.getAllUserMovieData();
+      assert.equal(memData["999"]?.rating, 10);
+    } finally {
+      supabase.from = origFrom;
+    }
+  });
 });

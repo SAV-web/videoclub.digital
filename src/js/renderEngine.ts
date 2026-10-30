@@ -457,7 +457,7 @@ function applyResolvedTotal(
   vipData: VipData | null
 ): void {
   setTotalMovies(exactTotal);
-  updateTotalResultsUI(exactTotal, movies);
+  updateTotalResultsUI(exactTotal);
   scheduleInitialSeo(movies, exactTotal);
 
   if (vipData && (vipData.type === "collection" || vipData.type === "studio")) {
@@ -499,7 +499,7 @@ async function updateDomWithResults(
 
   if (movies.length === 0) {
     setTotalMovies(0);
-    updateTotalResultsUI(0, movies);
+    updateTotalResultsUI(0);
     scheduleInitialSeo([], 0);
     renderNoResults(dom.gridContainer, dom.paginationContainer, activeFilters);
     updateHeaderPaginationState(1, 0);
@@ -529,7 +529,7 @@ async function updateDomWithResults(
   } else {
     // Si el total aún no se conoce, mantenemos estado provisional seguro sin romper la interfaz
     setTotalMovies(-1);
-    updateTotalResultsUI(-1, movies);
+    updateTotalResultsUI(-1);
     scheduleInitialSeo(movies, movies.length);
     if (dom.paginationContainer) dom.paginationContainer.textContent = "";
     if (dom.headerPrevBtn) dom.headerPrevBtn.disabled = currentPage <= 1;

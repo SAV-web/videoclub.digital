@@ -945,7 +945,7 @@ export function updateLandingHeroVisibility(): void {
   }
 }
 
-export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null = null): void {
+export function updateTotalResultsUI(total: number): void {
   const containers = document.querySelectorAll<HTMLElement>(".total-results-container");
   const counts = document.querySelectorAll<HTMLElement>(".total-results-count");
   const showTotal = shouldShowTotalCount();
@@ -959,7 +959,7 @@ export function updateTotalResultsUI(total: number, movies: MappedMovie[] | null
   }
 
   // Actualizar barra de estado móvil y visibilidad del hero de portada evitando re-consultas redundantes
-  updateMobileStatusBar(movies, total, showTotal);
+  updateMobileStatusBar(total, showTotal);
 }
 
 export function initThemeToggle(): void {
@@ -1018,7 +1018,6 @@ export function clearAllSidebarAutocomplete(exceptForm: HTMLFormElement | null =
 }
 
 export function updateMobileStatusBar(
-  movies: MappedMovie[] | null = null,
   totalMovies: number = getTotalMovies(),
   showTotalCount: boolean = shouldShowTotalCount()
 ): void {

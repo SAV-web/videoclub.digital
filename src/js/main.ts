@@ -92,7 +92,6 @@ interface SidebarModule {
 
 // Módulos que cargamos más tarde para que la web arranque al instante
 let sidebarModule: SidebarModule | null = null;
-let isAuthInitialized = false;
 
 // Carga la barra lateral (filtros) bajo demanda
 async function loadSidebar(): Promise<SidebarModule | null> {
@@ -235,7 +234,13 @@ export function initGlobalHotkeys(): () => void {
       return;
     }
 
-    // 2. Si el foco reside en un elemento editable, permitir entrada ordinaria
+    // 2. Si se pulsa Escape con el menú lateral móvil desplegado, cerrarlo
+    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
+      if (sidebarModule) sidebarModule.closeMobileDrawer();
+      return;
+    }
+
+    // 3. Si el foco reside en un elemento editable, permitir entrada ordinaria
     const target = e.target as HTMLElement | null;
     if (
       target &&
@@ -513,7 +518,6 @@ function setupHeaderListeners(): void {
   const updateSearchPlaceholder = () => {
     if (dom.searchInput) {
       dom.searchInput.placeholder = window.innerWidth <= 768 ? "" : "Título";
-      if (!dom.searchInput.title) dom.searchInput.title = "Buscar (B o Ctrl+K)";
     }
   };
   const debouncedResize = debounce(updateSearchPlaceholder, 250);
@@ -535,7 +539,6 @@ export function disposeMainEvents(): void {
   sidebarModule = null;
   isMainEventsInitialized = false;
   isMainInitialized = false;
-  isAuthInitialized = false;
 }
 
 export async function disposeApp(): Promise<void> {
@@ -632,17 +635,7 @@ function setupGlobalListeners(): void {
   const cleanupScroll = initScrollWatcher();
   mainUnsubscribers.push(cleanupScroll);
 
-  const handleEscKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape" && document.body.classList.contains(CSS_CLASSES.SIDEBAR_OPEN)) {
-      if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) return;
-      if (sidebarModule) sidebarModule.closeMobileDrawer();
-    }
-  };
-
-  document.addEventListener("keydown", handleEscKey);
-  mainUnsubscribers.push(() => document.removeEventListener("keydown", handleEscKey));
-
-  // Atajos de Teclado Globales de Escritorio (Power-User Hotkeys: B, M, S, R, Ctrl+K)
+  // Atajos de Teclado Globales de Escritorio (Power-User Hotkeys: B, M, S, R, Ctrl+K, Escape)
   const disposeHotkeys = initGlobalHotkeys();
   mainUnsubscribers.push(disposeHotkeys);
 
@@ -732,7 +725,6 @@ function setupAuthSystem(): void {
       userAvatarInitials.textContent = userEmail.charAt(0).toUpperCase();
       userAvatarInitials.title = `Sesión iniciada como: ${userEmail}`;
     }
-    isAuthInitialized = true;
 
 
     // Sincronización Local-First (Merge on Login): fusiona catálogo remoto con el local
@@ -756,7 +748,6 @@ function setupAuthSystem(): void {
     clearLocalStore().catch(() => {});
     clearAppBadge();
     appEvents.emit("userDataUpdated");
-    isAuthInitialized = true;
   }
 
   async function handleLogout() {
@@ -986,27 +977,21 @@ export function init(): void {
 
     const { isModalOpen, closeModal } = await import("./components/modal.js");
 
-    let modalWasOpen = Boolean(closingViaHistory);
-
     if (!closingViaHistory && isModalOpen()) {
       closeModal({ fromPopstate: true, suppressHistoryBack: true });
-      modalWasOpen = true;
     }
 
     if (!closingViaHistory && isAuthModalOpen()) {
       closeAuthModal({ fromPopstate: true });
-      modalWasOpen = true;
     }
 
     if (isLegalModalOpen()) {
       closeLegalModal({ fromPopstate: true });
-      modalWasOpen = true;
     }
 
     const { isProfileModalOpen, closeProfileModal } = await import("./components/profile.js");
     if (isProfileModalOpen()) {
       closeProfileModal(true);
-      modalWasOpen = true;
     }
 
     // Normalizar URLs canónicas y entrantes para una comparación fidedigna
