@@ -521,3 +521,19 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
     - Supresión de reintentos RPC en sugerencias: con la resolución nativa de iniciales y variantes implementada en PostgreSQL (`get_director_suggestions` y `get_actor_suggestions` en `database/script.sql`), se eliminó el bucle de reintento en cliente. `fetchDirectorSuggestions` delega directamente en `fetchSuggestions` y `fetchActorSuggestions` filtra actores ignorados tras una única consulta rápida.
     - Resolución unificada de iniciales en `fetchPersonDetails`: extracción de iniciales consecutivas en `words` mediante `nameNorm.replace(/\./g, ' ').replace(/\b([a-z])([a-z])\b/gi, '$1 $2')`, delegando la resolución de nombres con iniciales sin punto ("j j abrams", "jj abrams") en el wildcard `ILIKE '%j%j%abrams%'` de Supabase sin necesidad de construir variantes en cliente.
     - Eliminación completa de `getAlternativeSearchTerms`: retirada de la función y sus 65 líneas de expresiones regulares en `src/js/api.ts`, actualizando el test unitario de caracterización en `tests/sidebar.test.mjs`.
+
+18. **Optimización de CTE y Poda de UNION ALL en SQL (`database/script.sql`)**:
+    - Deduplicación en `get_director_suggestions`: sustitución de las dos ramas redundantes del `UNION ALL` en `component_matches` por un desdoble mediante `CROSS JOIN LATERAL (VALUES (TRIM(comp.name)), (d.name)) AS v(suggestion)`.
+    - Reducción de I/O y latencia: la vista materializada `mv_director_suggestions` se escanea y filtra una sola vez en lugar de dos, suprimiendo 28 líneas de código duplicado en la definición de la función RPC.
+
+19. **Poda de Keyframe Redundante en Tooltip de Valoración (`src/css/components/rating.css`)**:
+    - Reutilización de animación global: sustitución de `@keyframes tooltip-fade-in` por la regla canónica global `@keyframes fade-in` definida en `src/css/globals.css`.
+    - Eliminación de 8 líneas de CSS redundante en la barra de notas y votos.
+
+20. **Poda de Variable CSS Inutilizada (`src/css/variables.css`)**:
+    - Eliminación del alias redundante `--transition-fast: var(--duration-fast);` en favor de los tokens oficiales de duración `--transition-duration-fast` y `--duration-fast`.
+
+21. **Racionalización y Poda de la Suite de Pruebas (`tests/`)**:
+    - Erradicación de esperas artificiales en `sidebar.test.mjs`: reducción de retardos en bucles de reintento de red en entorno de test (`(globalThis._isTestEnv ? 5 : (attempt + 1) * 300)` en `api.ts`), pasando de pausas fijas de 1,1 s a 60 ms y acelerando la suite del Sidebar de 13,7 s a 3,0 s.
+    - Poda de redundancias entre suites (`contracts-state-utils.test.mjs` vs `url-contract.test.mjs` y `shared-and-events.test.mjs`): eliminación de comprobaciones gemelas de `normalizeText`, `computePersonAgeInfo`, `applyLengthBasedClass`, `toSlug`, `genreToSlug`, `countryToSlug` y unificación de las 3 aserciones de `isAbortError`.
+    - Fusión y supresión de `api-rating-critical.test.mjs`: consolidación de las pruebas de mutación pura (`resolveNextRating`, `resolveWatchlistMutationOnRate`, `getWatchlistCount`) en `pure-functions.test.mjs` y de eventos Background Sync en `local-first-sync.test.mjs`. Supresión del archivo y de un arranque completo de servidor Vite SSR en Node.

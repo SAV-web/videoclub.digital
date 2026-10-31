@@ -213,6 +213,19 @@ describe("seo.ts (Metadatos SEO y Esquemas JSON-LD)", () => {
 });
 
 describe("rating.ts (Cálculo Visual y Estados de Valoración)", () => {
+  test("resolveNextRating cicla correctamente el nivel 1 (suspenso -> aprobado -> limpiar)", () => {
+    assert.equal(ratingModule.resolveNextRating(null, 1), 2);
+    assert.equal(ratingModule.resolveNextRating(2, 1), 5);
+    assert.equal(ratingModule.resolveNextRating(5, 1), null);
+  });
+
+  test("resolveWatchlistMutationOnRate y resolveRatingMutationOnWatchlist mantienen exclusividad mutua", () => {
+    assert.equal(ratingModule.resolveWatchlistMutationOnRate(8), false);
+    assert.equal(ratingModule.resolveWatchlistMutationOnRate(null), undefined);
+    assert.equal(ratingModule.resolveRatingMutationOnWatchlist(true), null);
+    assert.equal(ratingModule.resolveRatingMutationOnWatchlist(false), undefined);
+  });
+
   test("calculateUserStars traduce nota numérica (0-10) a niveles de 1 a 3 estrellas", () => {
     assert.strictEqual(ratingModule.calculateUserStars(2), 0); // Suspenso (2)
     assert.strictEqual(ratingModule.calculateUserStars(5), 1); // Aprobado (5)
@@ -288,6 +301,25 @@ describe("rating.ts (Cálculo Visual y Estados de Valoración)", () => {
     assert.equal(imdbLink.getAttribute("href"), null);
     assert.equal(imdbLink.classList.contains("disabled"), true);
     assert.equal(imdbLink.hasAttribute("aria-label"), false);
+  });
+});
+
+describe("state.ts (Contador y Gestor de Watchlist)", () => {
+  test("getWatchlistCount calcula el total de películas en watchlist con precisión", () => {
+    stateModule.clearUserMovieData();
+    assert.equal(stateModule.getWatchlistCount(), 0);
+
+    stateModule.updateUserDataForMovie(101, { onWatchlist: true, rating: null });
+    stateModule.updateUserDataForMovie(102, { onWatchlist: false, rating: 8 });
+    stateModule.updateUserDataForMovie(103, { onWatchlist: true, rating: null });
+
+    assert.equal(stateModule.getWatchlistCount(), 2);
+
+    stateModule.updateUserDataForMovie(101, { onWatchlist: false });
+    assert.equal(stateModule.getWatchlistCount(), 1);
+
+    stateModule.clearUserMovieData();
+    assert.equal(stateModule.getWatchlistCount(), 0);
   });
 });
 

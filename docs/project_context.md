@@ -120,7 +120,7 @@ Para optimizar recursos y tiempos de ejecución durante el mantenimiento continu
 2. **Edición Quirúrgica:** Modificación atómica exclusiva de las líneas responsables del problema, sin reformateos ni efectos colaterales en módulos adyacentes.
 3. **Validación Mínima Suficiente (*Targeted Testing & Builds*):**
    - **Zero Chrome DevTools proactivo:** El servidor local de Vite actualiza la pantalla del usuario en tiempo real vía HMR. Prohibido abrir navegadores headless de forma automática salvo petición explícita de auditoría.
-   - **Tests focalizados:** Ejecución exclusiva del test unitario específico del archivo modificado (ej. `node --test tests/card.test.mjs`). La suite completa de 205 tests se delega a la integración continua (CI) en GitHub Actions.
+   - **Tests focalizados:** Ejecución exclusiva del test unitario específico del archivo modificado (ej. `node --test tests/card.test.mjs`). La suite completa de 219 tests se delega a la integración continua (CI) en GitHub Actions.
    - **Fast-Path Commit:** En órdenes de subida o commit, validación de tipos ultra-rápida (`npx tsc --noEmit`, ~1s) y encadenamiento atómico inmediato (`git add -A && git commit -m "..." && git push`).
 
 ---

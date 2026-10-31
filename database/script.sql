@@ -323,9 +323,9 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
           )
     ),
     component_matches AS (
-        -- 2. Si el nombre del dúo NO coincide directamente, pero sí uno de sus integrantes
+        -- 2. Sugerir el integrante y el nombre del colectivo/dúo en un solo escaneo
         SELECT 
-            TRIM(comp.name) AS suggestion, 
+            v.suggestion, 
             d.movie_count,
             CASE 
                 WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
@@ -335,33 +335,7 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
             END AS prefix_rank
         FROM public.mv_director_suggestions d
         CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
-        WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
-          AND d.components IS NOT NULL
-          AND (
-              d.components_norm LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-              OR (search_term LIKE '%-%' AND d.components_norm LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
-              OR (d.components_norm LIKE '%.%' AND replace(replace(d.components_norm, '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
-          )
-          AND (
-              public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || public.unaccent_immutable(lower(search_term)) || '%'
-              OR (search_term LIKE '%-%' AND public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '-', ' ') || '%')
-              OR (public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '%.%' AND replace(replace(public.unaccent_immutable(lower(TRIM(comp.name))), '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
-          )
-        
-        UNION ALL
-        
-        -- 3. Sugerir también el nombre del colectivo/dúo cuando se busca a un integrante específico
-        SELECT 
-            d.name AS suggestion, 
-            d.movie_count,
-            CASE 
-                WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
-                WHEN public.unaccent_immutable(lower(TRIM(comp.name))) LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 2
-                WHEN replace(public.unaccent_immutable(lower(TRIM(comp.name))), '.', ' ') LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 1
-                ELSE 3
-            END AS prefix_rank
-        FROM public.mv_director_suggestions d
-        CROSS JOIN LATERAL unnest(string_to_array(d.components, ',')) AS comp(name)
+        CROSS JOIN LATERAL (VALUES (TRIM(comp.name)), (d.name)) AS v(suggestion)
         WHERE search_term IS NOT NULL AND length(trim(search_term)) >= 2
           AND d.components IS NOT NULL
           AND (

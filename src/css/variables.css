@@ -158,7 +158,6 @@
   /* Alias semánticos */
   --transition-duration-fast: var(--duration-fast);
   --transition-duration-normal: var(--duration-normal);
-  --transition-fast: var(--duration-fast);
   --transition-timing-function: var(--ease-smooth);
 
   /* ---- Capas (Z-Index) ---- */

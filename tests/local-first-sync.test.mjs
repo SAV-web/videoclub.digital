@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
 import { createMockIndexedDB } from "./helpers/mock-indexeddb.mjs";
+import { setupGlobalDom } from "./helpers/mock-dom.mjs";
 
 describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
   let viteEnv;
@@ -10,6 +11,7 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
   let mockIDB;
   let apiModule;
   let stateModule;
+  let syncManagerModule;
 
   before(async () => {
     mockIDB = createMockIndexedDB();
@@ -18,9 +20,10 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
     viteEnv = await startViteSsrServer([
       "/src/js/localStore.ts",
       "/src/js/api.ts",
-      "/src/js/state.ts"
+      "/src/js/state.ts",
+      "/src/js/syncManager.ts"
     ]);
-    [localStore, apiModule, stateModule] = viteEnv.modules;
+    [localStore, apiModule, stateModule, syncManagerModule] = viteEnv.modules;
   });
 
   beforeEach(async () => {
@@ -331,6 +334,46 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
       assert.equal(memData["999"]?.rating, 10);
     } finally {
       supabase.from = origFrom;
+    }
+  });
+
+  test("syncManager.initSyncListeners registra y devuelve cleanup idempotentemente", () => {
+    const cleanup = syncManagerModule.initSyncListeners();
+    assert.equal(typeof cleanup, "function");
+    cleanup();
+  });
+
+  test("syncManager.initSyncListeners escucha SYNC_PENDING_ENTRIES del Service Worker y lo desuscribe en cleanup", () => {
+    const { teardown } = setupGlobalDom({ fallbackCreate: true });
+    let swMessageListener = null;
+
+    Object.defineProperty(globalThis.navigator, "serviceWorker", {
+      value: {
+        addEventListener: (event, handler) => {
+          if (event === "message") swMessageListener = handler;
+        },
+        removeEventListener: (event, handler) => {
+          if (event === "message" && swMessageListener === handler) {
+            swMessageListener = null;
+          }
+        }
+      },
+      configurable: true,
+      writable: true
+    });
+
+    try {
+      const cleanup = syncManagerModule.initSyncListeners();
+      assert.equal(typeof swMessageListener, "function", "Debe registrar un listener de message en navigator.serviceWorker");
+
+      // Simular mensaje de Background Sync del Service Worker
+      swMessageListener({ data: { type: "SYNC_PENDING_ENTRIES" } });
+
+      cleanup();
+      assert.equal(swMessageListener, null, "Cleanup debe retirar el listener de navigator.serviceWorker");
+    } finally {
+      delete globalThis.navigator.serviceWorker;
+      teardown();
     }
   });
 });

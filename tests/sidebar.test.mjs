@@ -201,7 +201,7 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
       });
 
       sidebarScrollable.dispatchEvent({ type: "click", target: comedyLink });
-      await new Promise((r) => setTimeout(r, 1100));
+      await new Promise((r) => setTimeout(r, 60));
 
       // 3. Rollback: el género debe haber revertido a 'Drama'
       const active = stateModule.getActiveFilters();
@@ -267,7 +267,7 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
       });
 
       sidebarScrollable.dispatchEvent({ type: "click", target: excludeActionBtn });
-      await new Promise((r) => setTimeout(r, 1100));
+      await new Promise((r) => setTimeout(r, 60));
 
       // Debe haber revertido: 'Acción' no queda excluido tras el fallo
       const activeAfterError = stateModule.getActiveFilters();

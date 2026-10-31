@@ -154,17 +154,8 @@ body.user-logged-in :is(.star-rating-container.is-interactive, .card-rating-bloc
       pointer-events: none;
       z-index: 10;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      animation: tooltip-fade-in 0.12s ease-out;
+      animation: fade-in 0.12s ease-out;
     }
-  }
-}
-
-@keyframes tooltip-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }
 

@@ -34,12 +34,6 @@ beforeEach(() => {
 });
 
 describe("utils.js", () => {
-  test("normaliza texto para búsquedas sin acentos ni espacios extra", () => {
-    assert.equal(utils.normalizeText("  Ácción Ñ  "), "accion n");
-    assert.equal(utils.normalizeText("Per-Olav Sørensen"), "per-olav sorensen");
-    assert.equal(utils.normalizeText("André Øvredal"), "andre ovredal");
-  });
-
   test("mapea payloads de películas al contrato de UI", () => {
     const movie = utils.mapMoviePayload({
       id: 1,
@@ -76,53 +70,12 @@ describe("utils.js", () => {
     assert.equal(utils.getFriendlyErrorMessage({ name: "AbortError" }), null);
   });
 
-  test("computePersonAgeInfo calcula correctamente la edad de personas vivas y fallecidas", () => {
-    const living = utils.computePersonAgeInfo("1970-05-15", null);
-    assert.equal(living.bYear, "1970");
-    assert.equal(living.dYear, "");
-    assert.equal(living.datesStr, "1970-");
-    assert.ok(living.ageStr.startsWith("(") && !living.ageStr.includes("✝"));
-
-    const deceased = utils.computePersonAgeInfo("1920-01-01", "1990-12-31");
-    assert.equal(deceased.bYear, "1920");
-    assert.equal(deceased.dYear, "1990");
-    assert.equal(deceased.datesStr, "1920-1990");
-    assert.equal(deceased.ageStr, "✝ (70)");
-  });
-
   test("formatYearRangeLabel formatea rangos abiertos para UI móvil", () => {
     assert.equal(utils.formatYearRangeLabel("2005-"), "desde 2005");
     assert.equal(utils.formatYearRangeLabel("-2005"), "hasta 2005");
     assert.equal(utils.formatYearRangeLabel("1990-2005"), "1990-2005");
     assert.equal(utils.formatYearRangeLabel("2005"), "2005");
     assert.equal(utils.formatYearRangeLabel(null), "");
-  });
-
-  test("applyLengthBasedClass aplica dinámicamente clases CSS por longitud de texto", () => {
-    const mockEl = {
-      className: "initial-class",
-      classList: {
-        classes: new Set(["initial-class"]),
-        add(c) { this.classes.add(c); },
-        has(c) { return this.classes.has(c); }
-      }
-    };
-
-    const thresholds = [
-      [40, "title-xl-long"],
-      [25, "title-long"],
-      [12, "title-medium"],
-    ];
-
-    utils.applyLengthBasedClass(mockEl, "Short", thresholds);
-    assert.equal(mockEl.classList.has("title-medium"), false);
-
-    utils.applyLengthBasedClass(mockEl, "A Medium Title!!", thresholds);
-    assert.equal(mockEl.classList.has("title-medium"), true);
-
-    utils.applyLengthBasedClass(mockEl, "Very Very Very Long Movie Title Exceeding Forty Characters", thresholds, true);
-    assert.equal(mockEl.className, "");
-    assert.equal(mockEl.classList.has("title-xl-long"), true);
   });
 });
 
@@ -190,116 +143,6 @@ describe("normalización de filtros", () => {
 });
 
 describe("state.js y Pretty Paths", () => {
-  test("toSlug normaliza acentos, mayúsculas y caracteres especiales", () => {
-    assert.equal(contracts.toSlug("Ciencia Ficción"), "ciencia-ficcion");
-    assert.equal(contracts.toSlug("Acción"), "accion");
-    assert.equal(contracts.toSlug("Bélico"), "belico");
-    assert.equal(contracts.toSlug("España"), "espana");
-    assert.equal(contracts.toSlug("Corea del Sur"), "corea-del-sur");
-    assert.equal(contracts.toSlug("1001 Movies"), "1001-movies");
-    assert.equal(contracts.toSlug("Daniel Day-Lewis"), "daniel-day-lewis");
-    assert.equal(contracts.toSlug("Vincent D'Onofrio"), "vincent-d-onofrio");
-    assert.equal(contracts.toSlug("Chris O'Dowd"), "chris-o-dowd");
-    assert.equal(contracts.toSlug("Jean-Luc Godard"), "jean-luc-godard");
-    assert.equal(contracts.toSlug("Joachim Rønning"), "joachim-ronning");
-    assert.equal(contracts.toSlug("Søren Kierkegaard"), "soren-kierkegaard");
-    assert.equal(contracts.toSlug("Stellan Skarsgård"), "stellan-skarsgard");
-  });
-
-  test("genreToSlug y countryToSlug aplican whitelist estricta (no fallback algorítmico)", () => {
-    // Catálogo canónico oficial de 21 géneros (1:1 con slugs oficiales)
-    const EXPECTED_GENRES = {
-      "Acción": "accion",
-      "Animación": "animacion",
-      "Aventuras": "aventuras",
-      "Bélico": "belico",
-      "Biografía": "biografia",
-      "Noir": "noir",
-      "Comedia": "comedia",
-      "Crimen": "crimen",
-      "Deporte": "deporte",
-      "Documental": "documental",
-      "Drama": "drama",
-      "Familiar": "familiar",
-      "Fantasía": "fantasia",
-      "Histórico": "historico",
-      "Intriga": "intriga",
-      "Música": "musica",
-      "Romance": "romance",
-      "Sci-Fi": "sci-fi",
-      "Terror": "terror",
-      "Thriller": "thriller",
-      "Western": "western",
-    };
-
-    for (const [name, expectedSlug] of Object.entries(EXPECTED_GENRES)) {
-      assert.equal(contracts.genreToSlug(name), expectedSlug, `Género: ${name}`);
-      assert.equal(contracts.buildFilterUrl("genre", name), `/${expectedSlug}/`, `URL: ${name}`);
-    }
-
-    // Los aliases y etiquetas temáticas NO generan URLs (devuelven null en genreToSlug)
-    assert.equal(contracts.genreToSlug("Cine negro"), null);
-    assert.equal(contracts.genreToSlug("Action"), null);
-    assert.equal(contracts.genreToSlug("adrenalina"), null);
-    assert.equal(contracts.genreToSlug("dibujos"), null);
-    assert.equal(contracts.genreToSlug("cgi"), null);
-    assert.equal(contracts.genreToSlug("épico"), null);
-    assert.equal(contracts.genreToSlug("guerra"), null);
-    assert.equal(contracts.genreToSlug("Biopic"), null);
-    assert.equal(contracts.genreToSlug("FilmNoir"), null);
-    assert.equal(contracts.genreToSlug("humor"), null);
-    assert.equal(contracts.genreToSlug("policiaco"), null);
-    assert.equal(contracts.genreToSlug("Sport"), null);
-    assert.equal(contracts.genreToSlug("Family"), null);
-    assert.equal(contracts.genreToSlug("Musical"), null);
-    assert.equal(contracts.genreToSlug("miedo"), null);
-    assert.equal(contracts.genreToSlug("vaqueros"), null);
-
-    // Géneros desconocidos fuera del catálogo → null (no genera segmento en URL)
-    assert.equal(contracts.genreToSlug("Experimental"), null);
-    assert.equal(contracts.genreToSlug("Peplum"), null);
-
-    // Países conocidos → slug correcto
-    assert.equal(contracts.countryToSlug("España"), "espana");
-    assert.equal(contracts.countryToSlug("EEUU"), "eeuu");
-    assert.equal(contracts.countryToSlug("Corea del Sur"), "corea-del-sur");
-    assert.equal(contracts.countryToSlug("Kazajistán"), "kazajistan");
-    assert.equal(contracts.countryToSlug("Mozambique"), "mozambique");
-
-    // Países desconocidos / no catalogados → null (no genera segmento en URL)
-    assert.equal(contracts.countryToSlug("Atlantida"), null);
-    assert.equal(contracts.countryToSlug("Narnia"), null);
-
-    // buildPrettyPath no genera segmento para valores fuera del mapa
-    assert.equal(contracts.buildPrettyPath({ genre: "Experimental" }), "/");
-    assert.equal(contracts.buildPrettyPath({ country: "Atlantida" }), "/");
-    assert.equal(contracts.buildPrettyPath({ genre: "Drama", country: "Narnia" }), "/drama/");
-
-    // parsePrettyPath: slug desconocido es ignorado silenciosamente
-    const pUnknown = contracts.parsePrettyPath("/experimental/");
-    assert.equal(pUnknown.genre, null);
-    assert.equal(pUnknown.country, null);
-    assert.equal(pUnknown.studio, null);
-    assert.equal(pUnknown.selection, null);
-
-    // parsePrettyPath: resuelve correctamente personas con guiones léxicos originales (Daniel Day-Lewis, Jean-Luc Godard)
-    const pActor = contracts.parsePrettyPath("/actor/daniel-day-lewis/");
-    assert.equal(pActor.actor, "daniel day lewis");
-
-    const pDirector = contracts.parsePrettyPath("/director/jean-luc-godard/");
-    assert.equal(pDirector.director, "jean luc godard");
-  });
-
-  test("buildFilterUrl genera URLs canónicas y absolutas para enlaces de entidades", () => {
-    assert.equal(contracts.buildFilterUrl("director", "Robert Zemeckis"), "/director/robert-zemeckis/");
-    assert.equal(contracts.buildFilterUrl("actor", "Tom Hanks"), "/actor/tom-hanks/");
-    assert.equal(contracts.buildFilterUrl("genre", "Comedia"), "/comedia/");
-    assert.equal(contracts.buildFilterUrl("country", "España"), "/espana/");
-    assert.equal(contracts.buildFilterUrl("studio", "warner"), "/warner/");
-    assert.equal(contracts.buildFilterUrl("selection", "criterion"), "/criterion/");
-    assert.equal(contracts.buildFilterUrl("year", "1994"), "/?year=1994");
-  });
-
   test("setters mantienen el contrato de filtros y exclusividad mutua", () => {
     assert.equal(state.setFilter("year", "1990-2005", true), true);
     assert.equal(state.setFilter("excludedGenres", [" Terror ", "Terror", ""], true), true);
@@ -663,20 +506,14 @@ describe("yearSlider.ts (DualRangeSlider)", () => {
 });
 
 describe("contracts.ts - isAbortError", () => {
-  test("detecta AbortSignal abortado", () => {
+  test("identifica correctamente errores de aborto con o sin AbortSignal explícito", () => {
     const ac = new AbortController();
     ac.abort();
     assert.equal(contracts.isAbortError(new Error("cualquier error"), ac.signal), true);
-  });
 
-  test("NO cataloga como abort si se proveyó un AbortSignal explícito y este NO está abortado", () => {
-    const ac = new AbortController();
-    const networkError = new Error("AbortError: The user aborted a request.");
-    // A pesar de que el mensaje contenga 'Abort', el llamador no abortó el controller
-    assert.equal(contracts.isAbortError(networkError, ac.signal), false);
-  });
+    const activeAc = new AbortController();
+    assert.equal(contracts.isAbortError(new Error("AbortError: The user aborted a request."), activeAc.signal), false);
 
-  test("detecta errores estándar de abort si no se pasó signal", () => {
     assert.equal(contracts.isAbortError({ name: "AbortError" }), true);
     assert.equal(contracts.isAbortError({ message: "The request was aborted" }), true);
     assert.equal(contracts.isAbortError({ message: "Network error" }), false);

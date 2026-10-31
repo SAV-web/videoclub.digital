@@ -599,9 +599,9 @@ export function fetchMovies(
           throw { name: "AbortError" };
         }
 
-        // Si no es el último intento, esperar antes de reintentar (300ms, 600ms)
+        // Si no es el último intento, esperar antes de reintentar (300ms, 600ms en prod, 5ms en test)
         if (attempt < MAX_RETRIES) {
-          const delay = (attempt + 1) * 300;
+          const delay = (globalThis as any)._isTestEnv ? 5 : (attempt + 1) * 300;
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
