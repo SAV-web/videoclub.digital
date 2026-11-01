@@ -9,7 +9,7 @@ import { CONFIG, CSS_CLASSES, SELECTORS, ICONS, DEFAULTS, FILTER_CONFIG, STUDIO_
 import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
 import { getActiveFilters, getTotalMovies, hasActiveMeaningfulFilters, appEvents, getWatchlistCount, getCurrentPage } from "./state.js";
-import { ActiveFilters, MappedMovie } from "./types.js";
+import { ActiveFilters } from "./types.js";
 import { ensureAuthModalMounted, loadAuthStyles } from "./templates/authModal.js";
 import { ensureLegalModalMounted } from "./templates/legalModal.js";
 

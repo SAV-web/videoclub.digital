@@ -537,3 +537,12 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
     - Erradicación de esperas artificiales en `sidebar.test.mjs`: reducción de retardos en bucles de reintento de red en entorno de test (`(globalThis._isTestEnv ? 5 : (attempt + 1) * 300)` en `api.ts`), pasando de pausas fijas de 1,1 s a 60 ms y acelerando la suite del Sidebar de 13,7 s a 3,0 s.
     - Poda de redundancias entre suites (`contracts-state-utils.test.mjs` vs `url-contract.test.mjs` y `shared-and-events.test.mjs`): eliminación de comprobaciones gemelas de `normalizeText`, `computePersonAgeInfo`, `applyLengthBasedClass`, `toSlug`, `genreToSlug`, `countryToSlug` y unificación de las 3 aserciones de `isAbortError`.
     - Fusión y supresión de `api-rating-critical.test.mjs`: consolidación de las pruebas de mutación pura (`resolveNextRating`, `resolveWatchlistMutationOnRate`, `getWatchlistCount`) en `pure-functions.test.mjs` y de eventos Background Sync en `local-first-sync.test.mjs`. Supresión del archivo y de un arranque completo de servidor Vite SSR en Node.
+
+22. **Poda de Import Huérfano y Consistencia de Eventos de Tipado (`src/js/ui.ts`, `src/js/state.ts`)**:
+    - Retirada de la importación huérfana de `MappedMovie` en `src/js/ui.ts` tras la simplificación previa de `updateTotalResultsUI` y `updateMobileStatusBar`.
+    - Verificación del contrato de eventos en `AppEventPayloads` (`src/js/state.ts`), asegurando la tipificación de `'myList:revalidated': undefined;` para compilación limpia con `npx tsc --noEmit`.
+
+23. **Simplificación Estructural de Selectores CSS y Sincronización SSR (`src/css/components/card.css`, `cloudflare/seo/`)**:
+    - Compactación de selectores VIP en `card.css`: eliminación de las listas `:is(.person-card, .collection-card, .studio-card)` y `:is(.collection-card, .studio-card)` aprovechando la jerarquía polimórfica donde `.person-card` engloba a todas las tarjetas de personas, colecciones y estudios, y `.collection-card` engloba a colecciones y estudios.
+    - Sincronización de miniseries en SSR: unificación de la entidad de espacio de no separación `\u00A0(M)` directamente desde `formatYear` en `cloudflare/seo/seo-types.js` y `src/shared/formatters.ts`, eliminando los reemplazos manuales regex `.replace(/ \((M)\)/g, '&nbsp;($1)')` en `cloudflare/seo/render-movie.js` y `cloudflare/seo/render-taxonomy.js`.
+
