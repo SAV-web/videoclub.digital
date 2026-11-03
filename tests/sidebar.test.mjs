@@ -3,6 +3,8 @@ import { test, describe, before, after, beforeEach } from "node:test";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 import { createMockDomElement, setupGlobalDom } from "./helpers/mock-dom.mjs";
 
+globalThis._isTestEnv = true;
+
 // 1. Configuración del DOM simulado ANTES de cargar los módulos en Vite SSR
 const domMap = {};
 
@@ -35,19 +37,27 @@ domMap["#grid-container"] = gridContainer;
 const sectionTypes = ["genre", "country", "selection", "studio", "actor", "director"];
 const pillContainers = {};
 const listContainers = {};
+const collapsibleSectionsList = [];
 
 sectionTypes.forEach((type) => {
   const contentId = type === "country" ? "countries-content" : `${type}s-content`;
   const listContainer = createMockDomElement("div", { id: `${contentId}-list` });
   const pillsContainer = createMockDomElement("div", { className: "active-filters-list" });
+  const header = createMockDomElement("button", { className: "section-header" });
+  const input = createMockDomElement("input", { className: "sidebar-filter-input" });
 
   const collapsible = createMockDomElement("div", { className: "collapsible-section" });
+  collapsible.dataset = { section: type };
+  collapsible.appendChild(header);
   collapsible.appendChild(pillsContainer);
   collapsible.appendChild(listContainer);
+  collapsible.appendChild(input);
   listContainer.parentElement = collapsible;
 
   collapsible.querySelector = (sel) => {
     if (sel === ".active-filters-list") return pillsContainer;
+    if (sel === ".section-header") return header;
+    if (sel === ".sidebar-filter-input") return input;
     return null;
   };
 
@@ -55,6 +65,7 @@ sectionTypes.forEach((type) => {
   domMap[`${contentId} > div:first-child`] = listContainer;
   pillContainers[type] = pillsContainer;
   listContainers[type] = listContainer;
+  collapsibleSectionsList.push(collapsible);
 });
 
 const { teardown: domTeardown } = setupGlobalDom({
@@ -67,6 +78,12 @@ globalThis.document.querySelector = (sel) => {
   if (domMap[sel]) return domMap[sel];
   if (sel && sel.startsWith("#") && domMap[sel.slice(1)]) return domMap[sel.slice(1)];
   return origQuerySelector ? origQuerySelector(sel) : null;
+};
+
+const origQuerySelectorAll = globalThis.document.querySelectorAll;
+globalThis.document.querySelectorAll = (sel) => {
+  if (sel === ".collapsible-section") return collapsibleSectionsList;
+  return origQuerySelectorAll ? origQuerySelectorAll(sel) : [];
 };
 
 describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracterización", () => {
@@ -91,12 +108,14 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
     mainModule?.disposeMainEvents();
     if (viteEnv) await viteEnv.close();
     globalThis.document.querySelector = origQuerySelector;
+    globalThis.document.querySelectorAll = origQuerySelectorAll;
     // domTeardown();
   });
 
   beforeEach(() => {
     stateModule.appEvents.clearAll();
     stateModule.resetFiltersState();
+    stateModule.setTotalMovies(0);
     sidebarModule.disposeSidebarEvents();
     mainSearchInput.value = "";
     if (globalThis.document?.body?.classList) {
@@ -490,11 +509,66 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
     }
   });
 
+  test("Foco en móvil al abrir acordeones: director y actor activan foco en el input; género y país NO lo activan", async () => {
+    const origWidth = globalThis.window.innerWidth;
+    globalThis.window.innerWidth = 375; // Simular viewport móvil (<= 768px)
+
+    try {
+      const directorSection = collapsibleSectionsList.find(s => s.dataset.section === "director");
+      const actorSection = collapsibleSectionsList.find(s => s.dataset.section === "actor");
+      const genreSection = collapsibleSectionsList.find(s => s.dataset.section === "genre");
+      const countrySection = collapsibleSectionsList.find(s => s.dataset.section === "country");
+
+      const directorInput = directorSection.querySelector(".sidebar-filter-input");
+      const actorInput = actorSection.querySelector(".sidebar-filter-input");
+      const genreInput = genreSection.querySelector(".sidebar-filter-input");
+      const countryInput = countrySection.querySelector(".sidebar-filter-input");
+
+      let directorFocused = false;
+      let actorFocused = false;
+      let genreFocused = false;
+      let countryFocused = false;
+
+      directorInput.focus = () => { directorFocused = true; };
+      actorInput.focus = () => { actorFocused = true; };
+      genreInput.focus = () => { genreFocused = true; };
+      countryInput.focus = () => { countryFocused = true; };
+
+      sidebarModule.initSidebar();
+
+      // Click en Director: DEBE enfocar el input en móvil
+      directorSection.querySelector(".section-header").dispatchEvent("click");
+      assert.equal(directorFocused, true, "Director en móvil debe enfocar el input");
+
+      // Click en Actor: DEBE enfocar el input en móvil
+      actorSection.querySelector(".section-header").dispatchEvent("click");
+      assert.equal(actorFocused, true, "Actor en móvil debe enfocar el input");
+
+      // Click en Género: NO DEBE enfocar el input en móvil
+      genreSection.querySelector(".section-header").dispatchEvent("click");
+      assert.equal(genreFocused, false, "Género en móvil NO debe enfocar el input");
+
+      // Click en País: NO DEBE enfocar el input en móvil
+      countrySection.querySelector(".section-header").dispatchEvent("click");
+      assert.equal(countryFocused, false, "País en móvil NO debe enfocar el input");
+    } finally {
+      globalThis.window.innerWidth = origWidth;
+    }
+  });
+
   test("initGlobalHotkeys: atajos 'b', 'Ctrl+K', 'm', 's', 'r' y protecciones modales", async () => {
     let focusCalled = false;
     let selectCalled = false;
     mainSearchInput.focus = () => { focusCalled = true; };
     mainSearchInput.select = () => { selectCalled = true; };
+
+    const supabase = await apiModule.getSupabase();
+    const origRpc = supabase.rpc;
+    supabase.rpc = () => {
+      const p = Promise.resolve({ data: { items: [], total: 0 }, error: null });
+      p.abortSignal = () => p;
+      return p;
+    };
 
     const cleanupHotkeys = mainModule.initGlobalHotkeys();
 
@@ -563,6 +637,7 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
       assert.equal(rRandom.prevented, true, "Tecla 'r' debe llamar preventDefault()");
     } finally {
       cleanupHotkeys();
+      supabase.rpc = origRpc;
     }
   });
 });

@@ -10,6 +10,7 @@
  *  C. Quick View — Ratings y Acciones
  *  D. Quick View — Navegación
  *  E. Quick View — Mobile (<= 768px): Panel Bottom Sheet
+ *  E2. Quick View — Tablet / iPad Portrait (540px - 768px): Columna Única Estilizada
  *  F. Quick View — Desktop (>= 769px): Ventana Flotante Bicolumna
  *  G. Quick View — Personas / Ficha VIP
  *  H. Quick View — Landscape (Móvil Apaisado)
@@ -1001,7 +1002,55 @@
     width: 100%;
   }
 
+}
 
+/* =================================================================
+ *  E2. QUICK VIEW — TABLET / IPAD PORTRAIT (540px - 768px): Columna Única Estilizada
+ * ================================================================= */
+
+@media (min-width: 540px) and (max-width: 768px) {
+  .quick-view-modal {
+    width: 86%;
+    max-width: 520px;
+    height: min(92dvh, 880px);
+    max-height: min(92dvh, 880px);
+    bottom: var(--space-md, 16px);
+    border-radius: var(--radius-xl);
+    overflow: visible;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-md: 1.125rem;
+    --font-size-lg: 1.25rem;
+    --font-size-xl: 1.5rem;
+  }
+
+  .quick-view-content {
+    overflow-y: auto;
+    border-radius: inherit;
+  }
+
+  .modal-nav-btn {
+    top: 50%;
+  }
+
+  .modal-nav-btn--prev {
+    left: -28px;
+  }
+
+  .modal-nav-btn--next {
+    right: -28px;
+  }
+
+  .is-quick-view .poster-container {
+    width: 100%;
+    max-width: 270px;
+    margin-inline: auto;
+  }
+
+  .is-quick-view :is(.quick-view-media, .quick-view-details) {
+    padding-inline: var(--space-xl);
+  }
 }
 
 /* =================================================================

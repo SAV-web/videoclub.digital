@@ -208,11 +208,19 @@ function setupEventListeners(): void {
           section.classList.remove(CSS_CLASSES.ACTIVE);
           section.classList.remove("is-ready");
           section.querySelector('.section-header')?.setAttribute('aria-expanded', 'false');
+          const otherInput = section.querySelector<HTMLInputElement>('.sidebar-filter-input');
+          if (otherInput && document.activeElement === otherInput) {
+            otherInput.blur();
+          }
         }
       });
 
       if (!isNowActive) {
         clickedSection.classList.remove("is-ready");
+        const inputField = clickedSection.querySelector<HTMLInputElement>('.sidebar-filter-input');
+        if (inputField && document.activeElement === inputField) {
+          inputField.blur();
+        }
       }
 
       clickedSection.classList.toggle(CSS_CLASSES.ACTIVE, isNowActive);
@@ -222,20 +230,32 @@ function setupEventListeners(): void {
       updatePillVisibility();
 
       if (isNowActive) {
+        const isMobile = isMobileLayout();
+        const sectionType = clickedSection.dataset.section;
+        const isPersonSection = sectionType === 'director' || sectionType === 'actor';
+        const inputField = clickedSection.querySelector<HTMLInputElement>('.sidebar-filter-input');
+
+        // En versión móvil: situar el foco inmediatamente para abrir el teclado virtual nativo (preservando el gesto de usuario en iOS)
+        if (isMobile && isPersonSection && inputField) {
+          inputField.focus({ preventScroll: true });
+        }
+
         const gen = getGeneration();
         const timeoutId = setTimeout(() => {
-
           if (gen !== getGeneration()) return;
           if (clickedSection.classList.contains(CSS_CLASSES.ACTIVE)) {
             clickedSection.classList.add("is-ready");
 
             const nextSection = clickedSection.nextElementSibling as HTMLElement | null;
             const nextHeader = nextSection?.querySelector<HTMLElement>('.section-header');
-            const inputField = clickedSection.querySelector<HTMLElement>('.sidebar-filter-input');
             const profileContainer = document.getElementById('user-profile-container');
 
-            if (isMobileLayout() && profileContainer) {
-              profileContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            if (isMobile) {
+              if (isPersonSection && inputField) {
+                inputField.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              } else if (profileContainer) {
+                profileContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
             } else if (nextHeader) {
               nextHeader.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             } else if (inputField) {
@@ -244,8 +264,10 @@ function setupEventListeners(): void {
               header.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
 
-            if (inputField && !isMobileLayout()) {
-              inputField.focus({ preventScroll: true });
+            if (inputField && (!isMobile || isPersonSection)) {
+              if (document.activeElement !== inputField) {
+                inputField.focus({ preventScroll: true });
+              }
             }
           }
         }, 300);

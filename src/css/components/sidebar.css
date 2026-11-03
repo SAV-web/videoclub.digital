@@ -654,6 +654,11 @@
 }
 #studios-list-container .filter-link { justify-content: center; }
 
+/* Distancia visual entre el listado de personas y el cuadro de búsqueda (escritorio y móvil) */
+:is(#directors-list-container, #actors-list-container) {
+  padding-bottom: var(--space-sm);
+}
+
 /* --- 13. ACCESIBILIDAD Y RESPONSIVE (Móviles y Tap Areas) --- */
 @media (max-width: 768px), (max-height: 500px) {
   .collapsible-section .section-header { font-size: var(--font-size-md); }
