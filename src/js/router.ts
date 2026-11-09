@@ -88,8 +88,6 @@ export function updateUrl({ replace = false }: { replace?: boolean } = {}): void
   if (typeof window !== "undefined" && window.history && (hasChanged || replace)) {
     if (replace) {
       const nextState = { ...window.history.state, path: newUrl };
-      delete nextState.profileModalOpen;
-      delete nextState.modalOpen;
       window.history.replaceState(nextState, "", newUrl);
     } else {
       window.history.pushState({ path: newUrl, scrollY: 0 }, "", newUrl);

@@ -544,29 +544,12 @@ export function closeAccessibleModal(modal: HTMLElement | null, overlay: HTMLEle
   }
 }
 
-let isClosingModalViaHistory = false;
-
-export function setIsClosingModalViaHistory(): void {
-  isClosingModalViaHistory = true;
-}
-
-export function consumeIsClosingModalViaHistory(): boolean {
-  const was = isClosingModalViaHistory;
-  isClosingModalViaHistory = false;
-  return was;
-}
-
 export const isAuthModalOpen = (): boolean => {
   return Boolean(dom.authModal && !dom.authModal.hidden);
 };
 
-export const closeAuthModal = (options?: { fromPopstate?: boolean } | Event): void => {
-  const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
+export const closeAuthModal = (_options?: { fromPopstate?: boolean } | Event): void => {
   if (dom.authModal && !dom.authModal.hidden) {
-    if (!isPopstate && window.history.state?.modalOpen) {
-      setIsClosingModalViaHistory();
-      window.history.back();
-    }
     dom.authModal.style.transform = "";
     dom.authModal.classList.remove("is-dragging");
   }
@@ -680,9 +663,6 @@ export const openAuthModal = async (): Promise<void> => {
     if (import.meta.env.DEV) console.error("Error loading auth module", e);
   }
   initAuthModalListeners();
-  if (!window.history.state?.modalOpen) {
-    window.history.pushState({ modalOpen: true }, "", window.location.href);
-  }
   if (dom.authModal) {
     dom.authModal.style.transform = "";
     dom.authModal.classList.remove("is-dragging");
@@ -762,14 +742,7 @@ export function switchLegalTab(tabName: string): void {
   }
 }
 
-export const closeLegalModal = (options?: { fromPopstate?: boolean } | Event): void => {
-  const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
-  if (dom.legalModal && !dom.legalModal.hidden) {
-    if (!isPopstate && window.history.state?.modalOpen) {
-      setIsClosingModalViaHistory();
-      window.history.back();
-    }
-  }
+export const closeLegalModal = (_options?: { fromPopstate?: boolean } | Event): void => {
   closeAccessibleModal(dom.legalModal, dom.legalOverlay);
 
   // Limpiar parámetro ?legal= de la URL si veníamos de un enlace directo
@@ -818,9 +791,6 @@ function initLegalModalListeners(): void {
 export const openLegalModal = (tabName = "about"): void => {
   ensureLegalModalMounted();
   initLegalModalListeners();
-  if (!window.history.state?.modalOpen) {
-    window.history.pushState({ modalOpen: true }, "", window.location.href);
-  }
   openAccessibleModal(dom.legalModal, dom.legalOverlay, false);
   switchLegalTab(tabName);
   requestAnimationFrame(() => {

@@ -37,7 +37,6 @@ import {
   closeAuthModal,
   isLegalModalOpen,
   closeLegalModal,
-  consumeIsClosingModalViaHistory,
   updateAppBadge,
   clearAppBadge,
   updateSortUI
@@ -971,17 +970,13 @@ export function init(): void {
   }
 
   const handlePopState = async () => {
-    // Si el cierre fue disparado por una acción manual (swipe, botón, ESC) que ya ejecutó history.back(),
-    // no volver a invocar closeModal para evitar transiciones concurrentes
-    const closingViaHistory = consumeIsClosingModalViaHistory();
-
     const { isModalOpen, closeModal } = await import("./components/modal.js");
 
-    if (!closingViaHistory && isModalOpen()) {
+    if (isModalOpen()) {
       closeModal({ fromPopstate: true, suppressHistoryBack: true });
     }
 
-    if (!closingViaHistory && isAuthModalOpen()) {
+    if (isAuthModalOpen()) {
       closeAuthModal({ fromPopstate: true });
     }
 

@@ -321,18 +321,13 @@ export async function openProfileModal(): Promise<void> {
     dom.cancelDeleteBtn.disabled = false;
   }
 
-  // Push state en el historial si no está ya
-  if (typeof window !== "undefined" && !window.history.state?.profileModalOpen) {
-    window.history.pushState({ ...window.history.state, profileModalOpen: true }, "", window.location.href);
-  }
-
   openAccessibleModal(dom.modal, dom.overlay);
 }
 
 /**
  * Cierra la modal de perfil.
  */
-export function closeProfileModal(isPopstate = false, options: { suppressHistoryBack?: boolean } = {}): void {
+export function closeProfileModal(_isPopstate = false, _options: { suppressHistoryBack?: boolean } = {}): void {
   const dom = getProfileDom();
   if (!dom.modal || !dom.overlay) return;
 
@@ -340,10 +335,6 @@ export function closeProfileModal(isPopstate = false, options: { suppressHistory
   dom.modal.classList.remove("is-dragging");
 
   closeAccessibleModal(dom.modal, dom.overlay);
-
-  if (!isPopstate && !options.suppressHistoryBack && typeof window !== "undefined" && window.history.state?.profileModalOpen) {
-    window.history.back();
-  }
 
   if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
     lastFocusedElement.focus();

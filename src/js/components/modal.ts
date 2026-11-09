@@ -7,7 +7,7 @@
 //  RESPONSABILIDAD: Orquestación del modal, ciclo de vida y API pública.
 // =================================================================
 
-import { openAccessibleModal, closeAccessibleModal, setIsClosingModalViaHistory, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
+import { openAccessibleModal, closeAccessibleModal, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
 import { unflipAllCards } from "./card/index.js";
 import { executeViewTransition, mapMoviePayload } from "../utils.js";
 import { CSS_CLASSES } from "../constants.js";
@@ -152,26 +152,13 @@ export function isModalOpen(): boolean {
 /**
  * Cierra el modal con animación y limpieza.
  */
-export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean; skipHistory?: boolean } | Event): void {
+export function closeModal(_options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean; skipHistory?: boolean } | Event): void {
   if (isClosingModalInProgress) return;
 
-  const isPopstate = Boolean(options && "fromPopstate" in options && options.fromPopstate);
-  const suppressHistoryBack = Boolean(
-    options && (
-      ("suppressHistoryBack" in options && options.suppressHistoryBack) ||
-      ("skipHistory" in options && options.skipHistory)
-    )
-  );
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
 
   isClosingModalInProgress = true;
-
-  // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
-  if (!isPopstate && !suppressHistoryBack && window.history.state?.modalOpen) {
-    setIsClosingModalViaHistory();
-    window.history.back();
-  }
 
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
@@ -271,11 +258,6 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
 
   const { modal, overlay, content } = getDom();
   if (!modal || !overlay) return;
-
-  // Integración con el botón "Atrás" del navegador: crear entrada en el historial
-  if (!window.history.state?.modalOpen) {
-    window.history.pushState({ modalOpen: true }, "", window.location.href);
-  }
 
   modal.classList.remove("modal-is-loading");
 
