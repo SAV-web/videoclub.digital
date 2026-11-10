@@ -25,7 +25,7 @@ La arquitectura de VIDEOCLUB.DIGITAL opera sobre tres fronteras de confianza bie
 
 1. **Cliente / SPA (`src/js/`):**
    - Entrada de datos: URL (*Pretty Paths* y query strings), almacenamiento local (`localStorage`), interacciones de usuario (ratings, watchlist, búsqueda).
-   - Renderizado en DOM: Uso sistemático de `textContent`, `createElement` y plantillas `<template>` clonadas, eliminando de raíz la inyección clásica por `innerHTML`.
+   - Renderizado en DOM: Uso sistemático de `textContent`, `createElement`, plantillas `<template>` clonadas y `replaceChildren()`. Se elimina el renderizado de datos dinámicos mediante `innerHTML` (cuyo uso se restringe exclusivamente a sprites SVG estáticos y de confianza de `ICONS`).
    - Hipervínculos salientes: Sanitizados mediante [`sanitizeExternalUrl`](#32-sanitización-canónica-de-hipervínculos-externos-sanitizeexternalurl).
 2. **Perímetro / Edge (`cloudflare/worker.js`):**
    - Origen autoritativo de producción para HTML, SSR dinámico y assets.

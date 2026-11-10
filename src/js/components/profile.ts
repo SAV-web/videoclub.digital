@@ -18,7 +18,7 @@ import { calculateUserStars } from "../../shared/formatters.js";
 import { ensureProfileModalMounted } from "../templates/profileModal.js";
 import { renderStars } from "./rating.js";
 
-export interface UserMovieStats {
+interface UserMovieStats {
   watchlistCount: number;
   ratedCount: number;
   averageRating: number | null;
@@ -70,7 +70,7 @@ export function formatStarFraction(stars: number | null | undefined): string {
 /**
  * Renderiza el llenado visual continuo/fraccionario de las 3 estrellas en el contenedor.
  */
-export const renderFractionalStars = (container: HTMLElement, filledAmount: number): void =>
+const renderFractionalStars = (container: HTMLElement, filledAmount: number): void =>
   renderStars(container, filledAmount);
 
 /**
@@ -345,7 +345,7 @@ export function closeProfileModal(_isPopstate = false, _options: { suppressHisto
 /**
  * Renderiza el bloque de estadísticas cinemáticas del usuario.
  */
-export function renderProfileStats(): void {
+function renderProfileStats(): void {
   const dom = getProfileDom();
   const stats = computeUserMovieStats(getAllUserMovieData());
 
@@ -368,19 +368,31 @@ export function renderProfileStats(): void {
       { key: "level0", css: "breakdown-bar-fill--level0", data: stats.breakdown.level0 }
     ];
 
-    dom.breakdownContainer.innerHTML = rows
-      .map(
-        r => `
-        <div class="breakdown-row">
-          <span class="breakdown-label">${r.data.label}</span>
-          <div class="breakdown-bar-container">
-            <div class="breakdown-bar-fill ${r.css}" style="width: ${r.data.percentage}%;"></div>
-          </div>
-          <span class="breakdown-count">${r.data.count} (${r.data.percentage}%)</span>
-        </div>
-      `
-      )
-      .join("");
+    const rowElements = rows.map(r => {
+      const rowDiv = document.createElement("div");
+      rowDiv.className = "breakdown-row";
+
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "breakdown-label";
+      labelSpan.textContent = r.data.label;
+
+      const barContainer = document.createElement("div");
+      barContainer.className = "breakdown-bar-container";
+
+      const barFill = document.createElement("div");
+      barFill.className = `breakdown-bar-fill ${r.css}`;
+      barFill.style.width = `${r.data.percentage}%`;
+      barContainer.appendChild(barFill);
+
+      const countSpan = document.createElement("span");
+      countSpan.className = "breakdown-count";
+      countSpan.textContent = `${r.data.count} (${r.data.percentage}%)`;
+
+      rowDiv.append(labelSpan, barContainer, countSpan);
+      return rowDiv;
+    });
+
+    dom.breakdownContainer.replaceChildren(...rowElements);
   }
 }
 
@@ -447,7 +459,16 @@ export async function exportUserDataCsv(): Promise<void> {
           .in("id", chunk);
 
         if (!error && data) {
-          for (const m of (data as any[])) {
+          const rows = data as unknown as Array<{
+            id: number;
+            title?: string | null;
+            original_title?: string | null;
+            year?: number | null;
+            type?: string | null;
+            directors_list?: string | null;
+            genres_list?: string | null;
+          }>;
+          for (const m of rows) {
             movieMetaMap.set(m.id, {
               title: m.title || "",
               original_title: m.original_title || null,
@@ -469,13 +490,20 @@ export async function exportUserDataCsv(): Promise<void> {
       try {
         const localCached = await getCachedMoviesByIds(missingIds);
         for (const [id, m] of localCached.entries()) {
+          const rawDirectors = "directors_list" in m && typeof m.directors_list === "string"
+            ? m.directors_list
+            : (Array.isArray(m.directors) ? m.directors.join(", ") : "");
+          const rawGenres = "genres_list" in m && typeof m.genres_list === "string"
+            ? m.genres_list
+            : (Array.isArray(m.genres) ? m.genres.join(", ") : "");
+
           movieMetaMap.set(id, {
             title: m.title || "",
             original_title: m.original_title || null,
             year: m.year ?? null,
             type: m.type && String(m.type).toLowerCase().startsWith("s") ? "Serie" : "Película",
-            directors: (m as any).directors_list || (Array.isArray((m as any).directors) ? (m as any).directors.join(", ") : ""),
-            genres: (m as any).genres_list || (Array.isArray((m as any).genres) ? (m as any).genres.join(", ") : "")
+            directors: rawDirectors,
+            genres: rawGenres
           });
         }
       } catch {

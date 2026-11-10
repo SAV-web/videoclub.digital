@@ -62,7 +62,7 @@ export function resolveRatingMutationOnWatchlist(isOnWatchlist: boolean): number
   return undefined; // No mutar
 }
 
-export interface RatingPresentationState {
+interface RatingPresentationState {
   showUserRating: boolean;
   showAverageRating: boolean;
   showEmptyAverage: boolean;
@@ -78,7 +78,7 @@ export interface RatingPresentationState {
 export function getRatingPresentationState(
   movie: Movie | MappedMovie | undefined,
   userData: UserMovieEntry | undefined,
-  isLoggedIn: boolean
+  _isLoggedIn?: boolean
 ): RatingPresentationState {
   const userRating = userData?.rating;
   const hasUserVote = typeof userRating === 'number';
@@ -147,10 +147,10 @@ export function renderStars(
   }
 }
 
-export const renderAverageStars = (container: HTMLElement, value: number): void => 
+const renderAverageStars = (container: HTMLElement, value: number): void => 
   renderStars(container, value, { hideUnfilled: true, snapToInteger: false });
 
-export function renderUserStars(container: HTMLElement, value: number, hideHollow = false, isSuspenso = false): void {
+function renderUserStars(container: HTMLElement, value: number, hideHollow = false, isSuspenso = false): void {
   if (isSuspenso) {
     const stars = container.children;
     for (let i = 0; i < stars.length; i++) {
@@ -321,12 +321,6 @@ export function initRatingInteractions(root: HTMLElement): () => void {
     root.removeEventListener("focusout", onFocusOut as EventListener);
     root.removeEventListener("keydown", onKeyDown as EventListener);
   };
-}
-
-export function setupRatingListeners(starContainer: HTMLElement, isInteractive: boolean = true): void {
-  if (!isInteractive) return;
-  const isLoggedIn = typeof document !== "undefined" && document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN);
-  starContainer.classList.toggle(CSS_CLASSES.IS_INTERACTIVE, isLoggedIn);
 }
 
 // =================================================================

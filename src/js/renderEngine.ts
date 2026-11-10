@@ -88,10 +88,6 @@ function scheduleInitialSeo(movies: MappedMovie[], total: number): void {
   });
 }
 
-export function resetInitialSeoState(): void {
-  isInitialSeoDone = false;
-}
-
 /**
  * Calcula las métricas de paginación del grid, considerando tarjetas VIP y absorción de orfandad (<= 2 slots).
  */

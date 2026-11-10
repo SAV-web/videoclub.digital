@@ -92,6 +92,9 @@ Audita la coherencia lógica de las métricas numéricas y temporales cinematogr
 | `people_dates_order_valid` | `public.people` | `deathday IS NULL OR deathday >= birthday` | `WARN` |
 | `countries_region_valid` | `countries` | `region IS NULL OR region IN ('nordic', 'latam')` | `WARN` |
 
+> [!NOTE]
+> **Rango temporal de datos frente a interfaz:** El límite inferior `1888` en `movies_year_range_valid` valida la integridad física de las obras pioneras del cine (*Roundhay Garden Scene*, 1888). En el cliente interactivo, `CONFIG.YEAR_MIN = 1900` restringe los controles visuales (slider y selector de la barra lateral) a la era del cine con distribución industrializada estándar.
+
 ---
 
 ## 4. Integración en el Flujo de Trabajo

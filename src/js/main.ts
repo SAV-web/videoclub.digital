@@ -684,11 +684,11 @@ function setupGlobalListeners(): void {
 
         const grid = document.getElementById("grid-container");
         if (grid) {
-          const cards = Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
+          const cards = Array.from(grid.querySelectorAll<MovieCardElement>(".movie-card[data-movie-id]"));
           if (cards.length > 0) {
             const targetCard = target === "first" ? cards[0] : cards[cards.length - 1];
             const { openModal } = await import("./components/modal.js");
-            openModal(targetCard as any, cards);
+            openModal(targetCard, cards);
           }
         }
       }

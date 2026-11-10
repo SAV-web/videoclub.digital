@@ -5,7 +5,7 @@ import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount
 import { showToast, clearToast, clearAllSidebarAutocomplete, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI } from "../../ui.js";
 import { loadAndRenderMovies } from "../../renderEngine.js";
 import { ActiveFilters, MovieCardElement } from "../../types.js";
-import { dom, sectionContainers, isMobileLayout, sidebarUnsubscribers } from "./context.js";
+import { dom, sectionContainers, sidebarUnsubscribers } from "./context.js";
 import { tryCloseMobileDrawer } from "./gestures.js";
 
 // =================================================================
@@ -64,7 +64,7 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
 }
 
 // Actualiza el estado visual de los controles de filtro (activo / excluido)
-export function updateAllFilterControls(): void {
+function updateAllFilterControls(): void {
   const activeFilters = getActiveFilters();
 
   const excludedGenresSet = new Set(activeFilters.excludedGenres || []);
@@ -305,7 +305,7 @@ export async function handleMyListToggle(): Promise<void> {
   await loadAndRenderMovies(1);
 }
 
-export function clearActiveSearchTerm(): void {
+function clearActiveSearchTerm(): void {
   setSearchTerm("");
   const mainSearchInput = document.querySelector<HTMLInputElement>(SELECTORS.SEARCH_INPUT);
   if (mainSearchInput) mainSearchInput.value = "";

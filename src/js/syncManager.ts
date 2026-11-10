@@ -21,7 +21,7 @@ let isSyncing = false;
 /**
  * Solicita el registro de Background Sync en el Service Worker si está disponible.
  */
-export async function requestBackgroundSync(): Promise<void> {
+async function requestBackgroundSync(): Promise<void> {
   if ("serviceWorker" in navigator && "SyncManager" in window) {
     try {
       const registration = await navigator.serviceWorker.ready;

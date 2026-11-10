@@ -1,6 +1,6 @@
 import { SELECTORS, CSS_CLASSES } from "../../constants.js";
 
-export const MOBILE_BREAKPOINT = 768;
+const MOBILE_BREAKPOINT = 768;
 export const MOBILE_HEIGHT_LIMIT = 500;
 
 export const dom = {
@@ -22,7 +22,7 @@ export const dom = {
 
 export const sectionContainers: Record<string, HTMLElement> = {};
 
-export function getEffectiveViewportDimensions(): { width: number; height: number } {
+function getEffectiveViewportDimensions(): { width: number; height: number } {
   if (typeof window === "undefined") {
     return { width: 1024, height: 768 };
   }

@@ -53,11 +53,6 @@ export interface SupabaseMovieRow {
   user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
 }
 
-/**
- * Alias canónico para la fila cruda de la base de datos (usado en Astro y migraciones).
- */
-export type MovieRow = SupabaseMovieRow;
-
 // =================================================================
 // 2. CAPA DE DOMINIO NORMALIZADO (Domain Model)
 // =================================================================
@@ -123,15 +118,7 @@ export interface MovieCardElement extends HTMLElement {
 }
 
 // =================================================================
-// 4. CAPA DE SEO / SSR (Astro Document Model)
-// =================================================================
-
-export interface SeoMovieDocument extends SupabaseMovieRow {
-  slug: string;
-}
-
-// =================================================================
-// 5. CONTRATOS DE FILTRADO, BÚSQUEDA Y API
+// 4. CONTRATOS DE FILTRADO, BÚSQUEDA Y API
 // =================================================================
 
 export interface ActiveFilters {
@@ -155,8 +142,6 @@ export interface ApiResponse<T = MappedMovie> {
   items: T[];
   aborted?: boolean;
 }
-
-export type SearchResult<T = MappedMovie> = ApiResponse<T>;
 
 export interface PersonDetails {
   id: number;

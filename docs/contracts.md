@@ -3,8 +3,8 @@
 Este documento formaliza los **10 Contratos Normativos del Sistema**. Define las fronteras de datos, interfaces y reglas de negocio invariantes que deben respetar todas las capas de la aplicación: cliente SPA, capa perimetral Edge SSR (Cloudflare Workers) y backend relacional (PostgreSQL en Supabase).
 
 > [!NOTE]
-> La implementación ejecutable de estos contratos reside en [`src/js/contracts.ts`](file:///src/js/contracts.ts), [`src/js/types.ts`](file:///src/js/types.ts) y [`src/shared/`](file:///src/shared/).
-> Para la evolución histórica y especificaciones de micro-interacciones previas, consultar [`docs/archive/CHANGELOG_MILESTONES.md`](file:///docs/archive/CHANGELOG_MILESTONES.md).
+> La implementación ejecutable de estos contratos reside en [`src/js/contracts.ts`](../src/js/contracts.ts), [`src/js/types.ts`](../src/js/types.ts) y [`src/shared/`](../src/shared/).
+> Para la evolución histórica y especificaciones de micro-interacciones previas, consultar [`docs/archive/CHANGELOG_MILESTONES.md`](./archive/CHANGELOG_MILESTONES.md).
 
 ---
 
@@ -46,7 +46,8 @@ $$\text{https://videoclub.digital/}\{\text{persona}\}\text{/}\{\text{género}\}\
 1. **Lectura Agnóstica al Orden (`parsePrettyPath`):**
    Los segmentos de ruta no exigen posiciones fijas. Cada segmento se contrasta contra los diccionarios cerrados del SSOT (`GENRE_SLUG_MAP`, `COUNTRY_SLUG_MAP`, `STUDIO_SLUGS`, `SELECTION_SLUGS`). Las rutas `/eeuu/drama/` y `/drama/eeuu/` son semánticamente equivalentes.
 2. **Parámetros de Búsqueda y Alias Soportados:**
-   - `year`: Rango numérico (`"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"`), acotado a `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]`.
+   - `year`: Rango numérico (`"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"`), acotado a `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]` (`1900-2026`).
+     - *Distinción de contrato:* `CONFIG.YEAR_MIN = 1900` acota la barra deslizadora y filtros URL para optimizar la ergonomía de navegación comercial; la prueba de integridad de datos en PostgreSQL (`movies_year_range_valid`) admite desde 1888 (*Roundhay Garden Scene*) hasta 2100 para preservar obras pioneras del cine sin truncar la base de datos.
    - `sort` (alias `orden`): Slugs amigables (`recientes`, `antiguas`, `nota-fa`, `nota-imdb`, `votos-fa`, `votos-imdb`) o crudos (`year,desc`...). Si es desconocido, cae a `relevance,asc`.
    - `search` (alias `buscar`, `q`): Cadena de texto libre normalizada con `.trim()`.
    - `type`: Modo de medio restringido a `'all' | 'movies' | 'series'`.
@@ -85,11 +86,15 @@ La ordenación por defecto del catálogo (*"Orden"* / `relevance,asc`) implement
    La rotación se actualiza a las 00:00:00 hora peninsular española, garantizando paridad global instantánea.
 2. **Dispersión Pseudoaleatoria Uniforme:**
    $$\text{rank\_hash}(m) = \operatorname{hashtext}(m.\text{id}::\text{text} \mathbin{\Vert} \text{seed})$$
-3. **Ordenación Bi-Nivel (Two-Tier SQL Order):**
-   - **Tier 0 (Ventana de Excelencia - 378 títulos):** Barajado diario determinista entre las 378 mejores películas (`threshold = 378`, mínimo común múltiplo de cuadrículas de 42 y 54 ítems).
-   - **Tier 1 (Catálogo General):** Los títulos restantes preservan orden riguroso por mérito natural (`natural_rank ASC`).
-4. **Paginación Determinista sin Estado (*Stateless*):**
-   La navegación entre páginas consecutivas (`0..42`, `42..84`...) no requiere sesiones ni almacenamiento temporal; garantiza cero duplicados y cero omisiones.
+3. **Ordenación Bi-Nivel (Two-Tier SQL Order) y Umbral 378:**
+   - **Tier 0 (Ventana de Excelencia - 378 títulos):** Barajado diario determinista entre las 378 mejores películas (`threshold = 378`, históricamente originado como mínimo común múltiplo de cuadrículas de 42 y 54 ítems: $9 \times 42 = 7 \times 54 = 378$).
+     - *Comportamiento en Modo Muro (72 ítems/página):* Las primeras 5 páginas ($5 \times 72 = 360$) pertenecen íntegramente al Tier 0. La página 6 cruza la frontera de forma determinista y sin duplicados (18 títulos barajados del Tier 0 y 54 títulos ordenados por mérito natural del Tier 1), preservando paginación sin saltos ni omisiones.
+   - **Tier 1 (Catálogo General):** Los títulos restantes a partir del umbral 378 preservan orden riguroso por mérito natural (`natural_rank ASC`).
+4. **Paginación Determinista y Límites Dinámicos (`baseLimit + 2`):**
+   - La navegación entre páginas consecutivas (`0..42`, `42..84`...) no requiere sesiones ni almacenamiento temporal; garantiza cero duplicados y cero omisiones.
+   - **Absorción de Páginas Huérfanas y Slots VIP:** Los límites dinámicos (`DYNAMIC_PAGE_SIZE_LIMIT = 44` en modo normal y `WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT = 74` en Modo Muro, equivalentes a `baseLimit + 2`) cumplen una doble función arquitectónica:
+     1. *Absorción de cola huérfana (`getAdjustedTotalPages`):* Si el remanente de películas de la última página es $\le 2$ ítems (`lastPageSlots <= 2`), estos se absorben en la penúltima página evitando páginas finales desiertas de 1 o 2 películas.
+     2. *Compensación de Slot VIP #0:* En la página 1 con ficha VIP inyectada en posición `0`, el cliente solicita hasta `baseLimit + 2` para mantener la cuadrícula completa de películas sin alterar el offset secuencial de la página 2 en adelante.
 
 ---
 
@@ -108,8 +113,8 @@ interface ApiResponse {
 ### Reglas Invariantes
 1. **Desacoplamiento de Conteo (Pintar Primero → Contar Después):**
    La carga inicial de catálogo se ejecuta con `get_count = false`. La API entrega inmediatamente las películas de la primera página con `total = -1`. La interfaz retira `.is-fetching` y `aria-busy` devolviendo el control al usuario de inmediato, mientras una segunda solicitud no bloqueante calcula y actualiza el total atómicamente (`applyResolvedTotal`).
-2. **Fast-Path de Portada Limpia (~1.5 ms):**
-   Cuando el catálogo se consulta sin filtros ni búsquedas en orden de relevancia, la función SQL ejecuta un atajo mediante *Index-Only Scan*, devolviendo el total global (`SELECT count(*) FROM public.movies`) en ~2 ms sin escanear las 14.500 filas.
+2. **Fast-Path de Portada Limpia (~2 ms):**
+   Cuando el catálogo se consulta sin filtros ni búsquedas en orden de relevancia, la función SQL ejecuta un atajo mediante *Index-Only Scan*, devolviendo el total global (`SELECT count(*) FROM public.movies`) en ~2 ms sin escanear los ~15.000 títulos (14.500+ activos).
 3. **Carga Diferida del SDK de Supabase (Lazy Auth):**
    Visitantes anónimos interactúan con el catálogo mediante el endpoint HTTP nativo `/api/rpc/search_movies_offset`. El SDK pesado de Supabase (`@supabase/supabase-js`) no se descarga ni inicializa hasta que el usuario pulsa *"Entrar"* o interactúa con acciones autenticadas.
 

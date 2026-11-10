@@ -20,13 +20,13 @@ function calculateTotalPages(): number {
 /**
  * Obtiene la lista de tarjetas visibles en el grid principal.
  */
-export function getGridCards(): HTMLElement[] {
+function getGridCards(): HTMLElement[] {
   const grid = document.getElementById("grid-container");
   if (!grid) return [];
   return Array.from(grid.querySelectorAll<HTMLElement>(".movie-card[data-movie-id]"));
 }
 
-export interface NavigateToSiblingOptions {
+interface NavigateToSiblingOptions {
   content: HTMLElement | null;
   modal: HTMLElement | null;
   openModal: (card: MovieCardElement, cards?: HTMLElement[] | null) => void;

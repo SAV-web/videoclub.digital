@@ -1,13 +1,13 @@
 # Registro Histórico de Hitos y Decisiones de Arquitectura (Changelog Técnico)
 
-Este documento preserva la memoria técnica íntegra, el razonamiento analítico y el registro exhaustivo de los **60 hitos de ingeniería y refactorización** ejecutados en **videoclub.digital**.
+Este documento preserva la memoria técnica íntegra, el razonamiento analítico y el registro exhaustivo de los **82 hitos de ingeniería y refactorización** ejecutados en **videoclub.digital**.
 
 > [!NOTE]
-> Este archivo actúa como registro de archivo histórico. Para la arquitectura viva y las directrices vigentes de ingeniería, consultar [docs/project_context.md](file:///docs/project_context.md) y los contratos normativos en [docs/contracts.md](file:///docs/contracts.md).
+> Este archivo actúa como registro de archivo histórico. Para la arquitectura viva y las directrices vigentes de ingeniería, consultar [docs/project_context.md](../project_context.md) y los contratos normativos en [docs/contracts.md](../contracts.md).
 
 ---
 
-## 📜 1. Bitácora Completa de Hitos Técnicos (Hitos 1 al 60)
+## 📜 1. Bitácora Completa de Hitos Técnicos (Hitos 1 al 82)
 
 1. **Prevención de Layout Thrashing:**
    Separación estricta de las lecturas del DOM (ej. `.offsetHeight`, `.scrollY`) de las escrituras del DOM (ej. `.classList.add`). Se orquesta con `requestAnimationFrame` en el scroll y en `handleCardVisibilityChange` desacoplando la fase de lectura geométrica en lote (`getBoundingClientRect`) de la mutación de `src` y desvinculación de observers.
@@ -220,13 +220,111 @@ Este documento preserva la memoria técnica íntegra, el razonamiento analítico
     - **Causa Raíz (Colapso de Espacios ASCII en Flexbox Anónimo)**: El contenedor `[data-template="year"]` utiliza `display: inline-flex` para alinear verticalmente el año con la bandera del país. En la especificación W3C de CSS Flexbox, los espacios en blanco iniciales en nodos de texto secundarios (*anonymous flex items*) se colapsan a 0, provocando que `(M)` quedara visualmente pegado al año (`2019(M)`).
     - **Solución No Divisible Bimodal (`\u00A0` + `white-space: pre`)**: Sustitución sistemática por espacio no divisible (`\u00A0` en DOM SPA y `&nbsp;` en Edge SSR) junto con `white-space: pre` en `[data-template="year"]`. El espacio se renderiza con total nitidez métrica (`2019 (M)` y `2019-20 (M)`) en todas las tarjetas del catálogo, modal y páginas SEO perimetrales.
 
+61. **Atajos de Teclado Globales (*Power-User Hotkeys* en Escritorio)**:
+    - Registro de atajos ergonómicos en `main.ts`: `b` o `Ctrl+K` / `Cmd+K` para enfocar y auto-seleccionar el buscador (`#search-input`), `m` para alternar el Modo Muro 2D/3D (`toggleRotationMode`), `s` o `[` para plegar/desplegar la barra lateral (`toggleDesktopSidebar`), y `r` para pedir una recomendación aleatoria global (*"Sorpréndeme"*).
+    - Triple blindaje de seguridad: suspensión total si hay modales abiertas (`document.body.classList.contains("modal-open")`), desactivación en elementos editables (`input`, `textarea`, `select`, `isContentEditable`), y bloqueo de modificadores (`ctrlKey`, `metaKey`, `altKey`) para no colisionar con funciones del sistema (`Ctrl+R`, etc.).
+    - Hidratación bajo demanda (`await loadSidebar()`) para preservar la dieta estricta del bundle inicial (<45 KB).
+
+62. **Reconciliación SWR Limpia en 'Mi Lista' (Erradicación de Falsos 'dirty')**:
+    - Corrección del bug silencioso en `revalidateMyListInBackground` (`src/js/api.ts`): sustitución del guardado con `saveLocalEntry` por `mergeRemoteEntries` con protocolo LWW (*Last-Write-Wins*).
+    - Inclusión de `updated_at` en la consulta `user_movie_entries`. Las entradas remotas se consolidan en IndexedDB con `syncStatus: "synced"`, eliminando re-subidas parásitas a Supabase y blindando la persistencia local ante recargas o modo offline.
+
+63. **Depuración de Código Muerto y Redundancias en SPA (Auditoría main.ts, ui.ts y renderEngine.ts)**:
+    - Eliminación de variables write-only sin lecturas: retirada definitiva de `isAuthInitialized` en el ciclo de autenticación y de `modalWasOpen` en el despachador de navegación hacia atrás (`handlePopState`).
+    - Poda del parámetro fantasma en cadena `movies`: eliminación de `movies` en `updateTotalResultsUI(total)` y `updateMobileStatusBar(total, showTotal)` en `src/js/ui.ts` y desacoplamiento de sus 3 puntos de invocación en `src/js/renderEngine.ts`.
+    - Unificación de listeners de teclado globales en `document`: consolidación de `handleEscKey` (cierre del menú lateral móvil en viewport estrecho) dentro del despachador central `initGlobalHotkeys` de `src/js/main.ts`, ahorrando un listener permanente en el documento y simplificando el ciclo de vida de desuscripción.
+    - Eliminación de redundancia DOM en resize: supresión de la comprobación redundante `if (!dom.searchInput.title) ...` en el resize listener de `main.ts`, al estar garantizada nativamente en el markup estático de `index.html`.
+
+64. **Desacoplamiento DRY y Blindaje de Contexto en Filtros VIP (`renderEngine.ts`)**:
+    - Centralización de la reconciliación canónica de nombres de personas en `syncPersonFilterName(personData, vipType, vipName)`, eliminando 20 líneas duplicadas entre `page === 1` y `page > 1`.
+    - Simplificación booleana: unificación de comparaciones mediante `toSlug(name).replace(/-/g, '')`, englobando de forma matemática todas las variaciones alfanuméricas (puntos, guiones, diacríticos y espacios) y permitiendo retirar el import innecesario de `normalizeText`.
+    - Erradicación del borrado destructivo de filtros: protección en `loadAndRenderMovies` condicionando la limpieza del filtro a que el catálogo no haya devuelto ítems (`!catalogResult.items || catalogResult.items.length === 0`), garantizando que personas con películas en catálogo pero sin registro en `people` (o ante micro-cortes) conserven sus filtros, píldoras y paginación intactos.
+
+65. **Optimización de Red y Poda de Regexp en Variantes de Búsqueda (`src/js/api.ts`)**:
+    - Poda de sobrecarga RPC en sugerencias del Sidebar: sustitución del bucle iterativo secuencial `for (const alt of alternatives)` en `fetchDirectorSuggestions` y `fetchActorSuggestions` por una sola alternativa prioritaria `[candidate] = getAlternativeSearchTerms(term)`, garantizando a lo sumo 1 reintento de red en lugar de hasta 5 llamadas consecutivas en búsquedas sin resultados.
+    - Unificación de expresiones regulares en `getAlternativeSearchTerms`: fusión de 4 bloques redundantes en una regla universal de iniciales sueltas `\b([a-zA-Z])\s+` que puntúa letras únicas consecutivas, intermedias e iniciales (`'j j abrams'`, `'david o russell'`, `'m night shyamalan'`), reduciendo el algoritmo a la mitad de líneas con total cobertura de tests.
+
+66. **Formateo SSOT de Miniseries `\u00A0(M)` y Poda de Regex en Renderizado (`formatters.ts`, `cardElement.ts`, `renderer.ts`)**:
+    - Centralización en `formatYear`: inyección directa del espacio no divisible (`\u00A0(M)`) en `src/shared/formatters.ts` y `cloudflare/seo/seo-types.js`.
+    - Eliminación de 4 regex redundantes: retirada definitiva de `.replace(/ \((M)\)/g, "\u00A0($1)")` en el bucle de pintado de tarjetas (`cardElement.ts`) y en la vista rápida de la modal (`modal/renderer.ts`), erradicando sobrecarga de expresiones regulares en el ciclo de vida del DOM y garantizando el espaciado no divisible de forma transversal.
+
+67. **Jerarquía Polimórfica OOCSS en Tarjetas VIP de Grupo (`cardElement.ts`, `lifecycle.ts`)**:
+    - Preservación de `.collection-card` como clase base estructural en `createGroupCardElement` (`cardElement.ts`) incorporando `.studio-card` como modificador aditivo (`card.classList.add('studio-card')`), en vez de reemplazar la clase base.
+    - Poda de guardas redundantes: retirada sistemática de comprobaciones secundarias `|| card.classList.contains('studio-card')` y `:not(.studio-card)` en `cardElement.ts`, `lifecycle.ts`, `filters.ts`, `renderEngine.ts` y `ui.ts`. Las tarjetas de estudios heredan automáticamente la condición inerte y exclusiones del DOM a través de `.collection-card` con cero duplicación de selectores.
+
+68. **Poda de Consulta Duplicada a `getCachedPersonDetails` en Renderizado de Píldoras (`sidebar/filters.ts`)**:
+    - Retirada de la segunda llamada redundante en `renderFilterPills()`: dado que `item.val` ya contiene el nombre canónico resuelto en la primera fase de construcción de la lista de filtros deseados (`desired`), la segunda consulta a `getCachedPersonDetails(type, item.val)` era 100% redundante, ahorrando lecturas al `Map` en cada actualización del Sidebar.
+
+69. **Unificación de Fall-Through en el Oráculo (`handleRandomMovieRecommendation` en `sidebar/filters.ts`)**:
+    - Fusión del Fast-Path y Fallback: reestructuración del flujo de recomendación aleatoria de modo que el intento remoto condicionado a `totalMovies > cards.length` realiza early-return solo ante respuesta exitosa, cayendo de forma natural y sin bifurcaciones duplicadas al bloque de selección local. Ahorro de 16 líneas idénticas y mayor linealidad algorítmica.
+
+70. **Poda de Alias Deprecado y Limpieza de Imports (`profile.ts`, `sidebar/index.ts`)**:
+    - Retirada del alias muerto `exportUserDataJson` y del selector fallback `|| document.getElementById("profile-btn-export-json")` en `src/js/components/profile.ts`, completando la migración exclusiva a CSV en la suite de pruebas (`tests/profile-stats.test.mjs`).
+    - Eliminación del import no utilizado `CONFIG` en la cabecera de `src/js/components/sidebar/index.ts`.
+
+71. **Corrección de Extracción de Datos Cronológicos y Clasificación de Series en Markdown (`cloudflare/seo/render-markdown.js`)**:
+    - Corrección en ficha VIP de personas (`renderPersonMarkdown`): sustitución del acceso a la propiedad inexistente `ageInfo?.text` por el cálculo canónico de `computePersonAgeInfo` (`${ageInfo.datesStr} ${ageInfo.ageStr}`), incorporando además `place_of_birth` cuando esté disponible para una ficha biográfica completa entregada a bots y LLMs.
+    - Diferenciación semántica de series (`renderMovieMarkdown`): reemplazo de la etiqueta rígida `' - Miniserie'` por discriminación semántica real (`isMini` para `SM`, `SAM`, `SDM` o `year_end === 'M'`, y `'Serie de TV'` para series regulares de múltiples temporadas `S`, `S-`, etc.), garantizando fichas Markdown fidedignas para cualquier formato audiovisual.
+
+72. **Poda de Reintentos RPC Redundantes y Eliminación de `getAlternativeSearchTerms` (`src/js/api.ts`)**:
+    - Supresión de reintentos RPC en sugerencias: con la resolución nativa de iniciales y variantes implementada en PostgreSQL (`get_director_suggestions` y `get_actor_suggestions` en `database/script.sql`), se eliminó el bucle de reintento en cliente. `fetchDirectorSuggestions` delega directamente en `fetchSuggestions` y `fetchActorSuggestions` filtra actores ignorados tras una única consulta rápida.
+    - Resolución unificada de iniciales en `fetchPersonDetails`: extracción de iniciales consecutivas en `words` mediante `nameNorm.replace(/\./g, ' ').replace(/\b([a-z])([a-z])\b/gi, '$1 $2')`, delegando la resolución de nombres con iniciales sin punto ("j j abrams", "jj abrams") en el wildcard `ILIKE '%j%j%abrams%'` de Supabase sin necesidad de construir variantes en cliente.
+    - Eliminación completa de `getAlternativeSearchTerms`: retirada de la función y sus 65 líneas de expresiones regulares en `src/js/api.ts`, actualizando el test unitario de caracterización en `tests/sidebar.test.mjs`.
+
+73. **Optimización de CTE y Poda de UNION ALL en SQL (`database/script.sql`)**:
+    - Deduplicación en `get_director_suggestions`: sustitución de las dos ramas redundantes del `UNION ALL` en `component_matches` por un desdoble mediante `CROSS JOIN LATERAL (VALUES (TRIM(comp.name)), (d.name)) AS v(suggestion)`.
+    - Reducción de I/O y latencia: la vista materializada `mv_director_suggestions` se escanea y filtra una sola vez en lugar de dos, suprimiendo 28 líneas de código duplicado en la definición de la función RPC.
+
+74. **Poda de Keyframe Redundante en Tooltip de Valoración (`src/css/components/rating.css`)**:
+    - Reutilización de animación global: sustitución de `@keyframes tooltip-fade-in` por la regla canónica global `@keyframes fade-in` definida en `src/css/globals.css`.
+    - Eliminación de 8 líneas de CSS redundante en la barra de notas y votos.
+
+75. **Poda de Variable CSS Inutilizada (`src/css/variables.css`)**:
+    - Eliminación del alias redundante `--transition-fast: var(--duration-fast);` en favor de los tokens oficiales de duración `--transition-duration-fast` y `--duration-fast`.
+
+76. **Racionalización y Poda de la Suite de Pruebas (`tests/`)**:
+    - Erradicación de esperas artificiales en `sidebar.test.mjs`: reducción de retardos en bucles de reintento de red en entorno de test (`(globalThis._isTestEnv ? 5 : (attempt + 1) * 300)` en `api.ts`), pasando de pausas fijas de 1,1 s a 60 ms y acelerando la suite del Sidebar de 13,7 s a 3,0 s.
+    - Poda de redundancias entre suites (`contracts-state-utils.test.mjs` vs `url-contract.test.mjs` y `shared-and-events.test.mjs`): eliminación de comprobaciones gemelas de `normalizeText`, `computePersonAgeInfo`, `applyLengthBasedClass`, `toSlug`, `genreToSlug`, `countryToSlug` y unificación de las 3 aserciones de `isAbortError`.
+    - Fusión y supresión de `api-rating-critical.test.mjs`: consolidación de las pruebas de mutación pura (`resolveNextRating`, `resolveWatchlistMutationOnRate`, `getWatchlistCount`) en `pure-functions.test.mjs` y de eventos Background Sync en `local-first-sync.test.mjs`. Supresión del archivo y de un arranque completo de servidor Vite SSR en Node.
+
+77. **Poda de Import Huérfano y Consistencia de Eventos de Tipado (`src/js/ui.ts`, `src/js/state.ts`)**:
+    - Retirada de la importación huérfana de `MappedMovie` en `src/js/ui.ts` tras la simplificación previa de `updateTotalResultsUI` y `updateMobileStatusBar`.
+    - Verificación del contrato de eventos en `AppEventPayloads` (`src/js/state.ts`), asegurando la tipificación de `'myList:revalidated': undefined;` para compilación limpia con `npx tsc --noEmit`.
+
+78. **Simplificación Estructural de Selectores CSS y Sincronización SSR (`src/css/components/card.css`, `cloudflare/seo/`)**:
+    - Compactación de selectores VIP en `card.css`: eliminación de las listas `:is(.person-card, .collection-card, .studio-card)` y `:is(.collection-card, .studio-card)` aprovechando la jerarquía polimórfica donde `.person-card` engloba a todas las tarjetas de personas, colecciones y estudios, y `.collection-card` engloba a colecciones y estudios.
+    - Sincronización de miniseries en SSR: unificación de la entidad de espacio de no separación `\u00A0(M)` directamente desde `formatYear` en `cloudflare/seo/seo-types.js` y `src/shared/formatters.ts`, eliminando los reemplazos manuales regex `.replace(/ \((M)\)/g, '&nbsp;($1)')` en `cloudflare/seo/render-movie.js` y `cloudflare/seo/render-taxonomy.js`.
+
+79. **Foco Automático y Experiencia Móvil en Acordeones de Personas (`src/js/components/sidebar/index.ts`, `src/css/components/sidebar.css`)**:
+    - Foco inmediato en `director` y `actor`: al desplegar las secciones de directores o actores en versión móvil (`isMobileLayout()`), el campo de texto de búsqueda (`.sidebar-filter-input`) recibe el foco inmediatamente durante el evento de clic síncrono, activando el teclado virtual del dispositivo móvil (preservando el gesto de usuario en iOS Safari y Android).
+    - Exclusión deliberada de `genre` y `country`: las secciones de géneros y países se mantienen sin foco automático en móvil para evitar que el teclado oculte las píldoras y enlaces predefinidos.
+    - Scroll adaptativo y repliegue de teclado: para directores y actores en móvil, se orienta el scroll suave hacia el propio `inputField` en lugar del pie de perfil (`profileContainer`), y se invoca `blur()` al plegar o alternar acordeones para cerrar limpiamente el teclado del sistema operativo.
+    - Espaciado visual ergonómico en escritorio y móvil (`sidebar.css`): se promovió `padding-bottom: var(--space-sm)` (12px) en `:is(#directors-list-container, #actors-list-container)` a regla base universal, otorgando una holgura limpia y distinguida entre el último director/actor sugerido y el cuadro de búsqueda (`.bento-input`) tanto en escritorio como en móvil, evitando que queden pegados al estar activo un elemento.
+
+80. **Estrategia «Editorial Sheet» para Quick View en iPad Portrait (`src/css/components/modal.css`)**:
+    - **Aire en los flancos y geometría esbelta (`width: 86%; max-width: 520px;`)**: Sustitución del ancho masivo previo del 96% (737px) por un ancho acotado del 86% con tope de 520px en la franja `@media (min-width: 540px) and (max-width: 768px)`. Con `bottom: var(--space-md, 16px)` y `border-radius: var(--radius-xl)`, la modal descansa como una elegante tarjeta flotante dejando ~125px de espacio libre a cada lado para visualizar la cuadrícula del catálogo de fondo.
+    - **Flechas de navegación exteriores flotantes (`left: -28px; right: -28px; top: 50%`)**: Habilitación de `overflow: visible;` en `.quick-view-modal` y reubicación de los botones `.modal-nav-btn` hacia el exterior en los flancos de la modal (28px fuera en el canal libre lateral), centrados verticalmente (`top: 50%; transform: translateY(-50%)`). Esto resuelve de raíz cualquier colisión visual o solapamiento con el póster o con los iconos de Wikipedia y JustWatch durante el desplazamiento vertical (*scroll*).
+    - **Proporción contenida del póster (`max-width: 270px`)**: Limitación de `.is-quick-view .poster-container` a un ancho máximo estricto de 270px (frente al 70% desmedido anterior), garantizando que en la primera pantalla sin necesidad de *scroll* quepan íntegramente el póster, las estrellas de valoración, el título, año, duración, notas completas de FilmAffinity / IMDb y el arranque del reparto.
+    - **Escala tipográfica editorial y respiro lateral (`var(--space-xl)`)**: Aplicación local a `.quick-view-modal` de los tokens tipográficos de escritorio (`--font-size-xs: 0.75rem`, `--font-size-sm: 0.875rem`, `--font-size-base: 1rem`) y un espaciado horizontal de 32px (`padding-inline: var(--space-xl)`), logrando una longitud de línea de lectura óptima (~60-65 caracteres) en Género, Reparto y Sinopsis con idéntico refinamiento visual que en orientación horizontal.
+
+81. **Preservación del Historial Adelante y Desacoplamiento de Modales (`src/js/components/modal.ts`, `src/js/components/profile.ts`, `src/js/ui.ts`)**:
+    - **Diagnóstico y Causa Raíz**: Conforme al estándar W3C de la *History API*, cualquier llamada a `history.pushState()` efectuada tras retroceder en el historial purga de forma inmediata e irreversible la lista de entradas hacia adelante (*forward session history*). Al abrir una modal (`quick-view`, `profile`, `auth`, `legal`), la inyección de `{ modalOpen: true }` con la URL actual destruía el destino futuro (ej. Director B), y su posterior cierre mediante `history.back()` dejaba un registro fantasma hacia la propia página actual que causaba que el botón «Adelante» del navegador quedase inerte o no dirigiese a nada.
+    - **Desacoplamiento Limpio de Modales y Pila de Navegación**: Se eliminó la manipulación artificial del historial (`pushState` / `history.back()`) en la apertura y cierre de todas las pantallas modales (`Quick View`, `Perfil`, `Autenticación` y `Legal`). Las modales operan como capas efímeras puras de interfaz sin alterar el puntero de sesión del navegador.
+    - **Integridad Total de Navegación**: Al retroceder de Director B a Director A, abrir y cerrar una modal ya no muta la pila de historial; pulsar «Adelante» conduce con total fidelidad al segundo director o actor sin parpadeos, entradas fantasma ni pérdidas de contexto.
+
+82. **Poda de Código Muerto de la History API y Compilación CSS SEO (`src/js/ui.ts`, `src/js/main.ts`, `src/js/components/modal.ts`, `src/js/router.ts`, `scripts/build-seo-css.mjs`)**:
+    - **Poda de `isClosingModalViaHistory`**: Eliminación de la bandera global y de las funciones `setIsClosingModalViaHistory()` y `consumeIsClosingModalViaHistory()` en `ui.ts` y de su consumo en `main.ts` (`handlePopState`), al no existir ya invocaciones a `history.back()` desde ninguna modal.
+    - **Poda de Constantes Huérfanas en `closeModal`**: Retirada del cálculo inerte de `isPopstate` y `suppressHistoryBack` en `src/js/components/modal.ts`.
+    - **Limpieza de Guardas Huérfanas en `router.ts`**: Supresión de `delete nextState.profileModalOpen` y `delete nextState.modalOpen` en `updateUrl()`, al no persistirse nunca más marcas modales en `history.state`.
+    - **Compilación de Artefactos CSS para SEO / Edge SSR**: Ejecución de `scripts/build-seo-css.mjs` sincronizando la nueva sección E2 de iPad Portrait en `modal.css` y las simplificaciones de `card.css` dentro de `public/seo-card-v7.css` y `cloudflare/seo/seo-card-css.js`.
+
 ---
 
 ## 📐 2. Registro Histórico de Micro-Contratos y Decisiones UI
 
 A continuación se preservan las especificaciones técnicas puntuales desarrolladas durante la evolución de componentes y micro-interacciones:
 
-## 5. Contrato de Autenticación Diferida (Lazy-Loading de Auth y Supabase SDK)
+### Contrato 5: Autenticación Diferida (Lazy-Loading de Auth y Supabase SDK)
 
 1. **Detección Instantánea de Sesión (`hasStoredAuthSessionOrHash`)**:
    - Comprobación síncrona en 0 ms que precede a cualquier carga de librerías.
@@ -240,7 +338,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - En caso de usuarios con sesión previa o retorno de enlaces mágicos, la inicialización es inmediata en el arranque (`init()`), preservando el flujo continuo de autenticación y la sincronización Local-First.
 
 
-## 6. Contrato de Delegación de Eventos en Tarjetas y Calificaciones
+### Contrato 6: Delegación de Eventos en Tarjetas y Calificaciones
 
 1. **Desacoplamiento Estructural de Tarjetas**:
    - Las tarjetas generadas mediante `createCardElement` y `createPersonCardElement` son nodos pasivos que no registran escuchadores `click` ni de valoración individuales.
@@ -253,7 +351,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Al sustituir la cuadrícula con `replaceChildren`, los nodos se destruyen de forma limpia sin requerir desmontaje manual de escuchadores ni generar presión sobre el recolector de basura.
 
 
-## 7. Contrato de Sincronización Local-First de Datos de Usuario (Supresión de Lazy Sync por IDs)
+### Contrato 7: Sincronización Local-First de Datos de Usuario (Supresión de Lazy Sync por IDs)
 
 1. **Estado Canónico en Memoria e IndexedDB (Zero Lazy Sync)**:
    - Los datos de usuario (valoraciones `rating`, estado de seguimiento `is_watchlist`, etc.) se gestionan exclusivamente bajo arquitectura Local-First.
@@ -265,7 +363,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Las mutaciones de notas o watchlist actualizan en primer lugar la memoria y la base de datos local IndexedDB, encolando la sincronización en segundo plano con el servidor perimetral/Supabase de forma transparente sin bloquear la UI ni incurrir en parpadeos visuales (*flicker*) o saltos de layout (*Layout Thrashing*).
 
 
-## 8. Contrato de Metadatos SEO y Esquemas Estructurados en la SPA
+### Contrato 8: Metadatos SEO y Esquemas Estructurados en la SPA
 
 1. **Aislamiento de la Navegación Interactiva (Zero JSON-LD Re-generation)**:
    - Durante la navegación interactiva ordinaria (cambio de facetas, filtros, slider de años, paginación o búsqueda), queda prohibida la regeneración de esquemas JSON-LD (`ItemList` o `BreadcrumbList`) en el `<head>`.
@@ -276,7 +374,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - La inyección se delega a periodos de inactividad del navegador mediante `runWhenIdle()` (utilizando `requestIdleCallback` con fallback a `setTimeout`), impidiendo que la serialización de strings JSON compita con el primer renderizado visual (*First Contentful Paint*) y protegiendo las métricas de interactividad (TBT e INP).
 
 
-## 9. Contrato de Filtros de Descubrimiento en el Menú Lateral (Sidebar)
+### Contrato 9: Filtros de Descubrimiento en el Menú Lateral (Sidebar)
 
 1. **Piscinas Curadas Estáticas (Zero Network Discovery)**:
    - Los acordeones de "Directores" y "Actores" del sidebar se nutren de colecciones curadas estáticas (`CURATED_DIRECTORS` y `CURATED_ACTORS`) en `constants.ts`, compuestas por 100 referentes cinematográficos mundiales verificados contra la base de datos de personas.
@@ -288,7 +386,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - La búsqueda y autocompletado en los campos *"Otro director..."* y *"Otro actor..."* preservan su funcionamiento asíncrono nativo por demanda exclusivamente cuando el usuario introduce 2 o más caracteres.
 
 
-## 10. Contrato de Flip Onboarding en Tarjetas de Catálogo
+### Contrato 10: Flip Onboarding en Tarjetas de Catálogo
 
 1. **Restricción a Portada Limpia (`isCleanHome`)**:
    - El temporizador de aprendizaje (`runFlipOnboarding`) solo puede programarse cuando la aplicación se encuentra en la portada inicial limpia: primera página (`currentPage === 1`), sin filtros significativos activos (`!hasActiveMeaningfulFilters()`) y en tipo de medio general (`mediaType === 'all'`).
@@ -303,7 +401,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Si la tarjeta se encuentra en rotación manual por el usuario, el modo muro está activo (`ROTATION_DISABLED`) o una modal está desplegada (`MODAL_OPEN`), la ejecución se descarta de forma segura.
 
 
-## 11. Contrato de Sombreadores de Fondo y Overlays (Rendimiento GPU)
+### Contrato 11: Sombreadores de Fondo y Overlays (Rendimiento GPU)
 
 1. **Desactivación de `backdrop-filter` en Móviles y Dispositivos Táctiles (`<= 768px`)**:
    - En viewports móviles y dispositivos con puntero grueso (`hover: none and pointer: coarse`), queda prohibido aplicar `backdrop-filter: blur(...)` sobre overlays de modales (`.quick-view-overlay`, `.auth-overlay`, `.profile-overlay`, `.legal-overlay`) y cajón lateral (`.sidebar-overlay`).
@@ -316,7 +414,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - En pantallas grandes con puntero fino, se preserva el desenfoque sutil (`blur(6px) saturate(85%)`) en modales flotantes centradas, manteniendo compatibilidad con `prefers-reduced-transparency: reduce`.
 
 
-## 12. Contrato de Renderizado y Perspectiva en Modo Muro (Wall Mode GPU & Layout Optimization)
+### Contrato 12: Renderizado y Perspectiva en Modo Muro (Wall Mode GPU & Layout Optimization)
 
 1. **Poda Estricta de Caras Traseras en el Render Tree (`display: none !important`)**:
    - En Modo Muro (`body.rotation-disabled`), las tarjetas de películas (`.movie-card:not(.is-quick-view)`) son pósters visuales 2D que abren directamente la modal al interactuar, prescindiendo por diseño de cualquier rotación sobre su eje vertical.
@@ -328,7 +426,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - La GPU debe tratar la cuadrícula del muro de exploración como un plano 2D continuo de alto rendimiento, optimizando la asignación de buffers de memoria de vídeo (VRAM) y blindando la tasa de refresco a 60-120 FPS durante el scroll vertical rápido.
 
 
-## 13. Contrato de Interacción y Composición de Botones (Button Stacking & Tactile Feedback)
+### Contrato 13: Interacción y Composición de Botones (Button Stacking & Tactile Feedback)
 
 1. **Supresión de Pseudo-Ondas y Capas de Aislamiento (Zero Ripple & Zero Isolation)**:
    - Queda prohibido el uso de pseudo-elementos (`&::after` / `&::before`) para simular ondas o efectos de agua (*ripple effects*) sobre los botones base (`.btn`).
@@ -338,7 +436,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - La respuesta háptica y táctil a la interacción del usuario se vehicula mediante micro-hundimiento mecánico a escala (`transform: translateY(1px) scale(0.97)`) y sombra interna de presión (`inset 0 1px 1px rgba(0, 0, 0, 0.05)`).
    - La duración de la transición en estado presionado debe ser inmediata (<= 50 ms) con retorno elástico suave (300 ms mediante `--ease-luxury`), garantizando una respuesta táctil sólida y cinemática acorde a la identidad *Quiet Luxury* de la aplicación.
 
-## 14. Contrato de Animación y Suspensión del Hero de Portada (Hero Animation Freezing on Scroll)
+### Contrato 14: Animación y Suspensión del Hero de Portada (Hero Animation Freezing on Scroll)
 
 1. **Suspensión Obligatoria en Scroll (`animation-play-state: paused`)**:
    - Cuando el Hero de bienvenida se desplaza fuera del viewport activo (`.landing-hero.is-scrolled-away`), es imperativo pausar de inmediato las animaciones internas mediante `animation-play-state: paused` en `.landing-hero-description`.
@@ -348,7 +446,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Al regresar a la parte superior de la página (`scrollY < 15px`), el estado `is-scrolled-away` se retira y el bucle de rotación reanuda su ciclo natural en el mismo punto de lectura sin saltos bruscos.
    - Este mecanismo protege la tasa de refresco a 120 FPS y la autonomía de batería en dispositivos móviles durante la exploración prolongada de películas.
 
-## 15. Contrato de Carga Diferida de Estilos en Modales (Lazy CSS Architecture)
+### Contrato 15: Carga Diferida de Estilos en Modales (Lazy CSS Architecture)
 
 1. **Aislamiento de Hojas CSS Secundarias (Zero Unused CSS on Startup)**:
    - Las hojas de estilo correspondientes a vistas o modales diferidos que no forman parte del App Shell ni del catálogo visible inicial (`auth.css`, `profile.css`) quedan terminantemente excluidas del fichero bloqueante de renderizado (`src/css/main.css`).
@@ -365,7 +463,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Toda la secuencia de orquestación diferida del modal de autenticación (emisión de `auth:requested`, carga asíncrona de estilos `loadAuthStyles`, montaje del DOM `ensureAuthModalMounted`, enlace idempotente de formularios `initAuthForms` y listeners de modal `initAuthModalListeners`) reside de forma centralizada en `openAuthModal()`.
    - Queda prohibido asociar escuchadores de carga parcial o duplicados en disparadores individuales (como botones del sidebar), garantizando que cualquier vía de apertura (botón de login, valoración no autenticada, guardado en lista o flujo de recuperación) disponga de formularios funcionales e interactivos al 100%.
 
-## 16. Contrato de Desplazamiento y Scroll en Modales (Native GPU Scrolling & Zero Masking)
+### Contrato 16: Desplazamiento y Scroll en Modales (Native GPU Scrolling & Zero Masking)
 
 1. **Scroll Acelerado por Hardware Puro (Zero `mask-image`)**:
    - Queda estrictamente prohibido el uso de `-webkit-mask-image` o `mask-image` sobre contenedores con desplazamiento (`overflow-y: auto`), incluyendo `.quick-view-content`, `.quick-view-column` y `.quick-view-details`.
@@ -375,7 +473,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Queda prohibido asociar escuchadores de eventos `scroll` continuos para alternar clases de máscara visual (como `.is-scrolled`).
    - La contención y los límites visuales se resuelven mediante espaciado (*padding*) y cajas delimitadoras estáticas.
 
-## 17. Contrato de Diseño y Jerarquía de Tarjetas VIP (Inaugural Plaque Specification)
+### Contrato 17: Diseño y Jerarquía de Tarjetas VIP (Inaugural Plaque Specification)
 
 1. **Invariante Dimensional y Cero CLS (1:1 con Películas)**:
    - Las tarjetas VIP (`.person-card`, `.collection-card`, `.studio-card`) deben mantener estrictamente el mismo ratio dimensional, encuadre de imagen (`border: var(--space-xxs) solid var(--color-surface); border-radius: var(--radius-xxl);`) y modelo de caja que las tarjetas de películas (`.movie-card:not(.is-quick-view)`), garantizando un ritmo de cuadrícula perfecto y cero saltos de diseño (*Cumulative Layout Shift* = 0).
@@ -393,7 +491,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
 3. **Paridad Estructural en Modo Muro (`body.rotation-disabled`)**:
    - Las reglas de ocultación de `.card-rating-block` y presentación de `.wall-person-name` en color corporativo aplican homogéneamente a toda la tríada VIP (`:is(.person-card, .collection-card, .studio-card)`), asegurando que tanto personas como colecciones y estudios muestren su cabecera tipográfica en la cuadrícula plana sin discrepancias de estilo.
 
-## 18. Contrato de Consistencia de Ordenación y Caché en Mi Lista (Local-First Relevance Parity)
+### Contrato 18: Consistencia de Ordenación y Caché en Mi Lista (Local-First Relevance Parity)
 
 1. **Paridad de Proyección de Datos (Columna `relevance`)**:
    - Tanto las consultas directas en `src/js/api.ts` (`revalidateMyListInBackground` y `fetchMovies`) como la función perimetral SQL `search_movies_offset.sql` deben incluir obligatoriamente la columna `relevance` en sus proyecciones de campos.
@@ -408,7 +506,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Si no existen entradas locales pero existen indicios de sesión activa (`hasStoredAuthSessionOrHash()`), debe retornar `null` para activar el fallback a Supabase.
    - La resolución de catálogo en `getLocalMyListResponse` nutre directamente la carga principal en curso, evitando invocar `loadAndRenderMovies` de forma re-entrante desde los escuchadores de `userDataUpdated` para garantizar que la señal de red no sea abortada y la clase `.is-fetching` se retire limpiamente en todos los escenarios.
 
-## 19. Contrato de Conteo Directo en Fast-Path de Portada Limpia (Index-Only Count Optimization)
+### Contrato 19: Conteo Directo en Fast-Path de Portada Limpia (Index-Only Count Optimization)
 
 1. **Cortocircuito Completo en Portada Limpia (Fase 1.6)**:
    - Toda solicitud dirigida al escaparate limpio de portada (`v_enable_daily_showcase AND NOT v_has_filters AND v_showcase_limit = 378 AND (v_offset + v_limit <= 378)`) debe resolverse íntegramente dentro de la Fase 1.6 de `search_movies_offset.sql`, independientemente del valor del flag `get_count`.
@@ -418,14 +516,14 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - En la proyección `json_build_object`, el campo `'total'` se resuelve condicionalmente como `CASE WHEN get_count THEN (SELECT count(*) FROM public.movies) ELSE -1 END`.
    - Dado que la portada limpia sin filtros abarca la totalidad del universo cinematográfico activo, `(SELECT count(*) FROM public.movies)` se resuelve en ~2 ms mediante *Index-Only Scan*, reduciendo drásticamente el consumo de CPU y latencia en el servidor de base de datos.
 
-## 20. Contrato de Estabilidad Geométrica de Esqueletos (Zero CLS Skeleton Contract)
+### Contrato 20: Estabilidad Geométrica de Esqueletos (Zero CLS Skeleton Contract)
 
 1. **Invariante de Relación de Aspecto en Carga**:
    - Todo esqueleto de carga (`.skeleton-card`) debe reflejar con exactitud matemática el `aspect-ratio` de las tarjetas reales a las que sustituye temporalmente.
    - En modo normal interactivo: `aspect-ratio: 500 / 950` idéntico en ambos componentes (`card.css` y `ui.css`).
    - En Modo Muro (`body.rotation-disabled`): `aspect-ratio: 2 / 3` estricto en ambos componentes (`card.css` y `ui.css`), garantizando que la altura de fila calculada por el motor geométrico durante el estado de carga coincida al 100% con la de las carátulas hidratadas, erradicando saltos acumulativos de maquetación (*Cumulative Layout Shift* = 0).
 
-## 21. Contrato de Diseño de Píldoras de Filtros en Sidebar (Quiet Luxury Filter Pill Standard)
+### Contrato 21: Diseño de Píldoras de Filtros en Sidebar (Quiet Luxury Filter Pill Standard)
 
 1. **Invariante de Superficie y Contraste**:
    - Las píldoras de filtros activos (`.filter-pill`) deben mantener texto de alta legibilidad en blanco marfil (`#f5f5f5` / `#ffffff`) tanto en tema claro como oscuro, erradicando gradientes diagonales obsoletos o inversiones a texto negro sobre fondos claros.
@@ -435,7 +533,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
 2. **Microinteracción del Botón de Retirada (`.remove-filter-btn`)**:
    - El aspa `×` responde dinámicamente con viraje al dorado de marca (`var(--color-brand-gold)`) y escala suave al posar el cursor, con área de contacto táctil protegida.
 
-## 22. Contrato de Tipografía y Ficha Técnica en Modal de Vista Rápida (Cinematic Archive Standard)
+### Contrato 22: Tipografía y Ficha Técnica en Modal de Vista Rápida (Cinematic Archive Standard)
 
 1. **Invariante Ortográfica y Escala del Año**:
    - El año cinematográfico debe representarse siempre como un bloque numérico limpio de cuatro cifras (`1994`) sin punto de millar ni caracteres de separación, conforme a las directrices de la RAE y el estándar internacional de catálogos fílmicos, tanto en el cliente SPA (`renderer.ts`) como en el renderizado perimetral Edge SSR (`render-movie.js`).
@@ -448,7 +546,7 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Cuando el año representa una miniserie (ej. `2019 (M)` o `2019-20 (M)`), el sufijo `(M)` debe mantener un espacio visible garantizado respecto a la cifra o rango de emisión.
    - Dado que el contenedor `[data-template="year"]` utiliza `display: inline-flex` para su alineación vertical con la bandera, los motores de renderizado colapsan espacios ASCII iniciales en nodos de texto flex anónimos. Para blindar el espacio frente a este comportamiento, el renderizador (`cardElement.ts`, `renderer.ts`, `render-movie.js`, `render-taxonomy.js`) emplea sistemáticamente un espacio no separable (`\u00A0` en DOM, `&nbsp;` en HTML SSR) y la regla CSS `white-space: pre` en `[data-template="year"]`.
 
-## 23. Contrato de Oráculo Global, Ingesta CSV y Escudo de Inmunidad en Caché Local
+### Contrato 23: Oráculo Global, Ingesta CSV y Escudo de Inmunidad en Caché Local
 
 1. **Recomendación Aleatoria sobre Catálogo Filtrado Completo**:
    - El botón *"Sorpréndeme"* (`#play-button`) del menú lateral selecciona una película pseudoaleatoria sobre el total del universo filtrado activo (`totalMovies`), superando la restricción de las 42 tarjetas renderizadas en el DOM.
@@ -470,102 +568,4 @@ A continuación se preservan las especificaciones técnicas puntuales desarrolla
    - Creación de `cloudflare/seo/render-markdown.js` con generadores de alta densidad semántica `renderMovieMarkdown` y `renderPersonMarkdown`.
    - Soporte de `Accept: text/markdown` en `/titulo/:slug/` y `/:vip-slug/` entregando metadatos cinematográficos en <1-3 KB (reducción del 97.5% en egress frente al HTML).
    - Aislamiento perimetral con clave de caché sintética `/_edge_cache/md/...`, cabecera `Vary: Accept` y purga selectiva sincronizada en `/internal/purge`, erradicando el envenenamiento de caché hacia navegadores web estándar.
-
-6. **Atajos de Teclado Globales (*Power-User Hotkeys* en Escritorio)**:
-   - Registro de atajos ergonómicos en `main.ts`: `b` o `Ctrl+K` / `Cmd+K` para enfocar y auto-seleccionar el buscador (`#search-input`), `m` para alternar el Modo Muro 2D/3D (`toggleRotationMode`), `s` o `[` para plegar/desplegar la barra lateral (`toggleDesktopSidebar`), y `r` para pedir una recomendación aleatoria global (*"Sorpréndeme"*).
-   - Triple blindaje de seguridad: suspensión total si hay modales abiertas (`document.body.classList.contains("modal-open")`), desactivación en elementos editables (`input`, `textarea`, `select`, `isContentEditable`), y bloqueo de modificadores (`ctrlKey`, `metaKey`, `altKey`) para no colisionar con funciones del sistema (`Ctrl+R`, etc.).
-   - Hidratación bajo demanda (`await loadSidebar()`) para preservar la dieta estricta del bundle inicial (<45 KB).
-
-7. **Reconciliación SWR Limpia en 'Mi Lista' (Erradicación de Falsos 'dirty')**:
-   - Corrección del bug silencioso en `revalidateMyListInBackground` (`src/js/api.ts`): sustitución del guardado con `saveLocalEntry` por `mergeRemoteEntries` con protocolo LWW (*Last-Write-Wins*).
-   - Inclusión de `updated_at` en la consulta `user_movie_entries`. Las entradas remotas se consolidan en IndexedDB con `syncStatus: "synced"`, eliminando re-subidas parásitas a Supabase y blindando la persistencia local ante recargas o modo offline.
-
-8. **Depuración de Código Muerto y Redundancias en SPA (Auditoría main.ts, ui.ts y renderEngine.ts)**:
-   - Eliminación de variables write-only sin lecturas: retirada definitiva de `isAuthInitialized` en el ciclo de autenticación y de `modalWasOpen` en el despachador de navegación hacia atrás (`handlePopState`).
-   - Poda del parámetro fantasma en cadena `movies`: eliminación de `movies` en `updateTotalResultsUI(total)` y `updateMobileStatusBar(total, showTotal)` en `src/js/ui.ts` y desacoplamiento de sus 3 puntos de invocación en `src/js/renderEngine.ts`.
-   - Unificación de listeners de teclado globales en `document`: consolidación de `handleEscKey` (cierre del menú lateral móvil en viewport estrecho) dentro del despachador central `initGlobalHotkeys` de `src/js/main.ts`, ahorrando un listener permanente en el documento y simplificando el ciclo de vida de desuscripción.
-   - Eliminación de redundancia DOM en resize: supresión de la comprobación redundante `if (!dom.searchInput.title) ...` en el resize listener de `main.ts`, al estar garantizada nativamente en el markup estático de `index.html`.
-
-9. **Desacoplamiento DRY y Blindaje de Contexto en Filtros VIP (`renderEngine.ts`)**:
-   - Centralización de la reconciliación canónica de nombres de personas en `syncPersonFilterName(personData, vipType, vipName)`, eliminando 20 líneas duplicadas entre `page === 1` y `page > 1`.
-   - Simplificación booleana: unificación de comparaciones mediante `toSlug(name).replace(/-/g, '')`, englobando de forma matemática todas las variaciones alfanuméricas (puntos, guiones, diacríticos y espacios) y permitiendo retirar el import innecesario de `normalizeText`.
-   - Erradicación del borrado destructivo de filtros: protección en `loadAndRenderMovies` condicionando la limpieza del filtro a que el catálogo no haya devuelto ítems (`!catalogResult.items || catalogResult.items.length === 0`), garantizando que personas con películas en catálogo pero sin registro en `people` (o ante micro-cortes) conserven sus filtros, píldoras y paginación intactos.
-
-10. **Optimización de Red y Poda de Regexp en Variantes de Búsqueda (`src/js/api.ts`)**:
-    - Poda de sobrecarga RPC en sugerencias del Sidebar: sustitución del bucle iterativo secuencial `for (const alt of alternatives)` en `fetchDirectorSuggestions` y `fetchActorSuggestions` por una sola alternativa prioritaria `[candidate] = getAlternativeSearchTerms(term)`, garantizando a lo sumo 1 reintento de red en lugar de hasta 5 llamadas consecutivas en búsquedas sin resultados.
-    - Unificación de expresiones regulares en `getAlternativeSearchTerms`: fusión de 4 bloques redundantes en una regla universal de iniciales sueltas `\b([a-zA-Z])\s+` que puntúa letras únicas consecutivas, intermedias e iniciales (`'j j abrams'`, `'david o russell'`, `'m night shyamalan'`), reduciendo el algoritmo a la mitad de líneas con total cobertura de tests.
-
-11. **Formateo SSOT de Miniseries `\u00A0(M)` y Poda de Regex en Renderizado (`formatters.ts`, `cardElement.ts`, `renderer.ts`)**:
-    - Centralización en `formatYear`: inyección directa del espacio no divisible (`\u00A0(M)`) en `src/shared/formatters.ts` y `cloudflare/seo/seo-types.js`.
-    - Eliminación de 4 regex redundantes: retirada definitiva de `.replace(/ \((M)\)/g, "\u00A0($1)")` en el bucle de pintado de tarjetas (`cardElement.ts`) y en la vista rápida de la modal (`modal/renderer.ts`), erradicando sobrecarga de expresiones regulares en el ciclo de vida del DOM y garantizando el espaciado no divisible de forma transversal.
-
-12. **Jerarquía Polimórfica OOCSS en Tarjetas VIP de Grupo (`cardElement.ts`, `lifecycle.ts`)**:
-    - Preservación de `.collection-card` como clase base estructural en `createGroupCardElement` (`cardElement.ts`) incorporando `.studio-card` como modificador aditivo (`card.classList.add('studio-card')`), en vez de reemplazar la clase base.
-    - Poda de guardas redundantes: retirada sistemática de comprobaciones secundarias `|| card.classList.contains('studio-card')` y `:not(.studio-card)` en `cardElement.ts`, `lifecycle.ts`, `filters.ts`, `renderEngine.ts` y `ui.ts`. Las tarjetas de estudios heredan automáticamente la condición inerte y exclusiones del DOM a través de `.collection-card` con cero duplicación de selectores.
-
-13. **Poda de Consulta Duplicada a `getCachedPersonDetails` en Renderizado de Píldoras (`sidebar/filters.ts`)**:
-    - Retirada de la segunda llamada redundante en `renderFilterPills()`: dado que `item.val` ya contiene el nombre canónico resuelto en la primera fase de construcción de la lista de filtros deseados (`desired`), la segunda consulta a `getCachedPersonDetails(type, item.val)` era 100% redundante, ahorrando lecturas al `Map` en cada actualización del Sidebar.
-
-14. **Unificación de Fall-Through en el Oráculo (`handleRandomMovieRecommendation` en `sidebar/filters.ts`)**:
-    - Fusión del Fast-Path y Fallback: reestructuración del flujo de recomendación aleatoria de modo que el intento remoto condicionado a `totalMovies > cards.length` realiza early-return solo ante respuesta exitosa, cayendo de forma natural y sin bifurcaciones duplicadas al bloque de selección local. Ahorro de 16 líneas idénticas y mayor linealidad algorítmica.
-
-15. **Poda de Alias Deprecado y Limpieza de Imports (`profile.ts`, `sidebar/index.ts`)**:
-    - Retirada del alias muerto `exportUserDataJson` y del selector fallback `|| document.getElementById("profile-btn-export-json")` en `src/js/components/profile.ts`, completando la migración exclusiva a CSV en la suite de pruebas (`tests/profile-stats.test.mjs`).
-    - Eliminación del import no utilizado `CONFIG` en la cabecera de `src/js/components/sidebar/index.ts`.
-
-16. **Corrección de Extracción de Datos Cronológicos y Clasificación de Series en Markdown (`cloudflare/seo/render-markdown.js`)**:
-    - Corrección en ficha VIP de personas (`renderPersonMarkdown`): sustitución del acceso a la propiedad inexistente `ageInfo?.text` por el cálculo canónico de `computePersonAgeInfo` (`${ageInfo.datesStr} ${ageInfo.ageStr}`), incorporando además `place_of_birth` cuando esté disponible para una ficha biográfica completa entregada a bots y LLMs.
-    - Diferenciación semántica de series (`renderMovieMarkdown`): reemplazo de la etiqueta rígida `' - Miniserie'` por discriminación semántica real (`isMini` para `SM`, `SAM`, `SDM` o `year_end === 'M'`, y `'Serie de TV'` para series regulares de múltiples temporadas `S`, `S-`, etc.), garantizando fichas Markdown fidedignas para cualquier formato audiovisual.
-
-17. **Poda de Reintentos RPC Redundantes y Eliminación de `getAlternativeSearchTerms` (`src/js/api.ts`)**:
-    - Supresión de reintentos RPC en sugerencias: con la resolución nativa de iniciales y variantes implementada en PostgreSQL (`get_director_suggestions` y `get_actor_suggestions` en `database/script.sql`), se eliminó el bucle de reintento en cliente. `fetchDirectorSuggestions` delega directamente en `fetchSuggestions` y `fetchActorSuggestions` filtra actores ignorados tras una única consulta rápida.
-    - Resolución unificada de iniciales en `fetchPersonDetails`: extracción de iniciales consecutivas en `words` mediante `nameNorm.replace(/\./g, ' ').replace(/\b([a-z])([a-z])\b/gi, '$1 $2')`, delegando la resolución de nombres con iniciales sin punto ("j j abrams", "jj abrams") en el wildcard `ILIKE '%j%j%abrams%'` de Supabase sin necesidad de construir variantes en cliente.
-    - Eliminación completa de `getAlternativeSearchTerms`: retirada de la función y sus 65 líneas de expresiones regulares en `src/js/api.ts`, actualizando el test unitario de caracterización en `tests/sidebar.test.mjs`.
-
-18. **Optimización de CTE y Poda de UNION ALL en SQL (`database/script.sql`)**:
-    - Deduplicación en `get_director_suggestions`: sustitución de las dos ramas redundantes del `UNION ALL` en `component_matches` por un desdoble mediante `CROSS JOIN LATERAL (VALUES (TRIM(comp.name)), (d.name)) AS v(suggestion)`.
-    - Reducción de I/O y latencia: la vista materializada `mv_director_suggestions` se escanea y filtra una sola vez en lugar de dos, suprimiendo 28 líneas de código duplicado en la definición de la función RPC.
-
-19. **Poda de Keyframe Redundante en Tooltip de Valoración (`src/css/components/rating.css`)**:
-    - Reutilización de animación global: sustitución de `@keyframes tooltip-fade-in` por la regla canónica global `@keyframes fade-in` definida en `src/css/globals.css`.
-    - Eliminación de 8 líneas de CSS redundante en la barra de notas y votos.
-
-20. **Poda de Variable CSS Inutilizada (`src/css/variables.css`)**:
-    - Eliminación del alias redundante `--transition-fast: var(--duration-fast);` en favor de los tokens oficiales de duración `--transition-duration-fast` y `--duration-fast`.
-
-21. **Racionalización y Poda de la Suite de Pruebas (`tests/`)**:
-    - Erradicación de esperas artificiales en `sidebar.test.mjs`: reducción de retardos en bucles de reintento de red en entorno de test (`(globalThis._isTestEnv ? 5 : (attempt + 1) * 300)` en `api.ts`), pasando de pausas fijas de 1,1 s a 60 ms y acelerando la suite del Sidebar de 13,7 s a 3,0 s.
-    - Poda de redundancias entre suites (`contracts-state-utils.test.mjs` vs `url-contract.test.mjs` y `shared-and-events.test.mjs`): eliminación de comprobaciones gemelas de `normalizeText`, `computePersonAgeInfo`, `applyLengthBasedClass`, `toSlug`, `genreToSlug`, `countryToSlug` y unificación de las 3 aserciones de `isAbortError`.
-    - Fusión y supresión de `api-rating-critical.test.mjs`: consolidación de las pruebas de mutación pura (`resolveNextRating`, `resolveWatchlistMutationOnRate`, `getWatchlistCount`) en `pure-functions.test.mjs` y de eventos Background Sync en `local-first-sync.test.mjs`. Supresión del archivo y de un arranque completo de servidor Vite SSR en Node.
-
-22. **Poda de Import Huérfano y Consistencia de Eventos de Tipado (`src/js/ui.ts`, `src/js/state.ts`)**:
-    - Retirada de la importación huérfana de `MappedMovie` en `src/js/ui.ts` tras la simplificación previa de `updateTotalResultsUI` y `updateMobileStatusBar`.
-    - Verificación del contrato de eventos en `AppEventPayloads` (`src/js/state.ts`), asegurando la tipificación de `'myList:revalidated': undefined;` para compilación limpia con `npx tsc --noEmit`.
-
-23. **Simplificación Estructural de Selectores CSS y Sincronización SSR (`src/css/components/card.css`, `cloudflare/seo/`)**:
-    - Compactación de selectores VIP en `card.css`: eliminación de las listas `:is(.person-card, .collection-card, .studio-card)` y `:is(.collection-card, .studio-card)` aprovechando la jerarquía polimórfica donde `.person-card` engloba a todas las tarjetas de personas, colecciones y estudios, y `.collection-card` engloba a colecciones y estudios.
-    - Sincronización de miniseries en SSR: unificación de la entidad de espacio de no separación `\u00A0(M)` directamente desde `formatYear` en `cloudflare/seo/seo-types.js` y `src/shared/formatters.ts`, eliminando los reemplazos manuales regex `.replace(/ \((M)\)/g, '&nbsp;($1)')` en `cloudflare/seo/render-movie.js` y `cloudflare/seo/render-taxonomy.js`.
-
-24. **Foco Automático y Experiencia Móvil en Acordeones de Personas (`src/js/components/sidebar/index.ts`, `src/css/components/sidebar.css`)**:
-    - Foco inmediato en `director` y `actor`: al desplegar las secciones de directores o actores en versión móvil (`isMobileLayout()`), el campo de texto de búsqueda (`.sidebar-filter-input`) recibe el foco inmediatamente durante el evento de clic síncrono, activando el teclado virtual del dispositivo móvil (preservando el gesto de usuario en iOS Safari y Android).
-    - Exclusión deliberada de `genre` y `country`: las secciones de géneros y países se mantienen sin foco automático en móvil para evitar que el teclado oculte las píldoras y enlaces predefinidos.
-    - Scroll adaptativo y repliegue de teclado: para directores y actores en móvil, se orienta el scroll suave hacia el propio `inputField` en lugar del pie de perfil (`profileContainer`), y se invoca `blur()` al plegar o alternar acordeones para cerrar limpiamente el teclado del sistema operativo.
-    - Espaciado visual ergonómico en escritorio y móvil (`sidebar.css`): se promovió `padding-bottom: var(--space-sm)` (12px) en `:is(#directors-list-container, #actors-list-container)` a regla base universal, otorgando una holgura limpia y distinguida entre el último director/actor sugerido y el cuadro de búsqueda (`.bento-input`) tanto en escritorio como en móvil, evitando que queden pegados al estar activo un elemento.
-
-25. **Estrategia «Editorial Sheet» para Quick View en iPad Portrait (`src/css/components/modal.css`)**:
-    - **Aire en los flancos y geometría esbelta (`width: 86%; max-width: 520px;`)**: Sustitución del ancho masivo previo del 96% (737px) por un ancho acotado del 86% con tope de 520px en la franja `@media (min-width: 540px) and (max-width: 768px)`. Con `bottom: var(--space-md, 16px)` y `border-radius: var(--radius-xl)`, la modal descansa como una elegante tarjeta flotante dejando ~125px de espacio libre a cada lado para visualizar la cuadrícula del catálogo de fondo.
-    - **Flechas de navegación exteriores flotantes (`left: -28px; right: -28px; top: 50%`)**: Habilitación de `overflow: visible;` en `.quick-view-modal` y reubicación de los botones `.modal-nav-btn` hacia el exterior en los flancos de la modal (28px fuera en el canal libre lateral), centrados verticalmente (`top: 50%; transform: translateY(-50%)`). Esto resuelve de raíz cualquier colisión visual o solapamiento con el póster o con los iconos de Wikipedia y JustWatch durante el desplazamiento vertical (*scroll*).
-    - **Proporción contenida del póster (`max-width: 270px`)**: Limitación de `.is-quick-view .poster-container` a un ancho máximo estricto de 270px (frente al 70% desmedido anterior), garantizando que en la primera pantalla sin necesidad de *scroll* quepan íntegramente el póster, las estrellas de valoración, el título, año, duración, notas completas de FilmAffinity / IMDb y el arranque del reparto.
-    - **Escala tipográfica editorial y respiro lateral (`var(--space-xl)`)**: Aplicación local a `.quick-view-modal` de los tokens tipográficos de escritorio (`--font-size-xs: 0.75rem`, `--font-size-sm: 0.875rem`, `--font-size-base: 1rem`) y un espaciado horizontal de 32px (`padding-inline: var(--space-xl)`), logrando una longitud de línea de lectura óptima (~60-65 caracteres) en Género, Reparto y Sinopsis con idéntico refinamiento visual que en orientación horizontal.
-
-26. **Preservación del Historial Adelante y Desacoplamiento de Modales (`src/js/components/modal.ts`, `src/js/components/profile.ts`, `src/js/ui.ts`)**:
-    - **Diagnóstico y Causa Raíz**: Conforme al estándar W3C de la *History API*, cualquier llamada a `history.pushState()` efectuada tras retroceder en el historial purga de forma inmediata e irreversible la lista de entradas hacia adelante (*forward session history*). Al abrir una modal (`quick-view`, `profile`, `auth`, `legal`), la inyección de `{ modalOpen: true }` con la URL actual destruía el destino futuro (ej. Director B), y su posterior cierre mediante `history.back()` dejaba un registro fantasma hacia la propia página actual que causaba que el botón «Adelante» del navegador quedase inerte o no dirigiese a nada.
-    - **Desacoplamiento Limpio de Modales y Pila de Navegación**: Se eliminó la manipulación artificial del historial (`pushState` / `history.back()`) en la apertura y cierre de todas las pantallas modales (`Quick View`, `Perfil`, `Autenticación` y `Legal`). Las modales operan como capas efímeras puras de interfaz sin alterar el puntero de sesión del navegador.
-    - **Integridad Total de Navegación**: Al retroceder de Director B a Director A, abrir y cerrar una modal ya no muta la pila de historial; pulsar «Adelante» conduce con total fidelidad al segundo director o actor sin parpadeos, entradas fantasma ni pérdidas de contexto.
-
-27. **Poda de Código Muerto de la History API y Compilación CSS SEO (`src/js/ui.ts`, `src/js/main.ts`, `src/js/components/modal.ts`, `src/js/router.ts`, `scripts/build-seo-css.mjs`)**:
-    - **Poda de `isClosingModalViaHistory`**: Eliminación de la bandera global y de las funciones `setIsClosingModalViaHistory()` y `consumeIsClosingModalViaHistory()` en `ui.ts` y de su consumo en `main.ts` (`handlePopState`), al no existir ya invocaciones a `history.back()` desde ninguna modal.
-    - **Poda de Constantes Huérfanas en `closeModal`**: Retirada del cálculo inerte de `isPopstate` y `suppressHistoryBack` en `src/js/components/modal.ts`.
-    - **Limpieza de Guardas Huérfanas en `router.ts`**: Supresión de `delete nextState.profileModalOpen` y `delete nextState.modalOpen` en `updateUrl()`, al no persistirse nunca más marcas modales en `history.state`.
-    - **Compilación de Artefactos CSS para SEO / Edge SSR**: Ejecución de `scripts/build-seo-css.mjs` sincronizando la nueva sección E2 de iPad Portrait en `modal.css` y las simplificaciones de `card.css` dentro de `public/seo-card-v7.css` y `cloudflare/seo/seo-card-css.js`.
 

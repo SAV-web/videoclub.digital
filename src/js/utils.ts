@@ -98,7 +98,7 @@ export function mapMoviePayload(movie: Movie): MappedMovie {
 
 
 // Protege contra símbolos raros en el buscador (Previene ataques ReDoS)
-export const escapeRegExp = (s: string): string => 
+const escapeRegExp = (s: string): string => 
   s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Ilumina en negrita lo que has buscado, ignorando si pusiste acentos
@@ -144,7 +144,7 @@ export const capitalizeWords = (str: string | null | undefined): string =>
 //          3. CONTROL DE TRÁFICO (Red y Clics)
 // =================================================================
 
-export interface DebouncedFunction<T extends (...args: never[]) => void> {
+interface DebouncedFunction<T extends (...args: never[]) => void> {
   (...args: Parameters<T>): void;
   cancel(): void;
 }
@@ -317,11 +317,6 @@ export function setupExternalLink(
     anchor.setAttribute("aria-label", customAriaLabel ?? `Ver en ${serviceName}`);
   } else {
     anchor.removeAttribute("href");
-    try {
-      delete (anchor as any).href;
-    } catch {
-      anchor.href = "";
-    }
     anchor.classList.add("disabled");
     anchor.removeAttribute("aria-label");
   }
@@ -417,20 +412,6 @@ declare global {
   }
 }
 
-/**
- * Cede el control del Hilo Principal (Main Thread) al navegador para mantener
- * el scroll fluido y mejorar la métrica INP (Interaction to Next Paint).
- * Utiliza scheduler.yield() si está disponible (Chrome 115+) o cae suavemente a setTimeout.
- */
-export async function yieldToMain(): Promise<void> {
-  if (typeof document !== 'undefined' && document.hidden) return;
-
-  if (typeof window !== 'undefined' && window.scheduler && typeof window.scheduler.yield === 'function') {
-    return window.scheduler.yield();
-  }
-  return new Promise(resolve => setTimeout(resolve, 0));
-}
-
 // Pinta las tarjetas "a trocitos" para que la pantalla nunca se congele
 /**
  * Ejecuta una tarea en periodos de inactividad del navegador (idle) o usa setTimeout con el delay de fallback.
@@ -448,23 +429,6 @@ export function runWhenIdle(callback: () => void, fallbackDelayMs = 500): () => 
     const handle = setTimeout(callback, fallbackDelayMs);
     return () => clearTimeout(handle);
   }
-}
-
-
-export function scheduleWork<T>(task: () => T, priority: 'user-blocking' | 'user-visible' | 'background' = 'user-visible'): Promise<T> {
-  // En segundo plano (p. ej., durante el scraping de la consola), no retrasamos las tareas sintéticas.
-  // No hay interfaz que congelar ni frames que proteger en segundo plano.
-  if (typeof document !== 'undefined' && document.hidden) {
-    return Promise.resolve(task());
-  }
-
-  if (window.scheduler && window.scheduler.postTask) {
-    return window.scheduler.postTask(task, { priority });
-  }
-  // Fallback con requestIdleCallback
-  return new Promise(resolve => {
-    runWhenIdle(() => resolve(task()), 1);
-  });
 }
 
 export interface ViewTransition {

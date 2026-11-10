@@ -5,7 +5,7 @@
 // cambio de contraseña y zona de peligro, reduciendo ~10 KB del documento principal.
 // =================================================================
 
-export const PROFILE_MODAL_HTML = `
+const PROFILE_MODAL_HTML = `
   <div id="profile-overlay" class="profile-overlay" hidden aria-hidden="true"></div>
   <div id="profile-modal" class="profile-modal" role="dialog" aria-modal="true" hidden
     aria-labelledby="profile-modal-title" tabindex="-1">

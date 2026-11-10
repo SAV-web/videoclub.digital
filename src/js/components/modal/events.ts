@@ -5,14 +5,14 @@ import { initRatingInteractions } from "../rating.js";
 import { handleTouchStart, handleTouchMove, handleTouchEnd, isLandscapeCompactViewport } from "./gestures.js";
 import type { MovieCardElement } from "../../types.js";
 
-export interface ModalEventsDom {
+interface ModalEventsDom {
   modal: HTMLElement | null;
   content: HTMLElement | null;
   prevBtn: HTMLButtonElement | null;
   nextBtn: HTMLButtonElement | null;
 }
 
-export interface ModalEventsOptions {
+interface ModalEventsOptions {
   getDom: () => ModalEventsDom;
   navigateToSibling: (direction: number) => void;
   closeModal: (options?: { suppressHistoryBack?: boolean }) => void;

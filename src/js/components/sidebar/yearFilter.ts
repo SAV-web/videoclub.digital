@@ -23,7 +23,7 @@ export function destroyYearSlider(): void {
 }
 
 // Guarda el año si has tocado las casillas manuales
-export function applyPendingYearFilters(): void {
+function applyPendingYearFilters(): void {
   if (!dom.yearStartInput || !dom.yearEndInput) return;
 
   const currentStart = parseInt(dom.yearStartInput.value, 10);

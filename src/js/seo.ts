@@ -10,7 +10,7 @@ import { ActiveFilters, Movie, MappedMovie } from "./types.js";
 //          1. BUILDERS (Funciones Puras - Lógica de Negocio)
 // =================================================================
 
-export interface SeoTitleResult {
+interface SeoTitleResult {
   pageTitle: string;
   ogTitle: string;
   baseNoun: string;

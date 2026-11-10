@@ -5,7 +5,7 @@
 // para reducir el peso y tiempo de parseo del documento inicial.
 // =================================================================
 
-export const AUTH_MODAL_HTML = `
+const AUTH_MODAL_HTML = `
   <div id="auth-overlay" class="auth-overlay" hidden aria-hidden="true"></div>
   <div id="auth-modal" class="auth-modal" role="dialog" aria-modal="true" hidden aria-labelledby="auth-title"
     tabindex="-1">

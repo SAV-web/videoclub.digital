@@ -186,7 +186,7 @@ export function renderErrorState(container: HTMLElement | null, pagContainer: HT
 
 const ONBOARDING_FLIP_DELAY_MS = 3000;
 const ONBOARDING_STORAGE_KEY = "videoclub:flip_onboarding_count";
-export const MAX_ONBOARDING_FLIPS = 10;
+const MAX_ONBOARDING_FLIPS = 10;
 
 export function getFlipOnboardingCount(): number {
   try {

@@ -24,14 +24,14 @@ export interface MovieContentElement extends HTMLElement {
   movieData?: Movie;
 }
 
-export interface ModalNodes {
+interface ModalNodes {
   [key: string]: HTMLElement | null | undefined;
   img?: HTMLImageElement | null;
   iconsContainer?: HTMLElement | null;
   origTitleWrap?: HTMLElement | null;
 }
 
-export const createLink = (text: string, type: 'director' | 'actor' | 'genre'): HTMLAnchorElement => {
+const createLink = (text: string, type: 'director' | 'actor' | 'genre'): HTMLAnchorElement => {
   const dataAttr = type === 'director' ? 'directorName' : (type === 'actor' ? 'actorName' : 'genreName');
   return createElement("a", {
     textContent: preserveHyphenatedWords(text),
@@ -43,7 +43,7 @@ export const createLink = (text: string, type: 'director' | 'actor' | 'genre'): 
 /**
  * Mapea los nodos del modal mediante sus contratos de datos (data-template).
  */
-export function getModalNodes(root: HTMLElement): ModalNodes {
+function getModalNodes(root: HTMLElement): ModalNodes {
   const nodes: ModalNodes = {};
   root.querySelectorAll<HTMLElement>('[data-template]').forEach(el => {
     const key = el.dataset.template;
@@ -60,7 +60,7 @@ export function getModalNodes(root: HTMLElement): ModalNodes {
 /**
  * Configura la cabecera del modal (Póster, Título, Info básica).
  */
-export function setupModalHeader(
+function setupModalHeader(
   nodes: ModalNodes,
   movie: ExtendedMovie,
   _scheduleModalRAF?: (fn: () => void) => number,
@@ -139,7 +139,7 @@ export function setupModalHeader(
  * Renderiza unidades y palabras de metadatos en spans con clase .meta-unit para
  * permitir una modulación tipográfica más ligera (-20% font-weight) respecto a las cifras numéricas.
  */
-export function renderModalMetaUnits(container: HTMLElement, text: string): void {
+function renderModalMetaUnits(container: HTMLElement, text: string): void {
   container.textContent = "";
   if (!text) return;
   const regex = /([a-zA-ZáéíóúÁÉÍÓÚñÑ]+(?:\.)?)/g;
@@ -163,7 +163,7 @@ export function renderModalMetaUnits(container: HTMLElement, text: string): void
 /**
  * Configura los detalles extendidos del modal (Sinopsis, Reparto, etc.).
  */
-export function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
+function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
   // Título Original
   if (nodes.origTitleWrap && nodes["original-title"] && movie.displayOriginalTitle) {
     const actualOriginalTitle = movie.displayOriginalTitle;
@@ -230,7 +230,7 @@ export function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void
   }
 }
 
-export interface PopulateModalOptions {
+interface PopulateModalOptions {
   cardElement: MovieCardElement;
   contextCards: HTMLElement[] | null;
   template: DocumentFragment | undefined;

@@ -228,7 +228,7 @@ export function initCardInteractions(gridContainer: HTMLElement): void {
 }
 
 // Despertar de la hibernación: fuerza la carga de imágenes visibles en el viewport al volver a la pestaña
-export function handleCardVisibilityChange(): void {
+function handleCardVisibilityChange(): void {
   if (document.visibilityState !== "visible") return;
 
   const lazyImages = document.querySelectorAll<HTMLImageElement>("img[data-src]");

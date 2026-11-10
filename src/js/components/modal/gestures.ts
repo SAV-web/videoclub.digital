@@ -19,16 +19,16 @@ export const isLandscapeCompactViewport = (): boolean => {
   return false;
 };
 
-export const isMobilePortraitViewport = (): boolean => {
+const isMobilePortraitViewport = (): boolean => {
   if (typeof window === "undefined") return false;
   if (window.innerWidth > 768) return false;
   return landscapeOrientationQuery ? !landscapeOrientationQuery.matches : window.innerHeight > window.innerWidth;
 };
 
-export const SWIPE_X_THRESHOLD = 80;
-export const SWIPE_Y_CLOSE_THRESHOLD = 90;
+const SWIPE_X_THRESHOLD = 80;
+const SWIPE_Y_CLOSE_THRESHOLD = 90;
 
-export interface TouchState {
+interface TouchState {
   startY: number;
   startX: number;
   currentY: number;
@@ -38,7 +38,7 @@ export interface TouchState {
   target: HTMLElement | null;
 }
 
-export const touchState: TouchState = {
+const touchState: TouchState = {
   startY: 0,
   startX: 0,
   currentY: 0,
@@ -65,7 +65,7 @@ export function handleTouchStart(e: TouchEvent, modal: HTMLElement | null): void
   modal.classList.remove(CSS_CLASSES.IS_DRAGGING); // Reactivar transición CSS si estaba desactivada
 }
 
-export interface GestureMoveOptions {
+interface GestureMoveOptions {
   modal: HTMLElement | null;
   content: HTMLElement | null;
 }
@@ -131,7 +131,7 @@ export function handleTouchMove(e: TouchEvent, options: GestureMoveOptions): voi
   }
 }
 
-export interface GestureEndOptions {
+interface GestureEndOptions {
   modal: HTMLElement | null;
   navigateToSibling: (direction: number) => void;
   closeModal: () => void;

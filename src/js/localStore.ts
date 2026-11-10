@@ -9,13 +9,13 @@
 import { UserMovieEntry, Movie, MappedMovie } from "./types.js";
 import { normalizeUserMovieEntry } from "./contracts.js";
 
-export const LOCAL_DB_NAME = "videoclub_local_db";
-export const LOCAL_DB_VERSION = 2;
-export const STORE_USER_ENTRIES = "user_entries";
-export const STORE_CACHED_MOVIES = "cached_movies";
-export const MAX_CACHED_MOVIES = 3500;
+const LOCAL_DB_NAME = "videoclub_local_db";
+const LOCAL_DB_VERSION = 2;
+const STORE_USER_ENTRIES = "user_entries";
+const STORE_CACHED_MOVIES = "cached_movies";
+const MAX_CACHED_MOVIES = 3500;
 
-export interface LocalUserEntry {
+interface LocalUserEntry {
   movieId: number;
   rating: number | null;
   onWatchlist: boolean;
@@ -23,7 +23,7 @@ export interface LocalUserEntry {
   syncStatus: "synced" | "dirty" | "deleted";
 }
 
-export type CachedMovie = (Movie | MappedMovie) & { cachedAt: number };
+type CachedMovie = (Movie | MappedMovie) & { cachedAt: number };
 
 let dbInstance: IDBDatabase | null = null;
 let isClosing = false;
@@ -670,59 +670,6 @@ export async function getCachedMoviesByIds(ids: number[]): Promise<Map<number, C
     });
   } catch {
     return result;
-  }
-}
-
-/**
- * Obtiene los IDs de películas en la Watchlist utilizando el índice 'by_watchlist'.
- */
-export async function getLocalWatchlistMovieIds(): Promise<number[]> {
-  try {
-    const db = await openLocalDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_USER_ENTRIES, "readonly");
-      const store = tx.objectStore(STORE_USER_ENTRIES);
-      const index = store.index("by_watchlist");
-      const req = index.getAll(IDBKeyRange.only(true));
-
-      req.onsuccess = () => {
-        const rows: LocalUserEntry[] = req.result || [];
-        const activeIds = rows
-          .filter(r => r.syncStatus !== "deleted" && r.onWatchlist)
-          .map(r => r.movieId);
-        resolve(activeIds);
-      };
-      req.onerror = () => reject(req.error);
-    });
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Obtiene los IDs de películas puntuadas utilizando el índice 'by_rating'.
- */
-export async function getLocalRatedMovieIds(): Promise<number[]> {
-  try {
-    const db = await openLocalDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_USER_ENTRIES, "readonly");
-      const store = tx.objectStore(STORE_USER_ENTRIES);
-      const index = store.index("by_rating");
-      // En IndexedDB, los números >= 1 son claves válidas
-      const req = index.getAll(IDBKeyRange.lowerBound(1));
-
-      req.onsuccess = () => {
-        const rows: LocalUserEntry[] = req.result || [];
-        const activeIds = rows
-          .filter(r => r.syncStatus !== "deleted" && r.rating !== null)
-          .map(r => r.movieId);
-        resolve(activeIds);
-      };
-      req.onerror = () => reject(req.error);
-    });
-  } catch {
-    return [];
   }
 }
 

@@ -211,7 +211,7 @@ function setupEmailValidation(input: HTMLInputElement): void {
   });
 }
 
-export interface PasswordStrengthResult {
+interface PasswordStrengthResult {
   score: number; // 0 (vacía), 1 (débil), 2 (aceptable), 3 (segura), 4 (muy robusta)
   label: string;
 }

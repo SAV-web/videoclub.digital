@@ -6,7 +6,7 @@
 // eventos Pointer (ratón y táctil) y accesibilidad con teclado.
 // =================================================================
 
-export interface DualRangeSliderOptions {
+interface DualRangeSliderOptions {
   min: number;
   max: number;
   pivotYear?: number;
@@ -20,7 +20,6 @@ export class DualRangeSlider {
   private pivotYear: number;
   private values: [number, number];
 
-  private trackEl!: HTMLElement;
   private connectEl!: HTMLElement;
   private handleStartEl!: HTMLElement;
   private handleEndEl!: HTMLElement;
@@ -52,7 +51,7 @@ export class DualRangeSlider {
   }
 
   private renderDOM(): void {
-    this.container.innerHTML = "";
+    this.container.replaceChildren();
     this.container.classList.add("custom-year-slider");
 
     const track = document.createElement("div");
@@ -82,7 +81,6 @@ export class DualRangeSlider {
     this.container.appendChild(handleStart);
     this.container.appendChild(handleEnd);
 
-    this.trackEl = track;
     this.connectEl = connect;
     this.handleStartEl = handleStart;
     this.handleEndEl = handleEnd;
@@ -200,7 +198,7 @@ export class DualRangeSlider {
       }
     };
 
-    const onPointerUp = (e: PointerEvent) => {
+    const onPointerUp = () => {
       if (activeHandleIndex === null) return;
       activeHandleIndex = null;
       window.removeEventListener("pointermove", onPointerMove);
@@ -414,7 +412,7 @@ export class DualRangeSlider {
     this.updateCallbacks = [];
     this.setCallbacks = [];
     if (this.container) {
-      this.container.innerHTML = "";
+      this.container.replaceChildren();
       if (this.container.classList) {
         if (typeof this.container.classList.remove === "function") {
           this.container.classList.remove("custom-year-slider", "is-same-year");

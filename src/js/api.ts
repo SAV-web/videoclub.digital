@@ -16,14 +16,13 @@ import {
   ERROR_CODES,
   createAppError,
   isAbortError,
-  normalizeMovieId,
   normalizeMovieQuery,
   normalizeMoviesResponse,
-  normalizeUserMovieEntry,
   toAppError,
   toSlug,
 } from "./contracts.js";
-import { Movie, ActiveFilters, UserMovieEntry, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
+import { Movie, ActiveFilters, ApiResponse, PersonDetails, MappedMovie } from "./types.js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabaseClient.js";
 import { getCurrentSession, hasStoredAuthSessionOrHash } from "./auth.js";
 import { saveCachedMovies, getCachedMoviesByIds, getAllLocalEntries, mergeRemoteEntries } from "./localStore.js";
@@ -129,7 +128,7 @@ const inFlightRequests = new Map<string, Promise<ApiResponse>>();
 
 import type { SupabaseMovieRow } from "./types.js";
 
-export type RawMovieRow = Partial<SupabaseMovieRow> & Record<string, unknown>;
+type RawMovieRow = Partial<SupabaseMovieRow> & Record<string, unknown>;
 
 /**
  * Normaliza una fila cruda de la tabla movies o un join de Supabase al tipo unificado Movie.
@@ -186,8 +185,8 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
 async function executeCatalogRpc(
   rpcParams: Record<string, unknown>,
   signal?: AbortSignal | null,
-  passedSupabase?: any
-): Promise<{ data: any; error: any }> {
+  passedSupabase?: SupabaseClient | null
+): Promise<{ data: unknown; error: unknown }> {
   const globalProc = (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })?.process;
   const isBrowser = typeof window !== "undefined" && typeof window.fetch === "function";
   const isTest = Boolean(globalProc?.env?.NODE_ENV === "test") || Boolean((globalThis as unknown as Record<string, unknown>)?._isTestEnv);
@@ -205,11 +204,11 @@ async function executeCatalogRpc(
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data: unknown = await response.json();
         return { data, error: null };
       }
-    } catch (e: any) {
-      if (signal?.aborted || e?.name === "AbortError") {
+    } catch (e: unknown) {
+      if (signal?.aborted || isAbortError(e, signal) || (e instanceof Error && e.name === "AbortError")) {
         throw { name: "AbortError" };
       }
     }
@@ -297,8 +296,10 @@ export async function getLocalMyListResponse(
     const isAsc = sortDirection === "asc";
 
     filtered.sort((a, b) => {
-      const valA: any = (a as any)[sortField];
-      const valB: any = (b as any)[sortField];
+      const recordA = a as unknown as Record<string, unknown>;
+      const recordB = b as unknown as Record<string, unknown>;
+      const valA = recordA[sortField];
+      const valB = recordB[sortField];
 
       const aHasVal = valA !== undefined && valA !== null;
       const bHasVal = valB !== undefined && valB !== null;
@@ -307,11 +308,13 @@ export async function getLocalMyListResponse(
       if (!aHasVal && bHasVal) return 1;
 
       if (aHasVal && bHasVal) {
-        if (typeof valA === "string") {
+        if (typeof valA === "string" && typeof valB === "string") {
           const cmp = valA.localeCompare(valB, "es", { sensitivity: "base" });
           if (cmp !== 0) return isAsc ? cmp : -cmp;
         } else {
-          const diff = isAsc ? valA - valB : valB - valA;
+          const numA = Number(valA);
+          const numB = Number(valB);
+          const diff = isAsc ? numA - numB : numB - numA;
           if (diff !== 0) return diff;
         }
       }
@@ -571,7 +574,7 @@ export function fetchMovies(
           }
 
           return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
-        } catch (err: any) {
+        } catch (err: unknown) {
           if (isAbortError(err, signal)) throw err;
           const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
           if (fallbackRes && fallbackRes.items.length > 0) return fallbackRes;
@@ -581,8 +584,8 @@ export function fetchMovies(
 
       // MODO B: CATÁLOGO PÚBLICO (Motor potente con reintento resiliente para cold-starts)
       const rpcParams = stateToRpcParams(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
-      let data: any = null;
-      let error: any = null;
+      let data: unknown = null;
+      let error: unknown = null;
       const MAX_RETRIES = 2;
 
       for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -601,7 +604,8 @@ export function fetchMovies(
 
         // Si no es el último intento, esperar antes de reintentar (300ms, 600ms en prod, 5ms en test)
         if (attempt < MAX_RETRIES) {
-          const delay = (globalThis as any)._isTestEnv ? 5 : (attempt + 1) * 300;
+          const isTestEnv = Boolean((globalThis as unknown as Record<string, unknown>)?._isTestEnv);
+          const delay = isTestEnv ? 5 : (attempt + 1) * 300;
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -611,8 +615,9 @@ export function fetchMovies(
         throw createAppError(ERROR_CODES.DATABASE, "No se pudo conectar con el catálogo. Inténtalo de nuevo.", error);
       }
 
-      const rawItems = (data?.items || []).map((mRaw: unknown) => shapeRawMovieRow(mRaw));
-      const result = normalizeMoviesResponse({ total: data?.total ?? -1, items: rawItems }, mapMoviePayload);
+      const rpcData = data as { items?: unknown[]; total?: number } | null | undefined;
+      const rawItems = (rpcData?.items || []).map((mRaw: unknown) => shapeRawMovieRow(mRaw));
+      const result = normalizeMoviesResponse({ total: rpcData?.total ?? -1, items: rawItems }, mapMoviePayload);
 
       if (!signal?.aborted) {
         // Si ya hay un total real guardado en la caché y la consulta actual devolvió total=-1, preservamos el conteo previo
@@ -784,41 +789,6 @@ export async function fetchGroupDetails(
     }
     return null;
   }
-}
-
-// Guarda en BD que le has puesto 5 estrellas o la has metido en pendientes
-export async function setUserMovieDataAPI(movieId: number | string, partialData: Partial<UserMovieEntry>): Promise<void> {
-  const normalizedMovieId = normalizeMovieId(movieId);
-  if (!normalizedMovieId) throw createAppError(ERROR_CODES.VALIDATION, "Película inválida.");
-
-  const supabase = await getSupabase();
-
-  const session = await getCurrentSession();
-  if (!session || !session.user) throw createAppError(ERROR_CODES.AUTH_REQUIRED, "Debes iniciar sesión.");
-
-  const currentState = getUserDataForMovie(normalizedMovieId) || { rating: null, onWatchlist: false };
-  const mergedData = normalizeUserMovieEntry({ ...currentState, ...partialData });
-
-  // Si ambas acciones quedan inactivas (sin nota y sin watchlist), eliminamos la fila para no dejar filas vacías
-  if (mergedData.rating === null && !mergedData.onWatchlist) {
-    const { error } = await supabase
-      .from('user_movie_entries')
-      .delete()
-      .match({ user_id: session.user.id, movie_id: normalizedMovieId });
-    if (error) throw createAppError(ERROR_CODES.DATABASE, "No se pudo actualizar tu acción.", error);
-    return;
-  }
-
-  const payload = {
-    user_id: session.user.id,
-    movie_id: normalizedMovieId,
-    rating: mergedData.rating,
-    on_watchlist: mergedData.onWatchlist,
-    updated_at: new Date().toISOString()
-  };
-
-  const { error } = await supabase.from('user_movie_entries').upsert(payload, { onConflict: 'user_id, movie_id' });
-  if (error) throw createAppError(ERROR_CODES.DATABASE, "No se pudo guardar tu acción.", error);
 }
 
 // --- SUGERENCIAS (AUTOCOMPLETE) ---

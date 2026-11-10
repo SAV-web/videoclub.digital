@@ -63,8 +63,8 @@ function getCollectionTemplate(): HTMLTemplateElement | null {
 const mobileQuery = typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)") : null;
 const isMobileViewport = (): boolean => mobileQuery ? mobileQuery.matches : false;
 
-export const MAX_PREFETCH_LINKS = 4;
-export const HOVER_DELAY = 1000;
+const MAX_PREFETCH_LINKS = 4;
+const HOVER_DELAY = 1000;
 export const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
 
 export async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
@@ -132,7 +132,7 @@ export function unflipAllCards(): void {
   }
 }
 
-export function handleDocumentClick(e: MouseEvent): void {
+function handleDocumentClick(e: MouseEvent): void {
   const target = e.target as HTMLElement;
   const flipped = getFlippedCard();
   if (flipped && !flipped.contains(target)) {
@@ -190,7 +190,7 @@ export function prefetchImageUrl(url: string | null | undefined): void {
   preloadedLinkElements.push(link);
 }
 
-export function prefetchCardResources(card: MovieCardElement): void {
+function prefetchCardResources(card: MovieCardElement): void {
   if (card.dataset.prefetched) return;
   card.dataset.prefetched = "true";
 
@@ -786,7 +786,7 @@ export function updateCardUI(card: MovieCardElement): void {
   updateRatingUI(card, userData);
 }
 
-export function initializeCard(card: MovieCardElement): void {
+export function initializeCard(_card?: MovieCardElement): void {
   // Las interacciones de clic y puntuación están 100% delegadas a nivel de contenedor
   // (#grid-container y #quick-view-content), por lo que las tarjetas no requieren listeners individuales.
 }
@@ -939,10 +939,10 @@ export function createPersonCardElement(person: PersonDetails): DocumentFragment
   return clone;
 }
 
-export function createGroupCardElement(
+function createGroupCardElement(
   kind: 'collection' | 'studio',
   code: string,
-  totalMovies: number = 0,
+  _totalMovies: number = 0,
   thumbhash_st?: string | null
 ): DocumentFragment {
   const template = getCollectionTemplate();
@@ -1000,10 +1000,10 @@ export function createGroupCardElement(
   return clone;
 }
 
-export function createCollectionCardElement(selectionCode: string, totalMovies: number = 0, thumbhash_st?: string | null): DocumentFragment {
-  return createGroupCardElement('collection', selectionCode, totalMovies, thumbhash_st);
+export function createCollectionCardElement(selectionCode: string, _totalMovies: number = 0, thumbhash_st?: string | null): DocumentFragment {
+  return createGroupCardElement('collection', selectionCode, _totalMovies, thumbhash_st);
 }
 
-export function createStudioCardElement(studioCode: string, totalMovies: number = 0, thumbhash_st?: string | null): DocumentFragment {
-  return createGroupCardElement('studio', studioCode, totalMovies, thumbhash_st);
+export function createStudioCardElement(studioCode: string, _totalMovies: number = 0, thumbhash_st?: string | null): DocumentFragment {
+  return createGroupCardElement('studio', studioCode, _totalMovies, thumbhash_st);
 }

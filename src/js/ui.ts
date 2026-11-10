@@ -16,7 +16,7 @@ import { ensureLegalModalMounted } from "./templates/legalModal.js";
 // --- Referencias DOM (Lazy Getter con Caché) ---
 const domCache: Record<string, HTMLElement> = {};
 
-export interface DomElements {
+interface DomElements {
   gridContainer: HTMLElement | null;
   paginationContainer: HTMLElement | null;
   searchForm: HTMLFormElement | null;
@@ -133,7 +133,7 @@ export function clearToast(): void {
   lastToastTime = 0;
 }
 
-export interface ToastAction {
+interface ToastAction {
   label: string;
   onClick: () => void;
 }
@@ -231,10 +231,10 @@ export async function updateAppBadge(): Promise<void> {
 
   try {
     const count = getWatchlistCount();
-    if (count > 0) {
-      await (navigator as any).setAppBadge(count);
-    } else {
-      await (navigator as any).clearAppBadge();
+    if (count > 0 && typeof navigator.setAppBadge === "function") {
+      await navigator.setAppBadge(count);
+    } else if (typeof navigator.clearAppBadge === "function") {
+      await navigator.clearAppBadge();
     }
   } catch (err) {
     if (import.meta.env.DEV) {
@@ -250,7 +250,9 @@ export async function clearAppBadge(): Promise<void> {
   if (typeof navigator === "undefined" || !("clearAppBadge" in navigator)) return;
 
   try {
-    await (navigator as any).clearAppBadge();
+    if (typeof navigator.clearAppBadge === "function") {
+      await navigator.clearAppBadge();
+    }
   } catch (err) {
     if (import.meta.env.DEV) {
       console.warn("[Badging API] Error al limpiar insignia:", err);
@@ -692,7 +694,7 @@ export const isLegalModalOpen = (): boolean => {
   return Boolean(dom.legalModal && !dom.legalModal.hidden);
 };
 
-export function switchLegalTab(tabName: string): void {
+function switchLegalTab(tabName: string): void {
   const modal = dom.legalModal;
   if (!modal) return;
 
@@ -886,7 +888,7 @@ function shouldShowTotalCount(): boolean {
   return true;
 }
 
-export function updateLandingHeroVisibility(): void {
+function updateLandingHeroVisibility(): void {
   const hero = document.getElementById("landing-hero");
   if (!hero) return;
 

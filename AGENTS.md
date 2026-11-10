@@ -84,7 +84,7 @@ Para optimizar el uso de tokens y tiempos de respuesta, se debe seguir estrictam
 ·   Compilaciones desacopladas: Evita disparar scripts pesados no relacionados (ej. no ejecutar generadores de manifiestos VIP de base de datos para validar un ajuste de CSS/SSR).
 ·   Fast-Path Commit (3 segundos): Cuando el usuario ordene "sube los cambios" o "commit":
     1. Cero scripts pesados de red (`prepare:worker`): Se reserva exclusivamente para despliegues a producción en Cloudflare (`npm run deploy:worker`) o cuando se modifiquen expresamente las entidades VIP.
-    2. Cero suite completa (`npm run test`): Los 205 tests se delegan a GitHub Actions (CI) en la nube. En local solo se ejecuta el chequeo ultrarrápido de tipos (`npx tsc --noEmit`, 1 segundo) y, si aplica, el test unitario específico del archivo modificado.
+    2. Cero suite completa (`npm run test`): La suite completa de pruebas se delega a GitHub Actions (CI) en la nube. En local solo se ejecuta el chequeo ultrarrápido de tipos (`npx tsc --noEmit`, 1 segundo) y, si aplica, el test unitario específico del archivo modificado.
     3. Encadenamiento atómico: Ejecutar `git add -A && git commit -m "..." && git push` en un solo comando rápido.
     4. Respuesta ultra-concisa: Confirmar hash de commit y rama en pocas líneas sin resúmenes redundantes.
 

@@ -5,7 +5,7 @@
 // Aviso Legal, Privacidad, Cookies) reduciendo el documento principal en ~14 KB.
 // =================================================================
 
-export const LEGAL_MODAL_HTML = `
+const LEGAL_MODAL_HTML = `
   <div id="legal-overlay" class="legal-overlay" hidden aria-hidden="true"></div>
   <div id="legal-modal" class="legal-modal" role="dialog" aria-modal="true" hidden aria-labelledby="legal-modal-title"
     tabindex="-1">

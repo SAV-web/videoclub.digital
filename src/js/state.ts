@@ -28,7 +28,7 @@ import {
 } from "./contracts.js";
 import { ActiveFilters, UserMovieEntry } from "./types.js";
 
-export interface AppState {
+interface AppState {
   currentPage: number;
   totalMovies: number;
   activeFilters: ActiveFilters;
@@ -153,7 +153,7 @@ let state = makeReactive<AppState>({
 //          TRADUCTOR DE URL (Para poder compartir enlaces)
 // =================================================================
 
-export const URL_PARAM_MAP: Record<string, keyof ActiveFilters | "page"> = {
+const URL_PARAM_MAP: Record<string, keyof ActiveFilters | "page"> = {
   search: "searchTerm",
   year: "year",
   sort: "sort",
@@ -164,7 +164,7 @@ export const URL_PARAM_MAP: Record<string, keyof ActiveFilters | "page"> = {
   list: "myList"
 };
 
-export const REVERSE_URL_PARAM_MAP = Object.fromEntries(
+const REVERSE_URL_PARAM_MAP = Object.fromEntries(
   Object.entries(URL_PARAM_MAP).map(([key, value]) => [value, key])
 ) as Record<keyof ActiveFilters | "page", string>;
 
@@ -177,7 +177,7 @@ export function stateToPrettyUrl(activeFilters: ActiveFilters, currentPage: numb
 }
 
 // Convierte los filtros no posicionales en parámetros para la query string
-export function stateToUrlParams(activeFilters: ActiveFilters, currentPage: number): URLSearchParams {
+function stateToUrlParams(activeFilters: ActiveFilters, currentPage: number): URLSearchParams {
   const params = new URLSearchParams();
 
   Object.entries(activeFilters).forEach(([key, value]) => {
@@ -297,11 +297,6 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   }
 }
 
-// Helper para sincronizar sólo desde query string
-export function syncStateWithUrlParams(queryString: string): void {
-  syncStateWithUrl(typeof window !== "undefined" ? window.location.pathname : "/", queryString);
-}
-
 /**
  * canonicalizeCurrentUrl()
  * ─────────────────────────────────────────────────────────────────────────────
@@ -419,7 +414,7 @@ export const setSort = (sort: unknown): void => { state.activeFilters.sort = nor
 export const setMediaType = (type: unknown): void => { state.activeFilters.mediaType = normalizeMediaType(type); state.totalMovies = 0; };
 
 // Aplica un filtro (ej: país = 'España')
-export function setFilter(type: string, value: unknown, force: boolean = false): boolean {
+export function setFilter(type: string, value: unknown, _force: boolean = false): boolean {
   if (!(type in state.activeFilters)) return false;
   const normalizedValue = normalizeFilterValue(type, value);
   if (normalizedValue === undefined) return false;

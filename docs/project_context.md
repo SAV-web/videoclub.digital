@@ -16,7 +16,7 @@ El sistema fusiona una Single Page Application (SPA) reactiva y *Local-First* co
 | **Edge & Proxy** | Cloudflare Workers, Cloudflare Cache API, Service Worker perimetral (*Stale-While-Revalidate* e invalidación versionada). |
 | **Backend & Datos** | Supabase (PostgreSQL 15+), funciones RPC optimizadas en PL/pgSQL, vistas materializadas, Row Level Security (RLS), Supabase Storage. |
 | **Almacenamiento Local** | IndexedDB nativo (*Local-First Storage*) para calificaciones, estados de seguimiento (*watchlist*) y notas personales con sincronización SWR en segundo plano. |
-| **Testing & Calidad** | Node.js Test Runner nativo (205 tests concurrentes sin dependencias pesadas), TypeScript Type Checking estricto (`tsc --noEmit`). |
+| **Testing & Calidad** | Node.js Test Runner nativo (suite completa de pruebas unitarias y de integración sin dependencias pesadas), TypeScript Type Checking estricto (`tsc --noEmit`). |
 
 ---
 
@@ -80,7 +80,7 @@ El sistema fusiona una Single Page Application (SPA) reactiva y *Local-First* co
 
 ### Funciones RPC Críticas
 1. **`search_movies_offset`**: Motor de filtrado y ordenación principal:
-   - **Showcase Determinista Diario:** Barajado pseudoaleatorio basado en semilla de fecha (`hashtext(seed || movie_id)`) que cambia diariamente a medianoche UTC preservando estabilidad de paginación.
+   - **Showcase Determinista Diario:** Barajado pseudoaleatorio basado en semilla de fecha (`hashtext(id || fecha)`) que cambia diariamente a medianoche hora peninsular española (`Europe/Madrid`) preservando estabilidad de paginación.
    - **Fast-Path de Portada Limpia:** Detección de navegación inicial sin filtros para resolver el total de catálogo mediante *Index-Only Scan* en ~2 ms.
    - **Conteo Desacoplado (`get_count`):** Parámetro booleano que permite devolver las tarjetas inmediatamente y calcular el total en una petición en segundo plano no bloqueante.
 2. **`process_staging_data`**: Pipeline ETL de ingesta de creadores y películas: deduplicación canónica insensible a mayúsculas y acentos (`unaccent_immutable`), casteo seguro de países e identificación de condición VIP.
@@ -120,12 +120,12 @@ Para optimizar recursos y tiempos de ejecución durante el mantenimiento continu
 2. **Edición Quirúrgica:** Modificación atómica exclusiva de las líneas responsables del problema, sin reformateos ni efectos colaterales en módulos adyacentes.
 3. **Validación Mínima Suficiente (*Targeted Testing & Builds*):**
    - **Zero Chrome DevTools proactivo:** El servidor local de Vite actualiza la pantalla del usuario en tiempo real vía HMR. Prohibido abrir navegadores headless de forma automática salvo petición explícita de auditoría.
-   - **Tests focalizados:** Ejecución exclusiva del test unitario específico del archivo modificado (ej. `node --test tests/card.test.mjs`). La suite completa de 219 tests se delega a la integración continua (CI) en GitHub Actions.
+   - **Tests focalizados:** Ejecución exclusiva del test unitario específico del archivo modificado (ej. `node --test tests/card.test.mjs`). La suite completa de pruebas unitarias y de integración se delega a la integración continua (CI) en GitHub Actions.
    - **Fast-Path Commit:** En órdenes de subida o commit, validación de tipos ultra-rápida (`npx tsc --noEmit`, ~1s) y encadenamiento atómico inmediato (`git add -A && git commit -m "..." && git push`).
 
 ---
 
 ## 📜 Memoria Histórica y Registro de Hitos
 
-El registro pormenorizado de los **61 hitos de ingeniería y refactorizaciones técnicas** ejecutados en el proyecto se encuentra preservado íntegramente en:
-👉 [**`docs/archive/CHANGELOG_MILESTONES.md`**](file:///docs/archive/CHANGELOG_MILESTONES.md)
+El registro pormenorizado de los **82 hitos de ingeniería y refactorizaciones técnicas** ejecutados en el proyecto se encuentra preservado íntegramente en:
+👉 [**`docs/archive/CHANGELOG_MILESTONES.md`**](./archive/CHANGELOG_MILESTONES.md)

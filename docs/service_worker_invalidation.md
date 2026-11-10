@@ -72,6 +72,21 @@ Antes de desplegar:
  - **Aislamiento de Origen Cruzado (*Cross-World Mismatch*)**: El Service Worker restringe sus reglas de almacenamiento dinámico estrictamente a `url.origin === self.location.origin`. Esto previene que recursos externos (como la fuente Inter alojada en Supabase Storage o scripts de terceros) sean interceptados indebidamente, eliminando advertencias de discrepancia con `<link rel="preload">`.
  - **Exclusión de Peticiones no Idempotentes / Seguras**: `Auth` y `REST/RPC` directo quedan fuera de la caché del Service Worker; mantener esta excepción es obligatorio para evitar fugas, estados privados obsoletos y respetar la especificación W3C (métodos no-GET).
  
-## 8. Relación con Otras Cachés
+## 8. Relación con Otras Cachés y Mecanismos de Persistencia
 
-`CONFIG.STORAGE_VERSION` en `src/js/constants.ts` afecta a `localStorage` gestionado por `LocalStore`, no a Cache Storage del Service Worker. Si cambia el formato de datos locales y también la respuesta cacheada por SW, deben incrementarse ambos mecanismos cuando corresponda.
+El sistema diferencia tres niveles independientes de versionado de almacenamiento en cliente:
+
+1. **Service Worker Cache Storage (`VERSION = "vYYYYMMDDHHMM"` en `public/sw.js` y `dist/sw.js`):**
+   - Gobierna los assets estáticos del App Shell y las peticiones dinámicas de red en la Cache API del navegador.
+
+2. **Almacén LocalStorage (`CONFIG.STORAGE_VERSION = 1` en `src/shared/constants.ts`):**
+   - Gestionado por la clase envoltorio `LocalStore` en `src/js/utils.ts`.
+   - Almacena preferencias simples y efímeras de interfaz (filtros seleccionados, tema claro/oscuro, contadores de onboarding).
+   - No impacta ni en Cache Storage ni en IndexedDB.
+
+3. **Almacén IndexedDB Local-First (`LOCAL_DB_VERSION = 2` en `src/js/localStore.ts`):**
+   - Gestiona la base de datos transaccional `videoclub_local_db` (`user_entries`, `sync_queue`, `cached_movies`).
+   - Posee su propio ciclo de vida e invalidación independiente.
+   - **Checklist crítico:** Si se altera el esquema de los almacenes (*object stores*), índices o formato de las entidades en IndexedDB, es **obligatorio incrementar `LOCAL_DB_VERSION`** para disparar el evento `onupgradeneeded` en `indexedDB.open()`.
+
+Si un cambio arquitectónico afecta simultáneamente a los datos locales y a los assets cacheados por el Service Worker, deben incrementarse sus respectivas versiones de forma coordinada.
