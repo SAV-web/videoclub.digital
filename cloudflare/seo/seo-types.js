@@ -13,8 +13,6 @@
 import {
   POSTER_BASE_URL,
   STUDIO_DATA,
-  OFFICIAL_GENRES,
-  MIN_STAR_THRESHOLD,
 } from "../../src/shared/constants.js";
 
 import {
@@ -22,6 +20,7 @@ import {
   GENRE_SLUG_MAP,
   GENRE_SYNONYMS,
   genreToSlug,
+  OFFICIAL_GENRES,
 } from "../../src/shared/slugs.js";
 
 import {
@@ -37,6 +36,7 @@ import {
   getPosterUrl,
   sanitizeExternalUrl,
   computePersonAgeInfo,
+  MIN_STAR_THRESHOLD,
 } from "../../src/shared/formatters.js";
 
 export {
