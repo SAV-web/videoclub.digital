@@ -20,7 +20,7 @@
   - Notificaciones informativas automáticas al conmutar filtros de persona excluyendo categorías previas incompatibles.
   - Píldoras dinámicas de exclusión (ej. `(NO España) x`).
 - ⚡ **Rendimiento Extraordinario (PWA Mobile-First)**:
-  - Carga masiva en la cuadrícula por lotes priorizados (`yieldToMain`) y resolución de plantillas mediante *Lazy Getters* a prueba de arranques en frío (*cold boots*).
+  - Carga progresiva en la cuadrícula y resolución de plantillas mediante *Lazy Getters* a prueba de arranques en frío (*cold boots*).
   - Micro-animaciones de elevación primaveral en todas las tarjetas al pasar el ratón, con supresión de recuadro en fichas VIP.
   - Animaciones de portada fluidas con **View Transitions API** nativa.
   - Caché inteligente en memoria LRU multiescala con deduplicación de peticiones en vuelo y reintentos automáticos progresivos (*backoff*) ante arranques en frío (*cold-starts*).

@@ -4,7 +4,63 @@
  * =================================================================
  * Funciones puras de formateo, proyección de base de datos y utilidades
  * de seguridad para el renderer SEO en Edge.
+ *
+ * RE-EXPORTACIÓN DE SSOT:
+ * Centraliza la lógica compartida importando directamente de src/shared/
+ * para garantizar paridad absoluta entre la SPA y el Edge Renderer.
  */
+
+import {
+  POSTER_BASE_URL,
+  STUDIO_DATA,
+  OFFICIAL_GENRES,
+  MIN_STAR_THRESHOLD,
+} from "../../src/shared/constants.js";
+
+import {
+  toSlug,
+  GENRE_SLUG_MAP,
+  GENRE_SYNONYMS,
+  genreToSlug,
+} from "../../src/shared/slugs.js";
+
+import {
+  parseList,
+  isSeriesType,
+  formatRuntime,
+  formatModalDuration,
+  formatYear,
+  getTitleLengthClass,
+  calculateAverageStars,
+  formatVotesUnified,
+  preserveHyphenatedWords,
+  getPosterUrl,
+  sanitizeExternalUrl,
+  computePersonAgeInfo,
+} from "../../src/shared/formatters.js";
+
+export {
+  POSTER_BASE_URL,
+  STUDIO_DATA,
+  OFFICIAL_GENRES,
+  MIN_STAR_THRESHOLD,
+  toSlug,
+  GENRE_SLUG_MAP,
+  GENRE_SYNONYMS,
+  genreToSlug,
+  parseList,
+  isSeriesType,
+  formatRuntime,
+  formatModalDuration,
+  formatYear,
+  getTitleLengthClass,
+  calculateAverageStars,
+  formatVotesUnified,
+  preserveHyphenatedWords,
+  getPosterUrl,
+  sanitizeExternalUrl,
+  computePersonAgeInfo,
+};
 
 export const MOVIE_PROJECTION = [
   'id',
@@ -34,89 +90,6 @@ export const MOVIE_PROJECTION = [
   'countries(name, code)',
 ].join(', ');
 
-export const POSTER_BASE_URL = "/posters/";
-
-export const STUDIO_DATA = {
-  netflix: { id: "icon-netflix", class: "netflix-icon", title: "Netflix", w: 20, h: 20 },
-  disney: { id: "icon-disney", class: "disney-icon", title: "Disney", w: 20, h: 20 },
-  warner: { id: "icon-wb", class: "wb-icon", title: "Warner Bros.", w: 20, h: 20 },
-  universal: { id: "icon-universal", class: "universal-icon", title: "Universal", w: 20, h: 20 },
-  sony: { id: "icon-sony", class: "sony-icon", title: "Sony-Columbia", w: 20, h: 20 },
-  paramount: { id: "icon-paramount", class: "paramount-icon", title: "Paramount", w: 20, h: 20 },
-  lionsgate: { id: "icon-lionsgate", class: "lionsgate-icon", title: "Lionsgate", w: 20, h: 20 },
-  amazon: { id: "icon-amazon", class: "amazon-icon", title: "Amazon MGM", w: 20, h: 20 },
-  fox: { id: "icon-twenty", class: "twenty-icon", title: "20th Century Fox", w: 20, h: 20 },
-  a24: { id: "icon-a24", class: "a24-icon", title: "A24", w: 20, h: 20 },
-  movistar: { id: "icon-movistar", class: "movistar-icon", title: "Movistar", w: 20, h: 20 },
-  miramax: { id: "icon-miramax", class: "miramax-icon", title: "Miramax", w: 20, h: 20 },
-  apple: { id: "icon-apple", class: "apple-icon", title: "Apple TV", w: 20, h: 20 },
-  canalplus: { id: "icon-canalplus", class: "canalplus-icon", title: "StudioCanal", w: 20, h: 20 },
-  bbc: { id: "icon-bbc", class: "bbc-icon", title: "BBC", w: 20, h: 20 }
-};
-
-export const OFFICIAL_GENRES = [
-  "Acción", "Animación", "Aventuras", "Bélico", "Biografía", "Noir",
-  "Comedia", "Crimen", "Deporte", "Documental", "Drama", "Familiar",
-  "Fantasía", "Histórico", "Intriga", "Música", "Romance", "Sci-Fi",
-  "Terror", "Thriller", "Western"
-];
-
-export function toSlug(text) {
-  if (!text) return "";
-  return text
-    .toLowerCase()
-    .replace(/[’‘`]/g, "'")
-    .replace(/[øØ]/g, "o")
-    .replace(/[æÆ]/g, "ae")
-    .replace(/[œŒ]/g, "oe")
-    .replace(/[ß]/g, "ss")
-    .replace(/[ðÐ]/g, "d")
-    .replace(/[þÞ]/g, "th")
-    .replace(/[łŁ]/g, "l")
-    .replace(/[đĐ]/g, "d")
-    .replace(/[ħĦ]/g, "h")
-    .replace(/[ŋŊ]/g, "n")
-    .replace(/[ıI]/g, "i")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-export const GENRE_SLUG_MAP = Object.fromEntries(
-  OFFICIAL_GENRES.map(g => [toSlug(g), g])
-);
-
-export const GENRE_SYNONYMS = {
-  "historia": "historico",
-  "ciencia-ficcion": "sci-fi",
-  "scifi": "sci-fi",
-  "sci-fi": "sci-fi",
-  "cine-negro": "noir",
-  "film-noir": "noir",
-  "belica": "belico",
-  "guerra": "belico",
-  "musical": "musica",
-  "infantil": "familiar",
-  "biografico": "biografia",
-  "biografica": "biografia",
-  "aventura": "aventuras",
-  "misterio": "intriga",
-  "suspense": "intriga",
-  "romantica": "romance",
-  "romantico": "romance"
-};
-
-export function genreToSlug(name) {
-  if (!name) return null;
-  const s = toSlug(name);
-  if (GENRE_SLUG_MAP[s]) return s;
-  if (GENRE_SYNONYMS[s] && GENRE_SLUG_MAP[GENRE_SYNONYMS[s]]) {
-    return GENRE_SYNONYMS[s];
-  }
-  return null;
-}
-
 export function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -129,92 +102,6 @@ export function escapeHtml(str) {
 
 export function escapeAttr(str) {
   return escapeHtml(str);
-}
-
-export function parseList(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) return value.map(s => String(s).trim()).filter(Boolean);
-  return String(value)
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean);
-}
-
-export function isSeriesType(type) {
-  return Boolean(type && String(type).trim().toLowerCase().startsWith('s'));
-}
-
-export function formatRuntime(minutes, isSeries = false) {
-  const num = typeof minutes === 'number' ? minutes : parseInt(String(minutes || 0), 10);
-  if (!num || isNaN(num) || num <= 0) {
-    return isSeries ? 'Serie TV' : 'Película';
-  }
-  if (isSeries) {
-    return `${num}′`;
-  }
-  const hrs = Math.floor(num / 60);
-  const mins = num % 60;
-  if (hrs === 0) return `${mins} m`;
-  if (mins === 0) return `${hrs} h`;
-  return `${hrs} h ${mins} m`;
-}
-
-export function formatModalDuration(minutes, episodes, isSeries = false) {
-  const numMinutes = typeof minutes === 'number' ? minutes : parseInt(String(minutes || 0), 10);
-  const numEpisodes = typeof episodes === 'number' ? episodes : parseInt(String(episodes || 0), 10);
-
-  if (isSeries) {
-    const hasEpisodes = !isNaN(numEpisodes) && numEpisodes > 0;
-    const hasMinutes = !isNaN(numMinutes) && numMinutes > 0;
-
-    if (hasEpisodes && hasMinutes) {
-      return {
-        episodesText: `${numEpisodes} ep. x`,
-        durationText: `${numMinutes} min.`
-      };
-    }
-    if (hasEpisodes) {
-      return {
-        episodesText: `${numEpisodes} ep.`,
-        durationText: ''
-      };
-    }
-    if (hasMinutes) {
-      return {
-        episodesText: '',
-        durationText: `${numMinutes} min.`
-      };
-    }
-    return {
-      episodesText: '',
-      durationText: 'Serie TV'
-    };
-  }
-
-  // Películas
-  if (!numMinutes || isNaN(numMinutes) || numMinutes <= 0) {
-    return {
-      episodesText: '',
-      durationText: 'Película'
-    };
-  }
-
-  const hrs = Math.floor(numMinutes / 60);
-  const mins = numMinutes % 60;
-
-  let durationText = '';
-  if (hrs === 0) {
-    durationText = `${mins} min.`;
-  } else if (mins === 0) {
-    durationText = `${hrs} h.`;
-  } else {
-    durationText = `${hrs} h. ${mins} min.`;
-  }
-
-  return {
-    episodesText: '',
-    durationText
-  };
 }
 
 /**
@@ -238,162 +125,4 @@ export function formatMetaUnitsHtml(text) {
     result += escapeHtml(text.substring(lastIndex));
   }
   return result;
-}
-
-
-export function formatYear(year, yearEnd, isSeries = false, fallback = '', type = '') {
-  if (!year) return fallback;
-  const text = String(year);
-  const typeUpper = (type || '').toUpperCase().trim();
-  const isMini = typeUpper === 'SM' || typeUpper === 'SAM' || typeUpper === 'SDM' || String(yearEnd).trim().toUpperCase() === 'M';
-  const isOngoing = (typeUpper.startsWith('S') && typeUpper.endsWith('-')) || String(yearEnd).trim().toLowerCase() === 'current' || String(yearEnd).trim().toLowerCase() === 'present' || String(yearEnd).trim().toLowerCase() === 'actualidad' || String(yearEnd).trim() === '-';
-
-  if (isSeries) {
-    if (isOngoing) return `${text}-`;
-    if (yearEnd && String(yearEnd).trim() !== 'M' && String(yearEnd).trim() !== '') {
-      const normEnd = String(yearEnd).trim();
-      const startNum = Number.parseInt(text, 10);
-      let endNum = Number.parseInt(normEnd, 10);
-      if (normEnd.length <= 2 && Number.isFinite(endNum)) {
-        endNum = endNum < 50 ? 2000 + endNum : 1900 + endNum;
-      }
-      const isCenturyChange = Number.isFinite(startNum) && Number.isFinite(endNum) && startNum < 2000 && endNum >= 2000;
-      const endSuffix = normEnd.length === 4 ? normEnd.slice(-2) : normEnd;
-      const formatted = isCenturyChange ? `${text}-'${endSuffix}` : `${text}-${endSuffix}`;
-      return isMini ? `${formatted}\u00A0(M)` : formatted;
-    }
-    if (isMini) return `${text}\u00A0(M)`;
-  }
-  return text;
-}
-
-export function getTitleLengthClass(title) {
-  if (!title) return '';
-  const len = title.length;
-  if (len > 70) return 'title-xxxl-long';
-  if (len > 50) return 'title-xxl-long';
-  if (len > 35) return 'title-xl-long';
-  if (len > 25) return 'title-long';
-  if (len > 15) return 'title-medium';
-  return '';
-}
-
-export const MIN_STAR_THRESHOLD = 5.5;
-
-export function calculateAverageStars(averageRating) {
-  if (averageRating === null || averageRating === undefined || averageRating <= MIN_STAR_THRESHOLD) return 0;
-  if (averageRating >= 9) return 3;
-  return ((averageRating - MIN_STAR_THRESHOLD) / 3.5) * 3;
-}
-
-export function formatVotesUnified(votes) {
-  if (votes === null || votes === undefined || votes === '') return '';
-  const numVotes = typeof votes === 'number' ? votes : parseInt(String(votes).replace(/\D/g, ''), 10);
-  if (!numVotes || isNaN(numVotes) || numVotes <= 0) return '';
-
-  if (numVotes >= 1000000) {
-    const roundedThousand = Math.round(numVotes / 1000) * 1000;
-    const millions = Math.round(roundedThousand / 10000) / 100;
-    const formatted = String(millions).replace('.', ',');
-    return `${formatted} M`;
-  }
-  if (numVotes >= 100000) {
-    const k = Math.round(numVotes / 1000);
-    if (k >= 1000) return '1 M';
-    return `${k} k`;
-  }
-  if (numVotes >= 10000) {
-    const rounded = Math.round(numVotes / 500) * 500;
-    if (rounded >= 100000) return `${rounded / 1000} k`;
-    return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  }
-  if (numVotes >= 1000) {
-    const rounded = Math.round(numVotes / 100) * 100;
-    return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  }
-  if (numVotes >= 100) {
-    const rounded = Math.round(numVotes / 50) * 50;
-    return String(rounded);
-  }
-  return '100';
-}
-
-export function preserveHyphenatedWords(text) {
-  if (!text) return '';
-  const sanitized = text.replace(/\s+([,.:;!?])/g, '$1');
-  return sanitized.replace(/([a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])-(?=[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9])/g, '$1\u2011');
-}
-
-export function getPosterUrl(movie) {
-  if (!movie || !movie.slug) return '';
-  return `${POSTER_BASE_URL}${movie.slug}.avif`;
-}
-
-/**
- * Sanitiza una URL externa asegurando que utilice exclusivamente el protocolo seguro HTTPS (https://).
- * Bloquea esquemas inseguros (http://) y peligrosos (`javascript:`, `data:`, `vbscript:`, etc.).
- */
-export function sanitizeExternalUrl(url) {
-  if (!url || typeof url !== 'string') return null;
-  const trimmed = url.trim();
-  if (!trimmed) return null;
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.protocol === 'https:') {
-      return parsed.href;
-    }
-  } catch (_) {
-    // Si no es una URL absoluta válida con protocolo, se descarta
-  }
-
-  return null;
-}
-
-/**
- * Calcula la información cronológica y edad de personas (vivas o fallecidas).
- */
-export function computePersonAgeInfo(birthday, deathday) {
-  if (!birthday) {
-    return { bYear: '', dYear: '', datesStr: '', ageStr: '' };
-  }
-
-  const birthDate = new Date(birthday);
-  if (isNaN(birthDate.getTime())) {
-    return { bYear: '', dYear: '', datesStr: '', ageStr: '' };
-  }
-
-  const bYear = String(birthDate.getUTCFullYear());
-  let dYear = '';
-  let age = 0;
-  let isDeceased = false;
-
-  if (deathday) {
-    const deathDate = new Date(deathday);
-    if (!isNaN(deathDate.getTime())) {
-      dYear = String(deathDate.getUTCFullYear());
-      isDeceased = true;
-      let diff = deathDate.getUTCFullYear() - birthDate.getUTCFullYear();
-      const m = deathDate.getUTCMonth() - birthDate.getUTCMonth();
-      if (m < 0 || (m === 0 && deathDate.getUTCDate() < birthDate.getUTCDate())) {
-        diff--;
-      }
-      age = diff;
-    }
-  }
-
-  if (!isDeceased) {
-    const now = new Date();
-    let diff = now.getUTCFullYear() - birthDate.getUTCFullYear();
-    const m = now.getUTCMonth() - birthDate.getUTCMonth();
-    if (m < 0 || (m === 0 && now.getUTCDate() < birthDate.getUTCDate())) {
-      diff--;
-    }
-    age = diff;
-  }
-
-  const datesStr = isDeceased ? `${bYear}-${dYear}` : `${bYear}-`;
-  const ageStr = isDeceased ? `✝ (${age})` : `(${age})`;
-
-  return { bYear, dYear, datesStr, ageStr };
 }

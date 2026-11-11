@@ -182,9 +182,9 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
 
 // Aplica un filtro específico preservando las categorías activas (Años, Selección, Estudio, País)
 // pero respetando la exclusividad de Director/Actor (las personas son incompatibles con cualquier otra categoría)
-function handleFilterApply(data: { type: string; value: unknown; force?: boolean }): void {
+function handleFilterApply(data: { type: string; value: unknown }): void {
   clearToast();
-  const { type, value, force = true } = data;
+  const { type, value } = data;
   if (!type || value === undefined) return;
 
   const currentFilters = getActiveFilters();
@@ -211,7 +211,7 @@ function handleFilterApply(data: { type: string; value: unknown; force?: boolean
     updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
   }
 
-  setFilter(type, value, force);
+  setFilter(type, value);
 
   updateMobileStatusBar();
   appEvents.emit("updateSidebarUI");

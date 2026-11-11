@@ -322,7 +322,7 @@ export async function handleFilterChangeOptimistic(type: string, value: string |
     resetFiltersState();
     setSort(currentSort);
     updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
-    setFilter(type, value, true);
+    setFilter(type, value);
     setFilter('myList', null);
 
     appEvents.emit("updateSidebarUI");
@@ -377,8 +377,8 @@ export async function handleFilterChangeOptimistic(type: string, value: string |
     setFilter('studio', previousFilters.studio);
     setFilter('actor', previousFilters.actor);
     setFilter('director', previousFilters.director);
-    setFilter('excludedCountries', previousFilters.excludedCountries, true);
-    setFilter('excludedGenres', previousFilters.excludedGenres, true);
+    setFilter('excludedCountries', previousFilters.excludedCountries);
+    setFilter('excludedGenres', previousFilters.excludedGenres);
     setFilter(type, previousFilters[type as keyof ActiveFilters]);
     renderFilterPills();
   }

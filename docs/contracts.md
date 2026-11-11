@@ -46,7 +46,7 @@ $$\text{https://videoclub.digital/}\{\text{persona}\}\text{/}\{\text{género}\}\
 1. **Lectura Agnóstica al Orden (`parsePrettyPath`):**
    Los segmentos de ruta no exigen posiciones fijas. Cada segmento se contrasta contra los diccionarios cerrados del SSOT (`GENRE_SLUG_MAP`, `COUNTRY_SLUG_MAP`, `STUDIO_SLUGS`, `SELECTION_SLUGS`). Las rutas `/eeuu/drama/` y `/drama/eeuu/` son semánticamente equivalentes.
 2. **Parámetros de Búsqueda y Alias Soportados:**
-   - `year`: Rango numérico (`"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"`), acotado a `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]` (`1900-2026`).
+   - `year`: Rango numérico (`"1995"`, `"1990-2005"`, `"2011-"`, `"-1970"`), acotado a `[CONFIG.YEAR_MIN, CONFIG.YEAR_MAX]` (ej. 1900 a año en curso).
      - *Distinción de contrato:* `CONFIG.YEAR_MIN = 1900` acota la barra deslizadora y filtros URL para optimizar la ergonomía de navegación comercial; la prueba de integridad de datos en PostgreSQL (`movies_year_range_valid`) admite desde 1888 (*Roundhay Garden Scene*) hasta 2100 para preservar obras pioneras del cine sin truncar la base de datos.
    - `sort` (alias `orden`): Slugs amigables (`recientes`, `antiguas`, `nota-fa`, `nota-imdb`, `votos-fa`, `votos-imdb`) o crudos (`year,desc`...). Si es desconocido, cae a `relevance,asc`.
    - `search` (alias `buscar`, `q`): Cadena de texto libre normalizada con `.trim()`.

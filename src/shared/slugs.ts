@@ -54,13 +54,40 @@ export const GENRE_SLUG_MAP: Record<string, string> = Object.fromEntries(
 );
 
 /**
+ * Sinónimos y variantes ortográficas comunes de géneros mapeados a su slug canónico.
+ */
+export const GENRE_SYNONYMS: Record<string, string> = {
+  "historia": "historico",
+  "ciencia-ficcion": "sci-fi",
+  "scifi": "sci-fi",
+  "sci-fi": "sci-fi",
+  "cine-negro": "noir",
+  "film-noir": "noir",
+  "belica": "belico",
+  "guerra": "belico",
+  "musical": "musica",
+  "infantil": "familiar",
+  "biografico": "biografia",
+  "biografica": "biografia",
+  "aventura": "aventuras",
+  "misterio": "intriga",
+  "suspense": "intriga",
+  "romantica": "romance",
+  "romantico": "romance"
+};
+
+/**
  * Convierte el nombre de un género a su slug canónico registrado en GENRE_SLUG_MAP.
- * Si el valor no está en la lista blanca de los 21 géneros oficiales, devuelve null.
+ * Si el valor no está en la lista blanca de los 21 géneros oficiales (o sus sinónimos), devuelve null.
  */
 export function genreToSlug(genre: string | null | undefined): string | null {
   if (!genre) return null;
   const slug = toSlug(genre);
-  return GENRE_SLUG_MAP[slug] ? slug : null;
+  if (GENRE_SLUG_MAP[slug]) return slug;
+  if (GENRE_SYNONYMS[slug] && GENRE_SLUG_MAP[GENRE_SYNONYMS[slug]]) {
+    return GENRE_SYNONYMS[slug];
+  }
+  return null;
 }
 
 /**

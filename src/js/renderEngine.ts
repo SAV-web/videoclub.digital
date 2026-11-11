@@ -125,7 +125,7 @@ function syncPersonFilterName(
   const cleanDb = toSlug(personData.name).replace(/-/g, "");
   const cleanFilter = toSlug(vipName).replace(/-/g, "");
   if (cleanDb === cleanFilter) {
-    setFilter(vipType, personData.name, true);
+    setFilter(vipType, personData.name);
     updatePageTitle();
     appEvents.emit("updateSidebarUI");
   }
@@ -306,7 +306,7 @@ export async function loadAndRenderMovies(
         }
       }
     } else if (!personData && vipType && page === 1 && (!catalogResult.items || catalogResult.items.length === 0)) {
-      setFilter(vipType, null, true);
+      setFilter(vipType, null);
       updatePageTitle();
       appEvents.emit("updateSidebarUI");
     }

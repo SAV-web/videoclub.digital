@@ -7,19 +7,22 @@
 import { POSTER_BASE_URL } from "./constants.js";
 
 /**
- * Obtiene la URL completa del póster WebP optimizado a partir del slug de la película.
+ * Obtiene la URL completa del póster WebP optimizado a partir del slug o entidad de película.
  */
-export function getPosterUrl(slug: string | null | undefined): string {
-  if (!slug) return "";
-  return `${POSTER_BASE_URL}${slug}.avif`;
+export function getPosterUrl(slugOrMovie: string | { slug?: string | null } | null | undefined): string {
+  if (!slugOrMovie) return "";
+  const rawSlug = typeof slugOrMovie === "object" ? slugOrMovie.slug : slugOrMovie;
+  if (!rawSlug) return "";
+  return `${POSTER_BASE_URL}${rawSlug}.avif`;
 }
 
 /**
- * Convierte un texto separado por comas ("Drama, Suspense") en un array de strings limpios.
+ * Convierte un texto separado por comas ("Drama, Suspense") o array en un array de strings limpios.
  */
-export function parseList(value: string | null | undefined): string[] {
+export function parseList(value: string[] | string | null | undefined): string[] {
   if (!value) return [];
-  return value
+  if (Array.isArray(value)) return value.map((s) => String(s).trim()).filter(Boolean);
+  return String(value)
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);

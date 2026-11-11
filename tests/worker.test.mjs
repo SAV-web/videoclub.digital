@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, test } from "node:test";
-import worker from "../cloudflare/worker.js";
-import { VIP_SLUGS } from "../cloudflare/seo/vip-manifest.js";
+import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
+let VIP_SLUGS;
 
 const SUPABASE_STORAGE_URL = "https://wibygecgfczcvaqewleq.supabase.co/storage/v1/object/public";
 
@@ -10,11 +10,9 @@ const defaultEnv = {
   SUPABASE_ANON_KEY: "test-anon-key-abc",
 };
 
-const originalWorkerFetch = worker.fetch.bind(worker);
-worker.fetch = (request, env = {}, ctx) => {
-  const mergedEnv = { ...defaultEnv, ...env };
-  return originalWorkerFetch(request, mergedEnv, ctx);
-};
+let viteEnv;
+let worker;
+let seoTypesModule;
 
 describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
   let originalFetch;
@@ -23,14 +21,34 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
   let fetchCalls;
   let defaultCtx;
 
-  before(() => {
+  before(async () => {
+    viteEnv = await startViteSsrServer([
+      "/cloudflare/worker.js",
+      "/cloudflare/seo/seo-types.js",
+      "/cloudflare/seo/vip-manifest.js"
+    ]);
+    const workerModule = viteEnv.modules[0];
+    const rawWorker = workerModule.default || workerModule;
+    seoTypesModule = viteEnv.modules[1];
+    VIP_SLUGS = viteEnv.modules[2].VIP_SLUGS;
+
+    const originalWorkerFetch = rawWorker.fetch.bind(rawWorker);
+    worker = {
+      ...rawWorker,
+      fetch: (request, env = {}, ctx) => {
+        const mergedEnv = { ...defaultEnv, ...env };
+        return originalWorkerFetch(request, mergedEnv, ctx);
+      }
+    };
+
     originalFetch = globalThis.fetch;
     originalCaches = globalThis.caches;
   });
 
-  after(() => {
+  after(async () => {
     globalThis.fetch = originalFetch;
     globalThis.caches = originalCaches;
+    await viteEnv?.close();
   });
 
   beforeEach(() => {
@@ -1155,7 +1173,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
 
   test("Carga de imágenes ThumbHash (LQIP) en páginas SEO: MOVIE_PROJECTION, películas, VIPs y taxonomías", async () => {
     // 1. Verificar que MOVIE_PROJECTION incluye 'thumbhash_st'
-    const { MOVIE_PROJECTION } = await import("../cloudflare/seo/seo-types.js");
+    const { MOVIE_PROJECTION } = seoTypesModule;
     assert.ok(MOVIE_PROJECTION.includes("thumbhash_st"), "MOVIE_PROJECTION debe incluir 'thumbhash_st'");
 
     // 2. Ficha de película (/titulo/:slug/)

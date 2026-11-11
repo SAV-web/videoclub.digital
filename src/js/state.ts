@@ -59,7 +59,7 @@ const initialState: AppState = {
 
 export interface AppEventPayloads {
   'filtersReset': { keepSort?: boolean; newFilter?: { type: string; value: unknown }; replaceHistory?: boolean } | undefined;
-  'filter:apply': { type: string; value: unknown; force?: boolean };
+  'filter:apply': { type: string; value: unknown };
   'uiActionTriggered': undefined;
   'updateSidebarUI': undefined;
   'userDataUpdated': undefined;
@@ -241,14 +241,14 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
 
   // 1. Sincronizar filtros de catálogo, personas o exclusiones desde los segmentos del pathname
   const pathFilters = parsePrettyPath(effectivePathname);
-  if (pathFilters.director) setFilter("director", pathFilters.director, true);
-  if (pathFilters.actor) setFilter("actor", pathFilters.actor, true);
-  if (pathFilters.genre) setFilter("genre", pathFilters.genre, true);
-  if (pathFilters.country) setFilter("country", pathFilters.country, true);
-  if (pathFilters.selection) setFilter("selection", pathFilters.selection, true);
-  if (pathFilters.studio) setFilter("studio", pathFilters.studio, true);
-  if (pathFilters.excludedGenres.length > 0) setFilter("excludedGenres", pathFilters.excludedGenres, true);
-  if (pathFilters.excludedCountries.length > 0) setFilter("excludedCountries", pathFilters.excludedCountries, true);
+  if (pathFilters.director) setFilter("director", pathFilters.director);
+  if (pathFilters.actor) setFilter("actor", pathFilters.actor);
+  if (pathFilters.genre) setFilter("genre", pathFilters.genre);
+  if (pathFilters.country) setFilter("country", pathFilters.country);
+  if (pathFilters.selection) setFilter("selection", pathFilters.selection);
+  if (pathFilters.studio) setFilter("studio", pathFilters.studio);
+  if (pathFilters.excludedGenres.length > 0) setFilter("excludedGenres", pathFilters.excludedGenres);
+  if (pathFilters.excludedCountries.length > 0) setFilter("excludedCountries", pathFilters.excludedCountries);
 
   // 2. Sincronizar parámetros técnicos desde la query string
   const effectiveParams = extraQuery ? new URLSearchParams(extraQuery) : params;
@@ -262,9 +262,9 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
       effectiveParams.get(stateKey);
     if (val !== null) {
       if (["excludedGenres", "excludedCountries"].includes(stateKey)) {
-        setFilter(stateKey, val.split(","), true);
+        setFilter(stateKey, val.split(","));
       } else if (stateKey === "myList") {
-        setFilter(stateKey, val === "true" ? "mixed" : val, true);
+        setFilter(stateKey, val === "true" ? "mixed" : val);
       } else if (stateKey === "searchTerm") {
         setSearchTerm(val);
       } else if (stateKey === "sort") {
@@ -272,7 +272,7 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
       } else if (stateKey === "mediaType") {
         setMediaType(val);
       } else {
-        setFilter(stateKey, val, true);
+        setFilter(stateKey, val);
       }
     }
   });
@@ -414,7 +414,7 @@ export const setSort = (sort: unknown): void => { state.activeFilters.sort = nor
 export const setMediaType = (type: unknown): void => { state.activeFilters.mediaType = normalizeMediaType(type); state.totalMovies = 0; };
 
 // Aplica un filtro (ej: país = 'España')
-export function setFilter(type: string, value: unknown, _force: boolean = false): boolean {
+export function setFilter(type: string, value: unknown): boolean {
   if (!(type in state.activeFilters)) return false;
   const normalizedValue = normalizeFilterValue(type, value);
   if (normalizedValue === undefined) return false;

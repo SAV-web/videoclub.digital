@@ -308,14 +308,12 @@ export async function getLocalMyListResponse(
       if (!aHasVal && bHasVal) return 1;
 
       if (aHasVal && bHasVal) {
-        if (typeof valA === "string" && typeof valB === "string") {
-          const cmp = valA.localeCompare(valB, "es", { sensitivity: "base" });
-          if (cmp !== 0) return isAsc ? cmp : -cmp;
-        } else {
-          const numA = Number(valA);
-          const numB = Number(valB);
-          const diff = isAsc ? numA - numB : numB - numA;
+        if (typeof valA === "number" && typeof valB === "number") {
+          const diff = isAsc ? valA - valB : valB - valA;
           if (diff !== 0) return diff;
+        } else {
+          const cmp = String(valA ?? "").localeCompare(String(valB ?? ""), "es", { sensitivity: "base" });
+          if (cmp !== 0) return isAsc ? cmp : -cmp;
         }
       }
 

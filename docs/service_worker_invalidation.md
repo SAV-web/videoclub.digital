@@ -85,7 +85,7 @@ El sistema diferencia tres niveles independientes de versionado de almacenamient
    - No impacta ni en Cache Storage ni en IndexedDB.
 
 3. **Almacén IndexedDB Local-First (`LOCAL_DB_VERSION = 2` en `src/js/localStore.ts`):**
-   - Gestiona la base de datos transaccional `videoclub_local_db` (`user_entries`, `sync_queue`, `cached_movies`).
+   - Gestiona la base de datos transaccional `videoclub_local_db` (almacenes `user_entries` y `cached_movies`; la sincronización offline se gestiona directamente en `user_entries` mediante el índice `by_syncStatus`).
    - Posee su propio ciclo de vida e invalidación independiente.
    - **Checklist crítico:** Si se altera el esquema de los almacenes (*object stores*), índices o formato de las entidades en IndexedDB, es **obligatorio incrementar `LOCAL_DB_VERSION`** para disparar el evento `onupgradeneeded` en `indexedDB.open()`.
 

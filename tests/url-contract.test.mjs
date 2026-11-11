@@ -259,31 +259,31 @@ describe("3. Reglas de exclusividad semántica", () => {
   });
 
   test("selection ↔ studio: son mutuamente excluyentes entre sí en el estado", () => {
-    state.setFilter("studio", "warner", true);
+    state.setFilter("studio", "warner");
     assert.equal(state.getActiveFilters().studio, "warner");
     assert.equal(state.getActiveFilters().selection, null);
 
-    state.setFilter("selection", "criterion", true);
+    state.setFilter("selection", "criterion");
     assert.equal(state.getActiveFilters().selection, "criterion");
     assert.equal(state.getActiveFilters().studio, null, "Fijar selección debe vaciar estudio");
 
-    state.setFilter("studio", "disney", true);
+    state.setFilter("studio", "disney");
     assert.equal(state.getActiveFilters().studio, "disney");
     assert.equal(state.getActiveFilters().selection, null, "Fijar estudio debe vaciar selección");
   });
 
   test("director/actor por interacción en estado limpian catálogo, año y exclusiones", () => {
     // Estado previo cargado
-    state.setFilter("genre", "Acción", true);
-    state.setFilter("country", "España", true);
-    state.setFilter("studio", "warner", true);
-    state.setFilter("year", "1990-2000", true);
-    state.setFilter("excludedGenres", ["Terror"], true);
-    state.setFilter("excludedCountries", ["EEUU"], true);
+    state.setFilter("genre", "Acción");
+    state.setFilter("country", "España");
+    state.setFilter("studio", "warner");
+    state.setFilter("year", "1990-2000");
+    state.setFilter("excludedGenres", ["Terror"]);
+    state.setFilter("excludedCountries", ["EEUU"]);
     state.setMediaType("movies");
 
     // Fijar director limpia todo lo anterior
-    state.setFilter("director", "Denis Villeneuve", true);
+    state.setFilter("director", "Denis Villeneuve");
     const filters = state.getActiveFilters();
 
     assert.equal(filters.director, "Denis Villeneuve");
