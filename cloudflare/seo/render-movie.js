@@ -23,6 +23,7 @@ import {
   toSlug,
   genreToSlug,
   STUDIO_DATA,
+  MIN_STAR_THRESHOLD,
   sanitizeExternalUrl
 } from './seo-types.js';
 
@@ -79,7 +80,7 @@ export function renderMovieHtml(movie, options = {}) {
   const safeImdb = sanitizeExternalUrl(movie.imdb_id);
 
   // Estrellas continuas (0-3) y cálculo de clip-path
-  const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= 5.5;
+  const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= MIN_STAR_THRESHOLD;
   const avgStars = calculateAverageStars(movie.avg_rating);
   const clip1 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
   const clip2 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;

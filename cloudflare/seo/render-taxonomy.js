@@ -22,7 +22,9 @@ import {
   preserveHyphenatedWords,
   toSlug,
   genreToSlug,
-  STUDIO_DATA
+  STUDIO_DATA,
+  MIN_STAR_THRESHOLD,
+  getPosterUrl
 } from './seo-types.js';
 
 const SQRT_MAX_VOTES = {
@@ -48,10 +50,10 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
   const displayOriginalTitle = movie.original_title?.trim() || title;
   const slug = movie.slug || '';
   const movieUrl = `${siteOrigin}/titulo/${slug}/`;
-  const posterUrl = `${siteOrigin}/posters/${slug}.avif`;
+  const posterUrl = `${siteOrigin}${getPosterUrl(slug)}`;
 
   // Estrellas continuas (0-3) y cálculo de clip-path
-  const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= 5.5;
+  const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= MIN_STAR_THRESHOLD;
   const avgStars = calculateAverageStars(movie.avg_rating);
   const clip1 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
   const clip2 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;
@@ -298,7 +300,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
 
   const topMovie = items && items.length > 0 ? items[0] : null;
   const ogImageUrl = topMovie && topMovie.slug 
-    ? `${siteOrigin}/posters/${topMovie.slug}.avif` 
+    ? `${siteOrigin}${getPosterUrl(topMovie)}` 
     : `${storageUrl}/assets/og-default.jpg`;
 
   // 1. Schema.org CollectionPage + ItemList
@@ -316,10 +318,10 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
         "@type": "ListItem",
         "position": index + 1,
         "item": {
-          "@type": (m.type && String(m.type).toLowerCase().startsWith('s')) ? "TVSeries" : "Movie",
+          "@type": isSeriesType(m.type) ? "TVSeries" : "Movie",
           "name": m.title || m.original_title,
           "url": `${siteOrigin}/titulo/${m.slug}/`,
-          "image": `${siteOrigin}/posters/${m.slug}.avif`,
+          "image": `${siteOrigin}${getPosterUrl(m)}`,
           ...(m.year ? { "datePublished": String(m.year) } : {}),
           ...(m.fa_rating ? {
             "aggregateRating": {

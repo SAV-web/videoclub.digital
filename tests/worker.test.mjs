@@ -1405,6 +1405,32 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.match(mdText, /Origen \(2010\)/);
     assert.ok(mdText.length < 3000, "El perfil de persona VIP en Markdown debe ser ligero (<3 KB)");
   });
+
+  test("seo-types.js: todos los exports están definidos (sin imports rotos en Vite SSR)", () => {
+    assert.ok(seoTypesModule && typeof seoTypesModule === "object");
+    const exportsList = Object.entries(seoTypesModule);
+    assert.ok(exportsList.length > 0, "seo-types.js debe tener exports");
+    for (const [key, value] of exportsList) {
+      assert.notEqual(
+        value,
+        undefined,
+        `Export '${key}' en seo-types.js no debe ser undefined (posible import roto o mal referenciado)`
+      );
+    }
+  });
+
+  test("esbuild: el Cloudflare Worker se empaqueta sin errores (paridad estricta con Wrangler)", async () => {
+    const esbuild = await import("esbuild");
+    const result = await esbuild.build({
+      entryPoints: ["cloudflare/worker.js"],
+      bundle: true,
+      format: "esm",
+      platform: "neutral",
+      write: false,
+      logLevel: "silent",
+    });
+    assert.equal(result.errors.length, 0, "esbuild no debe registrar ningún error de empaquetado");
+  });
 });
 
 

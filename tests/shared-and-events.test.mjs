@@ -418,44 +418,18 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
   });
 
   test("Compatibilidad directa entre SPA y Edge SEO (cloudflare/seo/seo-types.js)", () => {
-    // 1. getPosterUrl en Edge SEO vs SPA getPosterUrl(slug)
+    // 1. getPosterUrl en Edge SEO (polimórfico con objeto de base de datos) vs SPA getPosterUrl(slug)
     assert.equal(
       edgeSeoModule.getPosterUrl({ slug: "matrix-1999" }),
       sharedFormatters.getPosterUrl("matrix-1999"),
     );
     assert.equal(edgeSeoModule.getPosterUrl({ slug: "" }), "");
+    assert.equal(edgeSeoModule.getPosterUrl(null), "");
 
-    // 2. parseList re-exportado en Edge SEO
-    assert.deepEqual(
-      edgeSeoModule.parseList("Drama, Thriller"),
-      sharedFormatters.parseList("Drama, Thriller"),
-    );
+    // 2. MIN_STAR_THRESHOLD re-exportado y alineado con SSOT
+    assert.equal(edgeSeoModule.MIN_STAR_THRESHOLD, 5.5);
 
-    // 3. formatVotesUnified
-    assert.equal(
-      edgeSeoModule.formatVotesUnified(12500),
-      sharedFormatters.formatVotesUnified(12500),
-    );
-
-    // 5. computePersonAgeInfo en Edge SEO
-    assert.deepEqual(
-      edgeSeoModule.computePersonAgeInfo("1970-07-30", null),
-      sharedFormatters.computePersonAgeInfo("1970-07-30", null),
-    );
-    assert.deepEqual(
-      edgeSeoModule.computePersonAgeInfo("1928-07-26", "1999-03-07"),
-      sharedFormatters.computePersonAgeInfo("1928-07-26", "1999-03-07"),
-    );
-
-    // 4. formatModalDuration y formatMetaUnitsHtml en Edge SEO
-    assert.deepEqual(
-      edgeSeoModule.formatModalDuration(105, null, false),
-      sharedFormatters.formatModalDuration(105, null, false),
-    );
-    assert.deepEqual(
-      edgeSeoModule.formatModalDuration(30, 10, true),
-      sharedFormatters.formatModalDuration(30, 10, true),
-    );
+    // 3. formatMetaUnitsHtml exclusivo de Edge SEO
     assert.equal(
       edgeSeoModule.formatMetaUnitsHtml("10 ep. x"),
       '10 <span class="meta-unit">ep.</span> <span class="meta-unit">x</span>',

@@ -20,7 +20,6 @@ import {
   GENRE_SLUG_MAP,
   GENRE_SYNONYMS,
   genreToSlug,
-  OFFICIAL_GENRES,
 } from "../../src/shared/slugs.js";
 
 import {
@@ -42,7 +41,6 @@ import {
 export {
   POSTER_BASE_URL,
   STUDIO_DATA,
-  OFFICIAL_GENRES,
   MIN_STAR_THRESHOLD,
   toSlug,
   GENRE_SLUG_MAP,

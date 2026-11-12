@@ -8,7 +8,7 @@
     "build": "node scripts/generate-llms.mjs && node scripts/generate-sitemap.mjs && npm run prepare:worker && vite build",
     "prepare:worker": "node scripts/generate-vip-manifest.mjs && node scripts/build-seo-css.mjs",
     "build:worker": "npm run prepare:worker && npx esbuild cloudflare/worker.js --bundle --format=esm --outfile=cloudflare/dist/worker.bundle.js",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && node scripts/check-worker-bundle.mjs",
     "preview": "vite preview",
     "generate:llms": "node scripts/generate-llms.mjs",
     "generate:vip-manifest": "node scripts/generate-vip-manifest.mjs",
