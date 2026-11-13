@@ -16,6 +16,8 @@
 // estricta con los conjuntos canónicos registrados en `src/shared/slugs.ts`.
 // =================================================================
 
+import { SHARED_CONFIG } from "../../src/shared/constants.js";
+
 /**
  * 21 Géneros Canónicos Oficiales
  */
@@ -424,7 +426,7 @@ export function resolveTaxonomy(rawSlug, expectedPrefix = null) {
         genre_name: item.name,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 42,
+        page_limit: SHARED_CONFIG.ITEMS_PER_PAGE,
         page_offset: 0,
         get_count: false
       }
@@ -449,7 +451,7 @@ export function resolveTaxonomy(rawSlug, expectedPrefix = null) {
         p_studio_code: item.code,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 42,
+        page_limit: SHARED_CONFIG.ITEMS_PER_PAGE,
         page_offset: 0,
         get_count: false
       }
@@ -474,7 +476,7 @@ export function resolveTaxonomy(rawSlug, expectedPrefix = null) {
         p_selection_code: item.code,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 42,
+        page_limit: SHARED_CONFIG.ITEMS_PER_PAGE,
         page_offset: 0,
         get_count: false
       }
@@ -499,7 +501,7 @@ export function resolveTaxonomy(rawSlug, expectedPrefix = null) {
         country_name: item.code,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 42,
+        page_limit: SHARED_CONFIG.ITEMS_PER_PAGE,
         page_offset: 0,
         get_count: false
       }
@@ -527,7 +529,7 @@ export function resolveTaxonomy(rawSlug, expectedPrefix = null) {
         country_name: item.name,
         sort_field: "fa_votes",
         sort_direction: "desc",
-        page_limit: 42,
+        page_limit: SHARED_CONFIG.ITEMS_PER_PAGE,
         page_offset: 0,
         get_count: false
       }

@@ -16,7 +16,7 @@
 
 import { renderMovieHtml } from "./seo/render-movie.js";
 import { renderMovieMarkdown, renderPersonMarkdown } from "./seo/render-markdown.js";
-import { MOVIE_PROJECTION } from "./seo/seo-types.js";
+import { MOVIE_PROJECTION, SHARED_CONFIG } from "./seo/seo-types.js";
 import { SEO_CARD_CSS } from "./seo/seo-card-css.js";
 import { resolveTaxonomy } from "./seo/taxonomy-types.js";
 import { renderTaxonomyHtml } from "./seo/render-taxonomy.js";
@@ -103,6 +103,22 @@ export function applySecurityHeaders(headers) {
   headers.set("Content-Security-Policy", cspDirectives.join("; "));
 
   return headers;
+}
+
+export function createCachedHtmlResponse(html, canonicalKey, cache, ctx) {
+  const responseHeaders = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+    "Vary": "Accept",
+    "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
+  });
+  applySecurityHeaders(responseHeaders);
+  const response = new Response(html, {
+    status: 200,
+    headers: responseHeaders
+  });
+  ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+  return response;
 }
 
 const RESERVED_PREFIXES = [
@@ -408,19 +424,7 @@ export default {
           }
 
           const html = renderMovieHtml(movie, { siteOrigin: url.origin, baseUrl: "/" });
-          const responseHeaders = new Headers({
-            "Content-Type": "text/html; charset=utf-8",
-            "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-            "Vary": "Accept",
-            "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-          });
-          applySecurityHeaders(responseHeaders);
-          const response = new Response(html, {
-            status: 200,
-            headers: responseHeaders
-          });
-          ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-          return response;
+          return createCachedHtmlResponse(html, canonicalKey, cache, ctx);
         } catch (_) {
           return createErrorResponse(500, "Error interno del servidor al procesar el título", url.origin);
         }
@@ -478,18 +482,7 @@ export default {
             }
 
             const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
-            const responseHeaders = new Headers({
-              "Content-Type": "text/html; charset=utf-8",
-              "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-              "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-            });
-            applySecurityHeaders(responseHeaders);
-            const response = new Response(html, {
-              status: 200,
-              headers: responseHeaders
-            });
-            ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-            return response;
+            return createCachedHtmlResponse(html, canonicalKey, cache, ctx);
           } catch (_) {
             return createErrorResponse(500, "Error interno del servidor al procesar la categoría", url.origin);
           }
@@ -577,7 +570,7 @@ export default {
                 [roleName === "director" ? "director_name" : "actor_name"]: person.name,
                 sort_field: "fa_votes",
                 sort_direction: "desc",
-                page_limit: 42,
+                page_limit: SHARED_CONFIG.ITEMS_PER_PAGE,
                 get_count: true
               };
               try {
@@ -636,20 +629,7 @@ export default {
               baseUrl: "/",
               storageUrl
             });
-            const responseHeaders = new Headers({
-              "Content-Type": "text/html; charset=utf-8",
-              "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-              "Vary": "Accept",
-              "Link": '</llms.txt>; rel="alternate"; type="text/markdown"'
-            });
-            applySecurityHeaders(responseHeaders);
-            const response = new Response(html, {
-              status: 200,
-              headers: responseHeaders
-            });
-
-            ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-            return response;
+            return createCachedHtmlResponse(html, canonicalKey, cache, ctx);
           } catch (_) {
             return createErrorResponse(500, "Error interno del servidor al procesar la persona VIP", url.origin);
           }

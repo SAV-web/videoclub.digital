@@ -9,28 +9,20 @@
 
 import {
   escapeHtml,
-  escapeAttr,
   parseList,
   isSeriesType,
   formatModalDuration,
   formatMetaUnitsHtml,
   formatYear,
   getTitleLengthClass,
-  calculateAverageStars,
-  formatVotesUnified,
+  computeRatingPresentation,
   preserveHyphenatedWords,
   getPosterUrl,
   toSlug,
   genreToSlug,
   STUDIO_DATA,
-  MIN_STAR_THRESHOLD,
   sanitizeExternalUrl
 } from './seo-types.js';
-
-const SQRT_MAX_VOTES = {
-  FA: Math.sqrt(220000),
-  IMDB: Math.sqrt(3200000)
-};
 
 function safeJsonLd(obj) {
   return JSON.stringify(obj).replace(/</g, '\\u003c');
@@ -79,18 +71,18 @@ export function renderMovieHtml(movie, options = {}) {
   const safeFa = sanitizeExternalUrl(movie.fa_id);
   const safeImdb = sanitizeExternalUrl(movie.imdb_id);
 
-  // Estrellas continuas (0-3) y cálculo de clip-path
-  const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= MIN_STAR_THRESHOLD;
-  const avgStars = calculateAverageStars(movie.avg_rating);
-  const clip1 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
-  const clip2 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;
-  const clip3 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 2))) * 100;
-
-  // Barras de votos FilmAffinity / IMDb
-  const faBarWidth = movie.fa_votes ? Math.min(100, (Math.sqrt(movie.fa_votes) / SQRT_MAX_VOTES.FA) * 100) : 0;
-  const imdbBarWidth = movie.imdb_votes ? Math.min(100, (Math.sqrt(movie.imdb_votes) / SQRT_MAX_VOTES.IMDB) * 100) : 0;
-  const formattedFaVotes = formatVotesUnified(movie.fa_votes);
-  const formattedImdbVotes = formatVotesUnified(movie.imdb_votes);
+  // Estrellas continuas (0-3), clip-path y barras de votos FilmAffinity / IMDb
+  const {
+    isSuspenso,
+    avgStars,
+    clip1,
+    clip2,
+    clip3,
+    faBarWidth,
+    imdbBarWidth,
+    formattedFaVotes,
+    formattedImdbVotes
+  } = computeRatingPresentation(movie);
 
   const primaryGenre = rawGenres.length > 0 ? rawGenres[0] : null;
   const primaryGenreSlug = primaryGenre ? genreToSlug(primaryGenre) : null;
@@ -213,21 +205,21 @@ export function renderMovieHtml(movie, options = {}) {
     })();
   </script>
   <title>${escapeHtml(pageTitle)}</title>
-  <meta name="description" content="${escapeAttr(description)}" />
-  <link rel="canonical" href="${escapeAttr(canonicalUrl)}" />
+  <meta name="description" content="${escapeHtml(description)}" />
+  <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
 
   <!-- OpenGraph / Facebook / WhatsApp -->
   <meta property="og:type" content="video.movie" />
-  <meta property="og:title" content="${escapeAttr(pageTitle)}" />
-  <meta property="og:description" content="${escapeAttr(description)}" />
-  ${absolutePosterUrl ? `<meta property="og:image" content="${escapeAttr(absolutePosterUrl)}" />` : ''}
-  <meta property="og:url" content="${escapeAttr(canonicalUrl)}" />
+  <meta property="og:title" content="${escapeHtml(pageTitle)}" />
+  <meta property="og:description" content="${escapeHtml(description)}" />
+  ${absolutePosterUrl ? `<meta property="og:image" content="${escapeHtml(absolutePosterUrl)}" />` : ''}
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${escapeAttr(pageTitle)}" />
-  <meta name="twitter:description" content="${escapeAttr(description)}" />
-  ${absolutePosterUrl ? `<meta name="twitter:image" content="${escapeAttr(absolutePosterUrl)}" />` : ''}
+  <meta name="twitter:title" content="${escapeHtml(pageTitle)}" />
+  <meta name="twitter:description" content="${escapeHtml(description)}" />
+  ${absolutePosterUrl ? `<meta name="twitter:image" content="${escapeHtml(absolutePosterUrl)}" />` : ''}
 
   <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
   <link rel="preload" href="${baseUrl}assets/fonts/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
@@ -306,17 +298,17 @@ export function renderMovieHtml(movie, options = {}) {
             
             <!-- Contenedor del Póster -->
             <div class="poster-container">
-              <a href="${escapeAttr(spaTargetUrl)}" class="poster-media-link" aria-label="Abrir ${escapeAttr(movie.title)} en el videoclub" style="display:block; width:100%; position:relative; text-decoration:none; color:inherit;">
+              <a href="${escapeHtml(spaTargetUrl)}" class="poster-media-link" aria-label="Abrir ${escapeHtml(movie.title)} en el videoclub" style="display:block; width:100%; position:relative; text-decoration:none; color:inherit;">
                 ${posterPath ? `
                   <img 
-                    src="${escapeAttr(posterPath)}" 
-                    alt="Póster de ${escapeAttr(movie.title)}" 
+                    src="${escapeHtml(posterPath)}" 
+                    alt="Póster de ${escapeHtml(movie.title)}" 
                     width="428" 
                     height="535" 
                     loading="eager" 
                     fetchpriority="high"
                     class="${movie.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
-                    ${movie.thumbhash_st ? `style="background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
+                    ${movie.thumbhash_st ? `style="background-image: url('${escapeHtml(movie.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
                   />
                 ` : `
                   <div class="poster-fallback" style="aspect-ratio:4/5; display:flex; align-items:center; justify-content:center; font-size:3rem; background:var(--color-surface);">🎬</div>
@@ -326,7 +318,7 @@ export function renderMovieHtml(movie, options = {}) {
 
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
-                <a href="${escapeAttr(spaTargetUrl)}" class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
+                <a href="${escapeHtml(spaTargetUrl)}" class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
                   <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
                     <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
                     <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip1}% 0 0);"></use>
@@ -342,7 +334,7 @@ export function renderMovieHtml(movie, options = {}) {
                 </a>
 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->
-                <a href="${escapeAttr(spaTargetUrl)}" class="card-action-btn" title="Añadir a mi lista en el videoclub" aria-label="Añadir a mi lista en el videoclub">
+                <a href="${escapeHtml(spaTargetUrl)}" class="card-action-btn" title="Añadir a mi lista en el videoclub" aria-label="Añadir a mi lista en el videoclub">
                   <svg class="icon-watchlist"><use href="${baseUrl}sprite.svg#icon-bookmark-plus"></use></svg>
                 </a>
               </div>
@@ -352,7 +344,7 @@ export function renderMovieHtml(movie, options = {}) {
             <div class="movie-info movie-summary">
               <div class="title-director-block">
                 <h1 data-template="title" class="movie-main-title ${titleLengthClass}">
-                  <a href="${escapeAttr(spaTargetUrl)}" class="movie-title-link" style="color:inherit; text-decoration:none;">${escapeHtml(movie.title)}</a>
+                  <a href="${escapeHtml(spaTargetUrl)}" class="movie-title-link" style="color:inherit; text-decoration:none;">${escapeHtml(movie.title)}</a>
                 </h1>
               </div>
 
@@ -363,7 +355,7 @@ export function renderMovieHtml(movie, options = {}) {
                       const conf = STUDIO_DATA[code];
                       if (!conf) return '';
                       return `
-                        <span class="platform-icon ${conf.class}" title="${escapeAttr(conf.title)}">
+                        <span class="platform-icon ${conf.class}" title="${escapeHtml(conf.title)}">
                           <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="0 0 24 24">
                             <use href="${baseUrl}sprite.svg#${conf.id}"></use>
                           </svg>
@@ -381,9 +373,9 @@ export function renderMovieHtml(movie, options = {}) {
                       </span>
                     ` : ''}
                     ${countryCode ? `
-                      <a href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" class="country-info" data-template="country-container" style="display:flex; text-decoration:none;" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)} en el videoclub">
-                        <span class="country-flag-icon" title="${escapeAttr(countryName)}">
-                          <svg width="28" height="28"><use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use></svg>
+                      <a href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" class="country-info" data-template="country-container" style="display:flex; text-decoration:none;" title="${escapeHtml(countryName)}" aria-label="Ver títulos de ${escapeHtml(countryName)} en el videoclub">
+                        <span class="country-flag-icon" title="${escapeHtml(countryName)}">
+                          <svg width="28" height="28"><use href="${baseUrl}flags.svg#flag-${escapeHtml(countryCode.toLowerCase())}"></use></svg>
                         </span>
                       </a>
                     ` : ''}
@@ -403,12 +395,12 @@ export function renderMovieHtml(movie, options = {}) {
                 ${episodesText ? `<span data-template="episodes">${episodesHtml}</span>` : ''}
                 ${durationText ? `<span data-template="duration">${durationHtml}</span>` : ''}
                 ${safeJw ? `
-                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeJw)}" title="Ver en JustWatch" data-template="justwatch-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeHtml(safeJw)}" title="Ver en JustWatch" data-template="justwatch-link">
                     <svg class="rating-icon" fill="#9A1485"><use href="${baseUrl}sprite.svg#icon-justwatch"></use></svg>
                   </a>
                 ` : ''}
                 ${safeWiki ? `
-                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeWiki)}" title="Ver en Wikipedia" data-template="wikipedia-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeHtml(safeWiki)}" title="Ver en Wikipedia" data-template="wikipedia-link">
                     <svg class="rating-icon" fill="#B3404A"><use href="${baseUrl}sprite.svg#icon-wikipedia"></use></svg>
                   </a>
                 ` : ''}
@@ -419,12 +411,12 @@ export function renderMovieHtml(movie, options = {}) {
             <div class="ratings-container">
               ${movie.fa_rating ? `
                 <div class="rating-line">
-                  <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeFa ? '' : 'disabled'}" ${safeFa ? `href="${escapeAttr(safeFa)}"` : ''} data-template="fa-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeFa ? '' : 'disabled'}" ${safeFa ? `href="${escapeHtml(safeFa)}"` : ''} data-template="fa-link">
                     <svg class="rating-icon"><use href="${baseUrl}sprite.svg#icon-filmaffinity"></use></svg>
                     <span data-template="fa-rating">${movie.fa_rating.toFixed(1)}</span>
                   </a>
                   <span class="rating-votes-count">${escapeHtml(formattedFaVotes)}</span>
-                  <div class="rating-bar-container" style="display:block;" data-votes="${escapeAttr(formattedFaVotes)}">
+                  <div class="rating-bar-container" style="display:block;" data-votes="${escapeHtml(formattedFaVotes)}">
                     <div class="rating-bar" data-template="fa-votes-bar" style="width: ${faBarWidth}%; background-color: #2570b8;"></div>
                   </div>
                 </div>
@@ -432,12 +424,12 @@ export function renderMovieHtml(movie, options = {}) {
 
               ${movie.imdb_rating ? `
                 <div class="rating-line">
-                  <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeImdb ? '' : 'disabled'}" ${safeImdb ? `href="${escapeAttr(safeImdb)}"` : ''} data-template="imdb-link">
+                  <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeImdb ? '' : 'disabled'}" ${safeImdb ? `href="${escapeHtml(safeImdb)}"` : ''} data-template="imdb-link">
                     <svg class="rating-icon" fill="#F5C618"><use href="${baseUrl}sprite.svg#icon-imdb"></use></svg>
                     <span data-template="imdb-rating">${movie.imdb_rating.toFixed(1)}</span>
                   </a>
                   <span class="rating-votes-count">${escapeHtml(formattedImdbVotes)}</span>
-                  <div class="rating-bar-container" style="display:block;" data-votes="${escapeAttr(formattedImdbVotes)}">
+                  <div class="rating-bar-container" style="display:block;" data-votes="${escapeHtml(formattedImdbVotes)}">
                     <div class="rating-bar" data-template="imdb-votes-bar" style="width: ${imdbBarWidth}%; background-color: #f5c518;"></div>
                   </div>
                 </div>
@@ -446,7 +438,7 @@ export function renderMovieHtml(movie, options = {}) {
 
             <!-- Título Original tras las Puntuaciones -->
             <div class="back-original-title-wrapper">
-              <a href="${escapeAttr(spaTargetUrl)}" class="back-original-title-link" aria-label="Abrir ${escapeAttr(movie.title)} en el videoclub" title="Abrir en el videoclub">
+              <a href="${escapeHtml(spaTargetUrl)}" class="back-original-title-link" aria-label="Abrir ${escapeHtml(movie.title)} en el videoclub" title="Abrir en el videoclub">
                 <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
               </a>
             </div>

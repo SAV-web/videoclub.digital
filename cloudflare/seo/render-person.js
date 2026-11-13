@@ -10,13 +10,14 @@
 
 import {
   escapeHtml,
-  escapeAttr,
   preserveHyphenatedWords,
   toSlug,
   getTitleLengthClass,
   computePersonAgeInfo,
   isSeriesType,
-  getPosterUrl
+  getPosterUrl,
+  buildItemListSchema,
+  SPECULATION_RULES
 } from './seo-types.js';
 
 import { renderSpaMovieCard } from './render-taxonomy.js';
@@ -68,15 +69,15 @@ export function renderVipPersonCard(person, options = {}) {
         <div class="flip-card-front">
           <div class="poster-container">
             <img
-              src="${escapeAttr(photoUrl)}"
-              alt="Foto de ${escapeAttr(person.name)}"
+              src="${escapeHtml(photoUrl)}"
+              alt="Foto de ${escapeHtml(person.name)}"
               width="428"
               height="535"
               loading="eager"
               fetchpriority="high"
               class="${person.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
-              ${person.thumbhash_st ? `style="background-image: url('${escapeAttr(person.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
-              onerror="this.src='${escapeAttr(defaultFallbackUrl)}'"
+              ${person.thumbhash_st ? `style="background-image: url('${escapeHtml(person.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
+              onerror="this.src='${escapeHtml(defaultFallbackUrl)}'"
             />
             <div class="poster-overlay-guard"></div>
 
@@ -84,10 +85,10 @@ export function renderVipPersonCard(person, options = {}) {
               <button
                 type="button"
                 class="person-role-toggle-btn"
-                data-current-role="${escapeAttr(currentRole)}"
-                data-target-role="${escapeAttr(targetRole)}"
-                title="${escapeAttr(tooltipText)}"
-                aria-label="${escapeAttr(tooltipText)}"
+                data-current-role="${escapeHtml(currentRole)}"
+                data-target-role="${escapeHtml(targetRole)}"
+                title="${escapeHtml(tooltipText)}"
+                aria-label="${escapeHtml(tooltipText)}"
               >
                 <span class="role-badge-letter">${currentLetter}</span>
               </button>
@@ -111,10 +112,10 @@ export function renderVipPersonCard(person, options = {}) {
                   ${ageInfo.ageStr ? `<span class="person-age">${escapeHtml(ageInfo.ageStr)}</span>` : ''}
                   ${ageInfo.datesStr ? `<span class="person-dates">${escapeHtml(ageInfo.datesStr)}</span>` : ''}
                   ${countryCode ? `
-                    <span class="country-info" title="${escapeAttr(countryName)}" aria-label="${escapeAttr(countryName)}">
+                    <span class="country-info" title="${escapeHtml(countryName)}" aria-label="${escapeHtml(countryName)}">
                       <span class="country-flag-icon">
                         <svg width="14" height="14" aria-hidden="true">
-                          <use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use>
+                          <use href="${baseUrl}flags.svg#flag-${escapeHtml(countryCode.toLowerCase())}"></use>
                         </svg>
                       </span>
                     </span>
@@ -231,30 +232,7 @@ export function renderPersonHtml(person, options = {}) {
     "description": description,
     "url": canonicalUrl,
     "inLanguage": "es",
-    "mainEntity": {
-      "@type": "ItemList",
-      "numberOfItems": primaryMovies.length,
-      "itemListElement": primaryMovies.map((m, index) => ({
-        "@type": "ListItem",
-        "position": index + 1,
-        "item": {
-          "@type": isSeriesType(m.type) ? "TVSeries" : "Movie",
-          "name": m.title || m.original_title,
-          "url": `${siteOrigin}/titulo/${m.slug}/`,
-          "image": `${siteOrigin}${getPosterUrl(m)}`,
-          ...(m.year ? { "datePublished": String(m.year) } : {}),
-          ...(m.fa_rating ? {
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": String(m.fa_rating),
-              "bestRating": "10",
-              "worstRating": "1",
-              "ratingCount": m.fa_votes || 1
-            }
-          } : {})
-        }
-      }))
-    }
+    "mainEntity": buildItemListSchema(primaryMovies, siteOrigin)
   };
 
   // 3. Schema.org BreadcrumbList
@@ -278,35 +256,7 @@ export function renderPersonHtml(person, options = {}) {
   };
 
   // 4. Speculation Rules API (Prerender SPA y rutas de navegación frecuente)
-  const speculationRules = {
-    prerender: [
-      {
-        source: "list",
-        urls: ["/"]
-      },
-      {
-        where: {
-          and: [
-            {
-              or: [
-                { href_matches: "/*\\?movie=*" },
-                { href_matches: "/*\\?_p=*" },
-                { href_matches: "/*\\?year=*" },
-                { href_matches: "/director/*" },
-                { href_matches: "/actor/*" },
-                { href_matches: "/genero/*" },
-                { href_matches: "/pais/*" },
-                { href_matches: "/seleccion/*" },
-                { href_matches: "/estudio/*" }
-              ]
-            },
-            { not: { href_matches: "/*#*" } }
-          ]
-        },
-        eagerness: "moderate"
-      }
-    ]
-  };
+  const speculationRules = SPECULATION_RULES;
 
   // Renderizar la tarjeta VIP de la persona (#0) y las tarjetas de su filmografía (#1..#42)
   const personCardHtml = renderVipPersonCard(person, { activeRole, hasBothRoles, siteOrigin, baseUrl });
@@ -353,24 +303,24 @@ export function renderPersonHtml(person, options = {}) {
     })();
   </script>
   <title>${escapeHtml(seoTitle)}</title>
-  <meta name="description" content="${escapeAttr(description)}" />
-  <link rel="canonical" href="${escapeAttr(canonicalUrl)}" />
+  <meta name="description" content="${escapeHtml(description)}" />
+  <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="${escapeAttr(seoTitle)}" />
-  <meta property="og:description" content="${escapeAttr(description)}" />
-  <meta property="og:url" content="${escapeAttr(canonicalUrl)}" />
+  <meta property="og:title" content="${escapeHtml(seoTitle)}" />
+  <meta property="og:description" content="${escapeHtml(description)}" />
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
   <meta property="og:type" content="profile" />
-  <meta property="og:image" content="${escapeAttr(photoUrl)}" />
+  <meta property="og:image" content="${escapeHtml(photoUrl)}" />
   <meta property="og:site_name" content="Videoclub Digital" />
   <meta property="og:locale" content="es_ES" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${escapeAttr(seoTitle)}" />
-  <meta name="twitter:description" content="${escapeAttr(description)}" />
-  <meta name="twitter:image" content="${escapeAttr(photoUrl)}" />
+  <meta name="twitter:title" content="${escapeHtml(seoTitle)}" />
+  <meta name="twitter:description" content="${escapeHtml(description)}" />
+  <meta name="twitter:image" content="${escapeHtml(photoUrl)}" />
 
   <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
   <link rel="preload" href="${baseUrl}assets/fonts/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
@@ -403,7 +353,7 @@ export function renderPersonHtml(person, options = {}) {
           
           <!-- Nombre de la persona -->
           <div class="active-filters-list" style="display:flex; align-items:center; gap: 8px; margin:0; padding:0;">
-            <a href="${escapeAttr(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeAttr(person.name)} en el videoclub interactivo" style="text-decoration:none;">
+            <a href="${escapeHtml(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeHtml(person.name)} en el videoclub interactivo" style="text-decoration:none;">
               <span>${escapeHtml(person.name)}</span>
             </a>
           </div>
@@ -413,7 +363,7 @@ export function renderPersonHtml(person, options = {}) {
       <!-- Muro de Tarjetas Oficial (Ficha VIP #0 + Filmografía #1..#42) -->
       <main class="content">
         <h1 class="sr-only">${escapeHtml(seoTitle)}</h1>
-        <section id="grid-container" class="grid-container" aria-label="Ficha de ${escapeAttr(person.name)} y filmografía destacada">
+        <section id="grid-container" class="grid-container" aria-label="Ficha de ${escapeHtml(person.name)} y filmografía destacada">
           ${personCardHtml}
           ${filmographyHtml}
         </section>

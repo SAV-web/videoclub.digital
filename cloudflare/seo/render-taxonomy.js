@@ -10,27 +10,21 @@
 
 import {
   escapeHtml,
-  escapeAttr,
   sanitizeExternalUrl,
   parseList,
   isSeriesType,
   formatRuntime,
   formatYear,
   getTitleLengthClass,
-  calculateAverageStars,
-  formatVotesUnified,
+  computeRatingPresentation,
   preserveHyphenatedWords,
   toSlug,
   genreToSlug,
   STUDIO_DATA,
-  MIN_STAR_THRESHOLD,
-  getPosterUrl
+  getPosterUrl,
+  buildItemListSchema,
+  SPECULATION_RULES
 } from './seo-types.js';
-
-const SQRT_MAX_VOTES = {
-  FA: Math.sqrt(220000),
-  IMDB: Math.sqrt(3200000)
-};
 
 function safeJsonLd(obj) {
   return JSON.stringify(obj)
@@ -52,18 +46,18 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
   const movieUrl = `${siteOrigin}/titulo/${slug}/`;
   const posterUrl = `${siteOrigin}${getPosterUrl(slug)}`;
 
-  // Estrellas continuas (0-3) y cálculo de clip-path
-  const isSuspenso = typeof movie.avg_rating === 'number' && movie.avg_rating > 0 && movie.avg_rating <= MIN_STAR_THRESHOLD;
-  const avgStars = calculateAverageStars(movie.avg_rating);
-  const clip1 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 0))) * 100;
-  const clip2 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 1))) * 100;
-  const clip3 = isSuspenso ? 100 : (1 - Math.max(0, Math.min(1, avgStars - 2))) * 100;
-
-  // Barras de votos
-  const faBarWidth = movie.fa_votes ? Math.min(100, (Math.sqrt(movie.fa_votes) / SQRT_MAX_VOTES.FA) * 100) : 0;
-  const imdbBarWidth = movie.imdb_votes ? Math.min(100, (Math.sqrt(movie.imdb_votes) / SQRT_MAX_VOTES.IMDB) * 100) : 0;
-  const formattedFaVotes = formatVotesUnified(movie.fa_votes);
-  const formattedImdbVotes = formatVotesUnified(movie.imdb_votes);
+  // Estrellas continuas (0-3), clip-path y barras de votos FilmAffinity / IMDb
+  const {
+    isSuspenso,
+    avgStars,
+    clip1,
+    clip2,
+    clip3,
+    faBarWidth,
+    imdbBarWidth,
+    formattedFaVotes,
+    formattedImdbVotes
+  } = computeRatingPresentation(movie);
 
   const rawGenres = parseList(movie.genres || movie.genres_list);
   const directors = parseList(movie.directors || movie.directors_list);
@@ -94,7 +88,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
   const studiosHtml = validStudios.map(code => {
     const conf = STUDIO_DATA[code];
     return `
-      <span class="platform-icon ${conf.class}" title="${escapeAttr(conf.title)}">
+      <span class="platform-icon ${conf.class}" title="${escapeHtml(conf.title)}">
         <svg width="${conf.w || 24}" height="${conf.h || 24}" fill="currentColor" viewBox="0 0 24 24">
           <use href="${baseUrl}sprite.svg#${conf.id}"></use>
         </svg>
@@ -114,19 +108,19 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
         <div class="flip-card-front">
           <div class="poster-container">
             <img
-              src="${escapeAttr(posterUrl)}"
-              alt="Póster de ${escapeAttr(title)}"
+              src="${escapeHtml(posterUrl)}"
+              alt="Póster de ${escapeHtml(title)}"
               width="428"
               height="535"
               loading="${index < 6 ? 'eager' : 'lazy'}"
               ${index === 0 ? 'fetchpriority="high"' : ''}
               class="${movie.thumbhash_st ? 'lazy-lqip' : 'loaded'}"
-              ${movie.thumbhash_st ? `style="background-image: url('${escapeAttr(movie.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
+              ${movie.thumbhash_st ? `style="background-image: url('${escapeHtml(movie.thumbhash_st)}'); background-size: cover; background-position: center;" onload="this.classList.add('loaded')"` : ''}
               onerror="this.style.opacity='0.2'"
             />
             <div class="poster-overlay-guard"></div>
             <div class="card-rating-block">
-              <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" aria-label="Ver valoración y ficha de ${escapeAttr(title)}" style="text-decoration: none; color: inherit; cursor: pointer;">
+              <a href="${baseUrl}?movie=${movie.id}" class="star-rating-container has-average-rating is-interactive" aria-label="Ver valoración y ficha de ${escapeHtml(title)}" style="text-decoration: none; color: inherit; cursor: pointer;">
                 <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
                   <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
                   <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip1}% 0 0);"></use>
@@ -164,10 +158,10 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
                     ${movie.year ? `<a href="${baseUrl}?_p=/&_q=year%3D${movie.year}" class="year-link" data-year-value="${movie.year}">${movie.year}</a>${escapeHtml(formatYear(movie.year, movie.year_end, isSeries, '', movie.type).substring(String(movie.year).length))}` : ''}
                   </span>
                   ${countryCode ? `
-                    <a class="country-info" href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" title="${escapeAttr(countryName)}" aria-label="Ver títulos de ${escapeAttr(countryName)}">
+                    <a class="country-info" href="${countrySlug ? `${baseUrl}?_p=/${countrySlug}/` : '#'}" title="${escapeHtml(countryName)}" aria-label="Ver títulos de ${escapeHtml(countryName)}">
                       <span class="country-flag-icon">
                         <svg width="14" height="14" aria-hidden="true">
-                          <use href="${baseUrl}flags.svg#flag-${escapeAttr(countryCode.toLowerCase())}"></use>
+                          <use href="${baseUrl}flags.svg#flag-${escapeHtml(countryCode.toLowerCase())}"></use>
                         </svg>
                       </span>
                     </a>
@@ -185,12 +179,12 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
               ${episodesText ? `<span data-template="episodes">${escapeHtml(episodesText)}</span>` : ''}
               ${durationText ? `<span data-template="duration">${escapeHtml(durationText)}</span>` : ''}
               ${safeJw ? `
-                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeJw)}" title="Ver en JustWatch" data-template="justwatch-link">
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeHtml(safeJw)}" title="Ver en JustWatch" data-template="justwatch-link">
                   <svg class="rating-icon" fill="#9A1485"><use href="${baseUrl}sprite.svg#icon-justwatch"></use></svg>
                 </a>
               ` : ''}
               ${safeWiki ? `
-                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeAttr(safeWiki)}" title="Ver en Wikipedia" data-template="wikipedia-link">
+                <a target="_blank" rel="noopener noreferrer" class="rating-line" href="${escapeHtml(safeWiki)}" title="Ver en Wikipedia" data-template="wikipedia-link">
                   <svg class="rating-icon" fill="#B3404A"><use href="${baseUrl}sprite.svg#icon-wikipedia"></use></svg>
                 </a>
               ` : ''}
@@ -200,24 +194,24 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
           <div class="ratings-container">
             ${movie.fa_rating ? `
               <div class="rating-line">
-                <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeFa ? '' : 'disabled'}" ${safeFa ? `href="${escapeAttr(safeFa)}"` : ''} data-template="fa-link">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeFa ? '' : 'disabled'}" ${safeFa ? `href="${escapeHtml(safeFa)}"` : ''} data-template="fa-link">
                   <svg class="rating-icon"><use href="${baseUrl}sprite.svg#icon-filmaffinity"></use></svg>
                   <span data-template="fa-rating">${movie.fa_rating.toFixed(1)}</span>
                 </a>
                 <span class="rating-votes-count">${escapeHtml(formattedFaVotes)}</span>
-                <div class="rating-bar-container" data-votes="${escapeAttr(formattedFaVotes)}">
+                <div class="rating-bar-container" data-votes="${escapeHtml(formattedFaVotes)}">
                   <div class="rating-bar" style="width: ${faBarWidth}%;"></div>
                 </div>
               </div>
             ` : ''}
             ${movie.imdb_rating ? `
               <div class="rating-line">
-                <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeImdb ? '' : 'disabled'}" ${safeImdb ? `href="${escapeAttr(safeImdb)}"` : ''} data-template="imdb-link">
+                <a target="_blank" rel="noopener noreferrer" class="rating-left ${safeImdb ? '' : 'disabled'}" ${safeImdb ? `href="${escapeHtml(safeImdb)}"` : ''} data-template="imdb-link">
                   <svg class="rating-icon" fill="#F5C618"><use href="${baseUrl}sprite.svg#icon-imdb"></use></svg>
                   <span data-template="imdb-rating">${movie.imdb_rating.toFixed(1)}</span>
                 </a>
                 <span class="rating-votes-count">${escapeHtml(formattedImdbVotes)}</span>
-                <div class="rating-bar-container" data-votes="${escapeAttr(formattedImdbVotes)}">
+                <div class="rating-bar-container" data-votes="${escapeHtml(formattedImdbVotes)}">
                   <div class="rating-bar" style="width: ${imdbBarWidth}%;"></div>
                 </div>
               </div>
@@ -226,7 +220,7 @@ export function renderSpaMovieCard(movie, index, siteOrigin, baseUrl = '/') {
 
           ${displayOriginalTitle ? `
             <div class="back-original-title-wrapper">
-              <a href="${baseUrl}?movie=${movie.id}" class="back-original-title-link" aria-label="Abrir ${escapeAttr(title)} en el videoclub" title="Abrir en el videoclub">
+              <a href="${baseUrl}?movie=${movie.id}" class="back-original-title-link" aria-label="Abrir ${escapeHtml(title)} en el videoclub" title="Abrir en el videoclub">
                 <span data-template="original-title" class="${origTitleLengthClass}">${escapeHtml(displayOriginalTitle)}</span>
               </a>
             </div>
@@ -311,30 +305,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
     "description": taxInfo.description,
     "url": canonicalUrl,
     "inLanguage": "es",
-    "mainEntity": {
-      "@type": "ItemList",
-      "numberOfItems": items.length,
-      "itemListElement": items.map((m, index) => ({
-        "@type": "ListItem",
-        "position": index + 1,
-        "item": {
-          "@type": isSeriesType(m.type) ? "TVSeries" : "Movie",
-          "name": m.title || m.original_title,
-          "url": `${siteOrigin}/titulo/${m.slug}/`,
-          "image": `${siteOrigin}${getPosterUrl(m)}`,
-          ...(m.year ? { "datePublished": String(m.year) } : {}),
-          ...(m.fa_rating ? {
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": String(m.fa_rating),
-              "bestRating": "10",
-              "worstRating": "1",
-              "ratingCount": m.fa_votes || 1
-            }
-          } : {})
-        }
-      }))
-    }
+    "mainEntity": buildItemListSchema(items, siteOrigin)
   };
 
   // 2. Schema.org BreadcrumbList
@@ -364,35 +335,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
   };
 
   // 3. Speculation Rules API (Prerender SPA y rutas de navegación frecuente)
-  const speculationRules = {
-    prerender: [
-      {
-        source: "list",
-        urls: ["/"]
-      },
-      {
-        where: {
-          and: [
-            {
-              or: [
-                { href_matches: "/*\\?movie=*" },
-                { href_matches: "/*\\?_p=*" },
-                { href_matches: "/*\\?year=*" },
-                { href_matches: "/director/*" },
-                { href_matches: "/actor/*" },
-                { href_matches: "/genero/*" },
-                { href_matches: "/pais/*" },
-                { href_matches: "/seleccion/*" },
-                { href_matches: "/estudio/*" }
-              ]
-            },
-            { not: { href_matches: "/*#*" } }
-          ]
-        },
-        eagerness: "moderate"
-      }
-    ]
-  };
+  const speculationRules = SPECULATION_RULES;
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -423,24 +366,24 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
     })();
   </script>
   <title>${escapeHtml(taxInfo.seoTitle)}</title>
-  <meta name="description" content="${escapeAttr(taxInfo.description)}" />
-  <link rel="canonical" href="${escapeAttr(canonicalUrl)}" />
+  <meta name="description" content="${escapeHtml(taxInfo.description)}" />
+  <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="${escapeAttr(taxInfo.seoTitle)}" />
-  <meta property="og:description" content="${escapeAttr(taxInfo.description)}" />
-  <meta property="og:url" content="${escapeAttr(canonicalUrl)}" />
+  <meta property="og:title" content="${escapeHtml(taxInfo.seoTitle)}" />
+  <meta property="og:description" content="${escapeHtml(taxInfo.description)}" />
+  <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="${escapeAttr(ogImageUrl)}" />
+  <meta property="og:image" content="${escapeHtml(ogImageUrl)}" />
   <meta property="og:site_name" content="Videoclub Digital" />
   <meta property="og:locale" content="es_ES" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${escapeAttr(taxInfo.seoTitle)}" />
-  <meta name="twitter:description" content="${escapeAttr(taxInfo.description)}" />
-  <meta name="twitter:image" content="${escapeAttr(ogImageUrl)}" />
+  <meta name="twitter:title" content="${escapeHtml(taxInfo.seoTitle)}" />
+  <meta name="twitter:description" content="${escapeHtml(taxInfo.description)}" />
+  <meta name="twitter:image" content="${escapeHtml(ogImageUrl)}" />
 
   <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
   <link rel="preload" href="${baseUrl}assets/fonts/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
@@ -477,7 +420,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
                 <span>${escapeHtml(taxInfo.name)}</span>
               </span>
             ` : `
-              <a href="${escapeAttr(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeAttr(taxInfo.name)} en el videoclub interactivo" style="text-decoration:none;">
+              <a href="${escapeHtml(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeHtml(taxInfo.name)} en el videoclub interactivo" style="text-decoration:none;">
                 <span>${escapeHtml(taxInfo.name)}</span>
               </a>
             `}
@@ -488,7 +431,7 @@ export function renderTaxonomyHtml(taxInfo, items, options = {}) {
       <!-- Muro Principal de Películas (42 fichas oficiales) -->
       <main class="content">
         <h1 class="sr-only">${escapeHtml(taxInfo.title)}</h1>
-        <section id="grid-container" class="grid-container" aria-label="Películas de ${escapeAttr(taxInfo.name)}">
+        <section id="grid-container" class="grid-container" aria-label="Películas de ${escapeHtml(taxInfo.name)}">
           ${items.map((m, index) => renderSpaMovieCard(m, index, siteOrigin, baseUrl)).join('')}
         </section>
       </main>
