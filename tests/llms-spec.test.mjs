@@ -4,12 +4,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, before, describe, test } from "node:test";
 import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
-import {
-  GENRE_MAP,
-  STUDIO_MAP,
-  SELECTION_MAP,
-  REGIONAL_GROUPS_MAP
-} from "../cloudflare/seo/taxonomy-types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,10 +15,22 @@ describe("Especificación Canónica llms.txt y llms-full.txt", () => {
   let slugsModule;
   let llmsTxt;
   let llmsFullTxt;
+  let GENRE_MAP;
+  let STUDIO_MAP;
+  let SELECTION_MAP;
+  let REGIONAL_GROUPS_MAP;
 
   before(async () => {
-    viteEnv = await startViteSsrServer(["/src/shared/slugs.ts"]);
-    [slugsModule] = viteEnv.modules;
+    viteEnv = await startViteSsrServer([
+      "/src/shared/slugs.ts",
+      "/cloudflare/seo/taxonomy-types.js",
+    ]);
+    slugsModule = viteEnv.modules[0];
+    const taxonomyModule = viteEnv.modules[1];
+    GENRE_MAP = taxonomyModule.GENRE_MAP;
+    STUDIO_MAP = taxonomyModule.STUDIO_MAP;
+    SELECTION_MAP = taxonomyModule.SELECTION_MAP;
+    REGIONAL_GROUPS_MAP = taxonomyModule.REGIONAL_GROUPS_MAP;
 
     llmsTxt = fs.readFileSync(path.join(publicDir, "llms.txt"), "utf-8");
     llmsFullTxt = fs.readFileSync(path.join(publicDir, "llms-full.txt"), "utf-8");
