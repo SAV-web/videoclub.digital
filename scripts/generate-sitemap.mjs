@@ -15,13 +15,19 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
-import {
+import { startViteSsrServer } from "../tests/helpers/vite-ssr.mjs";
+
+const viteEnv = await startViteSsrServer([
+  "/cloudflare/seo/taxonomy-types.js"
+]);
+const [{
   GENRE_MAP,
   STUDIO_MAP,
   SELECTION_MAP,
   REGIONAL_GROUPS_MAP,
   ACTIVE_COUNTRIES_MAP
-} from "../cloudflare/seo/taxonomy-types.js";
+}] = viteEnv.modules;
+await viteEnv.close();
 
 // Cargar .env si existe en entorno local
 try {
