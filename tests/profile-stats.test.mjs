@@ -537,9 +537,9 @@ describe("Panel de Perfil de Usuario y Estadísticas Cinemáticas (profile.ts)",
       await profileModule.importUserDataCsv(file);
 
       const all = stateModule.getAllUserMovieData();
-      assert.deepEqual(all["501"], { rating: 10, onWatchlist: false });
-      assert.deepEqual(all["502"], { rating: null, onWatchlist: true });
-      assert.deepEqual(all["503"], { rating: 9, onWatchlist: false }, "Debe excluir de pendientes si tiene nota");
+      assert.deepEqual(all["501"], { rating: 10, onWatchlist: false, note: null });
+      assert.deepEqual(all["502"], { rating: null, onWatchlist: true, note: null });
+      assert.deepEqual(all["503"], { rating: 9, onWatchlist: false, note: null }, "Debe excluir de pendientes si tiene nota");
       assert.equal(all["invalid"], undefined, "No debe importar filas con ID inválido");
     } finally {
       teardown();

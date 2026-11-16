@@ -56,7 +56,7 @@ describe("api.ts (Normalización de Caché y Parámetros RPC)", () => {
     assert.strictEqual("user_movie_entries" in shaped, false);
 
     const userData = stateModule.getUserDataForMovie(99);
-    assert.deepEqual(userData, { rating: 9, onWatchlist: true });
+    assert.deepEqual(userData, { rating: 9, onWatchlist: true, note: null });
   });
 
   test("shapeRawMovieRow normaliza rigurosamente last_synced_at (ISO, null, number) y series", () => {
