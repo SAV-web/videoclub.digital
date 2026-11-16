@@ -420,7 +420,8 @@ export default {
               "Content-Type": "text/markdown; charset=utf-8",
               "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
               "Vary": "Accept",
-              "Link": `<${url.origin}/titulo/${slug}/>; rel="canonical"`
+              "Link": `<${url.origin}/titulo/${slug}/>; rel="canonical"`,
+              "x-markdown-tokens": String(Math.ceil(md.length / 4))
             });
             applySecurityHeaders(responseHeaders);
             const response = new Response(md, {
@@ -500,7 +501,8 @@ export default {
                 "Content-Type": "text/markdown; charset=utf-8",
                 "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
                 "Vary": "Accept",
-                "Link": `<${url.origin}${taxInfo.canonicalPath}>; rel="canonical"`
+                "Link": `<${url.origin}${taxInfo.canonicalPath}>; rel="canonical"`,
+                "x-markdown-tokens": String(Math.ceil(md.length / 4))
               });
               applySecurityHeaders(responseHeaders);
               const response = new Response(md, {
@@ -640,7 +642,8 @@ export default {
                 "Content-Type": "text/markdown; charset=utf-8",
                 "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
                 "Vary": "Accept",
-                "Link": `<${url.origin}/${slug}/>; rel="canonical"`
+                "Link": `<${url.origin}/${slug}/>; rel="canonical"`,
+                "x-markdown-tokens": String(Math.ceil(md.length / 4))
               });
               applySecurityHeaders(responseHeaders);
               const response = new Response(md, {
@@ -667,18 +670,27 @@ export default {
       }
     }
 
-    // 6. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs)
+    // 6. NEGOCIACIÓN DE CONTENIDO MARKDOWN (Agentes de IA y LLMs en la raíz)
     const isRootPath = url.pathname === "/" || url.pathname === "";
-    if (acceptHeader.includes("text/markdown") && isRootPath) {
-      const llmsUrl = new URL("/llms.txt", url.origin);
-      const llmsResponse = await fetch(llmsUrl.toString(), request);
-      const headers = new Headers(llmsResponse.headers);
-      headers.set("Content-Type", "text/markdown; charset=utf-8");
-      headers.set("Cache-Control", "public, max-age=3600");
-      return new Response(llmsResponse.body, {
-        status: llmsResponse.status,
-        headers,
-      });
+    if ((acceptHeader.includes("text/markdown") || (acceptHeader.includes("text/plain") && !acceptHeader.includes("text/html"))) && isRootPath) {
+      const assetFetcher = env?.ASSETS || { fetch: globalThis.fetch };
+      try {
+        const llmsRequest = new Request(new URL("/llms.txt", url.origin).toString(), request);
+        const llmsResponse = await assetFetcher.fetch(llmsRequest);
+        if (llmsResponse && (llmsResponse.ok || llmsResponse.status === 200)) {
+          const bodyText = await llmsResponse.text();
+          const headers = new Headers(llmsResponse.headers);
+          headers.set("Content-Type", "text/markdown; charset=utf-8");
+          headers.set("Cache-Control", "public, max-age=3600");
+          headers.set("Vary", "Accept");
+          headers.set("x-markdown-tokens", String(Math.ceil(bodyText.length / 4)));
+          applySecurityHeaders(headers);
+          return new Response(bodyText, {
+            status: 200,
+            headers,
+          });
+        }
+      } catch (_) {}
     }
 
     // 5. PROXY & EDGE CACHE PARA PÓSTERS DE SUPABASE (/posters/*)
@@ -705,10 +717,25 @@ export default {
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
       headers.set("X-Content-Type-Options", "nosniff");
     }
-    // 7.B Respuestas HTML / Rutas SPA -> Revalidación y cabeceras de seguridad simétricas
+    // 7.B Archivos llms.txt y llms-full.txt -> Metadatos Markdown y tokens para agentes
+    else if (url.pathname === "/llms.txt" || url.pathname === "/llms-full.txt") {
+      headers.set("Content-Type", "text/markdown; charset=utf-8");
+      headers.set("Cache-Control", "public, max-age=3600");
+      headers.set("Vary", "Accept");
+      try {
+        const clone = response.clone();
+        const text = await clone.text();
+        if (text) {
+          headers.set("x-markdown-tokens", String(Math.ceil(text.length / 4)));
+        }
+      } catch (_) {}
+      applySecurityHeaders(headers);
+    }
+    // 7.C Respuestas HTML / Rutas SPA -> Revalidación y cabeceras de seguridad simétricas
     else if (headers.get("Content-Type")?.includes("text/html") || !url.pathname.includes(".")) {
       headers.set("Cache-Control", "public, max-age=0, must-revalidate");
       headers.set("Link", '</llms.txt>; rel="alternate"; type="text/markdown"');
+      headers.set("Vary", "Accept");
       applySecurityHeaders(headers);
     }
 

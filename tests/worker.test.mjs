@@ -466,6 +466,8 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("Content-Type"), "text/markdown; charset=utf-8");
     assert.equal(response.headers.get("Cache-Control"), "public, max-age=3600");
+    assert.equal(response.headers.get("Vary"), "Accept");
+    assert.ok(response.headers.get("x-markdown-tokens"), "Debe tener x-markdown-tokens");
 
     const text = await response.text();
     assert.match(text, /# videoclub\.digital LLMS Guide/);
@@ -1364,6 +1366,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(mdRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
     assert.equal(mdRes.headers.get("Vary"), "Accept");
     assert.ok(mdRes.headers.get("Link")?.includes('rel="canonical"'));
+    assert.ok(mdRes.headers.get("x-markdown-tokens"), "Debe tener x-markdown-tokens");
 
     const mdText = await mdRes.text();
     assert.match(mdText, /# Chernobyl \(2019 - Miniserie\)/);
@@ -1394,6 +1397,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(mdRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
     assert.equal(mdRes.headers.get("Vary"), "Accept");
     assert.ok(mdRes.headers.get("Link")?.includes('rel="canonical"'));
+    assert.ok(mdRes.headers.get("x-markdown-tokens"), "Debe tener x-markdown-tokens");
 
     const mdText = await mdRes.text();
     assert.match(mdText, /# Christopher Nolan/);
@@ -1417,6 +1421,7 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.equal(mdRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
     assert.equal(mdRes.headers.get("Vary"), "Accept");
     assert.ok(mdRes.headers.get("Link")?.includes('rel="canonical"'));
+    assert.ok(mdRes.headers.get("x-markdown-tokens"), "Debe tener x-markdown-tokens");
     assert.ok(mdRes.headers.get("Strict-Transport-Security"), "Debe tener cabecera HSTS");
     assert.equal(mdRes.headers.get("X-Content-Type-Options"), "nosniff");
 
