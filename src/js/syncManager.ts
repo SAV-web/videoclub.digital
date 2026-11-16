@@ -91,6 +91,7 @@ export async function syncWithServer(): Promise<void> {
       movie_id: number;
       rating: number | null;
       on_watchlist: boolean;
+      note?: string | null;
       updated_at: string;
     }> = [];
     const toUpsertIds: number[] = [];
@@ -104,6 +105,7 @@ export async function syncWithServer(): Promise<void> {
           movie_id: entry.movieId,
           rating: entry.rating,
           on_watchlist: entry.onWatchlist,
+          note: entry.note || null,
           updated_at: new Date(entry.updatedAt).toISOString()
         });
         toUpsertIds.push(entry.movieId);
@@ -178,13 +180,14 @@ export async function mergeOnLogin(userId: string): Promise<void> {
         movie_id: number | string;
         rating: number | null;
         on_watchlist: boolean;
+        note?: string | null;
         updated_at?: string | null;
       }> = [];
 
       while (true) {
         const { data, error } = await supabase
           .from("user_movie_entries")
-          .select("movie_id, rating, on_watchlist, updated_at")
+          .select("movie_id, rating, on_watchlist, note, updated_at")
           .eq("user_id", userId)
           .order("id", { ascending: true })
           .range(from, from + PAGE_SIZE - 1);
@@ -212,6 +215,7 @@ export async function mergeOnLogin(userId: string): Promise<void> {
         movie_id: Number(r.movie_id),
         rating: r.rating !== undefined ? r.rating : null,
         on_watchlist: Boolean(r.on_watchlist),
+        note: r.note ? String(r.note) : null,
         updated_at: r.updated_at
       }));
 

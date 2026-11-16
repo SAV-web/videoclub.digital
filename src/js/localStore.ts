@@ -19,6 +19,7 @@ interface LocalUserEntry {
   movieId: number;
   rating: number | null;
   onWatchlist: boolean;
+  note?: string | null;
   updatedAt: number; // timestamp UTC en milisegundos
   syncStatus: "synced" | "dirty" | "deleted";
 }
@@ -143,19 +144,22 @@ export async function saveLocalEntryWithMovie(
   const current = await getLocalEntry(movieId);
   const baseRating = current && current.syncStatus !== "deleted" ? current.rating : null;
   const baseWatchlist = current && current.syncStatus !== "deleted" ? current.onWatchlist : false;
+  const baseNote = current && current.syncStatus !== "deleted" ? current.note || null : null;
 
   const normalized = normalizeUserMovieEntry({
     rating: partialData.rating !== undefined ? partialData.rating : baseRating,
-    onWatchlist: partialData.onWatchlist !== undefined ? partialData.onWatchlist : baseWatchlist
+    onWatchlist: partialData.onWatchlist !== undefined ? partialData.onWatchlist : baseWatchlist,
+    note: partialData.note !== undefined ? partialData.note : baseNote
   });
 
-  const isInactive = normalized.rating === null && !normalized.onWatchlist;
+  const isInactive = normalized.rating === null && !normalized.onWatchlist && !normalized.note;
   const now = customTimestamp || Date.now();
 
   const entry: LocalUserEntry = {
     movieId,
     rating: normalized.rating,
     onWatchlist: normalized.onWatchlist,
+    note: normalized.note || null,
     updatedAt: now,
     syncStatus: isInactive ? "deleted" : "dirty"
   };
@@ -220,7 +224,7 @@ export async function saveLocalEntry(
  * permitiendo sincronización en lote en segundo plano.
  */
 export async function saveLocalEntriesBatch(
-  entries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean }>,
+  entries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean; note?: string | null }>,
   customTimestamp?: number
 ): Promise<{ importedCount: number; mergedMap: Record<string, UserMovieEntry> }> {
   const db = await openLocalDB();
@@ -243,14 +247,16 @@ export async function saveLocalEntriesBatch(
   for (const item of entries) {
     const normalized = normalizeUserMovieEntry({
       rating: item.rating,
-      onWatchlist: item.onWatchlist
+      onWatchlist: item.onWatchlist,
+      note: item.note
     });
 
-    const isInactive = normalized.rating === null && !normalized.onWatchlist;
+    const isInactive = normalized.rating === null && !normalized.onWatchlist && !normalized.note;
     const entry: LocalUserEntry = {
       movieId: item.movieId,
       rating: normalized.rating,
       onWatchlist: normalized.onWatchlist,
+      note: normalized.note || null,
       updatedAt: now,
       syncStatus: isInactive ? "deleted" : "dirty"
     };
@@ -277,7 +283,8 @@ export async function saveLocalEntriesBatch(
     if (entry.syncStatus !== "deleted") {
       mergedMap[String(id)] = {
         rating: entry.rating,
-        onWatchlist: entry.onWatchlist
+        onWatchlist: entry.onWatchlist,
+        note: entry.note || null
       };
     }
   }
@@ -305,7 +312,8 @@ export async function getAllLocalEntries(): Promise<Record<string, UserMovieEntr
           if (row.syncStatus !== "deleted") {
             result[String(row.movieId)] = {
               rating: row.rating,
-              onWatchlist: row.onWatchlist
+              onWatchlist: row.onWatchlist,
+              note: row.note || null
             };
           }
         }
@@ -400,6 +408,7 @@ export async function mergeRemoteEntries(
     movie_id: number;
     rating: number | null;
     on_watchlist: boolean;
+    note?: string | null;
     updated_at?: string | null;
   }>
 ): Promise<{ mergedMap: Record<string, UserMovieEntry>; hasLocalChangesToUpload: boolean }> {
@@ -431,6 +440,7 @@ export async function mergeRemoteEntries(
         movieId,
         rating: remote.rating,
         onWatchlist: remote.on_watchlist,
+        note: remote.note || null,
         updatedAt: remoteTime || Date.now(),
         syncStatus: "synced"
       });
@@ -445,6 +455,7 @@ export async function mergeRemoteEntries(
           movieId,
           rating: remote.rating,
           onWatchlist: remote.on_watchlist,
+          note: remote.note || null,
           updatedAt: remoteTime,
           syncStatus: "synced"
         });
@@ -455,6 +466,7 @@ export async function mergeRemoteEntries(
         movieId,
         rating: remote.rating,
         onWatchlist: remote.on_watchlist,
+        note: remote.note || null,
         updatedAt: remoteTime,
         syncStatus: "synced"
       });

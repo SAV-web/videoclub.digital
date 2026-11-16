@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { startViteSsrServer } from "../tests/helpers/vite-ssr.mjs";
+import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

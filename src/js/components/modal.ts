@@ -8,7 +8,7 @@
 // =================================================================
 
 import { openAccessibleModal, closeAccessibleModal, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
-import { unflipAllCards } from "./card/index.js";
+import { unflipAllCards, adjustQuickViewNoteHeight } from "./card/index.js";
 import { executeViewTransition, mapMoviePayload } from "../utils.js";
 import { CSS_CLASSES } from "../constants.js";
 import type { Movie, MappedMovie, MovieCardElement } from "../types.js";
@@ -152,13 +152,26 @@ export function isModalOpen(): boolean {
 /**
  * Cierra el modal con animación y limpieza.
  */
-export function closeModal(_options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean; skipHistory?: boolean } | Event): void {
+export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean; skipHistory?: boolean } | Event): void {
   if (isClosingModalInProgress) return;
 
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
 
+  const isPopstate = Boolean(options && typeof options === "object" && "fromPopstate" in options && options.fromPopstate);
+  const suppressHistoryBack = Boolean(
+    options && typeof options === "object" && (
+      ("suppressHistoryBack" in options && options.suppressHistoryBack) ||
+      ("skipHistory" in options && options.skipHistory)
+    )
+  );
+
   isClosingModalInProgress = true;
+
+  // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
+  if (!isPopstate && !suppressHistoryBack && typeof window !== "undefined" && window.history?.state?.modalOpen) {
+    window.history.back();
+  }
 
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
@@ -267,9 +280,17 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
   if (isAlreadyOpen) {
     unflipAllCards();
     populateModal(cardElement, contextCards);
-    if (content) content.scrollTop = 0;
+    if (content) {
+      content.scrollTop = 0;
+      scheduleModalRAF(() => adjustQuickViewNoteHeight(content));
+    }
     prefetchAdjacentModalImages(cardElement, contextCards);
     return;
+  }
+
+  // Integración con el botón "Atrás" del navegador: crear entrada en el historial
+  if (typeof window !== "undefined" && window.history && !window.history.state?.modalOpen) {
+    window.history.pushState({ ...window.history.state, modalOpen: true }, "", window.location.href);
   }
 
   // Apertura inicial (Transición Hero desde la tarjeta del Grid)
@@ -291,7 +312,10 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
       overlay.classList.add("is-visible");
     }
     openAccessibleModal(modal, overlay, false);
-    if (content) content.scrollTop = 0;
+    if (content) {
+      content.scrollTop = 0;
+      scheduleModalRAF(() => adjustQuickViewNoteHeight(content));
+    }
     scheduleModalTimeout(() => document.addEventListener("click", handleOutsideClick), 260);
     prefetchAdjacentModalImages(cardElement, contextCards);
   };
@@ -322,6 +346,9 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
         header.style.viewTransitionName = "";
       }
+      if (content) {
+        adjustQuickViewNoteHeight(content);
+      }
     });
   } else {
     modal.style.viewTransitionName = "";
@@ -330,6 +357,9 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
       modalTransitionCount--;
       if (modalTransitionCount === 0 && header && !document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
         header.style.viewTransitionName = "";
+      }
+      if (content) {
+        adjustQuickViewNoteHeight(content);
       }
     });
   }

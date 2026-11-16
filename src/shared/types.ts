@@ -50,7 +50,7 @@ export interface SupabaseMovieRow {
   slug?: string | null;
   relevance?: number | null;
   countries?: { name: string; code: string } | null;
-  user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean }> | { rating: number | null; on_watchlist: boolean } | null;
+  user_movie_entries?: Array<{ rating: number | null; on_watchlist: boolean; note?: string | null }> | { rating: number | null; on_watchlist: boolean; note?: string | null } | null;
 }
 
 // =================================================================
@@ -111,6 +111,7 @@ export interface MappedMovie extends Movie {
 export interface UserMovieEntry {
   rating: number | null;
   onWatchlist: boolean;
+  note?: string | null;
 }
 
 export interface MovieCardElement extends HTMLElement {

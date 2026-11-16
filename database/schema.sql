@@ -165,13 +165,14 @@ CREATE TABLE public.user_movie_entries (
   movie_id integer NOT NULL,
   on_watchlist boolean NOT NULL DEFAULT false,
   rating smallint CHECK (rating >= 1 AND rating <= 10),
+  note text CHECK (char_length(note) <= 280),
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT user_movie_entries_pkey PRIMARY KEY (id),
   CONSTRAINT user_movie_entries_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE,
   CONSTRAINT user_movie_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
   CONSTRAINT user_movie_entry_unique UNIQUE (user_id, movie_id),
-  CONSTRAINT check_user_entry_has_action CHECK (rating IS NOT NULL OR on_watchlist = true),
+  CONSTRAINT check_user_entry_has_action CHECK (rating IS NOT NULL OR on_watchlist = true OR (note IS NOT NULL AND trim(note) <> '')),
   CONSTRAINT check_user_entry_exclusive CHECK (NOT (rating IS NOT NULL AND on_watchlist = true))
 );
 

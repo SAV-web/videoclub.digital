@@ -105,12 +105,13 @@ CREATE TABLE IF NOT EXISTS public.user_movie_entries (
     
     on_watchlist BOOLEAN NOT NULL DEFAULT false,
     rating SMALLINT CHECK (rating >= 1 AND rating <= 10),
+    note TEXT CHECK (char_length(note) <= 280),
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
 
     CONSTRAINT user_movie_entry_unique UNIQUE (user_id, movie_id),
-    CONSTRAINT check_user_entry_has_action CHECK (rating IS NOT NULL OR on_watchlist = true),
+    CONSTRAINT check_user_entry_has_action CHECK (rating IS NOT NULL OR on_watchlist = true OR (note IS NOT NULL AND trim(note) <> '')),
     CONSTRAINT check_user_entry_exclusive CHECK (NOT (rating IS NOT NULL AND on_watchlist = true))
 );
 
@@ -295,7 +296,14 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
           OR (name_norm LIKE '%.%' AND replace(replace(name_norm, '.', ' '), '  ', ' ') LIKE '%' || replace(public.unaccent_immutable(lower(search_term)), '.', ' ') || '%')
           OR (name_norm LIKE '%.%' AND replace(name_norm, '.', '') LIKE '%' || replace(replace(public.unaccent_immutable(lower(search_term)), '.', ''), ' ', '') || '%')
       )
-    ORDER BY movie_count DESC
+    ORDER BY 
+        CASE 
+            WHEN name_norm = public.unaccent_immutable(lower(search_term)) THEN 1
+            WHEN name_norm LIKE public.unaccent_immutable(lower(search_term)) || '%' THEN 2
+            WHEN name_norm LIKE '% ' || public.unaccent_immutable(lower(search_term)) || '%' THEN 3
+            ELSE 4
+        END ASC,
+        movie_count DESC
     LIMIT 10;
 $$;
 
@@ -933,10 +941,10 @@ FROM (
     VALUES
         ('Acción', ARRAY['action', 'adrenalina']),
         ('Animación', ARRAY['animation', 'animado', 'dibujos', 'cgi']),
-        ('Aventuras', ARRAY['adventure', 'epico']),
-        ('Bélico', ARRAY['war', 'guerra']),
-        ('Biografía', ARRAY['biography', 'biografico', 'biopic']),
-        ('Noir', ARRAY['filmnoir', 'negro', 'neo-noir', 'cine negro']),
+        ('Aventuras', ARRAY['adventure', 'aventura', 'epico']),
+        ('Bélico', ARRAY['war', 'guerra', 'belica', 'belico']),
+        ('Biografía', ARRAY['biography', 'biografico', 'biografica', 'biopic']),
+        ('Noir', ARRAY['filmnoir', 'film-noir', 'negro', 'neo-noir', 'cine negro']),
         ('Comedia', ARRAY['comedy', 'humor', 'comico']),
         ('Crimen', ARRAY['crime', 'policiaco', 'policial', 'criminal', 'delito', 'mafia']),
         ('Deporte', ARRAY['sport', 'deportes']),
@@ -944,10 +952,10 @@ FROM (
         ('Drama', ARRAY['dramatico']),
         ('Familiar', ARRAY['family', 'infantil']),
         ('Fantasía', ARRAY['fantasy', 'fantastico']),
-        ('Histórico', ARRAY['history', 'epoca']),
+        ('Histórico', ARRAY['history', 'historia', 'epoca']),
         ('Intriga', ARRAY['mystery', 'misterio', 'enigma', 'investigacion']),
         ('Música', ARRAY['music', 'musical', 'canciones']),
-        ('Romance', ARRAY['romance', 'love', 'romantico', 'amor']),
+        ('Romance', ARRAY['romance', 'love', 'romantico', 'romantica', 'amor']),
         ('Sci-Fi', ARRAY['scifi', 'sci-fi', 'ciencia-ficcion', 'ciencia ficcion', 'futurista', 'distopia']),
         ('Terror', ARRAY['horror', 'miedo']),
         ('Thriller', ARRAY['suspense', 'psicologico', 'tension']),

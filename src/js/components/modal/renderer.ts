@@ -1,7 +1,7 @@
 import { createElement, renderCountryFlag, renderStudioIcons, setupExternalLink, applyLengthBasedClass, buildFilterUrl, formatModalDuration } from "../../utils.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
 import { CONFIG, IGNORED_ACTORS_SET, CSS_CLASSES } from "../../constants.js";
-import { updateCardUI, initializeCard, applyLqipImage, populatePersonFields } from "../card/index.js";
+import { updateCardUI, adjustQuickViewNoteHeight, initializeCard, applyLqipImage, populatePersonFields } from "../card/index.js";
 import { setupCardRatings } from "../rating.js";
 import type { Movie, MappedMovie, MovieCardElement } from "../../types.js";
 
@@ -351,5 +351,8 @@ export function populateModalContent(options: PopulateModalOptions): void {
     updateCardUI(cardClone);
     initializeCard(cardClone);
     updateNavButtons(modalId, contextCards);
+    scheduleModalRAF(() => {
+      adjustQuickViewNoteHeight(cardClone);
+    });
   }
 }

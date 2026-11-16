@@ -767,6 +767,32 @@ export function applyLqipImage(img: HTMLImageElement, thumbhashSrc: string | nul
   }
 }
 
+/**
+ * Auto-ajusta la altura del textarea de la nota privada según su contenido real.
+ * Si el textarea aún no ha sido renderizado en el layout (scrollHeight === 0), no fija inline height para no bloquearlo.
+ */
+export function adjustQuickViewNoteHeight(container: HTMLElement): void {
+  const noteWrapper = container.querySelector<HTMLElement>('[data-template="note-wrapper"]');
+  const textarea = container.querySelector<HTMLTextAreaElement>('[data-template="note-textarea"]');
+  if (!textarea || !noteWrapper || noteWrapper.hidden) return;
+
+  const hasNote = textarea.value.trim().length > 0;
+  if (!hasNote) {
+    textarea.style.height = "";
+    textarea.style.overflowY = "hidden";
+    return;
+  }
+
+  textarea.style.height = "auto";
+  const minHeight = noteWrapper.classList.contains("is-editing") ? 54 : 38;
+  const scrollH = textarea.scrollHeight;
+  if (scrollH > 0) {
+    const finalHeight = Math.min(Math.max(scrollH, minHeight), 160);
+    textarea.style.height = `${finalHeight}px`;
+    textarea.style.overflowY = scrollH > 160 ? "auto" : "hidden";
+  }
+}
+
 export function updateCardUI(card: MovieCardElement): void {
   const movieId = normalizeMovieId(card.dataset.movieId);
   const movie = card.movieData;
@@ -784,6 +810,39 @@ export function updateCardUI(card: MovieCardElement): void {
 
   // Estrellas (pasamos userData ya obtenido para evitar consulta duplicada)
   updateRatingUI(card, userData);
+
+  // Bloc de notas / Micro-crítica privada
+  const noteWrapper = card.querySelector<HTMLElement>('[data-template="note-wrapper"]');
+  const noteBtn = card.querySelector<HTMLButtonElement>('[data-template="note-toggle-btn"]');
+  const noteTextarea = card.querySelector<HTMLTextAreaElement>('[data-template="note-textarea"]');
+  const noteCounter = card.querySelector<HTMLElement>('[data-template="note-counter"]');
+  const hasNote = Boolean(userData?.note && userData.note.trim().length > 0);
+  const currentNote = userData?.note || "";
+
+  if (noteTextarea && document.activeElement !== noteTextarea) {
+    noteTextarea.value = currentNote;
+  }
+
+  if (noteCounter) {
+    noteCounter.textContent = `${(noteTextarea?.value || currentNote).length}/280`;
+  }
+
+  // Estado 1 (Sin nota): wrapper oculto, icono en título original visible.
+  // Estado 2 (Editando): wrapper visible con .is-editing, icono oculto.
+  // Estado 3 (Nota guardada): wrapper visible sin .is-editing, icono oculto.
+  if (noteWrapper) {
+    const isActivelyEditing = noteWrapper.classList.contains("is-editing");
+    noteWrapper.hidden = !hasNote && !isActivelyEditing;
+    if (!hasNote && !isActivelyEditing) {
+      noteWrapper.classList.remove("is-editing");
+    }
+  }
+  if (noteBtn) {
+    const isActivelyEditing = Boolean(noteWrapper?.classList.contains("is-editing"));
+    noteBtn.hidden = hasNote || isActivelyEditing;
+  }
+
+  adjustQuickViewNoteHeight(card);
 }
 
 export function initializeCard(_card?: MovieCardElement): void {

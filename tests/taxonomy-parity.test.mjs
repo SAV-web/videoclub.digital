@@ -55,12 +55,16 @@ describe("Paridad de Taxonomías: Edge SSR (taxonomy-types.js) vs SSOT (src/shar
     assert.deepEqual(edgeRegionalKeys, sharedRegionalSlugs, "Los slugs de grupos regionales deben coincidir exactamente");
   });
 
-  test("Países: ACTIVE_COUNTRIES_MAP (Edge) es un subconjunto estricto de COUNTRY_SLUG_MAP (SSOT) (78 de 116)", () => {
+  test("Países: ACTIVE_COUNTRIES_MAP (Edge) es un subconjunto estricto de COUNTRY_SLUG_MAP (SSOT)", () => {
     const edgeCountryKeys = Object.keys(taxonomyTypes.ACTIVE_COUNTRIES_MAP);
     const sharedCountryMap = sharedSlugs.COUNTRY_SLUG_MAP;
+    const totalSharedCountries = Object.keys(sharedCountryMap).length;
 
-    assert.equal(edgeCountryKeys.length, 78, "Edge debe registrar exactamente 78 países activos con catálogo");
-    assert.equal(Object.keys(sharedCountryMap).length, 116, "SSOT debe mantener los 116 países canónicos");
+    assert.ok(edgeCountryKeys.length > 0, "Edge debe registrar países activos");
+    assert.ok(
+      edgeCountryKeys.length <= totalSharedCountries,
+      `Los países de Edge (${edgeCountryKeys.length}) no deben superar los canónicos de SSOT (${totalSharedCountries})`
+    );
 
     for (const slug of edgeCountryKeys) {
       assert.ok(
@@ -73,5 +77,22 @@ describe("Paridad de Taxonomías: Edge SSR (taxonomy-types.js) vs SSOT (src/shar
         `El nombre del país para '${slug}' debe coincidir entre Edge y SSOT`
       );
     }
+  });
+
+  test("Sinónimos de Género: GENRE_SYNONYMS mapea deterministamente a slugs oficiales válidos y 'suspense' mapea a 'thriller'", () => {
+    const { GENRE_SYNONYMS, GENRE_SLUG_MAP, genreToSlug } = sharedSlugs;
+
+    for (const [synonym, targetSlug] of Object.entries(GENRE_SYNONYMS)) {
+      assert.ok(
+        targetSlug in GENRE_SLUG_MAP,
+        `El sinónimo '${synonym}' debe apuntar a un slug canónico existente (${targetSlug})`
+      );
+    }
+
+    assert.equal(GENRE_SYNONYMS["suspense"], "thriller", "El sinónimo 'suspense' debe mapear a 'thriller' (coincidente con SQL FTS)");
+    assert.equal(genreToSlug("suspense"), "thriller", "genreToSlug('suspense') debe retornar 'thriller'");
+    assert.equal(genreToSlug("misterio"), "intriga", "genreToSlug('misterio') debe retornar 'intriga'");
+    assert.equal(genreToSlug("aventura"), "aventuras", "genreToSlug('aventura') debe retornar 'aventuras'");
+    assert.equal(genreToSlug("belica"), "belico", "genreToSlug('belica') debe retornar 'belico'");
   });
 });

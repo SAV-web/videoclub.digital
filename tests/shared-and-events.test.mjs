@@ -411,10 +411,14 @@ describe("src/shared/formatters.ts (Formateadores y Reglas de Negocio Compartida
       sharedFormatters.computePersonAgeInfo("1970-07-30", null),
       utilsModule.computePersonAgeInfo("1970-07-30", null),
     );
+    assert.equal(sharedFormatters.computePersonAgeInfo("1970-07-30", null).datesStr, "1970-");
     assert.deepEqual(
       sharedFormatters.computePersonAgeInfo("1928-07-26", "1999-03-07"),
       utilsModule.computePersonAgeInfo("1928-07-26", "1999-03-07"),
     );
+    assert.equal(sharedFormatters.computePersonAgeInfo("1928-07-26", "1999-03-07").datesStr, "1928-99");
+    assert.equal(sharedFormatters.computePersonAgeInfo("1920-04-01", "1995-11-20").datesStr, "1920-95");
+    assert.equal(sharedFormatters.computePersonAgeInfo("1935-08-15", "2021-05-10").datesStr, "1935-'21");
   });
 
   test("Compatibilidad directa entre SPA y Edge SEO (cloudflare/seo/seo-types.js)", () => {

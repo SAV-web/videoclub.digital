@@ -15,7 +15,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
-import { startViteSsrServer } from "../tests/helpers/vite-ssr.mjs";
+import { startViteSsrServer } from "./helpers/vite-ssr.mjs";
 
 const viteEnv = await startViteSsrServer([
   "/cloudflare/seo/taxonomy-types.js"

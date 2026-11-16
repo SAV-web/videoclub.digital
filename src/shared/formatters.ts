@@ -387,7 +387,14 @@ export function computePersonAgeInfo(
     age = diff;
   }
 
-  const datesStr = isDeceased ? `${bYear}-${dYear}` : `${bYear}-`;
+  let datesStr = `${bYear}-`;
+  if (isDeceased) {
+    const startNum = Number.parseInt(bYear, 10);
+    const endNum = Number.parseInt(dYear, 10);
+    const endSuffix = dYear.length === 4 ? dYear.slice(-2) : dYear;
+    const isCenturyChange = Number.isFinite(startNum) && Number.isFinite(endNum) && Math.floor(startNum / 100) !== Math.floor(endNum / 100);
+    datesStr = isCenturyChange ? `${bYear}-'${endSuffix}` : `${bYear}-${endSuffix}`;
+  }
   const ageStr = isDeceased ? `✝ (${age})` : `(${age})`;
 
   return { bYear, dYear, datesStr, ageStr };

@@ -143,7 +143,7 @@ export function shapeRawMovieRow(mRaw: unknown): Movie {
     if (rawEntry && typeof rawEntry === "object") {
       const existing = getUserDataForMovie(m.id);
       if (!existing) {
-        updateUserDataForMovie(m.id, { rating: rawEntry.rating, onWatchlist: rawEntry.on_watchlist });
+        updateUserDataForMovie(m.id, { rating: rawEntry.rating, onWatchlist: rawEntry.on_watchlist, note: rawEntry.note || null });
       }
     }
   }
@@ -357,7 +357,7 @@ export function revalidateMyListInBackground(
           synopsis, thumbhash_st, last_synced_at, 
           episodes, wikipedia, selections_list, studios_list, justwatch,
           countries(name, code),
-          user_movie_entries!inner(user_id, rating, on_watchlist, updated_at)
+          user_movie_entries!inner(user_id, rating, on_watchlist, note, updated_at)
         `, requestCount ? { count: 'exact' } : {})
         .eq('user_movie_entries.user_id', userId);
 
@@ -537,7 +537,7 @@ export function fetchMovies(
               synopsis, thumbhash_st, last_synced_at, 
               episodes, wikipedia, selections_list, studios_list, justwatch,
               countries(name, code),
-              user_movie_entries!inner(user_id, rating, on_watchlist)
+              user_movie_entries!inner(user_id, rating, on_watchlist, note)
             `, normRequestCount ? { count: 'exact' } : {})
             .eq('user_movie_entries.user_id', session.user.id);
 

@@ -421,7 +421,7 @@ async function updateSyncStatusUI(): Promise<void> {
 export async function exportUserDataCsv(): Promise<void> {
   const allEntries: Record<string, UserMovieEntry> = getAllUserMovieData();
   const validEntries = Object.entries(allEntries).filter(
-    ([_, item]) => item && (item.rating !== null || item.onWatchlist)
+    ([_, item]) => item && (item.rating !== null || item.onWatchlist || Boolean(item.note && item.note.trim().length > 0))
   );
 
   if (validEntries.length === 0) {
@@ -528,9 +528,9 @@ export async function exportUserDataCsv(): Promise<void> {
       "Tipo",
       "Dirección",
       "Géneros",
-      "Mi Valoración (1-10)",
-      "Mis Estrellas (1-3)",
-      "En Pendientes"
+      "Mis Estrellas (0-3)",
+      "En Pendientes",
+      "Nota Privada"
     ];
 
     const rows = validEntries.map(([idStr, entry]) => {
@@ -547,9 +547,9 @@ export async function exportUserDataCsv(): Promise<void> {
         escapeCsv(meta?.type || ""),
         escapeCsv(meta?.directors || ""),
         escapeCsv(meta?.genres || ""),
-        escapeCsv(entry.rating ?? ""),
         escapeCsv(userStars),
-        escapeCsv(inWatchlist)
+        escapeCsv(inWatchlist),
+        escapeCsv(entry.note || "")
       ].join(",");
     });
 
@@ -670,10 +670,12 @@ export async function importUserDataCsv(file: File): Promise<void> {
       return;
     }
 
-    const ratingIdx = headers.findIndex(h => h.includes("valoraci") || h.includes("rating") || h.includes("nota"));
+    const ratingIdx = headers.findIndex(h => h.includes("estrella") || h.includes("star") || h.includes("valoraci") || h.includes("rating") || h.includes("calificaci") || (h.includes("nota") && !h.includes("privada") && !h.includes("personal")));
     const watchlistIdx = headers.findIndex(h => h.includes("pendiente") || h.includes("watchlist"));
+    const noteIdx = headers.findIndex(h => h.includes("privada") || h.includes("personal") || h.includes("crítica") || h.includes("critica") || h === "nota" || h === "note");
 
-    const validEntries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean }> = [];
+    const isStarsColumn = ratingIdx !== -1 && (headers[ratingIdx].includes("estrella") || headers[ratingIdx].includes("star"));
+    const validEntries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean; note?: string | null }> = [];
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
@@ -684,10 +686,23 @@ export async function importUserDataCsv(file: File): Promise<void> {
       if (!Number.isInteger(movieId) || movieId <= 0) continue;
 
       let rating: number | null = null;
-      if (ratingIdx !== -1 && row[ratingIdx]) {
-        const rawRating = Number(row[ratingIdx]);
-        if (Number.isInteger(rawRating) && rawRating >= 1 && rawRating <= 10) {
-          rating = rawRating;
+      if (ratingIdx !== -1 && row[ratingIdx] !== undefined && row[ratingIdx].trim() !== "") {
+        const valStr = row[ratingIdx].trim().toLowerCase();
+        if (isStarsColumn) {
+          if (valStr === "0" || valStr.includes("suspenso")) {
+            rating = 2;
+          } else if (valStr === "1" || valStr.startsWith("1")) {
+            rating = 5;
+          } else if (valStr === "2" || valStr.startsWith("2")) {
+            rating = 7;
+          } else if (valStr === "3" || valStr.startsWith("3")) {
+            rating = 9;
+          }
+        } else {
+          const rawRating = Number(valStr);
+          if (Number.isInteger(rawRating) && rawRating >= 1 && rawRating <= 10) {
+            rating = rawRating;
+          }
         }
       }
 
@@ -702,13 +717,21 @@ export async function importUserDataCsv(file: File): Promise<void> {
         }
       }
 
-      if (rating === null && !onWatchlist) continue;
+      let note: string | null = null;
+      if (noteIdx !== -1 && row[noteIdx]) {
+        const rawNote = row[noteIdx].trim().slice(0, 280);
+        if (rawNote.length > 0) {
+          note = rawNote;
+        }
+      }
 
-      validEntries.push({ movieId, rating, onWatchlist });
+      if (rating === null && !onWatchlist && !note) continue;
+
+      validEntries.push({ movieId, rating, onWatchlist, note });
     }
 
     if (validEntries.length === 0) {
-      showToast("No se encontraron registros válidos de calificación o pendientes para importar.", "info");
+      showToast("No se encontraron registros válidos de calificación, pendientes o notas para importar.", "info");
       return;
     }
 

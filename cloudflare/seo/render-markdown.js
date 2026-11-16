@@ -182,3 +182,72 @@ export function renderPersonMarkdown(person, options = {}, siteOrigin = 'https:/
   return lines.join('\n');
 }
 
+/**
+ * Renderiza el listado en Markdown de una taxonomía (género, selección, país, estudio).
+ *
+ * @param {Object} taxInfo - Metadatos de la taxonomía (resolveTaxonomy).
+ * @param {Array<Object>} items - Array de películas de la RPC search_movies_offset.
+ * @param {string} [siteOrigin="https://videoclub.digital"] - Origen canónico del sitio.
+ * @returns {string} Listado limpio en formato Markdown optimizado para agentes de IA.
+ */
+export function renderTaxonomyMarkdown(taxInfo, items = [], siteOrigin = 'https://videoclub.digital') {
+  if (!taxInfo || !Array.isArray(items)) return '';
+
+  const canonicalUrl = `${siteOrigin}${taxInfo.canonicalPath}`;
+  const lines = [];
+
+  // H1: Título oficial de la taxonomía
+  lines.push(`# ${taxInfo.title}`);
+  lines.push('');
+
+  // Metadatos de la taxonomía
+  if (taxInfo.description) {
+    lines.push(taxInfo.description.trim());
+    lines.push('');
+  }
+  lines.push(`- **Categoría:** ${taxInfo.badgeLabel}`);
+  lines.push(`- **Total destacados:** ${items.length} títulos`);
+  lines.push(`- **URL canónica:** ${canonicalUrl}`);
+  lines.push('');
+
+  // H2: Sección de títulos
+  lines.push('## Títulos Destacados');
+  lines.push('');
+
+  items.forEach((movie, index) => {
+    const isSeries = isSeriesType(movie.type);
+    const typeUpper = (movie.type || '').toUpperCase().trim();
+    const isMini = typeUpper === 'SM' || typeUpper === 'SAM' || typeUpper === 'SDM' || String(movie.year_end).trim().toUpperCase() === 'M';
+    const mediaLabel = isMini ? 'Miniserie' : isSeries ? 'Serie de TV' : '';
+    const typeSuffix = mediaLabel ? ` · ${mediaLabel}` : '';
+    const yearStr = movie.year ? ` (${movie.year}${typeSuffix})` : '';
+
+    const movieUrl = `${siteOrigin}/titulo/${movie.slug}/`;
+    const directors = parseList(movie.directors || movie.directors_list);
+
+    const ratings = [];
+    if (movie.fa_rating) {
+      const votesStr = movie.fa_votes ? ` (${formatVotesUnified(movie.fa_votes)} votos)` : '';
+      ratings.push(`FilmAffinity: ${movie.fa_rating}${votesStr}`);
+    }
+    if (movie.imdb_rating) {
+      const votesStr = movie.imdb_votes ? ` (${formatVotesUnified(movie.imdb_votes)} votos)` : '';
+      ratings.push(`IMDb: ${movie.imdb_rating}${votesStr}`);
+    }
+    const ratingStr = ratings.length > 0 ? ratings.join(' | ') : 'Sin valoración';
+
+    lines.push(`### ${index + 1}. [${movie.title}](${movieUrl})${yearStr}`);
+    if (directors.length > 0) {
+      lines.push(`- **Dirección:** ${directors.join(', ')}`);
+    }
+    lines.push(`- **Puntuaciones:** ${ratingStr}`);
+    lines.push(`- **Ficha:** ${movieUrl}`);
+    lines.push('');
+  });
+
+  lines.push('---');
+  lines.push(`*Listado canónico en VIDEOCLUB.DIGITAL: ${canonicalUrl}*`);
+
+  return lines.join('\n');
+}
+

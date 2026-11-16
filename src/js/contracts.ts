@@ -507,12 +507,14 @@ export function normalizeMovieId(value: unknown): number | null {
 }
 
 export function normalizeUserMovieEntry(entry: unknown = {}): UserMovieEntry {
-  if (!entry || typeof entry !== "object") return Object.freeze({ rating: null, onWatchlist: false });
+  if (!entry || typeof entry !== "object") return Object.freeze({ rating: null, onWatchlist: false, note: null });
   const e = entry as Record<string, unknown>;
   const ratingVal = e.rating === null || e.rating === undefined ? null : Number.parseInt(String(e.rating), 10);
   const rating = Number.isFinite(ratingVal) && ratingVal !== null && ratingVal >= 1 && ratingVal <= 10 ? ratingVal : null;
   const onWatchlist = e.onWatchlist === true || e.on_watchlist === true;
-  return Object.freeze({ rating, onWatchlist });
+  const rawNote = typeof e.note === "string" ? e.note.trim() : null;
+  const note = rawNote && rawNote.length > 0 ? rawNote.slice(0, 280) : null;
+  return Object.freeze({ rating, onWatchlist, note });
 }
 
 export function normalizeUserMovieData(data: unknown = {}): Record<string, UserMovieEntry> {

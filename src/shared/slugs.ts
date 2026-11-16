@@ -71,7 +71,7 @@ export const GENRE_SYNONYMS: Record<string, string> = {
   "biografica": "biografia",
   "aventura": "aventuras",
   "misterio": "intriga",
-  "suspense": "intriga",
+  "suspense": "thriller",
   "romantica": "romance",
   "romantico": "romance"
 };

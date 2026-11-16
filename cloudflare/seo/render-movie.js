@@ -21,6 +21,7 @@ import {
   toSlug,
   genreToSlug,
   STUDIO_DATA,
+  SPECULATION_RULES,
   sanitizeExternalUrl
 } from './seo-types.js';
 
@@ -145,35 +146,7 @@ export function renderMovieHtml(movie, options = {}) {
   };
 
   // 3. Speculation Rules API (Prerender SPA y rutas de navegación frecuente)
-  const speculationRules = {
-    prerender: [
-      {
-        source: "list",
-        urls: ["/"]
-      },
-      {
-        where: {
-          and: [
-            {
-              or: [
-                { href_matches: "/*\\?movie=*" },
-                { href_matches: "/*\\?_p=*" },
-                { href_matches: "/*\\?year=*" },
-                { href_matches: "/director/*" },
-                { href_matches: "/actor/*" },
-                { href_matches: "/genero/*" },
-                { href_matches: "/pais/*" },
-                { href_matches: "/seleccion/*" },
-                { href_matches: "/estudio/*" }
-              ]
-            },
-            { not: { href_matches: "/*#*" } }
-          ]
-        },
-        eagerness: "moderate"
-      }
-    ]
-  };
+  const speculationRules = SPECULATION_RULES;
 
   // 4. Render HTML Markup
   return `<!DOCTYPE html>

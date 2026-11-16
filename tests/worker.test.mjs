@@ -1406,6 +1406,73 @@ describe("cloudflare/worker.js (Edge Optimizer & Proxy Smoke Tests)", () => {
     assert.ok(mdText.length < 3000, "El perfil de persona VIP en Markdown debe ser ligero (<3 KB)");
   });
 
+  test("Negociación Markdown en rutas de taxonomía (/genero/:slug/) entrega listado estructurado y aísla la caché frente a HTML", async () => {
+    // 1. Petición de un agente de IA con Accept: text/markdown en /genero/sci-fi/
+    const mdReq = new Request("https://videoclub.digital/genero/sci-fi/", {
+      headers: { Accept: "text/markdown" }
+    });
+    const mdRes = await worker.fetch(mdReq, {}, defaultCtx);
+
+    assert.equal(mdRes.status, 200);
+    assert.equal(mdRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
+    assert.equal(mdRes.headers.get("Vary"), "Accept");
+    assert.ok(mdRes.headers.get("Link")?.includes('rel="canonical"'));
+    assert.ok(mdRes.headers.get("Strict-Transport-Security"), "Debe tener cabecera HSTS");
+    assert.equal(mdRes.headers.get("X-Content-Type-Options"), "nosniff");
+
+    const mdText = await mdRes.text();
+    // H1 y metadatos de categoría
+    assert.match(mdText, /# Películas y Series de Ciencia Ficción/);
+    assert.match(mdText, /Categoría:\*\* Género/);
+    assert.match(mdText, /URL canónica:\*\* https:\/\/videoclub\.digital\/genero\/sci-fi\//);
+
+    // H2 y títulos con enlaces canónicos y metadatos
+    assert.match(mdText, /## Títulos Destacados/);
+    assert.match(mdText, /\[Matrix\]\(https:\/\/videoclub\.digital\/titulo\/matrix-1999\/\)/);
+    assert.match(mdText, /Dirección:\*\* Hermanas Wachowski/);
+    assert.match(mdText, /FilmAffinity: 7\.9/);
+
+    // 2. Petición subsiguiente de un navegador con Accept: text/html (verificar aislamiento de caché perimetral)
+    const htmlReq = new Request("https://videoclub.digital/genero/sci-fi/", {
+      headers: { Accept: "text/html,application/xhtml+xml" }
+    });
+    const htmlRes = await worker.fetch(htmlReq, {}, defaultCtx);
+
+    assert.equal(htmlRes.status, 200);
+    assert.ok(htmlRes.headers.get("Content-Type")?.includes("text/html"));
+    const htmlText = await htmlRes.text();
+    assert.match(htmlText, /<!DOCTYPE html>/i);
+  });
+
+  test("Negociación Markdown con Accept: text/plain en taxonomías (/seleccion/:slug/ y /pais/:slug/)", async () => {
+    // 1. Selección editorial con Accept: text/plain
+    const selReq = new Request("https://videoclub.digital/seleccion/criterion/", {
+      headers: { Accept: "text/plain" }
+    });
+    const selRes = await worker.fetch(selReq, {}, defaultCtx);
+
+    assert.equal(selRes.status, 200);
+    assert.equal(selRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
+    assert.equal(selRes.headers.get("Vary"), "Accept");
+    assert.ok(selRes.headers.get("Link")?.includes('rel="canonical"'));
+    const selText = await selRes.text();
+    assert.match(selText, /# The Criterion Collection/);
+    assert.match(selText, /Categoría:\*\* Colección/);
+
+    // 2. País con Accept: text/markdown, text/plain
+    const countryReq = new Request("https://videoclub.digital/pais/espana/", {
+      headers: { Accept: "text/markdown, text/plain" }
+    });
+    const countryRes = await worker.fetch(countryReq, {}, defaultCtx);
+
+    assert.equal(countryRes.status, 200);
+    assert.equal(countryRes.headers.get("Content-Type"), "text/markdown; charset=utf-8");
+    assert.equal(countryRes.headers.get("Vary"), "Accept");
+    const countryText = await countryRes.text();
+    assert.match(countryText, /# Cine de España/);
+    assert.match(countryText, /Categoría:\*\* País/);
+  });
+
   test("seo-types.js: todos los exports están definidos (sin imports rotos en Vite SSR)", () => {
     assert.ok(seoTypesModule && typeof seoTypesModule === "object");
     const exportsList = Object.entries(seoTypesModule);

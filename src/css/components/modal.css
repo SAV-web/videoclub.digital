@@ -170,24 +170,28 @@
     order: 2;
   }
 
-  & .back-original-title-wrapper {
+  & .quick-view-note-wrapper {
     order: 3;
   }
 
-  & .front-director-info {
+  & .back-original-title-wrapper {
     order: 4;
   }
 
-  & .details-list {
+  & .front-director-info {
     order: 5;
   }
 
-  & .scrollable-content {
+  & .details-list {
     order: 6;
   }
 
-  & .expand-content-btn {
+  & .scrollable-content {
     order: 7;
+  }
+
+  & .expand-content-btn {
+    order: 8;
   }
 }
 
@@ -289,14 +293,16 @@
 
 /* Título original (Cara trasera) - En cursiva con menor jerarquía visual */
 .is-quick-view .back-original-title-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
   min-height: 0;
   margin-top: 0;
   margin-bottom: 2px;
   padding: 0;
-  align-items: flex-start;
   flex-shrink: 0;
   animation: none;
-  display: block;
 
   & span {
     font-size: 0.95rem;
@@ -306,7 +312,9 @@
     line-height: 1.35;
     display: inline-block;
     padding-right: 0.35em;
-    overflow: visible;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   & span:is(.title-medium, .title-long, .title-xl-long) {
@@ -774,6 +782,225 @@
   align-self: center;
 }
 
+/* Visibilidad de la nota privada condicionada a la sesión de usuario */
+:where(body:not(.user-logged-in)) :is(.quick-view-note-wrapper, .note-toggle-btn) {
+  display: none !important;
+}
+
+/* Botón de notas cuando aún no se ha escrito */
+.is-quick-view .note-toggle-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: var(--space-xs, 8px);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  touch-action: manipulation;
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    color: var(--color-text-primary);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+
+  &[hidden] {
+    display: none !important;
+  }
+}
+
+.is-quick-view .note-toggle-btn .note-icon {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+}
+
+/* Cuadro de texto interactivo para notas privadas con auto-expansión y modo edición */
+.is-quick-view .quick-view-note-wrapper {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+
+  &[hidden] {
+    display: none !important;
+  }
+}
+
+/* En modo visualización (no edición, Imagen 3): se ocultan cabecera y botones */
+.is-quick-view .quick-view-note-wrapper:not(.is-editing) :is(.note-editor-header, .note-editor-actions) {
+  display: none !important;
+}
+
+/* Cabecera del editor de notas (Imagen 2) */
+.is-quick-view .note-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.is-quick-view .note-editor-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #ffffff);
+}
+
+.is-quick-view .note-editor-title .note-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.is-quick-view .note-char-counter {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #9ca3af);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Textarea / Recuadro de nota */
+.is-quick-view .quick-view-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  outline: none;
+  field-sizing: content;
+  max-height: 160px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Estilo en modo visualización / guardado (Imagen 3) */
+.is-quick-view .quick-view-note-wrapper:not(.is-editing) .quick-view-note-input {
+  font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: var(--radius-md, 8px);
+  padding: 8px 12px;
+  min-height: 38px;
+  cursor: pointer;
+  resize: vertical;
+}
+
+/* Estilo en modo edición (Imagen 2) */
+.is-quick-view .quick-view-note-wrapper.is-editing .quick-view-note-input {
+  font-size: 0.9rem;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-height: 54px;
+  resize: vertical;
+
+  &:focus {
+    border-color: rgba(96, 165, 250, 0.5);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  &::placeholder {
+    color: var(--color-text-tertiary, #6b7280);
+    font-size: 0.85rem;
+  }
+}
+
+:where(html:not(.dark-mode)) .is-quick-view .quick-view-note-wrapper:not(.is-editing) .quick-view-note-input {
+  background: var(--color-bg-primary, #ffffff);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #111827;
+}
+
+:where(html:not(.dark-mode)) .is-quick-view .quick-view-note-wrapper.is-editing .quick-view-note-input {
+  background: #ffffff;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+:where(html:not(.dark-mode)) .is-quick-view .note-editor-title {
+  color: #111827;
+}
+
+/* Acciones inferiores del editor (Imagen 2) */
+.is-quick-view .note-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.is-quick-view .note-btn-delete {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary, #9ca3af);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  touch-action: manipulation;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: #ef4444;
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.is-quick-view .note-btn-save {
+  background: #4b5563;
+  border: none;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 5px 14px;
+  touch-action: manipulation;
+  transition: background 0.15s ease, transform 0.1s ease;
+
+  &:hover {
+    background: #374151;
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+:where(html:not(.dark-mode)) .is-quick-view .note-btn-delete {
+  color: #6b7280;
+
+  &:hover {
+    color: #dc2626;
+  }
+}
+
+:where(html:not(.dark-mode)) .is-quick-view .note-btn-save {
+  background: #374151;
+  color: #ffffff;
+
+  &:hover {
+    background: #1f2937;
+  }
+}
+
 /* Bloque de Notas FA e IMDb: 50/50 equilibrado, notas aumentadas y votos debajo */
 .is-quick-view .ratings-container {
   display: grid;
@@ -781,8 +1008,14 @@
   gap: var(--space-lg, 24px);
   width: 100%;
   margin-top: 10px;
-  margin-bottom: 35px;
+  margin-bottom: 16px;
   padding: 0;
+}
+
+/* Cuando no hay nota escrita o está oculta, mayor separación visual */
+.is-quick-view:has(.quick-view-note-wrapper[hidden]) .ratings-container,
+:where(body:not(.user-logged-in)) .is-quick-view .ratings-container {
+  margin-bottom: 28px;
 }
 
 .is-quick-view .ratings-container .rating-line {

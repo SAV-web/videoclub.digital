@@ -680,7 +680,20 @@ function setupGlobalListeners(): void {
 
       if (newPage > 0 && newPage <= totalPages) {
         appEvents.emit("uiActionTriggered");
-        await loadAndRenderMovies(newPage);
+
+        // Al cambiar de página desde el modal, actualizar la entrada base de historial a la nueva página
+        // para que al cerrar el modal (por overlay, ESC, gesto o botón Atrás) se permanezca en la página visible.
+        const basePrefix = getAppBasePath();
+        const { pathname, search } = stateToPrettyUrl(getActiveFilters(), newPage);
+        const cleanPath = search ? `${pathname}?${search}` : pathname;
+        const newUrl = `${basePrefix}${cleanPath}`;
+
+        if (typeof window !== "undefined" && window.history) {
+          window.history.replaceState({ path: newUrl, scrollY: 0 }, "", newUrl);
+          window.history.pushState({ path: newUrl, scrollY: 0, modalOpen: true }, "", newUrl);
+        }
+
+        await loadAndRenderMovies(newPage, { replaceHistory: true });
 
         const grid = document.getElementById("grid-container");
         if (grid) {

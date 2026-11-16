@@ -15,7 +15,7 @@
  */
 
 import { renderMovieHtml } from "./seo/render-movie.js";
-import { renderMovieMarkdown, renderPersonMarkdown } from "./seo/render-markdown.js";
+import { renderMovieMarkdown, renderPersonMarkdown, renderTaxonomyMarkdown } from "./seo/render-markdown.js";
 import { MOVIE_PROJECTION, SHARED_CONFIG } from "./seo/seo-types.js";
 import { SEO_CARD_CSS } from "./seo/seo-card-css.js";
 import { resolveTaxonomy } from "./seo/taxonomy-types.js";
@@ -181,9 +181,13 @@ export default {
         const nonSlashPerson = new URL(`/${slug}`, url.origin).toString();
         const mdPerson = new URL(`/_edge_cache/md/vip/${slug}`, url.origin).toString();
         const canonicalGenre = new URL(`/genero/${slug}/`, url.origin).toString();
+        const mdGenre = new URL(`/_edge_cache/md/taxonomy/genero/${slug}`, url.origin).toString();
         const canonicalCountry = new URL(`/pais/${slug}/`, url.origin).toString();
+        const mdCountry = new URL(`/_edge_cache/md/taxonomy/pais/${slug}`, url.origin).toString();
         const canonicalStudio = new URL(`/estudio/${slug}/`, url.origin).toString();
+        const mdStudio = new URL(`/_edge_cache/md/taxonomy/estudio/${slug}`, url.origin).toString();
         const canonicalSel = new URL(`/seleccion/${slug}/`, url.origin).toString();
+        const mdSel = new URL(`/_edge_cache/md/taxonomy/seleccion/${slug}`, url.origin).toString();
 
         const p1 = await cache.delete(canonicalMovie);
         const p2 = await cache.delete(nonSlashMovie);
@@ -192,10 +196,14 @@ export default {
         const p5 = await cache.delete(nonSlashPerson);
         const p6 = await cache.delete(mdPerson);
         const p7 = await cache.delete(canonicalGenre);
-        const p8 = await cache.delete(canonicalCountry);
-        const p9 = await cache.delete(canonicalStudio);
-        const p10 = await cache.delete(canonicalSel);
-        if (p1 || p2 || p3 || p4 || p5 || p6 || p7 || p8 || p9 || p10) purgedCount++;
+        const p8 = await cache.delete(mdGenre);
+        const p9 = await cache.delete(canonicalCountry);
+        const p10 = await cache.delete(mdCountry);
+        const p11 = await cache.delete(canonicalStudio);
+        const p12 = await cache.delete(mdStudio);
+        const p13 = await cache.delete(canonicalSel);
+        const p14 = await cache.delete(mdSel);
+        if (p1 || p2 || p3 || p4 || p5 || p6 || p7 || p8 || p9 || p10 || p11 || p12 || p13 || p14) purgedCount++;
       }
       return new Response(JSON.stringify({ success: true, purged: purgedCount, totalRequested: slugs.length }), {
         status: 200,
@@ -366,7 +374,7 @@ export default {
       const slug = url.pathname.replace(/^\/titulo\//i, "").replace(/\/$/, "").trim().toLowerCase();
       if (slug) {
         const cache = caches.default;
-        const isMarkdownRequest = acceptHeader.includes("text/markdown");
+        const isMarkdownRequest = acceptHeader.includes("text/markdown") || (acceptHeader.includes("text/plain") && !acceptHeader.includes("text/html"));
         const cacheKeyUrl = isMarkdownRequest
           ? new URL(`/_edge_cache/md/titulo/${slug}`, url.origin)
           : new URL(`/titulo/${slug}/`, url.origin);
@@ -446,7 +454,11 @@ export default {
         const taxInfo = resolveTaxonomy(slug, prefix);
         if (taxInfo) {
           const cache = caches.default;
-          const canonicalKey = new Request(new URL(taxInfo.canonicalPath, url.origin).toString(), request);
+          const isMarkdownRequest = acceptHeader.includes("text/markdown") || (acceptHeader.includes("text/plain") && !acceptHeader.includes("text/html"));
+          const cacheKeyUrl = isMarkdownRequest
+            ? new URL(`/_edge_cache/md/taxonomy/${prefix}/${slug}`, url.origin)
+            : new URL(taxInfo.canonicalPath, url.origin);
+          const canonicalKey = new Request(cacheKeyUrl.toString(), request);
 
           const cached = await cache.match(canonicalKey);
           if (cached) {
@@ -479,6 +491,24 @@ export default {
             
             if (items.length === 0) {
               return createErrorResponse(404, "No se encontraron títulos en esta categoría", url.origin);
+            }
+
+            // Negociación Markdown para Agentes de IA (Perplexity, SearchGPT, Claude, etc.)
+            if (isMarkdownRequest) {
+              const md = renderTaxonomyMarkdown(taxInfo, items, url.origin);
+              const responseHeaders = new Headers({
+                "Content-Type": "text/markdown; charset=utf-8",
+                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+                "Vary": "Accept",
+                "Link": `<${url.origin}${taxInfo.canonicalPath}>; rel="canonical"`
+              });
+              applySecurityHeaders(responseHeaders);
+              const response = new Response(md, {
+                status: 200,
+                headers: responseHeaders
+              });
+              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+              return response;
             }
 
             const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
@@ -521,7 +551,7 @@ export default {
           }
 
           const cache = caches.default;
-          const isMarkdownRequest = acceptHeader.includes("text/markdown");
+          const isMarkdownRequest = acceptHeader.includes("text/markdown") || (acceptHeader.includes("text/plain") && !acceptHeader.includes("text/html"));
           const cacheKeyUrl = isMarkdownRequest
             ? new URL(`/_edge_cache/md/vip/${slug}`, url.origin)
             : new URL(`/${slug}/`, url.origin);

@@ -376,4 +376,44 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
       teardown();
     }
   });
+
+  test("Notas Privadas: saveLocalEntry persiste micro-críticas locales con estado 'dirty' y respeta LWW", async () => {
+    const noteText = "Obra maestra incontestable del cine noir moderno. Guion perfecto.";
+    const entry = await localStore.saveLocalEntry(99, { note: noteText });
+
+    assert.equal(entry.movieId, 99);
+    assert.equal(entry.note, noteText);
+    assert.equal(entry.syncStatus, "dirty");
+
+    const retrieved = await localStore.getLocalEntry(99);
+    assert.equal(retrieved.note, noteText);
+
+    // Si se elimina la nota (note: null) sin rating ni watchlist, pasa a 'deleted'
+    const cleared = await localStore.saveLocalEntry(99, { note: null });
+    assert.equal(cleared.syncStatus, "deleted");
+    assert.equal(cleared.note, null);
+  });
+
+  test("Notas Privadas: mergeRemoteEntries adopta y concilia notas remotas vía LWW", async () => {
+    const remoteTimestamp = new Date("2026-11-16T10:00:00Z").toISOString();
+    const remoteNote = "Excelente fotografía y ritmo.";
+
+    const { mergedMap } = await localStore.mergeRemoteEntries([
+      {
+        movie_id: 101,
+        rating: 8,
+        on_watchlist: false,
+        note: remoteNote,
+        updated_at: remoteTimestamp
+      }
+    ]);
+
+    assert.ok(mergedMap["101"]);
+    assert.equal(mergedMap["101"].note, remoteNote);
+    assert.equal(mergedMap["101"].rating, 8);
+
+    const stored = await localStore.getLocalEntry(101);
+    assert.equal(stored.syncStatus, "synced");
+    assert.equal(stored.note, remoteNote);
+  });
 });

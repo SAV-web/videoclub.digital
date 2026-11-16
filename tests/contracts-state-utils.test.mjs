@@ -365,10 +365,10 @@ describe("state.js y Pretty Paths", () => {
     const rawEntry = contracts.normalizeUserMovieEntry({ rating: "8", onWatchlist: true });
     assert.equal(Object.isFrozen(rawEntry), true);
 
-    state.updateUserDataForMovie("42", { rating: "8", onWatchlist: true });
+    state.updateUserDataForMovie("42", { rating: "8", onWatchlist: true, note: "Gran clásico" });
     state.updateUserDataForMovie("bad-id", { rating: 10, onWatchlist: true });
 
-    assert.deepEqual(state.getUserDataForMovie(42), { rating: 8, onWatchlist: true });
+    assert.deepEqual(state.getUserDataForMovie(42), { rating: 8, onWatchlist: true, note: "Gran clásico" });
     assert.equal(state.getUserDataForMovie("bad-id"), undefined);
     assert.equal(state.getWatchlistCount(), 1);
   });

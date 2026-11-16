@@ -537,10 +537,10 @@ export function updateUserDataForMovie(movieId: number | string, data: Partial<U
 
 
   const strId = String(normalizedMovieId);
-  const current = state.userMovieData[strId] || { onWatchlist: false, rating: null };
+  const current = state.userMovieData[strId] || { onWatchlist: false, rating: null, note: null };
   const updated = normalizeUserMovieEntry({ ...current, ...data });
   
-  if (current.rating === updated.rating && current.onWatchlist === updated.onWatchlist) return;
+  if (current.rating === updated.rating && current.onWatchlist === updated.onWatchlist && current.note === updated.note) return;
   
   state.userMovieData[strId] = updated; // Esto dispara automáticamente el evento en makeReactive
 }

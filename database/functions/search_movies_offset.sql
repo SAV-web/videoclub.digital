@@ -65,6 +65,7 @@ DECLARE
     v_director_tsquery tsquery;
     v_director_names text[];
     v_actor_tsquery tsquery;
+    v_actor_names text[];
     v_selection_tsquery tsquery;
     v_studio_tsquery tsquery;
     v_excluded_genres_tsquery tsquery;
@@ -222,22 +223,21 @@ BEGIN
     END IF;
 
     -- FASE 1.6: FAST-PATH QUIRÚRGICO DE PORTADA LIMPIA (DAILY SHOWCASE)
-    -- Si la consulta es para el escaparate limpio de portada, dentro de los 378 títulos del pool,
+    -- Si la consulta es para el escaparate limpio de portada, dentro de los títulos del pool (v_showcase_limit),
     -- cortocircuitamos con Index-Only Scan sobre idx_movies_relevance_id (~1.5 ms).
     IF v_enable_daily_showcase 
        AND NOT v_has_filters 
-       AND v_showcase_limit = 378 
-       AND (v_offset + v_limit <= 378) THEN
+       AND (v_offset + v_limit <= v_showcase_limit) THEN
 
         WITH raw_showcase AS (
-            SELECT id
+            SELECT id, relevance
             FROM public.movies
             ORDER BY relevance ASC, id ASC
-            LIMIT 378
+            LIMIT v_showcase_limit
         ),
         showcase_pool AS (
             SELECT id,
-                   ROW_NUMBER() OVER () AS natural_rank
+                   ROW_NUMBER() OVER (ORDER BY relevance ASC, id ASC) AS natural_rank
             FROM raw_showcase
         ),
         paged_ids AS (
@@ -370,8 +370,9 @@ BEGIN
 
     -- FASE 3.7: RESOLUCIÓN DE ACTOR (SLUGS, ALFANUMÉRICA Y DE NOMBRE CANÓNICO)
     IF actor_name IS NOT NULL AND TRIM(actor_name) != '' THEN
-        SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(a_name) || '"')::text, ' | ')::tsquery
-        INTO v_actor_tsquery
+        SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(a_name) || '"')::text, ' | ')::tsquery,
+               array_agg(lower(public.unaccent_immutable(trim(a_name))))
+        INTO v_actor_tsquery, v_actor_names
         FROM (
             SELECT a.name AS a_name
             FROM public.people a
@@ -428,7 +429,15 @@ BEGIN
                         )
                     )
                 ))
-                AND ($7 IS NULL OR m.actors_tsv @@ $7)
+                AND ($7 IS NULL OR (
+                    m.actors_tsv @@ $7
+                    AND (
+                        $14 IS NULL OR EXISTS (
+                            SELECT 1 FROM unnest(string_to_array(m.actors_list, '','')) a_elem
+                            WHERE lower(public.unaccent_immutable(trim(a_elem))) = ANY($14)
+                        )
+                    )
+                ))
                 AND ($9 IS NULL OR m.selections_tsv @@ $9)
                 AND ($10 IS NULL OR m.studios_tsv @@ $10)
                 AND ($11 IS NULL OR NOT (m.genres_tsv @@ $11))
@@ -498,7 +507,7 @@ BEGIN
     USING
         search_term, v_genre_tsquery, p_year_start, p_year_end, v_country_ids, -- $1..$5
         v_director_tsquery, v_actor_tsquery, media_type, v_selection_tsquery, v_studio_tsquery, -- $6..$10
-        v_excluded_genres_tsquery, v_excluded_country_ids, v_director_names; -- $11..$13
+        v_excluded_genres_tsquery, v_excluded_country_ids, v_director_names, v_actor_names; -- $11..$14
         
     RETURN v_json_result;
 END;

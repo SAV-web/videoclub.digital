@@ -1272,8 +1272,28 @@
               </div>
             </div>
           </div>
+          <div class="quick-view-note-wrapper" data-template="note-wrapper" hidden>
+            <div class="note-editor-header" data-template="note-header">
+              <span class="note-editor-title">
+                <svg class="note-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <use href="#icon-note"></use>
+                </svg>
+                Nota privada
+              </span>
+              <span class="note-char-counter" data-template="note-counter">0/280</span>
+            </div>
+            <textarea class="quick-view-note-input" data-template="note-textarea" maxlength="280" placeholder="Añadir nota privada..." rows="2" aria-label="Nota privada"></textarea>
+            <div class="note-editor-actions" data-template="note-actions">
+              <button type="button" class="note-btn-delete" data-action="delete-note">Borrar</button>
+              <button type="button" class="note-btn-save" data-action="save-note">Guardar</button>
+            </div>
+          </div>
           <div class="back-original-title-wrapper">
             <span data-template="original-title"></span>
+            <button type="button" class="note-toggle-btn" data-action="toggle-note" aria-label="Añadir nota privada"
+              title="Añadir nota privada" data-template="note-toggle-btn"><svg class="note-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <use href="#icon-note"></use>
+              </svg></button>
           </div>
           <div class="front-director-info" data-template="director"></div>
           <div class="details-list">
