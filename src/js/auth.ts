@@ -584,10 +584,16 @@ function toggleView(viewToShow: "login" | "register" | "recover" | "reset"): voi
         // 4. Iniciar la transición de entrada
         targetView.classList.remove("auth-view-entering");
         
-        // Foco en el primer input de la nueva vista
-        const firstInput = targetView.querySelector("input") as HTMLInputElement | null;
-        if (firstInput) {
-          requestAnimationFrame(() => firstInput.focus({ preventScroll: true }));
+        const authBox = document.querySelector("#auth-modal .auth-box") as HTMLElement | null;
+        if (authBox) authBox.scrollTop = 0;
+
+        const isTouchOrMobile = window.matchMedia("(max-width: 768px)").matches || 
+                               window.matchMedia("(pointer: coarse)").matches;
+        if (!isTouchOrMobile) {
+          const firstInput = targetView.querySelector("input") as HTMLInputElement | null;
+          if (firstInput) {
+            requestAnimationFrame(() => firstInput.focus({ preventScroll: true }));
+          }
         }
       }
     }, 150);
@@ -599,9 +605,16 @@ function toggleView(viewToShow: "login" | "register" | "recover" | "reset"): voi
         v.classList.remove("auth-view-exiting", "auth-view-entering");
       }
     });
-    const firstInput = targetView?.querySelector("input") as HTMLInputElement | null;
-    if (firstInput) {
-      requestAnimationFrame(() => firstInput.focus({ preventScroll: true }));
+    const authBox = document.querySelector("#auth-modal .auth-box") as HTMLElement | null;
+    if (authBox) authBox.scrollTop = 0;
+
+    const isTouchOrMobile = window.matchMedia("(max-width: 768px)").matches || 
+                           window.matchMedia("(pointer: coarse)").matches;
+    if (!isTouchOrMobile) {
+      const firstInput = targetView?.querySelector("input") as HTMLInputElement | null;
+      if (firstInput) {
+        requestAnimationFrame(() => firstInput.focus({ preventScroll: true }));
+      }
     }
   }
 }

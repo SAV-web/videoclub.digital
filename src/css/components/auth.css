@@ -72,7 +72,7 @@
 
   .auth-box {
     width: 100%;
-    padding: calc(var(--space-lg) + 12px) var(--space-lg) max(var(--space-lg), env(safe-area-inset-bottom));
+    padding: 0 var(--space-md) max(var(--space-md), env(safe-area-inset-bottom));
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     background-color: var(--color-surface);
     box-shadow: var(--shadow);
@@ -81,6 +81,25 @@
     overflow-y: auto;
     overscroll-behavior-y: contain;
     animation: modal-slide-up 0.35s var(--ease-smooth-out);
+  }
+
+  .auth-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--color-surface);
+    padding-top: calc(var(--space-md) + 6px);
+    padding-bottom: var(--space-xs);
+    margin-bottom: var(--space-xs);
+  }
+
+  .auth-box h3 {
+    margin-bottom: var(--space-sm);
+    font-size: var(--font-size-base);
+  }
+
+  .form-group {
+    margin-bottom: var(--space-sm);
   }
 }
 
@@ -143,6 +162,7 @@
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   transition: border-color 0.2s, box-shadow 0.2s;
+  scroll-margin-top: 90px;
 
   &:focus {
     outline: none;

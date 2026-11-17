@@ -121,6 +121,23 @@ export function createCachedHtmlResponse(html, canonicalKey, cache, ctx) {
   return response;
 }
 
+export function createCachedMarkdownResponse(markdown, canonicalUrl, canonicalKey, cache, ctx) {
+  const responseHeaders = new Headers({
+    "Content-Type": "text/markdown; charset=utf-8",
+    "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
+    "Vary": "Accept",
+    "Link": `<${canonicalUrl}>; rel="canonical"`,
+    "x-markdown-tokens": String(Math.ceil(markdown.length / 4))
+  });
+  applySecurityHeaders(responseHeaders);
+  const response = new Response(markdown, {
+    status: 200,
+    headers: responseHeaders
+  });
+  ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
+  return response;
+}
+
 const RESERVED_PREFIXES = [
   "/api/",
   "/assets/",
@@ -416,20 +433,7 @@ export default {
           // Negociación Markdown para Agentes de IA (Perplexity, SearchGPT, Claude, etc.)
           if (isMarkdownRequest) {
             const md = renderMovieMarkdown(movie, url.origin);
-            const responseHeaders = new Headers({
-              "Content-Type": "text/markdown; charset=utf-8",
-              "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-              "Vary": "Accept",
-              "Link": `<${url.origin}/titulo/${slug}/>; rel="canonical"`,
-              "x-markdown-tokens": String(Math.ceil(md.length / 4))
-            });
-            applySecurityHeaders(responseHeaders);
-            const response = new Response(md, {
-              status: 200,
-              headers: responseHeaders
-            });
-            ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-            return response;
+            return createCachedMarkdownResponse(md, `${url.origin}/titulo/${slug}/`, canonicalKey, cache, ctx);
           }
 
           const html = renderMovieHtml(movie, { siteOrigin: url.origin, baseUrl: "/" });
@@ -497,20 +501,7 @@ export default {
             // Negociación Markdown para Agentes de IA (Perplexity, SearchGPT, Claude, etc.)
             if (isMarkdownRequest) {
               const md = renderTaxonomyMarkdown(taxInfo, items, url.origin);
-              const responseHeaders = new Headers({
-                "Content-Type": "text/markdown; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Vary": "Accept",
-                "Link": `<${url.origin}${taxInfo.canonicalPath}>; rel="canonical"`,
-                "x-markdown-tokens": String(Math.ceil(md.length / 4))
-              });
-              applySecurityHeaders(responseHeaders);
-              const response = new Response(md, {
-                status: 200,
-                headers: responseHeaders
-              });
-              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-              return response;
+              return createCachedMarkdownResponse(md, `${url.origin}${taxInfo.canonicalPath}`, canonicalKey, cache, ctx);
             }
 
             const html = renderTaxonomyHtml(taxInfo, items, { siteOrigin: url.origin, storageUrl });
@@ -638,20 +629,7 @@ export default {
             // Negociación Markdown para Agentes de IA
             if (isMarkdownRequest) {
               const md = renderPersonMarkdown(person, { filmographies }, url.origin);
-              const responseHeaders = new Headers({
-                "Content-Type": "text/markdown; charset=utf-8",
-                "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400",
-                "Vary": "Accept",
-                "Link": `<${url.origin}/${slug}/>; rel="canonical"`,
-                "x-markdown-tokens": String(Math.ceil(md.length / 4))
-              });
-              applySecurityHeaders(responseHeaders);
-              const response = new Response(md, {
-                status: 200,
-                headers: responseHeaders
-              });
-              ctx?.waitUntil?.(cache.put(canonicalKey, response.clone()));
-              return response;
+              return createCachedMarkdownResponse(md, `${url.origin}/${slug}/`, canonicalKey, cache, ctx);
             }
 
             const html = renderPersonHtml(person, {

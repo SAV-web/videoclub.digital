@@ -13,7 +13,7 @@ import { getAllUserMovieData, clearUserMovieData, setUserMovieData, appEvents } 
 import { openAccessibleModal, closeAccessibleModal, showToast, bindBottomSheetSwipeToDismiss } from "../ui.js";
 import { UserMovieEntry } from "../types.js";
 import { getPendingSyncEntries, clearLocalStore, getCachedMoviesByIds, saveLocalEntriesBatch } from "../localStore.js";
-import { syncWithServer, mergeOnLogin, scheduleSync } from "../syncManager.js";
+import { syncWithServer, mergeOnLogin, scheduleSync, getLastSyncFailures } from "../syncManager.js";
 import { calculateUserStars } from "../../shared/formatters.js";
 import { ensureProfileModalMounted } from "../templates/profileModal.js";
 import { renderStars } from "./rating.js";
@@ -407,9 +407,12 @@ async function updateSyncStatusUI(): Promise<void> {
   if (pending.length === 0) {
     dom.syncDot.className = "sync-dot";
     dom.syncText.textContent = "Al día con la nube (100% sincronizado)";
+    dom.syncText.removeAttribute("title");
   } else {
     dom.syncDot.className = "sync-dot sync-dot--dirty";
     dom.syncText.textContent = `${pending.length} acción${pending.length > 1 ? "es" : ""} pendiente${pending.length > 1 ? "s" : ""} de sincronizar`;
+    const ids = pending.map(p => p.movieId).join(", ");
+    dom.syncText.setAttribute("title", `Películas pendientes: ${ids}`);
   }
 }
 
@@ -569,7 +572,7 @@ export async function exportUserDataCsv(): Promise<void> {
   } finally {
     if (dom.exportCsvBtn) {
       dom.exportCsvBtn.disabled = false;
-      dom.exportCsvBtn.textContent = "Exportar mi colección (CSV)";
+      dom.exportCsvBtn.textContent = "Exportar colección";
     }
   }
 }
@@ -670,12 +673,34 @@ export async function importUserDataCsv(file: File): Promise<void> {
       return;
     }
 
-    const ratingIdx = headers.findIndex(h => h.includes("estrella") || h.includes("star") || h.includes("valoraci") || h.includes("rating") || h.includes("calificaci") || (h.includes("nota") && !h.includes("privada") && !h.includes("personal")));
-    const watchlistIdx = headers.findIndex(h => h.includes("pendiente") || h.includes("watchlist"));
-    const noteIdx = headers.findIndex(h => h.includes("privada") || h.includes("personal") || h.includes("crítica") || h.includes("critica") || h === "nota" || h === "note");
+    const noteIdx = headers.findIndex(h => 
+      h.includes("privada") || h.includes("personal") || 
+      h.includes("coment") || h.includes("comment") || 
+      h.includes("crítica") || h.includes("critica") || 
+      h.includes("reseña") || h.includes("resena") || 
+      h.includes("review") || h.includes("opinion") || h.includes("opinión") ||
+      h === "nota" || h === "notas" || h === "note" || h === "notes"
+    );
 
-    const isStarsColumn = ratingIdx !== -1 && (headers[ratingIdx].includes("estrella") || headers[ratingIdx].includes("star"));
-    const validEntries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean; note?: string | null }> = [];
+    const ratingIdx = headers.findIndex((h, idx) => 
+      idx !== noteIdx && (
+        h.includes("estrella") || h.includes("star") || 
+        h.includes("valoraci") || h.includes("rating") || 
+        h.includes("calificaci") || h.includes("puntuaci") || 
+        h.includes("score") || (h.includes("nota") && !h.includes("privada") && !h.includes("personal") && idx !== noteIdx)
+      )
+    );
+
+    const watchlistIdx = headers.findIndex((h, idx) => 
+      idx !== noteIdx && idx !== ratingIdx && (h.includes("pendiente") || h.includes("watchlist"))
+    );
+
+    const hasRatingCol = ratingIdx !== -1;
+    const hasWatchlistCol = watchlistIdx !== -1;
+    const hasNoteCol = noteIdx !== -1;
+
+    const isStarsColumn = hasRatingCol && (headers[ratingIdx].includes("estrella") || headers[ratingIdx].includes("star"));
+    const validEntries: Array<{ movieId: number; rating?: number | null; onWatchlist?: boolean; note?: string | null }> = [];
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
@@ -685,8 +710,8 @@ export async function importUserDataCsv(file: File): Promise<void> {
       const movieId = Number(rawId);
       if (!Number.isInteger(movieId) || movieId <= 0) continue;
 
-      let rating: number | null = null;
-      if (ratingIdx !== -1 && row[ratingIdx] !== undefined && row[ratingIdx].trim() !== "") {
+      let rating: number | null | undefined = undefined;
+      if (hasRatingCol && row[ratingIdx] !== undefined && row[ratingIdx].trim() !== "") {
         const valStr = row[ratingIdx].trim().toLowerCase();
         if (isStarsColumn) {
           if (valStr === "0" || valStr.includes("suspenso")) {
@@ -706,28 +731,32 @@ export async function importUserDataCsv(file: File): Promise<void> {
         }
       }
 
-      let onWatchlist = false;
-      if (rating !== null) {
-        // Invariante contractual: si la obra tiene calificación, se excluye de pendientes
-        onWatchlist = false;
-      } else if (watchlistIdx !== -1 && row[watchlistIdx]) {
+      let onWatchlist: boolean | undefined = undefined;
+      if (hasWatchlistCol && row[watchlistIdx] !== undefined && row[watchlistIdx].trim() !== "") {
         const rawW = row[watchlistIdx].trim().toLowerCase();
         if (rawW === "sí" || rawW === "si" || rawW === "true" || rawW === "1" || rawW === "yes") {
           onWatchlist = true;
+        } else if (rawW === "no" || rawW === "false" || rawW === "0") {
+          onWatchlist = false;
         }
       }
 
-      let note: string | null = null;
-      if (noteIdx !== -1 && row[noteIdx]) {
+      let note: string | null | undefined = undefined;
+      if (hasNoteCol && row[noteIdx] !== undefined && row[noteIdx].trim() !== "") {
         const rawNote = row[noteIdx].trim().slice(0, 280);
         if (rawNote.length > 0) {
           note = rawNote;
         }
       }
 
-      if (rating === null && !onWatchlist && !note) continue;
+      if (rating === undefined && onWatchlist === undefined && note === undefined) continue;
 
-      validEntries.push({ movieId, rating, onWatchlist, note });
+      validEntries.push({
+        movieId,
+        ...(rating !== undefined ? { rating } : {}),
+        ...(onWatchlist !== undefined ? { onWatchlist } : {}),
+        ...(note !== undefined ? { note } : {})
+      });
     }
 
     if (validEntries.length === 0) {
@@ -747,7 +776,7 @@ export async function importUserDataCsv(file: File): Promise<void> {
   } finally {
     if (dom.importCsvBtn) {
       dom.importCsvBtn.disabled = false;
-      dom.importCsvBtn.textContent = "Importar colección (CSV)";
+      dom.importCsvBtn.textContent = "Importar colección";
     }
     if (dom.csvFileInput) {
       dom.csvFileInput.value = "";
@@ -960,7 +989,19 @@ export function setupProfileModal(): () => void {
         }
         await updateSyncStatusUI();
         renderProfileStats();
-        showToast("Sincronización completada con la nube.", "success");
+
+        const remainingPending = await getPendingSyncEntries();
+        if (remainingPending.length === 0) {
+          showToast("Sincronización completada con la nube.", "success");
+        } else {
+          const failures = getLastSyncFailures();
+          const hasCheckConstraint = failures.some(f => f.message.includes("check_user_entry_has_action") || f.code === "23514");
+          if (hasCheckConstraint) {
+            showToast(`${remainingPending.length} notas requieren actualizar la restricción SQL en Supabase para permitir notas sin puntuación.`, "info");
+          } else {
+            showToast(`Sincronización parcial: ${remainingPending.length} acción(es) pendiente(s).`, "info");
+          }
+        }
       } catch {
         showToast("No se pudo sincronizar en este momento.", "error");
       } finally {

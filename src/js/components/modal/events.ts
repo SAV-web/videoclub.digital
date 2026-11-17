@@ -74,6 +74,46 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
   if (content) {
     let noteDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+    /**
+     * Persiste la nota privada en estado reactivo e IndexedDB únicamente si su valor real ha cambiado.
+     * Retorna true si hubo persistencia efectiva, false si no hubo alteración.
+     */
+    const persistNoteIfChanged = async (
+      movieId: number,
+      noteValue: string | null
+    ): Promise<boolean> => {
+      const currentUserData = getUserDataForMovie(movieId);
+      const noteChanged = (currentUserData?.note || null) !== noteValue;
+      if (!noteChanged) return false;
+
+      updateUserDataForMovie(movieId, { note: noteValue });
+      const movieData = (content as MovieContentElement).movieData || null;
+      await saveLocalEntryWithMovie(movieId, { note: noteValue }, movieData);
+      scheduleSync(200);
+      return true;
+    };
+
+    /**
+     * Activa el modo edición (.is-editing) en el editor de micro-crítica privada.
+     * Unifica el foco, la sincronización del contador y la posición del cursor al final.
+     */
+    const enterNoteEditMode = (): void => {
+      if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
+      const noteWrapper = content.querySelector<HTMLElement>('[data-template="note-wrapper"]');
+      const noteBtn = content.querySelector<HTMLElement>('[data-template="note-toggle-btn"]');
+      const textarea = content.querySelector<HTMLTextAreaElement>('[data-template="note-textarea"]');
+      const counter = content.querySelector<HTMLElement>('[data-template="note-counter"]');
+      if (noteWrapper && textarea) {
+        noteWrapper.hidden = false;
+        noteWrapper.classList.add("is-editing");
+        if (noteBtn) noteBtn.hidden = true;
+        if (counter) counter.textContent = `${textarea.value.length}/280`;
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        adjustQuickViewNoteHeight(content);
+      }
+    };
+
     const saveModalNote = async (noteOverride?: string | null): Promise<void> => {
       const movieId = normalizeMovieId(content.dataset.movieId);
       if (!movieId || !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
@@ -88,18 +128,10 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
         ? noteOverride
         : (textarea.value.trim().slice(0, 280) || null);
 
-      const currentUserData = getUserDataForMovie(movieId);
-      const noteChanged = (currentUserData?.note || null) !== noteValue;
-
-      if (noteChanged) {
-        triggerHapticFeedback("light");
-        updateUserDataForMovie(movieId, { note: noteValue });
-
-        const movieData = (content as MovieContentElement).movieData || null;
-        await saveLocalEntryWithMovie(movieId, { note: noteValue }, movieData);
+      triggerHapticFeedback("light");
+      const didChange = await persistNoteIfChanged(movieId, noteValue);
+      if (didChange) {
         triggerHapticFeedback("success");
-
-        scheduleSync(200);
       }
 
       if (noteWrapper) {
@@ -121,24 +153,12 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
     const handleContentClick = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
-      // Si pulsa el icono de nota (cuando aún no hay nota escrita): abrir editor (Imagen 2)
+      // Si pulsa el icono de nota (cuando aún no hay nota escrita): abrir editor
       const noteToggleBtn = target.closest<HTMLElement>('[data-action="toggle-note"]');
       if (noteToggleBtn) {
         e.preventDefault();
         e.stopPropagation();
-        if (!document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
-        const noteWrapper = content.querySelector<HTMLElement>('[data-template="note-wrapper"]');
-        const textarea = content.querySelector<HTMLTextAreaElement>('[data-template="note-textarea"]');
-        const counter = content.querySelector<HTMLElement>('[data-template="note-counter"]');
-        if (noteWrapper && textarea) {
-          noteWrapper.hidden = false;
-          noteWrapper.classList.add("is-editing");
-          noteToggleBtn.hidden = true;
-          if (counter) counter.textContent = `${textarea.value.length}/280`;
-          textarea.focus();
-          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-          adjustQuickViewNoteHeight(content);
-        }
+        enterNoteEditMode();
         return;
       }
 
@@ -164,18 +184,12 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
         return;
       }
 
-      // Si pulsa en el cuadro de texto mientras está en modo visualización (Imagen 3 -> Imagen 2)
+      // Si pulsa en el cuadro de texto mientras está en modo visualización (lectura -> edición)
       const textarea = target.closest<HTMLTextAreaElement>('[data-template="note-textarea"]');
       if (textarea) {
         const noteWrapper = content.querySelector<HTMLElement>('[data-template="note-wrapper"]');
-        const noteBtn = content.querySelector<HTMLElement>('[data-template="note-toggle-btn"]');
-        const counter = content.querySelector<HTMLElement>('[data-template="note-counter"]');
         if (noteWrapper && !noteWrapper.classList.contains("is-editing")) {
-          noteWrapper.classList.add("is-editing");
-          if (noteBtn) noteBtn.hidden = true;
-          if (counter) counter.textContent = `${textarea.value.length}/280`;
-          textarea.focus();
-          adjustQuickViewNoteHeight(content);
+          enterNoteEditMode();
         }
         return;
       }
@@ -210,15 +224,12 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
         adjustQuickViewNoteHeight(content);
 
         if (noteDebounceTimer) clearTimeout(noteDebounceTimer);
-        noteDebounceTimer = setTimeout(() => {
+        noteDebounceTimer = setTimeout(async () => {
           const movieId = normalizeMovieId(content.dataset.movieId);
           if (!movieId || !document.body.classList.contains(CSS_CLASSES.USER_LOGGED_IN)) return;
           const trimmed = textarea.value.trim().slice(0, 280);
           const noteValue = trimmed.length > 0 ? trimmed : null;
-          updateUserDataForMovie(movieId, { note: noteValue });
-          const movieData = (content as MovieContentElement).movieData || null;
-          saveLocalEntryWithMovie(movieId, { note: noteValue }, movieData);
-          scheduleSync(200);
+          await persistNoteIfChanged(movieId, noteValue);
         }, 1000);
       }
     };

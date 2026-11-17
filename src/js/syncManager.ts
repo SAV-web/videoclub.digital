@@ -18,6 +18,18 @@ import { setUserMovieData } from "./state.js";
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 let isSyncing = false;
 
+export interface SyncFailure {
+  movieId: number;
+  message: string;
+  code?: string;
+}
+
+let lastSyncFailures: SyncFailure[] = [];
+
+export function getLastSyncFailures(): SyncFailure[] {
+  return [...lastSyncFailures];
+}
+
 /**
  * Solicita el registro de Background Sync en el Service Worker si está disponible.
  */
@@ -63,6 +75,7 @@ export async function syncWithServer(): Promise<void> {
   }
 
   isSyncing = true;
+  lastSyncFailures = [];
   const syncTimestamp = Date.now();
 
   try {
@@ -114,35 +127,69 @@ export async function syncWithServer(): Promise<void> {
 
     const successfullySyncedIds: number[] = [];
 
-    // 1. Ejecutar eliminaciones en lote si las hay
+    // 1. Ejecutar eliminaciones en lote si las hay (en bloques de 500 para evitar desbordamiento)
     if (toDeleteIds.length > 0) {
-      const { error: delError } = await supabase
-        .from("user_movie_entries")
-        .delete()
-        .eq("user_id", userId)
-        .in("movie_id", toDeleteIds);
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < toDeleteIds.length; i += CHUNK_SIZE) {
+        const chunkIds = toDeleteIds.slice(i, i + CHUNK_SIZE);
+        const { error: delError } = await supabase
+          .from("user_movie_entries")
+          .delete()
+          .eq("user_id", userId)
+          .in("movie_id", chunkIds);
 
-      if (delError) {
-        if (import.meta.env.DEV) {
-          console.warn("[SyncManager] Error al eliminar en Supabase:", delError);
+        if (delError) {
+          console.error("[SyncManager] Error al eliminar en Supabase:", delError.message || delError);
+        } else {
+          successfullySyncedIds.push(...chunkIds);
         }
-      } else {
-        successfullySyncedIds.push(...toDeleteIds);
       }
     }
 
-    // 2. Ejecutar inserciones / actualizaciones en lote si las hay
+    // 2. Ejecutar inserciones / actualizaciones en lote si las hay (en bloques de 500)
     if (toUpsert.length > 0) {
-      const { error: upsertError } = await supabase
-        .from("user_movie_entries")
-        .upsert(toUpsert, { onConflict: "user_id, movie_id" });
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < toUpsert.length; i += CHUNK_SIZE) {
+        const chunk = toUpsert.slice(i, i + CHUNK_SIZE);
+        const chunkIds = toUpsertIds.slice(i, i + CHUNK_SIZE);
+        const { error: upsertError } = await supabase
+          .from("user_movie_entries")
+          .upsert(chunk, { onConflict: "user_id, movie_id" });
 
-      if (upsertError) {
-        if (import.meta.env.DEV) {
-          console.warn("[SyncManager] Error al hacer upsert en Supabase:", upsertError);
+        if (upsertError) {
+          console.error("[SyncManager] Error al hacer upsert en lote:", upsertError.message || upsertError);
+          // Resiliencia: si el lote falla (por ejemplo por una clave foránea o restricción en una sola fila),
+          // intentamos sincronizar individualmente para rescatar todas las filas válidas del lote
+          const orphanIdsToPurge: number[] = [];
+          for (let j = 0; j < chunk.length; j++) {
+            const singleRow = chunk[j];
+            const singleId = chunkIds[j];
+            const { error: singleErr } = await supabase
+              .from("user_movie_entries")
+              .upsert(singleRow, { onConflict: "user_id, movie_id" });
+
+            if (!singleErr) {
+              successfullySyncedIds.push(singleId);
+            } else {
+              const errMsg = singleErr.message || String(singleErr);
+              const errCode = (singleErr as { code?: string }).code;
+              lastSyncFailures.push({ movieId: singleId, message: errMsg, code: errCode });
+              console.warn(`[SyncManager] Fila con movie_id=${singleId} rechazada por Supabase:`, errMsg);
+
+              // Si el error es una clave foránea (movie_id no existe en el catálogo de Supabase),
+              // se purga de la cola dirty para que no bloquee permanentemente el contador
+              if (errCode === "23503" || errMsg.toLowerCase().includes("foreign key")) {
+                orphanIdsToPurge.push(singleId);
+              }
+            }
+          }
+          if (orphanIdsToPurge.length > 0) {
+            console.warn(`[SyncManager] Purgando ${orphanIdsToPurge.length} películas huérfanas que no existen en el catálogo.`);
+            await markEntriesAsSynced(orphanIdsToPurge, syncTimestamp);
+          }
+        } else {
+          successfullySyncedIds.push(...chunkIds);
         }
-      } else {
-        successfullySyncedIds.push(...toUpsertIds);
       }
     }
 

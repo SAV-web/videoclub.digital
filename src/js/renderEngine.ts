@@ -391,6 +391,23 @@ export async function loadAndRenderMovies(
       }
     }
 
+    if (movies.length === 0 && page > 1 && effectiveTotal > 0) {
+      const metrics = computeGridPaginationMetrics(effectiveTotal, basePageSize, confirmedHasVip);
+      const targetPage = Math.min(page, Math.max(1, metrics.totalPages));
+      if (targetPage !== page) {
+        const targetOffset = confirmedHasVip ? ((targetPage - 1) * basePageSize) - 1 : (targetPage - 1) * basePageSize;
+        const targetLimit = basePageSize + 2;
+        const clampedResult = await fetchMovies(activeFilters, targetPage, targetLimit, signal, false, targetOffset);
+        if (clampedResult.aborted || signal.aborted) return;
+        setCurrentPage(targetPage);
+        updateUrl({ replace: true });
+        await updateDomWithResults(clampedResult.items || [], effectiveTotal, vipData, confirmedHasVip);
+        const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
+        window.scrollTo({ top: targetScroll, behavior: "auto" });
+        return;
+      }
+    }
+
     if (vipData && (vipData.type === "collection" || vipData.type === "studio")) {
       vipData.total = effectiveTotal;
     }

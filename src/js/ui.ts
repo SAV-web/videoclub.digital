@@ -519,8 +519,12 @@ export function openAccessibleModal(
   modal.focus({ preventScroll: true });
 
   if (focusContent) {
-    const firstInput = modal.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    if (firstInput) firstInput.focus();
+    const isTouchOrMobile = window.matchMedia("(max-width: 768px)").matches || 
+                           window.matchMedia("(pointer: coarse)").matches;
+    if (!isTouchOrMobile) {
+      const firstInput = modal.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (firstInput) firstInput.focus({ preventScroll: true });
+    }
   }
 
   // Activar trampa
@@ -668,8 +672,24 @@ export const openAuthModal = async (): Promise<void> => {
   if (dom.authModal) {
     dom.authModal.style.transform = "";
     dom.authModal.classList.remove("is-dragging");
+    dom.authModal.scrollTop = 0;
+    const authBox = dom.authModal.querySelector<HTMLElement>(".auth-box");
+    if (authBox) authBox.scrollTop = 0;
   }
   openAccessibleModal(dom.authModal, dom.authOverlay);
+
+  // Garantizar que en móvil la modal inicie estrictamente desde el principio (logo e inputs visibles)
+  const resetScroll = () => {
+    if (dom.authModal) {
+      dom.authModal.scrollTop = 0;
+      const authBox = dom.authModal.querySelector<HTMLElement>(".auth-box");
+      if (authBox && authBox.scrollTop !== 0) authBox.scrollTop = 0;
+    }
+  };
+  requestAnimationFrame(resetScroll);
+  setTimeout(resetScroll, 50);
+  setTimeout(resetScroll, 150);
+  setTimeout(resetScroll, 360);
 };
 
 let authTriggerBound = false;

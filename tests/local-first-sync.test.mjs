@@ -260,12 +260,16 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
     // Caso 2: Si todas las películas restantes en el almacén están protegidas por el usuario,
     // la purga no debe eliminar ninguna aunque se supere el límite
     await localStore.saveLocalEntry(903, { rating: null, onWatchlist: true });
-    await localStore.pruneOldCachedMovies(1); // límite 1 cuando hay 2 películas protegidas (901 y 903)
+    await localStore.saveLocalEntry(904, { rating: null, onWatchlist: false, note: "Micro-crítica personal" });
+    await localStore.saveCachedMovies([{ id: 904, title: "Inception", year: 2010 }]);
+    await localStore.pruneOldCachedMovies(1); // límite 1 cuando hay 3 películas protegidas (901, 903 y 904)
 
     const final901 = await localStore.getCachedMovie(901);
     const final903 = await localStore.getCachedMovie(903);
+    const final904 = await localStore.getCachedMovie(904);
     assert.ok(final901, "901 sigue protegida");
     assert.ok(final903, "903 sigue protegida por estar en watchlist");
+    assert.ok(final904, "904 sigue protegida por tener micro-crítica privada (nota)");
   });
 
   test("revalidateMyListInBackground fusiona entradas remotas como 'synced' y no deja pendientes 'dirty'", async () => {
@@ -415,5 +419,84 @@ describe("Local-First Architecture (localStore.ts y syncManager.ts)", () => {
     const stored = await localStore.getLocalEntry(101);
     assert.equal(stored.syncStatus, "synced");
     assert.equal(stored.note, remoteNote);
+  });
+
+  test("getLocalMyListResponse respeta explicitOffset cuando se suministra", async () => {
+    stateModule.setUserMovieData({
+      "1001": { onWatchlist: false, rating: 7 },
+      "1002": { onWatchlist: false, rating: 8 },
+      "1003": { onWatchlist: false, rating: 9 }
+    });
+
+    await localStore.saveCachedMovies([
+      { id: 1001, title: "Film 1", year: 2000, type: "movie" },
+      { id: 1002, title: "Film 2", year: 2001, type: "movie" },
+      { id: 1003, title: "Film 3", year: 2002, type: "movie" }
+    ]);
+
+    // Con explicitOffset = 2 y pageSize = 10, debe devolver solo la tercera película (índice 2)
+    const res = await apiModule.getLocalMyListResponse(
+      { myList: "rated" },
+      1,
+      10,
+      true,
+      2
+    );
+
+    assert.ok(res);
+    assert.equal(res.total, 3);
+    assert.equal(res.items.length, 1);
+    assert.equal(res.items[0].id, 1003);
+  });
+
+  test("saveLocalEntriesBatch fusiona notas en lote preservando ratings y watchlist existentes", async () => {
+    // 1. Película previa con calificación de 8 estrellas
+    await localStore.saveLocalEntry(2001, { rating: 8, onWatchlist: false });
+    // 2. Película previa en lista de seguimiento (watchlist)
+    await localStore.saveLocalEntry(2002, { rating: null, onWatchlist: true });
+
+    // Importación de un lote que SOLO contiene notas (sin rating ni watchlist especificados)
+    const { mergedMap } = await localStore.saveLocalEntriesBatch([
+      { movieId: 2001, note: "Gran clásico del cine." },
+      { movieId: 2002, note: "Pendiente para este fin de semana." }
+    ]);
+
+    // Verificar en el mapa fusionado devuelto
+    assert.equal(mergedMap["2001"].rating, 8, "El rating previo de 8 DEBE preservarse");
+    assert.equal(mergedMap["2001"].onWatchlist, false);
+    assert.equal(mergedMap["2001"].note, "Gran clásico del cine.");
+
+    assert.equal(mergedMap["2002"].rating, null);
+    assert.equal(mergedMap["2002"].onWatchlist, true, "El estado onWatchlist previo DEBE preservarse");
+    assert.equal(mergedMap["2002"].note, "Pendiente para este fin de semana.");
+
+    // Verificar en IndexedDB
+    const stored1 = await localStore.getLocalEntry(2001);
+    assert.equal(stored1.rating, 8, "IndexedDB debe mantener el rating 8");
+    assert.equal(stored1.note, "Gran clásico del cine.");
+    assert.equal(stored1.syncStatus, "dirty");
+
+    const stored2 = await localStore.getLocalEntry(2002);
+    assert.equal(stored2.onWatchlist, true, "IndexedDB debe mantener onWatchlist");
+    assert.equal(stored2.note, "Pendiente para este fin de semana.");
+    assert.equal(stored2.syncStatus, "dirty");
+  });
+
+  test("saveLocalEntriesBatch fusiona ratings en lote preservando notas existentes", async () => {
+    // Película previa con nota privada pero sin calificación
+    await localStore.saveLocalEntry(3001, { rating: null, onWatchlist: false, note: "Nota preexistente." });
+
+    // Importación de un lote que actualiza la calificación (rating: 9) sin proporcionar nota
+    const { mergedMap } = await localStore.saveLocalEntriesBatch([
+      { movieId: 3001, rating: 9 }
+    ]);
+
+    assert.equal(mergedMap["3001"].rating, 9);
+    assert.equal(mergedMap["3001"].note, "Nota preexistente.", "La nota previa DEBE preservarse al importar calificaciones");
+
+    const stored = await localStore.getLocalEntry(3001);
+    assert.equal(stored.rating, 9);
+    assert.equal(stored.note, "Nota preexistente.");
+    assert.equal(stored.syncStatus, "dirty");
   });
 });

@@ -228,7 +228,8 @@ export async function getLocalMyListResponse(
   filters: ActiveFilters,
   page: number,
   pageSize: number,
-  requestCount: boolean
+  requestCount: boolean,
+  explicitOffset: number | null = null
 ): Promise<ApiResponse | null> {
   try {
     let userEntries = getAllUserMovieData();
@@ -322,7 +323,7 @@ export async function getLocalMyListResponse(
     });
 
     const total = requestCount ? filtered.length : -1;
-    const start = (page - 1) * pageSize;
+    const start = explicitOffset !== null ? explicitOffset : (page - 1) * pageSize;
     const items = filtered.slice(start, start + pageSize);
 
     return normalizeMoviesResponse({ total, items });
@@ -342,7 +343,8 @@ export function revalidateMyListInBackground(
   page: number,
   pageSize: number,
   requestCount: boolean,
-  currentLocalRes: ApiResponse
+  currentLocalRes: ApiResponse,
+  explicitOffset: number | null = null
 ): void {
   setTimeout(async () => {
     try {
@@ -372,7 +374,7 @@ export function revalidateMyListInBackground(
       if (sortField === 'relevance') query = query.order('relevance', { ascending: true }).order('id', { ascending: true });
       else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false }).order('id', { ascending: true });
 
-      const start = (page - 1) * pageSize;
+      const start = explicitOffset !== null ? explicitOffset : (page - 1) * pageSize;
       const { data, error, count } = await query.range(start, start + pageSize - 1);
 
       if (error || !data) return;
@@ -496,14 +498,14 @@ export function fetchMovies(
         const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
 
         // 1. Intento de resolución Local-First (0 ms) si tenemos los datos completos en IndexedDB
-        const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+        const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
 
         if (localRes !== null) {
           if (!isOffline) {
             // Revalidación asíncrona transparente en segundo plano (patrón SWR)
             getCurrentSession().then(session => {
               if (session?.user) {
-                revalidateMyListInBackground(session.user.id, normFilters, normPage, normPageSize, normRequestCount, localRes);
+                revalidateMyListInBackground(session.user.id, normFilters, normPage, normPageSize, normRequestCount, localRes, normExplicitOffset);
               }
             }).catch(() => {});
           }
@@ -554,13 +556,47 @@ export function fetchMovies(
           if (sortField === 'relevance') query = query.order('relevance', { ascending: true }).order('id', { ascending: true });
       else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false }).order('id', { ascending: true });
 
-          const start = (normPage - 1) * normPageSize;
+          const start = normExplicitOffset !== null ? normExplicitOffset : (normPage - 1) * normPageSize;
           const { data, error, count } = await query.range(start, start + normPageSize - 1);
 
           if (error) {
             if (isAbortError(error, signal)) throw { name: "AbortError" };
+
+            // Si PostgREST devuelve 416 (PGRST103: Requested range not satisfiable),
+            // significa que el rango solicitado sobrepasa el número total de registros disponibles.
+            const isRangeError = error.code === 'PGRST103' ||
+              (error as { status?: number }).status === 416 ||
+              (typeof error.message === 'string' && error.message.toLowerCase().includes('range not satisfiable'));
+
+            if (isRangeError) {
+              let exactTotal = typeof count === 'number' && count >= 0 ? count : -1;
+              if (exactTotal < 0 && normRequestCount) {
+                try {
+                  let countQuery = supabase
+                    .from('movies')
+                    .select('id, user_movie_entries!inner(user_id)', { count: 'exact', head: true })
+                    .eq('user_movie_entries.user_id', session.user.id);
+
+                  if (normFilters.myList === 'rated') countQuery = countQuery.not('user_movie_entries.rating', 'is', null);
+                  else if (normFilters.myList === 'watchlist') countQuery = countQuery.eq('user_movie_entries.on_watchlist', true);
+                  else countQuery = countQuery.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
+
+                  if (normFilters.mediaType === 'movies') countQuery = countQuery.or('type.is.null,type.not.ilike.S%');
+                  else if (normFilters.mediaType === 'series') countQuery = countQuery.ilike('type', 'S%');
+
+                  const countRes = await countQuery;
+                  if (typeof countRes.count === 'number') {
+                    exactTotal = countRes.count;
+                  }
+                } catch {
+                  // Fallback silencioso
+                }
+              }
+              return normalizeMoviesResponse({ total: exactTotal, items: [] });
+            }
+
             // Resiliencia: si Supabase devuelve error de red/timeout, recurrir a la caché local
-            const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+            const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
             if (fallbackRes && fallbackRes.items.length > 0) return fallbackRes;
             throw toAppError(error, ERROR_CODES.DATABASE, "No se pudo cargar tu lista.");
           }
@@ -574,7 +610,7 @@ export function fetchMovies(
           return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
         } catch (err: unknown) {
           if (isAbortError(err, signal)) throw err;
-          const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount);
+          const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
           if (fallbackRes && fallbackRes.items.length > 0) return fallbackRes;
           throw err;
         }

@@ -155,10 +155,10 @@ const PROFILE_MODAL_HTML = `
                 Sincronizar Ahora
               </button>
               <button type="button" id="profile-btn-export-csv" class="profile-secondary-btn">
-                Exportar mi colección (CSV)
+                Exportar colección
               </button>
               <button type="button" id="profile-btn-import-csv" class="profile-secondary-btn">
-                Importar colección (CSV)
+                Importar colección
               </button>
               <input type="file" id="profile-csv-file-input" accept=".csv,text/csv" hidden aria-hidden="true" />
             </div>
@@ -184,7 +184,7 @@ const PROFILE_MODAL_HTML = `
               valoraciones, tu lista de seguimiento (watchlist) y tu cuenta de acceso.
             </p>
             <p class="profile-delete-tip">
-              Te aconsejamos descargar previamente tu videoteca pulsando en <strong>Exportar mi colección (CSV)</strong>
+              Te aconsejamos descargar previamente tu videoteca pulsando en <strong>Exportar colección</strong>
               si deseas guardar una copia de tus datos.
             </p>
             <div class="profile-delete-actions">

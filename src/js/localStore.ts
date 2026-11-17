@@ -224,7 +224,7 @@ export async function saveLocalEntry(
  * permitiendo sincronización en lote en segundo plano.
  */
 export async function saveLocalEntriesBatch(
-  entries: Array<{ movieId: number; rating: number | null; onWatchlist: boolean; note?: string | null }>,
+  entries: Array<{ movieId: number; rating?: number | null; onWatchlist?: boolean; note?: string | null }>,
   customTimestamp?: number
 ): Promise<{ importedCount: number; mergedMap: Record<string, UserMovieEntry> }> {
   const db = await openLocalDB();
@@ -245,10 +245,32 @@ export async function saveLocalEntriesBatch(
   const updatesToPut: LocalUserEntry[] = [];
 
   for (const item of entries) {
+    const existing = localMap.get(item.movieId);
+
+    let finalRating = item.rating !== undefined 
+      ? item.rating 
+      : (existing?.rating ?? null);
+
+    let finalWatchlist = item.onWatchlist !== undefined 
+      ? item.onWatchlist 
+      : (existing?.onWatchlist ?? false);
+
+    const finalNote = item.note !== undefined 
+      ? (item.note || null) 
+      : (existing?.note ?? null);
+
+    // Invariante de exclusividad mutua contractual:
+    // Si hay calificación válida, se excluye de pendientes; si pasa a pendientes, rating = null
+    if (finalRating !== null) {
+      finalWatchlist = false;
+    } else if (item.onWatchlist === true) {
+      finalRating = null;
+    }
+
     const normalized = normalizeUserMovieEntry({
-      rating: item.rating,
-      onWatchlist: item.onWatchlist,
-      note: item.note
+      rating: finalRating,
+      onWatchlist: finalWatchlist,
+      note: finalNote
     });
 
     const isInactive = normalized.rating === null && !normalized.onWatchlist && !normalized.note;
@@ -584,7 +606,7 @@ export async function pruneOldCachedMovies(maxLimit = MAX_CACHED_MOVIES): Promis
         req.onsuccess = () => {
           const rows: LocalUserEntry[] = req.result || [];
           for (const row of rows) {
-            if (row.syncStatus !== "deleted" && (row.rating !== null || row.onWatchlist)) {
+            if (row.syncStatus !== "deleted" && (row.rating !== null || row.onWatchlist || Boolean(row.note && row.note.trim().length > 0))) {
               protectedIds.add(row.movieId);
             }
           }
