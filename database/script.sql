@@ -173,6 +173,7 @@ CREATE INDEX IF NOT EXISTS idx_people_name_norm ON public.people(name_norm);
 CREATE INDEX IF NOT EXISTS idx_people_name_alnum ON public.people (regexp_replace(name_norm, '[^a-z0-9]', '', 'g'));
 CREATE INDEX IF NOT EXISTS idx_people_name_norm_trgm ON public.people USING gin(name_norm extensions.gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_people_components_trgm ON public.people USING gin(public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_people_country_id ON public.people(country_id);
 
 CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
 CREATE INDEX IF NOT EXISTS movies_directors_tsv_idx ON public.movies USING GIN(directors_tsv);
@@ -219,7 +220,7 @@ BEGIN
         CREATE MATERIALIZED VIEW public.mv_actor_suggestions AS
         SELECT p.id, p.name, p.name_norm, COUNT(ma.movie_id) AS movie_count
         FROM public.people p 
-        LEFT JOIN public.movie_actors ma ON p.id = ma.actor_id
+        INNER JOIN public.movie_actors ma ON p.id = ma.actor_id
         WHERE p.type IN ('A', 'AD', 'DA')
         GROUP BY p.id, p.name, p.name_norm;
 
@@ -259,7 +260,7 @@ BEGIN
             public.unaccent_immutable(lower(COALESCE(p.components, ''))) AS components_norm,
             COUNT(md.movie_id) AS movie_count
         FROM public.people p 
-        LEFT JOIN public.movie_directors md ON p.id = md.director_id
+        INNER JOIN public.movie_directors md ON p.id = md.director_id
         WHERE p.type IN ('D', 'DA', 'AD')
         GROUP BY p.id, p.name, p.name_norm, p.components;
 
@@ -473,6 +474,19 @@ BEGIN
         END IF;
     END LOOP;
 
+    -- 6.1.1. Limpieza de políticas permisivas duplicadas heredadas (Supabase Linter 0006)
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read countries" ON public.countries;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read genres" ON public.genres;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read movie_actors" ON public.movie_actors;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read movie_directors" ON public.movie_directors;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read movie_genres" ON public.movie_genres;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read movie_collections" ON public.movie_selections;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read movie_studios" ON public.movie_studios;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read movies" ON public.movies;';
+    EXECUTE 'DROP POLICY IF EXISTS "Allow public read-only access to people" ON public.people;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read collections" ON public.selections;';
+    EXECUTE 'DROP POLICY IF EXISTS "Public can read studios" ON public.studios;';
+
     FOREACH t_name IN ARRAY catalog_tables LOOP
         IF NOT EXISTS (
             SELECT 1 FROM pg_policies 
@@ -484,9 +498,18 @@ BEGIN
 END; $$;
 
 -- 6.2. Seguridad estricta para tablas de staging (Acceso exclusivo a service_role)
-ALTER TABLE public.people_staging DROP CONSTRAINT IF EXISTS people_staging_pkey;
-ALTER TABLE public.people_staging ALTER COLUMN id DROP NOT NULL;
-ALTER TABLE public.people_staging ALTER COLUMN name DROP NOT NULL;
+DO $$
+BEGIN
+    -- Asegurar que name es NOT NULL y establecer como PRIMARY KEY
+    ALTER TABLE public.people_staging ALTER COLUMN name SET NOT NULL;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'people_staging_pkey' AND conrelid = 'public.people_staging'::regclass
+    ) THEN
+        ALTER TABLE public.people_staging ADD CONSTRAINT people_staging_pkey PRIMARY KEY (name);
+    END IF;
+END $$;
 ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS vip text;
 
 REVOKE ALL ON TABLE public.movies_staging, public.people_staging FROM anon, authenticated, PUBLIC;
@@ -633,7 +656,7 @@ BEGIN
             OR c.code = UPPER(TRIM(p.country_id)) 
             OR c.name_norm = public.unaccent_immutable(LOWER(TRIM(p.country_id)))
         WHERE p.name IS NOT NULL AND TRIM(p.name) <> ''
-        ORDER BY public.unaccent_immutable(lower(trim(p.name))), p.id DESC
+        ORDER BY public.unaccent_immutable(lower(trim(p.name)))
     )
     UPDATE public.people p
     SET

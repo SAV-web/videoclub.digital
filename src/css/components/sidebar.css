@@ -636,14 +636,21 @@
   border-color: var(--color-brand-gold, #d4a347);
 }
 
-.filter-link--icon.active {
-  background-color: transparent;
-  border-color: var(--color-accent);
+:is(.filter-link--studio, .filter-link--icon).active {
+  background-color: transparent !important;
+  border: 2px solid var(--color-brand-gold, #d4a347) !important;
+  border-left: 2px solid var(--color-brand-gold, #d4a347) !important;
   padding: 4px 2px;
   color: var(--color-text-primary);
-  box-shadow: none;
+  box-shadow: 0 0 8px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.35);
 }
-:where(html.dark-mode) .filter-link--icon.active { color: var(--color-text-primary); }
+:where(html.dark-mode) :is(.filter-link--studio, .filter-link--icon).active {
+  background-color: transparent !important;
+  border: 2px solid var(--color-brand-gold, #d4a347) !important;
+  border-left: 2px solid var(--color-brand-gold, #d4a347) !important;
+  color: var(--color-text-primary);
+  box-shadow: 0 0 10px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.45);
+}
 
 #studios-list-container {
   display: grid;

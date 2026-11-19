@@ -34,7 +34,3 @@ cloudflare/dist
 
 # Entorno de desarrollo / memoria MCP
 .codebase-memory/
-
-# Archivos de contexto y paquetes comprimidos
-videoclub-digital-context.zip
-*.zip

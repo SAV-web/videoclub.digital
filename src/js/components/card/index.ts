@@ -60,6 +60,17 @@ export {
   type PopulatePersonOptions
 };
 
+export {
+  getActiveRevertSnapshot,
+  isMovieRevertActive,
+  hasMeaningfulDifference,
+  registerRevertSnapshot,
+  showRevertButtonForMovie,
+  clearActiveRevertAction,
+  executeRevertAction,
+  initRevertActionListeners
+} from "./revertAction.js";
+
 // Estado de Renderizado
 let currentRenderRequestId = 0;
 

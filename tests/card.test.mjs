@@ -655,4 +655,61 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
       globalThis.localStorage = prevStorage;
     }
   });
+
+  test("revertAction: ciclo de vida de deshacer/revertir al votar o alternar lista", async () => {
+    const {
+      registerRevertSnapshot,
+      clearActiveRevertAction,
+      executeRevertAction,
+      isMovieRevertActive,
+      getActiveRevertSnapshot
+    } = cardModule;
+
+    // 1. Estado inicial vacío
+    clearActiveRevertAction();
+    assert.equal(getActiveRevertSnapshot(), null);
+    assert.equal(isMovieRevertActive(42), false);
+
+    // 2. Registrar snapshot de película 42 y mutar su estado
+    const initial42 = { rating: 5, onWatchlist: true, note: "Gran peli" };
+    stateModule.updateUserDataForMovie(42, initial42);
+    registerRevertSnapshot(42, initial42, { id: 42, title: "Alien" });
+    
+    // Al mutar la película (ej. nueva nota 8 y sacarla de watchlist)
+    stateModule.updateUserDataForMovie(42, { rating: 8, onWatchlist: false });
+    assert.equal(isMovieRevertActive(42), true);
+    assert.equal(isMovieRevertActive(99), false);
+    assert.equal(getActiveRevertSnapshot().rating, 5);
+
+    // 3. Mutaciones sucesivas en la misma película no deben sobrescribir el snapshot prístino
+    registerRevertSnapshot(42, { rating: 8, onWatchlist: false }, { id: 42, title: "Alien" });
+    assert.equal(getActiveRevertSnapshot().rating, 5); // Mantiene el original antes del primer cambio
+
+    // 4. Si el usuario vuelve a poner la misma nota y watchlist, el icono de revertir no es necesario
+    stateModule.updateUserDataForMovie(42, initial42);
+    assert.equal(isMovieRevertActive(42), false);
+    cardModule.showRevertButtonForMovie(42);
+    assert.equal(getActiveRevertSnapshot(), null); // Se limpia automáticamente
+
+    // 5. Votar otra película (ej. 99) transfiere el snapshot a la nueva película
+    stateModule.updateUserDataForMovie(99, { rating: 4, onWatchlist: false });
+    registerRevertSnapshot(99, { rating: null, onWatchlist: false }, { id: 99, title: "Blade Runner" });
+    assert.equal(isMovieRevertActive(42), false);
+    assert.equal(isMovieRevertActive(99), true);
+    assert.equal(getActiveRevertSnapshot().movieId, 99);
+
+    // 6. Al limpiar acción (ej. cambio de filtros), el snapshot se anula
+    clearActiveRevertAction();
+    assert.equal(getActiveRevertSnapshot(), null);
+    assert.equal(isMovieRevertActive(99), false);
+
+    // 7. Ejecutar reversión restaura el estado y limpia el snapshot
+    stateModule.updateUserDataForMovie(101, { rating: 3, onWatchlist: false });
+    registerRevertSnapshot(101, { rating: 10, onWatchlist: false }, { id: 101, title: "Vertigo" });
+    assert.equal(isMovieRevertActive(101), true);
+    let restored = false;
+    await executeRevertAction(101, undefined, () => { restored = true; });
+    assert.equal(getActiveRevertSnapshot(), null);
+    assert.equal(isMovieRevertActive(101), false);
+  });
 });

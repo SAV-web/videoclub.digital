@@ -316,13 +316,28 @@ export async function handleFilterChangeOptimistic(type: string, value: string |
   const previousFilters = getActiveFilters();
 
   if (value && (type === 'actor' || type === 'director')) {
+    let resolvedValue = value;
+    const cached = getCachedPersonDetails(type as 'director' | 'actor', value);
+    if (cached?.name) {
+      resolvedValue = cached.name;
+    } else {
+      try {
+        const details = await fetchPersonDetails(type as 'director' | 'actor', value);
+        if (details?.name) {
+          resolvedValue = details.name;
+        }
+      } catch {
+        // Fallback resiliente al valor original
+      }
+    }
+
     notifyRemovedPersonIncompatibleFilters(previousFilters);
     const currentSort = previousFilters.sort;
 
     resetFiltersState();
     setSort(currentSort);
     updateTypeFilterUI(DEFAULTS.MEDIA_TYPE);
-    setFilter(type, value);
+    setFilter(type, resolvedValue);
     setFilter('myList', null);
 
     appEvents.emit("updateSidebarUI");

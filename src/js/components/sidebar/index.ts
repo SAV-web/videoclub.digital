@@ -162,6 +162,7 @@ function setupEventListeners(): void {
           handleFilterChangeOptimistic(type, value);
         }
         tryCloseMobileDrawer();
+        link.blur();
       }
     };
 
@@ -322,6 +323,10 @@ export function initSidebar(): void {
 
       const iconData: StudioInfo | SelectionInfo | null = (filterType === 'studio' ? STUDIO_DATA[value] : null) ||
         (filterType === 'selection' ? SELECTION_DATA[value] : null);
+
+      if (filterType === 'studio') {
+        link.classList.add("filter-link--studio");
+      }
 
       if (iconData) {
         link.classList.add("filter-link--icon");

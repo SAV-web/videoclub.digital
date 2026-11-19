@@ -8,6 +8,12 @@ import { handleRatingClick, updateRatingUI, setupCardRatings, resolveRatingMutat
 import { normalizeMovieId } from "../../contracts.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
 import type { MappedMovie, PersonDetails, UserMovieEntry, MovieCardElement } from "../../types.js";
+import {
+  registerRevertSnapshot,
+  showRevertButtonForMovie,
+  executeRevertAction,
+  isMovieRevertActive
+} from "./revertAction.js";
 
 import {
   preloadedLinkElements,
@@ -65,7 +71,7 @@ const isMobileViewport = (): boolean => mobileQuery ? mobileQuery.matches : fals
 
 const MAX_PREFETCH_LINKS = 4;
 const HOVER_DELAY = 1000;
-export const INTERACTIVE_SELECTOR = ".card-rating-block, .front-director-info, .actors-expand-btn, a[href]";
+export const INTERACTIVE_SELECTOR = ".card-rating-block, .card-revert-btn, .front-director-info, .actors-expand-btn, a[href]";
 
 export async function loadAndOpenModal(cardElement: MovieCardElement): Promise<void> {
   if (cardElement.classList.contains('collection-card')) return;
@@ -270,6 +276,7 @@ export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: M
     return;
   }
 
+  const prevUserData = getUserDataForMovie(movieId);
   const wasActive = btn.classList.contains("is-active");
   const newState: Partial<UserMovieEntry> = { onWatchlist: !wasActive };
 
@@ -278,10 +285,14 @@ export async function toggleWatchlist(movieId: number, btn: HTMLElement, card: M
     newState.rating = ratingMutation;
   }
 
+  // Capturar snapshot para posibilitar deshacer cambios accidentales
+  registerRevertSnapshot(movieId, prevUserData, card.movieData as MappedMovie);
+
   // 1. Experiencia de usuario inmediata (0 ms de latencia)
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newState);
   updateCardUI(card);
+  showRevertButtonForMovie(movieId);
 
   // 2. Persistencia local inmediata (Local-First: nunca falla, nunca hace rollback)
   await saveLocalEntryWithMovie(movieId, newState, card.movieData as MappedMovie);
@@ -326,6 +337,17 @@ export function handleCardClick(this: MovieCardElement | void, event: MouseEvent
   }
 
   // 1. Botones de Acción
+  const revertBtn = target.closest<HTMLElement>('[data-action="revert-action"]');
+  if (revertBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    const movieId = normalizeMovieId(card.dataset.movieId);
+    if (movieId) {
+      executeRevertAction(movieId, card, () => updateCardUI(card));
+    }
+    return;
+  }
+
   const watchlistBtn = target.closest<HTMLElement>('[data-action="toggle-watchlist"]');
   if (watchlistBtn) {
     event.preventDefault(); event.stopPropagation();
@@ -806,6 +828,12 @@ export function updateCardUI(card: MovieCardElement): void {
   if (watchlistBtn) {
     watchlistBtn.classList.toggle("is-active", isOnWatchlist);
     watchlistBtn.setAttribute("aria-label", isOnWatchlist ? "Quitar de lista" : "Añadir a lista");
+  }
+
+  // Botón Revertir / Deshacer
+  const revertBtn = card.querySelector<HTMLElement>('[data-action="revert-action"]');
+  if (revertBtn) {
+    revertBtn.hidden = !isMovieRevertActive(movieId);
   }
 
   // Estrellas (pasamos userData ya obtenido para evitar consulta duplicada)

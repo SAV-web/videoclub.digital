@@ -16,6 +16,7 @@ import { showToast } from "../ui.js";
 import { triggerHapticFeedback, formatVotesUnified, setupExternalLink } from "../utils.js";
 import { normalizeMovieId } from "../contracts.js";
 import { Movie, MappedMovie, UserMovieEntry, MovieCardElement } from "../types.js";
+import { registerRevertSnapshot, showRevertButtonForMovie } from "./card/revertAction.js";
 
 const MAX_VOTES = { FA: 220000, IMDB: 3200000 } as const;
 const SQRT_MAX_VOTES = { FA: Math.sqrt(MAX_VOTES.FA), IMDB: Math.sqrt(MAX_VOTES.IMDB) } as const;
@@ -333,7 +334,8 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
     return;
   }
 
-  const previousRating = getUserDataForMovie(movieId)?.rating ?? null;
+  const prevUserData = getUserDataForMovie(movieId);
+  const previousRating = prevUserData?.rating ?? null;
   
   if (previousRating === value) return;
 
@@ -344,10 +346,14 @@ async function setRating(movieId: number, value: number | null, card: MovieCardE
     newState.onWatchlist = watchlistMutation;
   }
 
+  // Capturar snapshot para posibilitar deshacer cambios accidentales
+  registerRevertSnapshot(movieId, prevUserData, (card?.movieData as MappedMovie) || null);
+
   // 1. Experiencia de usuario inmediata (0 ms de latencia)
   triggerHapticFeedback("light");
   updateUserDataForMovie(movieId, newState);
   updateRatingUI(card);
+  showRevertButtonForMovie(movieId);
 
   // 2. Persistencia local inmediata (Local-First: nunca falla, nunca hace rollback)
   await saveLocalEntryWithMovie(movieId, newState, (card?.movieData as MappedMovie) || null);

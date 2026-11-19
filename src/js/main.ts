@@ -74,7 +74,8 @@ import {
   initCardInteractions,
   updateCardUI,
   disposeCardEvents,
-  unflipAllCards
+  unflipAllCards,
+  initRevertActionListeners
 } from "./components/card/index.js";
 
 
@@ -637,6 +638,10 @@ function setupGlobalListeners(): void {
   // Atajos de Teclado Globales de Escritorio (Power-User Hotkeys: B, M, S, R, Ctrl+K, Escape)
   const disposeHotkeys = initGlobalHotkeys();
   mainUnsubscribers.push(disposeHotkeys);
+
+  // Escuchadores de invalidación del botón Rehacer / Revertir
+  const cleanupRevertListeners = initRevertActionListeners();
+  mainUnsubscribers.push(cleanupRevertListeners);
 
   const handleDataRefresh = () => {
     updateAppBadge();

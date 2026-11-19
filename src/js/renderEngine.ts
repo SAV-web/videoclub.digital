@@ -124,9 +124,15 @@ function syncPersonFilterName(
   if (!personData.name || personData.name === vipName) return;
   const cleanDb = toSlug(personData.name).replace(/-/g, "");
   const cleanFilter = toSlug(vipName).replace(/-/g, "");
-  if (cleanDb === cleanFilter) {
+  const isComponentMatch = Boolean(
+    personData.components &&
+    toSlug(personData.components).includes(toSlug(vipName))
+  );
+
+  if (cleanDb === cleanFilter || isComponentMatch) {
     setFilter(vipType, personData.name);
     updatePageTitle();
+    updateUrl({ replace: true });
     appEvents.emit("updateSidebarUI");
   }
 }
