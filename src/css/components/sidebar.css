@@ -609,17 +609,6 @@
   box-sizing: border-box;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .filter-link--icon:hover:not(.active),
-  .filter-link--studio:hover:not(.active) {
-    transform: none;
-  }
-  .filter-link--icon:hover:active,
-  .filter-link--studio:hover:active {
-    transform: scale(0.98);
-  }
-}
-
 .sidebar-platform-icon {
   height: 30px; width: auto; max-width: 100%;
   transition: transform var(--transition-duration-fast);
@@ -630,10 +619,25 @@
   transition: transform var(--transition-duration-fast), filter 0.3s ease;
 }
 :where(html.dark-mode) .sidebar-platform-img.invert-on-dark { filter: invert(1) brightness(2); }
-.filter-link--icon:hover :is(.sidebar-platform-icon, .sidebar-platform-img) { transform: scale(1.08); }
-.filter-link--studio:hover,
-.filter-link--icon:hover {
-  border-color: var(--color-brand-gold, #d4a347);
+
+@media (hover: hover) and (pointer: fine) {
+  .filter-link--icon:hover:not(.active),
+  .filter-link--studio:hover:not(.active) {
+    transform: none;
+    border-color: var(--color-brand-gold, #d4a347);
+  }
+  .filter-link--icon:hover:active,
+  .filter-link--studio:hover:active {
+    transform: scale(0.98);
+  }
+  .filter-link--icon:hover:not(.active) :is(.sidebar-platform-icon, .sidebar-platform-img) {
+    transform: scale(1.08);
+  }
+}
+
+:is(.filter-link--studio, .filter-link--icon):not(.active):focus:not(:focus-visible) {
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 :is(.filter-link--studio, .filter-link--icon).active {
