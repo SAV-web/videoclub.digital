@@ -247,7 +247,7 @@ export async function loadAndRenderMovies(
         const personData = await fetchPersonDetails(vipType, vipName);
         if (personData) {
           syncPersonFilterName(personData, vipType, vipName);
-          const isVip = personData.vip === 1 || Boolean(personData.birthday);
+          const isVip = Boolean(personData.vip && personData.vip !== 0);
           if (isVip) {
             confirmedHasVip = true;
             const personSlug = personData.slug || toSlug(personData.name);
@@ -298,7 +298,7 @@ export async function loadAndRenderMovies(
       if (vipName) {
         syncPersonFilterName(personData, vipType!, vipName);
       }
-      const isVip = personData.vip === 1 || Boolean(personData.birthday);
+      const isVip = Boolean(personData.vip && personData.vip !== 0);
       if (isVip) {
         confirmedHasVip = true;
         const personSlug = personData.slug || toSlug(personData.name);

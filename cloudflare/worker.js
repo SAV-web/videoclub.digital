@@ -555,13 +555,13 @@ export default {
             return cached;
           }
 
-          // Cache MISS: Consulta a Supabase exclusivamente filtrada por vip = 1
+          // Cache MISS: Consulta a Supabase exclusivamente filtrada por vip <> 0
           if (!supabaseUrl || !supabaseAnonKey) {
             return createErrorResponse(500, "Error de configuración: Faltan credenciales de Supabase en el entorno del Worker", url.origin);
           }
 
           const selectFields = "id,name,slug,type,vip,birthday,deathday,place_of_birth,biography,titulo_bio,thumbhash_st,countries(id,code,name)";
-          const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&vip=eq.1&select=${selectFields}&limit=1`;
+          const personQueryUrl = `${supabaseUrl}/rest/v1/people?slug=eq.${encodeURIComponent(slug)}&vip=neq.0&select=${selectFields}&limit=1`;
 
           try {
             const personRes = await fetch(personQueryUrl, {

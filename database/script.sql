@@ -173,7 +173,7 @@ CREATE INDEX IF NOT EXISTS idx_people_name_norm ON public.people(name_norm);
 CREATE INDEX IF NOT EXISTS idx_people_name_alnum ON public.people (regexp_replace(name_norm, '[^a-z0-9]', '', 'g'));
 CREATE INDEX IF NOT EXISTS idx_people_name_norm_trgm ON public.people USING gin(name_norm extensions.gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_people_components_trgm ON public.people USING gin(public.unaccent_immutable(lower(components)) extensions.gin_trgm_ops) WHERE components IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_people_country_id ON public.people(country_id);
+DROP INDEX IF EXISTS public.idx_people_country_id;
 
 CREATE INDEX IF NOT EXISTS movies_genres_tsv_idx ON public.movies USING GIN(genres_tsv);
 CREATE INDEX IF NOT EXISTS movies_directors_tsv_idx ON public.movies USING GIN(directors_tsv);
@@ -182,14 +182,14 @@ CREATE INDEX IF NOT EXISTS movies_selections_tsv_idx ON public.movies USING GIN(
 CREATE INDEX IF NOT EXISTS movies_studios_tsv_idx ON public.movies USING GIN(studios_tsv);
 
 CREATE INDEX IF NOT EXISTS movies_country_id_year_desc_idx ON public.movies(country_id, year DESC);
-CREATE INDEX IF NOT EXISTS movies_country_relevance_idx ON public.movies(country_id, relevance ASC);
-CREATE INDEX IF NOT EXISTS movies_country_fa_votes_idx ON public.movies(country_id, fa_votes DESC NULLS LAST);
-CREATE INDEX IF NOT EXISTS movies_country_imdb_votes_idx ON public.movies(country_id, imdb_votes DESC NULLS LAST);
+DROP INDEX IF EXISTS public.movies_country_relevance_idx;
+DROP INDEX IF EXISTS public.movies_country_fa_votes_idx;
+DROP INDEX IF EXISTS public.movies_country_imdb_votes_idx;
 DROP INDEX IF EXISTS public.movies_country_type_year_idx;
 
 -- 5.1b. Columna de Grupo Regional en Países e Índices B-Tree / GIN Trigram
 ALTER TABLE public.countries ADD COLUMN IF NOT EXISTS region text;
-CREATE INDEX IF NOT EXISTS idx_countries_region ON public.countries(lower(region)) WHERE region IS NOT NULL;
+DROP INDEX IF EXISTS public.idx_countries_region;
 CREATE INDEX IF NOT EXISTS idx_countries_name_norm_trgm ON public.countries USING gin (name_norm extensions.gin_trgm_ops);
 
 -- Poblado inicial determinista de regiones (Single Source of Truth)
@@ -403,31 +403,6 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS $$
     LIMIT 5;
 $$;
 
--- 5.5. Funciones para Filtros Dinámicos Aleatorios (Top 200)
-CREATE OR REPLACE FUNCTION public.get_random_top_actors(limit_count int DEFAULT 5)
-RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp AS $$
-    WITH top_actors AS (
-        SELECT name
-        FROM public.mv_actor_suggestions
-        ORDER BY movie_count DESC
-        LIMIT 200
-    )
-    SELECT name FROM top_actors ORDER BY random() LIMIT LEAST(GREATEST(COALESCE(limit_count, 5), 1), 20);
-$$;
-
-CREATE OR REPLACE FUNCTION public.get_random_top_directors(limit_count int DEFAULT 5)
-RETURNS TABLE(name text) LANGUAGE sql VOLATILE PARALLEL SAFE SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp AS $$
-    WITH top_directors AS (
-        SELECT name
-        FROM public.mv_director_suggestions
-        ORDER BY movie_count DESC
-        LIMIT 200
-    )
-    SELECT name FROM top_directors ORDER BY random() LIMIT LEAST(GREATEST(COALESCE(limit_count, 5), 1), 20);
-$$;
-
 -- 5.6. Revocación de permisos por defecto a PUBLIC y concesión explícita controlada
 REVOKE ALL ON FUNCTION public.get_actor_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_actor_suggestions(text) TO anon, authenticated, service_role;
@@ -440,12 +415,6 @@ GRANT EXECUTE ON FUNCTION public.get_genre_suggestions(text) TO anon, authentica
 
 REVOKE ALL ON FUNCTION public.get_country_suggestions(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_country_suggestions(text) TO anon, authenticated, service_role;
-
-REVOKE ALL ON FUNCTION public.get_random_top_actors(int) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_random_top_actors(int) TO anon, authenticated, service_role;
-
-REVOKE ALL ON FUNCTION public.get_random_top_directors(int) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_random_top_directors(int) TO anon, authenticated, service_role;
 
 -- =================================================================
 -- PASO 6: CONFIGURACIÓN DE SEGURIDAD (ROW LEVEL SECURITY & PERMISOS)
@@ -511,6 +480,7 @@ BEGIN
     END IF;
 END $$;
 ALTER TABLE public.people_staging ADD COLUMN IF NOT EXISTS vip text;
+ALTER TABLE public.people DROP CONSTRAINT IF EXISTS people_vip_check;
 
 REVOKE ALL ON TABLE public.movies_staging, public.people_staging FROM anon, authenticated, PUBLIC;
 GRANT ALL ON TABLE public.movies_staging, public.people_staging TO service_role;
@@ -616,12 +586,14 @@ BEGIN
     SELECT DISTINCT
         TRIM(p.name),
         COALESCE(NULLIF(UPPER(TRIM(p.type)), ''), 'A'),
-        CASE 
-            WHEN TRIM(COALESCE(p.vip::text, '')) IN ('1', 'true', 't', 'TRUE') THEN 1
-            WHEN TRIM(COALESCE(p.vip::text, '')) IN ('0', 'false', 'f', 'FALSE') THEN 0
-            WHEN p.biography IS NOT NULL AND TRIM(p.biography) <> '' THEN 1 
-            ELSE 0 
-        END
+        COALESCE(
+            CASE 
+                WHEN TRIM(p.vip::text) IN ('true', 't', 'TRUE') THEN 1
+                WHEN TRIM(p.vip::text) IN ('false', 'f', 'FALSE') THEN 0
+                ELSE public.to_integer_safe(p.vip::text)
+            END,
+            0
+        )
     FROM public.people_staging p
     WHERE p.name IS NOT NULL AND TRIM(p.name) <> ''
     ON CONFLICT (name) DO UPDATE SET 
@@ -632,7 +604,7 @@ BEGIN
             ELSE public.people.type
         END,
         vip = CASE 
-            WHEN EXCLUDED.vip = 1 OR (public.people.biography IS NOT NULL AND TRIM(public.people.biography) <> '') THEN 1 
+            WHEN EXCLUDED.vip <> 0 THEN EXCLUDED.vip 
             ELSE public.people.vip 
         END;
 
@@ -668,10 +640,9 @@ BEGIN
         biography = COALESCE(src.biography, p.biography),
         components = COALESCE(src.components, p.components),
         vip = CASE 
-            WHEN src.vip_raw IN ('1', 'true', 't', 'TRUE') THEN 1
-            WHEN src.vip_raw IN ('0', 'false', 'f', 'FALSE') THEN 0
-            WHEN (src.biography IS NOT NULL AND TRIM(src.biography) <> '') 
-              OR (p.biography IS NOT NULL AND TRIM(p.biography) <> '') THEN 1 
+            WHEN src.vip_raw IN ('true', 't', 'TRUE') THEN 1
+            WHEN src.vip_raw IN ('false', 'f', 'FALSE') THEN 0
+            WHEN public.to_integer_safe(src.vip_raw) IS NOT NULL THEN public.to_integer_safe(src.vip_raw)
             ELSE p.vip 
         END,
         type = CASE
@@ -690,10 +661,10 @@ BEGIN
         (src.biography IS NOT NULL AND p.biography IS DISTINCT FROM src.biography) OR
         (src.components IS NOT NULL AND p.components IS DISTINCT FROM src.components) OR
         (src.vip_raw IS NOT NULL AND (
-            (src.vip_raw IN ('1', 'true', 't', 'TRUE') AND p.vip <> 1) OR
-            (src.vip_raw IN ('0', 'false', 'f', 'FALSE') AND p.vip <> 0)
-        )) OR
-        (p.vip = 0 AND (src.biography IS NOT NULL OR p.biography IS NOT NULL))
+            (src.vip_raw IN ('true', 't', 'TRUE') AND p.vip = 0) OR
+            (src.vip_raw IN ('false', 'f', 'FALSE') AND p.vip <> 0) OR
+            (public.to_integer_safe(src.vip_raw) IS NOT NULL AND p.vip IS DISTINCT FROM public.to_integer_safe(src.vip_raw))
+        ))
     );
     GET DIAGNOSTICS people_modified_count = ROW_COUNT;
 
@@ -928,7 +899,6 @@ BEGIN
     -- tras correcciones o bajas en el catálogo, preservando siempre entidades VIP o editoriales.
     DELETE FROM public.people p
     WHERE p.vip = 0
-      AND (p.biography IS NULL OR TRIM(p.biography) = '')
       AND NOT EXISTS (SELECT 1 FROM public.movie_actors ma WHERE ma.actor_id = p.id)
       AND NOT EXISTS (SELECT 1 FROM public.movie_directors md WHERE md.director_id = p.id);
     GET DIAGNOSTICS people_purged_count = ROW_COUNT;

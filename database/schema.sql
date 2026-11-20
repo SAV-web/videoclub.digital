@@ -25,7 +25,7 @@ CREATE TABLE public.people (
   name_norm text GENERATED ALWAYS AS (unaccent_immutable(lower(name))) STORED,
   slug text GENERATED ALWAYS AS (TRIM(BOTH '-' FROM regexp_replace(lower(unaccent_immutable(name)), '[^a-z0-9]+', '-', 'g'))) STORED,
   type text NOT NULL CHECK (type IN ('A', 'D', 'AD', 'DA')),
-  vip smallint NOT NULL DEFAULT 0 CHECK (vip IN (0, 1)),
+  vip smallint NOT NULL DEFAULT 0,
   birthday date,
   deathday date,
   place_of_birth text,
@@ -206,4 +206,3 @@ CREATE TABLE public.people_staging (
   CONSTRAINT people_staging_pkey PRIMARY KEY (name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_people_country_id ON public.people(country_id);

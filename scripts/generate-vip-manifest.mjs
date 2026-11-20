@@ -77,7 +77,7 @@ async function generateVipManifest() {
         supabase
           .from("people")
           .select("slug")
-          .eq("vip", 1)
+          .neq("vip", 0)
           .not("slug", "is", null)
           .range(from, to),
       `consulta personas VIP en rango [${from}-${to}]`
