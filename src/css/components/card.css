@@ -1052,21 +1052,22 @@ html.dark-mode {
   padding: 0;
   margin: 0;
   border-radius: var(--radius-round);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(18, 18, 18, 0.75);
+  border: 1px solid rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.45);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: var(--color-text-main, #ffffff);
+  color: var(--color-brand-gold, #d4a347);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   pointer-events: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1),
               background-color 150ms ease,
               color 150ms ease,
-              border-color 150ms ease;
+              border-color 150ms ease,
+              box-shadow 150ms ease;
   animation: revertFadeIn 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
   &[hidden] {
@@ -1081,14 +1082,28 @@ html.dark-mode {
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       transform: scale(1.12);
-      background: rgba(30, 30, 30, 0.95);
-      color: var(--color-accent);
-      border-color: var(--color-accent);
+      background: rgba(255, 255, 255, 0.98);
+      color: var(--color-brand-gold, #d4a347);
+      border-color: var(--color-brand-gold, #d4a347);
+      box-shadow: 0 0 10px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.4);
     }
   }
 
   &:active {
     transform: scale(0.95);
+  }
+
+  html.dark-mode & {
+    background: rgba(18, 18, 18, 0.85);
+    border-color: rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.35);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        background: rgba(26, 26, 26, 0.95);
+        box-shadow: 0 0 10px rgba(var(--color-brand-gold-rgb, 212, 163, 71), 0.45);
+      }
+    }
   }
 
   & .icon-revert {

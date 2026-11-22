@@ -197,6 +197,7 @@
 
 /* Contenedor del Póster */
 .is-quick-view .poster-container {
+  position: relative;
   height: auto;
   width: 100%;
   border: none;
@@ -578,6 +579,26 @@
       fill: var(--color-brand-gold, #d4a347);
       stroke: var(--color-brand-gold, #d4a347);
     }
+  }
+}
+
+/* Botón flotante para revertir voto/acción en la modal */
+.is-quick-view .card-revert-btn {
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border-width: 1.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+
+  html.dark-mode & {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+  }
+
+  & .icon-revert {
+    width: 24px;
+    height: 24px;
+    stroke-width: 2.3px;
   }
 }
 
