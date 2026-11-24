@@ -39,7 +39,8 @@ import {
   closeLegalModal,
   updateAppBadge,
   clearAppBadge,
-  updateSortUI
+  updateSortUI,
+  isMobileHistoryContext
 } from "./ui.js";
 
 
@@ -695,7 +696,9 @@ function setupGlobalListeners(): void {
 
         if (typeof window !== "undefined" && window.history) {
           window.history.replaceState({ path: newUrl, scrollY: 0 }, "", newUrl);
-          window.history.pushState({ path: newUrl, scrollY: 0, modalOpen: true }, "", newUrl);
+          if (isMobileHistoryContext()) {
+            window.history.pushState({ path: newUrl, scrollY: 0, modalOpen: true }, "", newUrl);
+          }
         }
 
         await loadAndRenderMovies(newPage, { replaceHistory: true });

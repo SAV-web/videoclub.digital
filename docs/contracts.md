@@ -192,6 +192,10 @@ La modal de detalle cinemático (`src/js/components/modal/`) implementa una expe
    Los encabezados de datos conservan tipografía editorial en versalitas (`font-variant: small-caps; letter-spacing: 0.12em;`) y punto ortográfico (`Género.`, `Reparto.`, `Sinopsis.`).
 4. **Rendimiento de Scroll GPU y Cero Enmascaramiento:**
    En dispositivos móviles se desactiva `backdrop-filter` para evitar sobrecarga en GPU durante gestos táctiles, empleando fondos sólidos de alta densidad (`rgba(0, 0, 0, 0.68)`).
+5. **Gestión Diferenciada de Historial en Modales (Móvil vs. Escritorio):**
+   Todas las modales de la aplicación (Película/Persona, Login/Auth, Perfil y Legal) coordinan su integración con la History API mediante los *helpers* centralizados en `src/js/ui.ts` (`isMobileHistoryContext`, `pushModalHistoryState`, `popModalHistoryState`):
+   - **Móvil / Táctil (`max-width: 768px` o `pointer: coarse`):** Al abrir una modal se inserta una entrada `{ modalOpen: true }` en `window.history` para que el gesto o botón físico **"Atrás"** cierre únicamente la modal sin retroceder a la página o filtro anterior.
+   - **Escritorio:** No se invoca `pushState` al abrir modales, evitando entradas muertas en la pila de historial y garantizando que la flecha de **"Adelante"** del navegador no se active innecesariamente tras cerrarlas.
 
 ---
 

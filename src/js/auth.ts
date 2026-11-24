@@ -487,8 +487,9 @@ async function handleResetPasswordSubmit(e: Event): Promise<void> {
     },
     () => {
       showToast("Contraseña actualizada con éxito.", "success");
-      closeAuthModal();
-      if (window.location.hash) {
+      const hasHash = Boolean(window.location.hash);
+      closeAuthModal(hasHash ? { suppressHistoryBack: true } : undefined);
+      if (hasHash) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
     },

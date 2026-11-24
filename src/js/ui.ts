@@ -550,14 +550,51 @@ export function closeAccessibleModal(modal: HTMLElement | null, overlay: HTMLEle
   }
 }
 
+export function isMobileHistoryContext(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(max-width: 768px)").matches ||
+    window.matchMedia("(pointer: coarse)").matches;
+}
+
+export function pushModalHistoryState(): void {
+  if (
+    isMobileHistoryContext() &&
+    typeof window !== "undefined" &&
+    window.history &&
+    !window.history.state?.modalOpen
+  ) {
+    window.history.pushState({ ...window.history.state, modalOpen: true }, "", window.location.href);
+  }
+}
+
+export function popModalHistoryState(
+  options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean; skipHistory?: boolean } | Event
+): void {
+  const isPopstate = Boolean(options && typeof options === "object" && "fromPopstate" in options && options.fromPopstate);
+  const suppressHistoryBack = Boolean(
+    options && typeof options === "object" && (
+      ("suppressHistoryBack" in options && options.suppressHistoryBack) ||
+      ("skipHistory" in options && options.skipHistory)
+    )
+  );
+
+  if (!isPopstate && !suppressHistoryBack && typeof window !== "undefined" && window.history?.state?.modalOpen) {
+    window.history.back();
+  }
+}
+
 export const isAuthModalOpen = (): boolean => {
   return Boolean(dom.authModal && !dom.authModal.hidden);
 };
 
-export const closeAuthModal = (_options?: { fromPopstate?: boolean } | Event): void => {
-  if (dom.authModal && !dom.authModal.hidden) {
+export const closeAuthModal = (options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean } | Event): void => {
+  const wasOpen = isAuthModalOpen();
+  if (wasOpen && dom.authModal) {
     dom.authModal.style.transform = "";
     dom.authModal.classList.remove("is-dragging");
+  }
+  if (wasOpen) {
+    popModalHistoryState(options);
   }
   closeAccessibleModal(dom.authModal, dom.authOverlay);
 };
@@ -677,6 +714,7 @@ export const openAuthModal = async (): Promise<void> => {
     if (authBox) authBox.scrollTop = 0;
   }
   openAccessibleModal(dom.authModal, dom.authOverlay);
+  pushModalHistoryState();
 
   // Garantizar que en móvil la modal inicie estrictamente desde el principio (logo e inputs visibles)
   const resetScroll = () => {
@@ -764,14 +802,17 @@ function switchLegalTab(tabName: string): void {
   }
 }
 
-export const closeLegalModal = (_options?: { fromPopstate?: boolean } | Event): void => {
+export const closeLegalModal = (options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean } | Event): void => {
+  const wasOpen = isLegalModalOpen();
   closeAccessibleModal(dom.legalModal, dom.legalOverlay);
 
   // Limpiar parámetro ?legal= de la URL si veníamos de un enlace directo
+  let hadLegalParam = false;
   if (typeof window !== "undefined") {
     try {
       const url = new URL(window.location.href);
       if (url.searchParams.has("legal")) {
+        hadLegalParam = true;
         url.searchParams.delete("legal");
         const cleanSearch = url.searchParams.toString();
         const cleanUrl = url.pathname + (cleanSearch ? `?${cleanSearch}` : "") + url.hash;
@@ -780,6 +821,10 @@ export const closeLegalModal = (_options?: { fromPopstate?: boolean } | Event): 
     } catch {
       // no-op
     }
+  }
+
+  if (wasOpen && !hadLegalParam) {
+    popModalHistoryState(options);
   }
 };
 
@@ -814,6 +859,7 @@ export const openLegalModal = (tabName = "about"): void => {
   ensureLegalModalMounted();
   initLegalModalListeners();
   openAccessibleModal(dom.legalModal, dom.legalOverlay, false);
+  pushModalHistoryState();
   switchLegalTab(tabName);
   requestAnimationFrame(() => {
     const activeTab = dom.legalModal?.querySelector<HTMLElement>(".legal-tab-btn.is-active");

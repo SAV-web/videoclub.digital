@@ -10,7 +10,14 @@ import "../../css/components/profile.css";
 import { getSupabase } from "../supabaseClient.js";
 import { getCurrentSession, signOutCurrentUser, updatePassword, evaluatePasswordStrength } from "../auth.js";
 import { getAllUserMovieData, clearUserMovieData, setUserMovieData, appEvents } from "../state.js";
-import { openAccessibleModal, closeAccessibleModal, showToast, bindBottomSheetSwipeToDismiss } from "../ui.js";
+import {
+  openAccessibleModal,
+  closeAccessibleModal,
+  showToast,
+  bindBottomSheetSwipeToDismiss,
+  pushModalHistoryState,
+  popModalHistoryState,
+} from "../ui.js";
 import { UserMovieEntry } from "../types.js";
 import { getPendingSyncEntries, clearLocalStore, getCachedMoviesByIds, saveLocalEntriesBatch } from "../localStore.js";
 import { syncWithServer, mergeOnLogin, scheduleSync, getLastSyncFailures } from "../syncManager.js";
@@ -322,17 +329,23 @@ export async function openProfileModal(): Promise<void> {
   }
 
   openAccessibleModal(dom.modal, dom.overlay);
+  pushModalHistoryState();
 }
 
 /**
  * Cierra la modal de perfil.
  */
-export function closeProfileModal(_isPopstate = false, _options: { suppressHistoryBack?: boolean } = {}): void {
+export function closeProfileModal(isPopstate = false, options: { suppressHistoryBack?: boolean } = {}): void {
   const dom = getProfileDom();
   if (!dom.modal || !dom.overlay) return;
 
+  const wasOpen = isProfileModalOpen();
   dom.modal.style.transform = "";
   dom.modal.classList.remove("is-dragging");
+
+  if (wasOpen) {
+    popModalHistoryState({ fromPopstate: isPopstate, suppressHistoryBack: options.suppressHistoryBack });
+  }
 
   closeAccessibleModal(dom.modal, dom.overlay);
 

@@ -7,7 +7,14 @@
 //  RESPONSABILIDAD: Orquestación del modal, ciclo de vida y API pública.
 // =================================================================
 
-import { openAccessibleModal, closeAccessibleModal, lockGlobalInteractions, areInteractionsLocked } from "../ui.js";
+import {
+  openAccessibleModal,
+  closeAccessibleModal,
+  lockGlobalInteractions,
+  areInteractionsLocked,
+  pushModalHistoryState,
+  popModalHistoryState,
+} from "../ui.js";
 import { unflipAllCards, adjustQuickViewNoteHeight } from "./card/index.js";
 import { executeViewTransition, mapMoviePayload } from "../utils.js";
 import { CSS_CLASSES } from "../constants.js";
@@ -158,20 +165,10 @@ export function closeModal(options?: { fromPopstate?: boolean; suppressHistoryBa
   const { modal, overlay } = getDom();
   if (!modal || !overlay || !modal.classList.contains("is-visible")) return;
 
-  const isPopstate = Boolean(options && typeof options === "object" && "fromPopstate" in options && options.fromPopstate);
-  const suppressHistoryBack = Boolean(
-    options && typeof options === "object" && (
-      ("suppressHistoryBack" in options && options.suppressHistoryBack) ||
-      ("skipHistory" in options && options.skipHistory)
-    )
-  );
-
   isClosingModalInProgress = true;
 
-  // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial, hacer back
-  if (!isPopstate && !suppressHistoryBack && typeof window !== "undefined" && window.history?.state?.modalOpen) {
-    window.history.back();
-  }
+  // Si se cierra manualmente (botón, click fuera, ESC o swipe) y se había creado entrada de historial en móvil, hacer back
+  popModalHistoryState(options);
 
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
   const header = document.querySelector<HTMLElement>(".main-header");
@@ -288,10 +285,8 @@ export function openModal(cardElement: MovieCardElement, contextCards: HTMLEleme
     return;
   }
 
-  // Integración con el botón "Atrás" del navegador: crear entrada en el historial
-  if (typeof window !== "undefined" && window.history && !window.history.state?.modalOpen) {
-    window.history.pushState({ ...window.history.state, modalOpen: true }, "", window.location.href);
-  }
+  // Integración con el botón "Atrás" del navegador en móvil: crear entrada en el historial
+  pushModalHistoryState();
 
   // Apertura inicial (Transición Hero desde la tarjeta del Grid)
   // Excluir el header de la View Transition para que el overlay se oscurezca sobre él suavemente
