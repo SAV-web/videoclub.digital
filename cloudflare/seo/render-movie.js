@@ -24,10 +24,7 @@ import {
   SPECULATION_RULES,
   sanitizeExternalUrl
 } from './seo-types.js';
-
-function safeJsonLd(obj) {
-  return JSON.stringify(obj).replace(/</g, '\\u003c');
-}
+import { renderSeoHead, renderStarsHtml } from './html-fragments.js';
 
 export function renderMovieHtml(movie, options = {}) {
   const siteOrigin = options.siteOrigin || 'https://videoclub.digital';
@@ -73,17 +70,13 @@ export function renderMovieHtml(movie, options = {}) {
   const safeImdb = sanitizeExternalUrl(movie.imdb_id);
 
   // Estrellas continuas (0-3), clip-path y barras de votos FilmAffinity / IMDb
+  const ratingPresentation = computeRatingPresentation(movie);
   const {
-    isSuspenso,
-    avgStars,
-    clip1,
-    clip2,
-    clip3,
     faBarWidth,
     imdbBarWidth,
     formattedFaVotes,
     formattedImdbVotes
-  } = computeRatingPresentation(movie);
+  } = ratingPresentation;
 
   const primaryGenre = rawGenres.length > 0 ? rawGenres[0] : null;
   const primaryGenreSlug = primaryGenre ? genreToSlug(primaryGenre) : null;
@@ -148,66 +141,7 @@ export function renderMovieHtml(movie, options = {}) {
   // 3. Speculation Rules API (Prerender SPA y rutas de navegación frecuente)
   const speculationRules = SPECULATION_RULES;
 
-  // 4. Render HTML Markup
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://*.supabase.co; object-src 'none'; base-uri 'self';" />
-  <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
-  <!-- Anti-flicker para sincronización exacta de modo claro/oscuro entre SPA y SEO -->
-  <script>
-    (function () {
-      try {
-        var cookieMatch = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
-        var stored = localStorage.getItem("theme") || (cookieMatch ? cookieMatch[1] : null);
-        var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var isDark = stored ? stored === "dark" : systemDark;
-        if (isDark) {
-          document.documentElement.classList.add("dark-mode");
-          document.documentElement.classList.remove("light-mode");
-        } else {
-          document.documentElement.classList.add("light-mode");
-          document.documentElement.classList.remove("dark-mode");
-        }
-        var metas = document.querySelectorAll('meta[name="theme-color"]');
-        metas.forEach(function(m) { m.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5"); });
-      } catch (e) {}
-    })();
-  </script>
-  <title>${escapeHtml(pageTitle)}</title>
-  <meta name="description" content="${escapeHtml(description)}" />
-  <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
-
-  <!-- OpenGraph / Facebook / WhatsApp -->
-  <meta property="og:type" content="video.movie" />
-  <meta property="og:title" content="${escapeHtml(pageTitle)}" />
-  <meta property="og:description" content="${escapeHtml(description)}" />
-  ${absolutePosterUrl ? `<meta property="og:image" content="${escapeHtml(absolutePosterUrl)}" />` : ''}
-  <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
-
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${escapeHtml(pageTitle)}" />
-  <meta name="twitter:description" content="${escapeHtml(description)}" />
-  ${absolutePosterUrl ? `<meta name="twitter:image" content="${escapeHtml(absolutePosterUrl)}" />` : ''}
-
-  <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
-  <link rel="preload" href="${baseUrl}assets/fonts/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
-
-  <!-- Hoja de Estilos Externa Cacheable (SSOT con versionado perimetral) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
-  <link rel="icon" type="image/svg+xml" href="${baseUrl}assets/brand/videoclub-mark.svg" />
-
-  <script type="application/ld+json">${safeJsonLd(jsonLd)}</script>
-  <script type="application/ld+json">${safeJsonLd(breadcrumbLd)}</script>
-
-  <!-- Speculation Rules API: Prerender nativo instantáneo en rutas de navegación frecuente (Chromium) -->
-  <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
-
-  <!-- Bloqueo estricto de scroll y fondo estático instantáneo sin FOUC -->
+  const backdropStyleHtml = `<!-- Bloqueo estricto de scroll y fondo estático instantáneo sin FOUC -->
   <style>
     html, body {
       margin: 0 !important;
@@ -249,8 +183,24 @@ export function renderMovieHtml(movie, options = {}) {
         background-image: none !important;
       }
     }
-  </style>
-</head>
+  </style>`;
+
+  const headHtml = renderSeoHead({
+    title: pageTitle,
+    description,
+    canonicalUrl,
+    ogType: 'video.movie',
+    ogImageUrl: absolutePosterUrl,
+    baseUrl,
+    schemas: [jsonLd, breadcrumbLd],
+    speculationRules,
+    extraHeadHtml: backdropStyleHtml,
+  });
+
+  // 4. Render HTML Markup
+  return `<!DOCTYPE html>
+<html lang="es">
+${headHtml}
 <body class="movie-seo-body">
   <!-- Fondo Decorativo Estático del Videoclub (Dual Adaptativo: Light / Dark) -->
   <div class="seo-backdrop" aria-hidden="true" role="presentation"></div>
@@ -292,18 +242,7 @@ export function renderMovieHtml(movie, options = {}) {
               <!-- Bloque de estrellas y valoración -->
               <div class="card-rating-block">
                 <a href="${escapeHtml(spaTargetUrl)}" class="star-rating-container has-average-rating is-interactive" style="display:flex; text-decoration:none;" title="Valorar en Videoclub Digital" aria-label="Valorar en Videoclub Digital">
-                  <svg class="star-icon" data-rating-level="1" style="${isSuspenso || avgStars > 0 ? 'opacity: 1;' : 'opacity: 0;'}">
-                    <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip1}% 0 0);"></use>
-                  </svg>
-                  <svg class="star-icon" data-rating-level="2" style="${!isSuspenso && avgStars > 1 ? 'opacity: 1;' : 'opacity: 0;'}">
-                    <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip2}% 0 0);"></use>
-                  </svg>
-                  <svg class="star-icon" data-rating-level="3" style="${!isSuspenso && avgStars > 2 ? 'opacity: 1;' : 'opacity: 0;'}">
-                    <use class="star-icon-path star-icon-path--empty" href="${baseUrl}sprite.svg#icon-star"></use>
-                    <use class="star-icon-path star-icon-path--filled" href="${baseUrl}sprite.svg#icon-star" style="clip-path: inset(0 ${clip3}% 0 0);"></use>
-                  </svg>
+                  ${renderStarsHtml(ratingPresentation, baseUrl)}
                 </a>
 
                 <!-- Botón CTA para abrir modal interactivo en SPA -->

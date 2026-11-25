@@ -165,24 +165,6 @@ export const ICONS = {
 } as const;
 
 
-export interface SelectionInfo {
-
-  readonly id?: string;
-  readonly class?: string;
-  readonly title?: string;
-  readonly w?: number;
-  readonly h?: number;
-  readonly vb?: string;
-  readonly img?: string;
-  readonly invertDark?: boolean;
-}
-
-/**
- * DATOS DE SELECCIONES
- */
-export const SELECTION_DATA: Record<string, SelectionInfo> = {};
-
-
 /**
  * CONFIGURACIÓN DE FILTROS LATERALES (COMPLETA)
  */

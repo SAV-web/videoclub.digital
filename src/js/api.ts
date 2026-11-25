@@ -358,6 +358,62 @@ export async function getLocalMyListResponse(
   }
 }
 
+const MY_LIST_SELECT_FIELDS =
+  "id, title, original_title, year, year_end, type, relevance, " +
+  "genres:genres_list, directors:directors_list, actors:actors_list, " +
+  "minutes, slug, fa_id, fa_rating, fa_votes, " +
+  "imdb_id, imdb_rating, imdb_votes, avg_rating, " +
+  "synopsis, thumbhash_st, last_synced_at, " +
+  "episodes, wikipedia, selections_list, studios_list, justwatch, " +
+  "countries(name, code)";
+
+interface MyListQueryOptions {
+  includeUpdatedAt?: boolean;
+  headOnly?: boolean;
+  requestCount?: boolean;
+  signal?: AbortSignal | null;
+}
+
+/**
+ * Construye la consulta tipada sobre `movies` + `user_movie_entries` para Mi Lista (MODO A),
+ * unificando proyección, filtros de lista/tipo de medio y ordenación canónica.
+ */
+function buildMyListMoviesQuery(
+  supabase: SupabaseClient,
+  userId: string,
+  filters: ActiveFilters,
+  { includeUpdatedAt = false, headOnly = false, requestCount = false, signal = null }: MyListQueryOptions = {}
+) {
+  const selectCols = headOnly
+    ? "id, user_movie_entries!inner(user_id)"
+    : `${MY_LIST_SELECT_FIELDS}, user_movie_entries!inner(user_id, rating, on_watchlist, note${includeUpdatedAt ? ", updated_at" : ""})`;
+
+  let query = supabase
+    .from("movies")
+    .select(selectCols, {
+      ...(requestCount || headOnly ? { count: "exact" as const } : {}),
+      ...(headOnly ? { head: true } : {}),
+    })
+    .eq("user_movie_entries.user_id", userId);
+
+  if (signal) query = query.abortSignal(signal);
+
+  if (filters.myList === "rated") query = query.not("user_movie_entries.rating", "is", null);
+  else if (filters.myList === "watchlist") query = query.eq("user_movie_entries.on_watchlist", true);
+  else query = query.or("on_watchlist.eq.true,rating.not.is.null", { referencedTable: "user_movie_entries" });
+
+  if (filters.mediaType === "movies") query = query.or("type.is.null,type.not.ilike.S%");
+  else if (filters.mediaType === "series") query = query.ilike("type", "S%");
+
+  if (!headOnly) {
+    const [sortField, sortDirection] = (filters.sort || "relevance,asc").split(",");
+    if (sortField === "relevance") query = query.order("relevance", { ascending: true }).order("id", { ascending: true });
+    else query = query.order(sortField, { ascending: sortDirection === "asc", nullsFirst: false }).order("id", { ascending: true });
+  }
+
+  return query;
+}
+
 /**
  * Revalida Mi Lista en segundo plano contra Supabase sin bloquear el hilo principal.
  * Si detecta novedades o discrepancias respecto a la caché local, actualiza IndexedDB
@@ -375,33 +431,17 @@ export function revalidateMyListInBackground(
   setTimeout(async () => {
     try {
       const supabase = await getSupabase();
-      let query = supabase
-        .from('movies')
-        .select(`
-          id, title, original_title, year, year_end, type, relevance,
-          genres:genres_list, directors:directors_list, actors:actors_list, 
-          minutes, slug, fa_id, fa_rating, fa_votes, 
-          imdb_id, imdb_rating, imdb_votes, avg_rating, 
-          synopsis, thumbhash_st, last_synced_at, 
-          episodes, wikipedia, selections_list, studios_list, justwatch,
-          countries(name, code),
-          user_movie_entries!inner(user_id, rating, on_watchlist, note, updated_at)
-        `, requestCount ? { count: 'exact' } : {})
-        .eq('user_movie_entries.user_id', userId);
-
-      if (filters.myList === 'rated') query = query.not('user_movie_entries.rating', 'is', null);
-      else if (filters.myList === 'watchlist') query = query.eq('user_movie_entries.on_watchlist', true);
-      else query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
-
-      if (filters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
-      else if (filters.mediaType === 'series') query = query.ilike('type', 'S%');
-
-      const [sortField, sortDirection] = (filters.sort || "relevance,asc").split(",");
-      if (sortField === 'relevance') query = query.order('relevance', { ascending: true }).order('id', { ascending: true });
-      else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false }).order('id', { ascending: true });
+      const query = buildMyListMoviesQuery(supabase, userId, filters, {
+        includeUpdatedAt: true,
+        requestCount,
+      });
 
       const start = explicitOffset !== null ? explicitOffset : (page - 1) * pageSize;
-      const { data, error, count } = await query.range(start, start + pageSize - 1);
+      const { data, error, count } = await query.range(start, start + pageSize - 1) as unknown as {
+        data: Array<Record<string, unknown>> | null;
+        error: unknown;
+        count: number | null;
+      };
 
       if (error || !data) return;
 
@@ -581,35 +621,17 @@ export function fetchMovies(
 
         try {
           const supabase = await getSupabase();
-          let query = supabase
-            .from('movies')
-            .select(`
-              id, title, original_title, year, year_end, type, relevance,
-          genres:genres_list, directors:directors_list, actors:actors_list, 
-              minutes, slug, fa_id, fa_rating, fa_votes, 
-              imdb_id, imdb_rating, imdb_votes, avg_rating, 
-              synopsis, thumbhash_st, last_synced_at, 
-              episodes, wikipedia, selections_list, studios_list, justwatch,
-              countries(name, code),
-              user_movie_entries!inner(user_id, rating, on_watchlist, note)
-            `, normRequestCount ? { count: 'exact' } : {})
-            .eq('user_movie_entries.user_id', session.user.id);
-
-          if (signal) query = query.abortSignal(signal);
-
-          if (normFilters.myList === 'rated') query = query.not('user_movie_entries.rating', 'is', null);
-          else if (normFilters.myList === 'watchlist') query = query.eq('user_movie_entries.on_watchlist', true);
-          else query = query.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
-
-          if (normFilters.mediaType === 'movies') query = query.or('type.is.null,type.not.ilike.S%');
-          else if (normFilters.mediaType === 'series') query = query.ilike('type', 'S%');
-
-          const [sortField, sortDirection] = (normFilters.sort || "relevance,asc").split(",");
-          if (sortField === 'relevance') query = query.order('relevance', { ascending: true }).order('id', { ascending: true });
-      else query = query.order(sortField, { ascending: sortDirection === 'asc', nullsFirst: false }).order('id', { ascending: true });
+          const query = buildMyListMoviesQuery(supabase, session.user.id, normFilters, {
+            requestCount: normRequestCount,
+            signal,
+          });
 
           const start = normExplicitOffset !== null ? normExplicitOffset : (normPage - 1) * normPageSize;
-          const { data, error, count } = await query.range(start, start + normPageSize - 1);
+          const { data, error, count } = await query.range(start, start + normPageSize - 1) as unknown as {
+            data: unknown[] | null;
+            error: { code?: string; status?: number; message?: string } | null;
+            count: number | null;
+          };
 
           if (error) {
             if (isAbortError(error, signal)) throw { name: "AbortError" };
@@ -617,26 +639,17 @@ export function fetchMovies(
             // Si PostgREST devuelve 416 (PGRST103: Requested range not satisfiable),
             // significa que el rango solicitado sobrepasa el número total de registros disponibles.
             const isRangeError = error.code === 'PGRST103' ||
-              (error as { status?: number }).status === 416 ||
+              error.status === 416 ||
               (typeof error.message === 'string' && error.message.toLowerCase().includes('range not satisfiable'));
 
             if (isRangeError) {
               let exactTotal = typeof count === 'number' && count >= 0 ? count : -1;
               if (exactTotal < 0 && normRequestCount) {
                 try {
-                  let countQuery = supabase
-                    .from('movies')
-                    .select('id, user_movie_entries!inner(user_id)', { count: 'exact', head: true })
-                    .eq('user_movie_entries.user_id', session.user.id);
-
-                  if (normFilters.myList === 'rated') countQuery = countQuery.not('user_movie_entries.rating', 'is', null);
-                  else if (normFilters.myList === 'watchlist') countQuery = countQuery.eq('user_movie_entries.on_watchlist', true);
-                  else countQuery = countQuery.or('on_watchlist.eq.true,rating.not.is.null', { referencedTable: 'user_movie_entries' });
-
-                  if (normFilters.mediaType === 'movies') countQuery = countQuery.or('type.is.null,type.not.ilike.S%');
-                  else if (normFilters.mediaType === 'series') countQuery = countQuery.ilike('type', 'S%');
-
-                  const countRes = await countQuery;
+                  const countRes = await buildMyListMoviesQuery(supabase, session.user.id, normFilters, {
+                    headOnly: true,
+                    requestCount: true,
+                  });
                   if (typeof countRes.count === 'number') {
                     exactTotal = countRes.count;
                   }

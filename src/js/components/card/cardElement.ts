@@ -873,11 +873,6 @@ export function updateCardUI(card: MovieCardElement): void {
   adjustQuickViewNoteHeight(card);
 }
 
-export function initializeCard(_card?: MovieCardElement): void {
-  // Las interacciones de clic y puntuación están 100% delegadas a nivel de contenedor
-  // (#grid-container y #quick-view-content), por lo que las tarjetas no requieren listeners individuales.
-}
-
 export function createCardElement(movie: MappedMovie, index: number): DocumentFragment {
   const template = getCardTemplate();
   if (!template) return document.createDocumentFragment();
@@ -891,7 +886,6 @@ export function createCardElement(movie: MappedMovie, index: number): DocumentFr
 
     populateCard(card, movie, index);
     updateCardUI(card);
-    initializeCard(card);
   }
 
   return clone;

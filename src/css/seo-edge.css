@@ -1,0 +1,349 @@
+/* ========================================================== */
+/*  EDGE SSR ESPECÍFICOS Y COMPATIBILIDAD CON LA SPA          */
+/* ========================================================== */
+.brand-logo-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--color-text-primary);
+  line-height: 1;
+  transition: transform var(--duration-fast, 0.15s) ease, opacity var(--duration-fast, 0.15s) ease;
+}
+
+.brand-logo-text:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+
+.brand-logo-full {
+  display: block;
+  width: 130px;
+  height: auto;
+  color: var(--color-text-primary);
+}
+
+.brand-logo-mark {
+  display: block;
+  width: 34px;
+  height: 34px;
+  color: var(--color-text-primary);
+}
+
+/* Título original en el reverso como enlace interactivo a la ficha completa */
+.back-original-title-link {
+  color: inherit !important;
+  text-decoration: none !important;
+  display: inline-block !important;
+  cursor: pointer !important;
+  transition: color var(--duration-quick, 0.15s) ease !important;
+}
+.back-original-title-link:hover span {
+  color: var(--color-accent) !important;
+}
+
+/* Botón '+ / −' de sinopsis y cierre en la esquina inferior derecha idéntico a la SPA */
+.flip-card-back .expand-content-btn {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: var(--space-xs, 8px) !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  z-index: 50 !important;
+  pointer-events: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  background-color: var(--color-accent) !important;
+  color: var(--color-surface) !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  transition: transform var(--duration-quick, 0.15s) ease-out, background-color var(--duration-quick, 0.15s) ease-out !important;
+}
+
+.flip-card-back.is-expanded .expand-content-btn {
+  z-index: 60 !important;
+}
+
+.flip-card-back .expand-content-btn:hover,
+.actors-expand-btn:hover {
+  transform: scale(1.15) !important;
+  background-color: var(--color-text-primary) !important;
+}
+
+.flip-card-back .expand-content-btn::after,
+.actors-expand-btn::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: -10px !important;
+}
+
+/* Botón '+' de reparto en la esquina derecha del bloque de actores sin recortar su sombra */
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] {
+  position: relative !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  min-height: 20px !important;
+  line-height: 1.35 !important;
+  padding-right: 22px !important;
+}
+
+.movie-card:not(.is-quick-view) .detail-item[data-template="actors-container"] .detail-data {
+  flex: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+.actors-expand-btn {
+  position: absolute !important;
+  bottom: 1px !important;
+  right: 0 !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background-color: var(--color-accent) !important;
+  color: var(--color-surface) !important;
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  z-index: 25 !important;
+  pointer-events: auto !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+  transition: transform var(--duration-quick, 0.15s) ease-out, background-color var(--duration-quick, 0.15s) ease-out !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-back .ratings-container {
+  margin-bottom: 4px !important;
+}
+
+/* Título original en el reverso con separación armónica respecto a ratings y línea divisoria */
+.movie-card:not(.is-quick-view) .back-original-title-wrapper {
+  margin-top: 9px !important;
+  margin-bottom: 7px !important;
+  min-height: 0 !important;
+}
+
+/* Sinopsis en el reverso: fluye ocupando el espacio disponible con su degradado natural de la SPA */
+.flip-card-back:not(.is-expanded) .scrollable-content {
+  flex-grow: 1 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Alineación de año y bandera a la derecha si no hay iconos de plataformas (solo en cards estándar de grid) */
+.movie-card:not(.is-quick-view) .year-country-line {
+  margin-left: auto !important;
+}
+.movie-card:not(.is-quick-view) .year-flag-group {
+  justify-content: flex-end !important;
+}
+
+/* Las fichas de persona (director / actor) no voltean */
+.person-card {
+  cursor: default !important;
+}
+.person-card .flip-card-inner {
+  transform: none !important;
+}
+.person-card a, .person-card button {
+  cursor: pointer !important;
+}
+
+/* Iconos de plataformas/estudios no clickables en fichas de película */
+.platform-icon {
+  cursor: default !important;
+  pointer-events: none;
+}
+
+/* Margen lateral en páginas SEO del tamaño del sidebar replegado (65px a ambos lados) */
+@media (min-width: 769px) {
+  :is(.collection-wall, .person-wall) .main-layout {
+    padding-inline: 65px;
+    box-sizing: border-box;
+  }
+}
+@media (max-width: 768px) {
+  :is(.collection-wall, .person-wall) .main-layout {
+    padding-inline: var(--space-xs, 8px);
+    box-sizing: border-box;
+  }
+}
+
+/* Interacción de acceso a la trasera por pulsación/clic en SSR (sin rotación en hover) */
+.movie-card:not(.person-card):not(.is-quick-view) {
+  cursor: pointer;
+}
+.movie-card:not(.person-card):not(.is-quick-view) a,
+.movie-card:not(.person-card):not(.is-quick-view) button {
+  cursor: pointer;
+}
+
+/* Capas 3D para volteo por clic en cuadrícula */
+.movie-card:not(.is-quick-view) .flip-card-inner {
+  transform-style: preserve-3d;
+  transition: transform var(--duration-leisurely, 0.45s) var(--ease-smooth-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.movie-card:not(.is-quick-view) .flip-card-front,
+.movie-card:not(.is-quick-view) .flip-card-back {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Cara trasera inactiva e invisible cuando no está volteada */
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back,
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-back * {
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner:not(.is-flipped) .flip-card-front {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 2 !important;
+  transform: rotateY(0deg) translateZ(1px);
+}
+
+/* Cara trasera activa al pulsar el cartel o la ficha (.is-flipped) */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-front * {
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: 1 !important;
+  transform: rotateY(0deg) translateZ(-1px);
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 10 !important;
+  transform: rotateY(180deg) translateZ(1px);
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back * {
+  visibility: visible !important;
+}
+
+/* Asegurar interactividad y clics en enlaces y botones traseros cuando está volteada */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back a {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [role="button"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Enlaces traseros específicos */
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back .back-original-title-link,
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="wikipedia-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="justwatch-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="imdb-link"],
+.movie-card:not(.is-quick-view) .flip-card-inner.is-flipped .flip-card-back [data-template="fa-link"] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+}
+
+/* Overlay de actores y géneros */
+.flip-card-back.is-expanded.show-actors .actors-scrollable-content {
+  z-index: 40 !important;
+  pointer-events: auto !important;
+}
+
+/* Ventana modal de vista rápida siempre por encima del header al hacer zoom */
+.quick-view-modal {
+  z-index: calc(var(--z-index-overlay, 1999) + 10) !important;
+}
+
+/* Bloqueo estricto de scroll en la vista SEO de título para fondo estático */
+html.movie-seo-page,
+body.movie-seo-body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  position: fixed !important;
+}
+
+/* Backdrop decorativo estático del videoclub para fichas SEO */
+.seo-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  user-select: none !important;
+  background-size: cover !important;
+  background-position: center top !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+  background-image: url('/assets/seo/backdrop-light.webp');
+}
+
+@media (prefers-color-scheme: dark) {
+  .seo-backdrop {
+    background-image: url('/assets/seo/backdrop-dark.webp');
+  }
+}
+
+html.dark-mode .seo-backdrop {
+  background-image: url('/assets/seo/backdrop-dark.webp') !important;
+}
+
+html.light-mode .seo-backdrop {
+  background-image: url('/assets/seo/backdrop-light.webp') !important;
+}
+
+@media (max-width: 768px), (orientation: landscape) and (max-height: 600px) {
+  .seo-backdrop {
+    display: none !important;
+    background-image: none !important;
+  }
+}
+
+/* Overlay semitransparente para resaltar la modal sobre el backdrop */
+.movie-seo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-index-overlay, 1999);
+  background-color: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+html.dark-mode .movie-seo-overlay {
+  background-color: rgba(0, 0, 0, 0.55);
+}

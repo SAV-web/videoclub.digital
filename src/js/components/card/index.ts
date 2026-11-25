@@ -28,7 +28,6 @@ import {
   handleCardClick,
   updateCardUI,
   adjustQuickViewNoteHeight,
-  initializeCard,
   applyLqipImage,
   populatePersonFields,
   type PopulatePersonOptions,
@@ -55,7 +54,6 @@ export {
   handleCardClick,
   updateCardUI,
   adjustQuickViewNoteHeight,
-  initializeCard,
   applyLqipImage,
   populatePersonFields,
   type PopulatePersonOptions

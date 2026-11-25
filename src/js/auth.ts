@@ -9,7 +9,7 @@
 
 import type { AuthError, Session, AuthChangeEvent } from "@supabase/supabase-js";
 import { getSupabase } from "./supabaseClient.js";
-import { openAuthModal, closeAuthModal, showToast } from "./ui.js";
+import { showToast } from "./ui.js";
 import { getAppBasePath } from "./contracts.js";
 import { ensureAuthModalMounted } from "./templates/authModal.js";
 
@@ -416,7 +416,7 @@ async function handleLoginRegisterSubmit(e: Event, isLogin: boolean): Promise<vo
         setFeedback("Este usuario ya está registrado.", "error");
       } else if (isLogin) {
         showToast("¡Hola de nuevo!", "success");
-        closeAuthModal();
+        void import("./components/authModal.js").then(({ closeAuthModal }) => closeAuthModal());
       } else {
         setFeedback("¡Registro exitoso! Revisa tu email.", "success");
       }
@@ -488,7 +488,9 @@ async function handleResetPasswordSubmit(e: Event): Promise<void> {
     () => {
       showToast("Contraseña actualizada con éxito.", "success");
       const hasHash = Boolean(window.location.hash);
-      closeAuthModal(hasHash ? { suppressHistoryBack: true } : undefined);
+      void import("./components/authModal.js").then(({ closeAuthModal }) => {
+        closeAuthModal(hasHash ? { suppressHistoryBack: true } : undefined);
+      });
       if (hasHash) {
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
@@ -623,7 +625,7 @@ function toggleView(viewToShow: "login" | "register" | "recover" | "reset"): voi
 // Muestra la vista de restablecer contraseña (llamado al retornar del correo de recuperación)
 export function showResetPasswordView(): void {
   toggleView("reset");
-  openAuthModal();
+  void import("./components/authModal.js").then(({ openAuthModal }) => openAuthModal());
 }
 
 let authFormsInitialized = false;

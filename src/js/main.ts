@@ -24,8 +24,6 @@ import { getAllLocalEntries, clearLocalStore } from "./localStore.js";
 import { mergeOnLogin, initSyncListeners, scheduleSync } from "./syncManager.js";
 import {
   dom,
-  setupAuthModal,
-  setupLegalModal,
   updateTypeFilterUI,
   clearAllSidebarAutocomplete,
   showToast,
@@ -33,10 +31,6 @@ import {
   initThemeToggle,
   updateMobileStatusBar,
   notifyRemovedPersonIncompatibleFilters,
-  isAuthModalOpen,
-  closeAuthModal,
-  isLegalModalOpen,
-  closeLegalModal,
   updateAppBadge,
   clearAppBadge,
   updateSortUI,
@@ -998,12 +992,20 @@ export function init(): void {
       }
     }
 
-    if (isAuthModalOpen()) {
-      closeAuthModal({ fromPopstate: true });
+    const authModalEl = document.getElementById("auth-modal");
+    if (authModalEl && !authModalEl.hidden) {
+      const { isAuthModalOpen, closeAuthModal } = await import("./components/authModal.js");
+      if (isAuthModalOpen()) {
+        closeAuthModal({ fromPopstate: true });
+      }
     }
 
-    if (isLegalModalOpen()) {
-      closeLegalModal({ fromPopstate: true });
+    const legalModalEl = document.getElementById("legal-modal");
+    if (legalModalEl && !legalModalEl.hidden) {
+      const { isLegalModalOpen, closeLegalModal } = await import("./components/legalModal.js");
+      if (isLegalModalOpen()) {
+        closeLegalModal({ fromPopstate: true });
+      }
     }
 
     const profileModalEl = document.getElementById("profile-modal");
@@ -1042,6 +1044,27 @@ export function init(): void {
   window.addEventListener("popstate", handlePopState);
   mainUnsubscribers.push(() => window.removeEventListener("popstate", handlePopState));
 
+  const loginBtn = document.getElementById("login-button");
+  if (loginBtn) {
+    const onLoginBtnClick = () => {
+      void import("./components/authModal.js").then(({ openAuthModal }) => openAuthModal());
+    };
+    loginBtn.addEventListener("click", onLoginBtnClick);
+    mainUnsubscribers.push(() => loginBtn.removeEventListener("click", onLoginBtnClick));
+  }
+
+  const footerEl = document.querySelector(".site-footer");
+  if (footerEl) {
+    const onFooterLegalClick = (e: Event) => {
+      const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>(".footer-legal-btn");
+      if (!btn) return;
+      const tab = btn.getAttribute("data-legal-tab") || "about";
+      void import("./components/legalModal.js").then(({ openLegalModal }) => openLegalModal(tab));
+    };
+    footerEl.addEventListener("click", onFooterLegalClick);
+    mainUnsubscribers.push(() => footerEl.removeEventListener("click", onFooterLegalClick));
+  }
+
   if (hasStoredAuthSessionOrHash()) {
     setupAuthSystem();
   } else {
@@ -1049,7 +1072,6 @@ export function init(): void {
     const triggerLazyAuth = () => {
       setupAuthSystem();
     };
-    const loginBtn = document.getElementById("login-button");
     if (loginBtn) {
       loginBtn.addEventListener("click", triggerLazyAuth, { once: true });
       mainUnsubscribers.push(() => loginBtn.removeEventListener("click", triggerLazyAuth));
@@ -1059,7 +1081,7 @@ export function init(): void {
 
   // Si la URL contiene parámetro de modal legal, inicializarlo de inmediato sin esperar al idle timer
   if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("legal")) {
-    setupLegalModal();
+    void import("./components/legalModal.js").then(({ setupLegalModal }) => setupLegalModal());
   }
 
   const idleGen = mainLifecycleGen;
@@ -1067,8 +1089,7 @@ export function init(): void {
     runWhenIdle(() => {
       if (idleGen !== mainLifecycleGen) return;
       loadSidebar();
-      setupAuthModal();
-      setupLegalModal();
+      void import("./components/authModal.js").then(({ setupAuthModal }) => setupAuthModal());
       if (document.body.classList.contains("user-logged-in") || hasStoredAuthSessionOrHash()) {
         void import("./components/profile.js");
       }

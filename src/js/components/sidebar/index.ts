@@ -7,7 +7,7 @@
 // del DOM y ciclo de vida de los subsistemas del sidebar.
 // =================================================================
 
-import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, SELECTION_DATA, REGIONAL_GROUPS, CURATED_DIRECTORS, CURATED_ACTORS, StudioInfo, SelectionInfo } from "../../constants.js";
+import { ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, STUDIO_DATA, REGIONAL_GROUPS, CURATED_DIRECTORS, CURATED_ACTORS, StudioInfo } from "../../constants.js";
 import { createElement, triggerHapticFeedback, triggerPopAnimation, getRandomSubarray } from "../../utils.js";
 import { appEvents } from "../../state.js";
 
@@ -321,8 +321,7 @@ export function initSidebar(): void {
         attributes: { role: "button", tabindex: "0" }
       });
 
-      const iconData: StudioInfo | SelectionInfo | null = (filterType === 'studio' ? STUDIO_DATA[value] : null) ||
-        (filterType === 'selection' ? SELECTION_DATA[value] : null);
+      const iconData: StudioInfo | null = filterType === 'studio' ? (STUDIO_DATA[value] ?? null) : null;
 
       if (filterType === 'studio') {
         link.classList.add("filter-link--studio");

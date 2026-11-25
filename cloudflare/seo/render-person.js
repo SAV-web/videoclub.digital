@@ -21,13 +21,7 @@ import {
 } from './seo-types.js';
 
 import { renderSpaMovieCard } from './render-taxonomy.js';
-
-function safeJsonLd(obj) {
-  return JSON.stringify(obj)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026');
-}
+import { renderSeoHead, renderCollectionWallPage } from './html-fragments.js';
 
 
 /**
@@ -274,135 +268,23 @@ export function renderPersonHtml(person, options = {}) {
     </div>
   ` : renderCards(activeMovies);
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; connect-src 'self' https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https://wibygecgfczcvaqewleq.supabase.co https://*.supabase.co https://videoclub.digital; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://*.supabase.co; object-src 'none'; base-uri 'self';" />
-  <meta name="theme-color" content="#f5f5f5" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)" />
-  <!-- Anti-flicker para sincronización exacta de modo claro/oscuro entre SPA y SEO -->
-  <script>
-    (function () {
-      try {
-        var cookieMatch = document.cookie.match(/(?:^|;\s*)theme=([^;]*)/);
-        var stored = localStorage.getItem("theme") || (cookieMatch ? cookieMatch[1] : null);
-        var systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var isDark = stored ? stored === "dark" : systemDark;
-        if (isDark) {
-          document.documentElement.classList.add("dark-mode");
-          document.documentElement.classList.remove("light-mode");
-        } else {
-          document.documentElement.classList.add("light-mode");
-          document.documentElement.classList.remove("dark-mode");
-        }
-        var metas = document.querySelectorAll('meta[name="theme-color"]');
-        metas.forEach(function(m) { m.setAttribute("content", isDark ? "#0d0d0d" : "#f5f5f5"); });
-      } catch (e) {}
-    })();
-  </script>
-  <title>${escapeHtml(seoTitle)}</title>
-  <meta name="description" content="${escapeHtml(description)}" />
-  <link rel="canonical" href="${escapeHtml(canonicalUrl)}" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
+  const headHtml = renderSeoHead({
+    title: seoTitle,
+    description,
+    canonicalUrl,
+    ogType: 'profile',
+    ogImageUrl: photoUrl,
+    includeRobots: true,
+    baseUrl,
+    schemas: [personSchema, collectionSchema, breadcrumbSchema],
+    speculationRules,
+  });
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="${escapeHtml(seoTitle)}" />
-  <meta property="og:description" content="${escapeHtml(description)}" />
-  <meta property="og:url" content="${escapeHtml(canonicalUrl)}" />
-  <meta property="og:type" content="profile" />
-  <meta property="og:image" content="${escapeHtml(photoUrl)}" />
-  <meta property="og:site_name" content="Videoclub Digital" />
-  <meta property="og:locale" content="es_ES" />
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${escapeHtml(seoTitle)}" />
-  <meta name="twitter:description" content="${escapeHtml(description)}" />
-  <meta name="twitter:image" content="${escapeHtml(photoUrl)}" />
-
-  <!-- Tipografía Inter Variable Autoalojada (Misma que la SPA) -->
-  <link rel="preload" href="${baseUrl}assets/fonts/Inter-Variable-v41.woff2" as="font" type="font/woff2" crossorigin />
-
-  <!-- Structured Data: Person, CollectionPage & Breadcrumbs -->
-  <script type="application/ld+json">${safeJsonLd(personSchema)}</script>
-  <script type="application/ld+json">${safeJsonLd(collectionSchema)}</script>
-  <script type="application/ld+json">${safeJsonLd(breadcrumbSchema)}</script>
-  <script type="speculationrules">${safeJsonLd(speculationRules)}</script>
-
-  <!-- CSS Unificado (Servido en Edge Memory con design tokens y contrato completo de tarjeta) -->
-  <link rel="stylesheet" href="${baseUrl}seo-card-v7.css" />
-  <link rel="icon" type="image/svg+xml" href="${baseUrl}assets/brand/videoclub-mark.svg" />
-</head>
-<body class="collection-wall">
-  <div class="main-layout">
-    <div class="main-content-wrapper">
-      <!-- Cabecera Minimalista Estilo SPA -->
-      <header class="main-header">
-        <div class="header-content" style="display:flex; justify-content:space-between; align-items:center; width:100%; max-width:1440px; margin-inline:auto;">
-          <a href="${baseUrl}" class="brand-logo-text" aria-label="videoclub.digital - Inicio">
-            <svg class="brand-logo-full" viewBox="0 0 200 95" fill="none" role="img" aria-hidden="true" width="130" height="62">
-              <text x="100" y="38" text-anchor="middle" class="brand-text" font-size="34" letter-spacing="-0.03em">videoclub</text>
-              <g transform="translate(46.5, 0)">
-                <circle cx="5" cy="73" r="5" class="brand-dot" />
-                <text x="15" y="80" class="brand-text" font-size="34" letter-spacing="-0.03em">digital</text>
-              </g>
-            </svg>
-          </a>
-          
-          <!-- Nombre de la persona -->
-          <div class="active-filters-list" style="display:flex; align-items:center; gap: 8px; margin:0; padding:0;">
-            <a href="${escapeHtml(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeHtml(person.name)} en el videoclub interactivo" style="text-decoration:none;">
+  const headerFilterHtml = `<a href="${escapeHtml(spaRedirectUrl)}" class="filter-pill is-active" title="Abrir ${escapeHtml(person.name)} en el videoclub interactivo" style="text-decoration:none;">
               <span>${escapeHtml(person.name)}</span>
-            </a>
-          </div>
-        </div>
-      </header>
+            </a>`;
 
-      <!-- Muro de Tarjetas Oficial (Ficha VIP #0 + Filmografía #1..#42) -->
-      <main class="content">
-        <h1 class="sr-only">${escapeHtml(seoTitle)}</h1>
-        <section id="grid-container" class="grid-container" aria-label="Ficha de ${escapeHtml(person.name)} y filmografía destacada">
-          ${personCardHtml}
-          ${filmographyHtml}
-        </section>
-      </main>
-
-      <!-- Pie de página oficial con avisos legales de la SPA -->
-      <footer class="site-footer">
-        <ul class="footer-links">
-          <li class="footer-brand">videoclub.digital</li>
-          <li><a href="${baseUrl}?legal=about" class="footer-legal-link">Quiénes somos</a></li>
-          <li><a href="${baseUrl}?legal=contact" class="footer-legal-link">Contacto</a></li>
-          <li><a href="${baseUrl}?legal=legal" class="footer-legal-link">Aviso legal</a></li>
-          <li><a href="${baseUrl}?legal=privacy" class="footer-legal-link">Privacidad</a></li>
-          <li><a href="${baseUrl}?legal=cookies" class="footer-legal-link">Cookies</a></li>
-          <li class="footer-copy">2025-2026 © Copyright.</li>
-        </ul>
-      </footer>
-    </div>
-  </div>
-
-  <!-- Handler de alternancia D/A, acceso a la trasera y expansión de biografía en Vanilla JS -->
-  <script>
-    (function () {
-      var activeCard = null;
-
-      // Preservar orden del catálogo seleccionado en la SPA (localStorage preferred_sort)
-      try {
-        var prefSort = localStorage.getItem("preferred_sort");
-        if (prefSort) {
-          document.querySelectorAll("a[href*='_p=']").forEach(function (a) {
-            if (!a.href.includes("_q=")) {
-              a.href += (a.href.includes("?") ? "&" : "?") + "_q=sort%3D" + encodeURIComponent(prefSort);
-            } else if (!a.href.includes("sort%3D") && !a.href.includes("sort=")) {
-              a.href += "%26sort%3D" + encodeURIComponent(prefSort);
-            }
-          });
-        }
-      } catch (e) {}
-
+  const roleToggleScript = `
       // Alternancia interactiva D/A para VIPs con ambos roles (círculo único D <-> A como en la SPA, URL inmutable)
       var roleToggleBtn = document.querySelector(".person-role-toggle-btn");
       if (roleToggleBtn) {
@@ -428,7 +310,6 @@ export function renderPersonHtml(person, options = {}) {
             ? "Ver películas de " + personName + " como Actor"
             : "Ver películas de " + personName + " como Director";
 
-          // 1. Actualizar visualmente la letra y tooltip del círculo único (como en la SPA)
           if (letterSpan) {
             letterSpan.textContent = currentLetter;
           }
@@ -437,18 +318,15 @@ export function renderPersonHtml(person, options = {}) {
           roleToggleBtn.setAttribute("data-current-role", currentRole);
           roleToggleBtn.setAttribute("data-target-role", targetRole);
 
-          // 2. Conmutar el grid de películas visible sin mutar URL
           if (dirGroup && actGroup) {
             dirGroup.style.display = isDir ? "contents" : "none";
             actGroup.style.display = isDir ? "none" : "contents";
           }
 
-          // 3. Sincronizar enlace del filter-pill a la SPA
           if (filterPill) {
             filterPill.href = bUrl + "?_p=/" + currentRole + "/" + pSlug + "/";
           }
 
-          // 4. Resetear tarjeta volteada si hubiera alguna activa
           if (activeCard) {
             activeCard.classList.remove("is-flipped");
             var prevBack = activeCard.querySelector(".flip-card-back");
@@ -460,122 +338,16 @@ export function renderPersonHtml(person, options = {}) {
             activeCard = null;
           }
         });
-      }
+      }`;
 
-      document.addEventListener("click", function (e) {
-        // 1. Botón + de actores: despliega la lista completa de actores y géneros en overlay
-        var actorsExpandBtn = e.target.closest(".actors-expand-btn");
-        if (actorsExpandBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          var back = actorsExpandBtn.closest(".flip-card-back");
-          if (back) {
-            back.classList.add("is-expanded", "show-actors");
-            var bottomBtn = back.querySelector(".expand-content-btn");
-            if (bottomBtn) {
-              bottomBtn.textContent = "−";
-              bottomBtn.setAttribute("aria-label", "Cerrar detalles");
-            }
-          }
-          return;
-        }
-
-        // 2. Botón inferior de expansión / contracción (+ / −) de sinopsis o biografía
-        var expandBtn = e.target.closest(".expand-content-btn");
-        if (expandBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          var back = expandBtn.closest(".flip-card-back");
-          if (back) {
-            if (back.classList.contains("show-actors") || back.classList.contains("is-expanded")) {
-              back.classList.remove("is-expanded", "show-actors");
-              expandBtn.textContent = "+";
-              expandBtn.setAttribute("aria-label", "Expandir detalles");
-              var scrolls = back.querySelectorAll(".scrollable-content, .actors-scrollable-content");
-              scrolls.forEach(function (s) { s.scrollTop = 0; });
-            } else {
-              back.classList.add("is-expanded");
-              expandBtn.textContent = "−";
-              expandBtn.setAttribute("aria-label", "Contraer detalles");
-            }
-          }
-          return;
-        }
-
-        // 3. Trasera ampliada: retroceder a la trasera normal al pulsar fuera del área de enlaces
-        var expandedBack = e.target.closest(".flip-card-back.is-expanded");
-        if (expandedBack) {
-          var isInteractive = e.target.closest("a[href], button, [role='button'], [data-action]");
-          if (!isInteractive) {
-            var sel = window.getSelection ? window.getSelection() : null;
-            if (sel && sel.toString().trim().length > 0) {
-              e.stopPropagation();
-              return;
-            }
-            e.preventDefault();
-            e.stopPropagation();
-            expandedBack.classList.remove("is-expanded", "show-actors");
-            var btn = expandedBack.querySelector(".expand-content-btn");
-            if (btn) {
-              btn.textContent = "+";
-              btn.setAttribute("aria-label", "Expandir detalles");
-            }
-            var scrolls = expandedBack.querySelectorAll(".scrollable-content, .actors-scrollable-content");
-            scrolls.forEach(function (s) { s.scrollTop = 0; });
-            return;
-          }
-        }
-
-        // 4. Volteo a la trasera al pulsar el cartel o cualquier lugar de la ficha (solo películas)
-        var card = e.target.closest(".movie-card:not(.person-card)");
-        if (card) {
-          if (e.target.closest("a, button, [role='button'], .actors-scrollable-content, .scrollable-content")) return;
-          var inner = card.querySelector(".flip-card-inner");
-          if (inner) {
-            var isFlipped = inner.classList.toggle("is-flipped");
-            if (isFlipped) {
-              if (activeCard && activeCard !== inner) {
-                activeCard.classList.remove("is-flipped");
-                var prevBack = activeCard.querySelector(".flip-card-back");
-                if (prevBack) {
-                  prevBack.classList.remove("is-expanded", "show-actors");
-                  var prevBtn = prevBack.querySelector(".expand-content-btn");
-                  if (prevBtn) prevBtn.textContent = "+";
-                }
-              }
-              activeCard = inner;
-            } else if (activeCard === inner) {
-              var back = inner.querySelector(".flip-card-back");
-              if (back) {
-                back.classList.remove("is-expanded", "show-actors");
-                var btn = back.querySelector(".expand-content-btn");
-                if (btn) btn.textContent = "+";
-              }
-              activeCard = null;
-            }
-          }
-        } else if (activeCard) {
-          activeCard.classList.remove("is-flipped");
-          var back = activeCard.querySelector(".flip-card-back");
-          if (back) {
-            back.classList.remove("is-expanded", "show-actors");
-            var btn = back.querySelector(".expand-content-btn");
-            if (btn) btn.textContent = "+";
-          }
-          activeCard = null;
-        }
-      });
-
-      // Sincronización para imágenes LQIP completadas en caché (tarjeta VIP y filmografía)
-      document.querySelectorAll(".movie-card img.lazy-lqip").forEach(function (img) {
-        if (img.complete) {
-          img.classList.add("loaded");
-        } else {
-          img.addEventListener("load", function () { img.classList.add("loaded"); });
-        }
-      });
-    })();
-  </script>
-</body>
-</html>`;
+  return renderCollectionWallPage({
+    headHtml,
+    headerFilterHtml,
+    h1Title: seoTitle,
+    gridAriaLabel: `Ficha de ${person.name} y filmografía destacada`,
+    gridContentHtml: `${personCardHtml}\n          ${filmographyHtml}`,
+    baseUrl,
+    extraInitScript: roleToggleScript,
+    expandNoun: 'detalles',
+  });
 }

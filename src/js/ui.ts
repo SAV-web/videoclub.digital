@@ -10,8 +10,6 @@ import { fetchMovies } from "./api.js";
 import { triggerPopAnimation, createElement, getAdjustedTotalPages, runWhenIdle, parseYearRangeRaw, formatYearRangeLabel } from "./utils.js";
 import { getActiveFilters, getTotalMovies, hasActiveMeaningfulFilters, appEvents, getWatchlistCount, getCurrentPage } from "./state.js";
 import { ActiveFilters } from "./types.js";
-import { ensureAuthModalMounted, loadAuthStyles } from "./templates/authModal.js";
-import { ensureLegalModalMounted } from "./templates/legalModal.js";
 
 // --- Referencias DOM (Lazy Getter con Caché) ---
 const domCache: Record<string, HTMLElement> = {};
@@ -441,19 +439,24 @@ export function prefetchNextPage(
   totalMovies: number,
   activeFilters: ActiveFilters
 ): void {
-  const pageSize = getCurrentPageSize();
+  const basePageSize = getCurrentPageSize();
 
-  // Determinamos si hay una tarjeta VIP en el DOM (person-card, collection-card)
-  const hasVip = !!document.querySelector('.person-card, .collection-card');
+  // Determinamos si hay una tarjeta VIP en el DOM (person-card, collection-card, studio-card)
+  const hasVip = !!document.querySelector('.person-card, .collection-card, .studio-card');
   const gridTotalItems = hasVip ? totalMovies + 1 : totalMovies;
 
-  const totalPages = getAdjustedTotalPages(gridTotalItems, pageSize);
+  const totalPages = getAdjustedTotalPages(gridTotalItems, basePageSize);
   if (currentPage >= totalPages) return;
 
+  const prefetchTargetPage = (targetPage: number) => {
+    const fetchLimit = basePageSize + 2;
+    const fetchOffset = hasVip ? ((targetPage - 1) * basePageSize) - 1 : (targetPage - 1) * basePageSize;
+    fetchMovies(activeFilters, targetPage, fetchLimit, null, false, fetchOffset).catch(() => {});
+  };
+
   runWhenIdle(() => {
-    // 1. Prefetch página siguiente (Prioridad)
-    fetchMovies(activeFilters, currentPage + 1, pageSize, null, false)
-      .catch(() => { });
+    // 1. Prefetch página siguiente (Prioridad) alineado con renderEngine.ts
+    prefetchTargetPage(currentPage + 1);
 
     // 2. Prefetch página subsiguiente (Condicional)
     // Simplificación: Solo en Desktop (pointer: fine) para evitar consumo excesivo en móvil
@@ -461,8 +464,7 @@ export function prefetchNextPage(
 
     if (isDesktop && currentPage + 1 < totalPages) {
       setTimeout(() => {
-        fetchMovies(activeFilters, currentPage + 2, pageSize, null, false)
-          .catch(() => { });
+        prefetchTargetPage(currentPage + 2);
       }, 1500); // Delay aumentado para asegurar prioridad a la página inmediata
     }
   });
@@ -583,23 +585,6 @@ export function popModalHistoryState(
   }
 }
 
-export const isAuthModalOpen = (): boolean => {
-  return Boolean(dom.authModal && !dom.authModal.hidden);
-};
-
-export const closeAuthModal = (options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean } | Event): void => {
-  const wasOpen = isAuthModalOpen();
-  if (wasOpen && dom.authModal) {
-    dom.authModal.style.transform = "";
-    dom.authModal.classList.remove("is-dragging");
-  }
-  if (wasOpen) {
-    popModalHistoryState(options);
-  }
-  closeAccessibleModal(dom.authModal, dom.authOverlay);
-};
-
-
 /**
  * Conecta el gesto táctil de arrastre hacia abajo (Swipe down to dismiss) en modales con formato Bottom Sheet en móvil (<= 768px).
  * Devuelve una función de limpieza para remover los event listeners.
@@ -673,231 +658,6 @@ export function bindBottomSheetSwipeToDismiss(
     modalEl.removeEventListener("touchend", endDrag);
     modalEl.removeEventListener("touchcancel", endDrag);
   };
-}
-
-let authModalListenersInitialized = false;
-
-function initAuthModalListeners(): void {
-  if (authModalListenersInitialized) return;
-  const { authModal, authOverlay } = dom;
-  if (!authModal) return;
-
-  authOverlay?.addEventListener("click", () => closeAuthModal());
-
-  document.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Escape" && !authModal.hidden) closeAuthModal();
-  });
-
-  // Gesto táctil de deslizamiento hacia abajo para cerrar (Bottom Sheet Swipe Down en móvil)
-  const authBox = authModal.querySelector<HTMLElement>(".auth-box") || authModal;
-  bindBottomSheetSwipeToDismiss(authModal, authBox, closeAuthModal);
-
-  authModalListenersInitialized = true;
-}
-
-export const openAuthModal = async (): Promise<void> => {
-  appEvents.emit("auth:requested");
-  await loadAuthStyles();
-  ensureAuthModalMounted();
-  try {
-    const { initAuthForms } = await import("./auth.js");
-    initAuthForms();
-  } catch (e) {
-    if (import.meta.env.DEV) console.error("Error loading auth module", e);
-  }
-  initAuthModalListeners();
-  if (dom.authModal) {
-    dom.authModal.style.transform = "";
-    dom.authModal.classList.remove("is-dragging");
-    dom.authModal.scrollTop = 0;
-    const authBox = dom.authModal.querySelector<HTMLElement>(".auth-box");
-    if (authBox) authBox.scrollTop = 0;
-  }
-  openAccessibleModal(dom.authModal, dom.authOverlay);
-  pushModalHistoryState();
-
-  // Garantizar que en móvil la modal inicie estrictamente desde el principio (logo e inputs visibles)
-  const resetScroll = () => {
-    if (dom.authModal) {
-      dom.authModal.scrollTop = 0;
-      const authBox = dom.authModal.querySelector<HTMLElement>(".auth-box");
-      if (authBox && authBox.scrollTop !== 0) authBox.scrollTop = 0;
-    }
-  };
-  requestAnimationFrame(resetScroll);
-  setTimeout(resetScroll, 50);
-  setTimeout(resetScroll, 150);
-  setTimeout(resetScroll, 360);
-};
-
-let authTriggerBound = false;
-
-export function setupAuthModal(): void {
-  if (authTriggerBound) return;
-  const { loginButton } = dom;
-  if (!loginButton) return;
-
-  // Pre-calentar estilos de autenticación en segundo plano durante inactividad
-  void loadAuthStyles();
-
-  loginButton.addEventListener("click", () => { void openAuthModal(); });
-  authTriggerBound = true;
-}
-
-// =================================================================
-//          3.2. MODAL LEGAL E INFORMATIVO
-// =================================================================
-
-export const isLegalModalOpen = (): boolean => {
-  return Boolean(dom.legalModal && !dom.legalModal.hidden);
-};
-
-function switchLegalTab(tabName: string): void {
-  const modal = dom.legalModal;
-  if (!modal) return;
-
-  const tabs = modal.querySelectorAll<HTMLButtonElement>(".legal-tab-btn");
-  const panels = modal.querySelectorAll<HTMLElement>(".legal-panel");
-
-  let targetPanelId = `panel-${tabName}`;
-  let found = false;
-  let activeTab: HTMLButtonElement | null = null;
-
-  tabs.forEach((tab) => {
-    const isTarget = tab.getAttribute("data-tab") === tabName;
-    tab.classList.toggle("is-active", isTarget);
-    tab.setAttribute("aria-selected", isTarget ? "true" : "false");
-    if (isTarget) {
-      found = true;
-      activeTab = tab;
-    }
-  });
-
-  if (!found && tabs.length > 0) {
-    tabs[0].classList.add("is-active");
-    tabs[0].setAttribute("aria-selected", "true");
-    targetPanelId = tabs[0].getAttribute("aria-controls") || "panel-about";
-    activeTab = tabs[0];
-  }
-
-  panels.forEach((panel) => {
-    const isTarget = panel.id === targetPanelId;
-    panel.classList.toggle("is-active", isTarget);
-    panel.hidden = !isTarget;
-  });
-
-  // Reset scroll del contenedor de texto
-  const body = modal.querySelector<HTMLElement>(".legal-body");
-  if (body) body.scrollTop = 0;
-
-  // Auto-scroll para que la pestaña activa siempre sea visible en móvil
-  if (activeTab) {
-    requestAnimationFrame(() => {
-      activeTab?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    });
-  }
-}
-
-export const closeLegalModal = (options?: { fromPopstate?: boolean; suppressHistoryBack?: boolean } | Event): void => {
-  const wasOpen = isLegalModalOpen();
-  closeAccessibleModal(dom.legalModal, dom.legalOverlay);
-
-  // Limpiar parámetro ?legal= de la URL si veníamos de un enlace directo
-  let hadLegalParam = false;
-  if (typeof window !== "undefined") {
-    try {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has("legal")) {
-        hadLegalParam = true;
-        url.searchParams.delete("legal");
-        const cleanSearch = url.searchParams.toString();
-        const cleanUrl = url.pathname + (cleanSearch ? `?${cleanSearch}` : "") + url.hash;
-        window.history.replaceState(window.history.state, "", cleanUrl);
-      }
-    } catch {
-      // no-op
-    }
-  }
-
-  if (wasOpen && !hadLegalParam) {
-    popModalHistoryState(options);
-  }
-};
-
-let legalModalListenersInitialized = false;
-
-function initLegalModalListeners(): void {
-  if (legalModalListenersInitialized) return;
-  const { legalModal, legalOverlay } = dom;
-  if (!legalModal) return;
-
-  const closeBtn = document.getElementById("legal-close-btn");
-  closeBtn?.addEventListener("click", () => closeLegalModal());
-  legalOverlay?.addEventListener("click", () => closeLegalModal());
-
-  document.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.key === "Escape" && isLegalModalOpen()) {
-      closeLegalModal();
-    }
-  });
-
-  legalModal.querySelectorAll<HTMLButtonElement>(".legal-tab-btn").forEach((tabBtn) => {
-    tabBtn.addEventListener("click", () => {
-      const tab = tabBtn.getAttribute("data-tab");
-      if (tab) switchLegalTab(tab);
-    });
-  });
-
-  legalModalListenersInitialized = true;
-}
-
-export const openLegalModal = (tabName = "about"): void => {
-  ensureLegalModalMounted();
-  initLegalModalListeners();
-  openAccessibleModal(dom.legalModal, dom.legalOverlay, false);
-  pushModalHistoryState();
-  switchLegalTab(tabName);
-  requestAnimationFrame(() => {
-    const activeTab = dom.legalModal?.querySelector<HTMLElement>(".legal-tab-btn.is-active");
-    activeTab?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
-  });
-};
-
-let legalTriggerBound = false;
-
-export function setupLegalModal(): void {
-  if (legalTriggerBound) return;
-
-  // 1. Escuchar botones del pie de página (footer)
-  document.querySelectorAll<HTMLButtonElement>(".footer-legal-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.getAttribute("data-legal-tab") || "about";
-      openLegalModal(tab);
-    });
-  });
-
-  legalTriggerBound = true;
-
-  // 2. Apertura directa si la URL contiene parámetro legal (ej. /?legal=about, /?legal=cookies)
-  if (typeof window !== "undefined") {
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const legalTab = urlParams.get("legal");
-      if (legalTab && ["about", "contact", "legal", "privacy", "cookies"].includes(legalTab.toLowerCase())) {
-        openLegalModal(legalTab.toLowerCase());
-      }
-    } catch {
-      // no-op
-    }
-  }
 }
 
 // =================================================================
