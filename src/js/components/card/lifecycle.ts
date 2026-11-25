@@ -273,3 +273,13 @@ export function cleanupLazyImages(container: HTMLElement): void {
   const observer = lazyLoadObserver;
   container.querySelectorAll<HTMLImageElement>("img[data-src]").forEach(img => observer.unobserve(img));
 }
+
+export function reobserveLazyImages(container: ParentNode): void {
+  if (!container || !lazyLoadObserver) return;
+  const observer = lazyLoadObserver;
+  container.querySelectorAll<HTMLImageElement>("img[data-src]").forEach(img => {
+    if (!img.classList.contains(CSS_CLASSES.LOADED)) {
+      observer.observe(img);
+    }
+  });
+}

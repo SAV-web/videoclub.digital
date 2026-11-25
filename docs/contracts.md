@@ -4,7 +4,7 @@ Este documento formaliza los **10 Contratos Normativos del Sistema**. Define las
 
 > [!NOTE]
 > La implementación ejecutable de estos contratos reside en [`src/js/contracts.ts`](../src/js/contracts.ts), [`src/js/types.ts`](../src/js/types.ts) y [`src/shared/`](../src/shared/).
-> Para la evolución histórica y especificaciones de micro-interacciones previas, consultar [`docs/archive/CHANGELOG_MILESTONES.md`](./archive/CHANGELOG_MILESTONES.md).
+> Documentación técnica complementaria: [DataOps & Calidad de Datos](./data_contracts.md) · [Seguridad Perimetral](./security.md) · [Invalidación del Service Worker](./service_worker_invalidation.md) · [Cloudflare Edge](../cloudflare/README.md) · [Archivo histórico de hitos](./archive/CHANGELOG_MILESTONES.md).
 
 ---
 
@@ -116,8 +116,8 @@ interface ApiResponse {
    La carga inicial de catálogo se ejecuta con `get_count = false`. La API entrega inmediatamente las películas de la primera página con `total = -1`. La interfaz retira `.is-fetching` y `aria-busy` devolviendo el control al usuario de inmediato, mientras una segunda solicitud no bloqueante calcula y actualiza el total atómicamente (`applyResolvedTotal`).
 2. **Fast-Path de Portada Limpia (~2 ms):**
    Cuando el catálogo se consulta sin filtros ni búsquedas en orden de relevancia, la función SQL ejecuta un atajo mediante *Index-Only Scan*, devolviendo el total global (`SELECT count(*) FROM public.movies`) en ~2 ms sin escanear los ~15.000 títulos (14.500+ activos).
-3. **Carga Diferida del SDK de Supabase (Lazy Auth):**
-   Visitantes anónimos interactúan con el catálogo mediante el endpoint HTTP nativo `/api/rpc/search_movies_offset`. El SDK pesado de Supabase (`@supabase/supabase-js`) no se descarga ni inicializa hasta que el usuario pulsa *"Entrar"* o interactúa con acciones autenticadas.
+3. **Carga Diferida del SDK de Supabase (Lazy Auth) y Presupuesto de Bundle:**
+   Visitantes anónimos interactúan con el catálogo mediante el endpoint HTTP nativo `/api/rpc/search_movies_offset`. El SDK pesado de Supabase (`@supabase/supabase-js`), al igual que las modales de autenticación y perfil, se descarga e inicializa bajo demanda, manteniendo el bundle crítico inicial de la SPA por debajo de **45 KB gzipped**.
 
 ---
 
@@ -218,3 +218,9 @@ La modal de detalle cinemático (`src/js/components/modal/`) implementa una expe
    - **Barrera de Entradas Editables:** Si el foco reside en `input`, `textarea`, `select` o `isContentEditable`, los atajos alfabéticos se omiten permitiendo escritura ordinaria.
    - **Protección de Modificadores de SO:** Los atajos de una sola letra (`b`, `m`, `s`, `r`) se bloquean si `ctrlKey`, `metaKey` o `altKey` están activos, impidiendo colisiones con funciones nativas del navegador como recargar página (`Ctrl+R` / `Cmd+R`).
     - **Unificación de Listener Escape:** La tecla `Escape` para cerrar el cajón lateral móvil se gestiona dentro del mismo escuchador de `initGlobalHotkeys`, evitando la proliferación de escuchadores globales `keydown` duplicados en `document`.
+6. **Navegación Fluida (*In-Flight Stale Grid*) y BFCache Intra-SPA (`gridViewCache`):**
+   - Al navegar con contenido ya visible (`hasExistingContent`), se conserva temporalmente el grid previo con `.is-fetching` y `aria-busy="true"` hasta sustituirlo en una única operación, reservando los esqueletos para carga en frío o latencias de red.
+   - En retroceso/avance (`popstate`), `renderEngine.ts` mantiene un caché LRU de hasta 8 vistas (`gridViewCache`, TTL 15 min) con los nodos DOM reales (`captureGridNodes`/`restoreGridNodes`), evitando reconstruir tarjetas ni re-decodificar pósters ya cargados.
+7. **Camino Crítico LCP, Preloads Higiénicos y Aislamiento DOM:**
+   - Solo la primera carátula visible (VIP #0 o primera película) usa `fetchpriority="high"` y `loading="eager"`, reutilizando un único `<link data-lcp-preload="true">` en `<head>` sin acumulaciones.
+   - Separación estricta entre lecturas geométricas (`getBoundingClientRect`, `scrollY`) y escrituras en lote para evitar *Layout Thrashing*.

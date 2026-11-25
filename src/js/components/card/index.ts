@@ -41,7 +41,8 @@ import {
 import {
   disposeCardEvents,
   initCardInteractions,
-  cleanupLazyImages
+  cleanupLazyImages,
+  reobserveLazyImages
 } from "./lifecycle.js";
 
 // Re-exportar API pública para compatibilidad con consumidores externos hasta el paso 4
@@ -113,6 +114,40 @@ export async function renderMovieGrid(
   if (renderId !== currentRenderRequestId || !document.body.contains(container)) return;
 
   cleanupLazyImages(container);
+  container.replaceChildren(fragment);
+}
+
+/**
+ * Extrae y preserva los nodos DOM reales de un grid renderizado en un DocumentFragment
+ * para su restauración instantánea al navegar Atrás/Adelante sin reconstruir tarjetas ni re-cargar pósters.
+ */
+export function captureGridNodes(container: HTMLElement | null): DocumentFragment | null {
+  if (!container || typeof document === "undefined" || typeof DocumentFragment === "undefined") return null;
+  if (typeof container.firstChild === "undefined" || !container.firstChild) return null;
+
+  unflipAllCards();
+  cleanupLazyImages(container);
+
+  const fragment = document.createDocumentFragment();
+  while (container.firstChild) {
+    const child = container.firstChild as HTMLElement;
+    child.classList?.remove("is-hovered");
+    fragment.appendChild(child);
+  }
+  return fragment.childNodes.length > 0 ? fragment : null;
+}
+
+/**
+ * Restaura un DocumentFragment capturado previamente en el contenedor del grid
+ * y re-observa únicamente las imágenes diferidas que aún no se hubieran cargado.
+ */
+export function restoreGridNodes(container: HTMLElement | null, fragment: DocumentFragment): void {
+  currentRenderRequestId++;
+  unflipAllCards();
+  if (!container) return;
+
+  cleanupLazyImages(container);
+  reobserveLazyImages(fragment);
   container.replaceChildren(fragment);
 }
 

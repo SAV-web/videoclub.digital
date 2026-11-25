@@ -1,195 +1,58 @@
-# VIDEOCLUB.DIGITAL 🎬🍿
+# VIDEOCLUB.DIGITAL
 
-> Progressive Web App (PWA) móvil-first de altísimo rendimiento para explorar, filtrar y descubrir películas y series en tiempo real.
-
----
-
-## 📌 Visión General
-
-**videoclub.digital** actúa como un "oráculo cinéfilo" interactivo. Ofrece un motor de búsqueda y filtrado multinivel extremadamente ágil (por estudio, género, país, directores, actores, rango de años y listas personalizadas), respaldado por un backend potente en Supabase (PostgreSQL) y una arquitectura frontend optimizada para alcanzar **60-120 FPS** sin bloqueos del hilo principal.
+> Progressive Web App (PWA) *mobile-first* para explorar, filtrar y catalogar cine y series con arquitectura *Local-First* y renderizado perimetral Edge SSR sobre Cloudflare Workers.
 
 ---
 
-## 🚀 Características Principales
-
-- 🔍 **Filtrado Avanzado & Multinivel**:
-  - Filtros combinados por Estudio (© Universal, Warner, etc.), Género, País (banderas interactivas en fichas y modal), Colecciones/Sagas y Rango de Años (Dual Slider).
-  - Búsqueda exacta de Directores y Actores con tarjetas informativas dedicadas (*VIP Cards* / Biografías).
-  - Soporte para **colectivos y dúos cinematográficos** (ej. Hermanos Russo $\leftrightarrow$ Joe y Anthony Russo) con búsqueda e indexación bidireccional.
-  - **Insignias de Doble Rol VIP** (`(D)` en fichas de actor, `(A)` en fichas de director) para alternar filmografías con un solo clic.
-  - Notificaciones informativas automáticas al conmutar filtros de persona excluyendo categorías previas incompatibles.
-  - Píldoras dinámicas de exclusión (ej. `(NO España) x`).
-- ⚡ **Rendimiento Extraordinario (PWA Mobile-First)**:
-  - Carga progresiva en la cuadrícula y resolución de plantillas mediante *Lazy Getters* a prueba de arranques en frío (*cold boots*).
-  - Micro-animaciones de elevación primaveral en todas las tarjetas al pasar el ratón, con supresión de recuadro en fichas VIP.
-  - Animaciones de portada fluidas con **View Transitions API** nativa.
-  - Caché inteligente en memoria LRU multiescala con deduplicación de peticiones en vuelo y reintentos automáticos progresivos (*backoff*) ante arranques en frío (*cold-starts*).
-  - Sincronización determinista de estado y botones responsive ante rotaciones de pantalla (*portrait/landscape*).
-  - Service Worker propio con invalidación automatizada por compilación.
-- ⭐ **Gestión de Usuario & Exclusividad**:
-  - Autenticación con Supabase Auth.
-  - Gestión de puntuaciones personalizadas y Watchlist (pendientes de ver) con reglas estrictas de exclusividad mutua.
-- 📱 **Experiencia Móvil Nativa**:
-  - Interfaz responsiva con Container Queries y cabecera elástica *sticky* sin solapamientos.
-  - Línea informativa en cabecera estructurada 1:1 con la jerarquía canónica de las URLs.
-  - Menú lateral deslizante (*Drawer*) y modales adaptativas: *Bottom Sheet* con física de arrastre (*swipe-to-dismiss*) en orientación vertical, y dos columnas al 50% con scroll vertical independiente y contracción suave del cartel (`poster-compact`) en orientación apaisada (*landscape*).
-- 🧹 **Gestión de Ciclo de Vida y Limpieza (Teardown)**:
-  - Funciones de desmontaje explícito (`disposeApp`, `disposeCardEvents`, `disposeModalEvents`, etc.) y bus de eventos global seguro para garantizar cero fugas de memoria (*zero memory leaks*).
-
----
-
-## 🛠️ Stack Tecnológico
+## Stack Principal
 
 | Capa | Tecnología |
-| --- | --- |
-| **Frontend Core (SPA)** | TypeScript (ES2022+), HTML5 Semántico |
-| **Estilos (CSS)** | Vanilla CSS3 (Variables, Grid, Flexbox, Container Queries, `contain: layout paint`) |
-| **Embalado & Build** | Vite (con plugin de inyección automática de versión de SW `injectSwVersion`) |
-| **Edge SSR, Static Assets & CDN (Cloudflare)** | Cloudflare Workers (`cloudflare/worker.js` + `[assets]`) como origen integral de producción: Edge SSR, serving nativo de SPA/assets, JSON-LD, sitemaps, caché `immutable`, proxy Supabase y negociación IA |
-| **Fuente Única de Verdad (SSOT)** | Módulos compartidos en `src/shared/` para reglas de negocio y formateadores |
-| **Backend & DB** | Supabase (PostgreSQL 15+, PL/pgSQL RPC `search_movies_offset`, RLS, Trigram Indexes) |
-| **PWA & Offline** | Service Worker (`public/sw.js`) con invalidación dinámica por timestamp (`vYYYYMMDDHHMM`) |
-| **Caché Local** | `lru-cache` en memoria para catálogo/sugerencias + `localStorage` versionado |
-| **Testing & Calidad** | Node.js Test Runner nativo (13 suites activas, ejecución paralela concurrente) + DataOps nativo en PostgreSQL (`run_data_tests`) |
+| :--- | :--- |
+| **Frontend SPA** | TypeScript (ES2022 estricto), HTML5 `<template>`, CSS3 nativo, Vite |
+| **Edge SSR & CDN** | Cloudflare Workers (`cloudflare/worker.js` + Static Assets), Cache API, negociación Markdown (`Accept: text/markdown`) |
+| **SSOT Compartido** | Módulos isomórficos en `src/shared/` para SPA, Edge SSR, scripts y tests |
+| **Backend & Datos** | Supabase (PostgreSQL 15+, RPC `search_movies_offset`, RLS, Storage) + IndexedDB (*Local-First* + SWR) |
+| **Calidad & Testing** | Node.js Test Runner nativo (`tests/*.test.mjs`), `tsc --noEmit`, DataOps en PostgreSQL |
 
 ---
 
-## 📂 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```text
 VIDEOCLUB.DIGITAL/
-├── index.html                   # Shell HTML principal, CSS crítico y plantillas <template>
-├── vite.config.js               # Configuración de Vite y plugin inyector de Service Worker
-├── wrangler.toml                # Configuración de Cloudflare Workers y Static Assets ([assets] -> ./dist)
-├── package.json                 # Dependencias y scripts de desarrollo/test
-├── cloudflare/                  # Origen de producción perimetral (Cloudflare Worker & SSR)
-│   ├── worker.js                # Edge SSR de títulos, taxonomías, personas VIP, proxy de imágenes y fallback a env.ASSETS
-│   ├── seo/                     # Renderizadores perimetrales HTML/CSS (render-taxonomy, render-person, render-movie)
-│   └── README.md                # Guía de configuración y verificación de Cloudflare Edge
-├── scripts/                     # Scripts auxiliares de automatización y CI
-│   ├── build-seo-css.mjs        # Compilador de CSS SEO minificado (/public/seo-card-v7.css y módulo Worker)
-│   ├── generate-llms.mjs        # Generador de especificaciones llms.txt y llms-full.txt
-│   ├── generate-sitemap.mjs     # Generador de sitemaps XML unificados (/sitemap.xml y sitemap-index)
-│   ├── generate-vip-manifest.mjs# Generador de manifiesto de personas VIP para descarte O(1) en Edge
-│   ├── run-data-tests.mjs       # DataOps Runner: evalúa contratos de calidad en PostgreSQL
-│   └── sync-sprites.mjs         # Sincronizador de iconos SVG inlined en index.html
-├── public/
-│   ├── 404.html                 # Fallback SPA de contingencia
-│   ├── sw.js                    # Service Worker interceptor (CACHE_STATIC y CACHE_DYNAMIC)
-│   └── manifest.webmanifest     # Manifiesto PWA
+├── index.html          # Shell HTML principal, CSS crítico y <template>s
+├── vite.config.js      # Configuración Vite e inyección de versión del Service Worker
+├── wrangler.toml       # Configuración de Cloudflare Workers y Static Assets
 ├── src/
-│   ├── css/                     # Sistema de diseño modular en Vanilla CSS
-│   │   ├── variables.css        # Tokens de diseño (temas claro/oscuro, paletas, timings)
-│   │   ├── globals.css          # Estilos globales y reset
-│   │   ├── layout.css           # Estructura principal y grid adaptativo
-│   │   └── components/          # Estilos scopeados por componente (card, modal, sidebar con alto contraste, etc.)
-│   ├── js/                      # Lógica de la aplicación en TypeScript
-│   │   ├── main.ts              # Director de orquesta SPA (arranque, auth y eventos globales)
-│   │   ├── renderEngine.ts      # Motor de catálogo (loadAndRenderMovies, paginación, SEO)
-│   │   ├── router.ts            # Sincronizador de URL, Pretty Paths e History API
-│   │   ├── scrollWatcher.ts     # Monitorización pasiva de scroll (rAF, header dinámico)
-│   │   ├── state.ts             # Estado inmutable global y sincronización con URL
-│   │   ├── api.ts               # Capa de datos, reintentos, deduplicación e integración Supabase
-│   │   ├── contracts.ts         # Contratos, guardas de tipos, getAppBasePath() y normalizadores
-│   │   ├── types.ts             # Interfaces TypeScript centralizadas
-│   │   ├── utils.ts             # Helpers de alto rendimiento y manipuladores DOM
-│   │   ├── ui.ts                # Gestión genérica de interfaz (Toasts, Skeletons, Paginación, Theme Toggle)
-│   │   └── components/          # Módulos UI
-│   │       ├── card/            # Tarjeta/Ficha modular (index, context, cardElement, lifecycle)
-│   │       ├── sidebar/         # Menú lateral modular (index, context, filters, gestures, yearFilter)
-│   │       ├── modal.ts         # Vista rápida (Quick View en 2 columnas escritorio/landscape y Bottom Sheet portrait)
-│   │       ├── profile.ts       # Perfil de usuario y estadísticas cinemáticas
-│   │       ├── rating.ts        # Sistema interactivo de puntuación por estrellas
-│   │       └── yearSlider.ts    # Control de rango dual nativo
-│   └── shared/                  # Fuente Única de Verdad (SSOT) compartida entre SPA y Edge SEO
-│       ├── slugs.ts             # Slugs canónicos, aliases oficiales de 21 géneros y expansión SQL
-│       ├── constants.ts         # Constantes de negocio, configuraciones y taxonomías
-│       └── formatters.ts        # Funciones puras de formateo, puntuación y normalización
-├── tests/                       # Suite de pruebas unitarias y de integración (13 suites)
-│   ├── helpers/vite-ssr.mjs     # Servidor auxiliar Vite SSR para ejecución de tests
-│   ├── card.test.mjs            # Tests de caracterización de tarjeta y renderizado
-│   ├── lifecycle-dispose.test.mjs # Ciclo de vida y desmontaje de Card, Modal, Sidebar y App
-│   ├── url-contract.test.mjs    # Test del contrato canónico de URLs y Tabla de Prohibidos
-│   ├── worker.test.mjs          # Smoke tests del Cloudflare Worker (Edge SSR, proxy y headers)
-│   ├── profile-stats.test.mjs   # Estadísticas de usuario y reconciliación de login
-│   └── *.test.mjs               # Pruebas de api, state, rating, seo, utils, formatters
-├── database/                    # Lógica de base de datos y backend (PostgreSQL / Supabase)
-│   ├── schema.sql               # Esquema DDL de tablas y restricciones relacionales
-│   ├── script.sql               # Esquema SQL completo, funciones RPC e índices
-│   ├── functions/               # Funciones RPC especializadas (search_movies_offset.sql)
-│   ├── etl/                     # Procedimientos de ingesta (ingest.sql)
-│   └── tests/                   # Suite declarativa de pruebas DataOps (data_tests.sql)
-└── docs/                        # Documentación técnica y de arquitectura
-    ├── architecture/            # Diagramas interactivos Archify (Global, DataOps, Local-First, SPA Modular)
-    ├── project_context.md       # Contexto global y mapa del proyecto
-    ├── contracts.md             # Especificación de contratos de datos, URLs y temas
-    ├── data_contracts.md        # Disciplina DataOps y catálogo de aserciones PostgreSQL
-    ├── security.md              # Auditoría forense de seguridad, hardening perimetral y mitigaciones
-    └── service_worker_invalidation.md # Estrategia de versión e invalidación del SW
+│   ├── shared/         # Fuente Única de Verdad (slugs, constantes, formateadores, tipos)
+│   ├── js/             # Cliente SPA TypeScript (estado, API/SWR, renderEngine, componentes)
+│   └── css/            # Sistema de estilos modular (tokens, layout, componentes)
+├── cloudflare/         # Edge Worker (proxy, caché, SSR SEO y Markdown GEO)
+├── database/           # Esquema DDL, RPCs PostgreSQL, ETL y tests DataOps
+├── scripts/            # Generadores de build (llms, sitemap, manifiesto VIP, CSS SEO)
+├── public/             # Assets estáticos, PWA manifest y Service Worker (sw.js)
+├── tests/              # Suite de pruebas unitarias y de integración (Node.js)
+└── docs/               # Manual maestro de contratos y guías especializadas
 ```
 
 ---
 
-## 💻 Comandos de Desarrollo
+## Comandos de Desarrollo
 
-### Requisitos previos
-- Node.js (versión 20+ o 22 recomendada)
-- npm
-
-### 1. Instalación de dependencias
-```bash
-npm install
-```
-
-### 2. Entorno de desarrollo local
-```bash
-npm run dev
-```
-Abre `http://localhost:5173` en tu navegador.
-
-### 3. Verificación de tipos TypeScript
-```bash
-npm run check
-```
-
-### 4. Ejecución de la suite completa de tests
-```bash
-npm run test
-```
-
-### 5. Auditoría de calidad de datos en base de datos (DataOps)
-```bash
-node scripts/run-data-tests.mjs --strict
-```
-
-### 6. Compilación de la SPA para producción
-```bash
-npm run build
-```
-Genera la especificación llms, manifiestos VIP, sitemaps, CSS de SEO y la carpeta `dist/` optimizada con inyección automática de versión de Service Worker.
-
-### 7. Preparación, Compilación y Despliegue del Cloudflare Worker (Edge SSR)
-```bash
-# Prepara los artefactos del Worker (manifiesto VIP desde Supabase y CSS perimetral en memoria)
-npm run prepare:worker
-
-# Empaqueta el worker unificado en cloudflare/dist/worker.bundle.js (incluye prepare:worker)
-npm run build:worker
-
-# Despliega directamente a Cloudflare Workers vía Wrangler CLI (ejecuta prepare:worker automáticamente)
-npm run deploy:worker
-```
+- **Instalación:** `npm install`
+- **Desarrollo local:** `npm run dev` (`http://localhost:5173`)
+- **Chequeo de tipos y bundle del Worker:** `npm run check`
+- **Suite completa de tests:** `npm run test`
+- **Auditoría DataOps (PostgreSQL):** `node scripts/run-data-tests.mjs --strict`
+- **Build de producción (SPA):** `npm run build`
+- **Preparar / empaquetar / desplegar Worker:** `npm run prepare:worker` · `npm run build:worker` · `npm run deploy:worker`
 
 ---
 
-## 📖 Documentación Adicional
+## Documentación
 
-Para más detalles sobre la arquitectura interna y decisiones de diseño técnico, consulta la carpeta [`docs/`](docs/):
-
-- 📘 [**Project Context & Architecture**](docs/project_context.md): Explicación exhaustiva del stack, estructura y patrones de rendimiento.
-- 📐 [**Contratos de Datos y URLs**](docs/contracts.md): Definición formal de las interfaces `ActiveFilters`, `MappedMovie`, contrato de URLs y tabla de valores prohibidos.
-- 🛡️ [**Contratos de Calidad de Datos (DataOps)**](docs/data_contracts.md): Framework declarativo de pruebas nativas en PostgreSQL y automatización en CI.
-- 🔄 [**Estrategia de Invalidación del Service Worker**](docs/service_worker_invalidation.md): Explicación de políticas de caché, aislamiento de origen y despliegue.
-- ☁️ [**Configuración de Cloudflare Edge**](cloudflare/README.md): Guía de configuración perimetral de proxy de imágenes y negociación Markdown.
-- 🗄️ [**Script SQL & Backend Schema**](database/script.sql): Código de la función RPC `search_movies_offset`, ETL diferencial e índices trigrama.
-- 🗃️ [**Contexto SQL & DDL Schema**](database/schema.sql): Definición de tablas relacionales, columnas generadas y restricciones de base de datos.
+- [**Manual Maestro y Contratos del Sistema**](docs/contracts.md): Arquitectura normativa completa (estado, URLs, *Daily Showcase*, *Local-First*, Edge SSR, modales y rendimiento).
+- [**Contratos de Calidad de Datos (DataOps)**](docs/data_contracts.md): Aserciones declarativas nativas en PostgreSQL.
+- [**Seguridad y Auditoría**](docs/security.md): Controles perimetrales, CSP, RLS y sanitización.
+- [**Invalidación del Service Worker**](docs/service_worker_invalidation.md): Políticas de caché PWA y versionado.
+- [**Guía de Cloudflare Edge**](cloudflare/README.md): DNS, proxy de imágenes, cachés y smoke tests.

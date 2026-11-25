@@ -9,6 +9,7 @@
 // sincronización de datos de usuario y actualización de metadatos SEO.
 // =================================================================
 
+import { LRUCache } from "lru-cache";
 import { CONFIG, CSS_CLASSES } from "./constants.js";
 import {
   getFriendlyErrorMessage,
@@ -21,7 +22,8 @@ import {
 import {
   fetchMovies,
   fetchPersonDetails,
-  fetchGroupDetails
+  fetchGroupDetails,
+  scheduleMyListBackgroundRevalidation
 } from "./api.js";
 
 import { isAbortError, toSlug } from "./contracts.js";
@@ -40,7 +42,10 @@ import {
   renderSkeletons,
   renderNoResults,
   renderErrorState,
-  runFlipOnboarding
+  runFlipOnboarding,
+  captureGridNodes,
+  restoreGridNodes,
+  updateCardUI
 } from "./components/card/index.js";
 
 import {
@@ -51,17 +56,91 @@ import {
   setTotalMovies,
   setFilter,
   hasActiveMeaningfulFilters,
+  stateToPrettyUrl,
   appEvents
 } from "./state.js";
 
 import { updateUrl } from "./router.js";
-import type { MappedMovie, VipData, PersonDetails } from "./types.js";
+import type { ActiveFilters, MappedMovie, VipData, PersonDetails, MovieCardElement } from "./types.js";
 
 export interface RenderOptions {
   replaceHistory?: boolean;
   forceSkeleton?: boolean;
   isYearFilter?: boolean;
   restoreScrollY?: number | null;
+  allowViewCache?: boolean;
+}
+
+interface RenderedViewMeta {
+  viewKey: string;
+  isWallMode: boolean;
+  isMyList: boolean;
+  page: number;
+  fetchLimit: number;
+  fetchOffset: number;
+  movies: MappedMovie[];
+  rawMovies: MappedMovie[];
+  totalMovies: number;
+  vipData: VipData | null;
+  hasVip: boolean;
+  userDataVersion: number;
+  isCleanHome: boolean;
+}
+
+interface GridViewSnapshot extends RenderedViewMeta {
+  fragment: DocumentFragment;
+}
+
+const gridViewCache = new LRUCache<string, GridViewSnapshot>({
+  max: 8,
+  ttl: 1000 * 60 * 15,
+});
+
+let lastRenderedViewMeta: RenderedViewMeta | null = null;
+let userDataVersion = 0;
+
+function invalidateMyListGridViewCache(): void {
+  userDataVersion++;
+  for (const [key, snapshot] of gridViewCache.entries()) {
+    if (snapshot.isMyList) {
+      gridViewCache.delete(key);
+    }
+  }
+  if (lastRenderedViewMeta?.isMyList) {
+    lastRenderedViewMeta = null;
+  }
+}
+
+appEvents.on("userMovieDataChanged", invalidateMyListGridViewCache);
+appEvents.on("userDataUpdated", invalidateMyListGridViewCache);
+
+export function clearGridViewCache(): void {
+  gridViewCache.clear();
+  lastRenderedViewMeta = null;
+}
+
+function buildViewKey(filters: ActiveFilters, page: number, isWallMode: boolean): string {
+  const { pathname, search } = stateToPrettyUrl(filters, page);
+  const urlPart = search ? `${pathname}?${search}` : pathname;
+  return `${urlPart}|wall:${isWallMode ? 1 : 0}`;
+}
+
+function captureOutgoingViewSnapshot(incomingViewKey: string): void {
+  if (!lastRenderedViewMeta || lastRenderedViewMeta.viewKey === incomingViewKey) return;
+  const container = dom.gridContainer;
+  if (!container || !container.querySelector(".movie-card, .person-card, .collection-card")) {
+    lastRenderedViewMeta = null;
+    return;
+  }
+
+  const fragment = captureGridNodes(container);
+  if (fragment) {
+    gridViewCache.set(lastRenderedViewMeta.viewKey, {
+      ...lastRenderedViewMeta,
+      fragment,
+    });
+  }
+  lastRenderedViewMeta = null;
 }
 
 interface GridPaginationMetrics {
@@ -142,9 +221,88 @@ function syncPersonFilterName(
  */
 export async function loadAndRenderMovies(
   page = 1,
-  { replaceHistory = false, forceSkeleton = false, isYearFilter = false, restoreScrollY = null }: RenderOptions = {}
+  { replaceHistory = false, forceSkeleton = false, isYearFilter = false, restoreScrollY = null, allowViewCache = false }: RenderOptions = {}
 ): Promise<void> {
   const signal = createAbortableRequest("movie-grid-load").signal;
+
+  const targetFilters = getActiveFilters();
+  const isWallMode = typeof document !== "undefined" && document.body?.classList
+    ? document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED)
+    : false;
+  const targetViewKey = buildViewKey(targetFilters, page, isWallMode);
+
+  // Fast-Path BFCache intra-SPA (restauración instantánea de nodos DOM en Atrás/Adelante)
+  if (allowViewCache && !forceSkeleton && !isYearFilter) {
+    const cachedSnapshot = gridViewCache.get(targetViewKey);
+    if (cachedSnapshot && dom.gridContainer) {
+      gridViewCache.delete(targetViewKey);
+      captureOutgoingViewSnapshot(targetViewKey);
+
+      setCurrentPage(page);
+      updateUrl({ replace: replaceHistory });
+      updateTypeFilterUI(targetFilters.mediaType as "movies" | "series" | "all");
+      updatePageTitle(cachedSnapshot.movies);
+
+      if (!cachedSnapshot.isMyList && cachedSnapshot.userDataVersion !== userDataVersion) {
+        const cards = cachedSnapshot.fragment.querySelectorAll<MovieCardElement>(".movie-card[data-movie-id]");
+        cards.forEach((card) => updateCardUI(card));
+      }
+
+      restoreGridNodes(dom.gridContainer, cachedSnapshot.fragment);
+
+      if (cachedSnapshot.totalMovies >= 0) {
+        applyResolvedTotal(cachedSnapshot.totalMovies, cachedSnapshot.movies, cachedSnapshot.hasVip, cachedSnapshot.vipData);
+      } else {
+        setTotalMovies(-1);
+        updateTotalResultsUI(-1);
+        scheduleInitialSeo(cachedSnapshot.movies, cachedSnapshot.movies.length);
+        if (dom.paginationContainer) dom.paginationContainer.textContent = "";
+        const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
+        const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
+        if (dom.headerPrevBtn) dom.headerPrevBtn.disabled = page <= 1;
+        if (dom.headerNextBtn) dom.headerNextBtn.disabled = cachedSnapshot.movies.length < (page === 1 && cachedSnapshot.hasVip ? firstPageLimit - 1 : baseLimit);
+      }
+
+      if (cachedSnapshot.isCleanHome && cachedSnapshot.movies.length > 0) {
+        runFlipOnboarding(dom.gridContainer);
+      }
+
+      lastRenderedViewMeta = {
+        viewKey: cachedSnapshot.viewKey,
+        isWallMode: cachedSnapshot.isWallMode,
+        isMyList: cachedSnapshot.isMyList,
+        page: cachedSnapshot.page,
+        fetchLimit: cachedSnapshot.fetchLimit,
+        fetchOffset: cachedSnapshot.fetchOffset,
+        movies: cachedSnapshot.movies,
+        rawMovies: cachedSnapshot.rawMovies,
+        totalMovies: cachedSnapshot.totalMovies,
+        vipData: cachedSnapshot.vipData,
+        hasVip: cachedSnapshot.hasVip,
+        userDataVersion,
+        isCleanHome: cachedSnapshot.isCleanHome,
+      };
+
+      const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
+      window.scrollTo({ top: targetScroll, behavior: "auto" });
+
+      document.body.classList.remove(CSS_CLASSES.IS_FETCHING);
+      dom.gridContainer.classList.remove(CSS_CLASSES.IS_FETCHING);
+      dom.gridContainer.setAttribute("aria-busy", "false");
+
+      if (cachedSnapshot.isMyList) {
+        scheduleMyListBackgroundRevalidation(
+          targetFilters,
+          page,
+          cachedSnapshot.fetchLimit,
+          true,
+          { total: cachedSnapshot.totalMovies, items: cachedSnapshot.rawMovies },
+          cachedSnapshot.fetchOffset
+        );
+      }
+      return;
+    }
+  }
 
   // 1. Actualizar estado -> 2. Actualizar URL -> 3. Actualizar SEO canónico -> 4. Lanzar fetch
   setCurrentPage(page);
@@ -167,6 +325,7 @@ export async function loadAndRenderMovies(
 
   if (forceSkeleton || !hasExistingContent) {
     if (forceSkeleton) {
+      captureOutgoingViewSnapshot(targetViewKey);
       renderSkeletons(dom.gridContainer, dom.paginationContainer);
     } else {
       interface NetworkInfo {
@@ -182,6 +341,7 @@ export async function loadAndRenderMovies(
       const skeletonDelay = isYearFilter ? 300 : (effType === "slow-2g" ? 0 : effType === "2g" ? 50 : effType === "3g" ? 100 : 150);
 
       skeletonTimeout = setTimeout(() => {
+        captureOutgoingViewSnapshot(targetViewKey);
         renderSkeletons(dom.gridContainer, dom.paginationContainer);
       }, skeletonDelay);
     }
@@ -366,7 +526,7 @@ export async function loadAndRenderMovies(
 
         updateUrl({ replace: replaceHistory });
 
-        await updateDomWithResults(p1Movies, effectiveTotal, vipData, confirmedHasVip);
+        await updateDomWithResults(p1Movies, effectiveTotal, vipData, confirmedHasVip, p1Limit, 0);
         const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
         window.scrollTo({ top: targetScroll, behavior: "auto" });
         return;
@@ -407,7 +567,7 @@ export async function loadAndRenderMovies(
         if (clampedResult.aborted || signal.aborted) return;
         setCurrentPage(targetPage);
         updateUrl({ replace: true });
-        await updateDomWithResults(clampedResult.items || [], effectiveTotal, vipData, confirmedHasVip);
+        await updateDomWithResults(clampedResult.items || [], effectiveTotal, vipData, confirmedHasVip, targetLimit, targetOffset);
         const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
         window.scrollTo({ top: targetScroll, behavior: "auto" });
         return;
@@ -419,7 +579,7 @@ export async function loadAndRenderMovies(
     }
 
     // Pinta la cuadrícula con efecto cascada (Camino crítico inmediato)
-    await updateDomWithResults(movies, effectiveTotal, vipData, confirmedHasVip);
+    await updateDomWithResults(movies, effectiveTotal, vipData, confirmedHasVip, fetchLimit, fetchOffset);
     const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
     window.scrollTo({ top: targetScroll, behavior: "auto" });
 
@@ -482,6 +642,9 @@ function applyResolvedTotal(
   if (vipData && (vipData.type === "collection" || vipData.type === "studio")) {
     vipData.total = exactTotal;
   }
+  if (lastRenderedViewMeta) {
+    lastRenderedViewMeta.totalMovies = exactTotal;
+  }
 
   const currentPage = getCurrentPage();
   const isWallMode = typeof document !== "undefined" && document.body?.classList
@@ -506,17 +669,22 @@ async function updateDomWithResults(
   movies: MappedMovie[],
   totalMovies: number,
   vipData: VipData | null = null,
-  hasVip = false
+  hasVip = false,
+  fetchLimit: number = CONFIG.ITEMS_PER_PAGE,
+  fetchOffset: number = 0
 ): Promise<void> {
   const currentPage = getCurrentPage();
   const activeFilters = getActiveFilters();
   const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
   const baseLimit = isWallMode ? CONFIG.WALL_MODE_ITEMS_PER_PAGE : CONFIG.ITEMS_PER_PAGE;
   const firstPageLimit = isWallMode ? CONFIG.WALL_MODE_DYNAMIC_PAGE_SIZE_LIMIT : CONFIG.DYNAMIC_PAGE_SIZE_LIMIT;
+  const currentViewKey = buildViewKey(activeFilters, currentPage, isWallMode);
 
+  captureOutgoingViewSnapshot(currentViewKey);
   updatePageTitle(movies);
 
   if (movies.length === 0) {
+    lastRenderedViewMeta = null;
     setTotalMovies(0);
     updateTotalResultsUI(0);
     scheduleInitialSeo([], 0);
@@ -543,6 +711,26 @@ async function updateDomWithResults(
 
   await renderMovieGrid(dom.gridContainer, moviesToRender, vipData);
 
+  const isCleanHome = currentPage === 1 &&
+    !hasActiveMeaningfulFilters() &&
+    (!activeFilters.mediaType || activeFilters.mediaType === "all");
+
+  lastRenderedViewMeta = {
+    viewKey: currentViewKey,
+    isWallMode,
+    isMyList: Boolean(activeFilters.myList),
+    page: currentPage,
+    fetchLimit,
+    fetchOffset,
+    movies: moviesToRender,
+    rawMovies: movies,
+    totalMovies,
+    vipData,
+    hasVip,
+    userDataVersion,
+    isCleanHome,
+  };
+
   if (totalMovies >= 0) {
     applyResolvedTotal(totalMovies, movies, hasVip, vipData);
   } else {
@@ -554,10 +742,6 @@ async function updateDomWithResults(
     if (dom.headerPrevBtn) dom.headerPrevBtn.disabled = currentPage <= 1;
     if (dom.headerNextBtn) dom.headerNextBtn.disabled = movies.length < (currentPage === 1 && hasVip ? firstPageLimit - 1 : baseLimit);
   }
-
-  const isCleanHome = currentPage === 1 &&
-    !hasActiveMeaningfulFilters() &&
-    (!activeFilters.mediaType || activeFilters.mediaType === "all");
 
   if (isCleanHome && movies.length > 0) {
     runFlipOnboarding(dom.gridContainer);

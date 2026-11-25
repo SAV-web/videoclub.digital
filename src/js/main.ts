@@ -991,10 +991,11 @@ export function init(): void {
   }
 
   const handlePopState = async () => {
-    const { isModalOpen, closeModal } = await import("./components/modal.js");
-
-    if (isModalOpen()) {
-      closeModal({ fromPopstate: true, suppressHistoryBack: true });
+    if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN)) {
+      const { isModalOpen, closeModal } = await import("./components/modal.js");
+      if (isModalOpen()) {
+        closeModal({ fromPopstate: true, suppressHistoryBack: true });
+      }
     }
 
     if (isAuthModalOpen()) {
@@ -1005,9 +1006,12 @@ export function init(): void {
       closeLegalModal({ fromPopstate: true });
     }
 
-    const { isProfileModalOpen, closeProfileModal } = await import("./components/profile.js");
-    if (isProfileModalOpen()) {
-      closeProfileModal(true);
+    const profileModalEl = document.getElementById("profile-modal");
+    if (profileModalEl && !profileModalEl.hidden) {
+      const { isProfileModalOpen, closeProfileModal } = await import("./components/profile.js");
+      if (isProfileModalOpen()) {
+        closeProfileModal(true);
+      }
     }
 
     // Normalizar URLs canónicas y entrantes para una comparación fidedigna
@@ -1031,7 +1035,7 @@ export function init(): void {
 
     readUrlAndSetState(); // sincroniza estado con la nueva URL e invoca canonicalizeCurrentUrl()
     appEvents.emit("updateSidebarUI");
-    loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, restoreScrollY: targetScrollY });
+    loadAndRenderMovies(getCurrentPage(), { replaceHistory: true, restoreScrollY: targetScrollY, allowViewCache: true });
   };
 
 

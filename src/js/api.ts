@@ -25,7 +25,7 @@ import { Movie, ActiveFilters, ApiResponse, PersonDetails, MappedMovie } from ".
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabase } from "./supabaseClient.js";
 import { getCurrentSession, hasStoredAuthSessionOrHash } from "./auth.js";
-import { saveCachedMovies, getCachedMoviesByIds, getAllLocalEntries, mergeRemoteEntries } from "./localStore.js";
+import { saveCachedMovies, getCachedMoviesByIds, getCachedMoviesCount, getAllLocalEntries, mergeRemoteEntries } from "./localStore.js";
 import { scheduleSync } from "./syncManager.js";
 
 // Re-exportamos getSupabase para preservar compatibilidad con tests y módulos externos
@@ -39,6 +39,25 @@ export const queryCache = new LRUCache<string, ApiResponse>({
   ttl: 1000 * 60 * 30,
   updateAgeOnGet: true,
 });
+
+const MY_LIST_REVALIDATE_COOLDOWN_MS = 30_000;
+const lastMyListRevalidationAt = new Map<string, number>();
+
+/**
+ * Invalida únicamente las entradas de queryCache asociadas a Mi Lista (MODO A)
+ * cuando cambian los datos del usuario (puntuación, watchlist, importación o revalidación).
+ */
+export function invalidateMyListQueryCache(): void {
+  lastMyListRevalidationAt.clear();
+  for (const key of queryCache.keys()) {
+    if (key.includes('"myList":')) {
+      queryCache.delete(key);
+    }
+  }
+}
+
+appEvents.on("userMovieDataChanged", invalidateMyListQueryCache);
+appEvents.on("userDataUpdated", invalidateMyListQueryCache);
 
 
 // TTL corto (5 min): optimiza la escritura repetitiva sin consumir mucha memoria.
@@ -268,6 +287,13 @@ export async function getLocalMyListResponse(
       return { total: 0, items: [] };
     }
 
+    // Para listas extensas, comprobar primero en O(1) si cached_movies contiene suficientes registros
+    // antes de lanzar cientos/miles de lecturas individuales en IndexedDB condenadas a fallar.
+    if (targetIds.length > 50) {
+      const totalCached = await getCachedMoviesCount();
+      if (totalCached < targetIds.length) return null;
+    }
+
     // Recuperar las fichas disponibles en cached_movies
     const cachedMap = await getCachedMoviesByIds(targetIds);
     if (cachedMap.size === 0) return null;
@@ -433,15 +459,41 @@ export function revalidateMyListInBackground(
           }
         }
 
-        const queryKey = createCanonicalCacheKey({ ...filters }, page, pageSize);
-        queryCache.set(queryKey, normalizeMoviesResponse({ total: count ?? -1, items: remoteItems }));
         appEvents.emit("userDataUpdated");
+        const queryKey = createCanonicalCacheKey({ ...filters, explicitOffset }, page, pageSize);
+        queryCache.set(queryKey, normalizeMoviesResponse<MappedMovie>({ total: count ?? -1, items: remoteItems }));
         appEvents.emit("myList:revalidated");
       }
     } catch {
       // Silenciar errores en segundo plano sin alterar la experiencia visual
     }
   }, 50);
+}
+
+export function scheduleMyListBackgroundRevalidation(
+  filters: ActiveFilters,
+  page: number,
+  pageSize: number,
+  requestCount: boolean,
+  currentLocalRes: ApiResponse,
+  explicitOffset: number | null = null
+): void {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+  const queryKey = createCanonicalCacheKey({ ...filters, explicitOffset }, page, pageSize);
+  const lastAt = lastMyListRevalidationAt.get(queryKey) ?? 0;
+  const now = Date.now();
+  if (now - lastAt < MY_LIST_REVALIDATE_COOLDOWN_MS) return;
+
+  lastMyListRevalidationAt.set(queryKey, now);
+  getCurrentSession().then(session => {
+    if (session?.user) {
+      revalidateMyListInBackground(session.user.id, filters, page, pageSize, requestCount, currentLocalRes, explicitOffset);
+    } else {
+      lastMyListRevalidationAt.delete(queryKey);
+    }
+  }).catch(() => {
+    lastMyListRevalidationAt.delete(queryKey);
+  });
 }
 
 // Trae las películas principales para pintar el muro
@@ -467,7 +519,7 @@ export function fetchMovies(
   // Servimos de la caché solo si no se requiere conteo (requestCount=false) o si ya tenemos el conteo exacto válido
   if (cached && (!normRequestCount || cached.total >= 0)) {
     if (normFilters.myList) {
-      queryCache.delete(queryKey);
+      scheduleMyListBackgroundRevalidation(normFilters, normPage, normPageSize, normRequestCount, cached, normExplicitOffset);
     }
     return Promise.resolve(cached);
   }
@@ -501,14 +553,14 @@ export function fetchMovies(
         const localRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);
 
         if (localRes !== null) {
-          if (!isOffline) {
-            // Revalidación asíncrona transparente en segundo plano (patrón SWR)
-            getCurrentSession().then(session => {
-              if (session?.user) {
-                revalidateMyListInBackground(session.user.id, normFilters, normPage, normPageSize, normRequestCount, localRes, normExplicitOffset);
-              }
-            }).catch(() => {});
+          if (!signal?.aborted) {
+            const existing = queryCache.get(queryKey);
+            if (existing && existing.total >= 0 && localRes.total < 0) {
+              localRes.total = existing.total;
+            }
+            queryCache.set(queryKey, localRes);
           }
+          scheduleMyListBackgroundRevalidation(normFilters, normPage, normPageSize, normRequestCount, localRes, normExplicitOffset);
           return localRes;
         }
 
@@ -607,7 +659,16 @@ export function fetchMovies(
             saveCachedMovies(items).catch(() => {});
           }
 
-          return normalizeMoviesResponse({ total: normRequestCount ? (count || 0) : -1, items });
+          const result = normalizeMoviesResponse<MappedMovie>({ total: normRequestCount ? (count || 0) : -1, items });
+          if (!signal?.aborted) {
+            const existing = queryCache.get(queryKey);
+            if (existing && existing.total >= 0 && result.total < 0) {
+              result.total = existing.total;
+            }
+            queryCache.set(queryKey, result);
+            lastMyListRevalidationAt.set(queryKey, Date.now());
+          }
+          return result;
         } catch (err: unknown) {
           if (isAbortError(err, signal)) throw err;
           const fallbackRes = await getLocalMyListResponse(normFilters, normPage, normPageSize, normRequestCount, normExplicitOffset);

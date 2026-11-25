@@ -685,6 +685,23 @@ export async function getCachedMoviesByIds(ids: number[]): Promise<Map<number, C
       const tx = db.transaction(STORE_CACHED_MOVIES, "readonly");
       const store = tx.objectStore(STORE_CACHED_MOVIES);
 
+      // Para lotes grandes (>100 IDs), un único getAll() es ~3x más rápido en Chrome/móvil que miles de store.get()
+      if (ids.length > 100 && typeof store.getAll === "function") {
+        const wanted = new Set(ids);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const rows = Array.isArray(req.result) ? req.result : [];
+          for (const row of rows) {
+            if (row && wanted.has(row.id)) {
+              result.set(row.id, row);
+            }
+          }
+          resolve(result);
+        };
+        req.onerror = () => resolve(result);
+        return;
+      }
+
       let pending = ids.length;
       const checkDone = () => {
         pending--;
@@ -704,6 +721,25 @@ export async function getCachedMoviesByIds(ids: number[]): Promise<Map<number, C
     });
   } catch {
     return result;
+  }
+}
+
+/**
+ * Devuelve el número total de fichas almacenadas en cached_movies (O(1)).
+ */
+export async function getCachedMoviesCount(): Promise<number> {
+  try {
+    const db = await openLocalDB();
+    if (!db.objectStoreNames.contains(STORE_CACHED_MOVIES)) return 0;
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_CACHED_MOVIES, "readonly");
+      const req = tx.objectStore(STORE_CACHED_MOVIES).count();
+      req.onsuccess = () => resolve(typeof req.result === "number" ? req.result : 0);
+      req.onerror = () => resolve(0);
+    });
+  } catch {
+    return 0;
   }
 }
 

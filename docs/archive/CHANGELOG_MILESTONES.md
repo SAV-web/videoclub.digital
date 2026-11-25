@@ -3,7 +3,7 @@
 Este documento preserva la memoria técnica íntegra, el razonamiento analítico y el registro exhaustivo de los **82 hitos de ingeniería y refactorización** ejecutados en **videoclub.digital**.
 
 > [!NOTE]
-> Este archivo actúa como registro de archivo histórico. Para la arquitectura viva y las directrices vigentes de ingeniería, consultar [docs/project_context.md](../project_context.md) y los contratos normativos en [docs/contracts.md](../contracts.md).
+> Este archivo actúa como registro de archivo histórico. Para la arquitectura viva y las directrices vigentes de ingeniería, consultar los contratos normativos en [docs/contracts.md](../contracts.md).
 
 ---
 
