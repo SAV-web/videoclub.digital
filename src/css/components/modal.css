@@ -443,6 +443,16 @@
   margin-right: 0.5em;
 }
 
+.is-quick-view .detail-item .detail-label-title {
+  margin-right: 1em;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .is-quick-view [data-template="actors-container"]:has(.modal-cast-combine-toggle:not([hidden])) .detail-label-title {
+    margin-right: 0.55em;
+  }
+}
+
 /* Enlaces generales dentro de detalles */
 .is-quick-view :is(.details-list, .detail-item, .detail-data, [data-template="genre"], [data-template="actors"]) a {
   color: var(--color-text-primary);
@@ -467,6 +477,145 @@
     outline-offset: 1px;
     border-radius: var(--radius-sm, 3px);
     text-decoration: none;
+  }
+}
+
+.is-quick-view .modal-person-item {
+  display: inline;
+}
+
+/* Mantiene la coma y el ancla '+' inseparables del final del nombre para evitar comas huérfanas */
+.is-quick-view .modal-person-tail {
+  white-space: nowrap;
+}
+
+.is-quick-view .modal-person-anchor {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  vertical-align: -0.15em;
+
+  @media (hover: none) and (pointer: coarse) {
+    display: inline;
+    width: auto;
+    height: auto;
+    vertical-align: baseline;
+  }
+}
+
+.is-quick-view .modal-person-sep {
+  white-space: normal;
+  word-spacing: 3px;
+
+  @media (hover: hover) and (pointer: fine) {
+    word-spacing: 13px;
+  }
+}
+
+.is-quick-view :is(.modal-person-combine-btn, .modal-cast-combine-toggle) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  min-height: 17px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-brand-gold, #d4a347);
+  background-color: var(--color-surface);
+  color: var(--color-brand-gold, #d4a347);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+  transition: opacity 120ms ease, transform 140ms ease, background-color 120ms ease;
+}
+
+.is-quick-view .modal-cast-combine-toggle {
+  display: none;
+
+  &[hidden] {
+    display: none !important;
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    display: inline-flex;
+    position: relative;
+    vertical-align: middle;
+    margin-right: 0.55em;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+    }
+
+    &[aria-expanded="true"] {
+      background-color: rgba(212, 163, 71, 0.18);
+    }
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .is-quick-view [data-template="actors-container"]:not(.is-cast-combine-expanded) .modal-person-anchor {
+    display: none;
+  }
+}
+
+.is-quick-view .modal-person-combine-btn {
+  @media (hover: hover) and (pointer: fine) {
+    position: absolute;
+    left: 1px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.88);
+    z-index: 6;
+    opacity: 0;
+    pointer-events: none;
+
+    .modal-person-comma + .modal-person-anchor & {
+      left: -2px;
+    }
+
+    /* Puente invisible para evitar perder :hover entre el enlace y el botón '+' */
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -5px -5px -5px -10px;
+    }
+
+    &:hover {
+      background-color: rgba(212, 163, 71, 0.2);
+      transform: translateY(-50%) scale(1.08);
+    }
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    position: static;
+    vertical-align: middle;
+    margin-left: 4px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 1px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.is-quick-view .modal-person-item:hover .modal-person-combine-btn,
+.is-quick-view .modal-person-item:focus-within .modal-person-combine-btn {
+  opacity: 1;
+  pointer-events: auto;
+
+  @media (hover: hover) and (pointer: fine) {
+    transform: translateY(-50%) scale(1);
   }
 }
 
@@ -510,6 +659,10 @@
   white-space: normal;
   max-height: none;
   padding-right: 0;
+}
+
+.is-quick-view .detail-item[data-template="actors-container"] {
+  line-height: 1.65;
 }
 
 .is-quick-view .detail-item[data-template="actors-container"] .detail-data,

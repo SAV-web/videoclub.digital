@@ -33,6 +33,7 @@ import {
   type PopulatePersonOptions,
   createCardElement,
   createPersonCardElement,
+  createDualPersonCardElement,
   createCollectionCardElement,
   createStudioCardElement
 } from "./cardElement.js";
@@ -88,6 +89,7 @@ export async function renderMovieGrid(
 
   const hasVip = Boolean(vipData && (
     (vipData.type === 'person' && vipData.data) ||
+    (vipData.type === 'dual-person' && Array.isArray(vipData.data) && vipData.data.length === 2) ||
     (vipData.type === 'collection' && vipData.code) ||
     (vipData.type === 'studio' && vipData.code)
   ));
@@ -98,6 +100,8 @@ export async function renderMovieGrid(
   if (vipData) {
     if (vipData.type === 'person' && vipData.data) {
       fragment.appendChild(createPersonCardElement(vipData.data as PersonDetails));
+    } else if (vipData.type === 'dual-person' && Array.isArray(vipData.data) && vipData.data.length === 2) {
+      fragment.appendChild(createDualPersonCardElement(vipData.data as [PersonDetails, PersonDetails]));
     } else if (vipData.type === 'collection' && vipData.code) {
       fragment.appendChild(createCollectionCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
     } else if (vipData.type === 'studio' && vipData.code) {

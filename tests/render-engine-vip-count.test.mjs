@@ -750,5 +750,124 @@ describe("RenderEngine: Cuota y Renderizado Exacto de Página 1 (Regla 42 Fichas
       "Si el catálogo finaliza en 43 elementos (< firstPageLimit), debe absorberlos todos en la única página"
     );
   });
+
+  test("combinación de 2 VIPs: página 1 pinta ficha dual en slot #0 + 41 películas y página 2 aplica offset -1", async () => {
+    const supabase = await apiModule.getSupabase();
+
+    supabase.from = (table) => {
+      if (table === "people") {
+        let orExpr = "";
+        const q = {
+          select: () => q,
+          in: () => q,
+          or: (expr) => { orExpr = String(expr || "").toLowerCase(); return q; },
+          ilike: (_col, pat) => { orExpr = String(pat || "").toLowerCase(); return q; },
+          limit: () => {
+            if (orExpr.includes("scorsese")) {
+              return Promise.resolve({
+                data: [{ id: 301, name: "Martin Scorsese", slug: "martin-scorsese", type: "D", vip: 1 }],
+                error: null,
+              });
+            }
+            if (orExpr.includes("cage")) {
+              return Promise.resolve({
+                data: [{ id: 302, name: "Nicolas Cage", slug: "nicolas-cage", type: "A", vip: 1 }],
+                error: null,
+              });
+            }
+            return Promise.resolve({ data: [], error: null });
+          },
+        };
+        return q;
+      }
+      return { select: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) };
+    };
+
+    const rpcCalls = [];
+    supabase.rpc = (name, params) => {
+      rpcCalls.push({ name, params });
+      return createRpcPromise({
+        data: {
+          total: 60,
+          items: Array.from({ length: 44 }, (_, i) => ({
+            id: 3000 + i,
+            title: `Peli Conjunta ${i + 1}`,
+            slug: `peli-conjunta-${i + 1}`,
+          })),
+        },
+        error: null,
+      });
+    };
+
+    stateModule.setFilter("director", "Martin Scorsese");
+    stateModule.setFilter("actor", "Nicolas Cage");
+
+    await renderEngineModule.loadAndRenderMovies(1);
+
+    const p1Cards = gridContainer.children[0]?.children || gridContainer.children;
+    assert.equal(p1Cards.length, 42, "En página 1 con 2 VIPs deben pintarse 42 fichas en total (1 dual VIP + 41 películas)");
+    const firstCardNode = p1Cards[0]?.classList?.contains("dual-vip-card") ? p1Cards[0] : p1Cards[0]?.children?.[0];
+    assert.ok(firstCardNode?.classList?.contains("dual-vip-card"), "La primera ficha debe ser .dual-vip-card");
+    assert.equal(rpcCalls[0].params.page_offset, 0);
+
+    // Página 2 debe descontar -1 en page_offset para compensar la ficha dual de la página 1
+    await renderEngineModule.loadAndRenderMovies(2);
+    assert.equal(rpcCalls[1].params.page_offset, 41);
+  });
+
+  test("combinación de 1 VIP + 1 persona NO VIP: no genera ficha dual", async () => {
+    const supabase = await apiModule.getSupabase();
+
+    supabase.from = (table) => {
+      if (table === "people") {
+        let orExpr = "";
+        const q = {
+          select: () => q,
+          in: () => q,
+          or: (expr) => { orExpr = String(expr || "").toLowerCase(); return q; },
+          ilike: (_col, pat) => { orExpr = String(pat || "").toLowerCase(); return q; },
+          limit: () => {
+            if (orExpr.includes("almodovar")) {
+              return Promise.resolve({
+                data: [{ id: 401, name: "Pedro Almodóvar", slug: "pedro-almodovar", type: "D", vip: 1 }],
+                error: null,
+              });
+            }
+            if (orExpr.includes("secundario")) {
+              return Promise.resolve({
+                data: [{ id: 402, name: "Actor Secundario Test", slug: "actor-secundario-test", type: "A", vip: 0 }],
+                error: null,
+              });
+            }
+            return Promise.resolve({ data: [], error: null });
+          },
+        };
+        return q;
+      }
+      return { select: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) };
+    };
+
+    supabase.rpc = () => createRpcPromise({
+      data: {
+        total: 5,
+        items: Array.from({ length: 5 }, (_, i) => ({
+          id: 4000 + i,
+          title: `Peli Sin Dual ${i + 1}`,
+          slug: `peli-sin-dual-${i + 1}`,
+        })),
+      },
+      error: null,
+    });
+
+    stateModule.setFilter("director", "Pedro Almodóvar");
+    stateModule.setFilter("actor", "Actor Secundario Test");
+
+    await renderEngineModule.loadAndRenderMovies(1);
+
+    const cards = gridContainer.children[0]?.children || gridContainer.children;
+    assert.equal(cards.length, 5, "Sin segundo VIP no debe añadir ficha dual");
+    const firstNonDualNode = cards[0]?.classList?.contains("dual-vip-card") ? cards[0] : cards[0]?.children?.[0];
+    assert.equal(Boolean(firstNonDualNode?.classList?.contains("dual-vip-card")), false);
+  });
 });
 

@@ -43,7 +43,9 @@ import {
   updatePillVisibility,
   setupAutocompleteHandlers,
   handlePillClick,
-  resetFilterPillsCache
+  resetFilterPillsCache,
+  refreshOpenPersonAutocomplete,
+  createPersonCombineButton
 } from "./filters.js";
 
 export { openMobileDrawer, closeMobileDrawer, toggleRotationMode } from "./gestures.js";
@@ -141,6 +143,18 @@ function setupEventListeners(): void {
         const type = excludeBtn.dataset.type || "";
         const value = excludeBtn.dataset.value || "";
         handleToggleExcludedFilterOptimistic(type, value);
+        tryCloseMobileDrawer();
+        return;
+      }
+
+      const combineBtn = target.closest<HTMLElement>(".person-combine-btn");
+      if (combineBtn) {
+        e.stopPropagation();
+        triggerHapticFeedback('medium');
+        triggerPopAnimation(combineBtn);
+        const type = combineBtn.dataset.combineType || "";
+        const value = combineBtn.dataset.combineValue || "";
+        handleFilterChangeOptimistic(type, value, false, { combine: true });
         tryCloseMobileDrawer();
         return;
       }
@@ -364,6 +378,10 @@ export function initSidebar(): void {
           innerHTML: ICONS.PAUSE_SMALL,
         });
         link.appendChild(excludeBtn);
+      } else if (filterType === "director" || filterType === "actor") {
+        const combineBtn = createPersonCombineButton(filterType, value, text);
+        combineBtn.hidden = true;
+        link.appendChild(combineBtn);
       }
       fragment.appendChild(link);
     });
@@ -424,7 +442,15 @@ export function initSidebar(): void {
     }),
 
     appEvents.on("filtersReset", collapseAllSections),
-    appEvents.on("uiActionTriggered", collapseAllSections)
+    appEvents.on("uiActionTriggered", collapseAllSections),
+    appEvents.on("vipManifest:loaded", () => {
+      renderFilterPills();
+      refreshOpenPersonAutocomplete();
+    }),
+    appEvents.on("collaborators:loaded", () => {
+      renderFilterPills();
+      refreshOpenPersonAutocomplete();
+    })
   );
 
   renderFilterPills();

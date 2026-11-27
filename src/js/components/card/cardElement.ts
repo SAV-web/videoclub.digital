@@ -467,7 +467,27 @@ export function handleCardClick(this: MovieCardElement | void, event: MouseEvent
     }
   }
 
-  // 5. Enlaces Filtros
+  // 5. Botón '+' de combinación VIP (solo en modal) y Enlaces de Filtros
+  const combineBtn = target.closest<HTMLElement>(".person-combine-btn[data-combine-type][data-combine-value]");
+  if (combineBtn) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (document.body.classList.contains(CSS_CLASSES.MODAL_OPEN) || card.classList.contains('is-quick-view')) {
+      import("../modal.js").then(({ closeModal }) => closeModal({ suppressHistoryBack: true }));
+    }
+
+    const combineType = combineBtn.dataset.combineType;
+    const combineValue = combineBtn.dataset.combineValue;
+    if (combineType && combineValue) {
+      appEvents.emit("filter:apply", { type: combineType, value: combineValue, combine: true });
+    }
+    return;
+  }
+
+  // 5b. Enlaces Filtros
   const filterLink = target.closest<HTMLElement>("[data-director-name], [data-actor-name], [data-year-value], [data-genre-name], [data-country-name]");
   if (filterLink) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
@@ -983,6 +1003,21 @@ export function populatePersonFields(root: HTMLElement, person: PopulatePersonOp
   }
 }
 
+function applyPersonPortraitImage(img: HTMLImageElement, person: PersonDetails): void {
+  const personSlug = person.slug || toSlug(person.name);
+  const isVip = Boolean(person.vip && person.vip !== 0);
+  const photoUrl = isVip
+    ? `${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`
+    : `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
+
+  img.alt = `Foto de ${person.name}`;
+  img.loading = "eager";
+  img.decoding = "async";
+  img.setAttribute("fetchpriority", "high");
+
+  applyLqipImage(img, person.thumbhash_st, photoUrl);
+}
+
 export function createPersonCardElement(person: PersonDetails): DocumentFragment {
   const template = getPersonTemplate();
   if (!template) return document.createDocumentFragment();
@@ -1000,25 +1035,59 @@ export function createPersonCardElement(person: PersonDetails): DocumentFragment
   card.style.setProperty("--card-index", "0");
 
   const img = card.querySelector('img');
-
   if (img) {
-    const personSlug = person.slug || toSlug(person.name);
-    const isVip = Boolean(person.vip && person.vip !== 0);
-    const photoUrl = isVip
-      ? `${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`
-      : `${CONFIG.PROFILE_BASE_URL}collection_default.webp`;
-
-    img.alt = `Foto de ${person.name}`;
-    img.loading = "eager";
-    img.decoding = "async";
-    img.setAttribute("fetchpriority", "high");
-
-    applyLqipImage(img, person.thumbhash_st, photoUrl);
+    applyPersonPortraitImage(img, person);
   }
 
   populatePersonFields(card, person);
 
   return clone;
+}
+
+/**
+ * Construye la primera ficha VIP combinada (sin texto en el pie) con collage
+ * diagonal escalonado de ambos retratos.
+ */
+export function createDualPersonCardElement(people: [PersonDetails, PersonDetails]): DocumentFragment {
+  const frag = document.createDocumentFragment();
+  const [primary, secondary] = people;
+  if (!primary || !secondary) return frag;
+
+  const createPortraitSlot = (person: PersonDetails, slotClass: string): HTMLElement => {
+    const slot = createElement("div", { className: `dual-vip-portrait ${slotClass}` });
+    const img = createElement("img", {
+      className: "lazy-image",
+      attributes: { width: "428", height: "535" }
+    }) as HTMLImageElement;
+    applyPersonPortraitImage(img, person);
+    slot.appendChild(img);
+    return slot;
+  };
+
+  const poster = createElement("div", { className: "poster-container dual-vip-poster" });
+  poster.append(
+    createPortraitSlot(primary, "dual-vip-portrait--primary"),
+    createPortraitSlot(secondary, "dual-vip-portrait--secondary"),
+    createElement("div", { className: "poster-overlay-guard" })
+  );
+
+  const front = createElement("div", { className: "flip-card-front" });
+  front.appendChild(poster);
+
+  const inner = createElement("div", { className: "flip-card-inner" });
+  inner.appendChild(front);
+
+  const card = createElement("article", {
+    className: `${CSS_CLASSES.MOVIE_CARD} person-card collection-card dual-vip-card no-bio`,
+    dataset: { movieId: `dual-person-${primary.id}-${secondary.id}` },
+    attributes: { "aria-label": `${primary.name} y ${secondary.name}` }
+  }) as MovieCardElement;
+  card.movieData = { ...primary, isPerson: true, biography: null };
+  card.style.setProperty("--card-index", "0");
+  card.appendChild(inner);
+
+  frag.appendChild(card);
+  return frag;
 }
 
 function createGroupCardElement(

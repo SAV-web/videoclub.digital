@@ -27,7 +27,8 @@ try {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "../");
-const targetFile = path.resolve(projectRoot, "cloudflare/seo/vip-manifest.js");
+const targetFile = path.resolve(projectRoot, "src/shared/vip-manifest.js");
+const workerReexportFile = path.resolve(projectRoot, "cloudflare/seo/vip-manifest.js");
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -107,7 +108,7 @@ async function generateVipManifest() {
 
   const fileContent = `// =================================================================
 //        MANIFIESTO DERIVADO DE PERSONAS VIP (ÍNDICE EN MEMORIA)
-//                (cloudflare/seo/vip-manifest.js)
+//                   (src/shared/vip-manifest.js)
 // =================================================================
 // Generado automáticamente mediante: node scripts/generate-vip-manifest.mjs
 // Fecha de generación: ${new Date().toISOString()}
@@ -115,13 +116,12 @@ async function generateVipManifest() {
 //
 // PRINCIPIO ARQUITECTÓNICO (FILOSOFÍA "VIP = FUENTE EDITORIAL"):
 // 1. VIP_SLUGS es exclusivamente un índice de pertenencia en memoria para
-//    descarte en O(1). Su único propósito es decidir si el Cloudflare Worker
-//    debe intentar resolver una ruta raíz como ficha SEO VIP.
+//    descarte en O(1). Lo comparten el Edge Worker (descarte de rutas VIP)
+//    y la SPA (elegibilidad de cruces VIP bajo demanda).
 // 2. NUNCA incrustar datos editoriales (biografías, filmografía, metadatos)
 //    en este manifiesto para evitar inflar el bundle y desincronizar la BD.
-// 3. Supabase (public.people con vip = 1) es la Fuente Única de Verdad (SSOT)
-//    editorial: cuando VIP_SLUGS.has(slug) es true, el Worker consulta a Supabase
-//    para obtener los datos editoriales frescos y renderizar el Edge SSR.
+// 3. Supabase (public.people con vip <> 0) es la Fuente Única de Verdad (SSOT)
+//    editorial.
 // =================================================================
 
 export const VIP_SLUGS = new Set([
@@ -129,7 +129,19 @@ ${sortedSlugs.map(slug => `  ${JSON.stringify(slug)},`).join("\n")}
 ]);
 `;
 
+  const workerReexportContent = `// =================================================================
+//        RE-EXPORTACIÓN DEL MANIFIESTO VIP PARA EDGE WORKER
+//                (cloudflare/seo/vip-manifest.js)
+// =================================================================
+// La Fuente Única de Verdad (SSOT) compartida con la SPA reside en:
+// -> src/shared/vip-manifest.js (actualizada por scripts/generate-vip-manifest.mjs)
+// =================================================================
+
+export { VIP_SLUGS } from "../../src/shared/vip-manifest.js";
+`;
+
   fs.writeFileSync(targetFile, fileContent, "utf-8");
+  fs.writeFileSync(workerReexportFile, workerReexportContent, "utf-8");
   console.log(`Manifiesto generado exitosamente en: ${targetFile}`);
 }
 

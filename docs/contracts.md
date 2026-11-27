@@ -65,8 +65,9 @@ $$\text{https://videoclub.digital/}\{\text{persona}\}\text{/}\{\text{género}\}\
 ## 3. Contrato de Filtros de Catálogo y Menú Lateral (Sidebar)
 
 ### Reglas Invariantes
-1. **Exclusividad Semántica:**
-   - `director` y `actor` son mutuamente excluyentes entre sí y excluyentes con filtros de género, país, selección, estudio, exclusiones y año. Activar un autor purga las facetas incompatibles y notifica al usuario (`notifyRemovedPersonIncompatibleFilters`).
+1. **Exclusividad Semántica y Cruce VIP:**
+   - Las personas (`director`, `actor`, `actor2`) son excluyentes con cualquier faceta de catálogo (género, país, selección, estudio, exclusiones, año y tipo de medio). Activar una persona en solitario purga las facetas incompatibles y notifica al usuario (`notifyRemovedPersonIncompatibleFilters`).
+   - **Cruce de hasta 2 personas VIP (`+`):** Cuando ya hay 1 persona VIP activa, se permite combinar una segunda persona de `VIP_SLUGS` en dos modalidades estrictas: **Director + Actor** o **Actor + Actor** (nunca 2 Directores ni más de 2 personas). La URL añade `?actor={slug}` o `?actor2={slug}` sobre la ruta base de la primera persona (`noindex`). Tanto en la lista lateral como en las sugerencias del autocompletado, el `+` únicamente aparece cuando existe coincidencia real (`>= 1` obra en común) con el primer VIP.
    - `selection` y `studio` son mutuamente excluyentes entre sí (ambos compiten por la cabecera VIP destacada).
 2. **Piscinas Curadas Estáticas a 0 ms (Zero Network Discovery):**
    Los acordeones de sugerencias de directores y actores en el menú lateral se alimentan de listas estáticas normativas (`CURATED_DIRECTORS` y `CURATED_ACTORS`) en `src/shared/constants.ts` (100 cineastas mundiales consolidados). No se emiten consultas RPC de descubrimiento dinámico en la apertura del menú.
@@ -152,6 +153,8 @@ Los datos de seguimiento y notas personales del usuario se rigen por la arquitec
    Si una persona cuenta con obras en ambos roles (`people.type` `'AD'` o `'DA'`), se presenta la insignia interactiva `(D)` o `(A)`. La alternancia permuta la filmografía en el cliente mediante CSS (`display: contents` / `display: none`) con URL canónica única y 0 ms de latencia.
 4. **Paridad Cromática y Coherencia Corporativa (*Quiet Luxury*):**
    Las fichas VIP (`.person-card`, `.collection-card`, `.studio-card`) comparten exactamente el mismo fondo de superficie que las fichas de película (`background-color: var(--color-surface-1)`) y perfilan su contorno con el acento corporativo de la marca (`var(--color-accent)`), eliminando oros discordantes.
+5. **Ficha VIP Dual (Cruce de 2 VIPs):**
+   Cuando están activas 2 personas VIP compatibles y el cruce devuelve resultados en página 1, el slot `0` presenta `.dual-vip-card` (`createDualPersonCardElement`): collage diagonal escalonado de ambos retratos `4 / 5` sin texto al pie, sin giro ni modal, aplicando exactamente el mismo descuento de `1` slot en página 1 y compensación `offset - 1` a partir de la página 2. Si cualquiera de las dos personas carece de condición VIP (`vip = 0`), la ficha dual se omite.
 
 ---
 
@@ -196,6 +199,9 @@ La modal de detalle cinemático (`src/js/components/modal/`) implementa una expe
    Todas las modales de la aplicación (Película/Persona, Login/Auth, Perfil y Legal) coordinan su integración con la History API mediante los *helpers* centralizados en `src/js/ui.ts` (`isMobileHistoryContext`, `pushModalHistoryState`, `popModalHistoryState`):
    - **Móvil / Táctil (`max-width: 768px` o `pointer: coarse`):** Al abrir una modal se inserta una entrada `{ modalOpen: true }` en `window.history` para que el gesto o botón físico **"Atrás"** cierre únicamente la modal sin retroceder a la página o filtro anterior.
    - **Escritorio:** No se invoca `pushState` al abrir modales, evitando entradas muertas en la pila de historial y garantizando que la flecha de **"Adelante"** del navegador no se active innecesariamente tras cerrarlas.
+6. **Cruce VIP en Ficha Técnica (`+`) y Controles Táctiles en Móvil:**
+   - **Escritorio:** Los enlaces de director y reparto en vista rápida muestran su botón flotante `+` al pasar el cursor (sin alterar el flujo textual ni dejar comas huérfanas mediante `.modal-person-tail`).
+   - **Móvil / Táctil (`hover: none` y `pointer: coarse`):** Para evitar saturación de botones junto a todo el reparto, los `+` individuales de los actores permanecen colapsados por defecto; cuando existe al menos un actor VIP combinable, se inserta un único control `+` entre `"Reparto."` y el primer actor (`.modal-cast-combine-toggle`) que alterna a `-` y despliega los `+` del reparto bajo demanda.
 
 ---
 

@@ -16,7 +16,8 @@ import {
   getAdjustedTotalPages
 } from "./utils.js";
 
-import { fetchMovieById } from "./api.js";
+import { fetchMovieById, getCachedPersonDetails, fetchPersonDetails } from "./api.js";
+import { prepareVipPersonCombine } from "./vipPerson.js";
 import { signOutCurrentUser, onAuthStateChange, hasStoredAuthSessionOrHash } from "./auth.js";
 
 import { getAppBasePath } from "./contracts.js";
@@ -43,6 +44,7 @@ import {
   getCurrentPage,
   getTotalMovies,
   setFilter,
+  combinePersonFilter,
   setSearchTerm,
   setSort,
   setMediaType,
@@ -178,12 +180,28 @@ function handleFiltersReset(data?: { keepSort?: boolean; newFilter?: { type: str
 
 // Aplica un filtro específico preservando las categorías activas (Años, Selección, Estudio, País)
 // pero respetando la exclusividad de Director/Actor (las personas son incompatibles con cualquier otra categoría)
-function handleFilterApply(data: { type: string; value: unknown }): void {
+async function handleFilterApply(data: { type: string; value: unknown; combine?: boolean }): Promise<void> {
   clearToast();
-  const { type, value } = data;
+  const { type, value, combine = false } = data;
   if (!type || value === undefined) return;
 
   const currentFilters = getActiveFilters();
+
+  if (combine && (type === "director" || type === "actor") && typeof value === "string" && value.trim()) {
+    const resolvedName = await prepareVipPersonCombine(
+      currentFilters,
+      type,
+      value,
+      getCachedPersonDetails,
+      fetchPersonDetails
+    );
+    if (!resolvedName || !combinePersonFilter(type, resolvedName)) return;
+
+    updateMobileStatusBar();
+    appEvents.emit("updateSidebarUI");
+    loadAndRenderMovies(1, { forceSkeleton: false });
+    return;
+  }
 
   if (currentFilters.searchTerm) {
     setSearchTerm("");
@@ -195,11 +213,12 @@ function handleFilterApply(data: { type: string; value: unknown }): void {
   }
 
   // Regla de Exclusividad: Si hay un actor o director activo y se pulsa una categoría (género, etc.), se desactiva la persona
-  if (type !== 'actor' && type !== 'director') {
+  if (type !== 'actor' && type !== 'actor2' && type !== 'director') {
     if (currentFilters.actor) setFilter('actor', null);
+    if (currentFilters.actor2) setFilter('actor2', null);
     if (currentFilters.director) setFilter('director', null);
   } else {
-    // Si se activa una persona (o se alterna D <-> A), se limpian las categorías incompatibles y el tipo de medio, preservando el orden
+    // Si se activa una persona (sin combinar), se limpian las categorías incompatibles y el resto de personas, preservando el orden
     notifyRemovedPersonIncompatibleFilters(currentFilters);
     const currentSort = currentFilters.sort;
     resetFiltersState();

@@ -1515,6 +1515,86 @@ body.rotation-disabled .movie-card.person-card:not(.is-quick-view).no-bio {
   cursor: default;
 }
 
+/* Ficha VIP dual (combinación de 2 VIPs, collage diagonal sin texto al pie) */
+.dual-vip-card:not(.is-quick-view) {
+  & .flip-card-front {
+    background-color: var(--color-surface-1);
+    padding: 0;
+  }
+
+  & .poster-container {
+    width: 100%;
+    height: 100%;
+
+    &::after {
+      display: none;
+    }
+  }
+
+  & .dual-vip-portrait {
+    position: absolute;
+    width: 70%;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    background-color: var(--color-surface-2);
+    border: 2px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+
+    & img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      border-radius: 0;
+      object-fit: cover;
+      object-position: top center;
+    }
+  }
+
+  & .dual-vip-portrait--primary {
+    top: 3%;
+    left: 4%;
+    z-index: 1;
+  }
+
+  & .dual-vip-portrait--secondary {
+    bottom: 3%;
+    right: 4%;
+    z-index: 2;
+  }
+}
+
+body.rotation-disabled .dual-vip-card:not(.is-quick-view) {
+  & .flip-card-inner {
+    background-color: var(--color-surface-1);
+    box-shadow: 0 0 0 2px var(--color-accent), var(--shadow-sm);
+  }
+
+  & .dual-vip-portrait {
+    width: 55%;
+
+    & img {
+      height: 100%;
+      flex-grow: 0;
+      border-radius: 0;
+      border: none;
+      outline: none;
+    }
+  }
+
+  & .dual-vip-portrait--primary {
+    top: 3%;
+    left: 5%;
+  }
+
+  & .dual-vip-portrait--secondary {
+    bottom: 3%;
+    right: 5%;
+  }
+}
+
 body.rotation-disabled .movie-card.person-card:not(.is-quick-view) .person-role-toggle-btn {
   bottom: calc(26px + 8px);
   right: 8px;

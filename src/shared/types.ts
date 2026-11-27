@@ -129,6 +129,7 @@ export interface ActiveFilters {
   country: string | null;
   director: string | null;
   actor: string | null;
+  actor2: string | null;
   selection: string | null;
   studio: string | null;
   sort: string;
@@ -163,8 +164,8 @@ export interface PersonDetails {
 }
 
 export interface VipData {
-  type: "person" | "collection" | "studio";
-  data?: PersonDetails | Record<string, unknown> | null;
+  type: "person" | "dual-person" | "collection" | "studio";
+  data?: PersonDetails | [PersonDetails, PersonDetails] | Record<string, unknown> | null;
   code?: string;
   total?: number;
   thumbhash_st?: string | null;

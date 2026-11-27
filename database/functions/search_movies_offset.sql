@@ -23,6 +23,9 @@ SET search_path = pg_catalog, public, extensions, pg_temp AS
 $$ SELECT extensions.unaccent('extensions.unaccent', $1); $$;
 
 -- 3. FUNCIÓN DE BÚSQUEDA PRINCIPAL
+-- Eliminamos la firma anterior de 18 parámetros para evitar ambigüedad de sobrecarga en PostgREST.
+DROP FUNCTION IF EXISTS public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean);
+
 CREATE OR REPLACE FUNCTION public.search_movies_offset(
     search_term text DEFAULT NULL::text,
     genre_name text DEFAULT NULL::text,
@@ -41,7 +44,8 @@ CREATE OR REPLACE FUNCTION public.search_movies_offset(
     sort_direction text DEFAULT 'asc'::text,
     page_limit integer DEFAULT 50,
     page_offset integer DEFAULT 0,
-    get_count boolean DEFAULT true
+    get_count boolean DEFAULT true,
+    actor_name_2 text DEFAULT NULL::text
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -66,6 +70,8 @@ DECLARE
     v_director_names text[];
     v_actor_tsquery tsquery;
     v_actor_names text[];
+    v_actor2_tsquery tsquery;
+    v_actor2_names text[];
     v_selection_tsquery tsquery;
     v_studio_tsquery tsquery;
     v_excluded_genres_tsquery tsquery;
@@ -164,7 +170,8 @@ BEGIN
        AND NOT v_has_filters
        AND (search_term IS NULL OR TRIM(search_term) = '')
        AND (director_name IS NULL OR TRIM(director_name) = '')
-       AND (actor_name IS NULL OR TRIM(actor_name) = '') THEN
+       AND (actor_name IS NULL OR TRIM(actor_name) = '')
+       AND (actor_name_2 IS NULL OR TRIM(actor_name_2) = '') THEN
         
         v_enable_daily_showcase := TRUE;
         v_showcase_limit := 378;
@@ -205,7 +212,8 @@ BEGIN
     IF (p_country_codes IS NOT NULL AND array_length(p_country_codes, 1) > 10)
        OR (excluded_genres IS NOT NULL AND array_length(excluded_genres, 1) > 10)
        OR (excluded_countries IS NOT NULL AND array_length(excluded_countries, 1) > 10)
-       OR (search_term IS NOT NULL AND length(search_term) > 100) THEN
+       OR (search_term IS NOT NULL AND length(search_term) > 100)
+       OR (actor_name_2 IS NOT NULL AND length(actor_name_2) > 100) THEN
         RETURN json_build_object('total', 0, 'items', '[]'::json);
     END IF;
 
@@ -387,6 +395,25 @@ BEGIN
         ) alias_acts;
     END IF;
 
+    -- FASE 3.7b: RESOLUCIÓN DE SEGUNDO ACTOR (CRUCE ACTOR + ACTOR)
+    IF actor_name_2 IS NOT NULL AND TRIM(actor_name_2) != '' THEN
+        SELECT string_agg(websearch_to_tsquery('simple', '"' || public.unaccent_immutable(a_name) || '"')::text, ' | ')::tsquery,
+               array_agg(lower(public.unaccent_immutable(trim(a_name))))
+        INTO v_actor2_tsquery, v_actor2_names
+        FROM (
+            SELECT a.name AS a_name
+            FROM public.people a
+            WHERE a.type IN ('A', 'AD', 'DA')
+              AND (
+                   a.slug = public.unaccent_immutable(lower(regexp_replace(regexp_replace(actor_name_2, '[^a-zA-Z0-9]+', '-', 'g'), '^-+|-+$', '')))
+                OR a.name_norm = public.unaccent_immutable(lower(actor_name_2))
+                OR regexp_replace(a.name_norm, '[^a-z0-9]', '', 'g') = regexp_replace(public.unaccent_immutable(lower(actor_name_2)), '[^a-z0-9]', '', 'g')
+              )
+            UNION
+            SELECT actor_name_2
+        ) alias_acts_2;
+    END IF;
+
     -- FASE 3.8: PREPARACIÓN DE SELECCIÓN, ESTUDIO Y GÉNEROS EXCLUIDOS A TSQUERY
     IF p_selection_code IS NOT NULL AND TRIM(p_selection_code) <> '' THEN
         v_selection_tsquery := plainto_tsquery('simple', p_selection_code);
@@ -435,6 +462,15 @@ BEGIN
                         $14 IS NULL OR EXISTS (
                             SELECT 1 FROM unnest(string_to_array(m.actors_list, '','')) a_elem
                             WHERE lower(public.unaccent_immutable(trim(a_elem))) = ANY($14)
+                        )
+                    )
+                ))
+                AND ($15 IS NULL OR (
+                    m.actors_tsv @@ $15
+                    AND (
+                        $16 IS NULL OR EXISTS (
+                            SELECT 1 FROM unnest(string_to_array(m.actors_list, '','')) a2_elem
+                            WHERE lower(public.unaccent_immutable(trim(a2_elem))) = ANY($16)
                         )
                     )
                 ))
@@ -507,12 +543,16 @@ BEGIN
     USING
         search_term, v_genre_tsquery, p_year_start, p_year_end, v_country_ids, -- $1..$5
         v_director_tsquery, v_actor_tsquery, media_type, v_selection_tsquery, v_studio_tsquery, -- $6..$10
-        v_excluded_genres_tsquery, v_excluded_country_ids, v_director_names, v_actor_names; -- $11..$14
+        v_excluded_genres_tsquery, v_excluded_country_ids, v_director_names, v_actor_names, -- $11..$14
+        v_actor2_tsquery, v_actor2_names; -- $15..$16
         
     RETURN v_json_result;
 END;
 $function$;
 
 -- 4. HARDENING Y CONCESIÓN DE PERMISOS (Principio de Menor Privilegio)
-REVOKE ALL ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.search_movies_offset(text, text, integer, integer, text, text[], text, text, text, text, text, text[], text[], text, text, integer, integer, boolean, text) TO anon, authenticated, service_role;
+
+-- 5. REFRESCO INMEDIATO DE CACHÉ DE ESQUEMA POSTGREST
+NOTIFY pgrst, 'reload schema';

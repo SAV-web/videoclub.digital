@@ -26,7 +26,8 @@ import {
   scheduleMyListBackgroundRevalidation
 } from "./api.js";
 
-import { isAbortError, toSlug } from "./contracts.js";
+import { isAbortError, toSlug, getActivePeopleCount } from "./contracts.js";
+import { loadVipSlugs, seedPersonCollaborators, ensureFullCollaborators } from "./vipPerson.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 import {
   dom,
@@ -197,7 +198,7 @@ function computeGridPaginationMetrics(
  */
 function syncPersonFilterName(
   personData: PersonDetails,
-  vipType: "director" | "actor",
+  vipType: "director" | "actor" | "actor2",
   vipName: string
 ): void {
   if (!personData.name || personData.name === vipName) return;
@@ -213,6 +214,101 @@ function syncPersonFilterName(
     updatePageTitle();
     updateUrl({ replace: true });
     appEvents.emit("updateSidebarUI");
+  }
+}
+
+interface ActiveVipPersonEntry {
+  filterKey: "director" | "actor" | "actor2";
+  role: "director" | "actor";
+  name: string;
+}
+
+/**
+ * Extrae el par ordenado de personas activas (1 VIP o combinación de 2 VIPs)
+ * siempre que la vista no corresponda a búsqueda libre ni Mi Lista.
+ */
+function resolveActiveVipPeople(filters: ActiveFilters): ActiveVipPersonEntry[] {
+  if (filters.myList || filters.searchTerm) return [];
+  const entries: ActiveVipPersonEntry[] = [];
+  if (filters.director) {
+    entries.push({ filterKey: "director", role: "director", name: filters.director });
+  }
+  if (filters.actor) {
+    entries.push({ filterKey: "actor", role: "actor", name: filters.actor });
+  }
+  if (filters.actor2) {
+    entries.push({ filterKey: "actor2", role: "actor", name: filters.actor2 });
+  }
+  return entries.length === 1 || entries.length === 2 ? entries : [];
+}
+
+/**
+ * Sincroniza nombres canónicos, comprueba que todas las personas activas sean VIP
+ * y precarga sus retratos; devuelve la lista verificada o null si falta algún VIP.
+ */
+function syncAndResolveAllVips(
+  peopleData: Array<PersonDetails | null>,
+  activeVipEntries: ActiveVipPersonEntry[]
+): PersonDetails[] | null {
+  peopleData.forEach((personData, idx) => {
+    if (personData && activeVipEntries[idx]) {
+      syncPersonFilterName(personData, activeVipEntries[idx].filterKey, activeVipEntries[idx].name);
+    }
+  });
+
+  const resolvedVips = peopleData.filter((p): p is PersonDetails => Boolean(p && p.vip && p.vip !== 0));
+  if (activeVipEntries.length === 0 || resolvedVips.length !== activeVipEntries.length) {
+    return null;
+  }
+
+  resolvedVips.forEach((personData) => {
+    const personSlug = personData.slug || toSlug(personData.name);
+    preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
+  });
+
+  return resolvedVips;
+}
+
+/**
+ * Alimenta el mapa de colaboradores del único VIP activo; si existen filtros
+ * reductores evita sellar la caché para no ocultar coincidencias del catálogo íntegro.
+ */
+function syncActivePersonCollaborators(
+  filters: ActiveFilters,
+  movies: MappedMovie[],
+  totalMovies: number,
+  page: number
+): void {
+  if (filters.myList || filters.searchTerm || getActivePeopleCount(filters) !== 1) return;
+  const role = filters.director ? "director" : "actor";
+  const personName = filters.director || filters.actor;
+  if (!personName) return;
+
+  const hasNarrowingFilters = Boolean(
+    filters.genre ||
+    filters.year ||
+    filters.country ||
+    filters.selection ||
+    filters.studio ||
+    filters.mediaType !== "all" ||
+    filters.excludedGenres.length > 0 ||
+    filters.excludedCountries.length > 0
+  );
+
+  seedPersonCollaborators(role, personName, movies, totalMovies, page, !hasNarrowingFilters);
+
+  const needsMorePages = hasNarrowingFilters || totalMovies < 0 || totalMovies > movies.length || page > 1;
+  if (needsMorePages) {
+    const startOffset = !hasNarrowingFilters && page === 1 ? movies.length : 0;
+    runWhenIdle(() => {
+      void ensureFullCollaborators(
+        role,
+        personName,
+        hasNarrowingFilters ? -1 : totalMovies,
+        (offset, limit) => fetchMovies({ [role]: personName, sort: filters.sort }, 1, limit, null, hasNarrowingFilters || totalMovies < 0, offset),
+        startOffset
+      );
+    });
   }
 }
 
@@ -262,6 +358,8 @@ export async function loadAndRenderMovies(
         if (dom.headerPrevBtn) dom.headerPrevBtn.disabled = page <= 1;
         if (dom.headerNextBtn) dom.headerNextBtn.disabled = cachedSnapshot.movies.length < (page === 1 && cachedSnapshot.hasVip ? firstPageLimit - 1 : baseLimit);
       }
+
+      syncActivePersonCollaborators(targetFilters, cachedSnapshot.movies, cachedSnapshot.totalMovies, page);
 
       if (cachedSnapshot.isCleanHome && cachedSnapshot.movies.length > 0) {
         runFlipOnboarding(dom.gridContainer);
@@ -356,10 +454,12 @@ export async function loadAndRenderMovies(
     let vipData: VipData | null = null;
     let confirmedHasVip = false;
 
-    const vipType = (!activeFilters.myList && !activeFilters.searchTerm)
-      ? (activeFilters.director ? "director" as const : (activeFilters.actor ? "actor" as const : null))
-      : null;
-    const vipName = vipType ? (activeFilters.director || activeFilters.actor) : null;
+    const activePeopleCount = getActivePeopleCount(activeFilters);
+    if (activePeopleCount > 0) {
+      void loadVipSlugs();
+    }
+
+    const activeVipEntries = resolveActiveVipPeople(activeFilters);
     const hasGroupVip = !activeFilters.myList && !activeFilters.searchTerm && (!!activeFilters.selection || !!activeFilters.studio);
 
     const isWallMode = document.body.classList.contains(CSS_CLASSES.ROTATION_DISABLED);
@@ -369,7 +469,7 @@ export async function loadAndRenderMovies(
     // Promesas para entidades especiales (colecciones, estudios y personas en página 1),
     // que permiten paralelizar su obtención con el catálogo en la misma ráfaga de red
     let groupPromise: Promise<{ type: "collection" | "studio"; code: string; thumbhash_st: string | null }> | null = null;
-    let personPromise: Promise<PersonDetails | null> | null = null;
+    let peoplePromise: Promise<Array<PersonDetails | null>> | null = null;
 
     let fetchLimit: number = basePageSize;
     let fetchOffset = (page - 1) * basePageSize;
@@ -392,28 +492,24 @@ export async function loadAndRenderMovies(
         fetchLimit = basePageSize + 2;
         fetchOffset = ((page - 1) * basePageSize) - 1;
       }
-    } else if (vipType && vipName) {
-      // 2. Personas (Directores y Actores)
+    } else if (activeVipEntries.length > 0) {
+      // 2. Personas (1 VIP o combinación de 2 VIPs)
       if (page === 1) {
-        // En página 1, el offset es invariablemente 0. Disparamos la consulta de persona y catálogo
+        // En página 1, el offset es invariablemente 0. Disparamos la consulta de persona(s) y catálogo
         // 100% en paralelo (eliminando el Waterfall de ~80-120 ms). Solicitamos la cuota completa
         // firstPageLimit (44) y, si tras responder resulta ser VIP, podamos el ítem sobrante en memoria.
         fetchLimit = firstPageLimit;
         fetchOffset = 0;
-        personPromise = fetchPersonDetails(vipType, vipName);
+        peoplePromise = Promise.all(
+          activeVipEntries.map((entry) => fetchPersonDetails(entry.role, entry.name))
+        );
       } else {
         // En página 2+, el offset depende estrictamente del estatus VIP (41 si es VIP, 42 si no).
         // Al haber navegado previamente por la pág 1, personCache responde síncronamente en 0 ms.
-        const personData = await fetchPersonDetails(vipType, vipName);
-        if (personData) {
-          syncPersonFilterName(personData, vipType, vipName);
-          const isVip = Boolean(personData.vip && personData.vip !== 0);
-          if (isVip) {
-            confirmedHasVip = true;
-            const personSlug = personData.slug || toSlug(personData.name);
-            preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
-          }
-        }
+        const peopleData = await Promise.all(
+          activeVipEntries.map((entry) => fetchPersonDetails(entry.role, entry.name))
+        );
+        confirmedHasVip = syncAndResolveAllVips(peopleData, activeVipEntries) !== null;
         fetchLimit = basePageSize + 2;
         fetchOffset = confirmedHasVip ? ((page - 1) * basePageSize) - 1 : (page - 1) * basePageSize;
       }
@@ -442,11 +538,13 @@ export async function loadAndRenderMovies(
       fetchOffset
     );
 
-    const [groupResult, personData, catalogResult] = await Promise.all([
+    const [groupResult, peopleData, catalogResult] = await Promise.all([
       groupPromise,
-      personPromise,
+      peoplePromise,
       catalogPromise
     ]);
+
+    let unprunedPageMovies: MappedMovie[] | null = null;
 
     if (groupResult && page === 1) {
       vipData = {
@@ -454,27 +552,31 @@ export async function loadAndRenderMovies(
         code: groupResult.code,
         thumbhash_st: groupResult.thumbhash_st
       };
-    } else if (personData && page === 1) {
-      if (vipName) {
-        syncPersonFilterName(personData, vipType!, vipName);
-      }
-      const isVip = Boolean(personData.vip && personData.vip !== 0);
-      if (isVip) {
+    } else if (peopleData && page === 1) {
+      const resolvedVips = syncAndResolveAllVips(peopleData, activeVipEntries);
+
+      if (resolvedVips) {
         confirmedHasVip = true;
-        const personSlug = personData.slug || toSlug(personData.name);
-        preloadLcpImage(`${CONFIG.PROFILE_BASE_URL}${personSlug}.webp`);
-        vipData = { type: "person", data: personData };
+        vipData = resolvedVips.length === 2
+          ? { type: "dual-person", data: [resolvedVips[0], resolvedVips[1]] }
+          : { type: "person", data: resolvedVips[0] };
 
         // Si es VIP en página 1, la tarjeta VIP consume 1 slot. Si el catálogo devolvió
         // la cuota completa (firstPageLimit = 44), podamos el ítem sobrante a 43 (firstPageLimit - 1).
         if (catalogResult.items && catalogResult.items.length > firstPageLimit - 1) {
+          unprunedPageMovies = catalogResult.items;
           catalogResult.items = catalogResult.items.slice(0, firstPageLimit - 1);
         }
+        appEvents.emit("updateSidebarUI");
+      } else if (
+        activeVipEntries.length === 1 &&
+        !peopleData[0] &&
+        (!catalogResult.items || catalogResult.items.length === 0)
+      ) {
+        setFilter(activeVipEntries[0].filterKey, null);
+        updatePageTitle();
+        appEvents.emit("updateSidebarUI");
       }
-    } else if (!personData && vipType && page === 1 && (!catalogResult.items || catalogResult.items.length === 0)) {
-      setFilter(vipType, null);
-      updatePageTitle();
-      appEvents.emit("updateSidebarUI");
     }
 
     let result = catalogResult;
@@ -580,6 +682,7 @@ export async function loadAndRenderMovies(
 
     // Pinta la cuadrícula con efecto cascada (Camino crítico inmediato)
     await updateDomWithResults(movies, effectiveTotal, vipData, confirmedHasVip, fetchLimit, fetchOffset);
+    syncActivePersonCollaborators(getActiveFilters(), unprunedPageMovies || movies, effectiveTotal, page);
     const targetScroll = restoreScrollY !== null ? restoreScrollY : 0;
     window.scrollTo({ top: targetScroll, behavior: "auto" });
 

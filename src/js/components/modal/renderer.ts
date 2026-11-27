@@ -1,9 +1,13 @@
 import { createElement, renderCountryFlag, renderStudioIcons, setupExternalLink, applyLengthBasedClass, buildFilterUrl, formatModalDuration } from "../../utils.js";
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
 import { CONFIG, IGNORED_ACTORS_SET, CSS_CLASSES } from "../../constants.js";
+import { getActiveFilters } from "../../state.js";
+import { canCombinePersonFilter, getActivePeopleCount } from "../../contracts.js";
+import { getCachedPersonDetails } from "../../api.js";
+import { isPersonVip, isSingleActivePersonVip, loadVipSlugs } from "../../vipPerson.js";
 import { updateCardUI, adjustQuickViewNoteHeight, applyLqipImage, populatePersonFields } from "../card/index.js";
 import { setupCardRatings } from "../rating.js";
-import type { Movie, MappedMovie, MovieCardElement } from "../../types.js";
+import type { ActiveFilters, Movie, MappedMovie, MovieCardElement } from "../../types.js";
 
 export interface ExtendedMovie extends MappedMovie {
   image_hq?: string | null; // Alias de retrocompatibilidad hacia posterUrl
@@ -39,6 +43,166 @@ const createLink = (text: string, type: 'director' | 'actor' | 'genre'): HTMLAnc
     dataset: { [dataAttr]: text }
   }) as HTMLAnchorElement;
 };
+
+const appendCombineAnchor = (
+  tail: HTMLElement,
+  type: 'director' | 'actor',
+  name: string
+): void => {
+  if (tail.querySelector(".modal-person-anchor")) return;
+  const anchor = createElement("span", { className: "modal-person-anchor" });
+  const combineBtn = createElement("button", {
+    type: "button",
+    className: "person-combine-btn modal-person-combine-btn",
+    textContent: "+",
+    dataset: { combineType: type, combineValue: name },
+    attributes: {
+      "aria-label": `Combinar con ${name}`,
+      title: `Combinar con ${name}`
+    }
+  });
+  anchor.appendChild(combineBtn);
+  tail.appendChild(anchor);
+};
+
+const shouldShowModalCombine = (
+  filters: Pick<ActiveFilters, "director" | "actor" | "actor2"> | null,
+  isCurrentVip: boolean,
+  type: 'director' | 'actor' | 'genre',
+  name: string
+): boolean => {
+  if (!filters || !isCurrentVip || (type !== 'director' && type !== 'actor')) return false;
+  const isTargetVip = isPersonVip(type, name, getCachedPersonDetails);
+  return canCombinePersonFilter(filters, type, name, isTargetVip, isCurrentVip);
+};
+
+/**
+ * Construye una lista enlazada de directores, actores o géneros para la modal,
+ * calculando una sola vez por bloque la elegibilidad de combinación VIP '+'.
+ */
+const renderPersonLinksList = (
+  targetEl: HTMLElement,
+  names: string[],
+  type: 'director' | 'actor' | 'genre',
+  ignoreSet?: ReadonlySet<string>
+): void => {
+  const isPersonList = type === 'director' || type === 'actor';
+  const filters = isPersonList ? getActiveFilters() : null;
+  const hasSinglePerson = Boolean(filters && getActivePeopleCount(filters) === 1);
+  if (hasSinglePerson) void loadVipSlugs();
+  const isCurrentVip = (hasSinglePerson && filters)
+    ? isSingleActivePersonVip(filters, getCachedPersonDetails)
+    : false;
+
+  const frag = document.createDocumentFragment();
+  names.forEach((name, i, arr) => {
+    const hasNext = i < arr.length - 1;
+    if (ignoreSet && ignoreSet.has(name.toLowerCase())) {
+      frag.append(preserveHyphenatedWords(name));
+      if (hasNext) frag.append(", ");
+      return;
+    }
+
+    const wrapper = createElement("span", { className: "modal-person-item" });
+    const link = createLink(name, type);
+    const tail = createElement("span", { className: "modal-person-tail" });
+    if (hasNext) {
+      tail.appendChild(createElement("span", { className: "modal-person-comma", textContent: "," }));
+    }
+    if (shouldShowModalCombine(filters, isCurrentVip, type, name)) {
+      appendCombineAnchor(tail, type as 'director' | 'actor', name);
+    }
+    wrapper.append(link, tail);
+
+    frag.appendChild(wrapper);
+    if (hasNext) {
+      frag.appendChild(createElement("span", { className: "modal-person-sep", textContent: " " }));
+    }
+  });
+  targetEl.appendChild(frag);
+};
+
+/**
+ * Sincroniza el estado visual y accesible ('+' / '-') del botón que despliega
+ * los botones de combinación VIP del reparto en pantallas táctiles.
+ */
+export function applyActorsCombineToggleState(
+  actorsContainer: HTMLElement,
+  toggleBtn: HTMLButtonElement,
+  isExpanded: boolean
+): boolean {
+  actorsContainer.classList.toggle("is-cast-combine-expanded", isExpanded);
+  toggleBtn.textContent = isExpanded ? "-" : "+";
+  toggleBtn.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+  toggleBtn.setAttribute(
+    "aria-label",
+    isExpanded ? "Ocultar opciones para combinar actores" : "Mostrar opciones para combinar actores"
+  );
+  toggleBtn.title = isExpanded ? "Ocultar botones de combinación" : "Combinar con actor";
+  return isExpanded;
+}
+
+/**
+ * Crea o retira el botón '+'/'-' junto a "Reparto." según existan actores
+ * combinables en la ficha actual (tanto en render inicial como tras carga VIP).
+ */
+const syncActorsCombineToggle = (actorsContainer: HTMLElement | null | undefined): void => {
+  if (!actorsContainer) return;
+  const actorsEl = actorsContainer.querySelector<HTMLElement>('[data-template="actors"]');
+  const hasCombineButtons = Boolean(actorsEl?.querySelector(".modal-person-combine-btn"));
+  let toggleBtn = actorsContainer.querySelector<HTMLButtonElement>(".modal-cast-combine-toggle");
+
+  if (!hasCombineButtons) {
+    actorsContainer.classList.remove("is-cast-combine-expanded");
+    toggleBtn?.remove();
+    return;
+  }
+
+  const isExpanded = actorsContainer.classList.contains("is-cast-combine-expanded");
+  if (!toggleBtn) {
+    toggleBtn = createElement("button", {
+      type: "button",
+      className: "modal-cast-combine-toggle",
+    }) as HTMLButtonElement;
+    if (actorsEl) {
+      actorsContainer.insertBefore(toggleBtn, actorsEl);
+    } else {
+      actorsContainer.appendChild(toggleBtn);
+    }
+  }
+
+  applyActorsCombineToggleState(actorsContainer, toggleBtn, isExpanded);
+};
+
+/**
+ * Actualiza en vivo los enlaces de director/actor en una modal abierta cuando
+ * termina la carga diferida o sincronización de VIPs en segundo plano.
+ */
+export function upgradeModalPersonCombineButtons(root: HTMLElement): void {
+  const filters = getActiveFilters();
+  const actorsContainer = root.querySelector<HTMLElement>('[data-template="actors-container"]');
+  const isCurrentVip = getActivePeopleCount(filters) === 1
+    ? isSingleActivePersonVip(filters, getCachedPersonDetails)
+    : false;
+
+  if (!isCurrentVip) {
+    syncActorsCombineToggle(actorsContainer);
+    return;
+  }
+
+  root.querySelectorAll<HTMLAnchorElement>('[data-director-name], [data-actor-name]').forEach((link) => {
+    const item = link.closest<HTMLElement>(".modal-person-item");
+    const tail = item?.querySelector<HTMLElement>(".modal-person-tail");
+    if (!tail || tail.querySelector(".modal-person-anchor")) return;
+    const type = link.dataset.directorName ? 'director' : 'actor';
+    const name = (type === 'director' ? link.dataset.directorName : link.dataset.actorName) || "";
+    if (shouldShowModalCombine(filters, isCurrentVip, type, name)) {
+      appendCombineAnchor(tail, type, name);
+    }
+  });
+
+  syncActorsCombineToggle(actorsContainer);
+}
 
 /**
  * Mapea los nodos del modal mediante sus contratos de datos (data-template).
@@ -96,10 +260,7 @@ function setupModalHeader(
   if (nodes.director) {
     nodes.director.textContent = "";
     if (movie.parsedDirectors && movie.parsedDirectors.length > 0) {
-      movie.parsedDirectors.forEach((name, i, arr) => {
-        nodes.director?.appendChild(createLink(name, 'director'));
-        if (i < arr.length - 1) nodes.director?.append(", ");
-      });
+      renderPersonLinksList(nodes.director, movie.parsedDirectors, 'director');
     }
   }
 
@@ -198,12 +359,7 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
     nodes.genre.textContent = "";
     const genres = (movie.genres || "").split(",").map(g => g.trim()).filter(Boolean);
     if (genres.length > 0) {
-      const frag = document.createDocumentFragment();
-      genres.forEach((name, i, arr) => {
-        frag.appendChild(createLink(name, 'genre'));
-        if (i < arr.length - 1) frag.append(", ");
-      });
-      nodes.genre.appendChild(frag);
+      renderPersonLinksList(nodes.genre, genres, 'genre');
     } else {
       nodes.genre.textContent = "N/A";
     }
@@ -214,19 +370,13 @@ function setupModalDetails(nodes: ModalNodes, movie: ExtendedMovie): void {
   if (nodes.actors) {
     nodes.actors.textContent = "";
     if (movie.parsedActors && movie.parsedActors.length > 0) {
-      const frag = document.createDocumentFragment();
-      movie.parsedActors.forEach((name, i, arr) => {
-        if (IGNORED_ACTORS_SET.has(name.toLowerCase())) {
-          frag.append(preserveHyphenatedWords(name));
-        } else {
-          frag.appendChild(createLink(name, 'actor'));
-        }
-        if (i < arr.length - 1) frag.append(", ");
-      });
-      nodes.actors.appendChild(frag);
+      renderPersonLinksList(nodes.actors, movie.parsedActors, 'actor', IGNORED_ACTORS_SET);
     } else {
       nodes.actors.textContent = "N/A";
     }
+    syncActorsCombineToggle(
+      nodes["actors-container"] || nodes.actors.closest<HTMLElement>('[data-template="actors-container"]')
+    );
   }
 }
 

@@ -8,7 +8,7 @@ import { scheduleSync } from "../../syncManager.js";
 import { normalizeMovieId } from "../../contracts.js";
 import { triggerHapticFeedback } from "../../utils.js";
 import type { MovieCardElement } from "../../types.js";
-import type { MovieContentElement } from "./renderer.js";
+import { applyActorsCombineToggleState, upgradeModalPersonCombineButtons, type MovieContentElement } from "./renderer.js";
 
 interface ModalEventsDom {
   modal: HTMLElement | null;
@@ -67,6 +67,13 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
 
     appEvents.on("filter:apply", () => {
       closeModal({ suppressHistoryBack: true });
+    }),
+
+    appEvents.on("vipManifest:loaded", () => {
+      const dom = getDom();
+      if (dom.content && dom.content.dataset.movieId) {
+        upgradeModalPersonCombineButtons(dom.content);
+      }
     })
   );
 
@@ -152,6 +159,22 @@ export function bindModalEvents(options: ModalEventsOptions): ModalEventListener
 
     const handleContentClick = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+
+      const castToggleBtn = target.closest<HTMLButtonElement>(".modal-cast-combine-toggle");
+      if (castToggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const actorsContainer = castToggleBtn.closest<HTMLElement>('[data-template="actors-container"]');
+        if (actorsContainer) {
+          applyActorsCombineToggleState(
+            actorsContainer,
+            castToggleBtn,
+            !actorsContainer.classList.contains("is-cast-combine-expanded")
+          );
+          triggerHapticFeedback("light");
+        }
+        return;
+      }
 
       // Si pulsa el icono de nota (cuando aún no hay nota escrita): abrir editor
       const noteToggleBtn = target.closest<HTMLElement>('[data-action="toggle-note"]');

@@ -37,27 +37,53 @@ domMap["#grid-container"] = gridContainer;
 const sectionTypes = ["genre", "country", "selection", "studio", "actor", "director"];
 const pillContainers = {};
 const listContainers = {};
+const filterFormsMap = {};
+const filterInputsMap = {};
 const collapsibleSectionsList = [];
+
+function attachRecursiveQuery(el) {
+  el.querySelectorAll = (sel) => {
+    const out = [];
+    const cls = sel.startsWith(".") ? sel.slice(1) : null;
+    const walk = (node) => {
+      for (const ch of node.children || []) {
+        if (cls && ch.classList?.contains(cls)) out.push(ch);
+        walk(ch);
+      }
+    };
+    walk(el);
+    return out;
+  };
+  el.querySelector = (sel) => el.querySelectorAll(sel)[0] || null;
+  return el;
+}
 
 sectionTypes.forEach((type) => {
   const contentId = type === "country" ? "countries-content" : `${type}s-content`;
   const listContainer = createMockDomElement("div", { id: `${contentId}-list` });
   const pillsContainer = createMockDomElement("div", { className: "active-filters-list" });
   const header = createMockDomElement("button", { className: "section-header" });
-  const input = createMockDomElement("input", { className: "sidebar-filter-input" });
+  const input = createMockDomElement("input", { className: "sidebar-filter-input", value: "" });
+  const filterForm = attachRecursiveQuery(createMockDomElement("form", { className: "sidebar-filter-form" }));
+  filterForm.dataset = { filterType: type };
+  filterForm.appendChild(input);
+
+  const sectionContent = createMockDomElement("div", { id: contentId, className: "section-content" });
+  sectionContent.appendChild(listContainer);
+  sectionContent.appendChild(filterForm);
 
   const collapsible = createMockDomElement("div", { className: "collapsible-section" });
   collapsible.dataset = { section: type };
   collapsible.appendChild(header);
   collapsible.appendChild(pillsContainer);
-  collapsible.appendChild(listContainer);
-  collapsible.appendChild(input);
+  collapsible.appendChild(sectionContent);
   listContainer.parentElement = collapsible;
 
   collapsible.querySelector = (sel) => {
     if (sel === ".active-filters-list") return pillsContainer;
     if (sel === ".section-header") return header;
     if (sel === ".sidebar-filter-input") return input;
+    if (sel === ".sidebar-filter-form") return filterForm;
     return null;
   };
 
@@ -65,6 +91,8 @@ sectionTypes.forEach((type) => {
   domMap[`${contentId} > div:first-child`] = listContainer;
   pillContainers[type] = pillsContainer;
   listContainers[type] = listContainer;
+  filterFormsMap[type] = filterForm;
+  filterInputsMap[type] = input;
   collapsibleSectionsList.push(collapsible);
 });
 
@@ -83,6 +111,10 @@ globalThis.document.querySelector = (sel) => {
 const origQuerySelectorAll = globalThis.document.querySelectorAll;
 globalThis.document.querySelectorAll = (sel) => {
   if (sel === ".collapsible-section") return collapsibleSectionsList;
+  if (sel === ".sidebar-filter-form") return Object.values(filterFormsMap);
+  if (sel === ".sidebar-autocomplete-results") {
+    return Object.values(filterFormsMap).flatMap((f) => f.querySelectorAll(sel));
+  }
   return origQuerySelectorAll ? origQuerySelectorAll(sel) : [];
 };
 
@@ -92,6 +124,7 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
   let sidebarModule;
   let mainModule;
   let apiModule;
+  let vipModule;
 
   before(async () => {
     viteEnv = await startViteSsrServer([
@@ -99,8 +132,9 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
       "/src/js/components/sidebar/index.ts",
       "/src/js/main.ts",
       "/src/js/api.ts",
+      "/src/js/vipPerson.ts",
     ]);
-    [stateModule, sidebarModule, mainModule, apiModule] = viteEnv.modules;
+    [stateModule, sidebarModule, mainModule, apiModule, vipModule] = viteEnv.modules;
   });
 
   after(async () => {
@@ -639,5 +673,131 @@ describe("Componente Sidebar (src/js/components/sidebar.ts) - Tests de Caracteri
       cleanupHotkeys();
       supabase.rpc = origRpc;
     }
+  });
+
+  test("Autocompletado de persona: '+' solo en propuestos con coincidencias respecto al 1er VIP y permite combinar", async () => {
+    await vipModule.loadVipSlugs();
+    vipModule.seedPersonCollaborators(
+      "actor",
+      "Ewan McGregor",
+      [{ parsedDirectors: ["Baz Luhrmann"], parsedActors: ["Ewan McGregor", "Nicole Kidman"] }],
+      1,
+      1
+    );
+    stateModule.setFilter("actor", "Ewan McGregor");
+
+    const supabase = await apiModule.getSupabase();
+    const origRpc = supabase.rpc;
+    supabase.rpc = (fn) => {
+      const data = fn === "get_actor_suggestions"
+        ? [{ suggestion: "Brad Pitt" }, { suggestion: "Nicole Kidman" }, { suggestion: "Mark Wahlberg" }]
+        : { items: [], total: 0 };
+      const p = Promise.resolve({ data, error: null });
+      p.abortSignal = () => p;
+      return p;
+    };
+
+    const actorForm = filterFormsMap["actor"];
+    const actorInput = filterInputsMap["actor"];
+    const directorForm = filterFormsMap["director"];
+    const directorInput = filterInputsMap["director"];
+    const findButtons = (el) => {
+      const res = [];
+      const walk = (n) => {
+        for (const ch of n.children || []) {
+          if (ch.classList?.contains("person-combine-btn")) res.push(ch);
+          walk(ch);
+        }
+      };
+      walk(el);
+      return res;
+    };
+
+    try {
+      sidebarModule.initSidebar();
+      actorInput.value = "kid";
+      actorInput.dispatchEvent({ type: "input", target: actorInput });
+      await new Promise((r) => setTimeout(r, 480));
+
+      const items = actorForm.querySelectorAll(".sidebar-autocomplete-item");
+      assert.equal(items.length, 3, "Debe renderizar los 3 candidatos propuestos");
+
+      const pittBtns = findButtons(items[0]);
+      const kidmanBtns = findButtons(items[1]);
+      const markBtns = findButtons(items[2]);
+
+      assert.equal(pittBtns.length, 0, "Brad Pitt no comparte películas con Ewan McGregor -> sin '+'");
+      assert.equal(kidmanBtns.length, 1, "Nicole Kidman sí comparte película y está en index 1 -> debe tener '+'");
+      assert.equal(kidmanBtns[0].textContent, "+");
+      assert.equal(markBtns.length, 0, "Mark Wahlberg no comparte películas -> sin '+'");
+
+      // Pulsar '+' en Nicole Kidman combina actor + actor2 sin reemplazar actor
+      actorForm.dispatchEvent({ type: "click", target: kidmanBtns[0] });
+      await new Promise((r) => setTimeout(r, 50));
+
+      assert.equal(stateModule.getActiveFilters().actor, "Ewan McGregor");
+      assert.equal(stateModule.getActiveFilters().actor2, "Nicole Kidman");
+
+      // Director activo: otro director NUNCA debe mostrar '+' incluso si comparten película
+      stateModule.resetFiltersState();
+      vipModule.seedPersonCollaborators(
+        "director",
+        "Martin Scorsese",
+        [{ parsedDirectors: ["Martin Scorsese", "Steven Spielberg"], parsedActors: ["Robert De Niro"] }],
+        1,
+        1
+      );
+      stateModule.setFilter("director", "Martin Scorsese");
+      supabase.rpc = (fn) => {
+        const data = fn === "get_director_suggestions"
+          ? [{ suggestion: "Steven Spielberg" }]
+          : { items: [], total: 0 };
+        const p = Promise.resolve({ data, error: null });
+        p.abortSignal = () => p;
+        return p;
+      };
+      directorInput.value = "spi";
+      directorInput.dispatchEvent({ type: "input", target: directorInput });
+      await new Promise((r) => setTimeout(r, 480));
+
+      const dirItems = directorForm.querySelectorAll(".sidebar-autocomplete-item");
+      assert.equal(dirItems.length, 1);
+      assert.equal(findButtons(dirItems[0]).length, 0, "Nunca debe mostrarse '+' para combinar Director + Director");
+    } finally {
+      actorInput.value = "";
+      directorInput.value = "";
+      supabase.rpc = origRpc;
+      sidebarModule.disposeSidebarEvents();
+    }
+  });
+
+  test("seedPersonCollaborators: allowComplete=false no sella caché cuando hay filtros reductores con 0 resultados", async () => {
+    await vipModule.loadVipSlugs();
+    vipModule.seedPersonCollaborators("director", "Martin Scorsese", [], 0, 1, false);
+    assert.equal(
+      vipModule.hasCollaboratorWithActivePerson(
+        { director: "Martin Scorsese", actor: null, actor2: null },
+        "actor",
+        "Leonardo DiCaprio"
+      ),
+      false
+    );
+
+    vipModule.seedPersonCollaborators(
+      "director",
+      "Martin Scorsese",
+      [{ parsedDirectors: ["Martin Scorsese"], parsedActors: ["Leonardo DiCaprio"] }],
+      1,
+      1,
+      true
+    );
+    assert.equal(
+      vipModule.hasCollaboratorWithActivePerson(
+        { director: "Martin Scorsese", actor: null, actor2: null },
+        "actor",
+        "Leonardo DiCaprio"
+      ),
+      true
+    );
   });
 });

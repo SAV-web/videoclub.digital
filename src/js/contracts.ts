@@ -93,6 +93,7 @@ export const FILTER_KEYS: ReadonlyArray<string> = [
   "country",
   "director",
   "actor",
+  "actor2",
   "selection",
   "studio",
   "sort",
@@ -475,13 +476,29 @@ export function normalizeFilterValue(key: string, value: unknown): unknown {
 }
 
 export function normalizeActiveFilters(filters: Partial<ActiveFilters> = {}): ActiveFilters {
+  const director = normalizeNullableText(filters.director);
+  let actor = normalizeNullableText(filters.actor);
+  let actor2 = normalizeNullableText(filters.actor2);
+
+  if (!actor && actor2) {
+    actor = actor2;
+    actor2 = null;
+  }
+  if (director && actor && actor2) {
+    actor2 = null;
+  }
+  if (actor && actor2 && toSlug(actor) === toSlug(actor2)) {
+    actor2 = null;
+  }
+
   return {
     searchTerm: normalizeTextValue(filters.searchTerm),
     genre: normalizeNullableText(filters.genre),
     year: normalizeYearRange(filters.year),
     country: normalizeNullableText(filters.country),
-    director: normalizeNullableText(filters.director),
-    actor: normalizeNullableText(filters.actor),
+    director,
+    actor,
+    actor2,
     selection: normalizeSelectionCode(filters.selection),
     studio: normalizeStudioCode(filters.studio),
     sort: normalizeSort(filters.sort),
@@ -490,6 +507,37 @@ export function normalizeActiveFilters(filters: Partial<ActiveFilters> = {}): Ac
     excludedCountries: normalizeStringList(filters.excludedCountries),
     myList: normalizeMyList(filters.myList),
   };
+}
+
+/**
+ * Devuelve cuántas personas activas hay actualmente en los filtros (0, 1 o 2).
+ */
+export function getActivePeopleCount(
+  filters: Pick<ActiveFilters, "director" | "actor" | "actor2">
+): number {
+  return (filters.director ? 1 : 0) + (filters.actor ? 1 : 0) + (filters.actor2 ? 1 : 0);
+}
+
+/**
+ * Evalúa si se puede combinar una segunda persona VIP mediante el botón '+'.
+ * Reglas:
+ *  - Exactamente 1 persona activa actualmente y debe ser VIP.
+ *  - La persona destino también debe pertenecer a la selección VIP.
+ *  - Permitido: Director + Actor o Actor + Actor (nunca 2 Directores).
+ *  - Máximo 2 personas y sin repetir al mismo actor.
+ */
+export function canCombinePersonFilter(
+  filters: Pick<ActiveFilters, "director" | "actor" | "actor2">,
+  targetType: "director" | "actor",
+  targetName: string | null | undefined,
+  isTargetVip: boolean,
+  isCurrentVip: boolean
+): boolean {
+  if (!isCurrentVip || !isTargetVip || !targetName || !targetName.trim()) return false;
+  if (getActivePeopleCount(filters) !== 1) return false;
+  if (filters.director && targetType === "director") return false;
+  if (targetType === "actor" && filters.actor && toSlug(filters.actor) === toSlug(targetName)) return false;
+  return true;
 }
 
 export function areContractValuesEqual(left: unknown, right: unknown): boolean {

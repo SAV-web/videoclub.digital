@@ -129,6 +129,7 @@ export function stateToRpcParams(
     p_country_codes: null,
     director_name: activeFilters.director || null,
     actor_name: activeFilters.actor || null,
+    ...(activeFilters.actor2 ? { actor_name_2: activeFilters.actor2 } : {}),
     media_type: activeFilters.mediaType || "all",
     p_selection_code: activeFilters.selection || null,
     p_studio_code: activeFilters.studio || null,

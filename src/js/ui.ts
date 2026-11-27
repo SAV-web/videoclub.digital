@@ -698,7 +698,7 @@ function shouldShowTotalCount(): boolean {
 
   // 2. Otros filtros específicos: Siempre mostrar
   const hasOtherFilters = [
-    filters.genre, filters.country, filters.director, filters.actor,
+    filters.genre, filters.country, filters.director, filters.actor, filters.actor2,
     filters.selection, filters.studio
   ].some(v => v) || (filters.excludedGenres && filters.excludedGenres.length > 0) || (filters.excludedCountries && filters.excludedCountries.length > 0);
 
@@ -852,21 +852,21 @@ export function updateMobileStatusBar(
       segments.push(`${totalMovies.toLocaleString("es-ES")} ${noun}`);
     }
 
-    // 1. Director o Actor (VIP prioritario)
+    const formatPersonLabel = (raw: string) => raw
+      .trim()
+      .split(/\s+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    // 1. Director y/o Actores (VIP o cruce de hasta 2 personas)
     if (filters.director) {
-      const directorName = filters.director
-        .trim()
-        .split(/\s+/)
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ");
-      segments.push(directorName);
-    } else if (filters.actor) {
-      const actorName = filters.actor
-        .trim()
-        .split(/\s+/)
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(" ");
-      segments.push(actorName);
+      segments.push(formatPersonLabel(filters.director));
+    }
+    if (filters.actor) {
+      segments.push(formatPersonLabel(filters.actor));
+    }
+    if (filters.actor2 && !filters.director) {
+      segments.push(formatPersonLabel(filters.actor2));
     }
 
     // 2. Género e inclusiones/exclusiones

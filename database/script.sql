@@ -152,8 +152,42 @@ ALTER TABLE public.movie_directors ADD CONSTRAINT movie_directors_movie_id_fkey 
 
 ALTER TABLE public.movie_actors DROP CONSTRAINT IF EXISTS movie_actors_movie_id_fkey;
 ALTER TABLE public.movie_actors ADD CONSTRAINT movie_actors_movie_id_fkey FOREIGN KEY (movie_id) REFERENCES public.movies(id) ON DELETE CASCADE;
+-- Conversión idempotente de movies.slug para respetar el slug precargado desde staging (sin expresión autogenerada)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_attribute a
+        JOIN pg_class c ON c.oid = a.attrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relname = 'movies'
+          AND a.attname = 'slug'
+          AND a.attgenerated <> ''
+    ) THEN
+        ALTER TABLE public.movies ALTER COLUMN slug DROP EXPRESSION;
+    END IF;
+END $$;
+ALTER TABLE public.movies ALTER COLUMN slug SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS movies_title_norm_trgm_idx ON public.movies USING gin (title_norm extensions.gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS movies_slug_idx ON public.movies(slug);
+
+-- Reemplaza el índice simple previo por un índice UNIQUE para bloquear colisiones SEO al instante
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_index i ON i.indexrelid = c.oid
+        WHERE n.nspname = 'public'
+          AND c.relname = 'movies_slug_idx'
+          AND NOT i.indisunique
+    ) THEN
+        DROP INDEX public.movies_slug_idx;
+    END IF;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS movies_slug_idx ON public.movies(slug);
 DROP INDEX IF EXISTS public.movies_relevance_idx;
 CREATE INDEX IF NOT EXISTS idx_movies_relevance_id ON public.movies(relevance ASC, id ASC);
 CREATE INDEX IF NOT EXISTS movies_year_idx ON public.movies(year DESC);
@@ -547,14 +581,9 @@ AS $function$
 DECLARE
     sync_timestamp TIMESTAMP WITH TIME ZONE := NOW();
     affected_movie_ids INT[];
-    directors_created_count INT := 0;
-    actors_created_count INT := 0;
-    directors_modified_count INT := 0;
-    actors_modified_count INT := 0;
     people_modified_count INT := 0;
     people_purged_count INT := 0;
     movies_deleted_count INT := 0;
-    v_rows_count INT := 0;
 BEGIN
     -- 1. BLOQUEO TRANSACCIONAL DE EXCLUSIÓN MUTUA
     -- Evita que dos sincronizaciones de staging se ejecuten concurrentemente
@@ -571,15 +600,11 @@ BEGIN
     SELECT DISTINCT TRIM(d.name), 'D' FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.directors, ',')) AS d(name)
     WHERE s.show IS TRUE AND s.directors IS NOT NULL AND TRIM(d.name) <> ''
     ON CONFLICT (name) DO UPDATE SET type = CASE WHEN public.people.type = 'A' THEN 'AD' ELSE public.people.type END;
-    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
-    directors_created_count := directors_created_count + v_rows_count;
 
     INSERT INTO public.people (name, type)
     SELECT DISTINCT TRIM(a.name), 'A' FROM public.movies_staging s, UNNEST(STRING_TO_ARRAY(s.actors, ',')) AS a(name)
     WHERE s.show IS TRUE AND s.actors IS NOT NULL AND TRIM(a.name) <> '' AND s.actors <> '(A)'
     ON CONFLICT (name) DO UPDATE SET type = CASE WHEN public.people.type = 'D' THEN 'DA' ELSE public.people.type END;
-    GET DIAGNOSTICS v_rows_count = ROW_COUNT;
-    actors_created_count := actors_created_count + v_rows_count;
 
     -- Inserción / Upsert de personas desde people_staging (soporta tipos A, D, AD, DA y preserva VIP)
     INSERT INTO public.people (name, type, vip)
@@ -678,15 +703,21 @@ BEGIN
     GET DIAGNOSTICS movies_deleted_count = ROW_COUNT;
 
     -- 4: UPSERT DIFERENCIAL DE PELÍCULAS (PUBLIC.MOVIES)
+    -- Prioriza s.slug precargado en staging (normalizado) con fallback determinista title + year
     WITH upserted_movies AS (
         INSERT INTO public.movies (
-            id, relevance, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
+            id, slug, relevance, title, year, year_end, type, fa_rating, fa_votes, imdb_rating, imdb_votes,
             original_title, country_id, minutes, synopsis, fa_id, imdb_id, last_synced_at, episodes, wikipedia, justwatch,
             genres_list, directors_list, actors_list, selections_list, studios_list
         )
         OVERRIDING SYSTEM VALUE
         SELECT
-            public.to_integer_safe(s.id::TEXT), COALESCE(public.to_integer_safe(s.relevance::TEXT), 99999), s.title, public.to_integer_safe(s.year::TEXT),
+            public.to_integer_safe(s.id::TEXT),
+            COALESCE(
+                NULLIF(TRIM(BOTH '-' FROM regexp_replace(lower(public.unaccent_immutable(TRIM(COALESCE(s.slug, '')))), '[^a-z0-9]+', '-', 'g')), ''),
+                TRIM(BOTH '-' FROM regexp_replace(lower(public.unaccent_immutable(s.title)) || '-' || COALESCE(public.to_integer_safe(s.year::TEXT)::TEXT, ''), '[^a-z0-9]+', '-', 'g'))
+            ),
+            COALESCE(public.to_integer_safe(s.relevance::TEXT), 99999), s.title, public.to_integer_safe(s.year::TEXT),
             public.to_integer_safe(s.year_end::TEXT), s.type, public.to_real_safe(s.fa_rating::TEXT), public.to_integer_safe(s.fa_votes::TEXT),
             public.to_real_safe(s.imdb_rating::TEXT), public.to_integer_safe(s.imdb_votes::TEXT),
             s.original_title, c.id, public.to_integer_safe(s.minutes::TEXT), s.synopsis, s.fa_id,
@@ -696,6 +727,7 @@ BEGIN
         LEFT JOIN public.countries c ON TRIM(s.country) = c.name
         WHERE public.to_integer_safe(s.id::TEXT) IS NOT NULL AND s.show IS TRUE
         ON CONFLICT (id) DO UPDATE SET
+            slug = EXCLUDED.slug,
             relevance = COALESCE(EXCLUDED.relevance, movies.relevance), title = EXCLUDED.title, year = EXCLUDED.year, year_end = EXCLUDED.year_end, type = EXCLUDED.type,
             fa_rating = EXCLUDED.fa_rating, fa_votes = EXCLUDED.fa_votes, imdb_rating = EXCLUDED.imdb_rating, imdb_votes = EXCLUDED.imdb_votes,
             original_title = EXCLUDED.original_title, country_id = EXCLUDED.country_id, minutes = EXCLUDED.minutes, synopsis = EXCLUDED.synopsis,
@@ -704,6 +736,7 @@ BEGIN
             genres_list = EXCLUDED.genres_list, directors_list = EXCLUDED.directors_list, actors_list = EXCLUDED.actors_list,
             selections_list = EXCLUDED.selections_list, studios_list = EXCLUDED.studios_list
         WHERE
+            movies.slug IS DISTINCT FROM EXCLUDED.slug OR
             movies.relevance IS DISTINCT FROM EXCLUDED.relevance OR
             movies.title IS DISTINCT FROM EXCLUDED.title OR
             movies.year IS DISTINCT FROM EXCLUDED.year OR
@@ -892,9 +925,7 @@ BEGIN
         WHERE m.id = aff.id;
     END IF;
 
-    -- =================================================================
-    -- FASE 4: PURGA AUTOMÁTICA DE PERSONAS HUÉRFANAS NO VIP
-    -- =================================================================
+    -- 6: PURGA AUTOMÁTICA DE PERSONAS HUÉRFANAS NO VIP
     -- Elimina registros de personas (actores/directores) que hayan quedado sin películas asociadas
     -- tras correcciones o bajas en el catálogo, preservando siempre entidades VIP o editoriales.
     DELETE FROM public.people p
@@ -903,9 +934,7 @@ BEGIN
       AND NOT EXISTS (SELECT 1 FROM public.movie_directors md WHERE md.director_id = p.id);
     GET DIAGNOSTICS people_purged_count = ROW_COUNT;
 
-    -- =================================================================
-    -- FASE 5: RETORNO INFORMATIVO DE LA INGESTA DIFERENCIAL
-    -- =================================================================
+    -- 7: RETORNO INFORMATIVO DE LA INGESTA DIFERENCIAL
     RETURN json_build_object(
         'movies_affected', COALESCE(array_length(affected_movie_ids, 1), 0),
         'movies_deleted', movies_deleted_count,
@@ -957,18 +986,21 @@ FROM (
 WHERE g.name = v.name AND g.synonyms IS DISTINCT FROM v.synonyms;
 
 -- 8.3. Precomputación y compilación atómica de `genre_tsquery` (OR de nombre canónico + sinónimos)
-UPDATE public.genres
-SET genre_tsquery = (
-    SELECT string_agg(plainto_tsquery('spanish', replace(public.unaccent_immutable(lower(t)), 'sci-fi', 'scifi'))::text, ' | ')::tsquery
-    FROM unnest(array_append(synonyms, name)) t
-    WHERE t IS NOT NULL AND trim(t) <> ''
+WITH expected_tsquery AS (
+    SELECT
+        g.id,
+        (
+            SELECT string_agg(plainto_tsquery('spanish', replace(public.unaccent_immutable(lower(t)), 'sci-fi', 'scifi'))::text, ' | ')::tsquery
+            FROM unnest(array_append(g.synonyms, g.name)) t
+            WHERE t IS NOT NULL AND trim(t) <> ''
+        ) AS ts
+    FROM public.genres g
 )
-WHERE genre_tsquery IS NULL 
-   OR genre_tsquery IS DISTINCT FROM (
-       SELECT string_agg(plainto_tsquery('spanish', replace(public.unaccent_immutable(lower(t)), 'sci-fi', 'scifi'))::text, ' | ')::tsquery
-       FROM unnest(array_append(synonyms, name)) t
-       WHERE t IS NOT NULL AND trim(t) <> ''
-   );
+UPDATE public.genres g
+SET genre_tsquery = e.ts
+FROM expected_tsquery e
+WHERE g.id = e.id
+  AND g.genre_tsquery IS DISTINCT FROM e.ts;
 
 -- =================================================================
 -- PASO 9: OBSERVABILIDAD Y TELEMETRÍA (pg_stat_statements)

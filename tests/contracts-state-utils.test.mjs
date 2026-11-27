@@ -520,5 +520,96 @@ describe("contracts.ts - isAbortError", () => {
   });
 });
 
+describe("cruce de hasta 2 personas VIP (Director + Actor / Actor + Actor)", () => {
+  test("canCombinePersonFilter valida máximo 2 personas, rol permitido y estado VIP", () => {
+    // 0 personas activas -> no permite combinar
+    assert.equal(contracts.canCombinePersonFilter({ director: null, actor: null, actor2: null }, "actor", "Robert De Niro", true, true), false);
+
+    // 1 Director VIP activo -> permite Actor VIP, prohíbe otro Director
+    const dirFilters = { director: "Martin Scorsese", actor: null, actor2: null };
+    assert.equal(contracts.canCombinePersonFilter(dirFilters, "actor", "Robert De Niro", true, true), true);
+    assert.equal(contracts.canCombinePersonFilter(dirFilters, "director", "Francis Ford Coppola", true, true), false);
+    assert.equal(contracts.canCombinePersonFilter(dirFilters, "actor", "Actor No VIP", false, true), false);
+
+    // 1 Actor VIP activo -> permite Director VIP o segundo Actor VIP distinto, prohíbe duplicado
+    const actFilters = { director: null, actor: "Al Pacino", actor2: null };
+    assert.equal(contracts.canCombinePersonFilter(actFilters, "director", "Brian De Palma", true, true), true);
+    assert.equal(contracts.canCombinePersonFilter(actFilters, "actor", "Robert De Niro", true, true), true);
+    assert.equal(contracts.canCombinePersonFilter(actFilters, "actor", "Al Pacino", true, true), false);
+    assert.equal(contracts.canCombinePersonFilter(actFilters, "actor", "Robert De Niro", true, false), false);
+
+    // Ya hay 2 personas activas -> bloquea cualquier otra combinación
+    assert.equal(contracts.canCombinePersonFilter({ director: "Martin Scorsese", actor: "Robert De Niro", actor2: null }, "actor", "Joe Pesci", true, true), false);
+    assert.equal(contracts.canCombinePersonFilter({ director: null, actor: "Al Pacino", actor2: "Robert De Niro" }, "director", "Michael Mann", true, true), false);
+  });
+
+  test("combinePersonFilter, promoción de actor2 y URLs bidireccionales respetan los contratos", () => {
+    // Caso 1: Director + Actor
+    state.setFilter("director", "Martin Scorsese");
+    assert.equal(state.combinePersonFilter("director", "Steven Spielberg"), false);
+    assert.equal(state.combinePersonFilter("actor", "Robert De Niro"), true);
+    assert.equal(state.getActiveFilterCount(), 2);
+
+    const dirActUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+    assert.equal(dirActUrl.pathname, "/director/martin-scorsese/");
+    assert.equal(dirActUrl.search, "actor=robert-de-niro");
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/director/martin-scorsese/", "?actor=robert-de-niro");
+    assert.equal(state.getActiveFilters().director, "martin scorsese");
+    assert.equal(state.getActiveFilters().actor, "robert de niro");
+    assert.equal(state.getActiveFilters().actor2, null);
+
+    // Caso 2: Actor + Actor y promoción automática al quitar actor principal
+    state.resetFiltersState();
+    state.setFilter("actor", "Al Pacino");
+    assert.equal(state.combinePersonFilter("actor", "Robert De Niro"), true);
+    assert.equal(state.combinePersonFilter("actor", "Joe Pesci"), false);
+    assert.equal(state.getActiveFilterCount(), 2);
+
+    const twoActorsUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+    assert.equal(twoActorsUrl.pathname, "/actor/al-pacino/");
+    assert.equal(twoActorsUrl.search, "actor2=robert-de-niro");
+
+    // Quitar el primer actor promueve actor2 -> actor
+    state.setFilter("actor", null);
+    assert.equal(state.getActiveFilters().actor, "Robert De Niro");
+    assert.equal(state.getActiveFilters().actor2, null);
+
+    state.resetFiltersState();
+    state.syncStateWithUrl("/actor/al-pacino/", "?actor2=robert-de-niro");
+    assert.equal(state.getActiveFilters().actor, "al pacino");
+    assert.equal(state.getActiveFilters().actor2, "robert de niro");
+  });
+
+  test("vipPerson: valida coincidencias reales de colaboradores separados por rol", async () => {
+    const vipPerson = await viteEnv.server.ssrLoadModule("/src/js/vipPerson.ts");
+    const mockMovies = [
+      utils.mapMoviePayload({
+        id: 101,
+        title: "Heat",
+        directors_list: "Michael Mann",
+        actors_list: "Al Pacino, Robert De Niro, Val Kilmer",
+      }),
+      utils.mapMoviePayload({
+        id: 102,
+        title: "El irlandés",
+        directors_list: "Martin Scorsese",
+        actors_list: "Robert De Niro, Al Pacino, Joe Pesci",
+      }),
+    ];
+
+    vipPerson.seedPersonCollaborators("actor", "Al Pacino", mockMovies, 2, 1);
+
+    const activePacino = { director: null, actor: "Al Pacino", actor2: null };
+    assert.equal(vipPerson.hasCollaboratorWithActivePerson(activePacino, "actor", "Robert De Niro"), true);
+    assert.equal(vipPerson.hasCollaboratorWithActivePerson(activePacino, "director", "Martin Scorsese"), true);
+    assert.equal(vipPerson.hasCollaboratorWithActivePerson(activePacino, "actor", "Akira Kurosawa"), false);
+    // Un director que solo dirigió no debe figurar como colaborador actor ni viceversa
+    assert.equal(vipPerson.hasCollaboratorWithActivePerson(activePacino, "actor", "Martin Scorsese"), false);
+    assert.equal(vipPerson.hasCollaboratorWithActivePerson(activePacino, "director", "Robert De Niro"), false);
+  });
+});
+
 
 

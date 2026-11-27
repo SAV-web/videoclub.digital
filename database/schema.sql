@@ -66,7 +66,7 @@ CREATE TABLE public.movies (
   studios_list text,
   justwatch text,
   title_norm text GENERATED ALWAYS AS (unaccent_immutable(lower(title))) STORED,
-  slug text GENERATED ALWAYS AS (TRIM(BOTH '-' FROM regexp_replace(lower(unaccent_immutable(title)) || '-' || COALESCE(year::text, ''), '[^a-z0-9]+', '-', 'g'))) STORED,
+  slug text NOT NULL,
   genres_tsv tsvector GENERATED ALWAYS AS (to_tsvector('spanish', replace(unaccent_immutable(lower(genres_list)), 'sci-fi', 'scifi'))) STORED,
   directors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', unaccent_immutable(directors_list))) STORED,
   actors_tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', unaccent_immutable(actors_list))) STORED,

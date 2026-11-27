@@ -1,8 +1,11 @@
 import { CONFIG, ICONS, CSS_CLASSES, SELECTORS, FILTER_CONFIG, REGIONAL_GROUPS, DEFAULTS } from "../../constants.js";
-import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, normalizeText } from "../../utils.js";
+import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, highlightAccentInsensitive, normalizeText, capitalizeWords } from "../../utils.js";
 import { fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions, getCachedPersonDetails, fetchPersonDetails, fetchMovies } from "../../api.js";
-import { getActiveFilters, setFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, getTotalMovies, appEvents } from "../../state.js";
-import { showToast, clearToast, clearAllSidebarAutocomplete, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI } from "../../ui.js";
+import { getActiveFilters, setFilter, combinePersonFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, getTotalMovies, appEvents } from "../../state.js";
+import { getActivePeopleCount, toSlug } from "../../contracts.js";
+import { canOfferCollaboratorCombine, isSingleActivePersonVip, loadVipSlugs, prepareVipPersonCombine, resolvePersonDisplayName } from "../../vipPerson.js";
+import { showToast, clearToast, clearAllSidebarAutocomplete, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI, updateMobileStatusBar } from "../../ui.js";
+import { updateUrl } from "../../router.js";
 import { loadAndRenderMovies } from "../../renderEngine.js";
 import { ActiveFilters, MovieCardElement } from "../../types.js";
 import { dom, sectionContainers, sidebarUnsubscribers } from "./context.js";
@@ -12,9 +15,37 @@ import { tryCloseMobileDrawer } from "./gestures.js";
 //          EL BUSCADOR INTERNO (Autocompletar)
 // =================================================================
 
+/**
+ * Crea el botón '+' compartido por la lista curada del sidebar y su autocompletado.
+ */
+export function createPersonCombineButton(
+  type: "director" | "actor",
+  value: string,
+  label = value
+): HTMLButtonElement {
+  return createElement("button", {
+    type: "button",
+    className: "person-combine-btn",
+    textContent: "+",
+    dataset: { combineType: type, combineValue: value },
+    attributes: {
+      "aria-label": `Combinar con ${label}`,
+      title: `Combinar con ${label}`
+    }
+  }) as HTMLButtonElement;
+}
+
+const lastAutocompleteByForm = new WeakMap<HTMLFormElement, { suggestions: string[]; searchTerm: string }>();
+
 function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: string[], searchTerm: string): void {
   const input = formElement.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
   if (!input) return;
+
+  if (suggestions.length > 0) {
+    lastAutocompleteByForm.set(formElement, { suggestions, searchTerm });
+  } else {
+    lastAutocompleteByForm.delete(formElement);
+  }
 
   let resultsContainer = formElement.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
 
@@ -37,6 +68,12 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
   formElement.closest(".section-content")?.classList.add("is-searching");
 
   const filterType = formElement.dataset.filterType || "";
+  const isPersonAutocomplete = filterType === "director" || filterType === "actor";
+  const activeFilters = isPersonAutocomplete ? getActiveFilters() : null;
+  if (isPersonAutocomplete && activeFilters && getActivePeopleCount(activeFilters) === 1) {
+    void loadVipSlugs();
+  }
+  const isCurrentVip = activeFilters ? isSingleActivePersonVip(activeFilters, getCachedPersonDetails) : false;
 
   resultsContainer.id = `autocomplete-results-${filterType}`;
   resultsContainer.setAttribute("role", "listbox");
@@ -52,7 +89,18 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
       id: `suggestion-item-${filterType}-${index}`,
       attributes: { role: "option", "aria-selected": isActive ? "true" : "false" },
     });
-    item.appendChild(highlightAccentInsensitive(suggestion, searchTerm));
+    const labelSpan = createElement("span", { className: "sidebar-autocomplete-label" });
+    labelSpan.appendChild(highlightAccentInsensitive(suggestion, searchTerm));
+    item.appendChild(labelSpan);
+
+    if (
+      activeFilters &&
+      (filterType === "director" || filterType === "actor") &&
+      canOfferCollaboratorCombine(activeFilters, filterType, suggestion, isCurrentVip, getCachedPersonDetails)
+    ) {
+      item.appendChild(createPersonCombineButton(filterType, suggestion));
+    }
+
     fragment.appendChild(item);
   });
 
@@ -63,9 +111,28 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
   }
 }
 
-// Actualiza el estado visual de los controles de filtro (activo / excluido)
+export function refreshOpenPersonAutocomplete(): void {
+  dom.sidebarFilterForms.forEach((form) => {
+    const filterType = form.dataset.filterType;
+    if (filterType !== "director" && filterType !== "actor") return;
+    const resultsContainer = form.querySelector<HTMLElement>(SELECTORS.SIDEBAR_AUTOCOMPLETE_RESULTS);
+    const input = form.querySelector<HTMLInputElement>(SELECTORS.SIDEBAR_FILTER_INPUT);
+    if (!resultsContainer || !input || input.value.trim().length < 3) return;
+    const cached = lastAutocompleteByForm.get(form);
+    if (cached && cached.suggestions.length > 0) {
+      renderSidebarAutocomplete(form, cached.suggestions, cached.searchTerm);
+    }
+  });
+}
+
+// Actualiza el estado visual de los controles de filtro (activo / excluido / botón '+' de combinación)
 function updateAllFilterControls(): void {
   const activeFilters = getActiveFilters();
+  const activePeopleCount = getActivePeopleCount(activeFilters);
+  if (activePeopleCount === 1) {
+    void loadVipSlugs();
+  }
+  const isCurrentVip = isSingleActivePersonVip(activeFilters, getCachedPersonDetails);
 
   const excludedGenresSet = new Set(activeFilters.excludedGenres || []);
   const excludedCountriesSet = new Set(activeFilters.excludedCountries || []);
@@ -92,7 +159,9 @@ function updateAllFilterControls(): void {
       link._normValue = normValue;
     }
 
-    const isActive = normActiveFilters[type] === normValue;
+    const isActive = type === "actor"
+      ? (normActiveFilters.actor === normValue || normActiveFilters.actor2 === normValue)
+      : normActiveFilters[type] === normValue;
 
     let shouldHide = isActive || isExcluded;
     if (type === 'studio' || type === 'genre' || type === 'country' || type === 'selection' || type === 'director' || type === 'actor') {
@@ -109,6 +178,15 @@ function updateAllFilterControls(): void {
         const targetText = isExcluded ? `(-) ${linkWithText._originalText}` : linkWithText._originalText;
         if (textSpan.textContent !== targetText) {
           textSpan.textContent = targetText;
+        }
+      }
+
+      if (type === "director" || type === "actor") {
+        const combineBtn = link.querySelector<HTMLButtonElement>(".person-combine-btn");
+        if (combineBtn) {
+          const canCombine = !isActive && canOfferCollaboratorCombine(activeFilters, type, value, isCurrentVip, getCachedPersonDetails);
+          combineBtn.hidden = !canCombine;
+          link.classList.toggle("has-combine-btn", canCombine);
         }
       }
     }
@@ -204,30 +282,44 @@ export function renderFilterPills(): void {
       }
     }
 
+    const secondActor = type === 'actor' ? (activeFilters.actor2 || "") : "";
+    const secondActorResolved = (type === 'actor' && secondActor)
+      ? (getCachedPersonDetails('actor', secondActor)?.name || "")
+      : "";
+
     const stateKey = `${type}-combined`;
-    const currState = `${(inc as string) || ""}|${exc.join(",")}|${resolvedPersonName || ""}`;
+    const currState = `${(inc as string) || ""}|${secondActor}|${exc.join(",")}|${resolvedPersonName || ""}|${secondActorResolved}`;
 
     if (lastPillState[stateKey] === currState) {
       if (inc) pillIndex++;
+      if (secondActor) pillIndex++;
       pillIndex += exc.length;
       return;
     }
     lastPillState[stateKey] = currState;
 
-    const desired: Array<{ val: string; exc: boolean }> = [];
+    const desired: Array<{ val: string; exc: boolean; filterType?: string }> = [];
+    const pushPersonDesired = (rawVal: string, resolved: string | null, pillType: string) => {
+      const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string> } | undefined;
+      const isCurated = !!(config?.items?.[rawVal] || config?.items?.[rawVal.toUpperCase()]);
+      const fallbackDisplay = (!resolved && rawVal === rawVal.toLowerCase()) ? capitalizeWords(rawVal) : rawVal;
+      const targetVal = resolved || fallbackDisplay;
+
+      // Las píldoras solo deben contener el nombre de actor o director bien escrito o no salir
+      if (resolved || isCurated || !isRawPersonSlug(rawVal)) {
+        desired.push({ val: targetVal, exc: false, filterType: pillType });
+      }
+    };
+
     if (inc && typeof inc === 'string') {
       if (type === 'director' || type === 'actor') {
-        const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string> } | undefined;
-        const isCurated = !!(config?.items?.[inc] || config?.items?.[inc.toUpperCase()]);
-        const targetVal = resolvedPersonName || inc;
-
-        // Las píldoras solo deben contener el nombre de actor o director bien escrito o no salir
-        if (resolvedPersonName || isCurated || !isRawPersonSlug(targetVal)) {
-          desired.push({ val: targetVal, exc: false });
-        }
+        pushPersonDesired(inc, resolvedPersonName, type);
       } else {
         desired.push({ val: inc, exc: false });
       }
+    }
+    if (type === 'actor' && secondActor) {
+      pushPersonDesired(secondActor, secondActorResolved || null, 'actor2');
     }
     exc.forEach(v => desired.push({ val: v, exc: true }));
 
@@ -235,12 +327,17 @@ export function renderFilterPills(): void {
     const kept = new Set<HTMLElement>();
 
     desired.forEach(item => {
-      let pill = exist.find(p => p.dataset.filterValue === item.val && p.classList.contains("filter-pill--exclude") === item.exc);
+      const itemType = item.filterType || type;
+      let pill = exist.find(p =>
+        p.dataset.filterType === itemType &&
+        p.dataset.filterValue === item.val &&
+        p.classList.contains("filter-pill--exclude") === item.exc
+      );
       if (pill) {
         kept.add(pill);
         cont.appendChild(pill);
       } else {
-        pill = createElement("div", { className: `filter-pill ${item.exc ? "filter-pill--exclude" : ""}`, dataset: { filterType: type, filterValue: item.val } });
+        pill = createElement("div", { className: `filter-pill ${item.exc ? "filter-pill--exclude" : ""}`, dataset: { filterType: itemType, filterValue: item.val } });
         pill.style.setProperty("--pill-index", String(pillIndex));
 
         const config = FILTER_CONFIG[type as keyof typeof FILTER_CONFIG] as unknown as { items?: Record<string, string>; titles?: Record<string, string> } | undefined;
@@ -311,25 +408,46 @@ function clearActiveSearchTerm(): void {
   if (mainSearchInput) mainSearchInput.value = "";
 }
 
-export async function handleFilterChangeOptimistic(type: string, value: string | null, forceSet = false): Promise<void> {
+export async function handleFilterChangeOptimistic(
+  type: string,
+  value: string | null,
+  forceSet = false,
+  { combine = false }: { combine?: boolean } = {}
+): Promise<void> {
   clearToast();
   const previousFilters = getActiveFilters();
 
   if (value && (type === 'actor' || type === 'director')) {
-    let resolvedValue = value;
-    const cached = getCachedPersonDetails(type as 'director' | 'actor', value);
-    if (cached?.name) {
-      resolvedValue = cached.name;
-    } else {
+    if (combine) {
+      const resolvedValue = await prepareVipPersonCombine(
+        previousFilters,
+        type,
+        value,
+        getCachedPersonDetails,
+        fetchPersonDetails
+      );
+      if (!resolvedValue || !combinePersonFilter(type, resolvedValue)) return;
+
+      appEvents.emit("updateSidebarUI");
+      clearActiveSearchTerm();
+      renderFilterPills();
+      appEvents.emit("uiActionTriggered");
+
       try {
-        const details = await fetchPersonDetails(type as 'director' | 'actor', value);
-        if (details?.name) {
-          resolvedValue = details.name;
-        }
-      } catch {
-        // Fallback resiliente al valor original
+        await loadAndRenderMovies(1);
+      } catch (error: unknown) {
+        if ((error as Error)?.name !== "AbortError") showToast("Error al cargar filmografía combinada.", "error");
+        setFilter('actor', previousFilters.actor);
+        setFilter('actor2', previousFilters.actor2);
+        setFilter('director', previousFilters.director);
+        updateUrl({ replace: true });
+        updateMobileStatusBar();
+        renderFilterPills();
       }
+      return;
     }
+
+    const resolvedValue = await resolvePersonDisplayName(type, value, getCachedPersonDetails, fetchPersonDetails);
 
     notifyRemovedPersonIncompatibleFilters(previousFilters);
     const currentSort = previousFilters.sort;
@@ -364,8 +482,9 @@ export async function handleFilterChangeOptimistic(type: string, value: string |
   const isActivating = forceSet || previousFilters[type as keyof ActiveFilters] !== value;
   const newValue = isActivating ? value : null;
 
-  if (newValue && type !== 'actor' && type !== 'director') {
+  if (newValue && type !== 'actor' && type !== 'actor2' && type !== 'director') {
     if (previousFilters.actor) setFilter('actor', null);
+    if (previousFilters.actor2) setFilter('actor2', null);
     if (previousFilters.director) setFilter('director', null);
   }
 
@@ -391,6 +510,7 @@ export async function handleFilterChangeOptimistic(type: string, value: string |
     setFilter('selection', previousFilters.selection);
     setFilter('studio', previousFilters.studio);
     setFilter('actor', previousFilters.actor);
+    setFilter('actor2', previousFilters.actor2);
     setFilter('director', previousFilters.director);
     setFilter('excludedCountries', previousFilters.excludedCountries);
     setFilter('excludedGenres', previousFilters.excludedGenres);
@@ -727,6 +847,23 @@ export function setupAutocompleteHandlers(): void {
 
     const handleFormClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      const combineBtn = target.closest<HTMLElement>(".person-combine-btn");
+      if (combineBtn) {
+        e.stopPropagation();
+        triggerHapticFeedback('medium');
+        handleFilterChangeOptimistic(
+          combineBtn.dataset.combineType || filterType,
+          combineBtn.dataset.combineValue || null,
+          false,
+          { combine: true }
+        );
+        input.value = "";
+        syncClearState();
+        clearAllSidebarAutocomplete();
+        tryCloseMobileDrawer();
+        return;
+      }
+
       const suggestionItem = target.closest<HTMLElement>(`.${CSS_CLASSES.SIDEBAR_AUTOCOMPLETE_ITEM}`);
       if (suggestionItem) {
         triggerHapticFeedback('light');

@@ -110,11 +110,22 @@ describe("api.ts (Normalización de Caché y Parámetros RPC)", () => {
     );
 
     assert.strictEqual(rpcParams.actor_name, "Quentin Tarantino");
+    assert.strictEqual(rpcParams.actor_name_2, undefined);
     assert.strictEqual(rpcParams.media_type, "movies");
     assert.strictEqual(rpcParams.sort_field, "year");
     assert.strictEqual(rpcParams.sort_direction, "desc");
     assert.strictEqual(rpcParams.page_limit, 42);
     assert.strictEqual(rpcParams.page_offset, 42);
+
+    const dualRpcParams = apiModule.stateToRpcParams(
+      { actor: "Al Pacino", actor2: "Robert De Niro" },
+      1,
+      42,
+      true,
+      null
+    );
+    assert.strictEqual(dualRpcParams.actor_name, "Al Pacino");
+    assert.strictEqual(dualRpcParams.actor_name_2, "Robert De Niro");
   });
 
   test("filtro de precisión de directores discrimina de forma exacta y no confunde 'Daniels' con 'Lee Daniels' o 'Greg Daniels'", () => {

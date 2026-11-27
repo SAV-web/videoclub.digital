@@ -76,6 +76,7 @@ export const TEXT_FILTER_KEYS: ReadonlySet<string> = new Set([
   "country",
   "director",
   "actor",
+  "actor2",
   "selection",
   "studio",
   "excludedGenres",

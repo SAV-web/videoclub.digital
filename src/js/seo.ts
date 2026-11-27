@@ -19,7 +19,7 @@ interface SeoTitleResult {
 const formatYearPeriod = (year: string): string => year.replace("-", " a ");
 
 export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
-  const { searchTerm, genre, year, country, director, actor, selection, studio, mediaType, myList } = filters;
+  const { searchTerm, genre, year, country, director, actor, actor2, selection, studio, mediaType, myList } = filters;
   
   let baseNoun = "Películas y series";
   if (mediaType === "movies") {
@@ -32,7 +32,7 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
   const isCustomYear = !!(year && year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`);
   const yearSuffix = isCustomYear ? ` (${formatYearPeriod(year)})` : "";
 
-  const isCleanHome = !myList && !searchTerm && !selection && !studio && !genre && !director && !actor && !country && !isCustomYear;
+  const isCleanHome = !myList && !searchTerm && !selection && !studio && !genre && !director && !actor && !actor2 && !country && !isCustomYear;
 
   if (myList === "watchlist") {
     title = `Pendientes`;
@@ -51,8 +51,12 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
     title = (studioInfo ? studioInfo.title : title) + yearSuffix;
   } else if (genre) {
     title = `${baseNoun} de ${capitalizeWords(genre)}`;
+  } else if (director && actor) {
+    title = `${baseNoun} de ${capitalizeWords(director)} con ${capitalizeWords(actor)}`;
   } else if (director) {
     title = `${baseNoun} de ${capitalizeWords(director)}`;
+  } else if (actor && actor2) {
+    title = `${baseNoun} con ${capitalizeWords(actor)} y ${capitalizeWords(actor2)}`;
   } else if (actor) {
     title = `${baseNoun} con ${capitalizeWords(actor)}`;
   } else if (isCustomYear) {
@@ -76,7 +80,7 @@ export function buildSeoTitle(filters: ActiveFilters): SeoTitleResult {
 
 export function buildSeoDescription(noun: string, filters: ActiveFilters, movies: Movie[] = []): string {
   let desc = `Explora y descubre ${noun.toLowerCase()} en videoclub.digital.`;
-  const isCleanHome = !filters.myList && !filters.searchTerm && !filters.selection && !filters.studio && !filters.genre && !filters.director && !filters.actor && !filters.country && !(filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) && (!filters.mediaType || filters.mediaType === "all");
+  const isCleanHome = !filters.myList && !filters.searchTerm && !filters.selection && !filters.studio && !filters.genre && !filters.director && !filters.actor && !filters.actor2 && !filters.country && !(filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) && (!filters.mediaType || filters.mediaType === "all");
   
   if (filters.myList) {
     desc = "Gestiona tu lista personal de películas y series favoritas, puntuaciones y pendientes.";
@@ -87,7 +91,11 @@ export function buildSeoDescription(noun: string, filters: ActiveFilters, movies
     if (filters.genre) parts.push(`género ${filters.genre}`);
     if (filters.country) parts.push(`de ${filters.country}`);
     if (filters.director) parts.push(`dirigidas por ${filters.director}`);
-    if (filters.actor) parts.push(`con ${filters.actor}`);
+    if (filters.actor && filters.actor2) {
+      parts.push(`con ${filters.actor} y ${filters.actor2}`);
+    } else if (filters.actor) {
+      parts.push(`con ${filters.actor}`);
+    }
     if (filters.year && filters.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) {
       parts.push(filters.year.includes("-") ? `del periodo ${formatYearPeriod(filters.year)}` : `del año ${filters.year}`);
     }
@@ -200,8 +208,12 @@ export function buildBreadcrumbSchema(filters: ActiveFilters = {} as ActiveFilte
   } else if (filters.studio) {
     const studioInfo = STUDIO_DATA[filters.studio as keyof typeof STUDIO_DATA];
     filterName = (studioInfo && studioInfo.title) ? studioInfo.title : filters.studio;
+  } else if (filters.director && filters.actor) {
+    filterName = `${filters.director} + ${filters.actor}`;
   } else if (filters.director) {
     filterName = filters.director;
+  } else if (filters.actor && filters.actor2) {
+    filterName = `${filters.actor} + ${filters.actor2}`;
   } else if (filters.actor) {
     filterName = filters.actor;
   } else if (filters.genre) {

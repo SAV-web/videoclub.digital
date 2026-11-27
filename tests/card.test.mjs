@@ -378,13 +378,19 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
   let viteEnv;
   let cardModule;
   let stateModule;
+  let modalRendererModule;
+  let modalEventsModule;
+  let vipModule;
 
   before(async () => {
     viteEnv = await startViteSsrServer([
       "/src/js/state.ts",
       "/src/js/components/card/index.ts",
+      "/src/js/components/modal/renderer.ts",
+      "/src/js/components/modal/events.ts",
+      "/src/js/vipPerson.ts",
     ]);
-    [stateModule, cardModule] = viteEnv.modules;
+    [stateModule, cardModule, modalRendererModule, modalEventsModule, vipModule] = viteEnv.modules;
   });
 
   after(async () => {
@@ -711,5 +717,254 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
     await executeRevertAction(101, undefined, () => { restored = true; });
     assert.equal(getActiveRevertSnapshot(), null);
     assert.equal(isMovieRevertActive(101), false);
+  });
+
+  test("Modal Reparto: toggle '+' -> '-' entre Reparto y primer actor y upgrade en vivo", async () => {
+    await vipModule.loadVipSlugs();
+    stateModule.resetFiltersState();
+
+    const walkNodes = (node, predicate, acc = []) => {
+      if (!node || !node.children) return acc;
+      for (const ch of node.children) {
+        if (predicate(ch)) acc.push(ch);
+        walkNodes(ch, predicate, acc);
+      }
+      return acc;
+    };
+    const enhanceModalQueries = (root) => {
+      const nodes = [root, ...walkNodes(root, () => true)];
+      nodes.forEach((n) => {
+        attachQuerySelector(n);
+        const origQSA = n.querySelectorAll;
+        n.querySelectorAll = (sel) => {
+          if (sel === "[data-template]") {
+            return walkNodes(n, (el) => Boolean(el.dataset?.template || el.getAttribute?.("data-template")));
+          }
+          if (sel === "[data-director-name], [data-actor-name]") {
+            return walkNodes(n, (el) => Boolean(el.dataset && (el.dataset.directorName || el.dataset.actorName)));
+          }
+          return origQSA ? origQSA(sel) : [];
+        };
+        const origClosest = n.closest;
+        n.closest = (sel) => {
+          if (sel && sel.startsWith('[data-template="')) {
+            const val = sel.slice(16, -2);
+            let curr = n;
+            while (curr) {
+              if (curr.dataset?.template === val || curr.getAttribute?.("data-template") === val) return curr;
+              curr = curr.parentElement;
+            }
+            return null;
+          }
+          return origClosest ? origClosest(sel) : null;
+        };
+      });
+    };
+
+    function buildQuickViewTemplate() {
+      const tpl = createMockDomElement("template", { id: "quick-view-template" });
+      tpl.content = {
+        cloneNode: () => {
+          const frag = createDocumentFragmentMock();
+          const card = attachQuerySelector(createMockDomElement("article", { className: "movie-card" }));
+          const img = createMockDomElement("img");
+          const dirEl = createMockDomElement("div", { className: "front-director-info", dataset: { template: "director" } });
+          dirEl.setAttribute("data-template", "director");
+
+          const genreCont = createMockDomElement("div", { className: "detail-item", dataset: { template: "genre-container" } });
+          genreCont.setAttribute("data-template", "genre-container");
+          const genreLabel = createMockDomElement("strong", { className: "detail-label-title", textContent: "Género." });
+          const genreEl = createMockDomElement("span", { className: "detail-data", dataset: { template: "genre" } });
+          genreEl.setAttribute("data-template", "genre");
+          genreCont.appendChild(genreLabel);
+          genreCont.appendChild(genreEl);
+
+          const actorsCont = createMockDomElement("div", { className: "detail-item", dataset: { template: "actors-container" } });
+          actorsCont.setAttribute("data-template", "actors-container");
+          actorsCont.insertBefore = (newChild, refChild) => {
+            const idx = actorsCont.children.indexOf(refChild);
+            if (idx === -1) return actorsCont.appendChild(newChild);
+            newChild.parentElement = actorsCont;
+            actorsCont.children.splice(idx, 0, newChild);
+            return newChild;
+          };
+          const actorsLabel = createMockDomElement("strong", { className: "detail-label-title", textContent: "Reparto." });
+          const actorsEl = createMockDomElement("span", { className: "detail-data", dataset: { template: "actors" } });
+          actorsEl.setAttribute("data-template", "actors");
+          const origActorsAppend = actorsEl.appendChild;
+          actorsEl.appendChild = (child) => {
+            if (child && child.isDocumentFragment) {
+              const items = [...child.children];
+              child.children.length = 0;
+              items.forEach((c) => actorsEl.appendChild(c));
+              return child;
+            }
+            return origActorsAppend(child);
+          };
+          actorsEl.append = (...items) => {
+            items.forEach((it) => actorsEl.appendChild(typeof it === "string" ? { textContent: it, nodeType: 3 } : it));
+          };
+          actorsCont.appendChild(actorsLabel);
+          actorsCont.appendChild(actorsEl);
+
+          const synopsisEl = createMockDomElement("span", { dataset: { template: "synopsis" } });
+          synopsisEl.setAttribute("data-template", "synopsis");
+
+          card.appendChild(img);
+          card.appendChild(dirEl);
+          card.appendChild(genreCont);
+          card.appendChild(actorsCont);
+          card.appendChild(synopsisEl);
+          enhanceModalQueries(card);
+          frag.appendChild(card);
+          return frag;
+        }
+      };
+      return tpl;
+    }
+
+    const modal = attachQuerySelector(createMockDomElement("div", { id: "movie-modal" }));
+    const content = attachQuerySelector(createMockDomElement("div", { id: "modal-content" }));
+    content.appendChild = (child) => {
+      if (child && child.isDocumentFragment) {
+        const items = [...child.children];
+        child.children.length = 0;
+        items.forEach((c) => content.appendChild(c));
+        return child;
+      }
+      child.parentElement = content;
+      content.children.push(child);
+      return child;
+    };
+    const quickTpl = buildQuickViewTemplate();
+
+    const sourceCard = attachQuerySelector(createMockDomElement("div", { className: "movie-card" }));
+    sourceCard.movieData = createMockMovie({
+      id: 777,
+      title: "Pulp Fiction",
+      genres: "Crimen, Thriller",
+      parsedDirectors: ["Quentin Tarantino"],
+      parsedActors: ["John Travolta", "Samuel L. Jackson", "Uma Thurman"],
+    });
+
+    // 1. Sin VIP activo: no debe existir botón toggle '+' junto a Reparto
+    modalRendererModule.populateModalContent({
+      cardElement: sourceCard,
+      contextCards: null,
+      template: quickTpl.content,
+      content,
+      modal,
+      scheduleModalRAF: (fn) => { fn(); return 1; },
+      getLifecycleGen: () => 1,
+      updateNavButtons: () => {},
+    });
+    enhanceModalQueries(content);
+    const actorsContIdle = content.querySelector('[data-template="actors-container"]');
+    assert.equal(actorsContIdle.querySelector(".modal-cast-combine-toggle"), null, "Sin VIP activo no debe renderizar toggle '+'");
+
+    // 2. Con VIP activo (1 actor VIP): upgradeModalPersonCombineButtons inserta toggle '+' antes de actors
+    stateModule.setFilter("actor", "John Travolta");
+    modalRendererModule.upgradeModalPersonCombineButtons(content);
+
+    const toggleBtn = actorsContIdle.querySelector(".modal-cast-combine-toggle");
+    enhanceModalQueries(actorsContIdle);
+    assert.ok(toggleBtn, "Debe crear el toggle '+' entre 'Reparto.' y el primer actor");
+    assert.equal(toggleBtn.textContent, "+");
+    assert.equal(toggleBtn.getAttribute("aria-expanded"), "false");
+    const actorsIdx = actorsContIdle.children.findIndex((c) => c.getAttribute?.("data-template") === "actors");
+    const toggleIdx = actorsContIdle.children.indexOf(toggleBtn);
+    assert.equal(toggleIdx, actorsIdx - 1, "El botón toggle '+' debe ir inmediatamente entre 'Reparto.' y [data-template='actors']");
+    assert.equal(actorsContIdle.classList.contains("is-cast-combine-expanded"), false);
+
+    // 3. Click en '+' cambia a '-' y expande clase .is-cast-combine-expanded; segundo click vuelve a '+'
+    const eventsBinding = modalEventsModule.bindModalEvents({
+      getDom: () => ({ modal, content, prevBtn: null, nextBtn: null }),
+      navigateToSibling: () => {},
+      closeModal: () => {},
+      resetModalTransform: () => {},
+    });
+
+    try {
+      content.dispatchEvent({ type: "click", target: toggleBtn });
+      assert.equal(actorsContIdle.classList.contains("is-cast-combine-expanded"), true);
+      assert.equal(toggleBtn.textContent, "-");
+      assert.equal(toggleBtn.getAttribute("aria-expanded"), "true");
+
+      content.dispatchEvent({ type: "click", target: toggleBtn });
+      assert.equal(actorsContIdle.classList.contains("is-cast-combine-expanded"), false);
+      assert.equal(toggleBtn.textContent, "+");
+      assert.equal(toggleBtn.getAttribute("aria-expanded"), "false");
+
+      // 4. Al abrir una modal ya con 1 VIP activo, el toggle '+' se inserta de inmediato
+      modalRendererModule.populateModalContent({
+        cardElement: sourceCard,
+        contextCards: null,
+        template: quickTpl.content,
+        content,
+        modal,
+        scheduleModalRAF: (fn) => { fn(); return 1; },
+        getLifecycleGen: () => 2,
+        updateNavButtons: () => {},
+      });
+      enhanceModalQueries(content);
+      const actorsContDirect = content.querySelector('[data-template="actors-container"]');
+      const directToggle = actorsContDirect.querySelector(".modal-cast-combine-toggle");
+      assert.ok(directToggle, "Al abrir con VIP activo debe crear el toggle '+' directamente");
+      assert.equal(directToggle.textContent, "+");
+    } finally {
+      eventsBinding.unbind();
+      stateModule.resetFiltersState();
+    }
+  });
+
+  test("renderMovieGrid con dual-person: primera ficha con collage diagonal de ambos VIP y sin texto al pie", async () => {
+    const gridContainer = createGridContainer("dual-vip-grid");
+    const martin = {
+      id: 10,
+      name: "Martin Scorsese",
+      slug: "martin-scorsese",
+      vip: 1,
+      thumbhash_st: "data:image/webp;base64,martin",
+    };
+    const cage = {
+      id: 20,
+      name: "Nicolas Cage",
+      slug: "nicolas-cage",
+      vip: 1,
+      thumbhash_st: "data:image/webp;base64,cage",
+    };
+    const movie = createMockMovie({ id: 555, title: "Bringing Out the Dead" });
+
+    await cardModule.renderMovieGrid(gridContainer, [movie], {
+      type: "dual-person",
+      data: [martin, cage],
+    });
+
+    assert.equal(gridContainer.children.length, 2, "Debe insertar ficha dual + película");
+    const dualCard = gridContainer.children[0];
+    attachQuerySelector(dualCard);
+
+    assert.ok(dualCard.classList.contains("dual-vip-card"), "Debe tener clase .dual-vip-card");
+    assert.ok(dualCard.classList.contains("person-card"), "Debe heredar clase .person-card");
+    assert.ok(dualCard.classList.contains("collection-card"), "Debe heredar .collection-card");
+    assert.ok(dualCard.classList.contains("no-bio"), "Debe incluir .no-bio");
+    assert.equal(dualCard.textContent, "", "La ficha dual no debe renderizar texto visible en el pie");
+    assert.equal(dualCard.querySelector(".movie-summary"), null, "No debe renderizar .movie-summary");
+
+    const primarySlot = dualCard.querySelector(".dual-vip-portrait--primary");
+    const secondarySlot = dualCard.querySelector(".dual-vip-portrait--secondary");
+    assert.ok(primarySlot, "Debe existir hueco superior izquierdo (--primary)");
+    assert.ok(secondarySlot, "Debe existir hueco inferior derecho (--secondary)");
+
+    attachQuerySelector(primarySlot);
+    attachQuerySelector(secondarySlot);
+    const primaryImg = primarySlot.querySelector("img");
+    const secondaryImg = secondarySlot.querySelector("img");
+    assert.ok(primaryImg, "Debe existir img primaria");
+    assert.ok(secondaryImg, "Debe existir img secundaria");
+    assert.equal(primaryImg.alt, "Foto de Martin Scorsese");
+    assert.equal(secondaryImg.alt, "Foto de Nicolas Cage");
+    assert.ok(String(primaryImg.style.backgroundImage).includes("martin"));
+    assert.ok(String(secondaryImg.style.backgroundImage).includes("cage"));
   });
 });

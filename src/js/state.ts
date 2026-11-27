@@ -25,6 +25,9 @@ import {
   normalizeUserMovieEntry,
   parsePrettyPath,
   REVERSE_SORT_SLUG_MAP,
+  slugToPersonQuery,
+  toSlug,
+  canCombinePersonFilter,
 } from "./contracts.js";
 import { ActiveFilters, UserMovieEntry } from "./types.js";
 
@@ -46,6 +49,7 @@ const initialState: AppState = {
     country: null,
     director: null,
     actor: null,
+    actor2: null,
     selection: null,
     studio: null,
     sort: DEFAULTS.SORT,
@@ -59,7 +63,9 @@ const initialState: AppState = {
 
 export interface AppEventPayloads {
   'filtersReset': { keepSort?: boolean; newFilter?: { type: string; value: unknown }; replaceHistory?: boolean } | undefined;
-  'filter:apply': { type: string; value: unknown };
+  'filter:apply': { type: string; value: unknown; combine?: boolean };
+  'vipManifest:loaded': undefined;
+  'collaborators:loaded': undefined;
   'uiActionTriggered': undefined;
   'updateSidebarUI': undefined;
   'userDataUpdated': undefined;
@@ -181,8 +187,25 @@ function stateToUrlParams(activeFilters: ActiveFilters, currentPage: number): UR
   const params = new URLSearchParams();
 
   Object.entries(activeFilters).forEach(([key, value]) => {
-    // genre, country, selection, studio, director, actor, excludedGenres y excludedCountries van exclusivamente en el pathname
-    if (key === "genre" || key === "country" || key === "selection" || key === "studio" || key === "director" || key === "actor" || key === "excludedGenres" || key === "excludedCountries") return;
+    // genre, country, selection, studio, director, excludedGenres y excludedCountries van en pretty path.
+    // actor y actor2 solo van a query string cuando forman un cruce de 2 personas.
+    if (key === "genre" || key === "country" || key === "selection" || key === "studio" || key === "director" || key === "excludedGenres" || key === "excludedCountries") return;
+
+    if (key === "actor") {
+      if (activeFilters.director && typeof value === "string" && value.trim()) {
+        const slug = toSlug(value);
+        if (slug) params.set("actor", slug);
+      }
+      return;
+    }
+
+    if (key === "actor2") {
+      if (!activeFilters.director && activeFilters.actor && typeof value === "string" && value.trim()) {
+        const slug = toSlug(value);
+        if (slug) params.set("actor2", slug);
+      }
+      return;
+    }
 
     const shortKey = REVERSE_URL_PARAM_MAP[key as keyof ActiveFilters];
     if (!shortKey) return;
@@ -253,6 +276,20 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   // 2. Sincronizar parámetros técnicos desde la query string
   const effectiveParams = extraQuery ? new URLSearchParams(extraQuery) : params;
   setCurrentPage(effectiveParams.get("p") || effectiveParams.get("page"));
+
+  // Cruce de personas vía query params (ej. /director/scorsese/?actor=robert-de-niro o /actor/al-pacino/?actor2=robert-de-niro)
+  const qpDirector = effectiveParams.get("director");
+  const qpActor = effectiveParams.get("actor");
+  const qpActor2 = effectiveParams.get("actor2");
+
+  if (!state.activeFilters.director && !state.activeFilters.actor) {
+    if (qpDirector) setFilter("director", slugToPersonQuery(qpDirector));
+    if (qpActor) setFilter("actor", slugToPersonQuery(qpActor));
+  } else if (state.activeFilters.director && !state.activeFilters.actor) {
+    if (qpActor) setFilter("actor", slugToPersonQuery(qpActor));
+  } else if (!state.activeFilters.director && state.activeFilters.actor) {
+    if (qpActor2) setFilter("actor2", slugToPersonQuery(qpActor2));
+  }
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
     if (stateKey === "page") return;
@@ -399,7 +436,7 @@ export function getActiveFilterCount(): number {
   if (f.year && f.year !== `${CONFIG.YEAR_MIN}-${CONFIG.YEAR_MAX}`) count++;
 
   const INCLUDED_FILTERS: Array<keyof ActiveFilters> = [
-    "genre", "country", "director", "actor", "selection", "studio"
+    "genre", "country", "director", "actor", "actor2", "selection", "studio"
   ];
 
   for (const key of INCLUDED_FILTERS) {
@@ -413,14 +450,56 @@ export function setTotalMovies(total: unknown): void { state.totalMovies = norma
 export const setSort = (sort: unknown): void => { state.activeFilters.sort = normalizeSort(sort); };
 export const setMediaType = (type: unknown): void => { state.activeFilters.mediaType = normalizeMediaType(type); state.totalMovies = 0; };
 
+function clearCatalogFiltersForPerson(): void {
+  state.activeFilters.genre = null;
+  state.activeFilters.country = null;
+  state.activeFilters.selection = null;
+  state.activeFilters.studio = null;
+  state.activeFilters.year = null;
+  state.activeFilters.excludedGenres = [];
+  state.activeFilters.excludedCountries = [];
+  state.activeFilters.mediaType = DEFAULTS.MEDIA_TYPE;
+}
+
 // Aplica un filtro (ej: país = 'España')
 export function setFilter(type: string, value: unknown): boolean {
   if (!(type in state.activeFilters)) return false;
   const normalizedValue = normalizeFilterValue(type, value);
   if (normalizedValue === undefined) return false;
-  
+
   const currentVal = state.activeFilters[type as keyof ActiveFilters];
   if (areContractValuesEqual(currentVal, normalizedValue)) return true; // Nada cambia
+
+  // Regla de promoción al eliminar actor principal mientras hay un segundo actor activo
+  if (type === "actor" && !normalizedValue) {
+    state.activeFilters.actor = state.activeFilters.actor2 || null;
+    state.activeFilters.actor2 = null;
+    state.totalMovies = 0;
+    return true;
+  }
+
+  if (type === "actor2") {
+    if (!normalizedValue) {
+      state.activeFilters.actor2 = null;
+      state.totalMovies = 0;
+      return true;
+    }
+    const strVal = String(normalizedValue);
+    if (state.activeFilters.director) {
+      state.activeFilters.actor2 = null;
+      return false;
+    }
+    if (!state.activeFilters.actor) {
+      state.activeFilters.actor = strVal;
+      state.activeFilters.actor2 = null;
+      clearCatalogFiltersForPerson();
+      state.totalMovies = 0;
+      return true;
+    }
+    if (toSlug(state.activeFilters.actor) === toSlug(strVal)) {
+      return false;
+    }
+  }
 
   Reflect.set(state.activeFilters, type, normalizedValue);
 
@@ -445,26 +524,45 @@ export function setFilter(type: string, value: unknown): boolean {
     if (type === 'selection') state.activeFilters.studio = null;
     if (type === 'studio') state.activeFilters.selection = null;
 
-    // Director y Actor son 100% excluyentes con cualquier otra categoría
-    if (type === 'director' || type === 'actor') {
-      state.activeFilters.genre = null;
-      state.activeFilters.country = null;
-      state.activeFilters.selection = null;
-      state.activeFilters.studio = null;
-      state.activeFilters.year = null;
-      state.activeFilters.excludedGenres = [];
-      state.activeFilters.excludedCountries = [];
-      state.activeFilters.mediaType = DEFAULTS.MEDIA_TYPE;
-      if (type === 'director') state.activeFilters.actor = null;
-      if (type === 'actor') state.activeFilters.director = null;
+    // Las personas son 100% excluyentes con cualquier otra categoría de catálogo
+    if (type === 'director' || type === 'actor' || type === 'actor2') {
+      clearCatalogFiltersForPerson();
+      if (type === 'director') {
+        state.activeFilters.actor2 = null;
+      } else if (type === 'actor') {
+        if (state.activeFilters.director) {
+          state.activeFilters.actor2 = null;
+        } else if (state.activeFilters.actor2 && toSlug(state.activeFilters.actor2) === toSlug(String(normalizedValue))) {
+          state.activeFilters.actor2 = null;
+        }
+      }
     } else if (type !== 'sort' && type !== 'mediaType' && type !== 'searchTerm' && type !== 'myList') {
       state.activeFilters.director = null;
       state.activeFilters.actor = null;
+      state.activeFilters.actor2 = null;
     }
   }
 
   state.totalMovies = 0; // Obligamos a recalcular resultados
   return true;
+}
+
+/**
+ * Añade una segunda persona al cruce actual respetando la regla de negocio:
+ * máximo 2 personas, solo Director + Actor o Actor + Actor (nunca 2 Directores).
+ */
+export function combinePersonFilter(type: "director" | "actor", value: unknown): boolean {
+  const normalizedValue = normalizeFilterValue(type, value);
+  if (typeof normalizedValue !== "string" || !normalizedValue) return false;
+  if (!canCombinePersonFilter(state.activeFilters, type, normalizedValue, true, true)) return false;
+
+  if (type === "director") {
+    return setFilter("director", normalizedValue);
+  }
+  if (!state.activeFilters.actor) {
+    return setFilter("actor", normalizedValue);
+  }
+  return setFilter("actor2", normalizedValue);
 }
 
 // Guarda lo que escribe el usuario en el buscador y limpia el resto de filtros
@@ -474,7 +572,7 @@ export function setSearchTerm(term: string | null | undefined): boolean {
   state.totalMovies = 0;
   
   if (normalizedTerm.length > 0) {
-    const toClear: Array<keyof ActiveFilters> = ['genre', 'year', 'country', 'director', 'actor', 'selection', 'studio', 'myList'];
+    const toClear: Array<keyof ActiveFilters> = ['genre', 'year', 'country', 'director', 'actor', 'actor2', 'selection', 'studio', 'myList'];
     const arraysToClear: Array<keyof ActiveFilters> = ['excludedGenres', 'excludedCountries'];
     
     const hadFilters = toClear.some(k => state.activeFilters[k]) || arraysToClear.some(k => {
@@ -511,6 +609,7 @@ export function toggleExcludedFilter(type: string, value: unknown): boolean {
     if (type === 'country') state.activeFilters.country = null;
     state.activeFilters.director = null;
     state.activeFilters.actor = null;
+    state.activeFilters.actor2 = null;
   }
   state.totalMovies = 0;
   return true;
