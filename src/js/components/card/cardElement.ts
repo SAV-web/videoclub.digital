@@ -1,6 +1,6 @@
 import { CONFIG, CSS_CLASSES, SELECTORS, STUDIO_DATA, IGNORED_ACTORS_SET, FILTER_CONFIG } from "../../constants.js";
 import { formatRuntime, createElement, triggerHapticFeedback, renderCountryFlag, renderStudioIcons, setupExternalLink, getPosterUrl, computePersonAgeInfo, applyLengthBasedClass, buildFilterUrl, toSlug } from "../../utils.js";
-import { getUserDataForMovie, updateUserDataForMovie, appEvents } from "../../state.js";
+import { getUserDataForMovie, updateUserDataForMovie, appEvents, getActiveFilters } from "../../state.js";
 import { saveLocalEntryWithMovie } from "../../localStore.js";
 import { scheduleSync } from "../../syncManager.js";
 import { showToast, areInteractionsLocked, lockGlobalInteractions } from "../../ui.js";
@@ -320,7 +320,18 @@ export function handleCardClick(this: MovieCardElement | void, event: MouseEvent
   }
   const isPerson = card.classList.contains('person-card');
 
-  // 0. Botón de alternancia de rol en VIP (Director <-> Actor)
+  // 0. Botón de alternancia de rol en VIP (Director <-> Actor) o retrato clickable en ficha VIP dual
+  const dualPortraitBtn = target.closest<HTMLElement>('.dual-vip-portrait');
+  if (dualPortraitBtn) {
+    event.preventDefault();
+    event.stopPropagation();
+    const removeKey = dualPortraitBtn.dataset.removeFilterKey;
+    if (removeKey === "director" || removeKey === "actor" || removeKey === "actor2") {
+      appEvents.emit("filter:apply", { type: removeKey, value: null });
+    }
+    return;
+  }
+
   const roleToggleBtn = target.closest<HTMLElement>('.person-role-toggle-btn');
   if (roleToggleBtn) {
     event.preventDefault();
@@ -1048,26 +1059,51 @@ export function createPersonCardElement(person: PersonDetails): DocumentFragment
  * Construye la primera ficha VIP combinada (sin texto en el pie) con collage
  * diagonal escalonado de ambos retratos.
  */
-export function createDualPersonCardElement(people: [PersonDetails, PersonDetails]): DocumentFragment {
+export function createDualPersonCardElement(
+  people: [PersonDetails, PersonDetails],
+  filterKeys?: ["director" | "actor" | "actor2", "director" | "actor" | "actor2"]
+): DocumentFragment {
   const frag = document.createDocumentFragment();
   const [primary, secondary] = people;
   if (!primary || !secondary) return frag;
 
-  const createPortraitSlot = (person: PersonDetails, slotClass: string): HTMLElement => {
-    const slot = createElement("div", { className: `dual-vip-portrait ${slotClass}` });
+  const resolveRemoveFilterKey = (person: PersonDetails, idx: 0 | 1): "director" | "actor" | "actor2" => {
+    if (filterKeys?.[idx]) return filterKeys[idx];
+    const active = getActiveFilters();
+    const pSlug = toSlug(person.slug || person.name);
+    if (active.director && toSlug(active.director) === pSlug) return "director";
+    if (active.actor && toSlug(active.actor) === pSlug) return "actor";
+    if (active.actor2 && toSlug(active.actor2) === pSlug) return "actor2";
+    return idx === 0 ? "actor" : "actor2";
+  };
+
+  const createPortraitSlot = (person: PersonDetails, slotClass: string, removeFilterKey: "director" | "actor" | "actor2"): HTMLElement => {
+    const slot = createElement("button", {
+      type: "button",
+      className: `dual-vip-portrait ${slotClass}`,
+      dataset: { removeFilterKey },
+      attributes: {
+        "aria-label": `Quitar filtro de ${person.name}`,
+        title: `Quitar ${person.name}`
+      }
+    });
     const img = createElement("img", {
       className: "lazy-image",
       attributes: { width: "428", height: "535" }
     }) as HTMLImageElement;
     applyPersonPortraitImage(img, person);
-    slot.appendChild(img);
+    const removeBadge = createElement("span", {
+      className: "dual-vip-remove-badge",
+      attributes: { "aria-hidden": "true" }
+    });
+    slot.append(img, removeBadge);
     return slot;
   };
 
   const poster = createElement("div", { className: "poster-container dual-vip-poster" });
   poster.append(
-    createPortraitSlot(primary, "dual-vip-portrait--primary"),
-    createPortraitSlot(secondary, "dual-vip-portrait--secondary"),
+    createPortraitSlot(primary, "dual-vip-portrait--primary", resolveRemoveFilterKey(primary, 0)),
+    createPortraitSlot(secondary, "dual-vip-portrait--secondary", resolveRemoveFilterKey(secondary, 1)),
     createElement("div", { className: "poster-overlay-guard" })
   );
 

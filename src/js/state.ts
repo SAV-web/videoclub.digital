@@ -50,6 +50,7 @@ const initialState: AppState = {
     director: null,
     actor: null,
     actor2: null,
+    primaryPersonRole: null,
     selection: null,
     studio: null,
     sort: DEFAULTS.SORT,
@@ -187,12 +188,20 @@ function stateToUrlParams(activeFilters: ActiveFilters, currentPage: number): UR
   const params = new URLSearchParams();
 
   Object.entries(activeFilters).forEach(([key, value]) => {
-    // genre, country, selection, studio, director, excludedGenres y excludedCountries van en pretty path.
-    // actor y actor2 solo van a query string cuando forman un cruce de 2 personas.
-    if (key === "genre" || key === "country" || key === "selection" || key === "studio" || key === "director" || key === "excludedGenres" || key === "excludedCountries") return;
+    // genre, country, selection, studio, excludedGenres y excludedCountries van en pretty path.
+    // El primer VIP (director o actor según primaryPersonRole) va en pretty path; el segundo VIP va en query string.
+    if (key === "genre" || key === "country" || key === "selection" || key === "studio" || key === "excludedGenres" || key === "excludedCountries" || key === "primaryPersonRole") return;
+
+    if (key === "director") {
+      if (activeFilters.primaryPersonRole === "actor" && activeFilters.actor && typeof value === "string" && value.trim()) {
+        const slug = toSlug(value);
+        if (slug) params.set("director", slug);
+      }
+      return;
+    }
 
     if (key === "actor") {
-      if (activeFilters.director && typeof value === "string" && value.trim()) {
+      if (activeFilters.director && activeFilters.primaryPersonRole !== "actor" && typeof value === "string" && value.trim()) {
         const slug = toSlug(value);
         if (slug) params.set("actor", slug);
       }
@@ -288,7 +297,11 @@ export function syncStateWithUrl(pathname: string = "/", queryString: string = "
   } else if (state.activeFilters.director && !state.activeFilters.actor) {
     if (qpActor) setFilter("actor", slugToPersonQuery(qpActor));
   } else if (!state.activeFilters.director && state.activeFilters.actor) {
-    if (qpActor2) setFilter("actor2", slugToPersonQuery(qpActor2));
+    if (qpDirector) {
+      setFilter("director", slugToPersonQuery(qpDirector));
+    } else if (qpActor2) {
+      setFilter("actor2", slugToPersonQuery(qpActor2));
+    }
   }
 
   Object.entries(URL_PARAM_MAP).forEach(([shortKey, stateKey]) => {
@@ -450,6 +463,13 @@ export function setTotalMovies(total: unknown): void { state.totalMovies = norma
 export const setSort = (sort: unknown): void => { state.activeFilters.sort = normalizeSort(sort); };
 export const setMediaType = (type: unknown): void => { state.activeFilters.mediaType = normalizeMediaType(type); state.totalMovies = 0; };
 
+function clearAllPersonFilters(): void {
+  state.activeFilters.director = null;
+  state.activeFilters.actor = null;
+  state.activeFilters.actor2 = null;
+  state.activeFilters.primaryPersonRole = null;
+}
+
 function clearCatalogFiltersForPerson(): void {
   state.activeFilters.genre = null;
   state.activeFilters.country = null;
@@ -474,6 +494,16 @@ export function setFilter(type: string, value: unknown): boolean {
   if (type === "actor" && !normalizedValue) {
     state.activeFilters.actor = state.activeFilters.actor2 || null;
     state.activeFilters.actor2 = null;
+    state.activeFilters.primaryPersonRole = state.activeFilters.actor
+      ? (state.activeFilters.director && state.activeFilters.primaryPersonRole === "director" ? "director" : "actor")
+      : (state.activeFilters.director ? "director" : null);
+    state.totalMovies = 0;
+    return true;
+  }
+
+  if (type === "director" && !normalizedValue) {
+    state.activeFilters.director = null;
+    state.activeFilters.primaryPersonRole = state.activeFilters.actor ? "actor" : null;
     state.totalMovies = 0;
     return true;
   }
@@ -529,17 +559,26 @@ export function setFilter(type: string, value: unknown): boolean {
       clearCatalogFiltersForPerson();
       if (type === 'director') {
         state.activeFilters.actor2 = null;
+        if (!state.activeFilters.actor || state.activeFilters.primaryPersonRole !== 'actor') {
+          state.activeFilters.primaryPersonRole = 'director';
+        }
       } else if (type === 'actor') {
         if (state.activeFilters.director) {
           state.activeFilters.actor2 = null;
-        } else if (state.activeFilters.actor2 && toSlug(state.activeFilters.actor2) === toSlug(String(normalizedValue))) {
-          state.activeFilters.actor2 = null;
+          if (state.activeFilters.primaryPersonRole !== 'director') {
+            state.activeFilters.primaryPersonRole = 'actor';
+          }
+        } else {
+          state.activeFilters.primaryPersonRole = 'actor';
+          if (state.activeFilters.actor2 && toSlug(state.activeFilters.actor2) === toSlug(String(normalizedValue))) {
+            state.activeFilters.actor2 = null;
+          }
         }
+      } else if (type === 'actor2') {
+        state.activeFilters.primaryPersonRole = 'actor';
       }
     } else if (type !== 'sort' && type !== 'mediaType' && type !== 'searchTerm' && type !== 'myList') {
-      state.activeFilters.director = null;
-      state.activeFilters.actor = null;
-      state.activeFilters.actor2 = null;
+      clearAllPersonFilters();
     }
   }
 
@@ -548,18 +587,31 @@ export function setFilter(type: string, value: unknown): boolean {
 }
 
 /**
- * Añade una segunda persona al cruce actual respetando la regla de negocio:
- * máximo 2 personas, solo Director + Actor o Actor + Actor (nunca 2 Directores).
+ * Añade una segunda persona o sustituye al segundo VIP del cruce actual
+ * respetando la regla de negocio: máximo 2 personas, solo Director + Actor o
+ * Actor + Actor (nunca 2 Directores).
  */
 export function combinePersonFilter(type: "director" | "actor", value: unknown): boolean {
   const normalizedValue = normalizeFilterValue(type, value);
   if (typeof normalizedValue !== "string" || !normalizedValue) return false;
   if (!canCombinePersonFilter(state.activeFilters, type, normalizedValue, true, true)) return false;
 
+  const primaryIsActor = state.activeFilters.primaryPersonRole === "actor" && Boolean(state.activeFilters.actor);
+
   if (type === "director") {
-    return setFilter("director", normalizedValue);
+    if (state.activeFilters.actor2) setFilter("actor2", null);
+    const applied = setFilter("director", normalizedValue);
+    if (applied && primaryIsActor) {
+      state.activeFilters.primaryPersonRole = "actor";
+    }
+    return applied;
   }
-  if (!state.activeFilters.actor) {
+
+  if (primaryIsActor) {
+    if (state.activeFilters.director) setFilter("director", null);
+    return setFilter("actor2", normalizedValue);
+  }
+  if (!state.activeFilters.actor || state.activeFilters.director) {
     return setFilter("actor", normalizedValue);
   }
   return setFilter("actor2", normalizedValue);
@@ -572,7 +624,7 @@ export function setSearchTerm(term: string | null | undefined): boolean {
   state.totalMovies = 0;
   
   if (normalizedTerm.length > 0) {
-    const toClear: Array<keyof ActiveFilters> = ['genre', 'year', 'country', 'director', 'actor', 'actor2', 'selection', 'studio', 'myList'];
+    const toClear: Array<keyof ActiveFilters> = ['genre', 'year', 'country', 'director', 'actor', 'actor2', 'primaryPersonRole', 'selection', 'studio', 'myList'];
     const arraysToClear: Array<keyof ActiveFilters> = ['excludedGenres', 'excludedCountries'];
     
     const hadFilters = toClear.some(k => state.activeFilters[k]) || arraysToClear.some(k => {
@@ -607,9 +659,7 @@ export function toggleExcludedFilter(type: string, value: unknown): boolean {
     state.activeFilters[listKey] = [normalizedValue];
     if (type === 'genre') state.activeFilters.genre = null;
     if (type === 'country') state.activeFilters.country = null;
-    state.activeFilters.director = null;
-    state.activeFilters.actor = null;
-    state.activeFilters.actor2 = null;
+    clearAllPersonFilters();
   }
   state.totalMovies = 0;
   return true;

@@ -26,7 +26,7 @@ import {
   scheduleMyListBackgroundRevalidation
 } from "./api.js";
 
-import { isAbortError, toSlug, getActivePeopleCount } from "./contracts.js";
+import { isAbortError, toSlug, getActivePeopleCount, getOrderedActivePeople } from "./contracts.js";
 import { loadVipSlugs, seedPersonCollaborators, ensureFullCollaborators } from "./vipPerson.js";
 import { updatePageTitle, updateStructuredData, updateBreadcrumbData } from "./seo.js";
 import {
@@ -217,29 +217,13 @@ function syncPersonFilterName(
   }
 }
 
-interface ActiveVipPersonEntry {
-  filterKey: "director" | "actor" | "actor2";
-  role: "director" | "actor";
-  name: string;
-}
-
 /**
  * Extrae el par ordenado de personas activas (1 VIP o combinación de 2 VIPs)
  * siempre que la vista no corresponda a búsqueda libre ni Mi Lista.
  */
-function resolveActiveVipPeople(filters: ActiveFilters): ActiveVipPersonEntry[] {
+function resolveActiveVipPeople(filters: ActiveFilters) {
   if (filters.myList || filters.searchTerm) return [];
-  const entries: ActiveVipPersonEntry[] = [];
-  if (filters.director) {
-    entries.push({ filterKey: "director", role: "director", name: filters.director });
-  }
-  if (filters.actor) {
-    entries.push({ filterKey: "actor", role: "actor", name: filters.actor });
-  }
-  if (filters.actor2) {
-    entries.push({ filterKey: "actor2", role: "actor", name: filters.actor2 });
-  }
-  return entries.length === 1 || entries.length === 2 ? entries : [];
+  return getOrderedActivePeople(filters);
 }
 
 /**
@@ -248,7 +232,7 @@ function resolveActiveVipPeople(filters: ActiveFilters): ActiveVipPersonEntry[] 
  */
 function syncAndResolveAllVips(
   peopleData: Array<PersonDetails | null>,
-  activeVipEntries: ActiveVipPersonEntry[]
+  activeVipEntries: ReturnType<typeof resolveActiveVipPeople>
 ): PersonDetails[] | null {
   peopleData.forEach((personData, idx) => {
     if (personData && activeVipEntries[idx]) {
@@ -558,7 +542,11 @@ export async function loadAndRenderMovies(
       if (resolvedVips) {
         confirmedHasVip = true;
         vipData = resolvedVips.length === 2
-          ? { type: "dual-person", data: [resolvedVips[0], resolvedVips[1]] }
+          ? {
+              type: "dual-person",
+              data: [resolvedVips[0], resolvedVips[1]],
+              filterKeys: [activeVipEntries[0].filterKey, activeVipEntries[1].filterKey]
+            }
           : { type: "person", data: resolvedVips[0] };
 
         // Si es VIP en página 1, la tarjeta VIP consume 1 slot. Si el catálogo devolvió

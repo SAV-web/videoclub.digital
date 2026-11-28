@@ -217,7 +217,7 @@ async function handleFilterApply(data: { type: string; value: unknown; combine?:
     if (currentFilters.actor) setFilter('actor', null);
     if (currentFilters.actor2) setFilter('actor2', null);
     if (currentFilters.director) setFilter('director', null);
-  } else {
+  } else if (value) {
     // Si se activa una persona (sin combinar), se limpian las categorías incompatibles y el resto de personas, preservando el orden
     notifyRemovedPersonIncompatibleFilters(currentFilters);
     const currentSort = currentFilters.sort;

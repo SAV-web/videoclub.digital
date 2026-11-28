@@ -269,11 +269,13 @@ export function buildPrettyPath(filters: {
   selection?: string | null;
   director?: string | null;
   actor?: string | null;
+  primaryPersonRole?: "director" | "actor" | null;
   excludedGenres?: string[];
   excludedCountries?: string[];
 }): string {
   // 1. Prioridad: Entidades VIP de Persona (excluyentes de catálogo)
-  if (filters.director) {
+  const preferActorFirst = filters.primaryPersonRole === "actor" && Boolean(filters.actor);
+  if (!preferActorFirst && filters.director) {
     const dirSlug = toSlug(filters.director);
     return dirSlug ? `/director/${dirSlug}/` : "/";
   }
@@ -281,6 +283,11 @@ export function buildPrettyPath(filters: {
   if (filters.actor) {
     const actSlug = toSlug(filters.actor);
     return actSlug ? `/actor/${actSlug}/` : "/";
+  }
+
+  if (filters.director) {
+    const dirSlug = toSlug(filters.director);
+    return dirSlug ? `/director/${dirSlug}/` : "/";
   }
 
   // 2. Jerarquía de Catálogo
@@ -491,6 +498,11 @@ export function normalizeActiveFilters(filters: Partial<ActiveFilters> = {}): Ac
     actor2 = null;
   }
 
+  const primaryPersonRole =
+    director && actor
+      ? (filters.primaryPersonRole === "actor" ? "actor" : "director")
+      : (director ? "director" : (actor ? "actor" : null));
+
   return {
     searchTerm: normalizeTextValue(filters.searchTerm),
     genre: normalizeNullableText(filters.genre),
@@ -499,6 +511,7 @@ export function normalizeActiveFilters(filters: Partial<ActiveFilters> = {}): Ac
     director,
     actor,
     actor2,
+    primaryPersonRole,
     selection: normalizeSelectionCode(filters.selection),
     studio: normalizeStudioCode(filters.studio),
     sort: normalizeSort(filters.sort),
@@ -512,6 +525,31 @@ export function normalizeActiveFilters(filters: Partial<ActiveFilters> = {}): Ac
 /**
  * Devuelve cuántas personas activas hay actualmente en los filtros (0, 1 o 2).
  */
+export interface ActivePersonEntry {
+  filterKey: "director" | "actor" | "actor2";
+  role: "director" | "actor";
+  name: string;
+}
+
+/**
+ * Devuelve las personas activas ordenadas según el rol primario elegido (1 o 2).
+ */
+export function getOrderedActivePeople(
+  filters: Pick<ActiveFilters, "director" | "actor" | "actor2" | "primaryPersonRole">
+): ActivePersonEntry[] {
+  const entries: ActivePersonEntry[] = [];
+  if (filters.primaryPersonRole === "actor" && filters.actor) {
+    entries.push({ filterKey: "actor", role: "actor", name: filters.actor });
+    if (filters.director) entries.push({ filterKey: "director", role: "director", name: filters.director });
+    if (filters.actor2) entries.push({ filterKey: "actor2", role: "actor", name: filters.actor2 });
+  } else {
+    if (filters.director) entries.push({ filterKey: "director", role: "director", name: filters.director });
+    if (filters.actor) entries.push({ filterKey: "actor", role: "actor", name: filters.actor });
+    if (filters.actor2) entries.push({ filterKey: "actor2", role: "actor", name: filters.actor2 });
+  }
+  return entries.length === 1 || entries.length === 2 ? entries : [];
+}
+
 export function getActivePeopleCount(
   filters: Pick<ActiveFilters, "director" | "actor" | "actor2">
 ): number {
@@ -519,24 +557,36 @@ export function getActivePeopleCount(
 }
 
 /**
- * Evalúa si se puede combinar una segunda persona VIP mediante el botón '+'.
+ * Evalúa si se puede combinar o sustituir el segundo VIP mediante el botón '+'.
  * Reglas:
- *  - Exactamente 1 persona activa actualmente y debe ser VIP.
+ *  - 1 o 2 personas activas actualmente y el primer VIP ancla debe ser VIP.
  *  - La persona destino también debe pertenecer a la selección VIP.
  *  - Permitido: Director + Actor o Actor + Actor (nunca 2 Directores).
- *  - Máximo 2 personas y sin repetir al mismo actor.
+ *  - Si ya hay 2 personas activas, pulsar '+' sustituye al segundo VIP sin repetir personas activas.
  */
 export function canCombinePersonFilter(
-  filters: Pick<ActiveFilters, "director" | "actor" | "actor2">,
+  filters: Pick<ActiveFilters, "director" | "actor" | "actor2" | "primaryPersonRole">,
   targetType: "director" | "actor",
   targetName: string | null | undefined,
   isTargetVip: boolean,
   isCurrentVip: boolean
 ): boolean {
   if (!isCurrentVip || !isTargetVip || !targetName || !targetName.trim()) return false;
-  if (getActivePeopleCount(filters) !== 1) return false;
-  if (filters.director && targetType === "director") return false;
-  if (targetType === "actor" && filters.actor && toSlug(filters.actor) === toSlug(targetName)) return false;
+  const activeCount = getActivePeopleCount(filters);
+  if (activeCount < 1 || activeCount > 2) return false;
+  if (targetType === "director" && filters.director) {
+    if (filters.primaryPersonRole !== "actor" || !filters.actor) return false;
+    if (toSlug(filters.director) === toSlug(targetName)) return false;
+  }
+  if (targetType === "actor") {
+    const targetSlug = toSlug(targetName);
+    if (
+      (filters.actor && toSlug(filters.actor) === targetSlug) ||
+      (filters.actor2 && toSlug(filters.actor2) === targetSlug)
+    ) {
+      return false;
+    }
+  }
   return true;
 }
 

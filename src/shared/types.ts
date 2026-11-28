@@ -130,6 +130,7 @@ export interface ActiveFilters {
   director: string | null;
   actor: string | null;
   actor2: string | null;
+  primaryPersonRole?: "director" | "actor" | null;
   selection: string | null;
   studio: string | null;
   sort: string;
@@ -166,6 +167,7 @@ export interface PersonDetails {
 export interface VipData {
   type: "person" | "dual-person" | "collection" | "studio";
   data?: PersonDetails | [PersonDetails, PersonDetails] | Record<string, unknown> | null;
+  filterKeys?: ["director" | "actor" | "actor2", "director" | "actor" | "actor2"];
   code?: string;
   total?: number;
   thumbhash_st?: string | null;

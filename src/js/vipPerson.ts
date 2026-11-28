@@ -1,7 +1,7 @@
 import { LRUCache } from "lru-cache";
 import { toSlug } from "../shared/slugs.js";
 import { CONFIG, IGNORED_ACTORS_SET } from "./constants.js";
-import { canCombinePersonFilter, getActivePeopleCount } from "./contracts.js";
+import { canCombinePersonFilter, getOrderedActivePeople } from "./contracts.js";
 import { appEvents } from "./state.js";
 import type { ActiveFilters, MappedMovie, PersonDetails } from "./types.js";
 
@@ -160,21 +160,27 @@ export function ensureFullCollaborators(
   return entry.fetching;
 }
 
+function getPrimaryCombinePerson(
+  filters: Pick<ActiveFilters, "director" | "actor" | "actor2" | "primaryPersonRole">
+): { role: "director" | "actor"; name: string } | null {
+  const first = getOrderedActivePeople(filters)[0];
+  return first ? { role: first.role, name: first.name } : null;
+}
+
 /**
  * Comprueba si un director o actor objetivo comparte al menos una película con
- * el único VIP actualmente activo en los filtros.
+ * el primer VIP activo (ancla del cruce en curso).
  */
 export function hasCollaboratorWithActivePerson(
   filters: Pick<ActiveFilters, "director" | "actor" | "actor2">,
   targetType: "director" | "actor",
   targetName: string | null | undefined
 ): boolean {
-  if (!targetName || getActivePeopleCount(filters) !== 1) return false;
-  const activeRole = filters.director ? "director" : "actor";
-  const activeName = filters.director || filters.actor;
-  if (!activeName) return false;
+  if (!targetName) return false;
+  const primary = getPrimaryCombinePerson(filters);
+  if (!primary) return false;
 
-  const key = getActivePersonKey(activeRole, activeName);
+  const key = getActivePersonKey(primary.role, primary.name);
   if (!key) return false;
 
   const entry = collaboratorsCache.get(key);
@@ -301,16 +307,15 @@ export function isPersonVip(
 }
 
 /**
- * Comprueba si el filtro activo actual tiene exactamente 1 persona y es VIP.
+ * Comprueba si existe 1 o 2 personas activas y la persona ancla (primer VIP) es VIP,
+ * habilitando tanto añadir el segundo VIP como sustituirlo cuando ya hay dos.
  */
-export function isSingleActivePersonVip(
-  filters: Pick<ActiveFilters, "director" | "actor" | "actor2">,
+export function isPrimaryActivePersonVip(
+  filters: Pick<ActiveFilters, "director" | "actor" | "actor2" | "primaryPersonRole">,
   getCachedDetails?: (role: "director" | "actor", personName: string) => PersonDetails | null
 ): boolean {
-  if (getActivePeopleCount(filters) !== 1) return false;
-  if (filters.director) return isPersonVip("director", filters.director, getCachedDetails);
-  if (filters.actor) return isPersonVip("actor", filters.actor, getCachedDetails);
-  return false;
+  const primary = getPrimaryCombinePerson(filters);
+  return primary ? isPersonVip(primary.role, primary.name, getCachedDetails) : false;
 }
 
 type CachedPersonLookup = (role: "director" | "actor", personName: string) => PersonDetails | null;
@@ -376,7 +381,7 @@ export async function prepareVipPersonCombine(
   fetchDetails: RemotePersonLookup
 ): Promise<string | null> {
   await loadVipSlugs();
-  if (!isSingleActivePersonVip(filters, getCachedDetails)) return null;
+  if (!isPrimaryActivePersonVip(filters, getCachedDetails)) return null;
 
   const resolvedName = await resolvePersonDisplayName(targetType, rawName, getCachedDetails, fetchDetails);
   if (!resolvedName || !isPersonVip(targetType, resolvedName, getCachedDetails)) return null;

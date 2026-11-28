@@ -484,20 +484,24 @@
   display: inline;
 }
 
-/* Mantiene la coma y el ancla '+' inseparables del final del nombre para evitar comas huérfanas */
+/* Mantiene la coma y el ancla '+' como inline puro en desktop para impedir comas huérfanas al inicio de línea */
 .is-quick-view .modal-person-tail {
   white-space: nowrap;
 }
 
+.is-quick-view .modal-person-comma {
+  @media (hover: hover) and (pointer: fine) {
+    position: relative;
+    left: 0;
+    transition: left 140ms ease;
+  }
+}
+
 .is-quick-view .modal-person-anchor {
   position: relative;
-  display: inline-block;
-  width: 0;
-  height: 1em;
-  vertical-align: -0.15em;
+  display: inline;
 
   @media (hover: none) and (pointer: coarse) {
-    display: inline;
     width: auto;
     height: auto;
     vertical-align: baseline;
@@ -571,14 +575,15 @@
     position: absolute;
     left: 1px;
     top: 50%;
+    width: 15px;
+    height: 15px;
+    min-width: 15px;
+    min-height: 15px;
+    font-size: 0.72rem;
     transform: translateY(-50%) scale(0.88);
     z-index: 6;
     opacity: 0;
     pointer-events: none;
-
-    .modal-person-comma + .modal-person-anchor & {
-      left: -2px;
-    }
 
     /* Puente invisible para evitar perder :hover entre el enlace y el botón '+' */
     &::before {
@@ -616,6 +621,12 @@
 
   @media (hover: hover) and (pointer: fine) {
     transform: translateY(-50%) scale(1);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .is-quick-view .modal-person-item:is(:hover, :focus-within) .modal-person-anchor + .modal-person-comma {
+    left: 15px;
   }
 }
 

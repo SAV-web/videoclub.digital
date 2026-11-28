@@ -2,9 +2,9 @@ import { createElement, renderCountryFlag, renderStudioIcons, setupExternalLink,
 import { preserveHyphenatedWords } from "../../../shared/formatters.js";
 import { CONFIG, IGNORED_ACTORS_SET, CSS_CLASSES } from "../../constants.js";
 import { getActiveFilters } from "../../state.js";
-import { canCombinePersonFilter, getActivePeopleCount } from "../../contracts.js";
+import { canCombinePersonFilter } from "../../contracts.js";
 import { getCachedPersonDetails } from "../../api.js";
-import { isPersonVip, isSingleActivePersonVip, loadVipSlugs } from "../../vipPerson.js";
+import { isPersonVip, isPrimaryActivePersonVip, loadVipSlugs } from "../../vipPerson.js";
 import { updateCardUI, adjustQuickViewNoteHeight, applyLqipImage, populatePersonFields } from "../card/index.js";
 import { setupCardRatings } from "../rating.js";
 import type { ActiveFilters, Movie, MappedMovie, MovieCardElement } from "../../types.js";
@@ -88,11 +88,8 @@ const renderPersonLinksList = (
 ): void => {
   const isPersonList = type === 'director' || type === 'actor';
   const filters = isPersonList ? getActiveFilters() : null;
-  const hasSinglePerson = Boolean(filters && getActivePeopleCount(filters) === 1);
-  if (hasSinglePerson) void loadVipSlugs();
-  const isCurrentVip = (hasSinglePerson && filters)
-    ? isSingleActivePersonVip(filters, getCachedPersonDetails)
-    : false;
+  if (filters && (filters.director || filters.actor)) void loadVipSlugs();
+  const isCurrentVip = filters ? isPrimaryActivePersonVip(filters, getCachedPersonDetails) : false;
 
   const frag = document.createDocumentFragment();
   names.forEach((name, i, arr) => {
@@ -106,11 +103,11 @@ const renderPersonLinksList = (
     const wrapper = createElement("span", { className: "modal-person-item" });
     const link = createLink(name, type);
     const tail = createElement("span", { className: "modal-person-tail" });
-    if (hasNext) {
-      tail.appendChild(createElement("span", { className: "modal-person-comma", textContent: "," }));
-    }
     if (shouldShowModalCombine(filters, isCurrentVip, type, name)) {
       appendCombineAnchor(tail, type as 'director' | 'actor', name);
+    }
+    if (hasNext) {
+      tail.appendChild(createElement("span", { className: "modal-person-comma", textContent: "," }));
     }
     wrapper.append(link, tail);
 
@@ -181,9 +178,7 @@ const syncActorsCombineToggle = (actorsContainer: HTMLElement | null | undefined
 export function upgradeModalPersonCombineButtons(root: HTMLElement): void {
   const filters = getActiveFilters();
   const actorsContainer = root.querySelector<HTMLElement>('[data-template="actors-container"]');
-  const isCurrentVip = getActivePeopleCount(filters) === 1
-    ? isSingleActivePersonVip(filters, getCachedPersonDetails)
-    : false;
+  const isCurrentVip = isPrimaryActivePersonVip(filters, getCachedPersonDetails);
 
   if (!isCurrentVip) {
     syncActorsCombineToggle(actorsContainer);

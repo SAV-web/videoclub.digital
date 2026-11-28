@@ -538,13 +538,17 @@ describe("cruce de hasta 2 personas VIP (Director + Actor / Actor + Actor)", () 
     assert.equal(contracts.canCombinePersonFilter(actFilters, "actor", "Al Pacino", true, true), false);
     assert.equal(contracts.canCombinePersonFilter(actFilters, "actor", "Robert De Niro", true, false), false);
 
-    // Ya hay 2 personas activas -> bloquea cualquier otra combinación
-    assert.equal(contracts.canCombinePersonFilter({ director: "Martin Scorsese", actor: "Robert De Niro", actor2: null }, "actor", "Joe Pesci", true, true), false);
-    assert.equal(contracts.canCombinePersonFilter({ director: null, actor: "Al Pacino", actor2: "Robert De Niro" }, "director", "Michael Mann", true, true), false);
+    // Ya hay 2 personas activas -> permite sustituir al segundo VIP respetando rol y sin duplicar activos
+    assert.equal(contracts.canCombinePersonFilter({ director: "Martin Scorsese", actor: "Robert De Niro", actor2: null }, "actor", "Joe Pesci", true, true), true);
+    assert.equal(contracts.canCombinePersonFilter({ director: "Martin Scorsese", actor: "Robert De Niro", actor2: null }, "actor", "Robert De Niro", true, true), false);
+    assert.equal(contracts.canCombinePersonFilter({ director: "Martin Scorsese", actor: "Robert De Niro", actor2: null }, "director", "Francis Ford Coppola", true, true), false);
+    assert.equal(contracts.canCombinePersonFilter({ director: null, actor: "Al Pacino", actor2: "Robert De Niro" }, "actor", "Joe Pesci", true, true), true);
+    assert.equal(contracts.canCombinePersonFilter({ director: null, actor: "Al Pacino", actor2: "Robert De Niro" }, "actor", "Robert De Niro", true, true), false);
+    assert.equal(contracts.canCombinePersonFilter({ director: null, actor: "Al Pacino", actor2: "Robert De Niro" }, "director", "Michael Mann", true, true), true);
   });
 
   test("combinePersonFilter, promoción de actor2 y URLs bidireccionales respetan los contratos", () => {
-    // Caso 1: Director + Actor
+    // Caso 1: Director + Actor (y sustitución del segundo VIP)
     state.setFilter("director", "Martin Scorsese");
     assert.equal(state.combinePersonFilter("director", "Steven Spielberg"), false);
     assert.equal(state.combinePersonFilter("actor", "Robert De Niro"), true);
@@ -554,22 +558,65 @@ describe("cruce de hasta 2 personas VIP (Director + Actor / Actor + Actor)", () 
     assert.equal(dirActUrl.pathname, "/director/martin-scorsese/");
     assert.equal(dirActUrl.search, "actor=robert-de-niro");
 
+    assert.equal(state.combinePersonFilter("actor", "Joe Pesci"), true);
+    assert.equal(state.getActiveFilters().director, "Martin Scorsese");
+    assert.equal(state.getActiveFilters().actor, "Joe Pesci");
+    assert.equal(state.getActiveFilters().actor2, null);
+
     state.resetFiltersState();
     state.syncStateWithUrl("/director/martin-scorsese/", "?actor=robert-de-niro");
     assert.equal(state.getActiveFilters().director, "martin scorsese");
     assert.equal(state.getActiveFilters().actor, "robert de niro");
     assert.equal(state.getActiveFilters().actor2, null);
 
-    // Caso 2: Actor + Actor y promoción automática al quitar actor principal
+    // Caso 2: Actor + Actor, sustitución del segundo VIP y promoción automática al quitar actor principal
     state.resetFiltersState();
     state.setFilter("actor", "Al Pacino");
     assert.equal(state.combinePersonFilter("actor", "Robert De Niro"), true);
-    assert.equal(state.combinePersonFilter("actor", "Joe Pesci"), false);
+    assert.equal(state.combinePersonFilter("actor", "Joe Pesci"), true);
+    assert.equal(state.getActiveFilters().actor, "Al Pacino");
+    assert.equal(state.getActiveFilters().actor2, "Joe Pesci");
+    assert.equal(state.combinePersonFilter("actor", "Robert De Niro"), true);
     assert.equal(state.getActiveFilterCount(), 2);
 
     const twoActorsUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
     assert.equal(twoActorsUrl.pathname, "/actor/al-pacino/");
     assert.equal(twoActorsUrl.search, "actor2=robert-de-niro");
+
+    // Sustituir actor2 por director limpia actor2 y mantiene actor como primer VIP
+    assert.equal(state.combinePersonFilter("director", "Michael Mann"), true);
+    assert.equal(state.getActiveFilters().director, "Michael Mann");
+    assert.equal(state.getActiveFilters().actor, "Al Pacino");
+    assert.equal(state.getActiveFilters().actor2, null);
+    assert.equal(state.getActiveFilters().primaryPersonRole, "actor");
+
+    const actFirstUrl = state.stateToPrettyUrl(state.getActiveFilters(), 1);
+    assert.equal(actFirstUrl.pathname, "/actor/al-pacino/");
+    assert.equal(actFirstUrl.search, "director=michael-mann");
+
+    // Cuando el actor es el primer VIP y el director el segundo, pulsar '+' en otro director o actor sustituye al director
+    assert.equal(state.combinePersonFilter("director", "Brian De Palma"), true);
+    assert.equal(state.getActiveFilters().director, "Brian De Palma");
+    assert.equal(state.getActiveFilters().actor, "Al Pacino");
+    assert.equal(state.getActiveFilters().primaryPersonRole, "actor");
+
+    assert.equal(state.combinePersonFilter("actor", "Robert De Niro"), true);
+    assert.equal(state.getActiveFilters().director, null);
+    assert.equal(state.getActiveFilters().actor, "Al Pacino");
+    assert.equal(state.getActiveFilters().actor2, "Robert De Niro");
+    assert.equal(state.getActiveFilters().primaryPersonRole, "actor");
+
+    // URL bidireccional /actor/.../?director=... preserva el actor como primer VIP
+    state.resetFiltersState();
+    state.syncStateWithUrl("/actor/al-pacino/", "?director=brian-de-palma");
+    assert.equal(state.getActiveFilters().actor, "al pacino");
+    assert.equal(state.getActiveFilters().director, "brian de palma");
+    assert.equal(state.getActiveFilters().primaryPersonRole, "actor");
+
+    // Restauramos Actor + Actor para validar promoción al quitar actor principal
+    state.resetFiltersState();
+    state.setFilter("actor", "Al Pacino");
+    assert.equal(state.combinePersonFilter("actor", "Robert De Niro"), true);
 
     // Quitar el primer actor promueve actor2 -> actor
     state.setFilter("actor", null);

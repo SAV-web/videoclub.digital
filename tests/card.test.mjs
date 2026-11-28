@@ -938,6 +938,7 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
     await cardModule.renderMovieGrid(gridContainer, [movie], {
       type: "dual-person",
       data: [martin, cage],
+      filterKeys: ["director", "actor"],
     });
 
     assert.equal(gridContainer.children.length, 2, "Debe insertar ficha dual + película");
@@ -966,5 +967,33 @@ describe("Componente Card (src/js/components/card.ts) - Tests de Caracterizació
     assert.equal(secondaryImg.alt, "Foto de Nicolas Cage");
     assert.ok(String(primaryImg.style.backgroundImage).includes("martin"));
     assert.ok(String(secondaryImg.style.backgroundImage).includes("cage"));
+    assert.equal(primarySlot.dataset.removeFilterKey, "director");
+    assert.equal(secondarySlot.dataset.removeFilterKey, "actor");
+    assert.ok(primarySlot.querySelector(".dual-vip-remove-badge"));
+    assert.ok(secondarySlot.querySelector(".dual-vip-remove-badge"));
+
+    primarySlot.closest = (sel) => (sel === ".dual-vip-portrait" ? primarySlot : null);
+    secondarySlot.closest = (sel) => (sel === ".dual-vip-portrait" ? secondarySlot : null);
+
+    const emittedFilters = [];
+    const unsub = stateModule.appEvents.on("filter:apply", (payload) => emittedFilters.push(payload));
+    try {
+      cardModule.handleCardClick.call(dualCard, {
+        target: primarySlot,
+        preventDefault() {},
+        stopPropagation() {},
+      });
+      cardModule.handleCardClick.call(dualCard, {
+        target: secondarySlot,
+        preventDefault() {},
+        stopPropagation() {},
+      });
+    } finally {
+      unsub();
+    }
+    assert.deepEqual(emittedFilters, [
+      { type: "director", value: null },
+      { type: "actor", value: null },
+    ]);
   });
 });

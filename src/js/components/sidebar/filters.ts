@@ -3,7 +3,7 @@ import { debounce, triggerPopAnimation, createElement, triggerHapticFeedback, hi
 import { fetchDirectorSuggestions, fetchActorSuggestions, fetchCountrySuggestions, fetchGenreSuggestions, getCachedPersonDetails, fetchPersonDetails, fetchMovies } from "../../api.js";
 import { getActiveFilters, setFilter, combinePersonFilter, toggleExcludedFilter, getActiveFilterCount, resetFiltersState, setSort, setMediaType, getCurrentPage, setSearchTerm, getTotalMovies, appEvents } from "../../state.js";
 import { getActivePeopleCount, toSlug } from "../../contracts.js";
-import { canOfferCollaboratorCombine, isSingleActivePersonVip, loadVipSlugs, prepareVipPersonCombine, resolvePersonDisplayName } from "../../vipPerson.js";
+import { canOfferCollaboratorCombine, isPrimaryActivePersonVip, loadVipSlugs, prepareVipPersonCombine, resolvePersonDisplayName } from "../../vipPerson.js";
 import { showToast, clearToast, clearAllSidebarAutocomplete, notifyRemovedPersonIncompatibleFilters, updateTypeFilterUI, updateMobileStatusBar } from "../../ui.js";
 import { updateUrl } from "../../router.js";
 import { loadAndRenderMovies } from "../../renderEngine.js";
@@ -73,7 +73,7 @@ function renderSidebarAutocomplete(formElement: HTMLFormElement, suggestions: st
   if (isPersonAutocomplete && activeFilters && getActivePeopleCount(activeFilters) === 1) {
     void loadVipSlugs();
   }
-  const isCurrentVip = activeFilters ? isSingleActivePersonVip(activeFilters, getCachedPersonDetails) : false;
+  const isCurrentVip = activeFilters ? isPrimaryActivePersonVip(activeFilters, getCachedPersonDetails) : false;
 
   resultsContainer.id = `autocomplete-results-${filterType}`;
   resultsContainer.setAttribute("role", "listbox");
@@ -132,7 +132,7 @@ function updateAllFilterControls(): void {
   if (activePeopleCount === 1) {
     void loadVipSlugs();
   }
-  const isCurrentVip = isSingleActivePersonVip(activeFilters, getCachedPersonDetails);
+  const isCurrentVip = isPrimaryActivePersonVip(activeFilters, getCachedPersonDetails);
 
   const excludedGenresSet = new Set(activeFilters.excludedGenres || []);
   const excludedCountriesSet = new Set(activeFilters.excludedCountries || []);

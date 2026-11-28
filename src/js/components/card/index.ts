@@ -101,7 +101,7 @@ export async function renderMovieGrid(
     if (vipData.type === 'person' && vipData.data) {
       fragment.appendChild(createPersonCardElement(vipData.data as PersonDetails));
     } else if (vipData.type === 'dual-person' && Array.isArray(vipData.data) && vipData.data.length === 2) {
-      fragment.appendChild(createDualPersonCardElement(vipData.data as [PersonDetails, PersonDetails]));
+      fragment.appendChild(createDualPersonCardElement(vipData.data as [PersonDetails, PersonDetails], vipData.filterKeys));
     } else if (vipData.type === 'collection' && vipData.code) {
       fragment.appendChild(createCollectionCardElement(vipData.code, vipData.total, vipData.thumbhash_st));
     } else if (vipData.type === 'studio' && vipData.code) {
